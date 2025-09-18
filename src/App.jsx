@@ -2315,6 +2315,7 @@ function ActivitySidebar({ row, colsByKey, onClose }) {
 
 // =============== DataTable ===============
 function DataTable({
+  
   title,
   tableKey,
   rows,
@@ -3296,67 +3297,89 @@ const handleDoubleClickCell = (e, rowIndex, colKey) => {
 };
 
   const update = (id, key, value) => {
-  const before = rows.find(r => r.id === id);
+  // 1) journalisation (si présent chez toi)
+  const before = (rows || []).find(r => r.id === id);
   const oldVal = before ? before[key] : undefined;
-
   if (String(oldVal) !== String(value)) {
-    addChange(id, key, oldVal, value, currentUser?.name || "Utilisateur");
+    addChange?.(id, key, oldVal, value, currentUser?.name || "Utilisateur");
   }
 
-  // ⬅️ Si on modifie la colonne actuellement triée, gèle le tri sur le prochain render
-  if (key === sort.key) freezeSortOnce();
+  // 2) si on modifie la colonne triée, fige le tri pour le prochain render
+  if (key === sort?.key) freezeSortOnce?.();
 
-  // ⬇️ Override manuel si la colonne est de type "formula"
-const changed = rows.map((r) => {
+  // 3) applique la saisie + marque la cellule comme "manuelle"
+  const changed = (rows || []).map(r => {
     if (r.id !== id) return r;
-    const nr = { ...r, [key]: value };
-    if (isFormulaKey(schema, key)) {
-      nr.__manual = { ...(r.__manual || {}), [key]: true };
-    }
-    return nr;
+    return {
+      ...r,
+      [key]: value,
+      __manual: { ...(r.__manual || {}), [key]: true }, // ← important
+    };
   });
 
+  // 4) recalcul des formules
+  const computed = typeof computeFormulas === "function"
+    ? computeFormulas(changed, schema)
+    : changed;
 
- };
+  // 5) préserve les valeurs manuelles après le calcul
+  const next = computed.map(nr => {
+    const pr = changed.find(p => p.id === nr.id);
+    if (!pr?.__manual) return nr;
+    const out = { ...nr, __manual: pr.__manual };
+    for (const k of Object.keys(pr.__manual)) {
+      if (pr.__manual[k]) out[k] = pr[k]; // ← on remet la valeur saisie
+    }
+    return out;
+  });
+
+  // 6) commit
+  onRowsChange?.(next);
+};
+
 
   const addRow = () => {
-  const base = filtered[filtered.length - 1] || rows[rows.length - 1] || {};
+  // Sélection d’un gabarit sûr pour préremplir (si dispo)
+  const hasFiltered = Array.isArray(filtered) && filtered.length > 0;
+  const hasRows     = Array.isArray(rows) && rows.length > 0;
+  const base        = (hasFiltered ? filtered[filtered.length - 1]
+                     : hasRows    ? rows[rows.length - 1]
+                                  : {}) || {};
 
-  // Produit par défaut cohérent avec le tableau courant
+  // 🔒 Produit par défaut forcé UNIQUEMENT via tableKey (pour matcher le filtre MinuteEditor)
   const defaultProduit =
-    base.produit ||
-    rows[0]?.produit ||
-    (tableKey === "rideaux"
-      ? "Rideau"
-      : tableKey === "decors"
-      ? "Décor de lit"
-      : "Store Enrouleur"); // 'stores'
+    tableKey === "rideaux" ? "Rideau"
+  : tableKey === "decors"  ? "Décor de lit"
+  :                          "Store Enrouleur"; // 'stores'
 
   const newRow = {
     id: uid(),
     produit: defaultProduit,
-    zone: base.zone || "",
-    piece: base.piece || "",
-    type_confection: base.type_confection || "",
-    pair_un: base.pair_un || "",
-    l_mecanisme: base.l_mecanisme || "",
-    largeur: base.largeur || "",
-    hauteur: base.hauteur || "",
-    f_bas: base.f_bas || "",
-    croisement: base.croisement || "",
-    retour_g: base.retour_g || "",
-    retour_d: base.retour_d || "",
-    val_ded_rail: base.val_ded_rail || "",
-    val_ourlet_cote: base.val_ourlet_cote || "",
-    val_ourlet_haut: base.val_ourlet_haut || "",
+    // on clone quelques champs utiles pour que la ligne passe d'éventuels filtres locaux
+    zone: base.zone ?? "",
+    piece: base.piece ?? "",
+    type_confection: base.type_confection ?? "",
+    pair_un: base.pair_un ?? "",
+    l_mecanisme: base.l_mecanisme ?? "",
+    largeur: base.largeur ?? "",
+    hauteur: base.hauteur ?? "",
+    f_bas: base.f_bas ?? "",
+    croisement: base.croisement ?? "",
+    retour_g: base.retour_g ?? "",
+    retour_d: base.retour_d ?? "",
+    val_ded_rail: base.val_ded_rail ?? "",
+    val_ourlet_cote: base.val_ourlet_cote ?? "",
+    val_ourlet_haut: base.val_ourlet_haut ?? "",
   };
 
-  const next = computeFormulas([...(rows || []), newRow], schema);
- if (filters?.length) setFilters([]); // pour la vue minutes, sinon la ligne peut être cachée
-onRowsChange(next);
+  // On pousse UNIQUEMENT la sous-liste (DataTable) ; MinuteEditor fusionnera et recalculera
+  const safeRows = Array.isArray(rows) ? rows : [];
+  const next = [...safeRows, newRow];
+  onRowsChange(next);
 
+  // scroll jusqu'en bas pour rendre la nouvelle ligne visible
   requestAnimationFrame(() => {
-    if (wrapRef.current) {
+    if (wrapRef?.current) {
       wrapRef.current.scrollTop = wrapRef.current.scrollHeight;
     }
   });
@@ -4305,10 +4328,14 @@ function MinuteEditor({ minute, onChangeMinute }) {
     computeFormulas(minute?.lines || [], CHIFFRAGE_SCHEMA)
   );
 
-  // Resync si on change de minute ou si ses lignes changent
+  // Ignorer une resync quand la modif vient d'ici
+const skipNextSyncRef = React.useRef(false);
+
+  // Resync UNIQUEMENT quand on change de minute (id). On ne se réécrit pas à chaque
+  // changement de minute.lines (ça provoquait le "flash → disparition").
   React.useEffect(() => {
     setRows(computeFormulas(minute?.lines || [], CHIFFRAGE_SCHEMA));
-  }, [minute?.id, minute?.lines]);
+  }, [minute?.id]);
 
   // Modules actifs (fallback = tous cochés pour anciennes minutes)
   const mods = minute?.modules || { rideau: true, store: true, decor: true };
@@ -4318,20 +4345,46 @@ function MinuteEditor({ minute, onChangeMinute }) {
   const rowsDecors  = rows.filter((r) => /d[ée]cor/i.test(String(r.produit || "")));
   const rowsStores  = rows.filter((r) => /store/i.test(String(r.produit || "")));
 
+// Id unique si absent
+const uid = () => Math.random().toString(36).slice(2, 9);
+
+// Produit par défaut cohérent selon le tableau courant
+const ensureProduitFor = (key, r) => {
+  if (r?.produit) return r;
+  if (key === "rideaux") return { ...r, produit: "Rideau" };
+  if (key === "decors")  return { ...r, produit: "Décor de lit" };
+  if (key === "stores")  return { ...r, produit: "Store Enrouleur" };
+  return r;
+};
+
+// S'assure que chaque ligne a un id
+const withIds = (arr) => (Array.isArray(arr) ? arr : []).map((r) => (r?.id ? r : { ...r, id: uid() }));
+  
   // Réinjecte TOUT le sous-tableau (ajouts + edits) dans rows
   const mergeChildRowsFor = (key) => (childRows) => {
-    const isInSubset = (r) => {
-      const p = String(r.produit || "");
-      if (key === "rideaux") return /rideau|voilage/i.test(p);
-      if (key === "decors")  return /d[ée]cor/i.test(p);
-      if (key === "stores")  return /store/i.test(p);
-      return false;
-    };
-    const others = (rows || []).filter((r) => !isInSubset(r));
-    const next = [...others, ...(childRows || [])];
-    const withFx = computeFormulas(next, CHIFFRAGE_SCHEMA);
-    setRows(withFx);
+  // On normalise d’abord la sous-liste reçue du DataTable :
+  // - produit par défaut selon la table (rideaux/decors/stores)
+  // - id garanti
+  const normalizedChild = withIds((childRows || []).map((r) => ensureProduitFor(key, r)));
+
+  // Garder uniquement les lignes des AUTRES sous-ensembles
+  const isInSubset = (r) => {
+    const p = String(r.produit || "");
+    if (key === "rideaux") return /rideau|voilage/i.test(p);
+    if (key === "decors")  return /d[ée]cor/i.test(p);
+    if (key === "stores")  return /store/i.test(p);
+    return false;
   };
+  const others = (rows || []).filter((r) => !isInSubset(r));
+
+  // Fusion + recalcul des formules
+  const next = [...others, ...normalizedChild];
+  const withFx = computeFormulas(next, CHIFFRAGE_SCHEMA);
+
+  // Commit local (remontée au parent se fait via l'useEffect plus bas)
+  skipNextSyncRef.current = true;   // ⬅️ indique que la prochaine resync est à ignorer
+setRows(withFx);
+};
 
   // Remonte au parent à chaque modif
   React.useEffect(() => {
