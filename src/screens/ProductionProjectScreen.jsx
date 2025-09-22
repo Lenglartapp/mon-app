@@ -10,6 +10,11 @@ import InputCell from "../components/cells/InputCell.jsx";
 
 import { computeFormulas } from "../lib/formulas/compute.js";
 import { CHIFFRAGE_SCHEMA } from "../lib/schemas/chiffrage.js";
+import { SCHEMA_64 } from "../lib/schemas/production.js"
+import { DEMO_MASTER_ROWS } from "../lib/data/production.demo.js"
+import { STAGES } from "../lib/constants/views.js";
+import DashboardTiles from "../components/DashboardTiles.jsx";
+import EtiquettesSection from "../components/EtiquettesSection.jsx";
 import { uid } from "../lib/utils/uid.js";
 
 // Si tu utilises des icônes :
@@ -21,7 +26,6 @@ import {
 } from "lucide-react";
 
 export function ProductionProjectScreen({ projectName, onBack }) {
-  return null;
   const [stage, setStage] = useState("dashboard");
   const [search, setSearch] = useState("");
   const [schema, setSchema] = useState(SCHEMA_64);

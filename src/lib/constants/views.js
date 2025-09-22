@@ -117,3 +117,13 @@ export const DEFAULT_VIEWS = {
     ],
   },
 };
+
+// ================== ETAPES / STAGES POUR L'ECRAN PRODUCTION ==================
+
+export const STAGES = [
+  { key: "dashboard", label: "Dashboard" },
+  { key: "prise", label: "Prise de cotes" },
+  { key: "bpf", label: "BPF" },
+  { key: "etiquettes", label: "Étiquettes" },
+  { key: "installation", label: "Installation" },
+];
