@@ -1,40 +1,85 @@
-html, body, #root { height: 100%; margin: 0; }
-body { background: #f4ded4 !important; } /* fond beige partout */
 /* ---- Reset & base ---- */
 * { box-sizing: border-box; }
 html, body, #root { height: 100%; margin: 0; }
-body { font-family: system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji"; }
+body {
+  background: #f4ded4 !important; /* fond beige partout */
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
+}
 
-/* ---- Couleurs ---- */
+/* ---- Variables (couleurs + print) ---- */
 :root{
   --page-bg: #f4ded4;   /* beige fond */
   --tile-bg: #0a2c3d;   /* bleu foncé tuiles */
   --text: #111827;
   --muted: #4b5563;
+
+  /* Impression (colonnes d’étiquettes) */
+  --etq-cols-print: 3;  /* fallback si aucune valeur injectée */
 }
 
 /* ---- Layout page ---- */
 .page{ min-height:100%; background:var(--page-bg); display:flex; flex-direction:column; }
 .header{ display:flex; align-items:center; justify-content:space-between; padding:20px 32px; }
 
-/* Boutons neutres */
-button{ background:none; border:0; padding:0; margin:0; font:inherit; color:inherit; }
+/* ---- Boutons neutres ---- */
+button{ background:none; border:0; padding:0; margin:0; font:inherit; color:inherit; cursor:pointer; }
 
-/* Logo + baseline */
+/* ---- Logo + baseline ---- */
 .brand{ display:flex; align-items:baseline; gap:12px; cursor:pointer; }
 .brand img{ height:36px; display:block; object-fit:contain; }
 .brand small{ font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); }
 
-/* Profil */
+/* ---- Profil ---- */
 .user{ display:flex; align-items:center; gap:12px; cursor:pointer; }
 .user .avatar{ width:40px; height:40px; border-radius:9999px; background:#000; }
 
-/* Grille d’apps */
+/* ---- Grille d’apps ---- */
 .main{ flex:1; display:flex; align-items:center; justify-content:center; padding:24px 0 48px; }
 .apps{ display:grid; grid-template-columns: repeat(4, minmax(120px, 1fr)); gap:56px; }
 @media (max-width: 900px){ .apps{ grid-template-columns: repeat(2, minmax(120px, 1fr)); } }
 
-/* Tuile + libellé */
+/* ---- Tuile + libellé ---- */
 .appButton{ display:flex; flex-direction:column; align-items:center; gap:14px; cursor:pointer; }
 .tile{ width:112px; height:112px; border-radius:16px; background:var(--tile-bg); color:#fff; display:flex; align-items:center; justify-content:center; }
 .label{ font-weight:600; font-size:17px; color:var(--text); }
+
+/* =========================================================
+   Impression — styles dédiés aux étiquettes (A4 portrait)
+   ========================================================= */
+
+/* Les cartes d’étiquette : pas de coupure entre pages/colonnes */
+.etq-card{
+  break-inside: avoid;
+  page-break-inside: avoid;
+  box-shadow: none;
+  border-width: 1.2px;
+}
+
+/* Grille d’étiquettes : utilisez .etq-grid sur le conteneur */
+.etq-grid{
+  display: grid;
+  grid-template-columns: repeat(3, 1fr); /* sera surchargé à l’impression */
+  gap: 16px;
+}
+
+@media print {
+  @page { size: A4 portrait; margin: 10mm; }
+
+  html, body, #root {
+    height: auto !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+
+  /* Masquer les éléments marqués explicitement */
+  [data-hide-on-print="1"] { display: none !important; }
+
+  /* Colonnes à l'impression (utilise la variable CSS) */
+  .etq-grid {
+    grid-template-columns: repeat(var(--etq-cols-print, 3), 1fr) !important;
+    gap: 10px !important;
+  }
+
+  /* Couleurs fidèles à l’impression */
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}

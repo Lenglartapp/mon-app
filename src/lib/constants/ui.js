@@ -12,6 +12,12 @@ export const S = {
   contentWrap: { width: "min(1200px, 96vw)", margin: "0 auto", padding: "8px 24px 24px" },
   contentWide: { width: "100%", margin: "0 auto", padding: "8px 24px 24px" }, // marges 24px à gauche/droite
 
+  etqToolbar: { display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" },
+  cardsWrap:  { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px,1fr))", gap: 16, padding: "10px 12px 18px" },
+  card:       { border: "2px solid #1F2937", borderRadius: 16, background: "#fff", padding: "14px 14px 10px" },
+  cardRow:    { display: "grid", gridTemplateColumns: "110px 1fr", gap: 8, alignItems: "baseline", margin: "4px 0" },
+  cardLabel:  { fontWeight: 700 },
+
   mainCenter: { flex: 1, display: "grid", placeItems: "center" },
   appsWrap: { width: "min(1200px, 96vw)" },
   appsBase: { display: "grid", justifyItems: "center" },
@@ -69,4 +75,23 @@ export const S = {
     fontSize: 12,
     cursor: "pointer",
   },
+};
+
+// --- overrides/table compact ---
+export const TABLE_DENSITY = {
+  compact: {
+    table: { fontSize: 13 },
+    th:    { padding: "6px 8px" },
+    td:    { padding: "6px 8px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" },
+  },
+};
+
+// --- petits styles communs (boutons, cartes, etc.) ---
+export const EXTRA = {
+  btn: { padding: "10px 14px", borderRadius: 12, border: `1px solid ${COLORS.border}`, background: "#fff", cursor: "pointer" },
+  etqToolbar: { display:"flex", alignItems:"center", gap:10, flexWrap:"wrap" },
+  cardsWrap:  { display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(260px,1fr))", gap:16, padding:"10px 12px 18px" },
+  card:       { border:"2px solid #1F2937", borderRadius:16, background:"#fff", padding:"14px 14px 10px" },
+  cardRow:    { display:"grid", gridTemplateColumns:"110px 1fr", gap:8, alignItems:"baseline", margin:"4px 0" },
+  cardLabel:  { fontWeight:700 },
 };

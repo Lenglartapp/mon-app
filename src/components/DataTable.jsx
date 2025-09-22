@@ -3,8 +3,18 @@ import { DEFAULT_VIEWS } from "../lib/constants/views";
 import { useActivity } from "../contexts/activity";
 import { useAuth } from "../auth.jsx";
 import { COLORS, S } from "../lib/constants/ui";
-import InputCell from "./cells/InputCell";
 import { uid } from "../lib/utils/uid";
+import RowFormModal from "./RowFormModal.jsx";
+import EditFieldModal from "./EditFieldModal.jsx";
+import ColumnPicker from "./ColumnPicker.jsx";
+import EtqFieldPicker from "./EtqFieldPicker.jsx";
+import LightboxModal from "./LightboxModal.jsx";
+import InputCell from "./cells/InputCell.jsx";
+import ActivitySidebar from "./ActivitySidebar.jsx";
+
+
+
+
 // icônes utilisées par DataTable
 import {
   PencilRuler, Database, Boxes, GanttChart,
