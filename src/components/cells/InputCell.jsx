@@ -12,7 +12,6 @@ function normalizeOptions(opts) {
   );
 }
 
-
 function InputCell({
   row,
   col,
@@ -25,8 +24,21 @@ function InputCell({
 }) {
   const key = col?.key;
   const type = col?.type || "text";
-  const readOnly = !!col?.readOnly;
+
+  // 🔓 NEW: autorise l’édition des colonnes "formula" (pour taper =...)
+  // même si le schéma met readOnly: true.
+  const baseReadOnly = !!col?.readOnly;
+  const allowOverrideForFormula = type === "formula";
+  const readOnly = allowOverrideForFormula ? false : baseReadOnly;
+
   const value = row?.[key];
+
+  // ==== NEW: support override de formule par cellule (=...)
+  const cellOverride = row?.__cellFormulas?.[key];
+  const editDefault =
+    isEditing && (type === "text" || type === "number" || type === "formula")
+      ? (cellOverride ? `=${cellOverride}` : (value ?? ""))
+      : undefined;
 
   // ===== HOOKS — tjs en haut (pas de hooks conditionnels) =====
   const textRef   = React.useRef(null);
@@ -35,63 +47,69 @@ function InputCell({
   const multiRef  = React.useRef(null);
   const fileRef   = React.useRef(null);
 
-// après: const fileRef = React.useRef(null);
-const [draft, setDraft] = React.useState(value);
+  const [draft, setDraft] = React.useState(value);
 
-// chaque fois qu’on (re)entre en édition, resynchroniser le draft avec la valeur
-React.useEffect(() => {
-  if (isEditing) setDraft(value ?? "");
-}, [isEditing, value]);
-
-
+  // chaque fois qu’on (re)entre en édition, resynchroniser le draft avec la valeur
+  React.useEffect(() => {
+    if (isEditing) setDraft(value ?? "");
+  }, [isEditing, value]);
 
   // focus auto quand on passe en édition
   React.useEffect(() => {
     if (!isEditing) return;
-    if (type === "text"     && textRef.current)   { textRef.current.focus(); textRef.current.select?.(); }
-    if (type === "number"   && numberRef.current) { numberRef.current.focus(); numberRef.current.select?.(); }
-    if (type === "select"   && selectRef.current) { selectRef.current.focus(); selectRef.current.showPicker?.(); }
-    if (type === "multiselect" && multiRef.current){ multiRef.current.focus(); }
-    if (type === "photo"    && fileRef.current)   { fileRef.current.focus(); }
+    if (type === "text"       && textRef.current)   { textRef.current.focus(); textRef.current.select?.(); }
+    if (type === "number"     && numberRef.current) { numberRef.current.focus(); numberRef.current.select?.(); }
+    if (type === "select"     && selectRef.current) { selectRef.current.focus(); selectRef.current.showPicker?.(); }
+    if (type === "multiselect"&& multiRef.current)  { multiRef.current.focus(); }
+    if (type === "photo"      && fileRef.current)   { fileRef.current.focus(); }
   }, [isEditing, type]);
 
   // ===== Helpers communs =====
-const stopAll = (e) => { e.stopPropagation(); };
+  const stopAll = (e) => { e.stopPropagation(); };
 
-// 🔒 évite le double-commit (Enter puis blur)
-const committedRef = React.useRef(false);
+  // 🔒 évite le double-commit (Enter puis blur)
+  const committedRef = React.useRef(false);
 
-const normalize = (v) => {
-  if (type === "number") return (v === "" ? "" : String(v).replace(",", "."));
-  return v;
-};
+  const normalize = (v) => {
+    if (type === "number") return (v === "" ? "" : String(v).replace(",", "."));
+    return v;
+  };
 
-const commitOnce = (v) => {
-  if (readOnly) { onEndEdit?.(); return; }
-  if (committedRef.current) return;
-  committedRef.current = true;
+  const commitOnce = (v) => {
+    if (committedRef.current) return;
 
-  const next = normalize(v);
-  if (String(next) !== String(value)) onChange?.(key, next);
-  onEndEdit?.();
+    // Autorise un override "=..." même si la colonne est readOnly (utile pour formula)
+    const isFormulaOverride = typeof v === "string" && v.trim().startsWith("=");
 
-  // relâche le verrou juste après le cycle d’événements
-  setTimeout(() => { committedRef.current = false; }, 0);
-};
-  const handleInputKeyDown = (e) => {
-  e.stopPropagation();
-  if (e.key === "Enter") {
-    e.preventDefault();
-    const cur = e.currentTarget?.value;
-    commitOnce(cur);                 // ✅ commit avant de bouger
-    setTimeout(() => onEnter?.(e.shiftKey), 0); // laisse React démonter l’input avant de bouger
-    return;
-  }
-  if (e.key === "Escape") {
-    e.preventDefault();
+    if (readOnly && !isFormulaOverride) {
+      onEndEdit?.();
+      return;
+    }
+
+    committedRef.current = true;
+
+    const next = normalize(v);
+    if (String(next) !== String(value)) onChange?.(key, next);
     onEndEdit?.();
-  }
-};
+
+    // relâche le verrou juste après le cycle d’événements
+    setTimeout(() => { committedRef.current = false; }, 0);
+  };
+
+  const handleInputKeyDown = (e) => {
+    e.stopPropagation();
+    if (e.key === "Enter") {
+      e.preventDefault();
+      const cur = e.currentTarget?.value;
+      commitOnce(cur);                 // ✅ commit avant de bouger
+      setTimeout(() => onEnter?.(e.shiftKey), 0); // laisse React démonter l’input avant de bouger
+      return;
+    }
+    if (e.key === "Escape") {
+      e.preventDefault();
+      onEndEdit?.();
+    }
+  };
 
   // ===== Rendus par type =====
 
@@ -112,20 +130,20 @@ const commitOnce = (v) => {
   if (type === "select") {
     const options = React.useMemo(() => normalizeOptions(col?.options), [col]);
 
-const label =
-  options.find((o) => String(o.value) === String(value))?.label ||
-  (value ?? "—");
+    const label =
+      options.find((o) => String(o.value) === String(value))?.label ||
+      (value ?? "—");
 
     return isEditing ? (
       <select
-  ref={selectRef}
-  value={value ?? ""}
-  onChange={(e) => commitOnce(e.target.value)}   // ⬅️ au change
-  onBlur={(e) => commitOnce(e.target.value)}     // ⬅️ au blur (sécurité)
-  onKeyDown={handleInputKeyDown}
-  onClick={stopAll}
-  style={{ width: "100%" }}
->
+        ref={selectRef}
+        value={value ?? ""}
+        onChange={(e) => commitOnce(e.target.value)}   // ⬅️ au change
+        onBlur={(e) => commitOnce(e.target.value)}     // ⬅️ au blur (sécurité)
+        onKeyDown={handleInputKeyDown}
+        onClick={stopAll}
+        style={{ width: "100%" }}
+      >
         <option value=""></option>
         {options.map((o) => (
           <option key={String(o.value)} value={o.value}>{o.label}</option>
@@ -206,16 +224,16 @@ const label =
     const format = (v) => v ?? "";
     return isEditing ? (
       <input
-  ref={numberRef}
-  type="text"
-  defaultValue={value ?? ""}
-  onKeyDown={handleInputKeyDown}
-  onBlur={(e) => commitOnce(e.target.value)}     // ⬅️
-  onClick={stopAll}
-  onMouseDown={stopAll}
-  style={{ width: "100%" }}
-  inputMode="decimal"
-/>
+        ref={numberRef}
+        type="text"
+        defaultValue={editDefault ?? (value ?? "")}   // ← NEW: montre "=..." si override
+        onKeyDown={handleInputKeyDown}
+        onBlur={(e) => commitOnce(e.target.value)}
+        onClick={stopAll}
+        onMouseDown={stopAll}
+        style={{ width: "100%" }}
+        inputMode="decimal"
+      />
     ) : (
       <div onDoubleClick={() => !readOnly && onStartEdit?.()}>
         {format(value) || "—"}
@@ -263,7 +281,6 @@ const label =
             const urls = files.map((f) => URL.createObjectURL(f));
             const next = [...imgs, ...urls];
             onChange?.(key, next);
-            // on reste en édition pour pouvoir en rajouter
           }}
         />
       </div>
@@ -303,9 +320,28 @@ const label =
     );
   }
 
-  // 6) Formula (lecture seule)
+  // 6) Formula — EDITABLE avec "=..." (override cellule)
   if (type === "formula") {
-    return <div>{value ?? "—"}</div>;
+    return isEditing ? (
+      <input
+        ref={textRef}
+        type="text"
+        defaultValue={editDefault ?? (value ?? "")}   // ← NEW: montre "=..." si override
+        onKeyDown={handleInputKeyDown}
+        onBlur={(e) => commitOnce(e.target.value)}
+        onClick={stopAll}
+        onMouseDown={stopAll}
+        style={{ width: "100%" }}
+      />
+    ) : (
+      <div
+        // 🔓 NEW: pour formula on ne bloque plus le double-clic par readOnly
+        onDoubleClick={() => onStartEdit?.()}
+        style={{ cursor: "text" }}
+      >
+        {value ?? "—"}
+      </div>
+    );
   }
 
   // 7) Button (action simple)
@@ -321,7 +357,7 @@ const label =
     );
   }
 
-  // 8) Détail (bouton d’ouverture, si tu l’utilises dans le tableau)
+  // 8) Détail (bouton d’ouverture)
   if (key === "detail") {
     return (
       <button
@@ -339,7 +375,7 @@ const label =
     <input
       ref={textRef}
       type="text"
-      defaultValue={value ?? ""}
+      defaultValue={editDefault ?? (value ?? "")}  // ← NEW: montre "=..." si override
       onKeyDown={handleInputKeyDown}
       onBlur={(e) => commitOnce(e.target.value)}
       onClick={stopAll}

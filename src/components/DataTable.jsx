@@ -11,7 +11,8 @@ import EtqFieldPicker from "./EtqFieldPicker.jsx";
 import LightboxModal from "./LightboxModal.jsx";
 import InputCell from "./cells/InputCell.jsx";
 import ActivitySidebar from "./ActivitySidebar.jsx";
-
+import { recomputeRow } from "../lib/formulas/recomputeRow";
+import { computeFormulas } from "../lib/formulas/compute";
 
 
 
@@ -47,7 +48,6 @@ function useLocalStorage(key, initialValue) {
 
 // =============== DataTable ===============
 function DataTable({
-  
   title,
   tableKey,
   rows,
@@ -56,10 +56,217 @@ function DataTable({
   setSchema,
   searchQuery = "",
   viewKey = "installation",
+  // NEW: active le support "=..." dans les cellules
+  enableCellFormulas = false,
 }) {
   // --- Versionning du localStorage pour forcer la prise en compte des nouvelles présélections
 const VIEWS_VERSION = 4; // ← incrémente quand tu changes DEFAULT_VIEWS
 const keyLS = `prod.v${VIEWS_VERSION}.visible.${viewKey}.${tableKey}`;
+
+// NEW: helper pour muter les lignes via onRowsChange
+  const setRows = React.useCallback(
+    (updater) => {
+      const next =
+        typeof updater === "function" ? updater(rows) : updater;
+      onRowsChange?.(next);
+    },
+    [rows, onRowsChange]
+  );
+
+
+  // NEW: applique l'édition d'une cellule, avec support "=..."
+  const handleCellChange = React.useCallback(
+  (rowId, key, raw) => {
+    setRows((prev) =>
+      prev.map((r) => {
+        if (r.id !== rowId) return r;
+
+        // copie
+        let next = { ...r, __cellFormulas: { ...(r.__cellFormulas || {}) } };
+
+        if (
+          enableCellFormulas &&
+          typeof raw === "string" &&
+          raw.trim().startsWith("=")
+        ) {
+          // override par cellule
+          const expr = raw.trim().slice(1); // on enlève le "="
+          next.__cellFormulas[key] = expr;
+          // on ne pose PAS la valeur brute : on recalcule la ligne
+        } else {
+          // valeur littérale => on supprime un éventuel override
+          if (next.__cellFormulas[key]) delete next.__cellFormulas[key];
+          next[key] = raw;
+        }
+
+        // ✅ Recompute ciblé pour cette ligne (prend en compte __cellFormulas)
+        try {
+          next = recomputeRow(next, schema);
+        } catch {
+          /* silencieux */
+        }
+        return next;
+      })
+    );
+  },
+  [enableCellFormulas, schema, setRows]
+);
+
+// -- COPIE / COLLAGE natifs (fonctionnent même si le wrapper n'a pas le focus parfait)
+
+// copie: remplit le presse-papier avec la grille sélectionnée (ou la cellule seule)
+// -- COPIE / COLLAGE natifs (fonctionnent même si le wrapper n'a pas le focus parfait)
+
+// copie: remplit le presse-papier avec la grille sélectionnée (ou la cellule seule)
+const handleCopy = (e) => {
+  const hasSel = !!selBox || !!selectedCell;
+  if (!hasSel) return;
+
+  const box = selBox
+    ? selBox
+    : (() => {
+        const ci = colIndexByKey.get(selectedCell.colKey) ?? 0;
+        return { rowStart: selectedCell.rowIndex, rowEnd: selectedCell.rowIndex, colStart: ci, colEnd: ci };
+      })();
+
+  const rowsInSel = filtered.slice(box.rowStart, box.rowEnd + 1);
+  const colsInSel = cols.slice(box.colStart, box.colEnd + 1);
+
+  const grid = rowsInSel
+    .map((r) => colsInSel.map((c) => (r[c.key] == null ? "" : String(r[c.key]))).join("\t"))
+    .join("\n");
+
+  if (e.clipboardData) {
+    e.clipboardData.setData("text/plain", grid);
+    e.preventDefault();
+    return;
+  }
+  try { navigator.clipboard.writeText(grid); } catch {}
+};
+
+// collage: colle au point d’ancrage (cellule ou rectangle) avec support "=..." sur colonnes formule/RO
+const handlePaste = async (e) => {
+  // Pas d’édition en cours, et besoin d’un ancrage
+  const hasSel = !!selBox || !!selectedCell;
+  if (editing || !hasSel) return;
+
+  let txt = "";
+  if (e.clipboardData?.getData) {
+    txt = e.clipboardData.getData("text/plain") || "";
+  }
+  if (!txt) {
+    try { txt = await navigator.clipboard.readText(); } catch {}
+  }
+  if (!txt) return;
+  e.preventDefault();
+
+  // Normalise \r\n et supprime les lignes vides finales (comme Excel)
+  const lines = txt.replace(/\r/g, "").split("\n");
+  while (lines.length && lines[lines.length - 1] === "") lines.pop();
+
+  const matrix = lines.map((line) => line.split("\t"));
+  const H = matrix.length;
+  const W = Math.max(...matrix.map((r) => r.length || 0));
+  if (!H || !W) return;
+
+  const startRowIndex = selBox ? selBox.rowStart : selectedCell.rowIndex;
+  const startColIndex = selBox
+    ? selBox.colStart
+    : (colIndexByKey.get(selectedCell.colKey) ?? 0);
+
+  const isSingleTarget = !selBox || (selBox.rowStart === selBox.rowEnd && selBox.colStart === selBox.colEnd);
+  const destRows = isSingleTarget ? H : (selBox.rowEnd - selBox.rowStart + 1);
+  const destCols = isSingleTarget ? W : (selBox.colEnd - selBox.colStart + 1);
+
+  const updates = [];
+  for (let dr = 0; dr < destRows; dr++) {
+    const rIndex = startRowIndex + dr;
+    if (rIndex < 0 || rIndex >= filtered.length) break;
+    const row = filtered[rIndex];
+
+    for (let dc = 0; dc < destCols; dc++) {
+      const cIndex = startColIndex + dc;
+      if (cIndex < 0 || cIndex >= cols.length) break;
+      const col = cols[cIndex];
+
+      // ---- Récupération source avec "tiling" (répétition du motif) ----
+      const srcR = dr % H;
+      const srcRow = matrix[srcR] || [];
+      const rowW = srcRow.length || 1;
+      const srcC = dc % rowW;
+      const raw = (srcRow[srcC] != null) ? srcRow[srcC] : "";
+
+      // autorisations:
+      // - si colonne readOnly ou type "formula", on autorise SEULEMENT si c’est un override "=..."
+      const isOverride = typeof raw === "string" && raw.trim().startsWith("=");
+      const isFormulaType = col.type === "formula";
+      const isReadOnly = !!col.readOnly;
+
+      if ((isFormulaType || isReadOnly) && !isOverride) continue;
+
+      let value = raw;
+      if (col.type === "number" && !isOverride) {
+        value = (raw === "" ? "" : String(raw).replace(",", "."));
+      }
+
+      updates.push({ id: row.id, key: col.key, value });
+    }
+  }
+
+  if (updates.length) {
+    // UX: si on colle dans la colonne triée, évite un saut visuel
+    const keysUpdated = new Set(updates.map(u => u.key));
+    if (keysUpdated.has(sort?.key)) freezeSortOnce?.();
+
+    setManyCells(updates);
+  }
+
+  // recadre la sélection sur la zone collée
+  const lastRow = Math.min(startRowIndex + destRows - 1, filtered.length - 1);
+  const lastCol = Math.min(startColIndex + destCols - 1, cols.length - 1);
+  setSelectedCell({ rowIndex: startRowIndex, colKey: cols[startColIndex].key });
+  setSelBox({ rowStart: startRowIndex, rowEnd: lastRow, colStart: startColIndex, colEnd: lastCol });
+  setActiveCell?.({ rowIndex: startRowIndex, colKey: cols[startColIndex].key });
+  scrollCellIntoView(lastRow, cols[lastCol].key);
+
+  // reprise focus clavier
+  try { wrapRef.current?.focus?.({ preventScroll: true }); } catch { wrapRef.current?.focus?.(); }
+};
+
+
+
+// ——— Cell formulas helpers ———
+const isCellOverridden = React.useCallback(
+  (r, key) => Boolean(r?.__cellFormulas?.[key]),
+  []
+);
+
+const resetCellFormula = React.useCallback(
+  (rowId, key) => {
+    setRows(prev =>
+      prev.map(r => {
+        if (r.id !== rowId) return r;
+
+        // clone + enlève l’override pour cette cellule
+        const next = { ...r };
+        if (next.__cellFormulas && next.__cellFormulas[key]) {
+          const fm = { ...next.__cellFormulas };
+          delete fm[key];
+          if (Object.keys(fm).length) next.__cellFormulas = fm;
+          else delete next.__cellFormulas;
+        }
+
+        // recalc formules de la ligne si tu as computeFormulas
+        try {
+  return recomputeRow(next, schema);
+} catch {
+  return next;
+}
+      })
+    );
+  },
+  [setRows, schema]
+);
 
 const MIN_COLS = ["sel", "detail"]; // colonnes protégées
 
@@ -368,7 +575,8 @@ const isSelected = (rowIndex, colKey) => {
 const isEditableColumn = (c) =>
   c &&
   !c.readOnly &&
-  !["formula","button","photo","detail"].includes(c.type);
+  !["button","photo","detail"].includes(c.type) &&
+  (c.type !== "formula" || enableCellFormulas);
 
 // combien de colonnes figées (ex: 2 = Sel, Détail)
 const stickyFirst = 2;
@@ -685,8 +893,8 @@ const beginSelection = (rowIndex, rowId, colKey, e) => {
 
   setSelBox({ rowStart: rowIndex, rowEnd: rowIndex, colStart: ci, colEnd: ci });
 
-  // ❌ NE FORCE PLUS LE FOCUS DU WRAPPER ICI
-  // wrapRef.current?.focus?.();
+  // ✅ IMPORTANT : reprendre le focus clavier sur le wrapper
+  try { wrapRef.current?.focus?.({ preventScroll: true }); } catch { wrapRef.current?.focus?.(); }
 
   draggingRef.current = { rowStart: rowIndex, colStart: ci };
 };
@@ -743,7 +951,7 @@ const handleKeyDown = async (e) => {
   // 1) Copie/Collage — uniquement hors champ
   if (!inField && (e.metaKey || e.ctrlKey)) {
     const k = e.key.toLowerCase();
-    if (!selBox) return;
+    if (!selBox && !selectedCell) return;
 
     if (k === "c") {
       e.preventDefault();
@@ -999,7 +1207,7 @@ const handleDoubleClickCell = (e, rowIndex, colKey) => {
   const t = e.target;
   const tag = t.tagName?.toLowerCase();
 
-  // Si on double-clique déjà dans un champ, ne fais rien (le browser a déjà focus)
+  // Si on double-clique déjà DANS un champ, laisse le browser gérer
   if (tag === "input" || tag === "select" || tag === "textarea" || t.isContentEditable) {
     return;
   }
@@ -1007,23 +1215,22 @@ const handleDoubleClickCell = (e, rowIndex, colKey) => {
   const col = colsByKey[colKey];
   if (!isSelectableColumn(col)) return;
 
-  // Sélectionne d'abord la cellule
+  // Sélection visuelle
   const ci = colIndexByKey.get(colKey);
   if (ci == null) return;
-
   setActiveCell({ rowIndex, colKey });
   setSelAnchor({ rowIndex, colKey });
   setSelBox({ rowStart: rowIndex, rowEnd: rowIndex, colStart: ci, colEnd: ci });
 
-  // Puis essaie d'éditer : si un input/select est présent → focus
-  const td = e.currentTarget;
-  const hadEditable = !!td.querySelector('input:not([type="checkbox"]), textarea, select');
-  if (hadEditable) {
-    focusEditableInside(td); // focus + select()
-  } else {
-    // Sinon, on force l’édition (focusCell avec edit=true va chercher l’input rendu par InputCell)
+  // ⬅️ IMPORTANT : on passe en mode édition
+  const rowId = filtered[rowIndex]?.id;
+  if (!rowId) return;
+  setEditing({ rowId, colKey });
+
+  // Laisse React rendre l’input, puis focus dedans
+  requestAnimationFrame(() => {
     focusCell(rowIndex, colKey, { edit: true });
-  }
+  });
 
   e.preventDefault();
 };
@@ -1537,10 +1744,19 @@ const insertField = (key, side = "right") => {
       </div>
 
       <div
-  style={{ ...S.tableWrap, userSelect: draggingRef.current ? "none" : "auto" }}
   ref={wrapRef}
   tabIndex={0}
   onKeyDown={handleKeyDown}
+  onCopy={handleCopy}
+  onPaste={handlePaste}
+  onClick={() => {
+    try {
+      wrapRef.current?.focus?.({ preventScroll: true });
+    } catch {
+      wrapRef.current?.focus?.();
+    }
+  }}
+  style={{ ...S.tableWrap, userSelect: draggingRef.current ? "none" : "auto" }}
   onMouseDownCapture={(e) => {
     // Si on clique sur un vrai champ, on laisse faire.
     const t = e.target;
@@ -1549,13 +1765,34 @@ const insertField = (key, side = "right") => {
 
     // Si une cellule est en édition, empêche le clic "de transition"
     // de voler le focus avant que l’input ait le temps de blur/commit.
-    if (editing) {
-      e.preventDefault();
-    }
+    if (editing) e.preventDefault();
   }}
 >
-        <table style={{ ...S.table, ...S.tableCompact, minWidth: totalMinWidth }}>
-          <thead>
+  {/* Bannière info formules par cellule */}
+  {enableCellFormulas && (
+    <div
+      style={{
+        margin: "8px 0 10px",
+        padding: "8px 10px",
+        borderRadius: 8,
+        border: "1px dashed #e5e7eb",
+        background: "#fffbea",
+        fontSize: 12,
+        display: "flex",
+        alignItems: "center",
+        gap: 8
+      }}
+    >
+      <span style={{ fontWeight: 700 }}>✨ Formules par cellule activées</span>
+      <span style={{ opacity: 0.85 }}>
+        Tapez <code>=…</code> dans une cellule pour définir une formule personnalisée.  
+        Cliquez sur <b>⟲</b> dans la cellule pour revenir au calcul de colonne.
+      </span>
+    </div>
+  )}
+
+  <table style={{ ...S.table, ...S.tableCompact, minWidth: totalMinWidth }}>
+    <thead>
   <tr>
     {cols.map((c, i) => {
       const isSticky = leftOffsets[c.key] !== undefined;
@@ -1669,7 +1906,13 @@ const insertField = (key, side = "right") => {
             onMouseDown={(e) => handleMouseDown(e, idx, c.key)}
             onMouseOver={(e) => handleMouseOver(e, idx, c.key)}
             onClick={(e) => handleClickCell(e, idx, c.key)}
-            onDoubleClick={(e) => handleDoubleClickCell(e, idx, c.key)}
+            onDoubleClick={(e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  const rowId = filtered[idx]?.id;
+  if (!rowId) return;
+  startEdit(idx, rowId, c.key); // ⬅️ on force l’édition
+}}
             style={{
               ...S.td,
               ...(isSticky(c.key)
@@ -1702,22 +1945,53 @@ const insertField = (key, side = "right") => {
                 onMouseDown={(e) => e.stopPropagation()}
               />
             ) : (
-              <InputCell
-                row={r}
-                col={c}
-                isEditing={isCellEditing(r.id, c.key)}
-                onStartEdit={() => startEdit(idx, r.id, c.key)}
-                onEndEdit={() => stopEdit()}
-                onChange={(k, v) => update(r.id, k, v)}
-                onOpenLightbox={(images, startIndex = 0) => {
-                  if (!Array.isArray(images) || images.length === 0) return;
-                  setLightbox({ images, index: startIndex });
-                }}
-                onEnter={(shift) => {
-  stopEdit();
-  handleFieldEnter(r.id, c.key, { shift });
-}}
-              />
+              <div style={{ position: "relative" }}>
+  <InputCell
+    row={r}
+    col={c}
+    isEditing={isCellEditing(r.id, c.key)}
+    onStartEdit={() => startEdit(idx, r.id, c.key)}
+    onEndEdit={() => stopEdit()}
+    onChange={(k, v) => handleCellChange(r.id, k, v)}
+    onOpenLightbox={(images, startIndex = 0) => {
+      if (!Array.isArray(images) || images.length === 0) return;
+      setLightbox({ images, index: startIndex });
+    }}
+    onEnter={(shift) => {
+      stopEdit();
+      handleFieldEnter(r.id, c.key, { shift });
+    }}
+  />
+
+  {/* Reset cell formula button */}
+  {enableCellFormulas &&
+    isCellOverridden(r, c.key) &&
+    !isCellEditing(r.id, c.key) && (
+      <button
+        type="button"
+        title="Réinitialiser la cellule (retirer la formule personnalisée)"
+        onClick={(e) => {
+          e.stopPropagation();
+          resetCellFormula(r.id, c.key);
+        }}
+        style={{
+          position: "absolute",
+          top: 2,
+          right: 2,
+          border: "1px solid #e5e7eb",
+          background: "#fff",
+          borderRadius: 6,
+          fontSize: 12,
+          lineHeight: 1,
+          padding: "2px 6px",
+          cursor: "pointer",
+          opacity: 0.85
+        }}
+      >
+        ⟲
+      </button>
+    )}
+</div>
             )}
           </td>
         ))}
@@ -1758,7 +2032,12 @@ const insertField = (key, side = "right") => {
                       onMouseDown={(e) => handleMouseDown(e, absIdx, c.key)}
                       onMouseOver={(e) => handleMouseOver(e, absIdx, c.key)}
                       onClick={(e) => handleClickCell(e, absIdx, c.key)}
-                      onDoubleClick={(e) => handleDoubleClickCell(e, absIdx, c.key)}
+                      onDoubleClick={(e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  const rowId = r.id;
+  startEdit(absIdx, rowId, c.key); // ⬅️ on force l’édition
+}}
                       style={{
                         ...S.td,
                         ...(isSticky(c.key)
@@ -1791,22 +2070,53 @@ const insertField = (key, side = "right") => {
                           onMouseDown={(e) => e.stopPropagation()}
                         />
                       ) : (
-                        <InputCell
-                          row={r}
-                          col={c}
-                          isEditing={isCellEditing(r.id, c.key)}
-                          onStartEdit={() => startEdit(absIdx, r.id, c.key)}
-                          onEndEdit={() => stopEdit()}
-                          onChange={(k, v) => update(r.id, k, v)}
-                          onOpenLightbox={(images, startIndex = 0) => {
-                            if (!Array.isArray(images) || images.length === 0) return;
-                            setLightbox({ images, index: startIndex });
-                          }}
-                          onEnter={(shift) => {
-  stopEdit();
-  handleFieldEnter(r.id, c.key, { shift });
-}}
-                        />
+                        <div style={{ position: "relative" }}>
+  <InputCell
+    row={r}
+    col={c}
+    isEditing={isCellEditing(r.id, c.key)}
+    onStartEdit={() => startEdit(absIdx, r.id, c.key)}
+    onEndEdit={() => stopEdit()}
+    onChange={(k, v) => handleCellChange(r.id, k, v)}
+    onOpenLightbox={(images, startIndex = 0) => {
+      if (!Array.isArray(images) || images.length === 0) return;
+      setLightbox({ images, index: startIndex });
+    }}
+    onEnter={(shift) => {
+      stopEdit();
+      handleFieldEnter(r.id, c.key, { shift });
+    }}
+  />
+
+  {/* Reset cell formula button */}
+  {enableCellFormulas &&
+    isCellOverridden(r, c.key) &&
+    !isCellEditing(r.id, c.key) && (
+      <button
+        type="button"
+        title="Réinitialiser la cellule (retirer la formule personnalisée)"
+        onClick={(e) => {
+          e.stopPropagation();
+          resetCellFormula(r.id, c.key);
+        }}
+        style={{
+          position: "absolute",
+          top: 2,
+          right: 2,
+          border: "1px solid #e5e7eb",
+          background: "#fff",
+          borderRadius: 6,
+          fontSize: 12,
+          lineHeight: 1,
+          padding: "2px 6px",
+          cursor: "pointer",
+          opacity: 0.85
+        }}
+      >
+        ⟲
+      </button>
+    )}
+</div>
                       )}
                     </td>
                   ))}

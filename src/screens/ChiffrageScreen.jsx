@@ -1,17 +1,14 @@
 // src/screens/ChiffrageScreen.jsx
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React from "react";
 
 import MinuteEditor from "../components/MinuteEditor";
 import { COLORS, S } from "../lib/constants/ui";
-import { useActivity } from "../contexts/activity";
-import { useAuth } from "../auth.jsx";
 import { CHIFFRAGE_SCHEMA } from "../lib/schemas/chiffrage";
 import { computeFormulas, preserveManualAfterCompute } from "../lib/formulas/compute";
 import { CHIFFRAGE_SCHEMA_DEP } from "../lib/schemas/deplacement";
 import { uid } from "../lib/utils/uid";
 import DataTable from "../components/DataTable";
 
-// === Écran d’édition d’une minute (DataTable + Drawer paramètres) ===
 function ChiffrageScreen({ minuteId, minutes, setMinutes, onBack }) {
   // 1) Récupère la minute courante
   const minute = React.useMemo(
@@ -30,10 +27,13 @@ function ChiffrageScreen({ minuteId, minutes, setMinutes, onBack }) {
     computeFormulas(minute?.deplacements || [], CHIFFRAGE_SCHEMA_DEP)
   );
 
-  // Resync quand minute change
+  // Resync quand minute change — on préserve les overrides cellule (__cellFormulas) et les saisies manuelles
   React.useEffect(() => {
-    setRows(computeFormulas(minute?.lines || [], CHIFFRAGE_SCHEMA));
-    setDepRows(computeFormulas(minute?.deplacements || [], CHIFFRAGE_SCHEMA_DEP));
+    const computedMain = computeFormulas(minute?.lines || [], CHIFFRAGE_SCHEMA);
+    setRows((prev) => preserveManualAfterCompute(computedMain, prev || []));
+
+    const computedDep = computeFormulas(minute?.deplacements || [], CHIFFRAGE_SCHEMA_DEP);
+    setDepRows(computedDep);
   }, [minute?.id, minute?.lines, minute?.deplacements]);
 
   // 4) Modules sélectionnés (fallback)
@@ -47,19 +47,19 @@ function ChiffrageScreen({ minuteId, minutes, setMinutes, onBack }) {
       )
     );
 
-  // Sauvegarde des lignes "Déplacement"
-  const handleDepRowsChange = (nr) => {
-    const next = computeFormulas(nr || [], CHIFFRAGE_SCHEMA_DEP);
-    setDepRows(next);
-    updateMinute({ deplacements: next });
-  };
+  // Déplacements : on prend la valeur telle quelle (pas de recompute global ici)
+const handleDepRowsChange = (nr) => {
+  const next = Array.isArray(nr) ? nr : [];
+  setDepRows(next);
+  updateMinute({ deplacements: next });
+};
 
-  // Sauvegarde des lignes principales
-  const handleRowsChange = (nr) => {
-    const next = computeFormulas(nr || [], schema);
-    setRows(next);
-    updateMinute({ lines: next });
-  };
+// Lignes principales : idem, on ne repasse PAS computeFormulas ici
+const handleRowsChange = (nr) => {
+  const next = Array.isArray(nr) ? nr : [];
+  setRows(next);
+  updateMinute({ lines: next });
+};
 
   // 6) Drawer Paramètres — vit ici (PAS dans MinuteEditor)
   const [showParams, setShowParams] = React.useState(false);
@@ -97,7 +97,6 @@ function ChiffrageScreen({ minuteId, minutes, setMinutes, onBack }) {
 
   // Persistance des paramètres à chaque modif
   React.useEffect(() => {
-    // nettoyage léger
     const cleaned = (paramDraft || []).map(p => ({
       id: p.id || uid(),
       name: slugParamName(p.name || ""),
@@ -196,7 +195,7 @@ function ChiffrageScreen({ minuteId, minutes, setMinutes, onBack }) {
         </div>
       </div>
 
-      {/* Notes minute (optionnel) */}
+      {/* Notes minute */}
       <div
         style={{
           marginBottom: 12,
@@ -304,7 +303,7 @@ function ChiffrageScreen({ minuteId, minutes, setMinutes, onBack }) {
         </div>
       )}
 
-      {/* Déplacement (au-dessus des 3 tableaux) */}
+      {/* Déplacement (au-dessus des 3 tableaux) — pas d’overrides cellule ici */}
       <DataTable
         title="Déplacement"
         tableKey="deplacements"
@@ -314,13 +313,15 @@ function ChiffrageScreen({ minuteId, minutes, setMinutes, onBack }) {
         setSchema={() => {}}
         searchQuery=""
         viewKey="minutes_dep"
+        enableCellFormulas={false}
       />
 
-      {/* Lignes principales : 1/2/3 tableaux selon modules (via MinuteEditor) */}
+      {/* Lignes principales : 1/2/3 tableaux selon modules */}
       <MinuteEditor
-        minute={{ ...minute, lines: rows }}
-        onChangeMinute={(m)=> updateMinute({ lines: m.lines })}
-      />
+  minute={{ ...minute, lines: rows }}
+  onChangeMinute={(m)=> updateMinute({ lines: m.lines })}
+  enableCellFormulas={true}
+/>
     </div>
   );
 }

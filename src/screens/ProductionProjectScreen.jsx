@@ -1,76 +1,100 @@
 // src/screens/ProductionProjectScreen.jsx
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 
 import { COLORS, S } from "../lib/constants/ui.js";
-import { useActivity } from "../contexts/activity.jsx";
-import { useAuth } from "../auth.jsx";
 
+// Tables & helpers
 import DataTable from "../components/DataTable.jsx";
-import InputCell from "../components/cells/InputCell.jsx";
-
-import { computeFormulas } from "../lib/formulas/compute.js";
-import { CHIFFRAGE_SCHEMA } from "../lib/schemas/chiffrage.js";
-import { SCHEMA_64 } from "../lib/schemas/production.js"
-import { DEMO_MASTER_ROWS } from "../lib/data/production.demo.js"
-import { STAGES } from "../lib/constants/views.js";
 import DashboardTiles from "../components/DashboardTiles.jsx";
 import EtiquettesSection from "../components/EtiquettesSection.jsx";
-import { uid } from "../lib/utils/uid.js";
+import MinutesScreen from "./MinutesScreen.jsx"; // ⬅️ nécessaire si tu affiches l’onglet "chiffrage"
 
-// Si tu utilises des icônes :
+import { computeFormulas, preserveManualAfterCompute } from "../lib/formulas/compute";
+import { SCHEMA_64 } from "../lib/schemas/production.js";
+import { DEMO_MASTER_ROWS } from "../lib/data/production.demo.js";
+import { STAGES } from "../lib/constants/views.js";
+import { recomputeRow } from "../lib/formulas/recomputeRow";
+
+// Icônes
 import {
-  PencilRuler, Database, Boxes, GanttChart,
-  Plus, Filter, Layers3, Star, Settings2, Search,
-  ChevronUp, ChevronDown, Edit3, ChevronRight, X, MoreVertical,
-  Trash2, Copy
+  Filter, Layers3, Star, Search
 } from "lucide-react";
 
 export function ProductionProjectScreen({ projectName, onBack }) {
-  const [stage, setStage] = useState("dashboard");
+  const [stage, setStage]   = useState("dashboard");
   const [search, setSearch] = useState("");
   const [schema, setSchema] = useState(SCHEMA_64);
-  const [rows, setRows] = useState(()=> computeFormulas(DEMO_MASTER_ROWS, SCHEMA_64));
-  useEffect(()=>{ setRows((rs)=> computeFormulas(rs, schema)); }, [schema]);
-  // --- MERGE FIX : accepte aussi les nouvelles lignes créées dans un tableau enfant
-  const mergeChildRowsFor = (tableKey) => {
+
+  // Lignes "master" (toutes catégories confondues)
+  const [rows, setRows] = useState(() => computeFormulas(DEMO_MASTER_ROWS, SCHEMA_64));
+
+  // Recompute quand le schéma change
+  useEffect(() => {
+    setRows((rs) => computeFormulas(rs, schema));
+  }, [schema]);
+
+  // --- Sous-ensembles (affichage)
+  const rowsRideaux = rows.filter((r) => /rideau|voilage/i.test(String(r.produit || "")));
+  const rowsDecors  = rows.filter((r) => /d[ée]cor/i.test(String(r.produit || "")));
+  const rowsStores  = rows.filter((r) => /store/i.test(String(r.produit || "")));
+
+  // util qui recalcule chaque ligne en respectant __cellFormulas
+const recomputeAll = (arr) => (arr || []).map(r => recomputeRow(r, schema));
+
+// --- NEW: on remonte un sous-tableau en préservant les overrides de cellule
+const mergeChildRowsFor = (tableKey) => {
   return (nr) => {
     setRows((all) => {
       const isInTable = (r) => {
         const p = String(r?.produit || "");
         if (tableKey === "rideaux") return /rideau|voilage/i.test(p);
-        if (tableKey === "decors")  return /d[ée]cor/i.test(p); // gère "decor"/"décor"
+        if (tableKey === "decors")  return /d[ée]cor/i.test(p);
         if (tableKey === "stores")  return /store/i.test(p);
         return false;
       };
+      const others   = (all || []).filter((r) => !isInTable(r));
+      const previous = (all || []).filter((r) => isInTable(r));
 
-      const others = all.filter((r) => !isInTable(r));
-      return computeFormulas([...(others || []), ...(nr || [])], schema);
+      // 1) ⚠️ respecter les overrides de cellule
+      const computed = recomputeAll(nr);
+
+      // 2) préserver aussi les champs marqués manuels (__manual), si tu les utilises
+      const merged   = preserveManualAfterCompute(computed, previous);
+
+      return [...others, ...merged];
     });
   };
 };
 
-// Segments visibles
-const rowsRideaux = rows.filter((r) => /rideau|voilage/i.test(String(r.produit)));
-const rowsDecors  = rows.filter((r) => /d[ée]cor/i.test(String(r.produit)));
-const rowsStores  = rows.filter((r) => /store/i.test(String(r.produit)));
-
   return (
     <div style={S.contentWide}>
       <div style={{ margin: "4px 0 12px", color: COLORS.text, fontWeight: 600 }}>
-        <button onClick={onBack} style={{ background: "none", border: "none", padding: 0, margin: 0, cursor: "pointer", color: COLORS.text }}>Production</button>
+        <button
+          onClick={onBack}
+          style={{ background: "none", border: "none", padding: 0, margin: 0, cursor: "pointer", color: COLORS.text }}
+        >
+          Production
+        </button>
         {" / "}<span style={{ fontWeight: 800 }}>{projectName}</span>
       </div>
 
       <div style={S.pills}>
-        {STAGES.map((p)=> (
-          <button key={p.key} style={S.pill(stage===p.key)} onClick={()=>setStage(p.key)}>{p.label}</button>
+        {STAGES.map((p) => (
+          <button key={p.key} style={S.pill(stage === p.key)} onClick={() => setStage(p.key)}>
+            {p.label}
+          </button>
         ))}
       </div>
 
       <div style={S.searchRow}>
         <div style={S.searchBox}>
-          <Search size={18} style={{ position: "absolute", left: 10, top: 12, opacity: .6 }} />
-          <input placeholder="Recherche" value={search} onChange={(e)=>setSearch(e.target.value)} style={S.searchInput} />
+          <Search size={18} style={{ position: "absolute", left: 10, top: 12, opacity: 0.6 }} />
+          <input
+            placeholder="Recherche"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={S.searchInput}
+          />
         </div>
         <div style={S.toolsRow}>
           <span style={S.toolBtn}><Filter size={16}/> Filtre</span>
@@ -80,115 +104,130 @@ const rowsStores  = rows.filter((r) => /store/i.test(String(r.produit)));
       </div>
 
       {/* === DASHBOARD === */}
-{stage === "dashboard" && (
-  <DashboardTiles
-    rows={rows}
-    // tu peux mettre 0/0 pour démarrer, on branchera plus tard sur des inputs projet
-    projectHours={{ conf: 0, pose: 0 }}
-  />
-)}
-{stage === "chiffrage" && (
-  <MinutesScreen
-    onExportToProduction={(mappedRows, minute) => {
-      // Ajoute les lignes mappées au tableau Production
-      setRows((rs) => computeFormulas([...(rs || []), ...mappedRows], schema));
-      alert(`Exporté ${mappedRows.length} ligne(s) depuis "${minute?.name || "Minute"}" vers Production.`);
-    }}
-  />
-)}
+      {stage === "dashboard" && (
+        <DashboardTiles
+          rows={rows}
+          projectHours={{ conf: 0, pose: 0 }}
+        />
+      )}
+
+      {/* === CHIFFRAGE → export vers production === */}
+      {stage === "chiffrage" && (
+        <MinutesScreen
+          onExportToProduction={(mappedRows, minute) => {
+            setRows((rs) => computeFormulas([...(rs || []), ...mappedRows], schema));
+            alert(`Exporté ${mappedRows.length} ligne(s) depuis "${minute?.name || "Minute"}" vers Production.`);
+          }}
+        />
+      )}
+
+      {/* === ÉTIQUETTES (Rideaux + Stores) === */}
       {stage === "etiquettes" && (
-  // 👉 Rideaux + Stores (pas Décors) — titres Étiquettes
-  <div style={S.contentWide}>
-    <EtiquettesSection
-      title="Etiquettes Rideaux"
-      tableKey="rideaux"
-      rows={rowsRideaux}
-      schema={schema}
-    />
-    <EtiquettesSection
-      title="Etiquettes Stores"
-      tableKey="stores"
-      rows={rowsStores}
-      schema={schema}
-    />
-  </div>
-)}
+        <div style={S.contentWide}>
+          <EtiquettesSection
+            title="Etiquettes Rideaux"
+            tableKey="rideaux"
+            rows={rowsRideaux}
+            schema={schema}
+          />
+          <EtiquettesSection
+            title="Etiquettes Stores"
+            tableKey="stores"
+            rows={rowsStores}
+            schema={schema}
+          />
+        </div>
+      )}
 
-{stage === "prise" && (
-  // 👉 Prise de cotes = 2 tableaux (Rideaux + Stores), titres + presets
-  <>
-    <DataTable
-      title="PRISE DE COTE RIDEAU"
-      tableKey="rideaux"
-      rows={rowsRideaux}
-      onRowsChange={mergeChildRowsFor("rideaux")}
-      schema={schema}
-      setSchema={setSchema}
-      searchQuery={search}
-      viewKey="prise"
-    />
-    <DataTable
-      title="PRISE DE COTE STORE"
-      tableKey="stores"
-      rows={rowsStores}
-      onRowsChange={mergeChildRowsFor("stores")}
-      schema={schema}
-      setSchema={setSchema}
-      searchQuery={search}
-      viewKey="prise"
-    />
-  </>
-)}
+      {/* === PRISE DE COTES === */}
+      {stage === "prise" && (
+        <>
+          <DataTable
+            title="PRISE DE COTE RIDEAU"
+            tableKey="rideaux"
+            rows={rowsRideaux}
+            onRowsChange={mergeChildRowsFor("rideaux")}
+            schema={schema}
+            setSchema={setSchema}
+            searchQuery={search}
+            viewKey="prise"
+            enableCellFormulas={true}
+          />
+          <DataTable
+            title="PRISE DE COTE STORE"
+            tableKey="stores"
+            rows={rowsStores}
+            onRowsChange={mergeChildRowsFor("stores")}
+            schema={schema}
+            setSchema={setSchema}
+            searchQuery={search}
+            viewKey="prise"
+            enableCellFormulas={true}
+          />
+        </>
+      )}
 
-{stage === "installation" && (
-  // 👉 Installation = 1 seul tableau cumulant tout
+      {/* === INSTALLATION (tableau unique) === */}
+      {stage === "installation" && (
   <DataTable
     title="Suivi Installation / Livraison"
     tableKey="all"
-    rows={rows} // toutes les lignes (rideaux + décors + stores)
-    onRowsChange={(nr) => setRows(computeFormulas(nr, schema))}
+    rows={rows}
+    onRowsChange={(nr) => {
+      // ⚠️ respecter les overrides de cellule
+      const computed = (nr || []).map(r => recomputeRow(r, schema));
+      // préserver les champs manuels existants si tu t’en sers
+      const next     = preserveManualAfterCompute(computed, rows || []);
+      setRows(next);
+    }}
     schema={schema}
     setSchema={setSchema}
     searchQuery={search}
     viewKey="installation"
+    enableCellFormulas={true}
   />
 )}
 
-{stage === "bpf" && (
-  <>
-    <DataTable
-      title="BPF Rideaux"
-      tableKey="rideaux"
-      rows={rowsRideaux}
-      onRowsChange={mergeChildRowsFor("rideaux")}
-      schema={schema}
-      setSchema={setSchema}
-      searchQuery={search}
-      viewKey="bpf"
-    />
-    <DataTable
-      title="BPF Décors de lit"
-      tableKey="decors"
-      rows={rowsDecors}
-      onRowsChange={mergeChildRowsFor("decors")}
-      schema={schema}
-      setSchema={setSchema}
-      searchQuery={search}
-      viewKey="bpf"
-    />
-    <DataTable
-      title="BPF Stores"
-      tableKey="stores"
-      rows={rowsStores}
-      onRowsChange={mergeChildRowsFor("stores")}
-      schema={schema}
-      setSchema={setSchema}
-      searchQuery={search}
-      viewKey="bpf"
-    />
-  </>
-)}
-
-</div>
-);
+      {/* === BPF (3 tableaux) === */}
+      {stage === "bpf" && (
+        <>
+          <DataTable
+            title="BPF Rideaux"
+            tableKey="rideaux"
+            rows={rowsRideaux}
+            onRowsChange={mergeChildRowsFor("rideaux")}
+            schema={schema}
+            setSchema={setSchema}
+            searchQuery={search}
+            viewKey="bpf"
+            enableCellFormulas={true}
+          />
+          <DataTable
+            title="BPF Décors de lit"
+            tableKey="decors"
+            rows={rowsDecors}
+            onRowsChange={mergeChildRowsFor("decors")}
+            schema={schema}
+            setSchema={setSchema}
+            searchQuery={search}
+            viewKey="bpf"
+            enableCellFormulas={true}
+          />
+          <DataTable
+            title="BPF Stores"
+            tableKey="stores"
+            rows={rowsStores}
+            onRowsChange={mergeChildRowsFor("stores")}
+            schema={schema}
+            setSchema={setSchema}
+            searchQuery={search}
+            viewKey="bpf"
+            enableCellFormulas={true}
+          />
+        </>
+      )}
+    </div>
+  );
 }
+
+export default ProductionProjectScreen;
