@@ -9,25 +9,50 @@ import { CHIFFRAGE_SCHEMA_DEP } from "../lib/schemas/deplacement";
 import { uid } from "../lib/utils/uid";
 import DataTable from "../components/DataTable";
 
+// 🔐 AJOUTS
+import { useAuth } from "../auth";
+import { can } from "../lib/authz";
+
 function ChiffrageScreen({ minuteId, minutes, setMinutes, onBack }) {
-  // 1) Récupère la minute courante
+  // 🔐 droits
+  const { currentUser } = useAuth();
+  const canView = can(currentUser, "chiffrage.view");
+  const canEdit = can(currentUser, "chiffrage.edit");
+
+  if (!canView) {
+    return (
+      <div style={S.contentWrap}>
+        <div style={{ marginBottom: 12 }}>
+          <button style={S.smallBtn} onClick={onBack}>← Retour</button>
+        </div>
+        <div
+          style={{
+            padding: 24,
+            border: `1px solid ${COLORS.border}`,
+            borderRadius: 12,
+            background: "#fff",
+          }}
+        >
+          Accès refusé.
+        </div>
+      </div>
+    );
+  }
+
   const minute = React.useMemo(
     () => (minutes || []).find((m) => m.id === minuteId),
     [minutes, minuteId]
   );
 
-  // 2) Schéma + lignes principales
   const [schema] = React.useState(CHIFFRAGE_SCHEMA);
   const [rows, setRows] = React.useState(() =>
     computeFormulas(minute?.lines || [], CHIFFRAGE_SCHEMA)
   );
 
-  // 3) Déplacement (schéma dédié)
   const [depRows, setDepRows] = React.useState(
     computeFormulas(minute?.deplacements || [], CHIFFRAGE_SCHEMA_DEP)
   );
 
-  // Resync quand minute change — on préserve les overrides cellule (__cellFormulas) et les saisies manuelles
   React.useEffect(() => {
     const computedMain = computeFormulas(minute?.lines || [], CHIFFRAGE_SCHEMA);
     setRows((prev) => preserveManualAfterCompute(computedMain, prev || []));
@@ -36,35 +61,33 @@ function ChiffrageScreen({ minuteId, minutes, setMinutes, onBack }) {
     setDepRows(computedDep);
   }, [minute?.id, minute?.lines, minute?.deplacements]);
 
-  // 4) Modules sélectionnés (fallback)
   const mods = minute?.modules || { rideau: true, store: true, decor: true };
 
-  // 5) Helpers persistance
-  const updateMinute = (patch) =>
+  const updateMinute = (patch) => {
+    if (!canEdit) return; // lecture seule éventuelle
     setMinutes((all) =>
       (all || []).map((m) =>
         m.id === minuteId ? { ...m, ...patch, updatedAt: Date.now() } : m
       )
     );
+  };
 
-  // Déplacements : on prend la valeur telle quelle (pas de recompute global ici)
-const handleDepRowsChange = (nr) => {
-  const next = Array.isArray(nr) ? nr : [];
-  setDepRows(next);
-  updateMinute({ deplacements: next });
-};
+  const handleDepRowsChange = (nr) => {
+    if (!canEdit) return;
+    const next = Array.isArray(nr) ? nr : [];
+    setDepRows(next);
+    updateMinute({ deplacements: next });
+  };
 
-// Lignes principales : idem, on ne repasse PAS computeFormulas ici
-const handleRowsChange = (nr) => {
-  const next = Array.isArray(nr) ? nr : [];
-  setRows(next);
-  updateMinute({ lines: next });
-};
+  const handleRowsChange = (nr) => {
+    if (!canEdit) return;
+    const next = Array.isArray(nr) ? nr : [];
+    setRows(next);
+    updateMinute({ lines: next });
+  };
 
-  // 6) Drawer Paramètres — vit ici (PAS dans MinuteEditor)
   const [showParams, setShowParams] = React.useState(false);
 
-  // Helpers locaux
   const slugParamName = (raw) =>
     String(raw || "")
       .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
@@ -89,14 +112,13 @@ const handleRowsChange = (nr) => {
     return (base.length ? base : DEFAULT_PARAMS);
   });
 
-  // Resync du drawer si on change de minute
   React.useEffect(() => {
     const base = Array.isArray(minute?.params) ? minute.params : [];
     setParamDraft(base.length ? base : DEFAULT_PARAMS);
   }, [minute?.id]);
 
-  // Persistance des paramètres à chaque modif
   React.useEffect(() => {
+    if (!canEdit) return;
     const cleaned = (paramDraft || []).map(p => ({
       id: p.id || uid(),
       name: slugParamName(p.name || ""),
@@ -106,17 +128,10 @@ const handleRowsChange = (nr) => {
     updateMinute({ params: cleaned });
   }, [paramDraft]);
 
-  const addParam = () => {
-    setParamDraft(d => ([...(d || []), { id: uid(), name: "", type: "prix", value: null }]));
-  };
-  const setParamField = (id, key, value) => {
-    setParamDraft(d => (d || []).map(p => p.id === id ? { ...p, [key]: value } : p));
-  };
-  const removeParam = (id) => {
-    setParamDraft(d => (d || []).filter(p => p.id !== id));
-  };
+  const addParam = () => { if (canEdit) setParamDraft(d => ([...(d || []), { id: uid(), name: "", type: "prix", value: null }])); };
+  const setParamField = (id, key, value) => { if (canEdit) setParamDraft(d => (d || []).map(p => p.id === id ? { ...p, [key]: value } : p)); };
+  const removeParam = (id) => { if (canEdit) setParamDraft(d => (d || []).filter(p => p.id !== id)); };
 
-  // 7) Métadonnées minute
   const [name, setName]   = React.useState(minute?.name || "Minute sans nom");
   const [notes, setNotes] = React.useState(minute?.notes || "");
   React.useEffect(() => {
@@ -125,10 +140,10 @@ const handleRowsChange = (nr) => {
   }, [minuteId, minute?.name, minute?.notes]);
 
   const saveHeader = () => {
+    if (!canEdit) return;
     updateMinute({ name: name || "Minute sans nom", notes });
   };
 
-  // 8) Garde si ID invalide
   if (!minute) {
     return (
       <div style={S.contentWrap}>
@@ -149,10 +164,8 @@ const handleRowsChange = (nr) => {
     );
   }
 
-  // 9) UI
   return (
     <div style={S.contentWide}>
-      {/* Barre supérieure */}
       <div
         style={{
           display: "grid",
@@ -177,8 +190,9 @@ const handleRowsChange = (nr) => {
               background: "#fff",
               fontWeight: 800,
             }}
+            disabled={!canEdit}
           />
-          <button style={S.smallBtn} onClick={saveHeader}>Enregistrer</button>
+          <button style={S.smallBtn} onClick={saveHeader} disabled={!canEdit}>Enregistrer</button>
         </div>
 
         <div style={{ display: "flex", gap: 8, justifySelf: "end", alignItems: "center" }}>
@@ -195,7 +209,6 @@ const handleRowsChange = (nr) => {
         </div>
       </div>
 
-      {/* Notes minute */}
       <div
         style={{
           marginBottom: 12,
@@ -217,10 +230,10 @@ const handleRowsChange = (nr) => {
             background: "#fff",
             resize: "vertical",
           }}
+          disabled={!canEdit}
         />
       </div>
 
-      {/* Drawer Paramètres */}
       {showParams && (
         <div
           style={{
@@ -233,7 +246,7 @@ const handleRowsChange = (nr) => {
         >
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
             <b>Paramètres de la minute</b>
-            <button style={S.smallBtn} onClick={addParam}>+ Ajouter un paramètre</button>
+            <button style={S.smallBtn} onClick={addParam} disabled={!canEdit}>+ Ajouter un paramètre</button>
           </div>
 
           <div style={{ overflowX: "auto" }}>
@@ -263,6 +276,7 @@ const handleRowsChange = (nr) => {
                         onBlur={(e) => setParamField(p.id, "name", slugParamName(e.target.value))}
                         placeholder="ex: taux_horaire, coef_tissu_luxe…"
                         style={S.input}
+                        disabled={!canEdit}
                       />
                       <div style={{ fontSize: 11, color: "#6b7280", marginTop: 4 }}>
                         Accents/espaces normalisés automatiquement.
@@ -273,6 +287,7 @@ const handleRowsChange = (nr) => {
                         value={p.type || "prix"}
                         onChange={(e) => setParamField(p.id, "type", e.target.value === "coef" ? "coef" : "prix")}
                         style={{ ...S.input, height: 34 }}
+                        disabled={!canEdit}
                       >
                         <option value="prix">prix</option>
                         <option value="coef">coef</option>
@@ -284,6 +299,7 @@ const handleRowsChange = (nr) => {
                         onChange={(e) => setParamField(p.id, "value", e.target.value)}
                         placeholder={p.type === "coef" ? "ex: 1,5" : "ex: 135"}
                         style={S.input}
+                        disabled={!canEdit}
                       />
                     </td>
                     <td style={{ padding: 8, textAlign: "right" }}>
@@ -291,6 +307,7 @@ const handleRowsChange = (nr) => {
                         style={{ ...S.smallBtn, color: "#b91c1c" }}
                         onClick={() => removeParam(p.id)}
                         title="Supprimer"
+                        disabled={!canEdit}
                       >
                         🗑️
                       </button>
@@ -303,7 +320,6 @@ const handleRowsChange = (nr) => {
         </div>
       )}
 
-      {/* Déplacement (au-dessus des 3 tableaux) — pas d’overrides cellule ici */}
       <DataTable
         title="Déplacement"
         tableKey="deplacements"
@@ -316,12 +332,11 @@ const handleRowsChange = (nr) => {
         enableCellFormulas={false}
       />
 
-      {/* Lignes principales : 1/2/3 tableaux selon modules */}
       <MinuteEditor
-  minute={{ ...minute, lines: rows }}
-  onChangeMinute={(m)=> updateMinute({ lines: m.lines })}
-  enableCellFormulas={true}
-/>
+        minute={{ ...minute, lines: rows, modules: mods }}
+        onChangeMinute={(m)=> canEdit && updateMinute({ lines: m.lines })}
+        enableCellFormulas={true}
+      />
     </div>
   );
 }

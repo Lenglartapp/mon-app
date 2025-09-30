@@ -1,7 +1,7 @@
+// src/screens/ProductionProjectScreen.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { COLORS, S } from "../lib/constants/ui.js";
 
-// Tables & helpers
 import DataTable from "../components/DataTable.jsx";
 import DashboardTiles from "../components/DashboardTiles.jsx";
 import EtiquettesSection from "../components/EtiquettesSection.jsx";
@@ -12,42 +12,50 @@ import { SCHEMA_64 } from "../lib/schemas/production.js";
 import { STAGES } from "../lib/constants/views.js";
 import { recomputeRow } from "../lib/formulas/recomputeRow";
 
-// ✅ icônes
 import { Search, Filter, Layers3, Star } from "lucide-react";
+
+// 🔐 ACL
+import { useAuth } from "../auth";
+import { can } from "../lib/authz";
 
 export function ProductionProjectScreen({ project, onBack }) {
   const [stage, setStage]   = useState("dashboard");
   const [search, setSearch] = useState("");
   const [schema, setSchema] = useState(SCHEMA_64);
 
-  // 🟢 Utilise les lignes du projet (pas de données démo)
+  // 🔐 droits
+  const { currentUser } = useAuth();
+  const canEditProd  = can(currentUser, "production.edit"); // PROD / PILOT / ORDO / ADMIN
+  const seeChiffrage = can(currentUser, "chiffrage.view");  // false pour PROD
+
+  // Lignes du projet (base)
   const initialRows = useMemo(
     () => computeFormulas(project?.rows || [], SCHEMA_64),
     [project?.id]
   );
   const [rows, setRows] = useState(initialRows);
 
-  // Recompute quand le schéma change
+  // Recompute si schéma change
   useEffect(() => {
     setRows((rs) => computeFormulas(rs, schema));
   }, [schema]);
 
-  // Sync si on change de projet ou si ses rows évoluent
+  // Resync si projet change
   useEffect(() => {
     setRows(computeFormulas(project?.rows || [], SCHEMA_64));
   }, [project?.id, project?.rows]);
 
-  // Sous-ensembles (affichage)
+  // Sous-ensembles
   const rowsRideaux = rows.filter((r) => /rideau|voilage/i.test(String(r.produit || "")));
   const rowsDecors  = rows.filter((r) => /d[ée]cor/i.test(String(r.produit || "")));
   const rowsStores  = rows.filter((r) => /store/i.test(String(r.produit || "")));
 
-  // util qui recalcule chaque ligne en respectant __cellFormulas
   const recomputeAll = (arr) => (arr || []).map(r => recomputeRow(r, schema));
 
-  // Merge pour les sous-tableaux
+  // Merge sous-tableaux -> lignes globales (respecte canEditProd)
   const mergeChildRowsFor = (tableKey) => {
     return (nr) => {
+      if (!canEditProd) return; // lecture seule éventuelle
       setRows((all) => {
         const isInTable = (r) => {
           const p = String(r?.produit || "");
@@ -69,6 +77,9 @@ export function ProductionProjectScreen({ project, onBack }) {
 
   const projectName = project?.name || "—";
 
+  // Masque l’onglet "Chiffrage" si non autorisé
+  const visibleStages = STAGES.filter(p => p.key !== "chiffrage" || seeChiffrage);
+
   return (
     <div style={S.contentWide}>
       <div style={{ margin: "4px 0 12px", color: COLORS.text, fontWeight: 600 }}>
@@ -85,7 +96,7 @@ export function ProductionProjectScreen({ project, onBack }) {
       </div>
 
       <div style={S.pills}>
-        {STAGES.map((p) => (
+        {visibleStages.map((p) => (
           <button key={p.key} style={S.pill(stage === p.key)} onClick={() => setStage(p.key)}>
             {p.label}
           </button>
@@ -114,17 +125,18 @@ export function ProductionProjectScreen({ project, onBack }) {
         <DashboardTiles rows={rows} projectHours={{ conf: 0, pose: 0 }} />
       )}
 
-      {/* === CHIFFRAGE → export vers production === */}
-      {stage === "chiffrage" && (
+      {/* === CHIFFRAGE (visible seulement si autorisé) === */}
+      {stage === "chiffrage" && seeChiffrage && (
         <MinutesScreen
           onExportToProduction={(mappedRows, minute) => {
+            if (!canEditProd) return;
             setRows((rs) => computeFormulas([...(rs || []), ...mappedRows], schema));
             alert(`Exporté ${mappedRows.length} ligne(s) depuis "${minute?.name || "Minute"}" vers Production.`);
           }}
         />
       )}
 
-      {/* === ÉTIQUETTES (Rideaux + Stores) === */}
+      {/* === ÉTIQUETTES === */}
       {stage === "etiquettes" && (
         <div style={S.contentWide}>
           <EtiquettesSection title="Etiquettes Rideaux" tableKey="rideaux" rows={rowsRideaux} schema={schema} />
@@ -160,13 +172,14 @@ export function ProductionProjectScreen({ project, onBack }) {
         </>
       )}
 
-      {/* === INSTALLATION (tableau unique) === */}
+      {/* === INSTALLATION (respecte lecture seule) === */}
       {stage === "installation" && (
         <DataTable
           title="Suivi Installation / Livraison"
           tableKey="all"
           rows={rows}
           onRowsChange={(nr) => {
+            if (!canEditProd) return;
             const computed = (nr || []).map(r => recomputeRow(r, schema));
             const next     = preserveManualAfterCompute(computed, rows || []);
             setRows(next);
@@ -179,7 +192,7 @@ export function ProductionProjectScreen({ project, onBack }) {
         />
       )}
 
-      {/* === BPF (3 tableaux) === */}
+      {/* === BPF (respecte lecture seule via mergeChildRowsFor) === */}
       {stage === "bpf" && (
         <>
           <DataTable title="BPF Rideaux"        tableKey="rideaux" rows={rowsRideaux} onRowsChange={mergeChildRowsFor("rideaux")} schema={schema} setSchema={setSchema} searchQuery={search} viewKey="bpf" enableCellFormulas={true} />

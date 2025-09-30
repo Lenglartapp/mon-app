@@ -13,10 +13,15 @@ export default function CreateProductionProjectDialog({
   minuteSchema,           // schéma minute
   prodSchema,             // schéma production
   onCancel,               // ferme la modale
-  onCreateFromMinute,     // (projectName, rows) => void
+  onCreateFromMinute,     // ({name, rows, meta}) => void
   onCreateBlank,          // (projectName, rows) => void
 }) {
-  const [tab, setTab] = React.useState("minute"); // "minute" | "blank"
+  // s'il n'y a pas de minutes disponibles, on force l'onglet "blank"
+  const hasMinutes = Array.isArray(minutes) && minutes.length > 0;
+
+  const [tab, _setTab] = React.useState(hasMinutes ? "minute" : "blank"); // "minute" | "blank"
+  const setTab = (t) => _setTab(hasMinutes ? t : "blank");
+
   const [projectName, setProjectName] = React.useState("");
   const [selectedMinuteId, setSelectedMinuteId] = React.useState(null);
   const [query, setQuery] = React.useState("");
@@ -31,57 +36,56 @@ export default function CreateProductionProjectDialog({
     [minutes, selectedMinuteId]
   );
 
-// Compte les lignes où qu'elles soient
-const guessRowCount = (m) => {
-  if (!m) return 0;
-  if (Array.isArray(m.lines)) return m.lines.length;
-  if (Array.isArray(m.rows)) return m.rows.length;
-  if (Array.isArray(m.data)) return m.data.length;
-  if (Array.isArray(m.items)) return m.items.length;
-  if (m.tables && typeof m.tables === "object") {
-    return Object.values(m.tables).reduce((sum, v) => {
-      if (Array.isArray(v)) return sum + v.length;
-      if (v && typeof v === "object" && Array.isArray(v.rows)) return sum + v.rows.length;
-      return sum;
-    }, 0);
-  }
-  return 0;
-};
+  // Compte les lignes où qu'elles soient
+  const guessRowCount = (m) => {
+    if (!m) return 0;
+    if (Array.isArray(m.lines)) return m.lines.length;
+    if (Array.isArray(m.rows)) return m.rows.length;
+    if (Array.isArray(m.data)) return m.data.length;
+    if (Array.isArray(m.items)) return m.items.length;
+    if (m.tables && typeof m.tables === "object") {
+      return Object.values(m.tables).reduce((sum, v) => {
+        if (Array.isArray(v)) return sum + v.length;
+        if (v && typeof v === "object" && Array.isArray(v.rows)) return sum + v.rows.length;
+        return sum;
+      }, 0);
+    }
+    return 0;
+  };
 
-// Extrait réellement les lignes (pour l'import)
-const extractRowsFromMinute = (m) => {
-  if (!m) return [];
-  if (Array.isArray(m.lines)) return m.lines;
-  if (Array.isArray(m.rows)) return m.rows;
-  if (Array.isArray(m.data)) return m.data;
-  if (Array.isArray(m.items)) return m.items;
-  if (m.tables && typeof m.tables === "object") {
-    const all = [];
-    Object.values(m.tables).forEach((v) => {
-      if (Array.isArray(v)) all.push(...v);
-      else if (v && typeof v === "object" && Array.isArray(v.rows)) all.push(...v.rows);
-    });
-    return all;
-  }
-  return [];
-};
-
+  // Extrait réellement les lignes (pour l'import)
+  const extractRowsFromMinute = (m) => {
+    if (!m) return [];
+    if (Array.isArray(m.lines)) return m.lines;
+    if (Array.isArray(m.rows)) return m.rows;
+    if (Array.isArray(m.data)) return m.data;
+    if (Array.isArray(m.items)) return m.items;
+    if (m.tables && typeof m.tables === "object") {
+      const all = [];
+      Object.values(m.tables).forEach((v) => {
+        if (Array.isArray(v)) all.push(...v);
+        else if (v && typeof v === "object" && Array.isArray(v.rows)) all.push(...v.rows);
+      });
+      return all;
+    }
+    return [];
+  };
 
   // Filtre Minutes (nom/nom/dossier/client/id)
   const filteredMinutes = React.useMemo(() => {
+    if (!hasMinutes) return [];
     const q = norm(query.trim());
-    if (!q) return Array.isArray(minutes) ? minutes.slice(0, 20) : [];
-    return (minutes || [])
+    if (!q) return minutes.slice(0, 20);
+    return minutes
       .filter((m) => {
         const hay = `${m.name || ""} ${m.nom || ""} ${m.dossier || ""} ${m.client || ""} ${m.id || ""}`;
         return norm(hay).includes(q);
       })
       .slice(0, 40);
-  }, [minutes, query]);
+  }, [minutes, query, hasMinutes]);
 
   const handlePickMinute = (m) => {
     setSelectedMinuteId(m.id);
-    // Proposer un nom par défaut si vide
     if (!projectName) {
       const suggest = m.name || m.nom || m.dossier || "";
       setProjectName(suggest);
@@ -89,41 +93,29 @@ const extractRowsFromMinute = (m) => {
   };
 
   const handleImport = () => {
-  if (!projectName || !selectedMinute) return;
+    if (!projectName || !selectedMinute) return;
 
-  // 1) Récupère les lignes, où qu’elles soient dans la Minute
-  const minuteRows = extractRowsFromMinute(selectedMinute);
+    const minuteRows = extractRowsFromMinute(selectedMinute);
+    if (!minuteRows.length) {
+      alert("Cette Minute ne contient pas de lignes reconnues pour l'import.");
+      return;
+    }
 
-  // 2) Petit garde-fou UX
-  if (!minuteRows.length) {
-    alert("Cette Minute ne contient pas de lignes reconnues pour l'import.");
-    return;
-  }
+    const minuteForMapper = { ...selectedMinute, rows: minuteRows };
+    const nextRows = importMinuteToProduction(minuteForMapper, minuteSchema, prodSchema, []);
 
-  // 3) On fournit une minute 'augmentée' avec .rows pour le mapper
-  const minuteForMapper = { ...selectedMinute, rows: minuteRows };
-
-  // 4) Mapping minute → production
-  const nextRows = importMinuteToProduction(
-    minuteForMapper,
-    minuteSchema,
-    prodSchema,
-    []
-  );
-
-  // 5) Remonte au parent (ProjectListScreen), il créera le projet
-  onCreateFromMinute?.({
-   name: projectName,
-   rows: nextRows,
-   meta: {
-     id: selectedMinute.id,
-     minuteName: selectedMinute.name,
-     owner: selectedMinute.owner,
-     notes: selectedMinute.notes,
-     version: selectedMinute.version,
-   },
- });
-};
+    onCreateFromMinute?.({
+      name: projectName,
+      rows: nextRows,
+      meta: {
+        id: selectedMinute.id,
+        minuteName: selectedMinute.name,
+        owner: selectedMinute.owner,
+        notes: selectedMinute.notes,
+        version: selectedMinute.version,
+      },
+    });
+  };
 
   const handleCreateBlank = () => {
     if (!projectName) return;
@@ -131,40 +123,11 @@ const extractRowsFromMinute = (m) => {
     onCreateBlank?.(projectName, nextRows);
   };
 
-// 🔍 Debug : voir la minute sélectionnée et son contenu
- if (selectedMinute) {
-   console.log("DEBUG Minute sélectionnée :", selectedMinute);
- }
-
- // --- DEBUG : structure des minutes et de la minute sélectionnée
-if (Array.isArray(minutes)) {
-  console.log(
-    "DEBUG minutes→dialog:",
-    minutes.map(m => ({ id: m?.id, keys: Object.keys(m || {}) }))
-  );
-}
-
-if (selectedMinute) {
-  const safe = (obj) => {
-    try { return JSON.parse(JSON.stringify(obj)); } catch { return obj; }
-  };
-  console.log("DEBUG selectedMinute (full):", safe(selectedMinute));
-  console.log("DEBUG paths candidates:",
-    {
-      rows_len: Array.isArray(selectedMinute?.rows) ? selectedMinute.rows.length : 0,
-      data_len: Array.isArray(selectedMinute?.data) ? selectedMinute.data.length : 0,
-      items_len: Array.isArray(selectedMinute?.items) ? selectedMinute.items.length : 0,
-      tables_keys: selectedMinute?.tables ? Object.keys(selectedMinute.tables) : null,
-    }
-  );
-}
-
-// ➜ état d'activation du bouton "Importer"
-const canImport =
-  Boolean(projectName?.trim()) &&
-  Boolean(selectedMinute) &&
-  guessRowCount(selectedMinute) > 0;
-
+  const canImport =
+    hasMinutes &&
+    Boolean(projectName?.trim()) &&
+    Boolean(selectedMinute) &&
+    guessRowCount(selectedMinute) > 0;
 
   return (
     <div style={S.modalBackdrop}>
@@ -185,12 +148,14 @@ const canImport =
         {/* Tabs */}
         <div style={{ marginTop: 12 }}>
           <div style={S.pills}>
-            <button
-              style={S.pill(tab === "minute")}
-              onClick={() => setTab("minute")}
-            >
-              Depuis une Minute
-            </button>
+            {hasMinutes && (
+              <button
+                style={S.pill(tab === "minute")}
+                onClick={() => setTab("minute")}
+              >
+                Depuis une Minute
+              </button>
+            )}
             <button
               style={S.pill(tab === "blank")}
               onClick={() => setTab("blank")}
@@ -214,7 +179,7 @@ const canImport =
         </div>
 
         {/* Contenu tab */}
-        {tab === "minute" ? (
+        {tab === "minute" && hasMinutes ? (
           <div
             style={{
               display: "grid",
@@ -298,7 +263,7 @@ const canImport =
             </div>
           </div>
         ) : (
-          // Tab "Projet vierge"
+          // Tab "Projet vierge" (ou fallback si pas de minutes)
           <div style={{ marginTop: 12 }}>
             <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
               <label>
@@ -333,24 +298,24 @@ const canImport =
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 16 }}>
           <button onClick={onCancel} style={S.smallBtn}>Annuler</button>
 
-          {tab === "minute" ? (
+          {tab === "minute" && hasMinutes ? (
             <button
-  style={{ ...S.primaryBtn, opacity: canImport ? 1 : 0.7 }}
-  disabled={!canImport}
-  aria-disabled={!canImport}
-  onClick={handleImport}
-  title={
-    !projectName?.trim()
-      ? "Saisir un nom de projet"
-      : !selectedMinute
-        ? "Choisir une minute"
-        : guessRowCount(selectedMinute) === 0
-          ? "Cette Minute n'a aucune ligne importable"
-          : "Importer"
-  }
->
-  Importer cette Minute
-</button>
+              style={{ ...S.primaryBtn, opacity: canImport ? 1 : 0.7 }}
+              disabled={!canImport}
+              aria-disabled={!canImport}
+              onClick={handleImport}
+              title={
+                !projectName?.trim()
+                  ? "Saisir un nom de projet"
+                  : !selectedMinute
+                    ? "Choisir une minute"
+                    : guessRowCount(selectedMinute) === 0
+                      ? "Cette Minute n'a aucune ligne importable"
+                      : "Importer"
+              }
+            >
+              Importer cette Minute
+            </button>
           ) : (
             <button
               style={{ ...S.primaryBtn, opacity: projectName ? 1 : 0.7 }}

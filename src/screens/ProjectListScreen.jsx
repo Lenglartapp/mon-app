@@ -7,27 +7,32 @@ import { Plus, Search, Filter, Layers3, Star } from "lucide-react";
 import { formatDateFR } from "../lib/utils/format";
 import { truncate } from "../lib/utils/truncate";
 
-// Dialog + schémas + compute
 import CreateProductionProjectDialog from "../components/CreateProductionProjectDialog.jsx";
 import { CHIFFRAGE_SCHEMA } from "../lib/schemas/chiffrage.js";
 import { SCHEMA_64 } from "../lib/schemas/production.js";
 import { computeFormulas } from "../lib/formulas/compute.js";
 import { createBlankProject } from "../lib/import/createBlankProject.js";
 
+// 🔐 AJOUTS
+import { useAuth } from "../auth";
+import { can } from "../lib/authz";
+
 export function ProjectListScreen({
   projects,
   setProjects,
   onOpenProject,
-  // ⬇️ injecté depuis App.jsx (quoteMinutes)
   minutes = [],
 }) {
   const [q, setQ] = useState("");
   const width = useViewportWidth();
 
-  // état du dialog
   const [showCreate, setShowCreate] = useState(false);
-
   const list = Array.isArray(projects) ? projects : [];
+
+  // 🔐 droits
+  const { currentUser } = useAuth();
+  const canCreate = can(currentUser, "project.create");
+  const canSeeChiffrage = can(currentUser, "chiffrage.view");
 
   const filtered = useMemo(() => {
     const qq = q.trim().toLowerCase();
@@ -54,25 +59,27 @@ export function ProjectListScreen({
             Production
           </div>
 
-          {/* Ouvre le dialog “Nouveau projet” */}
-          <button
-            type="button"
-            onClick={() => setShowCreate(true)}
-            style={{
-              marginTop: 12,
-              background: COLORS.tile,
-              color: "#fff",
-              padding: "10px 14px",
-              borderRadius: 10,
-              border: "none",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 8,
-              cursor: "pointer",
-            }}
-          >
-            <Plus size={16} /> Nouveau
-          </button>
+          {/* 🔐 Nouveau projet si autorisé */}
+          {canCreate && (
+            <button
+              type="button"
+              onClick={() => setShowCreate(true)}
+              style={{
+                marginTop: 12,
+                background: COLORS.tile,
+                color: "#fff",
+                padding: "10px 14px",
+                borderRadius: 10,
+                border: "none",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                cursor: "pointer",
+              }}
+            >
+              <Plus size={16} /> Nouveau
+            </button>
+          )}
         </div>
 
         <div>
@@ -168,42 +175,30 @@ export function ProjectListScreen({
         </div>
       </div>
 
-      {/* Dialog de création (depuis minute ou vide) */}
+      {/* Dialog de création */}
       {showCreate && (
         <CreateProductionProjectDialog
-          minutes={Array.isArray(minutes) ? minutes : []}
+          // 🔐 si l’utilisateur n’a pas accès au chiffrage, on passe une liste vide → cache l’option
+          minutes={canSeeChiffrage ? (Array.isArray(minutes) ? minutes : []) : []}
           minuteSchema={CHIFFRAGE_SCHEMA}
           prodSchema={SCHEMA_64}
           onCancel={() => setShowCreate(false)}
-          // ➜ Création depuis une minute : le dialog renvoie (projectName, rows)
-           onCreateFromMinute={(payload) => {
-   const { name, rows, meta } = payload || {};
-
-   // 1) Base projet
-   const project = createBlankProject({ name });
-
-   // 2) Métadonnées venant de la minute
-   project.name = name || meta?.minuteName || project.name;
-   project.sourceMinuteId = meta?.id || null;
-   project.manager = meta?.owner || project.manager; // chargé d’affaires
-   project.notes = meta?.notes || project.notes;
-
-   // 3) LIGNES : on ÉCRASE TOUT par les lignes importées (recalculées)
-   project.rows = computeFormulas(rows || [], SCHEMA_64);
-
-   // 4) Push + open
-   setProjects?.((arr) => [project, ...(Array.isArray(arr) ? arr : [])]);
-   setShowCreate(false);
-   onOpenProject?.(project);
- }}
-          // ➜ Création vierge : le dialog renvoie (projectName, rows)
+          onCreateFromMinute={(payload) => {
+            const { name, rows, meta } = payload || {};
+            const project = createBlankProject({ name });
+            project.name = name || meta?.minuteName || project.name;
+            project.sourceMinuteId = meta?.id || null;
+            project.manager = meta?.owner || project.manager;
+            project.notes = meta?.notes || project.notes;
+            project.rows = computeFormulas(rows || [], SCHEMA_64);
+            setProjects?.((arr) => [project, ...(Array.isArray(arr) ? arr : [])]);
+            setShowCreate(false);
+            onOpenProject?.(project);
+          }}
           onCreateBlank={(projectName, rows) => {
             const project = createBlankProject({ name: projectName });
             project.rows = computeFormulas(rows, SCHEMA_64);
-            setProjects?.((arr) => [
-              project,
-              ...(Array.isArray(arr) ? arr : []),
-            ]);
+            setProjects?.((arr) => [project, ...(Array.isArray(arr) ? arr : [])]);
             setShowCreate(false);
             onOpenProject?.(project);
           }}
@@ -212,3 +207,5 @@ export function ProjectListScreen({
     </div>
   );
 }
+
+export default ProjectListScreen;
