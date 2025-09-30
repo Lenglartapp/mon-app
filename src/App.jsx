@@ -88,10 +88,20 @@ export default function App() {
           {/* === Liste Production === */}
           {screen === "prodList" && (
             <ProjectListScreen
-              projects={projects}
-              setProjects={setProjects}
-              onOpenProject={(p) => { setCurrent(p); setScreen("project"); }}
-            />
+  projects={projects}
+  setProjects={setProjects}
+  onOpenProject={(p) => { setCurrent(p); setScreen("project"); }}
+  minutes={quoteMinutes.map(m => {
+    let tables = {};
+    try {
+      const raw = localStorage.getItem(`chiffrage.${m.id}.tables`);
+      if (raw) tables = JSON.parse(raw);
+    } catch (e) {
+      console.warn("Impossible de lire tables pour minute", m.id, e);
+    }
+    return { ...m, tables };
+  })}
+/>
           )}
 
           {/* === Chiffrage : LISTE === */}

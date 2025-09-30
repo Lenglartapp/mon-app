@@ -7,25 +7,24 @@ import { Plus, Search, Filter, Layers3, Star } from "lucide-react";
 import { formatDateFR } from "../lib/utils/format";
 import { truncate } from "../lib/utils/truncate";
 
-// ⬇️ NEW: imports pour le dialog + mapping + schémas + compute
+// Dialog + schémas + compute
 import CreateProductionProjectDialog from "../components/CreateProductionProjectDialog.jsx";
 import { CHIFFRAGE_SCHEMA } from "../lib/schemas/chiffrage.js";
 import { SCHEMA_64 } from "../lib/schemas/production.js";
 import { computeFormulas } from "../lib/formulas/compute.js";
-import { importMinuteToProduction } from "../lib/import/importMinuteToProduction.js";
 import { createBlankProject } from "../lib/import/createBlankProject.js";
 
 export function ProjectListScreen({
   projects,
   setProjects,
   onOpenProject,
-  // ⬇️ passe-moi la liste des minutes depuis le parent
+  // ⬇️ injecté depuis App.jsx (quoteMinutes)
   minutes = [],
 }) {
   const [q, setQ] = useState("");
   const width = useViewportWidth();
 
-  // ⬇️ état du dialog
+  // état du dialog
   const [showCreate, setShowCreate] = useState(false);
 
   const list = Array.isArray(projects) ? projects : [];
@@ -34,8 +33,9 @@ export function ProjectListScreen({
     const qq = q.trim().toLowerCase();
     if (!qq) return list;
     return list.filter((p) =>
-      [p?.name, p?.manager, p?.status, p?.notes]
-        .some((x) => String(x || "").toLowerCase().includes(qq))
+      [p?.name, p?.manager, p?.status, p?.notes].some((x) =>
+        String(x || "").toLowerCase().includes(qq)
+      )
     );
   }, [list, q]);
 
@@ -54,7 +54,7 @@ export function ProjectListScreen({
             Production
           </div>
 
-          {/* ⬇️ Ouvre le dialog “Nouveau projet” */}
+          {/* Ouvre le dialog “Nouveau projet” */}
           <button
             type="button"
             onClick={() => setShowCreate(true)}
@@ -78,7 +78,10 @@ export function ProjectListScreen({
         <div>
           <div style={{ fontSize: 18, marginBottom: 6 }}>Recherche</div>
           <div style={S.searchBox}>
-            <Search size={18} style={{ position: "absolute", left: 10, top: 12, opacity: 0.6 }} />
+            <Search
+              size={18}
+              style={{ position: "absolute", left: 10, top: 12, opacity: 0.6 }}
+            />
             <input
               id="project-search"
               name="project-search"
@@ -90,9 +93,15 @@ export function ProjectListScreen({
             />
           </div>
           <div style={{ ...S.toolsRow, marginTop: 10 }}>
-            <span style={S.toolBtn}><Filter size={16} /> Filtre</span>
-            <span style={S.toolBtn}><Layers3 size={16} /> Regrouper</span>
-            <span style={S.toolBtn}><Star size={16} /> Favoris</span>
+            <span style={S.toolBtn}>
+              <Filter size={16} /> Filtre
+            </span>
+            <span style={S.toolBtn}>
+              <Layers3 size={16} /> Regrouper
+            </span>
+            <span style={S.toolBtn}>
+              <Star size={16} /> Favoris
+            </span>
           </div>
         </div>
       </div>
@@ -132,16 +141,26 @@ export function ProjectListScreen({
                   <td style={S.td}>{formatDateFR(p?.due)}</td>
                   <td style={S.td}>{p?.manager || "—"}</td>
                   <td style={S.td}>
-                    <span style={{ ...S.smallBtn, background: "#FCD34D", borderColor: "#FCD34D" }}>
+                    <span
+                      style={{
+                        ...S.smallBtn,
+                        background: "#FCD34D",
+                        borderColor: "#FCD34D",
+                      }}
+                    >
                       {p?.status || "En cours"}
                     </span>
                   </td>
-                  <td style={S.td} title={p?.notes || ""}>{truncate(p?.notes || "", 18)}</td>
+                  <td style={S.td} title={p?.notes || ""}>
+                    {truncate(p?.notes || "", 18)}
+                  </td>
                 </tr>
               ))}
               {filtered.length === 0 && (
                 <tr>
-                  <td style={S.td} colSpan={5}>Aucun dossier ne correspond à « {q} ».</td>
+                  <td style={S.td} colSpan={5}>
+                    Aucun dossier ne correspond à « {q} ».
+                  </td>
                 </tr>
               )}
             </tbody>
@@ -149,37 +168,42 @@ export function ProjectListScreen({
         </div>
       </div>
 
-      {/* ⬇️ Dialog de création (depuis minute ou vide) */}
+      {/* Dialog de création (depuis minute ou vide) */}
       {showCreate && (
         <CreateProductionProjectDialog
           minutes={Array.isArray(minutes) ? minutes : []}
           minuteSchema={CHIFFRAGE_SCHEMA}
-          productionSchema={SCHEMA_64}
-          onClose={() => setShowCreate(false)}
+          prodSchema={SCHEMA_64}
+          onCancel={() => setShowCreate(false)}
+          // ➜ Création depuis une minute : le dialog renvoie (projectName, rows)
+           onCreateFromMinute={(payload) => {
+   const { name, rows, meta } = payload || {};
 
-          // ➜ Création depuis une minute
-          onCreateFromMinute={(minute) => {
-            // 1) map minute -> lignes production
-            const mappedRows = importMinuteToProduction(minute); // ← renvoie un array de rows production
-            // 2) calcule formules prod
-            const rows = computeFormulas(mappedRows, SCHEMA_64);
-            // 3) crée l’objet projet (helper existant)
-            const project = createBlankProject({
-              name: minute?.name || "Nouveau projet",
-              sourceMinuteId: minute?.id,
-            });
-            project.rows = rows;
+   // 1) Base projet
+   const project = createBlankProject({ name });
 
-            setProjects?.((arr) => [project, ...(Array.isArray(arr) ? arr : [])]);
-            setShowCreate(false);
-            onOpenProject?.(project);
-          }}
+   // 2) Métadonnées venant de la minute
+   project.name = name || meta?.minuteName || project.name;
+   project.sourceMinuteId = meta?.id || null;
+   project.manager = meta?.owner || project.manager; // chargé d’affaires
+   project.notes = meta?.notes || project.notes;
 
-          // ➜ Création vierge (avec cases rideaux/stores/décors dans le dialog)
-          onCreateBlank={(opts) => {
-            const project = createBlankProject(opts); // { id, name, rows: [], … }
-            // si tu veux pré-créer des lignes en fonction des cases, fais-le ici.
-            setProjects?.((arr) => [project, ...(Array.isArray(arr) ? arr : [])]);
+   // 3) LIGNES : on ÉCRASE TOUT par les lignes importées (recalculées)
+   project.rows = computeFormulas(rows || [], SCHEMA_64);
+
+   // 4) Push + open
+   setProjects?.((arr) => [project, ...(Array.isArray(arr) ? arr : [])]);
+   setShowCreate(false);
+   onOpenProject?.(project);
+ }}
+          // ➜ Création vierge : le dialog renvoie (projectName, rows)
+          onCreateBlank={(projectName, rows) => {
+            const project = createBlankProject({ name: projectName });
+            project.rows = computeFormulas(rows, SCHEMA_64);
+            setProjects?.((arr) => [
+              project,
+              ...(Array.isArray(arr) ? arr : []),
+            ]);
             setShowCreate(false);
             onOpenProject?.(project);
           }}

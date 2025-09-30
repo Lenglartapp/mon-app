@@ -1,70 +1,73 @@
-// src/screens/ProductionProjectScreen.jsx
-import React, { useEffect, useState } from "react";
-
+import React, { useEffect, useMemo, useState } from "react";
 import { COLORS, S } from "../lib/constants/ui.js";
 
 // Tables & helpers
 import DataTable from "../components/DataTable.jsx";
 import DashboardTiles from "../components/DashboardTiles.jsx";
 import EtiquettesSection from "../components/EtiquettesSection.jsx";
-import MinutesScreen from "./MinutesScreen.jsx"; // ⬅️ nécessaire si tu affiches l’onglet "chiffrage"
+import MinutesScreen from "./MinutesScreen.jsx";
 
 import { computeFormulas, preserveManualAfterCompute } from "../lib/formulas/compute";
 import { SCHEMA_64 } from "../lib/schemas/production.js";
-import { DEMO_MASTER_ROWS } from "../lib/data/production.demo.js";
 import { STAGES } from "../lib/constants/views.js";
 import { recomputeRow } from "../lib/formulas/recomputeRow";
 
-// Icônes
-import {
-  Filter, Layers3, Star, Search
-} from "lucide-react";
+// ✅ icônes
+import { Search, Filter, Layers3, Star } from "lucide-react";
 
-export function ProductionProjectScreen({ projectName, onBack }) {
+export function ProductionProjectScreen({ project, onBack }) {
   const [stage, setStage]   = useState("dashboard");
   const [search, setSearch] = useState("");
   const [schema, setSchema] = useState(SCHEMA_64);
 
-  // Lignes "master" (toutes catégories confondues)
-  const [rows, setRows] = useState(() => computeFormulas(DEMO_MASTER_ROWS, SCHEMA_64));
+  // 🟢 Utilise les lignes du projet (pas de données démo)
+  const initialRows = useMemo(
+    () => computeFormulas(project?.rows || [], SCHEMA_64),
+    [project?.id]
+  );
+  const [rows, setRows] = useState(initialRows);
 
   // Recompute quand le schéma change
   useEffect(() => {
     setRows((rs) => computeFormulas(rs, schema));
   }, [schema]);
 
-  // --- Sous-ensembles (affichage)
+  // Sync si on change de projet ou si ses rows évoluent
+  useEffect(() => {
+    setRows(computeFormulas(project?.rows || [], SCHEMA_64));
+  }, [project?.id, project?.rows]);
+
+  // Sous-ensembles (affichage)
   const rowsRideaux = rows.filter((r) => /rideau|voilage/i.test(String(r.produit || "")));
   const rowsDecors  = rows.filter((r) => /d[ée]cor/i.test(String(r.produit || "")));
   const rowsStores  = rows.filter((r) => /store/i.test(String(r.produit || "")));
 
   // util qui recalcule chaque ligne en respectant __cellFormulas
-const recomputeAll = (arr) => (arr || []).map(r => recomputeRow(r, schema));
+  const recomputeAll = (arr) => (arr || []).map(r => recomputeRow(r, schema));
 
-// --- NEW: on remonte un sous-tableau en préservant les overrides de cellule
-const mergeChildRowsFor = (tableKey) => {
-  return (nr) => {
-    setRows((all) => {
-      const isInTable = (r) => {
-        const p = String(r?.produit || "");
-        if (tableKey === "rideaux") return /rideau|voilage/i.test(p);
-        if (tableKey === "decors")  return /d[ée]cor/i.test(p);
-        if (tableKey === "stores")  return /store/i.test(p);
-        return false;
-      };
-      const others   = (all || []).filter((r) => !isInTable(r));
-      const previous = (all || []).filter((r) => isInTable(r));
+  // Merge pour les sous-tableaux
+  const mergeChildRowsFor = (tableKey) => {
+    return (nr) => {
+      setRows((all) => {
+        const isInTable = (r) => {
+          const p = String(r?.produit || "");
+          if (tableKey === "rideaux") return /rideau|voilage/i.test(p);
+          if (tableKey === "decors")  return /d[ée]cor/i.test(p);
+          if (tableKey === "stores")  return /store/i.test(p);
+          return false;
+        };
+        const others   = (all || []).filter((r) => !isInTable(r));
+        const previous = (all || []).filter((r) => isInTable(r));
 
-      // 1) ⚠️ respecter les overrides de cellule
-      const computed = recomputeAll(nr);
+        const computed = recomputeAll(nr);
+        const merged   = preserveManualAfterCompute(computed, previous);
 
-      // 2) préserver aussi les champs marqués manuels (__manual), si tu les utilises
-      const merged   = preserveManualAfterCompute(computed, previous);
-
-      return [...others, ...merged];
-    });
+        return [...others, ...merged];
+      });
+    };
   };
-};
+
+  const projectName = project?.name || "—";
 
   return (
     <div style={S.contentWide}>
@@ -76,6 +79,9 @@ const mergeChildRowsFor = (tableKey) => {
           Production
         </button>
         {" / "}<span style={{ fontWeight: 800 }}>{projectName}</span>
+        {project?.manager ? (
+          <span style={{ marginLeft: 8, opacity: .7 }}>— {project.manager}</span>
+        ) : null}
       </div>
 
       <div style={S.pills}>
@@ -105,10 +111,7 @@ const mergeChildRowsFor = (tableKey) => {
 
       {/* === DASHBOARD === */}
       {stage === "dashboard" && (
-        <DashboardTiles
-          rows={rows}
-          projectHours={{ conf: 0, pose: 0 }}
-        />
+        <DashboardTiles rows={rows} projectHours={{ conf: 0, pose: 0 }} />
       )}
 
       {/* === CHIFFRAGE → export vers production === */}
@@ -124,18 +127,8 @@ const mergeChildRowsFor = (tableKey) => {
       {/* === ÉTIQUETTES (Rideaux + Stores) === */}
       {stage === "etiquettes" && (
         <div style={S.contentWide}>
-          <EtiquettesSection
-            title="Etiquettes Rideaux"
-            tableKey="rideaux"
-            rows={rowsRideaux}
-            schema={schema}
-          />
-          <EtiquettesSection
-            title="Etiquettes Stores"
-            tableKey="stores"
-            rows={rowsStores}
-            schema={schema}
-          />
+          <EtiquettesSection title="Etiquettes Rideaux" tableKey="rideaux" rows={rowsRideaux} schema={schema} />
+          <EtiquettesSection title="Etiquettes Stores"  tableKey="stores"  rows={rowsStores}  schema={schema} />
         </div>
       )}
 
@@ -169,61 +162,29 @@ const mergeChildRowsFor = (tableKey) => {
 
       {/* === INSTALLATION (tableau unique) === */}
       {stage === "installation" && (
-  <DataTable
-    title="Suivi Installation / Livraison"
-    tableKey="all"
-    rows={rows}
-    onRowsChange={(nr) => {
-      // ⚠️ respecter les overrides de cellule
-      const computed = (nr || []).map(r => recomputeRow(r, schema));
-      // préserver les champs manuels existants si tu t’en sers
-      const next     = preserveManualAfterCompute(computed, rows || []);
-      setRows(next);
-    }}
-    schema={schema}
-    setSchema={setSchema}
-    searchQuery={search}
-    viewKey="installation"
-    enableCellFormulas={true}
-  />
-)}
+        <DataTable
+          title="Suivi Installation / Livraison"
+          tableKey="all"
+          rows={rows}
+          onRowsChange={(nr) => {
+            const computed = (nr || []).map(r => recomputeRow(r, schema));
+            const next     = preserveManualAfterCompute(computed, rows || []);
+            setRows(next);
+          }}
+          schema={schema}
+          setSchema={setSchema}
+          searchQuery={search}
+          viewKey="installation"
+          enableCellFormulas={true}
+        />
+      )}
 
       {/* === BPF (3 tableaux) === */}
       {stage === "bpf" && (
         <>
-          <DataTable
-            title="BPF Rideaux"
-            tableKey="rideaux"
-            rows={rowsRideaux}
-            onRowsChange={mergeChildRowsFor("rideaux")}
-            schema={schema}
-            setSchema={setSchema}
-            searchQuery={search}
-            viewKey="bpf"
-            enableCellFormulas={true}
-          />
-          <DataTable
-            title="BPF Décors de lit"
-            tableKey="decors"
-            rows={rowsDecors}
-            onRowsChange={mergeChildRowsFor("decors")}
-            schema={schema}
-            setSchema={setSchema}
-            searchQuery={search}
-            viewKey="bpf"
-            enableCellFormulas={true}
-          />
-          <DataTable
-            title="BPF Stores"
-            tableKey="stores"
-            rows={rowsStores}
-            onRowsChange={mergeChildRowsFor("stores")}
-            schema={schema}
-            setSchema={setSchema}
-            searchQuery={search}
-            viewKey="bpf"
-            enableCellFormulas={true}
-          />
+          <DataTable title="BPF Rideaux"        tableKey="rideaux" rows={rowsRideaux} onRowsChange={mergeChildRowsFor("rideaux")} schema={schema} setSchema={setSchema} searchQuery={search} viewKey="bpf" enableCellFormulas={true} />
+          <DataTable title="BPF Décors de lit"  tableKey="decors"  rows={rowsDecors}  onRowsChange={mergeChildRowsFor("decors")}  schema={schema} setSchema={setSchema} searchQuery={search} viewKey="bpf" enableCellFormulas={true} />
+          <DataTable title="BPF Stores"         tableKey="stores"  rows={rowsStores}  onRowsChange={mergeChildRowsFor("stores")}  schema={schema} setSchema={setSchema} searchQuery={search} viewKey="bpf" enableCellFormulas={true} />
         </>
       )}
     </div>
