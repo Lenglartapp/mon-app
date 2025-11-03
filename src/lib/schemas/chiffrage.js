@@ -11,16 +11,29 @@ export const CHIFFRAGE_SCHEMA = [
   { key: "piece",  label: "Pièce",   type: "text",   width: 120 },
 
   // Produit & confection
-  { key: "produit", label: "Produit", type: "select",
-    options: ["Rideau","Voilage","Store Bateau","Store Enrouleur","Store Vénitien","Cache Sommier","Coussin","Décor de lit","Autres"],
+  {
+    key: "produit",
+    label: "Produit",
+    type: "select",
+    options: [
+      "Rideau","Voilage","Store Bateau","Store Enrouleur","Store Vénitien",
+      "Cache Sommier","Coussin","Décor de lit","Autres"
+    ],
     width: 160
   },
-  { key: "type_confection", label: "Type de confection", type: "select",
+  {
+    key: "type_confection",
+    label: "Type de confection",
+    type: "select",
     options: ["Wave 80","Wave 60","Couteau","Flamand","Triplis","Creux","Taylor","Tuyaux d'orgue","Plat","A plat"],
     width: 180
   },
-  { key: "pair_un", label: "Paire / Un seul pan", type: "select",
-    options: ["Paire","Un seul pan"], width: 150
+  {
+    key: "pair_un",
+    label: "Paire / Un seul pan",
+    type: "select",
+    options: ["Paire","Un seul pan"],
+    width: 150
   },
   { key: "ampleur", label: "Ampleur", type: "number", precision: 2, width: 90 },
 
@@ -28,9 +41,16 @@ export const CHIFFRAGE_SCHEMA = [
   { key: "l_mecanisme", label: "Largeur mécanisme", type: "number", width: 150 },
   { key: "largeur",     label: "Largeur",           type: "number", width: 110 },
   { key: "hauteur",     label: "Hauteur",           type: "number", width: 110 },
-  { key: "hauteur_coupe_minutes", label: "H. coupe (min.)", type: "formula",
-    formula: "hauteur + 50", width: 140
+
+  // Hauteur de coupe (minutes) — utilisée par les ML
+  {
+    key: "hauteur_coupe_minutes",
+    label: "H. coupe (min.)",
+    type: "formula",
+    formula: "hauteur + 50",
+    width: 140
   },
+
   { key: "a_plat",     label: "À plat",     type: "formula", formula: "largeur * ampleur", width: 140 },
   { key: "croisement", label: "Croisement", type: "number", width: 120 },
   { key: "retour_g",   label: "Retour Gauche", type: "number", width: 130 },
@@ -46,10 +66,18 @@ export const CHIFFRAGE_SCHEMA = [
   { key: "motif_deco1",       label: "Motif Déco 1",       type: "text",   width: 140 },
   { key: "raccord_v1",        label: "Raccord V1",         type: "number", width: 130 },
   { key: "raccord_h1",        label: "Raccord H1",         type: "number", width: 130 },
-  { key: "ml_tissu_deco1",    label: "ML Déco 1",          type: "formula",
-    // si laize > H. coupe : (a_plat + croisement + retour_g + retour_d)/100
-    // sinon : ceil((a_plat + croisement + retour_g + retour_d)/laize) * (hauteur_coupe_minutes/100)
-    formula: "IF(laize_tissu_deco1 > hauteur_coupe_minutes, (a_plat + croisement + retour_g + retour_d)/100, CEIL((a_plat + croisement + retour_g + retour_d)/laize_tissu_deco1) * (hauteur_coupe_minutes/100))",
+
+  // ML Déco 1 : garde-fous NVL et opérateur || (pas "OR")
+  {
+    key: "ml_tissu_deco1",
+    label: "ML Déco 1",
+    type: "formula",
+    formula:
+      "IF(NVL(laize_tissu_deco1,0)<=0 || NVL(hauteur_coupe_minutes,0)<=0, 0, " +
+      "IF(laize_tissu_deco1 > hauteur_coupe_minutes, " +
+      "(NVL(a_plat,0)+NVL(croisement,0)+NVL(retour_g,0)+NVL(retour_d,0))/100, " +
+      "CEIL((NVL(a_plat,0)+NVL(croisement,0)+NVL(retour_g,0)+NVL(retour_d,0))/laize_tissu_deco1) * (hauteur_coupe_minutes/100)" +
+      "))",
     width: 200
   },
   { key: "pa_tissu_deco1",    label: "PA Déco 1",          type: "number", width: 120 },
@@ -61,8 +89,16 @@ export const CHIFFRAGE_SCHEMA = [
   { key: "motif_deco2",       label: "Motif Déco 2",       type: "text",   width: 140 },
   { key: "raccord_v2",        label: "Raccord V2",         type: "number", width: 130 },
   { key: "raccord_h2",        label: "Raccord H2",         type: "number", width: 130 },
-  { key: "ml_tissu_deco2",    label: "ML Déco 2",          type: "formula",
-    formula: "IF(laize_tissu_deco2 > hauteur_coupe_minutes, (a_plat + croisement + retour_g + retour_d)/100, CEIL((a_plat + croisement + retour_g + retour_d)/laize_tissu_deco2) * (hauteur_coupe_minutes/100))",
+  {
+    key: "ml_tissu_deco2",
+    label: "ML Déco 2",
+    type: "formula",
+    formula:
+      "IF(NVL(laize_tissu_deco2,0)<=0 || NVL(hauteur_coupe_minutes,0)<=0, 0, " +
+      "IF(laize_tissu_deco2 > hauteur_coupe_minutes, " +
+      "(NVL(a_plat,0)+NVL(croisement,0)+NVL(retour_g,0)+NVL(retour_d,0))/100, " +
+      "CEIL((NVL(a_plat,0)+NVL(croisement,0)+NVL(retour_g,0)+NVL(retour_d,0))/laize_tissu_deco2) * (hauteur_coupe_minutes/100)" +
+      "))",
     width: 200
   },
   { key: "pa_tissu_deco2",    label: "PA Déco 2",          type: "number", width: 120 },
@@ -83,8 +119,16 @@ export const CHIFFRAGE_SCHEMA = [
   // Doublure
   { key: "doublure",       label: "Doublure",       type: "text",   width: 150 },
   { key: "laize_doublure", label: "Laize Doublure", type: "number", width: 150 },
-  { key: "ml_doublure",    label: "ML Doublure",    type: "formula",
-    formula: "IF(laize_doublure > hauteur_coupe_minutes, (a_plat + croisement + retour_g + retour_d)/100, CEIL((a_plat + croisement + retour_g + retour_d)/laize_doublure) * (hauteur_coupe_minutes/100))",
+  {
+    key: "ml_doublure",
+    label: "ML Doublure",
+    type: "formula",
+    formula:
+      "IF(NVL(laize_doublure,0)<=0 || NVL(hauteur_coupe_minutes,0)<=0, 0, " +
+      "IF(laize_doublure > hauteur_coupe_minutes, " +
+      "(NVL(a_plat,0)+NVL(croisement,0)+NVL(retour_g,0)+NVL(retour_d,0))/100, " +
+      "CEIL((NVL(a_plat,0)+NVL(croisement,0)+NVL(retour_g,0)+NVL(retour_d,0))/laize_doublure) * (hauteur_coupe_minutes/100)" +
+      "))",
     width: 200
   },
   { key: "pa_doublure",    label: "PA Doublure",    type: "number", width: 140 },
@@ -93,8 +137,16 @@ export const CHIFFRAGE_SCHEMA = [
   // Inter-doublure
   { key: "inter_doublure", label: "Inter Doublure", type: "text",   width: 150 },
   { key: "laize_inter",    label: "Laize Inter",    type: "number", width: 150 },
-  { key: "ml_inter",       label: "ML Inter",       type: "formula",
-    formula: "IF(laize_inter > hauteur_coupe_minutes, (a_plat + croisement + retour_g + retour_d)/100, CEIL((a_plat + croisement + retour_g + retour_d)/laize_inter) * (hauteur_coupe_minutes/100))",
+  {
+    key: "ml_inter",
+    label: "ML Inter",
+    type: "formula",
+    formula:
+      "IF(NVL(laize_inter,0)<=0 || NVL(hauteur_coupe_minutes,0)<=0, 0, " +
+      "IF(laize_inter > hauteur_coupe_minutes, " +
+      "(NVL(a_plat,0)+NVL(croisement,0)+NVL(retour_g,0)+NVL(retour_d,0))/100, " +
+      "CEIL((NVL(a_plat,0)+NVL(croisement,0)+NVL(retour_g,0)+NVL(retour_d,0))/laize_inter) * (hauteur_coupe_minutes/100)" +
+      "))",
     width: 200
   },
   { key: "pa_inter",       label: "PA Inter",       type: "number", width: 140 },
@@ -111,21 +163,49 @@ export const CHIFFRAGE_SCHEMA = [
   // Prépa / pose / confection (valorisations)
   { key: "heures_prepa",     label: "Heures Prépa",     type: "number", width: 140 },
   { key: "pv_prepa",         label: "PV Prépa",         type: "number", width: 130 },
-  { key: "type_pose",        label: "Type de pose",     type: "select", options: ["Murale","Plafond","Encastré"], width: 140 },
+    { key: "type_pose",        label: "Type de pose",     type: "select", options: ["Murale","Plafond","Encastré"], width: 140 },
+
+  // Sous-traitance POSE (cachée par défaut)
+  { key: "stpausepa", label: "ST Pose PA", type: "number", width: 140 },
+  {
+    key: "stpausepv",
+    label: "ST Pose PV",
+    type: "formula",
+    width: 140,
+    formula: "{stpausepa} * 2",
+    readOnly: true,
+  },
+
   { key: "heures_pose",      label: "Heures Pose",      type: "number", width: 140 },
   { key: "pv_pose",          label: "PV Pose",          type: "number", width: 120 },
+    // Sous-traitance CONFECTION (cachée par défaut)
+  { key: "stconfpa", label: "ST Conf PA", type: "number", width: 140 },
+  {
+    key: "stconfpv",
+    label: "ST Conf PV",
+    type: "formula",
+    width: 140,
+    formula: "{stconfpa} * 2",
+    readOnly: true,
+  },
+
   { key: "heures_confection",label: "Heures Confection",type: "number", width: 160 },
   { key: "pv_confection",    label: "PV Confection",    type: "number", width: 140 },
 
   // Frais / prix
   { key: "livraison",     label: "Livraison",     type: "number", width: 120 },
-  { key: "prix_unitaire", label: "Prix Unitaire", type: "formula",
-    // somme des PV composants + livraison
-    formula: "NVL(pv_tissu_deco1,0)+NVL(pv_tissu_deco2,0)+NVL(pv_doublure,0)+NVL(pv_inter,0)+NVL(pv_meca,0)+NVL(pv_prepa,0)+NVL(pv_pose,0)+NVL(pv_confection,0)+NVL(livraison,0)",
-    width: 160
+  {
+    key: "prix_unitaire",
+label: "Prix Unitaire",
+type: "formula",
+// somme des PV composants + livraison, en ignorant les champs vides
+formula:
+  "NVL(pv_tissu_deco1,0)*1 + NVL(pv_tissu_deco2,0)*1 + NVL(pv_doublure,0)*1 + NVL(pv_inter,0)*1 + " +
+  "NVL(pv_meca,0)*1 + NVL(pv_prepa,0)*1 + NVL(pv_pose,0)*1 + NVL(pv_confection,0)*1 + NVL(livraison,0)*1",
+width: 160
   },
-  { key: "quantite",     label: "Quantité",   type: "number",  width: 100 },
-  { key: "prix_total",   label: "Prix Total", type: "formula", formula: "prix_unitaire * quantite", width: 140 },
+  { key: "quantite",   label: "Quantité",   type: "number",  width: 100 },
+  { key: "prix_total", label: "Prix Total", type: "formula", formula: "prix_unitaire * quantite", width: 140 },
 
   // Commentaires chiffrage
   { key: "commentaire_minute", label: "Commentaire", type: "text", width: 220 },

@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { DEFAULT_VIEWS } from "../lib/constants/views";
 import { useActivity } from "../contexts/activity";
 import { useAuth } from "../auth.jsx";
-import { COLORS, S } from "../lib/constants/ui";
+import { COLORS, S, TABLE_DENSITY } from "../lib/constants/ui";
 import { uid } from "../lib/utils/uid";
 import RowFormModal from "./RowFormModal.jsx";
 import EditFieldModal from "./EditFieldModal.jsx";
@@ -13,6 +13,7 @@ import InputCell from "./cells/InputCell.jsx";
 import ActivitySidebar from "./ActivitySidebar.jsx";
 import { recomputeRow } from "../lib/formulas/recomputeRow";
 import { computeFormulas } from "../lib/formulas/compute";
+import FilterPanel from "./FilterPanel.jsx";
 
 
 
@@ -46,6 +47,29 @@ function useLocalStorage(key, initialValue) {
   return [value, setValue];
 }
 
+const EMPTY_CTX = {};
+
+// ——— utils visibilité colonnes ———
+const MIN_COLS = ["sel", "detail"]; // colonnes protégées (toujours visibles)
+
+/** Intersecte visibleCols avec le schéma + réimpose MIN_COLS, sans doublons. */
+function normalizeVisibleCols(schema, visible) {
+  const allKeys = new Set((schema || []).map(c => c.key));
+  const base = Array.isArray(visible) ? visible.filter(k => allKeys.has(k)) : [];
+  const withMin = Array.from(new Set([...base, ...MIN_COLS]));
+  return withMin;
+}
+
+/** Comparaison shallow d’array par contenu (ordre compris) */
+function arrEq(a, b) {
+  if (a === b) return true;
+  if (!Array.isArray(a) || !Array.isArray(b)) return false;
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+  return true;
+}
+
+
 // =============== DataTable ===============
 function DataTable({
   title,
@@ -58,10 +82,34 @@ function DataTable({
   viewKey = "installation",
   // NEW: active le support "=..." dans les cellules
   enableCellFormulas = false,
+  formulaCtx = EMPTY_CTX,
 }) {
   // --- Versionning du localStorage pour forcer la prise en compte des nouvelles présélections
-const VIEWS_VERSION = 4; // ← incrémente quand tu changes DEFAULT_VIEWS
+const VIEWS_VERSION = 7; // ← incrémente quand tu changes DEFAULT_VIEWS
 const keyLS = `prod.v${VIEWS_VERSION}.visible.${viewKey}.${tableKey}`;
+
+// [NEW] défauts de visibilité : DEFAULT_VIEWS si présents, sinon toutes les colonnes du schéma
+const defaultFromViews = Array.isArray(DEFAULT_VIEWS?.[viewKey]?.[tableKey])
+  ? DEFAULT_VIEWS[viewKey][tableKey]
+  : schema.map(c => c.key);
+
+// [NEW] visibleCols avec normalisation immédiate (intersection schéma + MIN_COLS)
+const [visibleCols, setVisibleCols] = useLocalStorage(
+  keyLS,
+  normalizeVisibleCols(schema, defaultFromViews)
+);
+
+// [NEW] quand le schéma change, on renormalise SANS boucler
+React.useEffect(() => {
+  const normalized = normalizeVisibleCols(schema, visibleCols);
+  if (!arrEq(visibleCols, normalized)) {
+    setVisibleCols(normalized);
+  }
+  // ⚠️ surtout pas dépendant de visibleCols, sinon ping-pong
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [schema]);
+
+
 
 // NEW: helper pour muter les lignes via onRowsChange
   const setRows = React.useCallback(
@@ -101,7 +149,7 @@ const keyLS = `prod.v${VIEWS_VERSION}.visible.${viewKey}.${tableKey}`;
 
         // ✅ Recompute ciblé pour cette ligne (prend en compte __cellFormulas)
         try {
-          next = recomputeRow(next, schema);
+          next = recomputeRow(next, schema, formulaCtx);
         } catch {
           /* silencieux */
         }
@@ -109,7 +157,7 @@ const keyLS = `prod.v${VIEWS_VERSION}.visible.${viewKey}.${tableKey}`;
       })
     );
   },
-  [enableCellFormulas, schema, setRows]
+  [enableCellFormulas, schema, setRows, formulaCtx]
 );
 
 // -- COPIE / COLLAGE natifs (fonctionnent même si le wrapper n'a pas le focus parfait)
@@ -258,17 +306,15 @@ const resetCellFormula = React.useCallback(
 
         // recalc formules de la ligne si tu as computeFormulas
         try {
-  return recomputeRow(next, schema);
-} catch {
-  return next;
-}
+          return recomputeRow(next, schema, formulaCtx);
+        } catch {
+          return next;
+        }
       })
     );
   },
-  [setRows, schema]
+  [setRows, schema, formulaCtx]
 );
-
-const MIN_COLS = ["sel", "detail"]; // colonnes protégées
 
 // Helper : savoir si une colonne est de type "formula"
 const isFormulaKey = (schema, key) => {
@@ -280,17 +326,28 @@ const keyCollapsed = `prod.group.collapsed.${viewKey}.${tableKey}`;
 const [collapsed, setCollapsed] = useLocalStorage(keyCollapsed, {}); 
 const toggleGroup = (gv)=> setCollapsed(s=> ({ ...s, [String(gv)]: !s[String(gv)] }));
 
-// Défaut issu de DEFAULT_VIEWS si présent, sinon tout le schéma
-const defaultFromViews = Array.isArray(DEFAULT_VIEWS?.[viewKey]?.[tableKey])
-  ? Array.from(new Set([...MIN_COLS, ...DEFAULT_VIEWS[viewKey][tableKey]]))
-  : schema.map((c) => c.key);
 
-const [visibleCols, setVisibleCols] = useLocalStorage(keyLS, defaultFromViews);
+// --- Auto-réparation: si rien de visible (ou clés obsolètes), on remet un défaut sain
+React.useEffect(() => {
+  const allKeys = (schema || []).map(c => c.key);
+  setVisibleCols((arr) => {
+    const cur = Array.isArray(arr) ? arr : [];
+    // ne garder que les clés encore présentes dans le schéma
+    const valid = cur.filter(k => allKeys.includes(k));
 
-// Sécurise : si jamais des colonnes protégées manquent, on les réimpose
-useEffect(() => {
-  setVisibleCols((arr) => Array.from(new Set([...(arr || []), ...MIN_COLS])));
-}, [setVisibleCols]);
+    // si plus rien de visible → réinitialise avec le défaut de la vue (protège MIN_COLS)
+    if (valid.length === 0) {
+      const reset = Array.from(new Set([
+        ...MIN_COLS,
+        ...(defaultFromViews || []).filter(k => allKeys.includes(k)),
+      ]));
+      return reset.length ? reset : allKeys; // dernier filet de sécurité
+    }
+
+    // sinon, s'assurer que MIN_COLS sont présents + unicité
+    return Array.from(new Set([...valid, ...MIN_COLS]));
+  });
+}, [schema, defaultFromViews, setVisibleCols]);
 
 // Persistance par vue/tableau
   const keyOrder   = `prod.order.${viewKey}.${tableKey}`;
@@ -356,10 +413,16 @@ const computeAggValue = (col, rows, mode) => {
   return "—";
 };
 
-  // Réimpose toujours les colonnes protégées
-  useEffect(() => {
-    setVisibleCols((arr) => Array.from(new Set([...(arr || []), ...MIN_COLS])));
-  }, [setVisibleCols]);
+  // Réimpose les colonnes protégées UNE FOIS si absentes
+useEffect(() => {
+  setVisibleCols((arr) => {
+    const cur = Array.isArray(arr) ? arr : [];
+    const need = MIN_COLS.some(k => !cur.includes(k));
+    return need ? Array.from(new Set([...cur, ...MIN_COLS])) : arr;
+  });
+  // on ne dépend pas de visibleCols ici pour éviter les boucles
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, []);
 
 // Colonne de tri initiale = 1ère colonne visible non protégée (on le garde pour info, mais on ne l’applique pas)
 const firstSortable = useMemo(
@@ -390,27 +453,99 @@ const [navOrder, setNavOrder] = useState(null); // null | string[] (liste d'IDs)
 const isCellEditing = (rowId, colKey) =>
   editing?.rowId === rowId && editing?.colKey === colKey;
 
-const startEdit = (rowIndex, rowId, colKey) => {
-  setSelectedCell({ rowIndex, colKey });    // on garde la sélection
-  setEditing({ rowId, colKey });            // on entre en édition
-  setNavOrder(filtered.map(r => r.id));     // ← fige l'ordre courant des lignes visibles
-  requestAnimationFrame(() => {
-    focusCell(rowIndex, colKey, { edit: true });
-  });
-};
+const esc = React.useCallback(
+  (str) => String(str).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+  []
+);
 
-const stopEdit = () => {
-  setEditing(null);
-  setNavOrder(null); // ← enlève l'ordre figé
-};
+  const parseFxRefs = React.useCallback(
+    (expr, row) => {
+        if (!expr) return [];
+        const s = String(expr).trim().replace(/^=/, "");
+        const keys = Object.keys(row || {}).filter((k) => k !== "__cellFormulas");
+        const seen = new Set();
+        const refs = [];
+        for (const k of keys) {
+          const rx = new RegExp(`\\b${esc(k)}\\b`, "g");
+          if (rx.test(s) && !seen.has(k)) {
+            seen.add(k);
+            refs.push({ key: k });
+          }
+        }
+        return refs;
+      },
+    [esc]
+  );
 
-
-  const [showCols, setShowCols] = useState(false);
+const [showCols, setShowCols] = useState(false);
   const [editColKey, setEditColKey] = useState(null);
   const [detailRow, setDetailRow] = useState(null);
   const wrapRef = useRef(null);
   const [menu, setMenu] = useState(null); // { key, x, y }
   const [showFilters, setShowFilters] = useState(false);
+
+  // ==== Mode édition de formule "Google Sheets" ====
+  const FX_COLORS = React.useMemo(() => [
+    { stroke: "#1a73e8", fill: "rgba(26,115,232,.18)" },
+    { stroke: "#ea4335", fill: "rgba(234,67,53,.18)" },
+    { stroke: "#34a853", fill: "rgba(52,168,83,.18)" },
+    { stroke: "#fbbc05", fill: "rgba(251,188,5,.22)" },
+    { stroke: "#a142f4", fill: "rgba(161,66,244,.20)" },
+  ], []);
+  const [fxSession, setFxSession] = useState({
+    active: false,
+    rowIndex: null,
+    rowId: null,
+    colKey: null,
+    refs: [],
+  });
+  const [fxForceDraft, setFxForceDraft] = useState(null);
+  const [fxPendingToken, setFxPendingToken] = useState(null);
+
+  const ensureRefColorIndex = React.useCallback((key) => {
+    const idx = fxSession.refs.findIndex((r) => r.key === key);
+    if (idx >= 0) return idx;
+    const newIdx = fxSession.refs.length % FX_COLORS.length;
+    setFxSession((s) => ({
+      ...s,
+      refs: [...s.refs, { key, colorIndex: newIdx }],
+    }));
+    return newIdx;
+  }, [fxSession.refs, FX_COLORS]);
+
+  const isFxHighlighted = React.useCallback((rowIndex, colKey) => {
+    if (!fxSession.active) return false;
+    if (rowIndex !== fxSession.rowIndex) return false;
+    return fxSession.refs.some((r) => r.key === colKey);
+  }, [fxSession]);
+
+  const refColorOf = React.useCallback((key) => {
+  const r = fxSession.refs.find((x) => x.key === key);
+  return r ? FX_COLORS[r.colorIndex] : null;
+  }, [fxSession.refs, FX_COLORS]);
+
+
+  const clearFxSession = React.useCallback(() => {
+    setFxSession({ active: false, rowIndex: null, rowId: null, colKey: null, refs: [] });
+    setFxForceDraft(null);
+    setFxPendingToken(null);
+  }, []);
+
+  const startEdit = (rowIndex, rowId, colKey) => {
+    clearFxSession();
+    setSelectedCell({ rowIndex, colKey });    // on garde la sélection
+    setEditing({ rowId, colKey });            // on entre en édition
+    setNavOrder(filtered.map(r => r.id));     // ← fige l'ordre courant des lignes visibles
+    requestAnimationFrame(() => {
+      focusCell(rowIndex, colKey, { edit: true });
+    });
+  };
+
+  const stopEdit = () => {
+    setEditing(null);
+    setNavOrder(null); // ← enlève l'ordre figé
+    clearFxSession();
+  };
   const tdRefMap = useRef(new Map());
 const setTdRef = (rowIndex, colKey, el) => {
   const k = `${rowIndex}::${colKey}`;
@@ -525,8 +660,45 @@ const isSelectableColumn = (c) => (
       return ia - ib;
     });
 
-    return [...head, ...tailSorted];
+    const combined = [...head, ...tailSorted];
+
+    if (combined.length === 0) {
+      // Fallback immédiat : si toutes les colonnes visibles ont disparu,
+      // on renvoie tout le schéma (hors colonnes protégées inexistantes).
+      return schema.filter((c) => !MIN_COLS.includes(c.key));
+    }
+
+    return combined;
   }, [schema, visibleCols, colsByKey, order]);
+
+// Si la projection produit 0 colonne, réinitialise la visibilité sur tout le schéma (avec MIN_COLS)
+useEffect(() => {
+  if ((cols?.length || 0) === 0 && Array.isArray(schema) && schema.length > 0) {
+    const ALL = Array.from(new Set([...MIN_COLS, ...schema.map(c => c.key)]));
+    setVisibleCols(ALL);
+  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [cols?.length, schema?.length]);
+
+
+  // Si plus aucune colonne n'est réellement visible (par ex. préférences locales corrompues),
+  // on réinitialise sur une sélection sûre basée sur le schéma courant.
+  useEffect(() => {
+    if (!schema?.length) return;
+    const schemaKeys = schema.map((c) => c.key);
+    const intersection = (visibleCols || []).filter((key) => schemaKeys.includes(key));
+    if (intersection.length > 0) return;
+
+    const defaults = DEFAULT_VIEWS?.[viewKey]?.[tableKey];
+    const base = Array.isArray(defaults) && defaults.length ? defaults : schemaKeys;
+    const next = Array.from(new Set([...base, ...MIN_COLS])).filter((key) =>
+      schemaKeys.includes(key)
+    );
+
+    if (next.length) {
+      setVisibleCols(next);
+    }
+  }, [visibleCols, schema, tableKey, viewKey, setVisibleCols]);
 
   const colIndexByKey = useMemo(
   () => new Map(cols.map((c, i) => [c.key, i])),
@@ -692,7 +864,8 @@ const toggleSelectAllVisible = (checked) => {
   const ids = new Set(filtered.map(r => r.id));
   const next = computeFormulas(
     rows.map(r => ids.has(r.id) ? { ...r, sel: checked } : r),
-    schema
+    schema,
+    formulaCtx
   );
   onRowsChange(next);
 };
@@ -853,7 +1026,8 @@ const bulkSet = (colKey, ids, value) => {
   const idset = new Set(ids);
   const next = computeFormulas(
     rows.map(r => (idset.has(r.id) ? { ...r, [colKey]: value } : r)),
-    schema
+    schema,
+    formulaCtx
   );
   onRowsChange(next);
 };
@@ -881,7 +1055,8 @@ const setManyCells = (updates) => {
   }
   const next = computeFormulas(
     rows.map(r => byId.has(r.id) ? { ...r, ...byId.get(r.id) } : r),
-    schema
+    schema,
+    formulaCtx
   );
   onRowsChange(next);
 };
@@ -947,6 +1122,23 @@ const handleKeyDown = async (e) => {
   // on laisse InputCell gérer Enter/Blur/Commit.
   return;
 }
+
+  // "=" pour démarrer l'édition de formule (cellule de type "formula")
+  if (!inField && e.key === "=" && selectedCell) {
+    const { rowIndex, colKey } = selectedCell;
+    const col = colsByKey[colKey];
+    if (col?.type === "formula") {
+      e.preventDefault();
+      const rowId = filtered[rowIndex]?.id;
+      if (!rowId) return;
+      startEdit(rowIndex, rowId, colKey);
+      setFxForceDraft("=");
+      setFxSession({ active: true, rowIndex, rowId, colKey, refs: [] });
+      setFxPendingToken(null);
+      requestAnimationFrame(() => focusCell(rowIndex, colKey, { edit: true }));
+      return;
+    }
+  }
 
   // 1) Copie/Collage — uniquement hors champ
   if (!inField && (e.metaKey || e.ctrlKey)) {
@@ -1038,7 +1230,22 @@ const handleKeyDown = async (e) => {
           el.setSelectionRange?.(el.value.length, el.value.length);
         }
       });
-    }
+  }
+  return;
+}
+
+
+  // Enter : laisser l'InputCell committer puis on stoppera la session via onFxStop
+  if (fxSession.active && e.key === "Enter") {
+    e.preventDefault();
+    return;
+  }
+
+  // Escape : annule la session
+  if (fxSession.active && e.key === "Escape") {
+    e.preventDefault();
+    clearFxSession();
+    stopEdit();
     return;
   }
 
@@ -1179,6 +1386,25 @@ const handleClickCell = (e, rowIndex, colKey) => {
   const tag = t.tagName?.toLowerCase();
   if (tag === "input" || tag === "select" || tag === "textarea" || t.isContentEditable) return;
 
+  // En mode formule, un clic sur une cellule de la même ligne insère la ref
+  if (fxSession.active) {
+    const rowId = filtered[rowIndex]?.id;
+    if (rowId != null && rowIndex === fxSession.rowIndex) {
+      const k = colKey;
+      const targetCol = colsByKey[k];
+      if (isSelectableColumn(targetCol)) {
+        ensureRefColorIndex(k);
+        const ci = colIndexByKey.get(k) ?? 0;
+        setSelectedCell({ rowIndex, colKey: k });
+        setActiveCell({ rowIndex, colKey: k });
+        setSelAnchor({ rowIndex, colKey: k });
+        setSelBox({ rowStart: rowIndex, rowEnd: rowIndex, colStart: ci, colEnd: ci });
+        setFxPendingToken(k);
+        return;
+      }
+    }
+  }
+
   const col = colsByKey[colKey];
   if (!isSelectableColumn(col)) return;
 
@@ -1207,7 +1433,6 @@ const handleDoubleClickCell = (e, rowIndex, colKey) => {
   const t = e.target;
   const tag = t.tagName?.toLowerCase();
 
-  // Si on double-clique déjà DANS un champ, laisse le browser gérer
   if (tag === "input" || tag === "select" || tag === "textarea" || t.isContentEditable) {
     return;
   }
@@ -1215,25 +1440,44 @@ const handleDoubleClickCell = (e, rowIndex, colKey) => {
   const col = colsByKey[colKey];
   if (!isSelectableColumn(col)) return;
 
-  // Sélection visuelle
   const ci = colIndexByKey.get(colKey);
   if (ci == null) return;
   setActiveCell({ rowIndex, colKey });
   setSelAnchor({ rowIndex, colKey });
   setSelBox({ rowStart: rowIndex, rowEnd: rowIndex, colStart: ci, colEnd: ci });
 
-  // ⬅️ IMPORTANT : on passe en mode édition
   const rowId = filtered[rowIndex]?.id;
   if (!rowId) return;
-  setEditing({ rowId, colKey });
+  startEdit(rowIndex, rowId, colKey);
 
-  // Laisse React rendre l’input, puis focus dedans
+  if (col.type === "formula") {
+    const r = filtered[rowIndex];
+    const expr =
+      (r?.__cellFormulas?.[colKey] ? `=${r.__cellFormulas[colKey]}`
+       : col.formula ? `=${col.formula}`
+       : "");
+    const refs = parseFxRefs(expr, r).map((ref, i) => ({
+      key: ref.key,
+      colorIndex: i % FX_COLORS.length,
+    }));
+    setFxSession({
+      active: true,
+      rowIndex,
+      rowId,
+      colKey,
+      refs,
+    });
+    setFxForceDraft(expr || "=");   // ← force l’InputCell à afficher la formule (=…)
+    setFxPendingToken(null);
+  }
+
   requestAnimationFrame(() => {
     focusCell(rowIndex, colKey, { edit: true });
   });
 
   e.preventDefault();
 };
+
 
   const update = (id, key, value) => {
   // 1) journalisation (si présent chez toi)
@@ -1258,7 +1502,7 @@ const handleDoubleClickCell = (e, rowIndex, colKey) => {
 
   // 4) recalcul des formules
   const computed = typeof computeFormulas === "function"
-    ? computeFormulas(changed, schema)
+    ? computeFormulas(changed, schema, formulaCtx)
     : changed;
 
   // 5) préserve les valeurs manuelles après le calcul
@@ -1446,6 +1690,27 @@ const HeaderMenu = ({ anchor }) => {
           {col.label}
         </div>
 
+        <div style={{ 
+  padding: "6px 10px", 
+  borderBottom: `1px solid ${COLORS.border}`, 
+  fontSize: 12, 
+  display: "flex", 
+  alignItems: "center", 
+  gap: 8 
+}}>
+  <span style={{ opacity: .7 }}>Clé pour formules :</span>
+  <code style={{ background: "#f3f4f6", padding: "2px 6px", borderRadius: 6 }}>
+    {col.key}
+  </code>
+  <button
+    style={S.smallBtn}
+    onClick={async () => { try { await navigator.clipboard.writeText(col.key); } catch {} }}
+    title="Copier la clé (à utiliser dans les formules)"
+  >
+    Copier
+  </button>
+</div>
+
         <div style={{ padding: 6, display: "grid", gap: 4 }}>
           <button style={S.smallBtn} onClick={() => { setEditColKey(k); closeMenu(); }}>
             ✏️ Modifier le champ
@@ -1576,7 +1841,8 @@ const removeField = (key) => {
     // valeurs copiées
     const nextRows = computeFormulas(
       rows.map(r => ({ ...r, [k]: r[key] })),
-      schema
+      schema,
+      formulaCtx
     );
     onRowsChange(nextRows);
 
@@ -1625,7 +1891,7 @@ const insertField = (key, side = "right") => {
   });
 
   // rows inchangées (valeurs vides)
-  onRowsChange(computeFormulas(rows, schema));
+  onRowsChange(computeFormulas(rows, schema, formulaCtx));
   closeMenu();
 };
 
@@ -1651,6 +1917,44 @@ const insertField = (key, side = "right") => {
 
   // Masquer via action dédiée
   const hideThisField = (key) => hideField(key);
+
+  if (!cols || cols.length === 0) {
+    return (
+      <div
+        style={{
+          border: `1px solid ${COLORS.border}`,
+          borderRadius: 12,
+          background: "#fff",
+          padding: 12,
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: 8,
+          }}
+        >
+          <strong>{title || "Tableau"}</strong>
+          <button
+            style={S.smallBtn}
+            onClick={() => {
+              try {
+                const allKeys = normalizeVisibleCols(schema, schema?.map?.((c) => c.key) || []);
+                setVisibleCols(allKeys);
+              } catch {
+                /* ignore */
+              }
+            }}
+          >
+            Réinitialiser les colonnes
+          </button>
+        </div>
+        <div style={{ opacity: 0.7 }}>Aucune colonne visible pour cette vue.</div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ ...S.tableBlock }}>
@@ -1791,7 +2095,7 @@ const insertField = (key, side = "right") => {
     </div>
   )}
 
-  <table style={{ ...S.table, ...S.tableCompact, minWidth: totalMinWidth }}>
+  <table style={{ ...S.table, ...(TABLE_DENSITY.compact?.table || {}), minWidth: totalMinWidth }}>
     <thead>
   <tr>
     {cols.map((c, i) => {
@@ -1894,44 +2198,54 @@ const insertField = (key, side = "right") => {
           <tbody>
   {!groupBy?.key ? (
     /* ========= Rendu PLAT ========= */
-    filtered.map((r, idx) => (
-      <tr key={r.id} style={idx % 2 ? S.trAlt : undefined}>
-        {cols.map((c) => (
-          <td
-            key={c.key}
-            ref={(el) => setTdRef(idx, c.key, el)}
-            tabIndex={-1}
-            data-row={idx}
-            data-col={c.key}
-            onMouseDown={(e) => handleMouseDown(e, idx, c.key)}
-            onMouseOver={(e) => handleMouseOver(e, idx, c.key)}
-            onClick={(e) => handleClickCell(e, idx, c.key)}
-            onDoubleClick={(e) => {
-  e.preventDefault();
-  e.stopPropagation();
-  const rowId = filtered[idx]?.id;
-  if (!rowId) return;
-  startEdit(idx, rowId, c.key); // ⬅️ on force l’édition
-}}
-            style={{
-              ...S.td,
-              ...(isSticky(c.key)
-  ? {
-      position: "sticky",
-      left: leftOffsets[c.key],
-      zIndex: 3,
-      background: "#fff",
-    }
-  : {}),
-              ...(isSelected(idx, c.key)
-  ? {
-      outline: debugKeys ? "2px solid #10b981" : "2px solid #2563eb",
-      outlineOffset: -2,
-      boxShadow: `inset 0 0 0 1px ${debugKeys ? "#10b98133" : "#2563eb22"}`,
-    }
-  : {}),
-            }}
-          >
+    filtered.map((r, rowIndex) => (
+      <tr key={r.id} style={rowIndex % 2 ? S.trAlt : undefined}>
+        {cols.map((c) => {
+          const isHL = isFxHighlighted(rowIndex, c.key);
+          const colr = isHL ? refColorOf(c.key) : null;
+          const stickyStyles = isSticky(c.key)
+            ? {
+                position: "sticky",
+                left: leftOffsets[c.key],
+                zIndex: 3,
+                background: "#fff",
+              }
+            : {};
+          const isCellSelected = isSelected(rowIndex, c.key);
+          const selectionShadow = isCellSelected
+            ? `inset 0 0 0 1px ${debugKeys ? "#10b98133" : "#2563eb22"}`
+            : undefined;
+          const highlightShadow = isHL && colr ? `inset 0 0 0 2px ${colr.stroke}` : undefined;
+          const boxShadow = [selectionShadow, highlightShadow].filter(Boolean).join(", ") || undefined;
+
+          return (
+            <td
+              key={c.key}
+              ref={(el) => setTdRef(rowIndex, c.key, el)}
+              tabIndex={-1}
+              data-row={rowIndex}
+              data-col={c.key}
+              style={{
+                ...(S.td || {}),
+                ...stickyStyles,
+                ...(isCellSelected
+                  ? {
+                      outline: debugKeys ? "2px solid #10b981" : "2px solid #2563eb",
+                      outlineOffset: -2,
+                    }
+                  : {}),
+                padding: 8,
+                borderBottom: "1px solid " + COLORS.border,
+                position: "relative",
+                // surlignage quand la cellule est référencée par la formule en cours
+                boxShadow,
+                background: isHL && colr ? colr.fill || undefined : undefined,
+              }}
+              onMouseDown={(e) => handleMouseDown(e, rowIndex, c.key)}
+              onMouseOver={(e) => handleMouseOver(e, rowIndex, c.key)}
+              onDoubleClick={(e) => handleDoubleClickCell(e, rowIndex, c.key)}
+              onClick={(e) => handleClickCell(e, rowIndex, c.key)}
+            >
             {c.key === "detail" ? (
               <button style={S.smallBtn} onClick={() => setDetailRow(r)}>
                 Ouvrir <ChevronRight size={14} />
@@ -1945,56 +2259,60 @@ const insertField = (key, side = "right") => {
                 onMouseDown={(e) => e.stopPropagation()}
               />
             ) : (
-              <div style={{ position: "relative" }}>
-  <InputCell
-    row={r}
-    col={c}
-    isEditing={isCellEditing(r.id, c.key)}
-    onStartEdit={() => startEdit(idx, r.id, c.key)}
-    onEndEdit={() => stopEdit()}
-    onChange={(k, v) => handleCellChange(r.id, k, v)}
-    onOpenLightbox={(images, startIndex = 0) => {
-      if (!Array.isArray(images) || images.length === 0) return;
-      setLightbox({ images, index: startIndex });
-    }}
-    onEnter={(shift) => {
-      stopEdit();
-      handleFieldEnter(r.id, c.key, { shift });
-    }}
-  />
+              <>
+                <InputCell
+                  row={r}
+                  col={c}
+                  isEditing={isCellEditing(r.id, c.key)}
+                  onStartEdit={() => startEdit(rowIndex, r.id, c.key)}
+                  onEndEdit={stopEdit}
+                  onChange={(key, value) => handleCellChange(r.id, key, value)}
+                  onOpenLightbox={(imgs, idx) => setLightbox({ images: imgs, index: idx })}
+                  onEnter={(shift) => handleFieldEnter(r.id, c.key, { shift })}
+                  liveRecalc={false}
+                  formulaCtx={formulaCtx}
+                  fxSessionActive={
+                    fxSession.active && fxSession.rowId === r.id && fxSession.colKey === c.key
+                  }
+                  fxForceDraft={fxForceDraft}
+                  fxPendingToken={fxPendingToken}
+                  onFxConsumeToken={() => setFxPendingToken(null)}
+                  onFxStop={clearFxSession}
+                />
 
-  {/* Reset cell formula button */}
-  {enableCellFormulas &&
-    isCellOverridden(r, c.key) &&
-    !isCellEditing(r.id, c.key) && (
-      <button
-        type="button"
-        title="Réinitialiser la cellule (retirer la formule personnalisée)"
-        onClick={(e) => {
-          e.stopPropagation();
-          resetCellFormula(r.id, c.key);
-        }}
-        style={{
-          position: "absolute",
-          top: 2,
-          right: 2,
-          border: "1px solid #e5e7eb",
-          background: "#fff",
-          borderRadius: 6,
-          fontSize: 12,
-          lineHeight: 1,
-          padding: "2px 6px",
-          cursor: "pointer",
-          opacity: 0.85
-        }}
-      >
-        ⟲
-      </button>
-    )}
-</div>
+                {/* Reset cell formula button */}
+                {enableCellFormulas &&
+                  isCellOverridden(r, c.key) &&
+                  !isCellEditing(r.id, c.key) && (
+                    <button
+                      type="button"
+                      title="Réinitialiser la cellule (retirer la formule personnalisée)"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        resetCellFormula(r.id, c.key);
+                      }}
+                      style={{
+                        position: "absolute",
+                        top: 2,
+                        right: 2,
+                        border: "1px solid #e5e7eb",
+                        background: "#fff",
+                        borderRadius: 6,
+                        fontSize: 12,
+                        lineHeight: 1,
+                        padding: "2px 6px",
+                        cursor: "pointer",
+                        opacity: 0.85,
+                      }}
+                    >
+                      ⟲
+                    </button>
+                  )}
+              </>
             )}
           </td>
-        ))}
+          );
+        })}
       </tr>
     ))
   ) : (
@@ -2023,7 +2341,10 @@ const insertField = (key, side = "right") => {
               const absIdx = rowIndexById.get(r.id) ?? 0;
               return (
                 <tr key={r.id}>
-                  {cols.map((c) => (
+                  {cols.map((c) => {
+                    const fxRef = fxSession.refs.find((ref) => ref.key === c.key);
+                    const fxColor = fxRef ? FX_COLORS[fxRef.colorIndex % FX_COLORS.length] : null;
+                    return (
                     <td
                       key={c.key}
                       data-row={absIdx}
@@ -2055,6 +2376,12 @@ const insertField = (key, side = "right") => {
       boxShadow: `inset 0 0 0 1px ${debugKeys ? "#10b98133" : "#2563eb22"}`,
     }
   : {}),
+                        ...(isFxHighlighted(absIdx, c.key) && fxColor
+                          ? {
+                              boxShadow: `inset 0 0 0 2px ${fxColor.stroke}55`,
+                              background: fxColor.fill,
+                            }
+                          : {}),
                       }}
                     >
                       {c.key === "detail" ? (
@@ -2071,55 +2398,75 @@ const insertField = (key, side = "right") => {
                         />
                       ) : (
                         <div style={{ position: "relative" }}>
-  <InputCell
-    row={r}
-    col={c}
-    isEditing={isCellEditing(r.id, c.key)}
-    onStartEdit={() => startEdit(absIdx, r.id, c.key)}
-    onEndEdit={() => stopEdit()}
-    onChange={(k, v) => handleCellChange(r.id, k, v)}
-    onOpenLightbox={(images, startIndex = 0) => {
-      if (!Array.isArray(images) || images.length === 0) return;
-      setLightbox({ images, index: startIndex });
-    }}
-    onEnter={(shift) => {
-      stopEdit();
-      handleFieldEnter(r.id, c.key, { shift });
-    }}
-  />
+                          <InputCell
+                            row={r}
+                            col={c}
+                            isEditing={isCellEditing(r.id, c.key)}
+                            onStartEdit={() => startEdit(absIdx, r.id, c.key)}
+                            onEndEdit={() => stopEdit()}
+                            onChange={(k, v) => handleCellChange(r.id, k, v)}
+                            liveRecalc={true}   // ⬅️ active le recalcul pendant saisie (debounced)
+                            formulaCtx={formulaCtx}
+                            fxSessionActive={
+                              fxSession.active &&
+                              fxSession.rowId === r.id &&
+                              fxSession.colKey === c.key
+                            }
+                            fxForceDraft={
+                              fxSession.active && fxSession.rowId === r.id && fxSession.colKey === c.key
+                                ? fxForceDraft
+                                : null
+                            }
+                            fxPendingToken={
+                              fxSession.active && fxSession.rowId === r.id && fxSession.colKey === c.key
+                                ? fxPendingToken
+                                : null
+                            }
+                            onFxConsumeToken={() => setFxPendingToken(null)}
+                            onFxStop={clearFxSession}
+                            onOpenLightbox={(images, startIndex = 0) => {
+                              if (!Array.isArray(images) || images.length === 0) return;
+                              setLightbox({ images, index: startIndex });
+                            }}
+                            onEnter={(shift) => {
+                              stopEdit();
+                              handleFieldEnter(r.id, c.key, { shift });
+                            }}
+                          />
 
-  {/* Reset cell formula button */}
-  {enableCellFormulas &&
-    isCellOverridden(r, c.key) &&
-    !isCellEditing(r.id, c.key) && (
-      <button
-        type="button"
-        title="Réinitialiser la cellule (retirer la formule personnalisée)"
-        onClick={(e) => {
-          e.stopPropagation();
-          resetCellFormula(r.id, c.key);
-        }}
-        style={{
-          position: "absolute",
-          top: 2,
-          right: 2,
-          border: "1px solid #e5e7eb",
-          background: "#fff",
-          borderRadius: 6,
-          fontSize: 12,
-          lineHeight: 1,
-          padding: "2px 6px",
-          cursor: "pointer",
-          opacity: 0.85
-        }}
-      >
-        ⟲
-      </button>
-    )}
-</div>
+                          {/* Reset cell formula button */}
+                          {enableCellFormulas &&
+                            isCellOverridden(r, c.key) &&
+                            !isCellEditing(r.id, c.key) && (
+                              <button
+                                type="button"
+                                title="Réinitialiser la cellule (retirer la formule personnalisée)"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  resetCellFormula(r.id, c.key);
+                                }}
+                                style={{
+                                  position: "absolute",
+                                  top: 2,
+                                  right: 2,
+                                  border: "1px solid #e5e7eb",
+                                  background: "#fff",
+                                  borderRadius: 6,
+                                  fontSize: 12,
+                                  lineHeight: 1,
+                                  padding: "2px 6px",
+                                  cursor: "pointer",
+                                  opacity: 0.85,
+                                }}
+                              >
+                                ⟲
+                              </button>
+                            )}
+                        </div>
                       )}
                     </td>
-                  ))}
+                    );
+                  })}
                 </tr>
               );
             })}
@@ -2192,7 +2539,8 @@ const insertField = (key, side = "right") => {
           onSave={(val) => {
             const next = computeFormulas(
               rows.map((r) => (r.id === val.id ? val : r)),
-              schema
+              schema,
+              formulaCtx
             );
             onRowsChange(next);
           }}

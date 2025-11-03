@@ -1,20 +1,26 @@
-// src/screens/ChiffrageScreen.jsx
 import React from "react";
 
 import MinuteEditor from "../components/MinuteEditor";
+import MinutePurchases from "../components/MinutePurchases";
+import DataTable from "../components/DataTable";
+import Moulinette from "../components/Moulinette";
+
 import { COLORS, S } from "../lib/constants/ui";
 import { CHIFFRAGE_SCHEMA } from "../lib/schemas/chiffrage";
-import { computeFormulas, preserveManualAfterCompute } from "../lib/formulas/compute";
 import { CHIFFRAGE_SCHEMA_DEP } from "../lib/schemas/deplacement";
-import { uid } from "../lib/utils/uid";
-import DataTable from "../components/DataTable";
+import { EXTRA_DEPENSES_SCHEMA } from "../lib/schemas/extraDepenses";
 
-// 🔐 AJOUTS
+import { computeFormulas, preserveManualAfterCompute } from "../lib/formulas/compute";
+import { uid } from "../lib/utils/uid";
+
+// 🔐 droits
 import { useAuth } from "../auth";
 import { can } from "../lib/authz";
 
 function ChiffrageScreen({ minuteId, minutes, setMinutes, onBack }) {
-  // 🔐 droits
+  // ──────────────────────────────────────────────────────────────
+  // Droits
+  // ──────────────────────────────────────────────────────────────
   const { currentUser } = useAuth();
   const canView = can(currentUser, "chiffrage.view");
   const canEdit = can(currentUser, "chiffrage.edit");
@@ -25,46 +31,57 @@ function ChiffrageScreen({ minuteId, minutes, setMinutes, onBack }) {
         <div style={{ marginBottom: 12 }}>
           <button style={S.smallBtn} onClick={onBack}>← Retour</button>
         </div>
-        <div
-          style={{
-            padding: 24,
-            border: `1px solid ${COLORS.border}`,
-            borderRadius: 12,
-            background: "#fff",
-          }}
-        >
+        <div style={{ padding: 24, border: `1px solid ${COLORS.border}`, borderRadius: 12, background: "#fff" }}>
           Accès refusé.
         </div>
       </div>
     );
   }
 
+  // ──────────────────────────────────────────────────────────────
+  // Données minute
+  // ──────────────────────────────────────────────────────────────
   const minute = React.useMemo(
     () => (minutes || []).find((m) => m.id === minuteId),
     [minutes, minuteId]
   );
 
-  const [schema] = React.useState(CHIFFRAGE_SCHEMA);
+  const [schema, setSchema] = React.useState(CHIFFRAGE_SCHEMA);
+
+  const paramsMap = React.useMemo(() => {
+    const out = {};
+    (minute?.params || []).forEach((p) => {
+      if (p?.name) out[p.name] = p?.value;
+    });
+    return out;
+  }, [minute?.params]);
+
+  const formulaCtx = React.useMemo(() => ({ paramsMap }), [paramsMap]);
+
   const [rows, setRows] = React.useState(() =>
-    computeFormulas(minute?.lines || [], CHIFFRAGE_SCHEMA)
+    computeFormulas(minute?.lines || [], schema, formulaCtx)
   );
 
   const [depRows, setDepRows] = React.useState(
-    computeFormulas(minute?.deplacements || [], CHIFFRAGE_SCHEMA_DEP)
+    computeFormulas(minute?.deplacements || [], CHIFFRAGE_SCHEMA_DEP, formulaCtx)
   );
 
   React.useEffect(() => {
-    const computedMain = computeFormulas(minute?.lines || [], CHIFFRAGE_SCHEMA);
+    const computedMain = computeFormulas(minute?.lines || [], schema, formulaCtx);
     setRows((prev) => preserveManualAfterCompute(computedMain, prev || []));
 
-    const computedDep = computeFormulas(minute?.deplacements || [], CHIFFRAGE_SCHEMA_DEP);
+    const computedDep = computeFormulas(minute?.deplacements || [], CHIFFRAGE_SCHEMA_DEP, formulaCtx);
     setDepRows(computedDep);
-  }, [minute?.id, minute?.lines, minute?.deplacements]);
+  }, [minute?.id, minute?.lines, minute?.deplacements, schema, formulaCtx]);
 
   const mods = minute?.modules || { rideau: true, store: true, decor: true };
 
+
+  // ──────────────────────────────────────────────────────────────
+  // Persistance minute
+  // ──────────────────────────────────────────────────────────────
   const updateMinute = (patch) => {
-    if (!canEdit) return; // lecture seule éventuelle
+    if (!canEdit) return;
     setMinutes((all) =>
       (all || []).map((m) =>
         m.id === minuteId ? { ...m, ...patch, updatedAt: Date.now() } : m
@@ -72,13 +89,7 @@ function ChiffrageScreen({ minuteId, minutes, setMinutes, onBack }) {
     );
   };
 
-  const handleDepRowsChange = (nr) => {
-    if (!canEdit) return;
-    const next = Array.isArray(nr) ? nr : [];
-    setDepRows(next);
-    updateMinute({ deplacements: next });
-  };
-
+  // Lignes principales
   const handleRowsChange = (nr) => {
     if (!canEdit) return;
     const next = Array.isArray(nr) ? nr : [];
@@ -86,6 +97,74 @@ function ChiffrageScreen({ minuteId, minutes, setMinutes, onBack }) {
     updateMinute({ lines: next });
   };
 
+  // Déplacements
+  const handleDepRowsChange = (nr) => {
+    if (!canEdit) return;
+    const next = Array.isArray(nr) ? nr : [];
+    setDepRows(next);
+    updateMinute({ deplacements: next });
+  };
+
+  // ──────────────────────────────────────────────────────────────
+  // Autres dépenses
+  // ──────────────────────────────────────────────────────────────
+  const [extraRows, setExtraRows] = React.useState(() =>
+    Array.isArray(minute?.extraDepenses) ? minute.extraDepenses : []
+  );
+
+  React.useEffect(() => {
+    setExtraRows(Array.isArray(minute?.extraDepenses) ? minute.extraDepenses : []);
+  }, [minute?.id]);
+
+  const handleExtraRowsChange = (nr) => {
+    if (!canEdit) return;
+    const next = Array.isArray(nr) ? nr : [];
+    setExtraRows(next);
+    updateMinute({ extraDepenses: next });
+  };
+// ——— Helpers récap CA ———
+const toNum = React.useCallback((v) => {
+  const n = Number(String(v ?? "").replace(",", "."));
+  return Number.isFinite(n) ? n : 0;
+}, []);
+
+const nfEur0 = React.useMemo(
+  () => new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }),
+  []
+);
+
+// Regroupe les CA par grands blocs + totaux dépenses/dep
+const recap = React.useMemo(() => {
+  let caRideaux = 0, caDecors = 0, caStores = 0, caAutres = 0;
+
+  for (const r of rows || []) {
+    const prod = String(r?.produit || "").toLowerCase();
+    const total = toNum(r?.prix_total);
+    if (!total) continue;
+
+    if (prod.includes("store")) caStores += total;
+    else if (prod.includes("décor") || prod.includes("decor")) caDecors += total;
+    else if (prod.includes("rideau") || prod.includes("voilage")) caRideaux += total;
+    else caAutres += total;
+  }
+
+  const caTotal = caRideaux + caDecors + caStores + caAutres;
+
+  const extrasTotal = (extraRows || []).reduce((s, r) => s + toNum(r?.montant_eur), 0);
+  const depTotal    = (depRows   || []).reduce((s, r) => s + toNum(r?.total_eur), 0);
+
+  const offreTotale = caTotal + extrasTotal + depTotal;
+
+  return {
+    caRideaux, caDecors, caStores, caAutres, caTotal,
+    extrasTotal, depTotal, offreTotale,
+  };
+}, [rows, extraRows, depRows, toNum]);
+
+
+  // ──────────────────────────────────────────────────────────────
+  // Paramètres minute
+  // ──────────────────────────────────────────────────────────────
   const [showParams, setShowParams] = React.useState(false);
 
   const slugParamName = (raw) =>
@@ -132,6 +211,9 @@ function ChiffrageScreen({ minuteId, minutes, setMinutes, onBack }) {
   const setParamField = (id, key, value) => { if (canEdit) setParamDraft(d => (d || []).map(p => p.id === id ? { ...p, [key]: value } : p)); };
   const removeParam = (id) => { if (canEdit) setParamDraft(d => (d || []).filter(p => p.id !== id)); };
 
+  // ──────────────────────────────────────────────────────────────
+  // En-tête minute
+  // ──────────────────────────────────────────────────────────────
   const [name, setName]   = React.useState(minute?.name || "Minute sans nom");
   const [notes, setNotes] = React.useState(minute?.notes || "");
   React.useEffect(() => {
@@ -144,28 +226,30 @@ function ChiffrageScreen({ minuteId, minutes, setMinutes, onBack }) {
     updateMinute({ name: name || "Minute sans nom", notes });
   };
 
+  // ──────────────────────────────────────────────────────────────
+  // Onglets
+  // ──────────────────────────────────────────────────────────────
+  const [activeTab, setActiveTab] = React.useState("minutes");
+
   if (!minute) {
     return (
       <div style={S.contentWrap}>
         <div style={{ marginBottom: 12 }}>
           <button style={S.smallBtn} onClick={onBack}>← Retour</button>
         </div>
-        <div
-          style={{
-            padding: 24,
-            border: `1px solid ${COLORS.border}`,
-            borderRadius: 12,
-            background: "#fff",
-          }}
-        >
+        <div style={{ padding: 24, border: `1px solid ${COLORS.border}`, borderRadius: 12, background: "#fff" }}>
           Minute introuvable.
         </div>
       </div>
     );
   }
 
+  // ──────────────────────────────────────────────────────────────
+  // Rendu
+  // ──────────────────────────────────────────────────────────────
   return (
     <div style={S.contentWide}>
+      {/* Barre supérieure */}
       <div
         style={{
           display: "grid",
@@ -192,7 +276,9 @@ function ChiffrageScreen({ minuteId, minutes, setMinutes, onBack }) {
             }}
             disabled={!canEdit}
           />
-          <button style={S.smallBtn} onClick={saveHeader} disabled={!canEdit}>Enregistrer</button>
+          <button style={S.smallBtn} onClick={saveHeader} disabled={!canEdit}>
+            Enregistrer
+          </button>
         </div>
 
         <div style={{ display: "flex", gap: 8, justifySelf: "end", alignItems: "center" }}>
@@ -209,14 +295,15 @@ function ChiffrageScreen({ minuteId, minutes, setMinutes, onBack }) {
         </div>
       </div>
 
-      <div
-        style={{
-          marginBottom: 12,
-          display: "grid",
-          gridTemplateColumns: "1fr",
-          gap: 8,
-        }}
-      >
+      {/* Onglets */}
+      <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+        <button style={S.pill(activeTab === "minutes")} onClick={() => setActiveTab("minutes")}>Minutes</button>
+        <button style={S.pill(activeTab === "achats")} onClick={() => setActiveTab("achats")}>Liste Achats</button>
+        <button style={S.pill(activeTab === "moulinette")} onClick={() => setActiveTab("moulinette")}>Moulinette</button>
+      </div>
+
+      {/* Notes minute */}
+      <div style={{ marginBottom: 12 }}>
         <textarea
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
@@ -234,16 +321,9 @@ function ChiffrageScreen({ minuteId, minutes, setMinutes, onBack }) {
         />
       </div>
 
+      {/* Drawer paramètres */}
       {showParams && (
-        <div
-          style={{
-            marginBottom: 12,
-            border: `1px solid ${COLORS.border}`,
-            borderRadius: 12,
-            background: "#fff",
-            padding: 12,
-          }}
-        >
+        <div style={{ marginBottom: 12, border: `1px solid ${COLORS.border}`, borderRadius: 12, background: "#fff", padding: 12 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
             <b>Paramètres de la minute</b>
             <button style={S.smallBtn} onClick={addParam} disabled={!canEdit}>+ Ajouter un paramètre</button>
@@ -252,21 +332,14 @@ function ChiffrageScreen({ minuteId, minutes, setMinutes, onBack }) {
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
-                <tr style={{ textAlign: "left", color: "#374151" }}>
+                <tr>
                   <th style={{ padding: 8, borderBottom: `1px solid ${COLORS.border}` }}>Nom (clé)</th>
                   <th style={{ padding: 8, borderBottom: `1px solid ${COLORS.border}` }}>Type</th>
                   <th style={{ padding: 8, borderBottom: `1px solid ${COLORS.border}` }}>Valeur</th>
-                  <th style={{ padding: 8, borderBottom: `1px solid ${COLORS.border}` }} />
+                  <th />
                 </tr>
               </thead>
               <tbody>
-                {(paramDraft || []).length === 0 && (
-                  <tr>
-                    <td colSpan={4} style={{ padding: 10, color: "#6b7280" }}>
-                      Aucun paramètre. Cliquez sur <b>+ Ajouter un paramètre</b>.
-                    </td>
-                  </tr>
-                )}
                 {(paramDraft || []).map((p) => (
                   <tr key={p.id} style={{ borderBottom: `1px solid ${COLORS.border}` }}>
                     <td style={{ padding: 8, minWidth: 220 }}>
@@ -274,18 +347,14 @@ function ChiffrageScreen({ minuteId, minutes, setMinutes, onBack }) {
                         value={p.name || ""}
                         onChange={(e) => setParamField(p.id, "name", e.target.value)}
                         onBlur={(e) => setParamField(p.id, "name", slugParamName(e.target.value))}
-                        placeholder="ex: taux_horaire, coef_tissu_luxe…"
                         style={S.input}
                         disabled={!canEdit}
                       />
-                      <div style={{ fontSize: 11, color: "#6b7280", marginTop: 4 }}>
-                        Accents/espaces normalisés automatiquement.
-                      </div>
                     </td>
                     <td style={{ padding: 8, width: 140 }}>
                       <select
                         value={p.type || "prix"}
-                        onChange={(e) => setParamField(p.id, "type", e.target.value === "coef" ? "coef" : "prix")}
+                        onChange={(e) => setParamField(p.id, "type", e.target.value)}
                         style={{ ...S.input, height: 34 }}
                         disabled={!canEdit}
                       >
@@ -297,20 +366,12 @@ function ChiffrageScreen({ minuteId, minutes, setMinutes, onBack }) {
                       <input
                         value={p.value ?? ""}
                         onChange={(e) => setParamField(p.id, "value", e.target.value)}
-                        placeholder={p.type === "coef" ? "ex: 1,5" : "ex: 135"}
                         style={S.input}
                         disabled={!canEdit}
                       />
                     </td>
                     <td style={{ padding: 8, textAlign: "right" }}>
-                      <button
-                        style={{ ...S.smallBtn, color: "#b91c1c" }}
-                        onClick={() => removeParam(p.id)}
-                        title="Supprimer"
-                        disabled={!canEdit}
-                      >
-                        🗑️
-                      </button>
+                      <button style={{ ...S.smallBtn, color: "#b91c1c" }} onClick={() => removeParam(p.id)} disabled={!canEdit}>🗑️</button>
                     </td>
                   </tr>
                 ))}
@@ -320,23 +381,110 @@ function ChiffrageScreen({ minuteId, minutes, setMinutes, onBack }) {
         </div>
       )}
 
-      <DataTable
-        title="Déplacement"
-        tableKey="deplacements"
-        rows={depRows}
-        onRowsChange={handleDepRowsChange}
-        schema={CHIFFRAGE_SCHEMA_DEP}
-        setSchema={() => {}}
-        searchQuery=""
-        viewKey="minutes_dep"
-        enableCellFormulas={false}
-      />
+{/* Onglet Minutes */}
+{activeTab === "minutes" && (
+  <div style={{ display: "grid", gap: 12, overflow: "hidden" }}>
+            {/* Récap CA compact — 1 SEULE LIGNE */}
+    <div
+      style={{
+        border: `1px solid ${COLORS.border}`,
+        borderRadius: 12,
+        background: "#fff",
+        padding: 12,
+        display: "flex",
+        gap: 20,
+        alignItems: "flex-start",
+        flexWrap: "wrap",
+      }}
+    >
+      {/* 5 blocs à gauche */}
+      <div style={{ minWidth: 140 }}>
+        <div style={{ fontWeight: 700, opacity: 0.8 }}>CA Rideaux</div>
+        <div>{nfEur0.format(recap.caRideaux)}</div>
+      </div>
+      <div style={{ minWidth: 140 }}>
+        <div style={{ fontWeight: 700, opacity: 0.8 }}>CA Décors</div>
+        <div>{nfEur0.format(recap.caDecors)}</div>
+      </div>
+      <div style={{ minWidth: 140 }}>
+        <div style={{ fontWeight: 700, opacity: 0.8 }}>CA Stores</div>
+        <div>{nfEur0.format(recap.caStores)}</div>
+      </div>
+      <div style={{ minWidth: 160 }}>
+        <div style={{ fontWeight: 700, opacity: 0.8 }}>Autres dépenses</div>
+        <div>{nfEur0.format(recap.extrasTotal)}</div>
+      </div>
+      <div style={{ minWidth: 160 }}>
+        <div style={{ fontWeight: 700, opacity: 0.8 }}>Déplacement</div>
+        <div>{nfEur0.format(recap.depTotal)}</div>
+      </div>
 
+      {/* Total tout à droite */}
+      <div style={{ marginLeft: "auto", textAlign: "right" }}>
+        <div style={{ fontWeight: 800 }}>CA Total</div>
+        <div style={{ fontWeight: 800 }}>{nfEur0.format(recap.offreTotale)}</div>
+      </div>
+    </div>
+    {/* Rangée du haut : Autres dépenses + Déplacement côte à côte */}
+    <div
+      style={{
+        display: "grid",
+        gap: 12,
+        gridTemplateColumns: "minmax(0, 0.9fr) minmax(0, 1.1fr)", // extras un peu + étroit
+        alignItems: "start",
+        overflow: "hidden", // empêche le débordement de la page
+      }}
+    >
+      <div style={{ minWidth: 0, overflowX: "auto" }}>
+        <DataTable
+          title="Autres dépenses"
+          tableKey="extras"
+          rows={extraRows}
+          onRowsChange={handleExtraRowsChange}
+          schema={EXTRA_DEPENSES_SCHEMA}
+          setSchema={() => {}}
+          searchQuery=""
+          viewKey="minutes_extras"
+          enableCellFormulas={false}
+          formulaCtx={formulaCtx}
+        />
+      </div>
+
+      <div style={{ minWidth: 0, overflowX: "auto" }}>
+        <DataTable
+          title="Déplacement"
+          tableKey="deplacements"
+          rows={depRows}
+          onRowsChange={handleDepRowsChange}
+          schema={CHIFFRAGE_SCHEMA_DEP}
+          setSchema={() => {}}
+          searchQuery=""
+          viewKey="minutes_dep"
+          enableCellFormulas={false}
+          formulaCtx={formulaCtx}
+        />
+      </div>
+    </div>
+
+    {/* Rangée du bas : grand tableau des minutes */}
+    <div style={{ minWidth: 0 /* <- indispensable pour couper le débordement */, overflowX: "auto" }}>
       <MinuteEditor
         minute={{ ...minute, lines: rows, modules: mods }}
-        onChangeMinute={(m)=> canEdit && updateMinute({ lines: m.lines })}
+        onChangeMinute={(m) => canEdit && updateMinute({ lines: m.lines })}
         enableCellFormulas={true}
+        formulaCtx={formulaCtx}
+        schema={schema}
+        setSchema={setSchema}
       />
+    </div>
+  </div>
+)}
+
+      {activeTab === "achats" && <MinutePurchases rows={rows} />}
+
+     {activeTab === "moulinette" && (
+  <Moulinette rows={rows} extraRows={extraRows} depRows={depRows} />
+)}
     </div>
   );
 }

@@ -107,6 +107,12 @@ export const DEFAULT_VIEWS = {
     ],
   },
 
+  // Minutes — vue par défaut du tableau Autres dépenses
+  minutes_extras: {
+    extras: ["categorie","libelle","montant_eur"],
+  },
+
+
   // 4) INSTALLATION : tableau unique “all/suivi” avec ta présélection
   installation: {
     all: [

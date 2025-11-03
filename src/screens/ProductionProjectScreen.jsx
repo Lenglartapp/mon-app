@@ -13,37 +13,52 @@ import { STAGES } from "../lib/constants/views.js";
 import { recomputeRow } from "../lib/formulas/recomputeRow";
 
 import { Search, Filter, Layers3, Star } from "lucide-react";
-
-// 🔐 ACL
 import { useAuth } from "../auth";
 import { can } from "../lib/authz";
 
-export function ProductionProjectScreen({ project, onBack }) {
+/**
+ * Props:
+ *  - project
+ *  - onBack()
+ *  - onUpdateProjectRows(newRows)  ← pour persister dans App.jsx
+ */
+export function ProductionProjectScreen({ project, onBack, onUpdateProjectRows }) {
   const [stage, setStage]   = useState("dashboard");
   const [search, setSearch] = useState("");
   const [schema, setSchema] = useState(SCHEMA_64);
 
-  // 🔐 droits
   const { currentUser } = useAuth();
-  const canEditProd  = can(currentUser, "production.edit"); // PROD / PILOT / ORDO / ADMIN
-  const seeChiffrage = can(currentUser, "chiffrage.view");  // false pour PROD
+  const canEditProd  = can(currentUser, "production.edit");
+  const seeChiffrage = can(currentUser, "chiffrage.view");
 
-  // Lignes du projet (base)
+  // Lignes locales (édition fluide)
   const initialRows = useMemo(
     () => computeFormulas(project?.rows || [], SCHEMA_64),
     [project?.id]
   );
   const [rows, setRows] = useState(initialRows);
 
-  // Recompute si schéma change
+  // Recompute local si le schéma change
   useEffect(() => {
     setRows((rs) => computeFormulas(rs, schema));
   }, [schema]);
 
-  // Resync si projet change
+  // 🔄 Resync si on CHANGE DE PROJET (id). Pas sur chaque update parent.
   useEffect(() => {
-    setRows(computeFormulas(project?.rows || [], SCHEMA_64));
-  }, [project?.id, project?.rows]);
+    setRows(prev =>
+      preserveManualAfterCompute(
+        computeFormulas(project?.rows || [], SCHEMA_64),
+        prev || []
+      )
+    );
+  }, [project?.id]);
+
+  // 🧷 Persister côté parent à chaque modif locale
+  useEffect(() => {
+    if (typeof onUpdateProjectRows === "function") {
+      onUpdateProjectRows(rows);
+    }
+  }, [rows, onUpdateProjectRows]);
 
   // Sous-ensembles
   const rowsRideaux = rows.filter((r) => /rideau|voilage/i.test(String(r.produit || "")));
@@ -52,10 +67,9 @@ export function ProductionProjectScreen({ project, onBack }) {
 
   const recomputeAll = (arr) => (arr || []).map(r => recomputeRow(r, schema));
 
-  // Merge sous-tableaux -> lignes globales (respecte canEditProd)
   const mergeChildRowsFor = (tableKey) => {
     return (nr) => {
-      if (!canEditProd) return; // lecture seule éventuelle
+      if (!canEditProd) return; // lecture seule
       setRows((all) => {
         const isInTable = (r) => {
           const p = String(r?.produit || "");
@@ -76,8 +90,6 @@ export function ProductionProjectScreen({ project, onBack }) {
   };
 
   const projectName = project?.name || "—";
-
-  // Masque l’onglet "Chiffrage" si non autorisé
   const visibleStages = STAGES.filter(p => p.key !== "chiffrage" || seeChiffrage);
 
   return (
@@ -120,12 +132,10 @@ export function ProductionProjectScreen({ project, onBack }) {
         </div>
       </div>
 
-      {/* === DASHBOARD === */}
       {stage === "dashboard" && (
         <DashboardTiles rows={rows} projectHours={{ conf: 0, pose: 0 }} />
       )}
 
-      {/* === CHIFFRAGE (visible seulement si autorisé) === */}
       {stage === "chiffrage" && seeChiffrage && (
         <MinutesScreen
           onExportToProduction={(mappedRows, minute) => {
@@ -136,7 +146,6 @@ export function ProductionProjectScreen({ project, onBack }) {
         />
       )}
 
-      {/* === ÉTIQUETTES === */}
       {stage === "etiquettes" && (
         <div style={S.contentWide}>
           <EtiquettesSection title="Etiquettes Rideaux" tableKey="rideaux" rows={rowsRideaux} schema={schema} />
@@ -144,7 +153,6 @@ export function ProductionProjectScreen({ project, onBack }) {
         </div>
       )}
 
-      {/* === PRISE DE COTES === */}
       {stage === "prise" && (
         <>
           <DataTable
@@ -172,7 +180,6 @@ export function ProductionProjectScreen({ project, onBack }) {
         </>
       )}
 
-      {/* === INSTALLATION (respecte lecture seule) === */}
       {stage === "installation" && (
         <DataTable
           title="Suivi Installation / Livraison"
@@ -182,7 +189,7 @@ export function ProductionProjectScreen({ project, onBack }) {
             if (!canEditProd) return;
             const computed = (nr || []).map(r => recomputeRow(r, schema));
             const next     = preserveManualAfterCompute(computed, rows || []);
-            setRows(next);
+            setRows(next); // persistera via useEffect([rows])
           }}
           schema={schema}
           setSchema={setSchema}
@@ -192,7 +199,6 @@ export function ProductionProjectScreen({ project, onBack }) {
         />
       )}
 
-      {/* === BPF (respecte lecture seule via mergeChildRowsFor) === */}
       {stage === "bpf" && (
         <>
           <DataTable title="BPF Rideaux"        tableKey="rideaux" rows={rowsRideaux} onRowsChange={mergeChildRowsFor("rideaux")} schema={schema} setSchema={setSchema} searchQuery={search} viewKey="bpf" enableCellFormulas={true} />

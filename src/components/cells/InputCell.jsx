@@ -1,6 +1,23 @@
 import React from "react";
 import { S } from "../../lib/constants/ui";
 
+const TOKEN_RX = /[A-Za-z0-9_\- ]/;
+
+function getTokenRange(str = "", caret = 0) {
+  let a = caret - 1;
+  let b = caret;
+  while (a >= 0 && TOKEN_RX.test(str[a])) a--;
+  while (b < str.length && TOKEN_RX.test(str[b])) b++;
+  return { start: a + 1, end: b };
+}
+
+function replaceToken(str, caret, withText) {
+  const { start, end } = getTokenRange(str, caret);
+  const out = str.slice(0, start) + withText + str.slice(end);
+  const newCaret = start + withText.length;
+  return { out, caret: newCaret };
+}
+
 // Si tu as déjà un normalizeOptions ailleurs, importe-le à la place.
 // Cette version accepte ["A","B"] ou [{label, value}] et uniformise.
 function normalizeOptions(opts) {
@@ -12,6 +29,8 @@ function normalizeOptions(opts) {
   );
 }
 
+const EMPTY_CTX = {};
+
 function InputCell({
   row,
   col,
@@ -21,9 +40,18 @@ function InputCell({
   onChange,
   onOpenLightbox, // (images[], startIndex)
   onEnter,        // (shift:boolean)
+  liveRecalc = false,
+  formulaCtx = EMPTY_CTX,
+  fxSessionActive = false,
+  fxForceDraft = null,
+  fxPendingToken = null,
+  onFxConsumeToken,
+  onFxStop,
 }) {
   const key = col?.key;
   const type = col?.type || "text";
+
+  void formulaCtx;
 
   // 🔓 NEW: autorise l’édition des colonnes "formula" (pour taper =...)
   // même si le schéma met readOnly: true.
@@ -46,13 +74,52 @@ function InputCell({
   const selectRef = React.useRef(null);
   const multiRef  = React.useRef(null);
   const fileRef   = React.useRef(null);
+  const inputRef  = React.useRef(null);
 
   const [draft, setDraft] = React.useState(value);
 
   // chaque fois qu’on (re)entre en édition, resynchroniser le draft avec la valeur
   React.useEffect(() => {
-    if (isEditing) setDraft(value ?? "");
-  }, [isEditing, value]);
+  if (!isEditing) return;
+  if (type === "formula") {
+    const base = typeof fxForceDraft === "string"
+      ? fxForceDraft
+      : (cellOverride ? `=${cellOverride}`
+         : (col?.formula ? `=${col.formula}` : (value ?? "")));
+    setDraft(base ?? "");
+  } else {
+    setDraft(value ?? "");
+  }
+}, [isEditing, value, type, cellOverride, fxForceDraft, col]);
+
+  React.useEffect(() => {
+    if (!fxPendingToken) return;
+    if (!fxSessionActive || !isEditing || type !== "formula") {
+      onFxConsumeToken?.();
+      return;
+    }
+    const el = inputRef.current || textRef.current;
+    const caret = (el && typeof el.selectionStart === "number")
+      ? el.selectionStart
+      : (typeof draft === "string" ? draft.length : 0);
+    const src = typeof draft === "string" ? draft : "";
+    const { out, caret: c2 } = replaceToken(src, caret, fxPendingToken);
+    setDraft(out);
+    if (el) {
+      el.value = out;
+      requestAnimationFrame(() => {
+        try {
+          (inputRef.current || textRef.current)?.setSelectionRange(c2, c2);
+        } catch {}
+      });
+    }
+    onFxConsumeToken?.();
+  }, [fxPendingToken, fxSessionActive, isEditing, type, draft, onFxConsumeToken]);
+
+  React.useEffect(() => {
+    if (!fxSessionActive) return;
+    if (!isEditing) onFxStop?.();
+  }, [fxSessionActive, isEditing, onFxStop]);
 
   // focus auto quand on passe en édition
   React.useEffect(() => {
@@ -91,6 +158,7 @@ function InputCell({
     const next = normalize(v);
     if (String(next) !== String(value)) onChange?.(key, next);
     onEndEdit?.();
+    if (fxSessionActive) onFxStop?.();
 
     // relâche le verrou juste après le cycle d’événements
     setTimeout(() => { committedRef.current = false; }, 0);
@@ -323,16 +391,38 @@ function InputCell({
   // 6) Formula — EDITABLE avec "=..." (override cellule)
   if (type === "formula") {
     return isEditing ? (
-      <input
-        ref={textRef}
-        type="text"
-        defaultValue={editDefault ?? (value ?? "")}   // ← NEW: montre "=..." si override
-        onKeyDown={handleInputKeyDown}
-        onBlur={(e) => commitOnce(e.target.value)}
-        onClick={stopAll}
-        onMouseDown={stopAll}
-        style={{ width: "100%" }}
-      />
+      <div style={{ position: "relative" }}>
+        <input
+          ref={(el) => {
+            textRef.current = el;
+            inputRef.current = el;
+          }}
+          type="text"
+          value={draft ?? ""}
+          style={{
+            width: "100%",
+            minWidth: 420,
+            position: "relative",
+            zIndex: 20,
+          }}
+          onKeyDown={handleInputKeyDown}
+          onBlur={(e) => {
+            if (!fxSessionActive) {
+              commitOnce(e.target.value);
+              return;
+            }
+            // En mode formule, on ne commit pas sur blur : on laisse DataTable gérer
+            e.preventDefault();
+            requestAnimationFrame(() => inputRef.current?.focus());
+          }}
+          onChange={(e) => {
+            const v = e.target.value;
+            setDraft(v);
+          }}
+          onClick={stopAll}
+          onMouseDown={stopAll}
+        />
+      </div>
     ) : (
       <div
         // 🔓 NEW: pour formula on ne bloque plus le double-clic par readOnly

@@ -5,7 +5,6 @@ import React from "react";
 import DataTable from "./DataTable";
 
 // constantes / helpers
-import { CHIFFRAGE_SCHEMA } from "../lib/schemas/chiffrage";
 import { computeFormulas } from "../lib/formulas/compute";
 import { recomputeRow } from "../lib/formulas/recomputeRow";
 import { COLORS, S } from "../lib/constants/ui";
@@ -15,10 +14,12 @@ import { uid } from "../lib/utils/uid";
 import { useActivity } from "../contexts/activity";
 import { useAuth } from "../auth.jsx";
 
+const EMPTY_CTX = {};
+
 // ================ MinuteEditor (tableau des lignes d'une minute) =================
-function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true }) {
+function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formulaCtx = EMPTY_CTX, schema = [], setSchema }) {
   const [rows, setRows] = React.useState(() =>
-    computeFormulas(minute?.lines || [], CHIFFRAGE_SCHEMA)
+    computeFormulas(minute?.lines || [], schema, formulaCtx)
   );
 
   // Ignorer une resync quand la modif vient d'ici
@@ -26,8 +27,8 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true }) {
 
   // Resync UNIQUEMENT quand on change de minute (id).
   React.useEffect(() => {
-    setRows(computeFormulas(minute?.lines || [], CHIFFRAGE_SCHEMA));
-  }, [minute?.id]);
+    setRows(computeFormulas(minute?.lines || [], schema, formulaCtx));
+  }, [minute?.id, schema, formulaCtx]);
 
   // Modules actifs (fallback = tous cochés pour anciennes minutes)
   const mods = minute?.modules || { rideau: true, store: true, decor: true };
@@ -70,7 +71,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true }) {
 
     // Fusion + recalcul des formules
     const next = [...others, ...normalizedChild];
-    const withFx = next.map((row) => recomputeRow(row, CHIFFRAGE_SCHEMA));
+    const withFx = next.map((row) => recomputeRow(row, schema, formulaCtx));
 
     // Commit local (remontée au parent se fait via l'useEffect plus bas)
     skipNextSyncRef.current = true;
@@ -144,13 +145,14 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true }) {
             tableKey="rideaux"
             rows={rowsRideaux}
             onRowsChange={mergeChildRowsFor("rideaux")}
-            schema={CHIFFRAGE_SCHEMA}
-            setSchema={() => {}} // on fige le schéma côté minutes
+            schema={schema}
+            setSchema={setSchema}
             searchQuery=""
             viewKey="minutes"
             enableCellFormulas={enableCellFormulas}
+            formulaCtx={formulaCtx}
           />
-        )}
+      )}
 
         {mods.decor && (
           <DataTable
@@ -158,13 +160,14 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true }) {
             tableKey="decors"
             rows={rowsDecors}
             onRowsChange={mergeChildRowsFor("decors")}
-            schema={CHIFFRAGE_SCHEMA}
-            setSchema={() => {}}
+            schema={schema}
+            setSchema={setSchema}
             searchQuery=""
             viewKey="minutes"
             enableCellFormulas={enableCellFormulas}
+            formulaCtx={formulaCtx}
           />
-        )}
+      )}
 
         {mods.store && (
           <DataTable
@@ -172,13 +175,14 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true }) {
             tableKey="stores"
             rows={rowsStores}
             onRowsChange={mergeChildRowsFor("stores")}
-            schema={CHIFFRAGE_SCHEMA}
-            setSchema={() => {}}
+            schema={schema}
+            setSchema={setSchema}
             searchQuery=""
             viewKey="minutes"
             enableCellFormulas={enableCellFormulas}
+            formulaCtx={formulaCtx}
           />
-        )}
+      )}
       </>
     </div>
   );

@@ -7,7 +7,7 @@ import { evalFormula } from "./eval";
  * @param {Array}  schema Colonnes [{key, type, formula, ...}]
  * @returns {object}      Ligne recalculée
  */
-export function recomputeRow(row, schema) {
+export function recomputeRow(row, schema, ctx = {}) {
   const cols = Array.isArray(schema) ? schema : [];
   const cellFx = row?.__cellFormulas || {};
   const next = { ...(row || {}) };
@@ -19,7 +19,7 @@ export function recomputeRow(row, schema) {
     if (!expr) continue;
 
     try {
-      next[k] = evalFormula(expr, next);
+      next[k] = evalFormula(expr, next, ctx);
     } catch {
       // Option : ne pas écraser la valeur existante en cas d'erreur
       // next[k] = "#ERR"; // ← si tu préfères signaler l'erreur visuellement
