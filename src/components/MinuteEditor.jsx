@@ -2,7 +2,7 @@
 import React from "react";
 
 // composants internes
-import DataTable from "./DataTable";
+import MinuteGrid from "./MinuteGrid";
 
 // constantes / helpers
 import { computeFormulas } from "../lib/formulas/compute";
@@ -35,8 +35,8 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
 
   // Sous-ensembles par module
   const rowsRideaux = rows.filter((r) => /rideau|voilage/i.test(String(r.produit || "")));
-  const rowsDecors  = rows.filter((r) => /d[ée]cor/i.test(String(r.produit || "")));
-  const rowsStores  = rows.filter((r) => /store/i.test(String(r.produit || "")));
+  const rowsDecors = rows.filter((r) => /d[ée]cor/i.test(String(r.produit || "")));
+  const rowsStores = rows.filter((r) => /store/i.test(String(r.produit || "")));
 
   // Id unique via l'utilitaire importé
   const genId = () => uid();
@@ -45,8 +45,8 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
   const ensureProduitFor = (key, r) => {
     if (r?.produit) return r;
     if (key === "rideaux") return { ...r, produit: "Rideau" };
-    if (key === "decors")  return { ...r, produit: "Décor de lit" };
-    if (key === "stores")  return { ...r, produit: "Store Enrouleur" };
+    if (key === "decors") return { ...r, produit: "Décor de lit" };
+    if (key === "stores") return { ...r, produit: "Store Enrouleur" };
     return r;
   };
 
@@ -63,8 +63,8 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
     const isInSubset = (r) => {
       const p = String(r.produit || "");
       if (key === "rideaux") return /rideau|voilage/i.test(p);
-      if (key === "decors")  return /d[ée]cor/i.test(p);
-      if (key === "stores")  return /store/i.test(p);
+      if (key === "decors") return /d[ée]cor/i.test(p);
+      if (key === "stores") return /store/i.test(p);
       return false;
     };
     const others = (rows || []).filter((r) => !isInSubset(r));
@@ -76,6 +76,49 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
     // Commit local (remontée au parent se fait via l'useEffect plus bas)
     skipNextSyncRef.current = true;
     setRows(withFx);
+  };
+
+  // Ajout d'une nouvelle ligne
+  const handleAddRow = (key) => {
+    const newRow = {
+      id: genId(),
+      produit: key === "rideaux" ? "Rideau" : key === "decors" ? "Décor de lit" : "Store Enrouleur",
+      // Valeurs par défaut pour éviter les vides
+      quantite: 1,
+      largeur: 0,
+      hauteur: 0,
+    };
+
+    // On utilise mergeChildRowsFor pour l'ajouter proprement (ça gère la fusion et le recalcul)
+    // On doit passer le tableau existant + la nouvelle ligne
+    // Mais mergeChildRowsFor attend SEULEMENT les lignes du sous-ensemble.
+
+    let currentSubset = [];
+    if (key === "rideaux") currentSubset = rowsRideaux;
+    else if (key === "decors") currentSubset = rowsDecors;
+    else if (key === "stores") currentSubset = rowsStores;
+
+    const nextSubset = [...currentSubset, newRow];
+    mergeChildRowsFor(key)(nextSubset);
+  };
+
+  // États de sélection pour chaque grille
+  const [selRideaux, setSelRideaux] = React.useState([]);
+  const [selDecors, setSelDecors] = React.useState([]);
+  const [selStores, setSelStores] = React.useState([]);
+
+  // Suppression de lignes
+  const handleDeleteRows = (idsToDelete) => {
+    if (!idsToDelete || idsToDelete.length === 0) return;
+    if (!confirm(`Supprimer ${idsToDelete.length} ligne(s) ?`)) return;
+
+    const nextRows = rows.filter(r => !idsToDelete.includes(r.id));
+    setRows(nextRows);
+
+    // Clear selections
+    setSelRideaux([]);
+    setSelDecors([]);
+    setSelStores([]);
   };
 
   // Remonte au parent à chaque modif
@@ -140,49 +183,55 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
       {/* 1/2/3 tableaux selon modules */}
       <>
         {mods.rideau && (
-          <DataTable
-            title="Rideaux"
-            tableKey="rideaux"
-            rows={rowsRideaux}
-            onRowsChange={mergeChildRowsFor("rideaux")}
-            schema={schema}
-            setSchema={setSchema}
-            searchQuery=""
-            viewKey="minutes"
-            enableCellFormulas={enableCellFormulas}
-            formulaCtx={formulaCtx}
-          />
-      )}
+          <div style={{ marginBottom: 20 }}>
+            <MinuteGrid
+              title="Rideaux"
+              rows={rowsRideaux}
+              onRowsChange={mergeChildRowsFor("rideaux")}
+              schema={schema}
+              enableCellFormulas={enableCellFormulas}
+              formulaCtx={formulaCtx}
+              onAdd={() => handleAddRow("rideaux")}
+              onDelete={() => handleDeleteRows(selRideaux)}
+              rowSelectionModel={selRideaux}
+              onRowSelectionModelChange={setSelRideaux}
+            />
+          </div>
+        )}
 
         {mods.decor && (
-          <DataTable
-            title="Décors de lit"
-            tableKey="decors"
-            rows={rowsDecors}
-            onRowsChange={mergeChildRowsFor("decors")}
-            schema={schema}
-            setSchema={setSchema}
-            searchQuery=""
-            viewKey="minutes"
-            enableCellFormulas={enableCellFormulas}
-            formulaCtx={formulaCtx}
-          />
-      )}
+          <div style={{ marginBottom: 20 }}>
+            <MinuteGrid
+              title="Décors de lit"
+              rows={rowsDecors}
+              onRowsChange={mergeChildRowsFor("decors")}
+              schema={schema}
+              enableCellFormulas={enableCellFormulas}
+              formulaCtx={formulaCtx}
+              onAdd={() => handleAddRow("decors")}
+              onDelete={() => handleDeleteRows(selDecors)}
+              rowSelectionModel={selDecors}
+              onRowSelectionModelChange={setSelDecors}
+            />
+          </div>
+        )}
 
         {mods.store && (
-          <DataTable
-            title="Stores"
-            tableKey="stores"
-            rows={rowsStores}
-            onRowsChange={mergeChildRowsFor("stores")}
-            schema={schema}
-            setSchema={setSchema}
-            searchQuery=""
-            viewKey="minutes"
-            enableCellFormulas={enableCellFormulas}
-            formulaCtx={formulaCtx}
-          />
-      )}
+          <div style={{ marginBottom: 20 }}>
+            <MinuteGrid
+              title="Stores"
+              rows={rowsStores}
+              onRowsChange={mergeChildRowsFor("stores")}
+              schema={schema}
+              enableCellFormulas={enableCellFormulas}
+              formulaCtx={formulaCtx}
+              onAdd={() => handleAddRow("stores")}
+              onDelete={() => handleDeleteRows(selStores)}
+              rowSelectionModel={selStores}
+              onRowSelectionModelChange={setSelStores}
+            />
+          </div>
+        )}
       </>
     </div>
   );
