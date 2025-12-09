@@ -19,7 +19,7 @@ import MenuItem from '@mui/material/MenuItem';
 import Switch from '@mui/material/Switch';
 import FormControlLabel from '@mui/material/FormControlLabel';
 
-export default function LineDetailPanel({ open, onClose, row, schema, onRowChange }) {
+export default function LineDetailPanel({ open, onClose, row, schema, onRowChange, columnVisibilityModel }) {
     const [commentText, setCommentText] = useState('');
 
     if (!row) return null;
@@ -71,6 +71,11 @@ export default function LineDetailPanel({ open, onClose, row, schema, onRowChang
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                     {schema.map((col) => {
                         if (col.key === 'sel' || col.key === 'detail') return null; // Skip utility columns
+
+                        // Check visibility
+                        if (columnVisibilityModel && columnVisibilityModel[col.key] === false) {
+                            return null;
+                        }
 
                         const isReadOnly = col.readOnly || col.type === 'formula';
                         const isSelect = col.type === 'select' || (col.options && col.options.length > 0);

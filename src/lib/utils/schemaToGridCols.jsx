@@ -1,10 +1,12 @@
 import React from 'react';
 import FormulaEditCell from '../../components/FormulaEditCell';
+import { GridEditInputCell } from '@mui/x-data-grid';
 import Tooltip from '@mui/material/Tooltip';
 import Badge from '@mui/material/Badge';
 import IconButton from '@mui/material/IconButton';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
+import Chip from '@mui/material/Chip';
 
 /**
  * Maps a custom schema type to MUI Data Grid column type.
@@ -33,17 +35,18 @@ const mapType = (type) => {
  * @param {boolean} enableCellFormulas - Whether cell formulas are enabled.
  * @returns {Array} - Array of GridColDef.
  */
-export function schemaToGridCols(schema, enableCellFormulas = false, onOpenDetail) {
+export function schemaToGridCols(schema, enableCellFormulas = false, onOpenDetail, catalog = []) {
   if (!Array.isArray(schema)) return [];
 
-  return schema.map((col) => {
+  // Filter out 'sel' column and explicitly hidden columns
+  const filteredSchema = schema.filter(col => col.key !== 'sel' && col.label !== 'Sel.' && !col.hidden);
+
+  return filteredSchema.map((col) => {
     const isFormula = col.type === 'formula';
     const isReadOnly = !!col.readOnly;
 
     // Determine editability
-    // Formulas are editable only if enableCellFormulas is true (for overrides)
-    // ReadOnly columns are never editable (unless we decide overrides allow it, but usually readOnly means readOnly)
-    let editable = !isReadOnly;
+    let editable = col.editable !== undefined ? col.editable : !isReadOnly;
     if (isFormula && !enableCellFormulas) {
       editable = false;
     }
@@ -55,7 +58,40 @@ export function schemaToGridCols(schema, enableCellFormulas = false, onOpenDetai
       editable: editable,
       type: mapType(col.type),
       description: col.formula ? `Formula: ${col.formula}` : undefined,
+      cellClassName: (params) => {
+        if (col.editable && typeof col.editable === 'function' && !col.editable(params)) {
+          return 'cell-read-only';
+        }
+        return '';
+      }
     };
+
+    if (col.key === 'commentaire') {
+      gridCol.renderEditCell = (params) => <GridEditInputCell {...params} multiline />;
+    }
+
+    // Link Catalog to 'tissu', 'doublure', 'produit' columns (including variations like tissu_deco_1)
+    const isCatalogColumn = col.key.includes('tissu') || col.key.includes('doublure') || (col.key === 'produit' && !col.hidden);
+    if (isCatalogColumn && catalog.length > 0) {
+      gridCol.type = 'singleSelect';
+      gridCol.valueOptions = catalog.map(a => a.name);
+      gridCol.editable = true;
+    }
+
+    // Handle standard singleSelect with valueOptions
+    if ((col.type === 'singleSelect' || col.type === 'select') && Array.isArray(col.valueOptions || col.options)) {
+      gridCol.type = 'singleSelect';
+      gridCol.valueOptions = col.valueOptions || col.options;
+    }
+
+    // Currency Formatting
+    const isPrice = ['prix', 'montant', 'total', 'cout', 'pa', 'pv'].some(term => col.key.toLowerCase().includes(term));
+    if (gridCol.type === 'number' && isPrice) {
+      gridCol.valueFormatter = (value) => {
+        if (value == null) return '';
+        return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(value);
+      };
+    }
 
     // Use Custom Edit Cell for formulas if enabled
     if (enableCellFormulas && (isFormula || col.type === 'number')) {
@@ -74,9 +110,19 @@ export function schemaToGridCols(schema, enableCellFormulas = false, onOpenDetai
       );
     }
 
-    // Handle Select Options
+    // Handle Select Options & Chips
     if (col.type === 'select' && Array.isArray(col.options)) {
       gridCol.valueOptions = col.options;
+      gridCol.renderCell = (params) => {
+        if (!params.value) return '';
+        return (
+          <Chip
+            label={params.value}
+            size="small"
+            style={{ backgroundColor: stringToColor(params.value), color: '#000000' }}
+          />
+        );
+      };
     }
 
     // Handle specific types that might need custom rendering or logic
@@ -135,4 +181,23 @@ export function schemaToGridCols(schema, enableCellFormulas = false, onOpenDetai
 
     return gridCol;
   });
+}
+
+// Helper to generate pastel color from string
+function stringToColor(string) {
+  let hash = 0;
+  for (let i = 0; i < string.length; i++) {
+    hash = string.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const c = (hash & 0x00ffffff).toString(16).toUpperCase();
+  const hex = "00000".substring(0, 6 - c.length) + c;
+
+  // Convert to RGB and mix with white for pastel
+  const r = parseInt(hex.substring(0, 2), 16);
+  const g = parseInt(hex.substring(2, 4), 16);
+  const b = parseInt(hex.substring(4, 6), 16);
+
+  const mix = (val) => Math.round((val + 255) / 2);
+
+  return `rgb(${mix(r)}, ${mix(g)}, ${mix(b)})`;
 }

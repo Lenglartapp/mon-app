@@ -1,34 +1,49 @@
 // src/lib/schemas/deplacement.js
-
-// src/lib/schemas/deplacement.js
 export const CHIFFRAGE_SCHEMA_DEP = [
-  { key: "type_deplacement", label: "Type de Déplacement", type: "text", width: 180 },
+  { key: "produit", label: "Produit", type: "text", width: 0, hidden: true, defaultValue: "Déplacement" },
+  {
+    key: "type",
+    label: "Type",
+    type: "singleSelect",
+    valueOptions: ["Pose", "Réunion", "Livraison", "SAV", "Metré"],
+    width: 150
+  },
 
-  { key: "nb_techniciens", label: "Nombre de technicien", type: "number", width: 160 },
-  { key: "duree_trajet_h", label: "Durée trajet (h)", type: "number", width: 150 },
-  { key: "nb_nuits", label: "Nombre de nuit", type: "number", width: 140 },
-  { key: "nb_repas", label: "Nombre de Repas", type: "number", width: 150 },
+  { key: "nb_techniciens", label: "Nb Tech", type: "number", width: 90 },
+  { key: "duree_trajet_h", label: "Durée (h)", type: "number", width: 100 },
+  { key: "nb_nuits", label: "Nuits", type: "number", width: 90 },
+  { key: "nb_repas", label: "Repas", type: "number", width: 90 },
 
-  { key: "tauxhoraire", label: "Taux horaire", type: "number", width: 130 },
-  { key: "prixhotel", label: "Prix hôtel (€/nuit)", type: "number", width: 160 },
-  { key: "prixrepas", label: "Prix repas (€/repas)", type: "number", width: 160 },
+  { key: "tauxhoraire", label: "Taux H. (€)", type: "number", width: 110 },
+  { key: "prixhotel", label: "Prix Nuit (€)", type: "number", width: 120 },
+  { key: "prixrepas", label: "Prix Repas (€)", type: "number", width: 120 },
 
-  { key: "transport_unitaire", label: "Transport € (unitaire)", type: "number", width: 180 },
+  { key: "transport_unitaire", label: "Transport (€)", type: "number", width: 130 },
 
-  { key: "pose_prix", label: "Pose €", type: "formula",
-    formula: "nb_techniciens * duree_trajet_h * tauxhoraire", width: 120 },
+  {
+    key: "pose_prix", label: "Coût M.O.", type: "formula",
+    formula: "nb_techniciens * duree_trajet_h * tauxhoraire", width: 110
+  },
 
-  { key: "hotel_eur", label: "Hôtel €", type: "formula",
-    formula: "nb_techniciens * nb_nuits * prixhotel", width: 120 },
+  {
+    key: "hotel_eur", label: "Coût Hôtel", type: "formula",
+    formula: "nb_techniciens * nb_nuits * prixhotel", width: 110
+  },
 
-  { key: "repas_eur", label: "Repas €", type: "formula",
-    formula: "nb_techniciens * nb_repas * prixrepas", width: 120 },
+  {
+    key: "repas_eur", label: "Coût Repas", type: "formula",
+    formula: "nb_techniciens * nb_repas * prixrepas", width: 110
+  },
 
-  { key: "transport_eur", label: "Transport € (avion, train)", type: "formula",
-    formula: "nb_techniciens * transport_unitaire", width: 190 },
+  {
+    key: "transport_eur", label: "Coût Trans.", type: "formula",
+    formula: "nb_techniciens * transport_unitaire", width: 110
+  },
 
-  { key: "total_eur", label: "Total €", type: "formula",
-    formula: "NVL(pose_prix,0)+NVL(hotel_eur,0)+NVL(repas_eur,0)+NVL(transport_eur,0)", width: 140 },
+  {
+    key: "prix_total", label: "Total (€)", type: "formula",
+    formula: "NVL(pose_prix,0)+NVL(hotel_eur,0)+NVL(repas_eur,0)+NVL(transport_eur,0)", width: 120
+  },
 ];
 
 export default CHIFFRAGE_SCHEMA_DEP;
