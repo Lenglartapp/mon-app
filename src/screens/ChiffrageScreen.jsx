@@ -17,6 +17,12 @@ import { uid } from "../lib/utils/uid";
 import { useAuth } from "../auth";
 import { can } from "../lib/authz";
 
+// Helper for numeric conversion
+const toNum = (v) => {
+  const n = Number(String(v ?? "").replace(",", "."));
+  return Number.isFinite(n) ? n : 0;
+};
+
 function ChiffrageScreen({ minuteId, minutes, setMinutes, onBack }) {
   // ──────────────────────────────────────────────────────────────
   // Droits
@@ -56,7 +62,24 @@ function ChiffrageScreen({ minuteId, minutes, setMinutes, onBack }) {
     return out;
   }, [minute?.params]);
 
-  const formulaCtx = React.useMemo(() => ({ paramsMap }), [paramsMap]);
+  // Calculate Base CA (Pre-Commission) from raw minute data to avoid state loops.
+  // We sum everything EXCEPT Commission lines.
+  const baseCA = React.useMemo(() => {
+    let sum = 0;
+    // Main Lines
+    (minute?.lines || []).forEach(r => sum += toNum(r.prix_total));
+    // Deplacements
+    (minute?.deplacements || []).forEach(r => sum += toNum(r.prix_total));
+    // Autos / Extras (Non-Commission)
+    (minute?.extraDepenses || []).forEach(r => {
+      if (!r.categorie?.includes('Commission')) {
+        sum += toNum(r.prix_total);
+      }
+    });
+    return sum;
+  }, [minute?.lines, minute?.deplacements, minute?.extraDepenses]);
+
+  const formulaCtx = React.useMemo(() => ({ paramsMap, totalCA: baseCA }), [paramsMap, baseCA]);
 
   const [rows, setRows] = React.useState(() =>
     computeFormulas(minute?.lines || [], schema, formulaCtx)
@@ -76,17 +99,13 @@ function ChiffrageScreen({ minuteId, minutes, setMinutes, onBack }) {
 
   const mods = minute?.modules || { rideau: true, store: true, decor: true };
 
-
   // ──────────────────────────────────────────────────────────────
-  // Persistance minute
+  // Handlers
   // ──────────────────────────────────────────────────────────────
   const updateMinute = (patch) => {
     if (!canEdit) return;
-    setMinutes((all) =>
-      (all || []).map((m) =>
-        m.id === minuteId ? { ...m, ...patch, updatedAt: Date.now() } : m
-      )
-    );
+    const next = { ...minute, ...patch };
+    setMinutes((prev) => prev.map((m) => (m.id === minute.id ? next : m)));
   };
 
   // Lignes principales
@@ -114,7 +133,7 @@ function ChiffrageScreen({ minuteId, minutes, setMinutes, onBack }) {
 
   React.useEffect(() => {
     setExtraRows(Array.isArray(minute?.extraDepenses) ? minute.extraDepenses : []);
-  }, [minute?.id]);
+  }, [minute?.id, minute?.extraDepenses]);
 
   const handleExtraRowsChange = (nr) => {
     if (!canEdit) return;
@@ -122,44 +141,40 @@ function ChiffrageScreen({ minuteId, minutes, setMinutes, onBack }) {
     setExtraRows(next);
     updateMinute({ extraDepenses: next });
   };
-// ——— Helpers récap CA ———
-const toNum = React.useCallback((v) => {
-  const n = Number(String(v ?? "").replace(",", "."));
-  return Number.isFinite(n) ? n : 0;
-}, []);
+  // ——— Helpers récap CA ———
 
-const nfEur0 = React.useMemo(
-  () => new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }),
-  []
-);
+  const nfEur0 = React.useMemo(
+    () => new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }),
+    []
+  );
 
-// Regroupe les CA par grands blocs + totaux dépenses/dep
-const recap = React.useMemo(() => {
-  let caRideaux = 0, caDecors = 0, caStores = 0, caAutres = 0;
+  // Regroupe les CA par grands blocs + totaux dépenses/dep
+  const recap = React.useMemo(() => {
+    let caRideaux = 0, caDecors = 0, caStores = 0, caAutres = 0;
 
-  for (const r of rows || []) {
-    const prod = String(r?.produit || "").toLowerCase();
-    const total = toNum(r?.prix_total);
-    if (!total) continue;
+    for (const r of rows || []) {
+      const prod = String(r?.produit || "").toLowerCase();
+      const total = toNum(r?.prix_total);
+      if (!total) continue;
 
-    if (prod.includes("store")) caStores += total;
-    else if (prod.includes("décor") || prod.includes("decor")) caDecors += total;
-    else if (prod.includes("rideau") || prod.includes("voilage")) caRideaux += total;
-    else caAutres += total;
-  }
+      if (prod.includes("store")) caStores += total;
+      else if (prod.includes("décor") || prod.includes("decor")) caDecors += total;
+      else if (prod.includes("rideau") || prod.includes("voilage")) caRideaux += total;
+      else caAutres += total;
+    }
 
-  const caTotal = caRideaux + caDecors + caStores + caAutres;
+    const caTotal = caRideaux + caDecors + caStores + caAutres;
 
-  const extrasTotal = (extraRows || []).reduce((s, r) => s + toNum(r?.montant_eur), 0);
-  const depTotal    = (depRows   || []).reduce((s, r) => s + toNum(r?.total_eur), 0);
+    const extrasTotal = (extraRows || []).reduce((s, r) => s + toNum(r?.montant_eur), 0);
+    const depTotal = (depRows || []).reduce((s, r) => s + toNum(r?.total_eur), 0);
 
-  const offreTotale = caTotal + extrasTotal + depTotal;
+    const offreTotale = caTotal + extrasTotal + depTotal;
 
-  return {
-    caRideaux, caDecors, caStores, caAutres, caTotal,
-    extrasTotal, depTotal, offreTotale,
-  };
-}, [rows, extraRows, depRows, toNum]);
+    return {
+      caRideaux, caDecors, caStores, caAutres, caTotal,
+      extrasTotal, depTotal, offreTotale,
+    };
+  }, [rows, extraRows, depRows, toNum]);
 
 
   // ──────────────────────────────────────────────────────────────
@@ -181,8 +196,8 @@ const recap = React.useMemo(() => {
   };
 
   const DEFAULT_PARAMS = [
-    { id: uid(), name: "taux_horaire",     type: "prix", value: 135 },
-    { id: uid(), name: "prix_hotel",       type: "prix", value: 150 },
+    { id: uid(), name: "taux_horaire", type: "prix", value: 135 },
+    { id: uid(), name: "prix_hotel", type: "prix", value: 150 },
     { id: uid(), name: "prix_achat_tissu", type: "prix", value: null },
   ];
 
@@ -214,7 +229,7 @@ const recap = React.useMemo(() => {
   // ──────────────────────────────────────────────────────────────
   // En-tête minute
   // ──────────────────────────────────────────────────────────────
-  const [name, setName]   = React.useState(minute?.name || "Minute sans nom");
+  const [name, setName] = React.useState(minute?.name || "Minute sans nom");
   const [notes, setNotes] = React.useState(minute?.notes || "");
   React.useEffect(() => {
     setName(minute?.name || "Minute sans nom");
@@ -381,110 +396,96 @@ const recap = React.useMemo(() => {
         </div>
       )}
 
-{/* Onglet Minutes */}
-{activeTab === "minutes" && (
-  <div style={{ display: "grid", gap: 12, overflow: "hidden" }}>
-            {/* Récap CA compact — 1 SEULE LIGNE */}
-    <div
-      style={{
-        border: `1px solid ${COLORS.border}`,
-        borderRadius: 12,
-        background: "#fff",
-        padding: 12,
-        display: "flex",
-        gap: 20,
-        alignItems: "flex-start",
-        flexWrap: "wrap",
-      }}
-    >
-      {/* 5 blocs à gauche */}
-      <div style={{ minWidth: 140 }}>
-        <div style={{ fontWeight: 700, opacity: 0.8 }}>CA Rideaux</div>
-        <div>{nfEur0.format(recap.caRideaux)}</div>
-      </div>
-      <div style={{ minWidth: 140 }}>
-        <div style={{ fontWeight: 700, opacity: 0.8 }}>CA Décors</div>
-        <div>{nfEur0.format(recap.caDecors)}</div>
-      </div>
-      <div style={{ minWidth: 140 }}>
-        <div style={{ fontWeight: 700, opacity: 0.8 }}>CA Stores</div>
-        <div>{nfEur0.format(recap.caStores)}</div>
-      </div>
-      <div style={{ minWidth: 160 }}>
-        <div style={{ fontWeight: 700, opacity: 0.8 }}>Autres dépenses</div>
-        <div>{nfEur0.format(recap.extrasTotal)}</div>
-      </div>
-      <div style={{ minWidth: 160 }}>
-        <div style={{ fontWeight: 700, opacity: 0.8 }}>Déplacement</div>
-        <div>{nfEur0.format(recap.depTotal)}</div>
-      </div>
+      {/* Onglet Minutes */}
+      {activeTab === "minutes" && (
+        <div style={{ display: "grid", gap: 12, overflow: "hidden" }}>
+          {/* Récap CA compact — 1 SEULE LIGNE */}
+          <div
+            style={{
+              border: `1px solid ${COLORS.border}`,
+              borderRadius: 12,
+              background: "#fff",
+              padding: 12,
+              display: "flex",
+              gap: 20,
+              alignItems: "flex-start",
+              flexWrap: "wrap",
+            }}
+          >
+            {/* 5 blocs à gauche */}
+            <div style={{ minWidth: 140 }}>
+              <div style={{ fontWeight: 700, opacity: 0.8 }}>CA Rideaux</div>
+              <div>{nfEur0.format(recap.caRideaux)}</div>
+            </div>
+            <div style={{ minWidth: 140 }}>
+              <div style={{ fontWeight: 700, opacity: 0.8 }}>CA Décors</div>
+              <div>{nfEur0.format(recap.caDecors)}</div>
+            </div>
+            <div style={{ minWidth: 140 }}>
+              <div style={{ fontWeight: 700, opacity: 0.8 }}>CA Stores</div>
+              <div>{nfEur0.format(recap.caStores)}</div>
+            </div>
+            <div style={{ minWidth: 160 }}>
+              <div style={{ fontWeight: 700, opacity: 0.8 }}>Autres dépenses</div>
+              <div>{nfEur0.format(recap.extrasTotal)}</div>
+            </div>
+            <div style={{ minWidth: 160 }}>
+              <div style={{ fontWeight: 700, opacity: 0.8 }}>Déplacement</div>
+              <div>{nfEur0.format(recap.depTotal)}</div>
+            </div>
 
-      {/* Total tout à droite */}
-      <div style={{ marginLeft: "auto", textAlign: "right" }}>
-        <div style={{ fontWeight: 800 }}>CA Total</div>
-        <div style={{ fontWeight: 800 }}>{nfEur0.format(recap.offreTotale)}</div>
-      </div>
-    </div>
-    {/* Rangée du haut : Autres dépenses + Déplacement côte à côte */}
-    <div
-      style={{
-        display: "grid",
-        gap: 12,
-        gridTemplateColumns: "minmax(0, 0.9fr) minmax(0, 1.1fr)", // extras un peu + étroit
-        alignItems: "start",
-        overflow: "hidden", // empêche le débordement de la page
-      }}
-    >
-      <div style={{ minWidth: 0, overflowX: "auto" }}>
-        <DataTable
-          title="Autres dépenses"
-          tableKey="extras"
-          rows={extraRows}
-          onRowsChange={handleExtraRowsChange}
-          schema={EXTRA_DEPENSES_SCHEMA}
-          setSchema={() => {}}
-          searchQuery=""
-          viewKey="minutes_extras"
-          enableCellFormulas={false}
-          formulaCtx={formulaCtx}
-        />
-      </div>
+            {/* Total tout à droite */}
+            <div style={{ marginLeft: "auto", textAlign: "right" }}>
+              <div style={{ fontWeight: 800 }}>CA Total</div>
+              <div style={{ fontWeight: 800 }}>{nfEur0.format(recap.offreTotale)}</div>
+            </div>
+          </div>
+          {/* Rangée du bas : grand tableau des minutes (inclut maintenant Autres Dépenses et Déplacements via fusion) */}
+          <div style={{ minWidth: 0, overflowX: "auto" }}>
+            <MinuteEditor
+              minute={{
+                ...minute,
+                lines: [
+                  ...(rows || []),
+                  ...(extraRows || []).map(r => ({ ...r, produit: r.produit || "Autre Dépense" })),
+                  ...(depRows || []).map(r => ({ ...r, produit: r.produit || "Déplacement" }))
+                ],
+                modules: mods
+              }}
+              onChangeMinute={(m) => {
+                if (!canEdit) return;
+                const all = m.lines || [];
 
-      <div style={{ minWidth: 0, overflowX: "auto" }}>
-        <DataTable
-          title="Déplacement"
-          tableKey="deplacements"
-          rows={depRows}
-          onRowsChange={handleDepRowsChange}
-          schema={CHIFFRAGE_SCHEMA_DEP}
-          setSchema={() => {}}
-          searchQuery=""
-          viewKey="minutes_dep"
-          enableCellFormulas={false}
-          formulaCtx={formulaCtx}
-        />
-      </div>
-    </div>
+                // Split back logic
+                const newLines = all.filter(r => r.produit !== "Autre Dépense" && r.produit !== "Déplacement");
+                const newExtras = all.filter(r => r.produit === "Autre Dépense");
+                const newDeps = all.filter(r => r.produit === "Déplacement");
 
-    {/* Rangée du bas : grand tableau des minutes */}
-    <div style={{ minWidth: 0 /* <- indispensable pour couper le débordement */, overflowX: "auto" }}>
-      <MinuteEditor
-        minute={{ ...minute, lines: rows, modules: mods }}
-        onChangeMinute={(m) => canEdit && updateMinute({ lines: m.lines })}
-        enableCellFormulas={true}
-        formulaCtx={formulaCtx}
-        schema={schema}
-        setSchema={setSchema}
-      />
-    </div>
-  </div>
-)}
+                updateMinute({
+                  lines: newLines,
+                  extraDepenses: newExtras,
+                  deplacements: newDeps,
+                  // Also update other minute fields if modified (like name, status, catalog)
+                  name: m.name,
+                  notes: m.notes,
+                  status: m.status,
+                  catalog: m.catalog
+                });
+              }}
+              enableCellFormulas={true}
+              formulaCtx={formulaCtx}
+              schema={schema}
+              setSchema={setSchema}
+            />
+          </div>
+        </div>
+      )}
 
       {activeTab === "achats" && <MinutePurchases rows={rows} />}
 
-     {activeTab === "moulinette" && (
-  <Moulinette rows={rows} extraRows={extraRows} depRows={depRows} />
-)}
+      {activeTab === "moulinette" && (
+        <Moulinette rows={rows} extraRows={extraRows} depRows={depRows} />
+      )}
     </div>
   );
 }

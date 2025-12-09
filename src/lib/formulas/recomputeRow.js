@@ -25,5 +25,19 @@ export function recomputeRow(row, schema, ctx = {}) {
       // next[k] = "#ERR"; // ← si tu préfères signaler l'erreur visuellement
     }
   }
+
+  // --- Hybrid Logic for Autres Dépenses ---
+  // --- Hybrid Logic for Autres Dépenses ---
+  if (next.produit === 'Autre Dépense') {
+    const isCommission = next.categorie && next.categorie.includes('Commission');
+    if (isCommission) {
+      // Commission logic: Amount = % * Total CA
+      const totalCA = ctx.totalCA || 0;
+      const pct = parseFloat(next.pourcentage) || 0;
+      next.prix_total = (pct * totalCA) / 100;
+    }
+    // ELSE: Ne pas toucher à next.prix_total (Standard case)
+  }
+
   return next;
 }

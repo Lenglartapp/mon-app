@@ -3,6 +3,7 @@ import React from "react";
 
 // composants internes
 import MinuteGrid from "./MinuteGrid";
+import CatalogManager from "./CatalogManager";
 
 // constantes / helpers
 import { computeFormulas } from "../lib/formulas/compute";
@@ -13,22 +14,68 @@ import { uid } from "../lib/utils/uid";
 // hooks app (si MinuteEditor les utilise ; sinon tu peux supprimer ces lignes)
 import { useActivity } from "../contexts/activity";
 import { useAuth } from "../auth.jsx";
+import { Library } from 'lucide-react';
+
+import { CHIFFRAGE_SCHEMA_DEP } from "../lib/schemas/deplacement";
+import { EXTRA_DEPENSES_SCHEMA } from "../lib/schemas/extraDepenses";
 
 const EMPTY_CTX = {};
 
 // ================ MinuteEditor (tableau des lignes d'une minute) =================
 function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formulaCtx = EMPTY_CTX, schema = [], setSchema }) {
-  const [rows, setRows] = React.useState(() =>
-    computeFormulas(minute?.lines || [], schema, formulaCtx)
-  );
+  // STATELESS REFACTOR: Computed directly from props
+  // STATELESS REFACTOR: Computed directly from props & Sanitized
+  const rows = React.useMemo(() => {
+    // 1. Gather all rows (already aggregating in parent, but safe to check)
+    // Actually ChiffrageScreen already sends aggregated 'lines' in minute.lines
+    const rawSource = minute?.lines || [];
 
-  // Ignorer une resync quand la modif vient d'ici
-  const skipNextSyncRef = React.useRef(false);
+    // 2. Identify potential schema targets AND deduplicate IDs
+    const seenIds = new Set();
 
-  // Resync UNIQUEMENT quand on change de minute (id).
+    return rawSource.map(row => {
+      // Determine schema for recompute
+      let targetSchema = schema;
+      const p = row.produit;
+      if (p === 'Autre Dépense') targetSchema = EXTRA_DEPENSES_SCHEMA;
+      else if (p === 'Déplacement') targetSchema = CHIFFRAGE_SCHEMA_DEP;
+
+      // Ensure valid ID & Deduplicate
+      let safeId = row.id;
+      if (!safeId || seenIds.has(safeId)) {
+        safeId = uid(); // Regenerate if missing or duplicate
+      }
+      seenIds.add(safeId);
+
+      const uniqueRow = { ...row, id: safeId };
+      return recomputeRow(uniqueRow, targetSchema, formulaCtx);
+    });
+  }, [minute?.lines, schema, formulaCtx]);
+
+  // Catalog State
+  const [catalog, setCatalog] = React.useState(minute?.catalog || [
+    { id: 1, name: 'Velours Royal', category: 'Tissu', buyPrice: 50, sellPrice: 120, width: 280, unit: 'ml' },
+    { id: 2, name: 'Lin Naturel', category: 'Tissu', buyPrice: 30, sellPrice: 80, width: 140, unit: 'ml' },
+    { id: 3, name: 'Rail DS', category: 'Tringle', buyPrice: 15, sellPrice: 45, width: 0, unit: 'ml' },
+  ]);
+  const [isCatalogOpen, setIsCatalogOpen] = React.useState(false);
+
+  // Sync catalog to minute
   React.useEffect(() => {
-    setRows(computeFormulas(minute?.lines || [], schema, formulaCtx));
-  }, [minute?.id, schema, formulaCtx]);
+    if (minute?.catalog && minute.catalog !== catalog) {
+      // If minute has a catalog and it's different (e.g. loaded from DB), use it.
+      // CAUTION: This might overwrite local changes if not handled carefully.
+      // For now, we initialize from minute.catalog or default, and update minute on change.
+    }
+  }, [minute?.id]); // Only on load
+
+  const handleCatalogChange = (newCatalog) => {
+    setCatalog(newCatalog);
+    onChangeMinute?.({ ...minute, catalog: newCatalog, updatedAt: Date.now() });
+  };
+
+  // Note: Resync useEffect removed (Stateless)
+
 
   // Modules actifs (fallback = tous cochés pour anciennes minutes)
   const mods = minute?.modules || { rideau: true, store: true, decor: true };
@@ -37,6 +84,10 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
   const rowsRideaux = rows.filter((r) => /rideau|voilage/i.test(String(r.produit || "")));
   const rowsDecors = rows.filter((r) => /d[ée]cor/i.test(String(r.produit || "")));
   const rowsStores = rows.filter((r) => /store/i.test(String(r.produit || "")));
+
+  // Nouveaux sous-ensembles
+  const rowsDeplacement = rows.filter((r) => String(r.produit || "") === "Déplacement");
+  const rowsAutre = rows.filter((r) => String(r.produit || "") === "Autre Dépense");
 
   // Id unique via l'utilitaire importé
   const genId = () => uid();
@@ -47,6 +98,8 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
     if (key === "rideaux") return { ...r, produit: "Rideau" };
     if (key === "decors") return { ...r, produit: "Décor de lit" };
     if (key === "stores") return { ...r, produit: "Store Enrouleur" };
+    if (key === "deplacement") return { ...r, produit: "Déplacement" };
+    if (key === "autre") return { ...r, produit: "Autre Dépense" };
     return r;
   };
 
@@ -65,47 +118,60 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
       if (key === "rideaux") return /rideau|voilage/i.test(p);
       if (key === "decors") return /d[ée]cor/i.test(p);
       if (key === "stores") return /store/i.test(p);
+      if (key === "deplacement") return p === "Déplacement";
+      if (key === "autre") return p === "Autre Dépense";
       return false;
     };
     const others = (rows || []).filter((r) => !isInSubset(r));
 
+    // Determine strict schema for this subset to avoid cross-pollution of formulas
+    // (e.g. preventing 'prix_total' formula from main schema applying to extraDepenses)
+    let targetSchema = schema;
+    if (key === 'autre') targetSchema = EXTRA_DEPENSES_SCHEMA;
+    else if (key === 'deplacement') targetSchema = CHIFFRAGE_SCHEMA_DEP;
+
     // Fusion + recalcul des formules
     const next = [...others, ...normalizedChild];
-    const withFx = next.map((row) => recomputeRow(row, schema, formulaCtx));
+    const withFx = next.map((row) => recomputeRow(row, targetSchema, formulaCtx));
 
-    // Commit local (remontée au parent se fait via l'useEffect plus bas)
-    skipNextSyncRef.current = true;
-    setRows(withFx);
+    // Stateless Update
+    onChangeMinute?.({ ...minute, lines: withFx, updatedAt: Date.now() });
   };
 
   // Ajout d'une nouvelle ligne
-  const handleAddRow = (key) => {
+  const handleAddRow = React.useCallback((key) => {
     const newRow = {
       id: genId(),
-      produit: key === "rideaux" ? "Rideau" : key === "decors" ? "Décor de lit" : "Store Enrouleur",
+      produit: key === "rideaux" ? "Rideau" :
+        key === "decors" ? "Décor de lit" :
+          key === "stores" ? "Store Enrouleur" :
+            key === "deplacement" ? "Déplacement" : "Autre Dépense",
       // Valeurs par défaut pour éviter les vides
       quantite: 1,
       largeur: 0,
       hauteur: 0,
     };
 
-    // On utilise mergeChildRowsFor pour l'ajouter proprement (ça gère la fusion et le recalcul)
-    // On doit passer le tableau existant + la nouvelle ligne
-    // Mais mergeChildRowsFor attend SEULEMENT les lignes du sous-ensemble.
+    // Calculate new state
+    // 1. Determine target schema
+    let targetSchema = schema;
+    if (key === 'autre') targetSchema = EXTRA_DEPENSES_SCHEMA;
+    else if (key === 'deplacement') targetSchema = CHIFFRAGE_SCHEMA_DEP;
 
-    let currentSubset = [];
-    if (key === "rideaux") currentSubset = rowsRideaux;
-    else if (key === "decors") currentSubset = rowsDecors;
-    else if (key === "stores") currentSubset = rowsStores;
+    // 2. Recompute the new row immediately
+    const computedRow = recomputeRow(newRow, targetSchema, formulaCtx);
+    const nextRows = [...rows, computedRow];
 
-    const nextSubset = [...currentSubset, newRow];
-    mergeChildRowsFor(key)(nextSubset);
-  };
+    // Stateless Update
+    onChangeMinute?.({ ...minute, lines: nextRows, updatedAt: Date.now() });
+  }, [rows, schema, formulaCtx, minute, onChangeMinute]);
 
   // États de sélection pour chaque grille
   const [selRideaux, setSelRideaux] = React.useState([]);
   const [selDecors, setSelDecors] = React.useState([]);
   const [selStores, setSelStores] = React.useState([]);
+  const [selDeplacement, setSelDeplacement] = React.useState([]);
+  const [selAutre, setSelAutre] = React.useState([]);
 
   // Suppression de lignes
   const handleDeleteRows = (idsToDelete) => {
@@ -113,18 +179,22 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
     if (!confirm(`Supprimer ${idsToDelete.length} ligne(s) ?`)) return;
 
     const nextRows = rows.filter(r => !idsToDelete.includes(r.id));
-    setRows(nextRows);
+
+    // Stateless Update
+    onChangeMinute?.({ ...minute, lines: nextRows, updatedAt: Date.now() });
 
     // Clear selections
     setSelRideaux([]);
     setSelDecors([]);
     setSelStores([]);
+    setSelDeplacement([]);
+    setSelAutre([]);
   };
 
   // Remonte au parent à chaque modif
-  React.useEffect(() => {
-    onChangeMinute?.({ ...minute, lines: rows, updatedAt: Date.now() });
-  }, [rows]);
+  // React.useEffect(() => {
+  //   onChangeMinute?.({ ...minute, lines: rows, updatedAt: Date.now() });
+  // }, [rows]);
 
   return (
     <div style={{ border: `1px solid ${COLORS.border}`, borderRadius: 12, overflow: "hidden" }}>
@@ -160,28 +230,74 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
           )}
         </div>
 
-        <select
-          value={minute?.status || "Non commencé"}
-          onChange={(e) =>
-            onChangeMinute?.({ ...minute, status: e.target.value, updatedAt: Date.now() })
-          }
-          style={{
-            fontSize: 12,
-            padding: "6px 8px",
-            borderRadius: 8,
-            border: "1px solid #cbd5e1",
-            background: "white",
-          }}
-        >
-          <option>Non commencé</option>
-          <option>En cours d’étude</option>
-          <option>À valider</option>
-          <option>Validé</option>
-        </select>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          <button
+            onClick={() => setIsCatalogOpen(true)}
+            style={{ cursor: 'pointer', padding: '6px 12px', background: '#10b981', color: 'white', border: 'none', borderRadius: 4, display: 'flex', alignItems: 'center', gap: 6 }}
+          >
+            <Library size={16} /> Bibliothèque
+          </button>
+
+          <select
+            value={minute?.status || "Non commencé"}
+            onChange={(e) =>
+              onChangeMinute?.({ ...minute, status: e.target.value, updatedAt: Date.now() })
+            }
+            style={{
+              fontSize: 12,
+              padding: "6px 8px",
+              borderRadius: 8,
+              border: "1px solid #cbd5e1",
+              background: "white",
+            }}
+          >
+            <option>Non commencé</option>
+            <option>En cours d’étude</option>
+            <option>À valider</option>
+            <option>Validé</option>
+          </select>
+        </div>
       </div>
 
       {/* 1/2/3 tableaux selon modules */}
       <>
+        {/* --- NOUVEAUX TABLEAUX : Autres Dépenses & Déplacement (EN HAUT) --- */}
+        <div style={{ display: "flex", gap: 20, alignItems: "flex-start", marginBottom: 20, marginTop: 10 }}>
+          {/* Tableau Autres Dépenses */}
+          <div style={{ flex: 1 }}>
+            <MinuteGrid
+              title="Autres Dépenses"
+              rows={rowsAutre}
+              onRowsChange={mergeChildRowsFor("autre")}
+              schema={EXTRA_DEPENSES_SCHEMA}
+              enableCellFormulas={enableCellFormulas}
+              formulaCtx={formulaCtx}
+              onAdd={React.useCallback(() => handleAddRow("autre"), [handleAddRow])}
+              onDelete={() => handleDeleteRows(selAutre)}
+              rowSelectionModel={selAutre}
+              onRowSelectionModelChange={setSelAutre}
+              catalog={catalog}
+            />
+          </div>
+
+          {/* Tableau Déplacement */}
+          <div style={{ flex: 1 }}>
+            <MinuteGrid
+              title="Déplacements & Logistique"
+              rows={rowsDeplacement}
+              onRowsChange={mergeChildRowsFor("deplacement")}
+              schema={CHIFFRAGE_SCHEMA_DEP}
+              enableCellFormulas={enableCellFormulas}
+              formulaCtx={formulaCtx}
+              onAdd={React.useCallback(() => handleAddRow("deplacement"), [handleAddRow])}
+              onDelete={() => handleDeleteRows(selDeplacement)}
+              rowSelectionModel={selDeplacement}
+              onRowSelectionModelChange={setSelDeplacement}
+              catalog={catalog}
+            />
+          </div>
+        </div>
+
         {mods.rideau && (
           <div style={{ marginBottom: 20 }}>
             <MinuteGrid
@@ -191,10 +307,11 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
               schema={schema}
               enableCellFormulas={enableCellFormulas}
               formulaCtx={formulaCtx}
-              onAdd={() => handleAddRow("rideaux")}
+              onAdd={React.useCallback(() => handleAddRow("rideaux"), [handleAddRow])}
               onDelete={() => handleDeleteRows(selRideaux)}
               rowSelectionModel={selRideaux}
               onRowSelectionModelChange={setSelRideaux}
+              catalog={catalog}
             />
           </div>
         )}
@@ -208,10 +325,11 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
               schema={schema}
               enableCellFormulas={enableCellFormulas}
               formulaCtx={formulaCtx}
-              onAdd={() => handleAddRow("decors")}
+              onAdd={React.useCallback(() => handleAddRow("decors"), [handleAddRow])}
               onDelete={() => handleDeleteRows(selDecors)}
               rowSelectionModel={selDecors}
               onRowSelectionModelChange={setSelDecors}
+              catalog={catalog}
             />
           </div>
         )}
@@ -225,14 +343,24 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
               schema={schema}
               enableCellFormulas={enableCellFormulas}
               formulaCtx={formulaCtx}
-              onAdd={() => handleAddRow("stores")}
+              onAdd={React.useCallback(() => handleAddRow("stores"), [handleAddRow])}
               onDelete={() => handleDeleteRows(selStores)}
               rowSelectionModel={selStores}
               onRowSelectionModelChange={setSelStores}
+              catalog={catalog}
             />
           </div>
         )}
+
+
       </>
+
+      <CatalogManager
+        open={isCatalogOpen}
+        onClose={() => setIsCatalogOpen(false)}
+        catalog={catalog}
+        onCatalogChange={handleCatalogChange}
+      />
     </div>
   );
 }
