@@ -6,7 +6,15 @@ const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 // --- new: numeric sanitizer
 const num = (x) => {
-  const n = toNumber(x);
+  if (typeof x === "number") return Number.isFinite(x) ? x : 0;
+  if (x == null) return 0;
+  // Nettoyage agressif : on vire les espaces (insécables ou non), devises, etc.
+  // On garde chifres, point, virgule, moins.
+  const s = String(x)
+    .replace(/\s/g, "")
+    .replace(/[^\d.,-]/g, "")
+    .replace(",", ".");
+  const n = parseFloat(s);
   return Number.isFinite(n) ? n : 0;
 };
 
@@ -30,48 +38,54 @@ export function evalFormula(expr, row, ctx = {}) {
   js = js.replace(/\{([^}]+)\}/g, (_, name) => `get('${norm(name)}')`);
 
   // 3) also support bare identifiers that match row keys
-const keys = Object.keys(row || {}).filter((k) => k !== "__cellFormulas");
-if (keys.length) {
-  const normalized = keys.map((k) => norm(k)).filter(Boolean);
-  if (normalized.length) {
-    // ⬇️ NE PAS remplacer à l'intérieur des chaînes ' " `
-    const rx = new RegExp(
-      `(?<!['"\\\`])\\b(?:${normalized.map(esc).join("|")})\\b`,
-      "g"
-    );
-    js = js.replace(rx, (m) => `get('${norm(m)}')`);
+  const keys = Object.keys(row || {}).filter((k) => k !== "__cellFormulas");
+  if (keys.length) {
+    const normalized = keys.map((k) => norm(k)).filter(Boolean);
+    if (normalized.length) {
+      // ⬇️ NE PAS remplacer à l'intérieur des chaînes ' " `
+      const rx = new RegExp(
+        `(?<!['"\\\`])\\b(?:${normalized.map(esc).join("|")})\\b`,
+        "g"
+      );
+      js = js.replace(rx, (m) => `get('${norm(m)}')`);
+    }
   }
-}
 
   // helpers available in formulas (all numeric-safe)
   const get = (k) => {
     const v = row[k];
-    // si c'est clairement numérique ➜ nombre, sinon telle quelle (string/bool/…)
-    const n = toNumber(v);
-    return (typeof v === "number" || (String(v).trim() !== "" && Number.isFinite(n))) ? n : v;
+    // on tente de nettoyer proprement
+    return num(v);
   };
-  const ROUND    = (x, n = 0) => { const p = 10 ** n; return Math.round(num(x) * p) / p; };
-  const ROUNDUP  = (x)        => Math.ceil(num(x));
-  const IF       = (cond, a, b) => (cond ? a : b);
-  const MIN      = (...xs)      => Math.min(...xs.map(num));
-  const MAX      = (...xs)      => Math.max(...xs.map(num));
-  const NVL      = (x, y = 0)   => {
-    const n = toNumber(x);
-    return Number.isFinite(n) ? n : toNumber(y);
+  const ROUND = (x, n = 0) => { const p = 10 ** n; return Math.round(num(x) * p) / p; };
+  const ROUNDUP = (x) => Math.ceil(num(x));
+  const IF = (cond, a, b) => (cond ? a : b);
+  const MIN = (...xs) => Math.min(...xs.map(num));
+  const MAX = (...xs) => Math.max(...xs.map(num));
+
+  // Implémentation NVL demandée : si vide/null => default, sinon valeur nettoyée
+  const NVL = (x, y = 0) => {
+    // Si chaîne vide ou null/undefined -> valeur par défaut
+    if (x === null || x === undefined || x === "") return num(y);
+    const n = num(x);
+    // Si n est 0, c'est peut-être la valeur réelle ou un échec de parsing.
+    // Mais num() renvoie 0 si fail.
+    // NVL(val, def) : si val existe, on prend val.
+    return n;
   };
-  const CEIL     = (x)          => Math.ceil(toNumber(x));
-  const PARAM    = new Proxy({}, {
+
+  const CEIL = (x) => Math.ceil(num(x));
+  const PARAM = new Proxy({}, {
     get(_t, prop) {
       const map = ctx?.paramsMap || {};
       const raw = map[String(prop)];
-      const n = toNumber(raw);
-      return Number.isFinite(n) ? n : 0;
+      return num(raw);
     }
   });
 
   try {
     const fn = new Function(
-      "get","ROUND","IF","MIN","MAX","ROUNDUP","NVL","CEIL","PARAM",
+      "get", "ROUND", "IF", "MIN", "MAX", "ROUNDUP", "NVL", "CEIL", "PARAM",
       `return (${js});`
     );
     const out = fn(get, ROUND, IF, MIN, MAX, ROUNDUP, NVL, CEIL, PARAM);

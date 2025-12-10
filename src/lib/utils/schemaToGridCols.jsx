@@ -84,13 +84,25 @@ export function schemaToGridCols(schema, enableCellFormulas = false, onOpenDetai
       gridCol.valueOptions = col.valueOptions || col.options;
     }
 
-    // Currency Formatting
-    const isPrice = ['prix', 'montant', 'total', 'cout', 'pa', 'pv'].some(term => col.key.toLowerCase().includes(term));
-    if (gridCol.type === 'number' && isPrice) {
-      gridCol.valueFormatter = (value) => {
-        if (value == null) return '';
-        return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(value);
+    // Currency Formatting (Force override)
+    const isPrice = ['prix', 'montant', 'total', 'cout', 'pa', 'pv', 'transport'].some(term => col.key.toLowerCase().includes(term));
+    // Remove type check to ensure coverage
+    if (isPrice) {
+      const formatter = (value) => {
+        if (value === null || value === undefined || value === '') return '';
+        const n = Number(value);
+        if (isNaN(n)) return value; // Return original if not NaN? Or empty? User code said params.value. Let's return value to be safe or empty. User code: return params.value if isNaN.
+        return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(n);
       };
+
+      gridCol.valueFormatter = (params) => {
+        // Handle both MUI v5 (params.value) and v6 (value)
+        const value = (params && typeof params === 'object' && 'value' in params) ? params.value : params;
+        return formatter(value);
+      };
+
+      // Force renderCell
+      gridCol.renderCell = (params) => formatter(params.value);
     }
 
     // Use Custom Edit Cell for formulas if enabled
