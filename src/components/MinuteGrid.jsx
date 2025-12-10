@@ -154,8 +154,9 @@ export default function MinuteGrid({
 
                     // Apply updates based on mapping
                     if (mapping.laize && schema.some(c => c.key === mapping.laize)) updatedRow[mapping.laize] = article.width;
-                    if (mapping.pa && schema.some(c => c.key === mapping.pa)) updatedRow[mapping.pa] = article.buyPrice;
-                    if (mapping.pv && schema.some(c => c.key === mapping.pv)) updatedRow[mapping.pv] = article.sellPrice;
+                    // Logic moved to recomputeRow.j (Calculation based on ML)
+                    // if (mapping.pa && schema.some(c => c.key === mapping.pa)) updatedRow[mapping.pa] = article.buyPrice;
+                    // if (mapping.pv && schema.some(c => c.key === mapping.pv)) updatedRow[mapping.pv] = article.sellPrice;
 
                     if (mapping.motif && schema.some(c => c.key === mapping.motif)) {
                         // Motif is text in schema ("Motif Déco 1"), assuming boolean or text conversion
@@ -229,11 +230,13 @@ export default function MinuteGrid({
     }, []);
 
     return (
-        <div style={{ height: 500, width: '100%' }}>
+        <div style={{ width: '100%' }}>
             {title && <h3>{title}</h3>}
             <DataGrid
                 rows={rows}
                 columns={columns}
+                // Auto height to avoid vertical scrollbars
+                autoHeight
                 processRowUpdate={processRowUpdate}
                 onProcessRowUpdateError={handleProcessRowUpdateError}
                 checkboxSelection

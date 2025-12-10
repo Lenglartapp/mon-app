@@ -4,6 +4,7 @@ import MinuteEditor from "../components/MinuteEditor";
 import MinutePurchases from "../components/MinutePurchases";
 import DataTable from "../components/DataTable";
 import Moulinette from "../components/Moulinette";
+import DashboardSummary from "../components/DashboardSummary";
 
 import { COLORS, S } from "../lib/constants/ui";
 import { CHIFFRAGE_SCHEMA } from "../lib/schemas/chiffrage";
@@ -399,47 +400,8 @@ function ChiffrageScreen({ minuteId, minutes, setMinutes, onBack }) {
       {/* Onglet Minutes */}
       {activeTab === "minutes" && (
         <div style={{ display: "grid", gap: 12, overflow: "hidden" }}>
-          {/* Récap CA compact — 1 SEULE LIGNE */}
-          <div
-            style={{
-              border: `1px solid ${COLORS.border}`,
-              borderRadius: 12,
-              background: "#fff",
-              padding: 12,
-              display: "flex",
-              gap: 20,
-              alignItems: "flex-start",
-              flexWrap: "wrap",
-            }}
-          >
-            {/* 5 blocs à gauche */}
-            <div style={{ minWidth: 140 }}>
-              <div style={{ fontWeight: 700, opacity: 0.8 }}>CA Rideaux</div>
-              <div>{nfEur0.format(recap.caRideaux)}</div>
-            </div>
-            <div style={{ minWidth: 140 }}>
-              <div style={{ fontWeight: 700, opacity: 0.8 }}>CA Décors</div>
-              <div>{nfEur0.format(recap.caDecors)}</div>
-            </div>
-            <div style={{ minWidth: 140 }}>
-              <div style={{ fontWeight: 700, opacity: 0.8 }}>CA Stores</div>
-              <div>{nfEur0.format(recap.caStores)}</div>
-            </div>
-            <div style={{ minWidth: 160 }}>
-              <div style={{ fontWeight: 700, opacity: 0.8 }}>Autres dépenses</div>
-              <div>{nfEur0.format(recap.extrasTotal)}</div>
-            </div>
-            <div style={{ minWidth: 160 }}>
-              <div style={{ fontWeight: 700, opacity: 0.8 }}>Déplacement</div>
-              <div>{nfEur0.format(recap.depTotal)}</div>
-            </div>
-
-            {/* Total tout à droite */}
-            <div style={{ marginLeft: "auto", textAlign: "right" }}>
-              <div style={{ fontWeight: 800 }}>CA Total</div>
-              <div style={{ fontWeight: 800 }}>{nfEur0.format(recap.offreTotale)}</div>
-            </div>
-          </div>
+          {/* Récap CA Dashboard */}
+          <DashboardSummary recap={recap} nf={nfEur0} />
           {/* Rangée du bas : grand tableau des minutes (inclut maintenant Autres Dépenses et Déplacements via fusion) */}
           <div style={{ minWidth: 0, overflowX: "auto" }}>
             <MinuteEditor
@@ -469,7 +431,8 @@ function ChiffrageScreen({ minuteId, minutes, setMinutes, onBack }) {
                   name: m.name,
                   notes: m.notes,
                   status: m.status,
-                  catalog: m.catalog
+                  catalog: m.catalog,
+                  settings: m.settings
                 });
               }}
               enableCellFormulas={true}
