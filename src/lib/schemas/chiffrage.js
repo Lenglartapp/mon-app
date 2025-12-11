@@ -152,13 +152,18 @@ export const CHIFFRAGE_SCHEMA = [
   { key: "pa_inter", label: "PA Inter", type: "number", width: 140 },
   { key: "pv_inter", label: "PV Inter", type: "number", width: 140 },
 
-  // Rail / tringle / mécanisme
-  { key: "type_rail", label: "Type Rail", type: "select", options: ["Rail", "Tringle"], width: 120 },
-  { key: "nom_tringle", label: "Nom Tringle", type: "text", width: 140 },
-  { key: "diametre_tringle", label: "Diamètre Tringle", type: "number", width: 140 },
-  { key: "supp_mecanisme", label: "Supplément mécanisme", type: "checkbox", width: 170 },
-  { key: "pa_meca", label: "PA Mécanisme", type: "number", width: 140 },
-  { key: "pv_meca", label: "PV Mécanisme", type: "number", width: 140 },
+  // Mécanisme (Rail / Tringle / Store)
+  {
+    key: "type_mecanisme",
+    label: "Type Mécanisme",
+    type: "select",
+    options: ['Rail', 'Tringle', 'Store Bateau', 'Store Enrouleur', 'Store Vénitien', 'Store Californien', 'Store Velum', 'Canishade'],
+    width: 140
+  },
+  { key: "modele_mecanisme", label: "Modèle Mécanisme", type: "text", width: 140 },
+  { key: "dim_mecanisme", label: "Dim. Mécanisme", type: "text", width: 120 },
+  { key: "pa_mecanisme", label: "PA Mécanisme", type: "number", width: 120 },
+  { key: "pv_mecanisme", label: "PV Mécanisme", type: "number", width: 120 },
 
   // Prépa / pose / confection (valorisations)
   { key: "heures_prepa", label: "Heures Prépa", type: "number", width: 140 },
@@ -201,7 +206,7 @@ export const CHIFFRAGE_SCHEMA = [
     // somme des PV composants + livraison, en ignorant les champs vides
     formula:
       "{pv_tissu_deco1} + {pv_tissu_deco2} + {pv_doublure} + {pv_inter} + " +
-      "{pv_meca} + {pv_prepa} + {pv_pose} + {pv_confection} + {livraison}",
+      "{pv_mecanisme} + {pv_prepa} + {pv_pose} + {pv_confection} + {livraison}",
     width: 160
   },
   { key: "quantite", label: "Quantité", type: "number", width: 100 },

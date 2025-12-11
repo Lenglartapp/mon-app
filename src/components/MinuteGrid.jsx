@@ -51,7 +51,8 @@ export default function MinuteGrid({
     formulaCtx = {},
     title,
     catalog = [],
-    onAdd, // <--- Added prop
+    railOptions = [], // <--- Added prop
+    onAdd,
 }) {
     const [rowSelectionModel, setRowSelectionModel] = useState([]);
     const [detailRow, setDetailRow] = useState(null);
@@ -93,8 +94,8 @@ export default function MinuteGrid({
     }, [rows, onRowsChange, rowSelectionModel]);
 
     const columns = useMemo(() => {
-        return schemaToGridCols(schema, enableCellFormulas, handleOpenDetail, catalog);
-    }, [schema, enableCellFormulas, handleOpenDetail, catalog]);
+        return schemaToGridCols(schema, enableCellFormulas, handleOpenDetail, catalog, railOptions);
+    }, [schema, enableCellFormulas, handleOpenDetail, catalog, railOptions]);
 
     // detailRow is now state, no need for useMemo lookup
 

@@ -75,7 +75,7 @@ export default function CatalogManager({ open, onClose, catalog, onCatalogChange
             width: 150,
             editable: true,
             type: 'singleSelect',
-            valueOptions: ['Tissu', 'Voilage', 'Doublure', 'Tringle', 'Store', 'Accessoire', 'Main d\'œuvre']
+            valueOptions: ['Tissu', 'Voilage', 'Doublure', 'Rail']
         },
         {
             field: 'buyPrice',
