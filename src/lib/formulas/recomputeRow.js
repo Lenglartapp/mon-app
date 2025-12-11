@@ -60,6 +60,39 @@ export function recomputeRow(row, schema, ctx = {}) {
   reEval('prix_unitaire');
   reEval('prix_total');
 
+  // --- Mechanism Logic (Rideaux) ---
+  if (['Rail', 'Store Bateau', 'Store Enrouleur', 'Store Vénitien', 'Store Californien', 'Store Velum', 'Canishade', 'Tringle'].includes(next.type_mecanisme)) {
+    const type = next.type_mecanisme;
+
+    // A. RAIL Logic: Auto-calculation
+    if (type === 'Rail') {
+      // 1. Find Model
+      const modelName = next.modele_mecanisme;
+      const modelItem = catalog.find(i => i.name === modelName) || {}; // Should filter by category='Mecanisme'? Assuming unique names
+
+      // 2. Auto-fill Dim
+      if (modelItem.dimension) next.dim_mecanisme = modelItem.dimension;
+
+      // 3. Calc Price
+      const widthCm = parseFloat(next.l_mecanisme) || 0;
+      const metrage = widthCm / 100;
+
+      const buyPrice = modelItem.buyPrice || 0;
+      const sellPrice = modelItem.sellPrice || 0;
+
+      next.pa_mecanisme = metrage * buyPrice;
+      next.pv_mecanisme = metrage * sellPrice;
+    }
+    // B. STORE / CANISHADE Logic: Clean up
+    else if (type.includes('Store') || type === 'Canishade') {
+      // Clear dimension (not applicable/locked)
+      next.dim_mecanisme = '';
+      // Prices are manual -> Do nothing.
+    }
+    // C. TRINGLE Logic: Manual
+    // Do nothing. Use user input.
+  }
+
   // --- Global Settings Logic (Rideaux / Deplacements) ---
 
   // --- Global Settings Logic (Rideaux / Deplacements) ---

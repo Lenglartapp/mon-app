@@ -35,7 +35,7 @@ const mapType = (type) => {
  * @param {boolean} enableCellFormulas - Whether cell formulas are enabled.
  * @returns {Array} - Array of GridColDef.
  */
-export function schemaToGridCols(schema, enableCellFormulas = false, onOpenDetail, catalog = []) {
+export function schemaToGridCols(schema, enableCellFormulas = false, onOpenDetail, catalog = [], railOptions = []) {
   if (!Array.isArray(schema)) return [];
 
   // Filter out 'sel' column and explicitly hidden columns
@@ -62,9 +62,28 @@ export function schemaToGridCols(schema, enableCellFormulas = false, onOpenDetai
         if (col.editable && typeof col.editable === 'function' && !col.editable(params)) {
           return 'cell-read-only';
         }
+
+        // Special styling for dim_mecanisme when locked
+        if (col.key === 'dim_mecanisme') {
+          const type = params.row.type_mecanisme || '';
+          const isLocked = type === 'Rail' || type.includes('Store') || type === 'Canishade';
+          if (isLocked) return 'bg-gray-100 text-gray-500 cursor-not-allowed';
+        }
+
         return '';
       }
     };
+
+    // Conditional Editing for dim_mecanisme
+    if (col.key === 'dim_mecanisme') {
+      gridCol.isCellEditable = (params) => {
+        const type = params.row.type_mecanisme || '';
+        // Lock if Rail or Store
+        if (type === 'Rail' || type.includes('Store') || type === 'Canishade') return false;
+        // Unlock if Tringle or others
+        return true;
+      };
+    }
 
     if (col.key === 'commentaire') {
       gridCol.renderEditCell = (params) => <GridEditInputCell {...params} multiline />;
@@ -135,6 +154,14 @@ export function schemaToGridCols(schema, enableCellFormulas = false, onOpenDetai
           />
         );
       };
+    }
+
+
+    // Configure modele_mecanisme as Dropdown if it matches
+    if (col.key === 'modele_mecanisme') {
+      gridCol.type = 'singleSelect';
+      gridCol.valueOptions = railOptions;
+      gridCol.editable = true;
     }
 
     // Handle specific types that might need custom rendering or logic

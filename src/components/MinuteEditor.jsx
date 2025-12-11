@@ -213,6 +213,11 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
   //   onChangeMinute?.({ ...minute, lines: rows, updatedAt: Date.now() });
   // }, [rows]);
 
+  // Extract Rail Options from Catalog for Dropdown
+  const railOptions = React.useMemo(() => {
+    return catalog.filter(item => item.category === 'Rail').map(item => item.name);
+  }, [catalog]);
+
   return (
     <div style={{ border: `1px solid ${COLORS.border}`, borderRadius: 12, overflow: "hidden" }}>
       {/* En-tête de l’éditeur (nom, version, statut, infos) */}
@@ -342,6 +347,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
               rowSelectionModel={selRideaux}
               onRowSelectionModelChange={setSelRideaux}
               catalog={catalog}
+              railOptions={railOptions}
             />
           </Box>
         )}
