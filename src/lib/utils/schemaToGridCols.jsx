@@ -1,6 +1,6 @@
 import React from 'react';
 import FormulaEditCell from '../../components/FormulaEditCell';
-import { GridEditInputCell } from '@mui/x-data-grid';
+import { GridEditInputCell, GridEditSingleSelectCell } from '@mui/x-data-grid';
 import Tooltip from '@mui/material/Tooltip';
 import Badge from '@mui/material/Badge';
 import IconButton from '@mui/material/IconButton';
@@ -159,9 +159,37 @@ export function schemaToGridCols(schema, enableCellFormulas = false, onOpenDetai
 
     // Configure modele_mecanisme as Dropdown if it matches
     if (col.key === 'modele_mecanisme') {
-      gridCol.type = 'singleSelect';
-      gridCol.valueOptions = railOptions;
+      gridCol.type = 'string'; // Default to string for free text
       gridCol.editable = true;
+      gridCol.renderEditCell = (params) => {
+        const type = params.row.type_mecanisme || '';
+        const isRail = type === 'Rail';
+
+        if (isRail) {
+          // Use native HTML select to avoid MUI internals crash on 'string' column type
+          const handleChange = (e) => {
+            params.api.setEditCellValue({ id: params.id, field: params.field, value: e.target.value });
+          };
+
+          return (
+            <select
+              value={params.value || ''}
+              onChange={handleChange}
+              style={{ width: '100%', height: '100%', border: 'none', outline: 'none', padding: '0 8px', backgroundColor: 'transparent' }}
+              autoFocus
+            >
+              <option value="" disabled>Choisir un rail...</option>
+              {railOptions && railOptions.map((opt) => (
+                <option key={opt} value={opt}>
+                  {opt}
+                </option>
+              ))}
+            </select>
+          );
+        }
+        // Free text for others
+        return <GridEditInputCell {...params} />;
+      };
     }
 
     // Handle specific types that might need custom rendering or logic

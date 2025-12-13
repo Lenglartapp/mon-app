@@ -42,7 +42,10 @@ export default function CatalogManager({ open, onClose, catalog, onCatalogChange
         const newId = catalog.length > 0 ? Math.max(...catalog.map(r => r.id)) + 1 : 1;
         const newRow = {
             id: newId,
-            name: 'Nouvel Article',
+            name: 'Nouveau Tissu',
+            provider: '',
+            reference: 'Nouveau',
+            color: '',
             category: 'Tissu',
             buyPrice: 0,
             sellPrice: 0,
@@ -52,6 +55,8 @@ export default function CatalogManager({ open, onClose, catalog, onCatalogChange
             raccord_h: 0,
             unit: 'ml'
         };
+        // Auto-compute name immediately
+        newRow.name = `${newRow.provider || ''} ${newRow.reference || ''} ${newRow.color || ''}`.trim() || 'Nouveau Tissu';
         onCatalogChange([...catalog, newRow]);
     };
 
@@ -62,13 +67,21 @@ export default function CatalogManager({ open, onClose, catalog, onCatalogChange
     };
 
     const processRowUpdate = (newRow) => {
-        const updatedCatalog = catalog.map(r => r.id === newRow.id ? newRow : r);
+        // Auto-concat logic: Fournisseur + Référence + Coloris
+        const name = [newRow.provider, newRow.reference, newRow.color].filter(Boolean).join(' ');
+        const updatedRow = { ...newRow, name: name || 'Article Sans Nom' };
+
+        const updatedCatalog = catalog.map(r => r.id === newRow.id ? updatedRow : r);
         onCatalogChange(updatedCatalog);
-        return newRow;
+        return updatedRow;
     };
 
     const columns = [
-        { field: 'name', headerName: 'Nom', width: 250, editable: true },
+        { field: 'provider', headerName: 'Fournisseur', width: 140, editable: true },
+        { field: 'reference', headerName: 'Référence', width: 140, editable: true },
+        { field: 'color', headerName: 'Coloris', width: 120, editable: true },
+        // Name is hidden but maintained as the ID for other components
+        { field: 'name', headerName: 'Nom Complet(ID)', width: 250, editable: false, description: 'Généré automatiquement (Fournisseur + Ref + Coloris)' },
         {
             field: 'category',
             headerName: 'Catégorie',
@@ -199,6 +212,20 @@ export default function CatalogManager({ open, onClose, catalog, onCatalogChange
                                     InputLabelProps={{ shrink: true }}
                                 />
                                 <small style={{ display: 'block', marginTop: 8, color: '#888' }}>Coût unitaire d'un repas par technicien.</small>
+                            </div>
+
+                            <div style={{ border: '1px solid #ddd', padding: 20, borderRadius: 8 }}>
+                                <TextField
+                                    label="Coeff. Marge Sous-traitance"
+                                    type="number"
+                                    value={settings.coef_sous_traitance ?? 2}
+                                    onChange={(e) => handleSettingChange('coef_sous_traitance', e.target.value)}
+                                    fullWidth
+                                    variant="outlined"
+                                    inputProps={{ step: "0.1" }}
+                                    InputLabelProps={{ shrink: true }}
+                                />
+                                <small style={{ display: 'block', marginTop: 8, color: '#888' }}>Multiplicateur appliqué au PA sous-traitance pour obtenir le PV.</small>
                             </div>
                         </div>
                     </div>

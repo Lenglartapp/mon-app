@@ -1,0 +1,144 @@
+export const RIDEAUX_DEFAULT_VISIBILITY = {
+    // Complexité Textile (Matières 2)
+    tissu_deco2: false,
+    laize_tissu_deco2: false,
+    motif_deco2: false,
+    raccord_v2: false,
+    raccord_h2: false,
+    ml_tissu_deco2: false,
+    pa_tissu_deco2: false,
+    pv_tissu_deco2: false,
+
+    // Finitions Luxe (Passementerie)
+    passementerie1: false,
+    app_passementerie1: false,
+    ml_passementerie1: false,
+    pa_passementerie1: false,
+    pv_passementerie1: false,
+    passementerie2: false,
+    app_passementerie2: false,
+    ml_passementerie2: false,
+    pa_passementerie2: false,
+
+    // Structure (Inter-doublure)
+    inter_doublure: false,
+    laize_inter: false,
+    ml_inter: false,
+    pa_inter: false,
+    pv_inter: false,
+
+    // Sous-traitance (Pose & Confection)
+    stpausepa: false,
+    stconfpa: false
+};
+
+export const DECORS_DEFAULT_VISIBILITY = {
+    // ❌ À DÉSACTIVER (Visible = false)
+
+    // Géométrie Rideau
+    pair_un: false,
+    ampleur: false,
+    l_mecanisme: false,
+    hauteur_coupe_minutes: false,
+    a_plat: false,
+    croisement: false,
+    retour_g: false,
+    retour_d: false,
+    envers_visible: false,
+    double: false,
+
+    // Structure (Doublure / Inter) - TOUT le bloc doublure/inter masqué
+    doublure: false,
+    laize_doublure: false,
+    ml_doublure: false,
+    pa_doublure: false,
+    pv_doublure: false,
+
+    inter_doublure: false,
+    laize_inter: false,
+    ml_inter: false,
+    pa_inter: false,
+    pv_inter: false,
+
+    // Mécanisme - TOUT le bloc masqué
+    type_mecanisme: false,
+    modele_mecanisme: false,
+    dim_mecanisme: false,
+    pa_mecanisme: false,
+    pv_mecanisme: false,
+
+    // Pose / Prépa (Masqué selon demande)
+    heures_prepa: false,
+    pv_prepa: false,
+    type_pose: false,
+    heures_pose: false,
+    pv_pose: false,
+    stpausepa: false, // ST Pose masqué
+    stpausepv: false,
+
+    // Confection Interne (Masqué selon demande utilisateur)
+    heures_confection: false,
+    pv_confection: false,
+
+    // ✅ À ACTIVER (Visible = true, implicite par défaut si absent du modèle, mais je note ici pour ceux qui étaient cachés avant)
+    // Tissu 2 (COMPLET) -> Doit être visible. Si RIDEAUX cachait par défaut, il faut s'assurer qu'ici c'est visible.
+    // Par défaut DataGrid affiche tout sauf si précisé false.
+    // Donc on ne met RIEN pour les colonnes qu'on veut VOIR (Tissu 2, Passementerie, etc).
+    // SAUF si elles sont masquées par défaut CSS ou autre, mais ici c'est visibilityModel.
+    // Le modèle n'a que des clés 'false' pour masquer.
+
+    // Sous-Traitance Confection (Visible)
+    stconfpv: true
+};
+
+export const STORES_DEFAULT_VISIBILITY = {
+    // ❌ À DÉSACTIVER (Visible = false)
+
+    // Géométrie Rideau
+    pair_un: false,
+    ampleur: false,
+    hauteur_coupe_minutes: false,
+    a_plat: false,
+    croisement: false,
+    retour_g: false,
+    retour_d: false,
+    envers_visible: false,
+    double: false,
+
+    // Matières Secondaires (Tissu 2) - Tout Masqué
+    tissu_deco2: false,
+    laize_tissu_deco2: false,
+    motif_deco2: false,
+    raccord_v2: false,
+    raccord_h2: false,
+    ml_tissu_deco2: false,
+    pa_tissu_deco2: false,
+    pv_tissu_deco2: false,
+
+    // Autres fournitures (Passementerie 2, Doublure, Inter)
+    passementerie2: false,
+    app_passementerie2: false,
+    ml_passementerie2: false,
+    pa_passementerie2: false,
+
+    doublure: false,
+    laize_doublure: false,
+    ml_doublure: false,
+    pa_doublure: false,
+    pv_doublure: false,
+
+    inter_doublure: false,
+    laize_inter: false,
+    ml_inter: false,
+    pa_inter: false,
+    pv_inter: false,
+
+    // Sous-traitance (Ni Pose ni Conf demandées par défaut pour Stores)
+    stpausepa: false,
+    stpausepv: false,
+    stconfpa: false,
+    stconfpv: false,
+
+    // ✅ À ACTIVER (Commentaire pour mémoire)
+    // Tissu 1, Passementerie 1, Mécanisme, Prépa, Pose, Confection, Synthèse
+};

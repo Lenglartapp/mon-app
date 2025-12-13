@@ -12,10 +12,18 @@ export function recomputeRow(row, schema, ctx = {}) {
   const cellFx = row?.__cellFormulas || {};
   const next = { ...(row || {}) };
 
-  // 1. First Pass: Calculate all formulas (Get correct ML, but Prices might be stale)
+  // 1. First Pass: Calculate all formulas
+  // Products that require manual ML input (Decors + Stores)
+  const isManualML = /d[ée]cor|coussin|plaid|t[êe]te|tenture|cache|store|canishade/i.test(row?.produit || "");
+  const manualFields = ['ml_tissu_deco1', 'ml_tissu_deco2', 'ml_passementerie1', 'ml_passementerie2', 'ml_doublure', 'ml_inter'];
+
   for (const col of cols) {
     if (!col || !col.key) continue;
     const k = col.key;
+
+    // SAFEGUARD for Decors/Stores: Skip automatic ML calculation
+    if (isManualML && manualFields.includes(k)) continue;
+
     const expr = cellFx[k] || col.formula;
     if (!expr) continue;
 
@@ -116,6 +124,18 @@ export function recomputeRow(row, schema, ctx = {}) {
     // PV Prepa
     if (next.heures_prepa > 0) {
       next.pv_prepa = next.heures_prepa * taux;
+    }
+
+    // 1-BIS. SOUS-TRAITANCE MARGIN (New User Request)
+    // Apply dynamic coefficient from settings (default 2)
+    const coefST = Number(settings.coef_sous_traitance) || 2;
+    // ST Pose
+    if (next.stpausepa > 0) {
+      next.stpausepv = next.stpausepa * coefST;
+    }
+    // ST Confection
+    if (next.stconfpa > 0) {
+      next.stconfpv = next.stconfpa * coefST;
     }
   }
 

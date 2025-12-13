@@ -1,9 +1,9 @@
 import React from "react";
 
 import MinuteEditor from "../components/MinuteEditor";
-import MinutePurchases from "../components/MinutePurchases";
+import ShoppingListScreen from "../screens/ShoppingListScreen";
 import DataTable from "../components/DataTable";
-import Moulinette from "../components/Moulinette";
+import MoulinetteView from "../components/modules/Moulinette/MoulinetteView";
 import DashboardSummary from "../components/DashboardSummary";
 
 import { COLORS, S } from "../lib/constants/ui";
@@ -166,8 +166,8 @@ function ChiffrageScreen({ minuteId, minutes, setMinutes, onBack }) {
 
     const caTotal = caRideaux + caDecors + caStores + caAutres;
 
-    const extrasTotal = (extraRows || []).reduce((s, r) => s + toNum(r?.montant_eur), 0);
-    const depTotal = (depRows || []).reduce((s, r) => s + toNum(r?.total_eur), 0);
+    const extrasTotal = (extraRows || []).reduce((s, r) => s + toNum(r?.prix_total), 0);
+    const depTotal = (depRows || []).reduce((s, r) => s + toNum(r?.prix_total), 0);
 
     const offreTotale = caTotal + extrasTotal + depTotal;
 
@@ -444,10 +444,10 @@ function ChiffrageScreen({ minuteId, minutes, setMinutes, onBack }) {
         </div>
       )}
 
-      {activeTab === "achats" && <MinutePurchases rows={rows} />}
+      {activeTab === "achats" && <ShoppingListScreen minutes={[minute]} />}
 
       {activeTab === "moulinette" && (
-        <Moulinette rows={rows} extraRows={extraRows} depRows={depRows} />
+        <MoulinetteView rows={rows} extraRows={extraRows} depRows={depRows} />
       )}
     </div>
   );

@@ -157,7 +157,7 @@ export const CHIFFRAGE_SCHEMA = [
     key: "type_mecanisme",
     label: "Type Mécanisme",
     type: "select",
-    options: ['Rail', 'Tringle', 'Store Bateau', 'Store Enrouleur', 'Store Vénitien', 'Store Californien', 'Store Velum', 'Canishade'],
+    options: ['Rail', 'Tringle'],
     width: 140
   },
   { key: "modele_mecanisme", label: "Modèle Mécanisme", type: "text", width: 140 },
