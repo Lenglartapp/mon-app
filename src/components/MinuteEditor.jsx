@@ -19,6 +19,9 @@ import { Library } from 'lucide-react';
 
 import { CHIFFRAGE_SCHEMA_DEP } from "../lib/schemas/deplacement";
 import { EXTRA_DEPENSES_SCHEMA } from "../lib/schemas/extraDepenses";
+import { RIDEAUX_DEFAULT_VISIBILITY, DECORS_DEFAULT_VISIBILITY, STORES_DEFAULT_VISIBILITY } from "../lib/constants/gridDefaults";
+import { DECORS_SCHEMA } from "../lib/schemas/decors";
+import { STORES_SCHEMA } from "../lib/schemas/stores";
 
 const EMPTY_CTX = {};
 
@@ -67,6 +70,10 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
       const p = row.produit;
       if (p === 'Autre Dépense') targetSchema = EXTRA_DEPENSES_SCHEMA;
       else if (p === 'Déplacement') targetSchema = CHIFFRAGE_SCHEMA_DEP;
+      // Handle Decors specific schema
+      else if (/d[ée]cor|coussin|plaid|t[êe]te|tenture|cache/i.test(p)) targetSchema = DECORS_SCHEMA;
+      // Handle Stores specific schema
+      else if (/store|canishade/i.test(p)) targetSchema = STORES_SCHEMA;
 
       // Ensure valid ID & Deduplicate
       let safeId = row.id;
@@ -99,7 +106,8 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
 
   // Sous-ensembles par module
   const rowsRideaux = rows.filter((r) => /rideau|voilage/i.test(String(r.produit || "")));
-  const rowsDecors = rows.filter((r) => /d[ée]cor/i.test(String(r.produit || "")));
+  // Updated Decors filter to include new types
+  const rowsDecors = rows.filter((r) => /d[ée]cor|coussin|plaid|t[êe]te|tenture|cache/i.test(String(r.produit || "")));
   const rowsStores = rows.filter((r) => /store/i.test(String(r.produit || "")));
 
   // Nouveaux sous-ensembles
@@ -113,7 +121,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
   const ensureProduitFor = (key, r) => {
     if (r?.produit) return r;
     if (key === "rideaux") return { ...r, produit: "Rideau" };
-    if (key === "decors") return { ...r, produit: "Décor de lit" };
+    if (key === "decors") return { ...r, produit: "Coussins" }; // Default to Coussins
     if (key === "stores") return { ...r, produit: "Store Enrouleur" };
     if (key === "deplacement") return { ...r, produit: "Déplacement" };
     if (key === "autre") return { ...r, produit: "Autre Dépense" };
@@ -133,7 +141,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
     const isInSubset = (r) => {
       const p = String(r.produit || "");
       if (key === "rideaux") return /rideau|voilage/i.test(p);
-      if (key === "decors") return /d[ée]cor/i.test(p);
+      if (key === "decors") return /d[ée]cor|coussin|plaid|t[êe]te|tenture|cache/i.test(p);
       if (key === "stores") return /store/i.test(p);
       if (key === "deplacement") return p === "Déplacement";
       if (key === "autre") return p === "Autre Dépense";
@@ -146,6 +154,8 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
     let targetSchema = schema;
     if (key === 'autre') targetSchema = EXTRA_DEPENSES_SCHEMA;
     else if (key === 'deplacement') targetSchema = CHIFFRAGE_SCHEMA_DEP;
+    else if (key === 'decors') targetSchema = DECORS_SCHEMA;
+    else if (key === 'stores') targetSchema = STORES_SCHEMA;
 
     // Fusion + recalcul des formules
     const next = [...others, ...normalizedChild];
@@ -160,7 +170,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
     const newRow = {
       id: genId(),
       produit: key === "rideaux" ? "Rideau" :
-        key === "decors" ? "Décor de lit" :
+        key === "decors" ? "Coussins" : // Default to Coussins
           key === "stores" ? "Store Enrouleur" :
             key === "deplacement" ? "Déplacement" : "Autre Dépense",
       // Valeurs par défaut pour éviter les vides
@@ -174,6 +184,8 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
     let targetSchema = schema;
     if (key === 'autre') targetSchema = EXTRA_DEPENSES_SCHEMA;
     else if (key === 'deplacement') targetSchema = CHIFFRAGE_SCHEMA_DEP;
+    else if (key === 'decors') targetSchema = DECORS_SCHEMA;
+    else if (key === 'stores') targetSchema = STORES_SCHEMA;
 
     // 2. Recompute the new row immediately
     const computedRow = recomputeRow(newRow, targetSchema, extendedCtx);
@@ -219,43 +231,39 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
   }, [catalog]);
 
   return (
-    <div style={{ border: `1px solid ${COLORS.border}`, borderRadius: 12, overflow: "hidden" }}>
+    <div style={{ paddingBottom: 40 }}>
       {/* En-tête de l’éditeur (nom, version, statut, infos) */}
       <div
         style={{
-          padding: 10,
-          borderBottom: `1px solid ${COLORS.border}`,
-          background: "#fff",
+          ...S.modernCard,
+          padding: '16px 20px',
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
           gap: 12,
+          marginBottom: 24
         }}
       >
         <div>
           <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-            <b>{minute?.name || "Minute sans nom"}</b>
-            <span style={{ opacity: 0.6 }}>v{minute?.version ?? 1}</span>
+            <b style={{ fontSize: 18 }}>{minute?.name || "Minute sans nom"}</b>
+            <span style={{ opacity: 0.6, fontSize: 13, background: '#f3f4f6', padding: '2px 6px', borderRadius: 4 }}>v{minute?.version ?? 1}</span>
           </div>
-          <div style={{ fontSize: 12, color: "#475569", marginTop: 4 }}>
+          <div style={{ fontSize: 13, color: "#6b7280", marginTop: 4 }}>
             Chargé·e : <b>{minute?.owner || "—"}</b>
             {" · "}Créé le {new Date(minute?.createdAt || Date.now()).toLocaleDateString("fr-FR")}
-            {" · "}Modules :
-            {minute?.modules?.rideau && " Rideaux"}
-            {minute?.modules?.store && " · Stores"}
-            {minute?.modules?.decor && " · Décors de lit"}
           </div>
           {minute?.notes && (
-            <div style={{ fontSize: 12, color: "#334155", marginTop: 6, whiteSpace: "pre-wrap" }}>
+            <div style={{ fontSize: 13, color: "#374151", marginTop: 8, whiteSpace: "pre-wrap", background: '#f9fafb', padding: 8, borderRadius: 6 }}>
               {minute.notes}
             </div>
           )}
         </div>
 
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
           <button
             onClick={() => setIsCatalogOpen(true)}
-            style={{ cursor: 'pointer', padding: '6px 12px', background: '#10b981', color: 'white', border: 'none', borderRadius: 4, display: 'flex', alignItems: 'center', gap: 6 }}
+            style={{ cursor: 'pointer', padding: '8px 14px', background: '#10b981', color: 'white', border: 'none', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600, fontSize: 13 }}
           >
             <Library size={16} /> Bibliothèque
           </button>
@@ -266,11 +274,12 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
               onChangeMinute?.({ ...minute, status: e.target.value, updatedAt: Date.now() })
             }
             style={{
-              fontSize: 12,
-              padding: "6px 8px",
+              fontSize: 13,
+              padding: "8px 12px",
               borderRadius: 8,
-              border: "1px solid #cbd5e1",
+              border: `1px solid ${COLORS.border}`,
               background: "white",
+              fontWeight: 500
             }}
           >
             <option>Non commencé</option>
@@ -284,59 +293,57 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
       {/* 1/2/3 tableaux selon modules */}
       <>
         {/* --- NOUVEAUX TABLEAUX : Autres Dépenses & Déplacement (EN HAUT) --- */}
-        <div style={{ display: 'flex', flexDirection: 'row', gap: 20, width: '100%', marginBottom: 20, overflow: 'hidden' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginBottom: 24 }}>
           {/* Tableau Autres Dépenses */}
-          <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-            <Box sx={{ width: '100%', overflowX: 'auto', paddingBottom: 1, border: `1px solid ${COLORS.border}`, borderRadius: 2 }}>
-              <div style={{ minWidth: 600 }}> {/* Force scroll if < 600px */}
-                <MinuteGrid
-                  title="Autres Dépenses"
-                  rows={rowsAutre}
-                  onRowsChange={mergeChildRowsFor("autre")}
-                  schema={EXTRA_DEPENSES_SCHEMA}
-                  enableCellFormulas={enableCellFormulas}
-                  formulaCtx={extendedCtx}
-                  onAdd={React.useCallback(() => handleAddRow("autre"), [handleAddRow])}
-                  onDelete={() => handleDeleteRows(selAutre)}
-                  rowSelectionModel={selAutre}
-                  onRowSelectionModelChange={setSelAutre}
-                  catalog={catalog}
-                />
-              </div>
-            </Box>
+          <div style={{ ...S.modernCard, padding: 0 }}>
+            <div style={{ padding: '16px 20px', borderBottom: `1px solid ${COLORS.border}` }}>
+              <div style={{ fontWeight: 700, fontSize: 14, color: '#374151', textTransform: 'uppercase' }}>Autres Dépenses</div>
+            </div>
+            <div style={{ padding: 0 }}>
+              <MinuteGrid
+                rows={rowsAutre}
+                onRowsChange={mergeChildRowsFor("autre")}
+                schema={EXTRA_DEPENSES_SCHEMA}
+                enableCellFormulas={enableCellFormulas}
+                formulaCtx={extendedCtx}
+                onAdd={React.useCallback(() => handleAddRow("autre"), [handleAddRow])}
+                onDelete={() => handleDeleteRows(selAutre)}
+                rowSelectionModel={selAutre}
+                onRowSelectionModelChange={setSelAutre}
+                catalog={catalog}
+              />
+            </div>
           </div>
 
           {/* Tableau Déplacement */}
-          <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-            <Box sx={{ width: '100%', overflowX: 'auto', paddingBottom: 1, border: `1px solid ${COLORS.border}`, borderRadius: 2 }}>
-              <div style={{ minWidth: 600 }}> {/* Force scroll if < 600px */}
-                <MinuteGrid
-                  title="Déplacements & Logistique"
-                  rows={rowsDeplacement}
-                  onRowsChange={mergeChildRowsFor("deplacement")}
-                  schema={CHIFFRAGE_SCHEMA_DEP}
-                  enableCellFormulas={enableCellFormulas}
-                  formulaCtx={extendedCtx}
-                  onAdd={React.useCallback(() => handleAddRow("deplacement"), [handleAddRow])}
-                  onDelete={() => handleDeleteRows(selDeplacement)}
-                  rowSelectionModel={selDeplacement}
-                  onRowSelectionModelChange={setSelDeplacement}
-                  catalog={catalog}
-                />
-              </div>
-            </Box>
+          <div style={{ ...S.modernCard, padding: 0 }}>
+            <div style={{ padding: '16px 20px', borderBottom: `1px solid ${COLORS.border}` }}>
+              <div style={{ fontWeight: 700, fontSize: 14, color: '#374151', textTransform: 'uppercase' }}>Déplacements & Logistique</div>
+            </div>
+            <div style={{ padding: 0 }}>
+              <MinuteGrid
+                rows={rowsDeplacement}
+                onRowsChange={mergeChildRowsFor("deplacement")}
+                schema={CHIFFRAGE_SCHEMA_DEP}
+                enableCellFormulas={enableCellFormulas}
+                formulaCtx={extendedCtx}
+                onAdd={React.useCallback(() => handleAddRow("deplacement"), [handleAddRow])}
+                onDelete={() => handleDeleteRows(selDeplacement)}
+                rowSelectionModel={selDeplacement}
+                onRowSelectionModelChange={setSelDeplacement}
+                catalog={catalog}
+              />
+            </div>
           </div>
         </div>
 
         {mods.rideau && (
-          <Box sx={{ mb: 4 }}>
-            <Box sx={{ mb: 2, borderBottom: 1, borderColor: 'divider', pb: 1 }}>
-              <Typography variant="h5" component="h2" color="primary" sx={{ fontWeight: 600 }}>
-                Rideaux
-              </Typography>
-            </Box>
+          <div style={{ ...S.modernCard, padding: 0, marginBottom: 24 }}>
+            <div style={{ padding: '20px 24px', borderBottom: `1px solid ${COLORS.border}` }}>
+              <div style={{ fontWeight: 700, fontSize: 16, color: '#374151', textTransform: 'uppercase' }}>Rideaux</div>
+            </div>
             <MinuteGrid
-              title="" // Title moved to header
+              title="" // Title in custom header
               rows={rowsRideaux}
               onRowsChange={mergeChildRowsFor("rideaux")}
               schema={schema}
@@ -348,22 +355,21 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
               onRowSelectionModelChange={setSelRideaux}
               catalog={catalog}
               railOptions={railOptions}
+              initialVisibilityModel={RIDEAUX_DEFAULT_VISIBILITY}
             />
-          </Box>
+          </div>
         )}
 
         {mods.decor && (
-          <Box sx={{ mb: 4 }}>
-            <Box sx={{ mb: 2, borderBottom: 1, borderColor: 'divider', pb: 1 }}>
-              <Typography variant="h5" component="h2" color="primary" sx={{ fontWeight: 600 }}>
-                Décors de lit
-              </Typography>
-            </Box>
+          <div style={{ ...S.modernCard, padding: 0, marginBottom: 24 }}>
+            <div style={{ padding: '20px 24px', borderBottom: `1px solid ${COLORS.border}` }}>
+              <div style={{ fontWeight: 700, fontSize: 16, color: '#374151', textTransform: 'uppercase' }}>Décors de lit</div>
+            </div>
             <MinuteGrid
               title=""
               rows={rowsDecors}
               onRowsChange={mergeChildRowsFor("decors")}
-              schema={schema}
+              schema={DECORS_SCHEMA}
               enableCellFormulas={enableCellFormulas}
               formulaCtx={extendedCtx}
               onAdd={React.useCallback(() => handleAddRow("decors"), [handleAddRow])}
@@ -371,22 +377,21 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
               rowSelectionModel={selDecors}
               onRowSelectionModelChange={setSelDecors}
               catalog={catalog}
+              initialVisibilityModel={DECORS_DEFAULT_VISIBILITY}
             />
-          </Box>
+          </div>
         )}
 
         {mods.store && (
-          <Box sx={{ mb: 4 }}>
-            <Box sx={{ mb: 2, borderBottom: 1, borderColor: 'divider', pb: 1 }}>
-              <Typography variant="h5" component="h2" color="primary" sx={{ fontWeight: 600 }}>
-                Stores
-              </Typography>
-            </Box>
+          <div style={{ ...S.modernCard, padding: 0, marginBottom: 24 }}>
+            <div style={{ padding: '20px 24px', borderBottom: `1px solid ${COLORS.border}` }}>
+              <div style={{ fontWeight: 700, fontSize: 16, color: '#374151', textTransform: 'uppercase' }}>Stores</div>
+            </div>
             <MinuteGrid
               title=""
               rows={rowsStores}
               onRowsChange={mergeChildRowsFor("stores")}
-              schema={schema}
+              schema={STORES_SCHEMA}
               enableCellFormulas={enableCellFormulas}
               formulaCtx={extendedCtx}
               onAdd={React.useCallback(() => handleAddRow("stores"), [handleAddRow])}
@@ -394,11 +399,10 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
               rowSelectionModel={selStores}
               onRowSelectionModelChange={setSelStores}
               catalog={catalog}
+              initialVisibilityModel={STORES_DEFAULT_VISIBILITY}
             />
-          </Box>
+          </div>
         )}
-
-
       </>
 
       <CatalogManager

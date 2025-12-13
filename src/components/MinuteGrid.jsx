@@ -51,12 +51,13 @@ export default function MinuteGrid({
     formulaCtx = {},
     title,
     catalog = [],
-    railOptions = [], // <--- Added prop
+    railOptions = [],
     onAdd,
+    initialVisibilityModel = {}, // <--- Added prop
 }) {
     const [rowSelectionModel, setRowSelectionModel] = useState([]);
     const [detailRow, setDetailRow] = useState(null);
-    const [columnVisibilityModel, setColumnVisibilityModel] = useState({});
+    const [columnVisibilityModel, setColumnVisibilityModel] = useState(initialVisibilityModel);
 
     const handleOpenDetail = useCallback((row) => {
         console.log('Opening detail for row object:', row);
