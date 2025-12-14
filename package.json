@@ -15,9 +15,11 @@
     "@mui/icons-material": "^7.3.6",
     "@mui/material": "^7.3.6",
     "@mui/x-data-grid": "^7.29.12",
+    "exceljs": "^4.4.0",
     "lucide-react": "^0.541.0",
     "react": "^19.1.1",
-    "react-dom": "^19.1.1"
+    "react-dom": "^19.1.1",
+    "read-excel-file": "^6.0.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.33.0",

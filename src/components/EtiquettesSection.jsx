@@ -1,6 +1,6 @@
 // src/components/EtiquettesSection.jsx
 import React from "react";
-import { S } from "../lib/constants/ui.js";
+import { COLORS, S } from "../lib/constants/ui.js";
 import { Filter, Settings2 } from "lucide-react";
 import { useLocalStorage } from "../lib/hooks/useLocalStorage.js";
 import FilterPanel from "./FilterPanel.jsx";
@@ -16,34 +16,34 @@ export default function EtiquettesSection({ title, tableKey, rows, schema }) {
   const sectionRef = React.useRef(null);
 
   // Clés LS
-  const keyFields    = `prod.etq.fields.${tableKey}`;
-  const keyFilters   = `prod.etq.filters.${tableKey}`;
-  const keyGroup     = `prod.etq.group.${tableKey}`;
-  const keyColsWeb   = `prod.etq.colsWeb.${tableKey}`;
+  const keyFields = `prod.etq.fields.${tableKey}`;
+  const keyFilters = `prod.etq.filters.${tableKey}`;
+  const keyGroup = `prod.etq.group.${tableKey}`;
+  const keyColsWeb = `prod.etq.colsWeb.${tableKey}`;
   const keyColsPrint = `prod.etq.colsPrint.${tableKey}`;
-  const keyDensity   = `prod.etq.density.${tableKey}`;
-  const keyLayout    = `prod.etq.layout.${tableKey}`;      // "auto" | "1col" | "2col"
-  const keyOnePer    = `prod.etq.onepage.${tableKey}`;     // bool
+  const keyDensity = `prod.etq.density.${tableKey}`;
+  const keyLayout = `prod.etq.layout.${tableKey}`;      // "auto" | "1col" | "2col"
+  const keyOnePer = `prod.etq.onepage.${tableKey}`;     // bool
 
   // Champs visibles par défaut
   const DEFAULT = [
-    "zone","piece","produit","type_confection","pair_un","ampleur",
-    "largeur","hauteur","nb_glisseurs","h_finie"
+    "zone", "piece", "produit", "type_confection", "pair_un", "ampleur",
+    "largeur", "hauteur", "nb_glisseurs", "h_finie"
   ];
 
-  const [fieldsLS, setFields]   = useLocalStorage(keyFields, DEFAULT);
-  const [filters, setFilters]   = useLocalStorage(keyFilters, []);
+  const [fieldsLS, setFields] = useLocalStorage(keyFields, DEFAULT);
+  const [filters, setFilters] = useLocalStorage(keyFilters, []);
   const [showFilters, setShowFilters] = React.useState(false);
-  const [groupBy, setGroupBy]   = useLocalStorage(keyGroup, null);
+  const [groupBy, setGroupBy] = useLocalStorage(keyGroup, null);
 
   // Options d’affichage
-  const [colsWeb, setColsWeb]     = useLocalStorage(keyColsWeb, 3);
+  const [colsWeb, setColsWeb] = useLocalStorage(keyColsWeb, 3);
   const [colsPrint, setColsPrint] = useLocalStorage(keyColsPrint, 3);
-  const [density, setDensity]     = useLocalStorage(keyDensity, "normal"); // "compact" | "normal" | "large"
+  const [density, setDensity] = useLocalStorage(keyDensity, "normal"); // "compact" | "normal" | "large"
 
   // Nouveau : layout interne & 1/page
-  const [layout, setLayout]          = useLocalStorage(keyLayout, "auto"); // "auto" | "1col" | "2col"
-  const [onePerPage, setOnePerPage]  = useLocalStorage(keyOnePer, false);
+  const [layout, setLayout] = useLocalStorage(keyLayout, "auto"); // "auto" | "1col" | "2col"
+  const [onePerPage, setOnePerPage] = useLocalStorage(keyOnePer, false);
 
   // Sélecteur de champs (comme ailleurs)
   const [showPicker, setShowPicker] = React.useState(false);
@@ -83,17 +83,17 @@ export default function EtiquettesSection({ title, tableKey, rows, schema }) {
         const sv = String(v ?? "");
         switch (f.op) {
           case "contains": return sv.toLowerCase().includes(String(f.value || "").toLowerCase());
-          case "eq":       return sv === String(f.value ?? "");
-          case "neq":      return sv !== String(f.value ?? "");
-          case "gt":       return toNumber(v) >  toNumber(f.value);
-          case "gte":      return toNumber(v) >= toNumber(f.value);
-          case "lt":       return toNumber(v) <  toNumber(f.value);
-          case "lte":      return toNumber(v) <= toNumber(f.value);
-          case "isTrue":   return Boolean(v) === true;
-          case "isFalse":  return Boolean(v) === false;
-          case "isEmpty":  return sv === "" || v == null;
+          case "eq": return sv === String(f.value ?? "");
+          case "neq": return sv !== String(f.value ?? "");
+          case "gt": return toNumber(v) > toNumber(f.value);
+          case "gte": return toNumber(v) >= toNumber(f.value);
+          case "lt": return toNumber(v) < toNumber(f.value);
+          case "lte": return toNumber(v) <= toNumber(f.value);
+          case "isTrue": return Boolean(v) === true;
+          case "isFalse": return Boolean(v) === false;
+          case "isEmpty": return sv === "" || v == null;
           case "notEmpty": return !(sv === "" || v == null);
-          default:         return true;
+          default: return true;
         }
       })
     );
@@ -135,8 +135,8 @@ export default function EtiquettesSection({ title, tableKey, rows, schema }) {
     density === "compact"
       ? { fontSize: 12, lineHeight: 1.1 }
       : density === "large"
-      ? { fontSize: 15, lineHeight: 1.3 }
-      : { fontSize: 13.5, lineHeight: 1.2 };
+        ? { fontSize: 15, lineHeight: 1.3 }
+        : { fontSize: 13.5, lineHeight: 1.2 };
 
   // === Application du layout & "1/page" sur les cartes ===
   const applyCardStyles = React.useCallback(() => {
@@ -195,10 +195,21 @@ export default function EtiquettesSection({ title, tableKey, rows, schema }) {
   }, [layout]);
 
   return (
-    <div ref={sectionRef} style={{ ...S.tableBlock, overflow: "visible" }}>
+    <div ref={sectionRef} style={{ ...S.modernCard, overflow: "visible", padding: 0, marginBottom: 24 }}>
       {/* Toolbar — masquée à l’impression */}
-      <div style={S.tableHeader} data-hide-on-print="1">
-        <div style={S.tableTitle}>{title}</div>
+      <div
+        data-hide-on-print="1"
+        style={{
+          padding: '16px 20px',
+          borderBottom: `1px solid ${COLORS.border}`,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: 16
+        }}
+      >
+        <div style={{ fontWeight: 700, fontSize: 14, color: '#374151', textTransform: 'uppercase' }}>{title}</div>
 
         <div style={{ ...S.etqToolbar, flexWrap: "wrap" }}>
           <button style={S.smallBtn} onClick={printAll}>

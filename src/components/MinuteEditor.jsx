@@ -22,6 +22,8 @@ import { EXTRA_DEPENSES_SCHEMA } from "../lib/schemas/extraDepenses";
 import { RIDEAUX_DEFAULT_VISIBILITY, DECORS_DEFAULT_VISIBILITY, STORES_DEFAULT_VISIBILITY } from "../lib/constants/gridDefaults";
 import { DECORS_SCHEMA } from "../lib/schemas/decors";
 import { STORES_SCHEMA } from "../lib/schemas/stores";
+import { parseRideauxImport } from '../utils/importRideaux';
+
 
 const EMPTY_CTX = {};
 
@@ -230,6 +232,45 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
     return catalog.filter(item => item.category === 'Rail').map(item => item.name);
   }, [catalog]);
 
+  // Import Excel Handler
+  const handleImportExcel = async (file) => {
+    try {
+      const importedRows = await parseRideauxImport(file, schema, extendedCtx, catalog);
+      if (!importedRows || importedRows.length === 0) {
+        alert("Aucune donnée valide trouvée dans le fichier.");
+        return;
+      }
+
+      const newRideauxRows = [...rowsRideaux, ...importedRows];
+      mergeChildRowsFor("rideaux")(newRideauxRows);
+
+      alert(`${importedRows.length} ligne(s) importée(s) avec succès !`);
+
+    } catch (e) {
+      console.error("Erreur import Excel", e);
+      alert("Erreur lors de l'import Excel: " + e.message);
+    }
+  };
+
+  const handleDuplicateRow = (id) => {
+    const index = rows.findIndex(r => r.id === id);
+    if (index === -1) return;
+
+    const source = rows[index];
+    const newRow = {
+      ...source,
+      id: genId(),
+      piece: source.piece ? `${source.piece} (Copie)` : source.piece,
+      // Shallow copy arrays if they exist to avoid ref sharing
+      comments: source.comments ? [...source.comments] : []
+    };
+
+    const newRows = [...rows];
+    newRows.splice(index + 1, 0, newRow);
+
+    onChangeMinute?.({ ...minute, lines: newRows, updatedAt: Date.now() });
+  };
+
   return (
     <div style={{ paddingBottom: 40 }}>
       {/* En-tête de l’éditeur (nom, version, statut, infos) */}
@@ -311,6 +352,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
                 rowSelectionModel={selAutre}
                 onRowSelectionModelChange={setSelAutre}
                 catalog={catalog}
+                onDuplicateRow={handleDuplicateRow}
               />
             </div>
           </div>
@@ -332,10 +374,13 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
                 rowSelectionModel={selDeplacement}
                 onRowSelectionModelChange={setSelDeplacement}
                 catalog={catalog}
+                onDuplicateRow={handleDuplicateRow}
               />
             </div>
           </div>
         </div>
+
+
 
         {mods.rideau && (
           <div style={{ ...S.modernCard, padding: 0, marginBottom: 24 }}>
@@ -356,6 +401,8 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
               catalog={catalog}
               railOptions={railOptions}
               initialVisibilityModel={RIDEAUX_DEFAULT_VISIBILITY}
+              onImportExcel={handleImportExcel}
+              onDuplicateRow={handleDuplicateRow}
             />
           </div>
         )}
@@ -378,6 +425,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
               onRowSelectionModelChange={setSelDecors}
               catalog={catalog}
               initialVisibilityModel={DECORS_DEFAULT_VISIBILITY}
+              onDuplicateRow={handleDuplicateRow}
             />
           </div>
         )}
@@ -400,6 +448,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
               onRowSelectionModelChange={setSelStores}
               catalog={catalog}
               initialVisibilityModel={STORES_DEFAULT_VISIBILITY}
+              onDuplicateRow={handleDuplicateRow}
             />
           </div>
         )}

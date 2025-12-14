@@ -1,9 +1,14 @@
 // src/screens/ProjectListScreen.jsx
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
+import Chip from '@mui/material/Chip';
+import Avatar from '@mui/material/Avatar';
+import IconButton from '@mui/material/IconButton';
+import Tooltip from '@mui/material/Tooltip';
+import { Edit2, Trash2, Plus, FileText } from 'lucide-react';
 
+import { SmartFilterBar } from "../components/ui/SmartFilterBar.jsx";
 import { COLORS, S } from "../lib/constants/ui.js";
 import { useViewportWidth } from "../lib/hooks/useViewportWidth";
-import { Plus, Search, Filter, Layers3, Star } from "lucide-react";
 import { formatDateFR } from "../lib/utils/format";
 import { truncate } from "../lib/utils/truncate";
 
@@ -17,156 +22,207 @@ import { createBlankProject } from "../lib/import/createBlankProject.js";
 import { useAuth } from "../auth";
 import { can } from "../lib/authz";
 
+// Helper for Status Chip Color
+const getStatusColor = (status) => {
+  const s = (status || "").toLowerCase();
+  if (s.includes("valid") || s.includes("prod")) return { bg: "#DEF7EC", text: "#03543F" }; // Green
+  if (s.includes("valid") || s.includes("sign")) return { bg: "#E1EFFE", text: "#1E429F" }; // Blue
+  if (s.includes("attente") || s.includes("devis")) return { bg: "#FEF3C7", text: "#92400E" }; // Orange
+  return { bg: "#F3F4F6", text: "#374151" }; // Gray
+};
+
 export function ProjectListScreen({
   projects,
   setProjects,
   onOpenProject,
   minutes = [],
 }) {
-  const [q, setQ] = useState("");
   const width = useViewportWidth();
-
   const [showCreate, setShowCreate] = useState(false);
   const list = Array.isArray(projects) ? projects : [];
 
-  // 🔐 droits
+  // Auth & Permissions
   const { currentUser } = useAuth();
   const canCreate = can(currentUser, "project.create");
   const canSeeChiffrage = can(currentUser, "chiffrage.view");
 
-  const filtered = useMemo(() => {
-    const qq = q.trim().toLowerCase();
-    if (!qq) return list;
-    return list.filter((p) =>
-      [p?.name, p?.manager, p?.status, p?.notes].some((x) =>
-        String(x || "").toLowerCase().includes(qq)
-      )
-    );
-  }, [list, q]);
+  // --- FILTRAGE INTELLIGENT ---
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // Default Filter: "Mes Projets"
+  const [activeFilters, setActiveFilters] = useState([]);
+
+  // Set default filter on mount
+  useEffect(() => {
+    setActiveFilters([{ id: 'my_projects', label: '👤 Mes Projets', field: 'manager' }]);
+  }, []);
+
+  const handleRemoveFilter = (id) => {
+    setActiveFilters(prev => prev.filter(f => f.id !== id));
+  };
+
+  const filteredProjects = useMemo(() => {
+    let res = list;
+
+    // 1. Apply Active Chips Filters
+    if (activeFilters.some(f => f.id === 'my_projects')) {
+      const userName = currentUser?.displayName || currentUser?.email || "";
+      if (userName) {
+        // Loose matching: check if manager name contains part of user name or vice versa
+        res = res.filter(p => {
+          const mgr = (p.manager || "").toLowerCase();
+          const user = userName.toLowerCase();
+          return mgr.includes(user) || user.includes(mgr) || !p.manager; // Include empty if unsure? defaulting to showing empty is safer for dev
+        });
+      }
+    }
+
+    // 2. Apply Text Search
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      res = res.filter(p =>
+        [p.name, p.manager, p.status, p.notes].some(x => String(x || "").toLowerCase().includes(q))
+      );
+    }
+
+    return res;
+  }, [list, searchQuery, activeFilters, currentUser]);
+
 
   return (
-    <div style={S.contentWrap}>
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: width < 900 ? "1fr" : "280px 1fr",
-          gap: 24,
-          alignItems: "end",
-        }}
-      >
-        <div>
-          <div style={{ fontSize: 28, fontWeight: 900, color: COLORS.text }}>
-            Production
-          </div>
+    <div style={{
+      minHeight: '100vh',
+      background: '#F9F7F2', // Beige Moulinette
+      padding: '24px',
+      display: 'flex',
+      flexDirection: 'column',
+    }}>
 
-          {/* 🔐 Nouveau projet si autorisé */}
+      {/* Header & Tools */}
+      <div style={{ maxWidth: 1200, width: '100%', margin: '0 auto 24px auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h1 style={{ fontSize: 28, fontWeight: 700, color: '#1F2937', margin: 0, letterSpacing: '-0.5px' }}>
+            Dossiers en Production
+          </h1>
+
           {canCreate && (
             <button
-              type="button"
               onClick={() => setShowCreate(true)}
               style={{
-                marginTop: 12,
-                background: COLORS.tile,
-                color: "#fff",
-                padding: "10px 14px",
-                borderRadius: 10,
-                border: "none",
-                display: "inline-flex",
-                alignItems: "center",
+                background: '#1F2937', // Dark Grey/Black
+                color: 'white',
+                padding: '8px 16px',
+                borderRadius: 8,
+                border: 'none',
+                display: 'flex',
+                alignItems: 'center',
                 gap: 8,
-                cursor: "pointer",
+                cursor: 'pointer',
+                fontWeight: 600,
+                boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
               }}
             >
-              <Plus size={16} /> Nouveau
+              <Plus size={18} /> Nouveau
             </button>
           )}
         </div>
 
-        <div>
-          <div style={{ fontSize: 18, marginBottom: 6 }}>Recherche</div>
-          <div style={S.searchBox}>
-            <Search
-              size={18}
-              style={{ position: "absolute", left: 10, top: 12, opacity: 0.6 }}
-            />
-            <input
-              id="project-search"
-              name="project-search"
-              placeholder="Rechercher un dossier"
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              style={S.searchInput}
-              aria-label="Rechercher un dossier"
-            />
-          </div>
-          <div style={{ ...S.toolsRow, marginTop: 10 }}>
-            <span style={S.toolBtn}>
-              <Filter size={16} /> Filtre
-            </span>
-            <span style={S.toolBtn}>
-              <Layers3 size={16} /> Regrouper
-            </span>
-            <span style={S.toolBtn}>
-              <Star size={16} /> Favoris
-            </span>
-          </div>
-        </div>
+        <SmartFilterBar
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          activeFilters={activeFilters}
+          onRemoveFilter={handleRemoveFilter}
+        />
       </div>
 
-      <div style={{ ...S.tableBlock, marginTop: 18, borderRadius: 20 }}>
-        <div style={S.tableWrap}>
-          <table style={S.table}>
-            <thead>
+      {/* Main Card */}
+      <div style={{
+        maxWidth: 1200,
+        width: '100%',
+        margin: '0 auto',
+        background: 'white',
+        borderRadius: 12,
+        boxShadow: '0 1px 3px rgba(0,0,0,0.05), 0 4px 6px rgba(0,0,0,0.02)',
+        overflow: 'hidden'
+      }}>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+            <thead style={{ background: '#F3F4F6', borderBottom: '1px solid #E5E7EB' }}>
               <tr>
-                <th style={S.th}>Nom dossier</th>
-                <th style={S.th}>Date de livraison</th>
-                <th style={S.th}>Chargé·e de projet</th>
-                <th style={S.th}>Statut</th>
-                <th style={S.th}>Notes</th>
+                <th style={{ padding: '12px 16px', fontSize: 13, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Dossier</th>
+                <th style={{ padding: '12px 16px', fontSize: 13, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Client / Notes</th>
+                <th style={{ padding: '12px 16px', fontSize: 13, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Responsable</th>
+                <th style={{ padding: '12px 16px', fontSize: 13, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Statut</th>
+                <th style={{ padding: '12px 16px', fontSize: 13, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Livraison</th>
+                <th style={{ padding: '12px 16px', width: 80 }}></th>
               </tr>
             </thead>
             <tbody>
-              {filtered.map((p, idx) => (
-                <tr key={p.id || idx} style={idx % 2 ? S.trAlt : undefined}>
-                  <td style={S.td}>
-                    <button
-                      type="button"
-                      onClick={() => onOpenProject?.(p)}
-                      style={{
-                        background: "none",
-                        border: "none",
-                        padding: 0,
-                        margin: 0,
-                        cursor: "pointer",
-                        fontWeight: 800,
-                        color: COLORS.text,
-                      }}
-                    >
-                      {p?.name || "—"}
-                    </button>
-                  </td>
-                  <td style={S.td}>{formatDateFR(p?.due)}</td>
-                  <td style={S.td}>{p?.manager || "—"}</td>
-                  <td style={S.td}>
-                    <span
-                      style={{
-                        ...S.smallBtn,
-                        background: "#FCD34D",
-                        borderColor: "#FCD34D",
-                      }}
-                    >
-                      {p?.status || "En cours"}
-                    </span>
-                  </td>
-                  <td style={S.td} title={p?.notes || ""}>
-                    {truncate(p?.notes || "", 18)}
-                  </td>
-                </tr>
-              ))}
-              {filtered.length === 0 && (
+              {filteredProjects.map((p, idx) => {
+                const statusStyle = getStatusColor(p.status);
+                return (
+                  <tr
+                    key={p.id || idx}
+                    className="project-row"
+                    style={{
+                      borderBottom: '1px solid #F3F4F6',
+                      cursor: 'pointer',
+                      transition: 'background 0.1s'
+                    }}
+                    onClick={() => onOpenProject?.(p)}
+                    onMouseEnter={(e) => e.currentTarget.style.background = '#F9FAFB'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+                  >
+                    <td style={{ padding: '12px 16px' }}>
+                      <div style={{ fontWeight: 600, color: '#111827', fontSize: 15 }}>{p.name || "Sans nom"}</div>
+                      <div style={{ fontSize: 12, color: '#9CA3AF' }}>#{String(p.id).slice(-4)}</div>
+                    </td>
+                    <td style={{ padding: '12px 16px', color: '#4B5563', maxWidth: 300 }}>
+                      {truncate(p.notes || "—", 40)}
+                    </td>
+                    <td style={{ padding: '12px 16px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <Avatar sx={{ width: 28, height: 28, fontSize: 12, bgcolor: stringToColor(p.manager || "?") }}>
+                          {(p.manager?.[0] || "?").toUpperCase()}
+                        </Avatar>
+                        <span style={{ fontSize: 14, color: '#374151' }}>{p.manager || "—"}</span>
+                      </div>
+                    </td>
+                    <td style={{ padding: '12px 16px' }}>
+                      <Chip
+                        label={p.status || "Brouillon"}
+                        size="small"
+                        sx={{
+                          bgcolor: statusStyle.bg,
+                          color: statusStyle.text,
+                          fontWeight: 600,
+                          fontSize: 12,
+                          height: 24
+                        }}
+                      />
+                    </td>
+                    <td style={{ padding: '12px 16px', color: '#6B7280', fontSize: 14 }}>
+                      {formatDateFR(p.due)}
+                    </td>
+                    <td style={{ padding: '12px 16px' }} onClick={(e) => e.stopPropagation()}>
+                      <div style={{ display: 'flex', gap: 4, opacity: 0.6 }} className="actions">
+                        <Tooltip title="Éditer">
+                          <IconButton size="small" onClick={() => onOpenProject?.(p)}>
+                            <Edit2 size={16} />
+                          </IconButton>
+                        </Tooltip>
+                        {/* Delete requires prop handling usually, assuming read-only list for now unless prop passed */}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+              {filteredProjects.length === 0 && (
                 <tr>
-                  <td style={S.td} colSpan={5}>
-                    Aucun dossier ne correspond à « {q} ».
+                  <td colSpan={6} style={{ padding: 40, textAlign: 'center', color: '#9CA3AF' }}>
+                    <FileText size={48} style={{ opacity: 0.2, marginBottom: 16 }} />
+                    <div>Aucun projet trouvé.</div>
                   </td>
                 </tr>
               )}
@@ -206,6 +262,20 @@ export function ProjectListScreen({
       )}
     </div>
   );
+}
+
+// Helper unique color for Avatar
+function stringToColor(string) {
+  let hash = 0;
+  for (let i = 0; i < string.length; i++) {
+    hash = string.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  let color = '#';
+  for (let i = 0; i < 3; i++) {
+    const value = (hash >> (i * 8)) & 0xFF;
+    color += ('00' + value.toString(16)).substr(-2);
+  }
+  return color;
 }
 
 export default ProjectListScreen;

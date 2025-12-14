@@ -1,26 +1,22 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Dialog from '@mui/material/Dialog';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import TextField from '@mui/material/TextField';
 import IconButton from '@mui/material/IconButton';
 import CloseIcon from '@mui/icons-material/Close';
-import Divider from '@mui/material/Divider';
-import Button from '@mui/material/Button';
-import List from '@mui/material/List';
-import ListItem from '@mui/material/ListItem';
-import ListItemText from '@mui/material/ListItemText';
-import ListItemAvatar from '@mui/material/ListItemAvatar';
-import Avatar from '@mui/material/Avatar';
-import SendIcon from '@mui/icons-material/Send';
-import Grid from '@mui/material/Grid';
-import Paper from '@mui/material/Paper';
 import MenuItem from '@mui/material/MenuItem';
 import Switch from '@mui/material/Switch';
 import FormControlLabel from '@mui/material/FormControlLabel';
+import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
+import Tooltip from '@mui/material/Tooltip';
+
+import CommentsSidebar from './ui/CommentsSidebar';
+import GridPhotoCell from './ui/GridPhotoCell';
 
 export default function LineDetailPanel({ open, onClose, row, schema, onRowChange, columnVisibilityModel }) {
-    const [commentText, setCommentText] = useState('');
+    // New Sidebar Toggle State
+    const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
     if (!row) return null;
 
@@ -28,19 +24,17 @@ export default function LineDetailPanel({ open, onClose, row, schema, onRowChang
         onRowChange({ ...row, [key]: value });
     };
 
-    const handleAddComment = () => {
-        if (!commentText.trim()) return;
-
+    const handleAddComment = (text) => {
         const newComment = {
             id: Date.now(),
-            text: commentText,
+            text: text,
             createdAt: new Date().toISOString(),
-            author: 'User', // Placeholder
+            // In a real app, this should come from AuthContext
+            author: 'Aristide LENGLART',
         };
 
         const updatedComments = row.comments ? [...row.comments, newComment] : [newComment];
         onRowChange({ ...row, comments: updatedComments });
-        setCommentText('');
     };
 
     const comments = row.comments || [];
@@ -49,159 +43,162 @@ export default function LineDetailPanel({ open, onClose, row, schema, onRowChang
         <Dialog
             open={open}
             onClose={onClose}
-            maxWidth="lg"
+            maxWidth="xl" // Wider to accommodate sidebar
             fullWidth
             PaperProps={{
-                sx: { height: '80vh', display: 'flex', flexDirection: 'row', overflow: 'hidden', position: 'relative' },
+                sx: { height: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', borderRadius: 3 },
             }}
         >
-            {/* Header / Close Button (Absolute) */}
-            <IconButton
-                onClick={onClose}
-                sx={{ position: 'absolute', top: 8, right: 8, zIndex: 10 }}
-            >
-                <CloseIcon />
-            </IconButton>
-
-            {/* LEFT SIDE: FORM */}
-            <Box sx={{ flex: 1, p: 3, overflowY: 'auto', borderRight: '1px solid #e0e0e0' }}>
-                <Typography variant="h5" gutterBottom>
+            {/* Header */}
+            <Box sx={{
+                p: '12px 24px',
+                borderBottom: '1px solid #E5E7EB',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                bgcolor: 'white'
+            }}>
+                <Typography variant="h6" sx={{ fontWeight: 600, color: '#111827' }}>
                     Détails de la ligne
+                    <Typography component="span" sx={{ ml: 1.5, fontSize: 13, color: '#6B7280', bgcolor: '#F3F4F6', px: 1, py: 0.5, borderRadius: 1 }}>
+                        #{String(row.id).slice(-4)}
+                    </Typography>
                 </Typography>
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    {schema.map((col) => {
-                        if (col.key === 'sel' || col.key === 'detail') return null; // Skip utility columns
 
-                        // Check visibility
-                        if (columnVisibilityModel && columnVisibilityModel[col.key] === false) {
-                            return null;
-                        }
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                    <Tooltip title={isSidebarOpen ? "Masquer les commentaires" : "Afficher les commentaires"}>
+                        <IconButton
+                            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                            sx={{
+                                color: isSidebarOpen ? '#2563EB' : '#6B7280',
+                                bgcolor: isSidebarOpen ? '#EFF6FF' : 'transparent',
+                                '&:hover': { bgcolor: isSidebarOpen ? '#DBEAFE' : '#F3F4F6' }
+                            }}
+                        >
+                            <ChatBubbleOutlineIcon />
+                        </IconButton>
+                    </Tooltip>
+                    <IconButton onClick={onClose} sx={{ color: '#9CA3AF', '&:hover': { color: '#111827', bgcolor: '#F3F4F6' } }}>
+                        <CloseIcon />
+                    </IconButton>
+                </Box>
+            </Box>
 
-                        const isReadOnly = col.readOnly || col.type === 'formula';
-                        const isSelect = col.type === 'select' || (col.options && col.options.length > 0);
-                        const isBoolean = col.type === 'boolean' || col.type === 'checkbox';
+            {/* Main Content Area (Flex Row) */}
+            <Box sx={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
 
-                        if (isBoolean) {
-                            return (
-                                <FormControlLabel
-                                    key={col.key}
-                                    control={
-                                        <Switch
-                                            checked={!!row[col.key]}
-                                            onChange={(e) => handleFieldChange(col.key, e.target.checked)}
-                                            disabled={isReadOnly}
-                                        />
-                                    }
-                                    label={col.label || col.key}
-                                />
-                            );
-                        }
+                {/* LEFT: FORM */}
+                <Box sx={{
+                    flex: 1,
+                    p: 4,
+                    overflowY: 'auto',
+                    bgcolor: 'white'
+                }}>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, maxWidth: 800, margin: '0 auto' }}>
+                        {schema.map((col) => {
+                            if (col.key === 'sel' || col.key === 'detail') return null;
+                            if (columnVisibilityModel && columnVisibilityModel[col.key] === false) return null;
 
-                        if (isSelect) {
+                            const isReadOnly = col.readOnly || col.type === 'formula';
+                            const isSelect = col.type === 'select' || (col.options && col.options.length > 0);
+                            const isBoolean = col.type === 'boolean' || col.type === 'checkbox';
+                            const isPhoto = col.type === 'photo';
+
+                            // PHOTO FIELD
+                            if (isPhoto) {
+                                return (
+                                    <Box key={col.key}>
+                                        <Typography variant="subtitle2" sx={{ mb: 1, color: '#374151', fontWeight: 500 }}>
+                                            {col.label || col.key}
+                                        </Typography>
+                                        <div style={{
+                                            border: '1px solid #E5E7EB',
+                                            borderRadius: 8,
+                                            padding: 12,
+                                            minHeight: 80,
+                                            display: 'flex',
+                                            alignItems: 'center'
+                                        }}>
+                                            <GridPhotoCell
+                                                value={row[col.key]}
+                                                rowId={row.id}
+                                                field={col.key}
+                                                onImageUpload={(newVal) => handleFieldChange(col.key, newVal)}
+                                            // Optional: prop to hint it's form mode if your component supports it
+                                            />
+                                        </div>
+                                    </Box>
+                                );
+                            }
+
+                            if (isBoolean) {
+                                return (
+                                    <FormControlLabel
+                                        key={col.key}
+                                        control={
+                                            <Switch
+                                                checked={!!row[col.key]}
+                                                onChange={(e) => handleFieldChange(col.key, e.target.checked)}
+                                                disabled={isReadOnly}
+                                            />
+                                        }
+                                        label={col.label || col.key}
+                                        sx={{ ml: 0 }}
+                                    />
+                                );
+                            }
+
+                            if (isSelect) {
+                                return (
+                                    <TextField
+                                        key={col.key}
+                                        select
+                                        fullWidth
+                                        label={col.label || col.key}
+                                        value={row[col.key] ?? ''}
+                                        onChange={(e) => handleFieldChange(col.key, e.target.value)}
+                                        disabled={isReadOnly}
+                                        variant="outlined"
+                                        size="medium"
+                                    >
+                                        {col.options?.map((option) => (
+                                            <MenuItem key={option} value={option}>
+                                                {option}
+                                            </MenuItem>
+                                        ))}
+                                    </TextField>
+                                );
+                            }
+
+                            // Default Text / Number
                             return (
                                 <TextField
                                     key={col.key}
-                                    select
                                     fullWidth
                                     label={col.label || col.key}
                                     value={row[col.key] ?? ''}
                                     onChange={(e) => handleFieldChange(col.key, e.target.value)}
                                     disabled={isReadOnly}
+                                    type={col.type === 'number' || col.type === 'formula' ? 'number' : 'text'}
                                     variant="outlined"
-                                    size="small"
-                                >
-                                    {col.options?.map((option) => (
-                                        <MenuItem key={option} value={option}>
-                                            {option}
-                                        </MenuItem>
-                                    ))}
-                                </TextField>
+                                    size="medium"
+                                    helperText={col.formula ? `Formule: ${col.formula}` : ''}
+                                />
                             );
-                        }
-
-                        return (
-                            <TextField
-                                key={col.key}
-                                fullWidth
-                                label={col.label || col.key}
-                                value={row[col.key] ?? ''}
-                                onChange={(e) => handleFieldChange(col.key, e.target.value)}
-                                disabled={isReadOnly}
-                                type={col.type === 'number' || col.type === 'formula' ? 'number' : 'text'}
-                                variant="outlined"
-                                size="small"
-                                helperText={col.formula ? `Formule: ${col.formula}` : ''}
-                            />
-                        );
-                    })}
-                </Box>
-            </Box>
-
-            {/* RIGHT SIDE: COLLABORATION */}
-            <Box sx={{ width: 350, p: 3, display: 'flex', flexDirection: 'column', bgcolor: '#f9f9f9' }}>
-                <Typography variant="h6" gutterBottom>
-                    Collaboration
-                </Typography>
-
-                {/* Comments List */}
-                <Box sx={{ flex: 1, overflowY: 'auto', mb: 2 }}>
-                    {comments.length === 0 ? (
-                        <Typography variant="body2" color="text.secondary" align="center" sx={{ mt: 4 }}>
-                            Aucun commentaire.
-                        </Typography>
-                    ) : (
-                        <List>
-                            {comments.map((comment) => (
-                                <ListItem key={comment.id} alignItems="flex-start" sx={{ px: 0 }}>
-                                    <ListItemAvatar>
-                                        <Avatar sx={{ width: 32, height: 32, fontSize: 14 }}>
-                                            {comment.author?.[0] || 'U'}
-                                        </Avatar>
-                                    </ListItemAvatar>
-                                    <ListItemText
-                                        primary={
-                                            <Box component="span" sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                                                <Typography variant="subtitle2" component="span">{comment.author}</Typography>
-                                                <Typography variant="caption" color="text.secondary">
-                                                    {new Date(comment.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                </Typography>
-                                            </Box>
-                                        }
-                                        secondary={comment.text}
-                                        sx={{ bgcolor: 'white', p: 1.5, borderRadius: 2, boxShadow: '0 1px 2px rgba(0,0,0,0.05)', mt: 0.5 }}
-                                    />
-                                </ListItem>
-                            ))}
-                        </List>
-                    )}
+                        })}
+                    </Box>
                 </Box>
 
-                {/* Comment Input */}
-                <Box sx={{ display: 'flex', gap: 1 }}>
-                    <TextField
-                        fullWidth
-                        size="small"
-                        placeholder="Ajouter un commentaire..."
-                        value={commentText}
-                        onChange={(e) => setCommentText(e.target.value)}
-                        onKeyPress={(e) => e.key === 'Enter' && handleAddComment()}
-                        multiline
-                        maxRows={3}
+                {/* RIGHT: SIDEBAR (Collapsible) */}
+                {isSidebarOpen && (
+                    <CommentsSidebar
+                        isOpen={isSidebarOpen}
+                        comments={comments}
+                        onAddComment={handleAddComment}
+                        currentUser="Aristide LENGLART"
                     />
-                    <IconButton color="primary" onClick={handleAddComment} disabled={!commentText.trim()}>
-                        <SendIcon />
-                    </IconButton>
-                </Box>
+                )}
 
-                <Divider sx={{ my: 3 }} />
-
-                {/* History Placeholder */}
-                <Typography variant="subtitle2" color="text.secondary">
-                    Historique
-                </Typography>
-                <Typography variant="caption" color="text.disabled">
-                    (À venir)
-                </Typography>
             </Box>
         </Dialog>
     );

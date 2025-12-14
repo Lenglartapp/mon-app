@@ -181,7 +181,7 @@ function ChiffrageScreen({ minuteId, minutes, setMinutes, onBack }) {
   // ──────────────────────────────────────────────────────────────
   // Paramètres minute
   // ──────────────────────────────────────────────────────────────
-  const [showParams, setShowParams] = React.useState(false);
+
 
   const slugParamName = (raw) =>
     String(raw || "")
@@ -301,13 +301,7 @@ function ChiffrageScreen({ minuteId, minutes, setMinutes, onBack }) {
           <div style={{ opacity: 0.7 }}>
             {new Date(minute.updatedAt || minute.createdAt || Date.now()).toLocaleString("fr-FR")}
           </div>
-          <button
-            style={S.smallBtn}
-            onClick={() => setShowParams(s => !s)}
-            title="Paramètres minute (taux horaire, coefs, prix...)"
-          >
-            ⚙️ Paramètres {showParams ? "▲" : "▼"}
-          </button>
+
         </div>
       </div>
 
@@ -337,65 +331,7 @@ function ChiffrageScreen({ minuteId, minutes, setMinutes, onBack }) {
         />
       </div>
 
-      {/* Drawer paramètres */}
-      {showParams && (
-        <div style={{ marginBottom: 12, border: `1px solid ${COLORS.border}`, borderRadius: 12, background: "#fff", padding: 12 }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-            <b>Paramètres de la minute</b>
-            <button style={S.smallBtn} onClick={addParam} disabled={!canEdit}>+ Ajouter un paramètre</button>
-          </div>
 
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <thead>
-                <tr>
-                  <th style={{ padding: 8, borderBottom: `1px solid ${COLORS.border}` }}>Nom (clé)</th>
-                  <th style={{ padding: 8, borderBottom: `1px solid ${COLORS.border}` }}>Type</th>
-                  <th style={{ padding: 8, borderBottom: `1px solid ${COLORS.border}` }}>Valeur</th>
-                  <th />
-                </tr>
-              </thead>
-              <tbody>
-                {(paramDraft || []).map((p) => (
-                  <tr key={p.id} style={{ borderBottom: `1px solid ${COLORS.border}` }}>
-                    <td style={{ padding: 8, minWidth: 220 }}>
-                      <input
-                        value={p.name || ""}
-                        onChange={(e) => setParamField(p.id, "name", e.target.value)}
-                        onBlur={(e) => setParamField(p.id, "name", slugParamName(e.target.value))}
-                        style={S.input}
-                        disabled={!canEdit}
-                      />
-                    </td>
-                    <td style={{ padding: 8, width: 140 }}>
-                      <select
-                        value={p.type || "prix"}
-                        onChange={(e) => setParamField(p.id, "type", e.target.value)}
-                        style={{ ...S.input, height: 34 }}
-                        disabled={!canEdit}
-                      >
-                        <option value="prix">prix</option>
-                        <option value="coef">coef</option>
-                      </select>
-                    </td>
-                    <td style={{ padding: 8, width: 160 }}>
-                      <input
-                        value={p.value ?? ""}
-                        onChange={(e) => setParamField(p.id, "value", e.target.value)}
-                        style={S.input}
-                        disabled={!canEdit}
-                      />
-                    </td>
-                    <td style={{ padding: 8, textAlign: "right" }}>
-                      <button style={{ ...S.smallBtn, color: "#b91c1c" }} onClick={() => removeParam(p.id)} disabled={!canEdit}>🗑️</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
 
       {/* Onglet Minutes */}
       {activeTab === "minutes" && (
