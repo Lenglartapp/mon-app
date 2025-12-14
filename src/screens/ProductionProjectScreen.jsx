@@ -2,19 +2,41 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { COLORS, S } from "../lib/constants/ui.js";
 
-import DataTable from "../components/DataTable.jsx";
+import MinuteGrid from "../components/MinuteGrid.jsx"; // Replaces DataTable
 import DashboardTiles from "../components/DashboardTiles.jsx";
 import EtiquettesSection from "../components/EtiquettesSection.jsx";
 import MinutesScreen from "./MinutesScreen.jsx";
 
 import { computeFormulas, preserveManualAfterCompute } from "../lib/formulas/compute";
 import { SCHEMA_64 } from "../lib/schemas/production.js";
-import { STAGES } from "../lib/constants/views.js";
+import { STAGES, DEFAULT_VIEWS } from "../lib/constants/views.js"; // Import DEFAULT_VIEWS
 import { recomputeRow } from "../lib/formulas/recomputeRow";
+import { uid } from "../lib/utils/uid"; // Import uid
 
-import { Search, Filter, Layers3, Star } from "lucide-react";
+import { Search, Filter, Layers3, Star, FlaskConical } from "lucide-react";
 import { useAuth } from "../auth";
 import { can } from "../lib/authz";
+
+/**
+ * Helper to convert DEFAULT_VIEWS array to DataGrid visibility model
+ * { field: boolean }
+ */
+const getVisibilityModel = (viewKey, tableKey, schema) => {
+  const defaults = DEFAULT_VIEWS?.[viewKey]?.[tableKey];
+  if (!defaults) return {}; // All visible by default
+
+  const model = {};
+  schema.forEach(col => {
+    // If column key is in defaults array, it's visible. Otherwise hidden.
+    // protected cols 'sel' and 'detail' should always be visible?
+    if (['sel', 'detail'].includes(col.key)) {
+      model[col.key] = true;
+    } else {
+      model[col.key] = defaults.includes(col.key);
+    }
+  });
+  return model;
+};
 
 /**
  * Props:
@@ -23,12 +45,12 @@ import { can } from "../lib/authz";
  *  - onUpdateProjectRows(newRows)  ← pour persister dans App.jsx
  */
 export function ProductionProjectScreen({ project, onBack, onUpdateProjectRows }) {
-  const [stage, setStage]   = useState("dashboard");
+  const [stage, setStage] = useState("dashboard");
   const [search, setSearch] = useState("");
   const [schema, setSchema] = useState(SCHEMA_64);
 
   const { currentUser } = useAuth();
-  const canEditProd  = can(currentUser, "production.edit");
+  const canEditProd = can(currentUser, "production.edit");
   const seeChiffrage = can(currentUser, "chiffrage.view");
 
   // Lignes locales (édition fluide)
@@ -60,10 +82,19 @@ export function ProductionProjectScreen({ project, onBack, onUpdateProjectRows }
     }
   }, [rows, onUpdateProjectRows]);
 
-  // Sous-ensembles
-  const rowsRideaux = rows.filter((r) => /rideau|voilage/i.test(String(r.produit || "")));
-  const rowsDecors  = rows.filter((r) => /d[ée]cor/i.test(String(r.produit || "")));
-  const rowsStores  = rows.filter((r) => /store/i.test(String(r.produit || "")));
+  // Filtrage global (Search)
+  const filteredRows = useMemo(() => {
+    if (!search.trim()) return rows;
+    const q = search.toLowerCase();
+    return rows.filter(r =>
+      Object.values(r).some(v => String(v).toLowerCase().includes(q))
+    );
+  }, [rows, search]);
+
+  // Sous-ensembles (sur rows filtrées)
+  const rowsRideaux = filteredRows.filter((r) => /rideau|voilage/i.test(String(r.produit || "")));
+  const rowsDecors = filteredRows.filter((r) => /d[ée]cor/i.test(String(r.produit || "")));
+  const rowsStores = filteredRows.filter((r) => /store/i.test(String(r.produit || "")));
 
   const recomputeAll = (arr) => (arr || []).map(r => recomputeRow(r, schema));
 
@@ -71,26 +102,133 @@ export function ProductionProjectScreen({ project, onBack, onUpdateProjectRows }
     return (nr) => {
       if (!canEditProd) return; // lecture seule
       setRows((all) => {
-        const isInTable = (r) => {
-          const p = String(r?.produit || "");
-          if (tableKey === "rideaux") return /rideau|voilage/i.test(p);
-          if (tableKey === "decors")  return /d[ée]cor/i.test(p);
-          if (tableKey === "stores")  return /store/i.test(p);
-          return false;
-        };
-        const others   = (all || []).filter((r) => !isInTable(r));
-        const previous = (all || []).filter((r) => isInTable(r));
+        // nr contains UPDATED rows (subset of filtered rows?)
+        // We know nr are ALL the rows for this filter, but potentially recomputed.
+        // Actually MinuteGrid returns the `rows` prop modified?
+        // Wait, MinuteGrid `onRowsChange` returns the *new full list of rows passed to it*.
+        // Detailed logic:
+        // MinuteGrid receives `rowsRideaux`. `rowsRideaux` is a subset of `rows`.
+        // `onRowsChange` gets `newRowsRideaux`.
+        // We need to merge `newRowsRideaux` back into `rows` (all).
 
-        const computed = recomputeAll(nr);
-        const merged   = preserveManualAfterCompute(computed, previous);
+        // Map of updated rows by ID
+        const updatedMap = new Map(nr.map(r => [r.id, r]));
 
-        return [...others, ...merged];
+        return all.map(r => {
+          if (updatedMap.has(r.id)) {
+            // Found in update > Recompute standard formulas
+            return recomputeRow(updatedMap.get(r.id), schema);
+          }
+          return r; // Unchanged (from other products)
+        });
       });
     };
   };
 
+  const handleRowsChangeInstallation = (nr) => {
+    // Installation view usually shows ALL rows.
+    // So nr == new full rows list?
+    // Yes, passed rows={filteredRows}.
+    if (!canEditProd) return;
+
+    // If search is active, `nr` is only the filtered subset.
+    // We must merge it back into `all`.
+    const updatedMap = new Map(nr.map(r => [r.id, r]));
+
+    setRows(all => all.map(r => updatedMap.has(r.id) ? recomputeRow(updatedMap.get(r.id), schema) : r));
+  };
+
+  // --- ADD ROW LOGIC ---
+  const handleAddRow = (produitType = "Rideau") => {
+    const newRow = {
+      id: uid(),
+      produit: produitType,
+      pair_un: "Paire",
+      ampleur: 1.8,
+      largeur: 100,
+      hauteur: 250,
+      l_mecanisme: 100,
+      f_bas: 0,
+      croisement: 0,
+      retour_g: 0,
+      retour_d: 0,
+      type_confection: "Wave 80",
+      created: Date.now()
+    };
+
+    const computed = recomputeRow(newRow, schema);
+    setRows(prev => [...prev, computed]);
+  };
+
+  const handleDuplicateRow = (id) => {
+    if (!canEditProd) return;
+    const index = rows.findIndex(r => r.id === id);
+    if (index === -1) return;
+
+    const source = rows[index];
+    // Deep copy / safe copy
+    const newRow = {
+      ...source,
+      id: uid(),
+      piece: source.piece ? `${source.piece} (Copie)` : source.piece,
+      comments: source.comments ? [...source.comments] : []
+    };
+
+    // Recompute to ensure consistency
+    const computed = recomputeRow(newRow, schema);
+
+    const newRows = [...rows];
+    newRows.splice(index + 1, 0, computed);
+    setRows(newRows);
+  };
+
+  // --- TEST DATA SEEDING ---
+  const handleLoadTestData = () => {
+    const testRows = [
+      {
+        id: uid(), produit: "Rideau", zone: "Salon", piece: "Baie Vitrée",
+        pair_un: "Paire", ampleur: 2.0, largeur: 240, hauteur: 260,
+        l_mecanisme: 250, f_bas: 5, croisement: 10, retour_g: 5, retour_d: 5,
+        type_confection: "Wave 80", tissu_deco1: "Lin Naturel"
+      },
+      {
+        id: uid(), produit: "Store Bateau", zone: "Cuisine", piece: "Fenêtre Nord",
+        pair_un: "Un seul pan", ampleur: 1, largeur: 120, hauteur: 140,
+        l_mecanisme: 120, type_mecanisme: "Store",
+        type_confection: "Bateau", tissu_deco1: "Coton Blanc"
+      },
+      {
+        id: uid(), produit: "Décor de lit", zone: "Chambre 1", piece: "Lit Master",
+        largeur: 160, hauteur: 50, type_confection: "Jeté de lit",
+        tissu_deco1: "Velours Bleu"
+      }
+    ].map(r => recomputeRow(r, schema)); // Ensure formulas computed
+
+    setRows(prev => [...prev, ...testRows]);
+    alert("Données de test ajoutées ! (3 lignes)");
+  };
+
+
   const projectName = project?.name || "—";
   const visibleStages = STAGES.filter(p => p.key !== "chiffrage" || seeChiffrage);
+
+  // Helper styles for Header inside Card
+  const cardHeaderStyle = {
+    padding: '16px 20px',
+    borderBottom: `1px solid ${COLORS.border}`,
+    fontWeight: 700,
+    fontSize: 14,
+    color: '#374151',
+    textTransform: 'uppercase'
+  };
+
+  // Card wrapper style
+  const cardStyle = {
+    ...S.modernCard,
+    padding: 0,
+    marginBottom: 24,
+    overflow: 'hidden' // Ensure header border respects radius
+  };
 
   return (
     <div style={S.contentWide}>
@@ -126,9 +264,14 @@ export function ProductionProjectScreen({ project, onBack, onUpdateProjectRows }
           />
         </div>
         <div style={S.toolsRow}>
-          <span style={S.toolBtn}><Filter size={16}/> Filtre</span>
-          <span style={S.toolBtn}><Layers3 size={16}/> Regrouper</span>
-          <span style={S.toolBtn}><Star size={16}/> Favoris</span>
+          <span style={S.toolBtn}><Filter size={16} /> Filtre</span>
+          <span style={S.toolBtn}><Layers3 size={16} /> Regrouper</span>
+          <button
+            style={{ ...S.toolBtn, border: "none", background: "none", color: "#6366f1", fontWeight: 600 }}
+            onClick={handleLoadTestData}
+          >
+            <FlaskConical size={16} /> Test Data
+          </button>
         </div>
       </div>
 
@@ -149,61 +292,94 @@ export function ProductionProjectScreen({ project, onBack, onUpdateProjectRows }
       {stage === "etiquettes" && (
         <div style={S.contentWide}>
           <EtiquettesSection title="Etiquettes Rideaux" tableKey="rideaux" rows={rowsRideaux} schema={schema} />
-          <EtiquettesSection title="Etiquettes Stores"  tableKey="stores"  rows={rowsStores}  schema={schema} />
+          <EtiquettesSection title="Etiquettes Stores" tableKey="stores" rows={rowsStores} schema={schema} />
         </div>
       )}
 
       {stage === "prise" && (
         <>
-          <DataTable
-            title="PRISE DE COTE RIDEAU"
-            tableKey="rideaux"
-            rows={rowsRideaux}
-            onRowsChange={mergeChildRowsFor("rideaux")}
-            schema={schema}
-            setSchema={setSchema}
-            searchQuery={search}
-            viewKey="prise"
-            enableCellFormulas={true}
-          />
-          <DataTable
-            title="PRISE DE COTE STORE"
-            tableKey="stores"
-            rows={rowsStores}
-            onRowsChange={mergeChildRowsFor("stores")}
-            schema={schema}
-            setSchema={setSchema}
-            searchQuery={search}
-            viewKey="prise"
-            enableCellFormulas={true}
-          />
+          <div style={cardStyle}>
+            <div style={cardHeaderStyle}>Prise de Cote Rideau</div>
+            <MinuteGrid
+              rows={rowsRideaux}
+              onRowsChange={mergeChildRowsFor("rideaux")}
+              schema={schema}
+              enableCellFormulas={true}
+              initialVisibilityModel={getVisibilityModel('prise', 'rideaux', schema)}
+              onAdd={() => handleAddRow("Rideau")}
+              onDuplicateRow={handleDuplicateRow}
+            />
+          </div>
+
+          <div style={cardStyle}>
+            <div style={cardHeaderStyle}>Prise de Cote Store</div>
+            <MinuteGrid
+              rows={rowsStores}
+              onRowsChange={mergeChildRowsFor("stores")}
+              schema={schema}
+              enableCellFormulas={true}
+              initialVisibilityModel={getVisibilityModel('prise', 'stores', schema)}
+              onAdd={() => handleAddRow("Store Bateau")}
+              onDuplicateRow={handleDuplicateRow}
+            />
+          </div>
         </>
       )}
 
       {stage === "installation" && (
-        <DataTable
-          title="Suivi Installation / Livraison"
-          tableKey="all"
-          rows={rows}
-          onRowsChange={(nr) => {
-            if (!canEditProd) return;
-            const computed = (nr || []).map(r => recomputeRow(r, schema));
-            const next     = preserveManualAfterCompute(computed, rows || []);
-            setRows(next); // persistera via useEffect([rows])
-          }}
-          schema={schema}
-          setSchema={setSchema}
-          searchQuery={search}
-          viewKey="installation"
-          enableCellFormulas={true}
-        />
+        <div style={cardStyle}>
+          <div style={cardHeaderStyle}>Suivi Installation / Livraison</div>
+          <MinuteGrid
+            rows={filteredRows} // Installation shows all rows usually? Yes, tableKey='all'
+            onRowsChange={handleRowsChangeInstallation}
+            schema={schema}
+            enableCellFormulas={true}
+            initialVisibilityModel={getVisibilityModel('installation', 'all', schema)}
+            onDuplicateRow={handleDuplicateRow}
+          />
+        </div>
       )}
 
       {stage === "bpf" && (
         <>
-          <DataTable title="BPF Rideaux"        tableKey="rideaux" rows={rowsRideaux} onRowsChange={mergeChildRowsFor("rideaux")} schema={schema} setSchema={setSchema} searchQuery={search} viewKey="bpf" enableCellFormulas={true} />
-          <DataTable title="BPF Décors de lit"  tableKey="decors"  rows={rowsDecors}  onRowsChange={mergeChildRowsFor("decors")}  schema={schema} setSchema={setSchema} searchQuery={search} viewKey="bpf" enableCellFormulas={true} />
-          <DataTable title="BPF Stores"         tableKey="stores"  rows={rowsStores}  onRowsChange={mergeChildRowsFor("stores")}  schema={schema} setSchema={setSchema} searchQuery={search} viewKey="bpf" enableCellFormulas={true} />
+          <div style={cardStyle}>
+            <div style={cardHeaderStyle}>BPF Rideaux</div>
+            <MinuteGrid
+              rows={rowsRideaux}
+              onRowsChange={mergeChildRowsFor("rideaux")}
+              schema={schema}
+              enableCellFormulas={true}
+              initialVisibilityModel={getVisibilityModel('bpf', 'rideaux', schema)}
+              onAdd={() => handleAddRow("Rideau")}
+              onDuplicateRow={handleDuplicateRow}
+            />
+          </div>
+
+          <div style={cardStyle}>
+            <div style={cardHeaderStyle}>BPF Décors de lit</div>
+            <MinuteGrid
+              rows={rowsDecors}
+              onRowsChange={mergeChildRowsFor("decors")}
+              schema={schema}
+              enableCellFormulas={true}
+              initialVisibilityModel={getVisibilityModel('bpf', 'decors', schema)}
+              onAdd={() => handleAddRow("Décor de lit")}
+              onDuplicateRow={handleDuplicateRow}
+            />
+          </div>
+
+          <div style={cardStyle}>
+            <div style={cardHeaderStyle}>BPF Stores</div>
+            <MinuteGrid
+              rows={rowsStores}
+              onRowsChange={mergeChildRowsFor("stores")}
+              schema={schema}
+              enableCellFormulas={true}
+              initialVisibilityModel={getVisibilityModel('bpf', 'stores', schema)}
+              onAdd={() => handleAddRow("Store Bateau")}
+              onDuplicateRow={handleDuplicateRow}
+            />
+          </div>
         </>
       )}
     </div>

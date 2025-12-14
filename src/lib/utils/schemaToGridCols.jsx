@@ -1,11 +1,13 @@
 import React from 'react';
 import FormulaEditCell from '../../components/FormulaEditCell';
+import GridPhotoCell from '../../components/ui/GridPhotoCell';
 import { GridEditInputCell, GridEditSingleSelectCell } from '@mui/x-data-grid';
 import Tooltip from '@mui/material/Tooltip';
 import Badge from '@mui/material/Badge';
 import IconButton from '@mui/material/IconButton';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import Chip from '@mui/material/Chip';
 
 /**
@@ -35,7 +37,7 @@ const mapType = (type) => {
  * @param {boolean} enableCellFormulas - Whether cell formulas are enabled.
  * @returns {Array} - Array of GridColDef.
  */
-export function schemaToGridCols(schema, enableCellFormulas = false, onOpenDetail, catalog = [], railOptions = []) {
+export function schemaToGridCols(schema, enableCellFormulas = false, onOpenDetail, catalog = [], railOptions = [], onPhotoChange, onDuplicate) {
   if (!Array.isArray(schema)) return [];
 
   // Filter out 'sel' column and explicitly hidden columns
@@ -103,8 +105,29 @@ export function schemaToGridCols(schema, enableCellFormulas = false, onOpenDetai
       gridCol.valueOptions = col.valueOptions || col.options;
     }
 
+    // PHOTO CELL
+    if (col.type === 'photo') {
+      gridCol.renderCell = (params) => (
+        <GridPhotoCell
+          value={params.value}
+          rowId={params.id}
+          api={params.api}
+          field={params.field}
+          onImageUpload={(newVal) => onPhotoChange && onPhotoChange(params.id, params.field, newVal)}
+        />
+      );
+      gridCol.editable = false; // Interaction handles edit
+      gridCol.sortable = false;
+      gridCol.filterable = false;
+    }
+
     // Currency Formatting (Force override)
-    const isPrice = ['prix', 'montant', 'total', 'cout', 'pa', 'pv', 'transport'].some(term => col.key.toLowerCase().includes(term));
+    const isPriceTerm = ['prix', 'montant', 'total', 'cout', 'pa', 'pv', 'transport', 'livraison'].some(term => col.key.toLowerCase().includes(term));
+    const isRepas = col.key === 'nb_repas';
+    const isHeuresPrepa = col.key === 'heures_prepa'; // "prepa" contains "pa"
+
+    const isPrice = isPriceTerm && !isRepas && !isHeuresPrepa;
+
     // Remove type check to ensure coverage
     if (isPrice) {
       const formatter = (value) => {
@@ -217,6 +240,17 @@ export function schemaToGridCols(schema, enableCellFormulas = false, onOpenDetai
               onOpenDetail && onOpenDetail(params.row);
             }}
           >
+            {onDuplicate && (
+              <Tooltip title="Dupliquer">
+                <IconButton size="small" onClick={(e) => {
+                  e.stopPropagation();
+                  onDuplicate(params.id);
+                }}>
+                  <ContentCopyIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            )}
+
             <Tooltip title="Ouvrir le détail">
               <IconButton size="small" onClick={(e) => {
                 e.stopPropagation();

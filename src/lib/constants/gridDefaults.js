@@ -29,7 +29,9 @@ export const RIDEAUX_DEFAULT_VISIBILITY = {
 
     // Sous-traitance (Pose & Confection)
     stpausepa: false,
-    stconfpa: false
+    stpausepv: false,
+    stconfpa: false,
+    stconfpv: false
 };
 
 export const DECORS_DEFAULT_VISIBILITY = {

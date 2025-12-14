@@ -11,9 +11,24 @@ import { frFR } from '@mui/x-data-grid/locales';
 import { schemaToGridCols } from '../lib/utils/schemaToGridCols.jsx';
 import { recomputeRow } from '../lib/formulas/recomputeRow';
 
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, FileDown, FileUp } from 'lucide-react';
 
-function CustomToolbar({ onAdd, onDelete, selectedCount }) {
+function CustomToolbar({ onAdd, onDelete, selectedCount, onImportExcel }) {
+    const fileInputRef = React.useRef(null);
+
+    const handleImportClick = () => {
+        fileInputRef.current?.click();
+    };
+
+    const handleFileChange = (e) => {
+        const file = e.target.files?.[0];
+        if (file && onImportExcel) {
+            onImportExcel(file);
+        }
+        // Reset input
+        e.target.value = '';
+    };
+
     return (
         <GridToolbarContainer style={{ padding: 10, borderBottom: '1px solid #e5e7eb' }}>
             <div style={{ display: 'flex', gap: 10, marginRight: 'auto' }}>
@@ -30,6 +45,26 @@ function CustomToolbar({ onAdd, onDelete, selectedCount }) {
                     >
                         <Trash2 size={16} /> Supprimer ({selectedCount})
                     </button>
+                )}
+
+                {/* Excel Actions */}
+                {onImportExcel && (
+                    <>
+                        <button
+                            onClick={handleImportClick}
+                            style={{ cursor: 'pointer', padding: '6px 12px', background: '#fff', border: '1px solid #d1d5db', borderRadius: 4, display: 'flex', alignItems: 'center', gap: 6, color: '#374151' }}
+                            title="Importer un fichier Excel rempli"
+                        >
+                            <FileUp size={16} /> Importer
+                        </button>
+                        <input
+                            type="file"
+                            ref={fileInputRef}
+                            style={{ display: 'none' }}
+                            accept=".xlsx, .xls"
+                            onChange={handleFileChange}
+                        />
+                    </>
                 )}
             </div>
             <GridToolbarColumnsButton />
@@ -53,7 +88,9 @@ export default function MinuteGrid({
     catalog = [],
     railOptions = [],
     onAdd,
-    initialVisibilityModel = {}, // <--- Added prop
+    initialVisibilityModel = {},
+    onImportExcel,
+    onDuplicateRow, // <--- New Prop
 }) {
     const [rowSelectionModel, setRowSelectionModel] = useState([]);
     const [detailRow, setDetailRow] = useState(null);
@@ -94,9 +131,20 @@ export default function MinuteGrid({
         setRowSelectionModel([]); // Clear selection after deletion
     }, [rows, onRowsChange, rowSelectionModel]);
 
+    // Callback specific for Photo Cell update (bypass standard edit mode)
+    const handlePhotoChange = useCallback((id, field, value) => {
+        const newRows = rows.map(r => {
+            if (r.id === id) {
+                return { ...r, [field]: value };
+            }
+            return r;
+        });
+        onRowsChange(newRows);
+    }, [rows, onRowsChange]);
+
     const columns = useMemo(() => {
-        return schemaToGridCols(schema, enableCellFormulas, handleOpenDetail, catalog, railOptions);
-    }, [schema, enableCellFormulas, handleOpenDetail, catalog, railOptions]);
+        return schemaToGridCols(schema, enableCellFormulas, handleOpenDetail, catalog, railOptions, handlePhotoChange, onDuplicateRow);
+    }, [schema, enableCellFormulas, handleOpenDetail, catalog, railOptions, handlePhotoChange, onDuplicateRow]);
 
     // detailRow is now state, no need for useMemo lookup
 
@@ -248,7 +296,12 @@ export default function MinuteGrid({
                     toolbar: CustomToolbar,
                 }}
                 slotProps={{
-                    toolbar: { onAdd: handleAddRow, onDelete: handleDeleteRows, selectedCount: rowSelectionModel?.length || 0 },
+                    toolbar: {
+                        onAdd: handleAddRow,
+                        onDelete: handleDeleteRows,
+                        selectedCount: rowSelectionModel?.length || 0,
+                        onImportExcel
+                    },
                 }}
                 rowSelectionModel={rowSelectionModel}
                 onRowSelectionModelChange={(newSelection) => setRowSelectionModel(newSelection)}

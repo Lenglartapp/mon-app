@@ -1,15 +1,42 @@
 // src/screens/ChiffrageRoot.jsx
-import React, { useState } from "react";
-import { Search, Plus, Copy, Trash2 } from "lucide-react";
+import React, { useState, useMemo, useEffect } from "react";
+import { Search, Plus, Copy, Trash2, Edit2, FileText } from "lucide-react";
+import Chip from '@mui/material/Chip';
+import Avatar from '@mui/material/Avatar';
+import IconButton from '@mui/material/IconButton';
+import Tooltip from '@mui/material/Tooltip';
+
 import { useAuth } from "../auth";
 import { uid } from "../lib/utils/uid";
 import { COLORS, S } from "../lib/constants/ui";
+import { SmartFilterBar } from "../components/ui/SmartFilterBar.jsx";
+
+// Helper for Status Chip Color
+const getStatusColor = (status) => {
+  const s = (status || "").toLowerCase();
+  if (s.includes("valid") || s.includes("sign")) return { bg: "#DEF7EC", text: "#03543F" };
+  if (s.includes("attente") || s.includes("cours")) return { bg: "#FEF3C7", text: "#92400E" };
+  return { bg: "#F3F4F6", text: "#374151" };
+};
+
+// Helper unique color for Avatar
+function stringToColor(string) {
+  let hash = 0;
+  for (let i = 0; i < string.length; i++) {
+    hash = string.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  let color = '#';
+  for (let i = 0; i < 3; i++) {
+    const value = (hash >> (i * 8)) & 0xFF;
+    color += ('00' + value.toString(16)).substr(-2);
+  }
+  return color;
+}
 
 export default function ChiffrageRoot({ minutes = [], setMinutes, onOpenMinute, onBack }) {
   const { currentUser } = useAuth?.() || { currentUser: { name: "—" } };
-  const [q, setQ] = React.useState("");
 
-// --- Popup "Nouvelle minute"
+  // --- Popup "Nouvelle minute" State
   const [newMinOpen, setNewMinOpen] = useState(false);
   const [newMin, setNewMin] = useState({
     charge: (currentUser?.name || "").trim(),
@@ -18,8 +45,17 @@ export default function ChiffrageRoot({ minutes = [], setMinutes, onOpenMinute, 
     status: "Non commencé", // valeurs: Non commencé | En cours d’étude | À valider | Validé
     modules: { rideau: true, store: true, decor: true }, // par défaut les 3
   });
-  
-  // normalise (au cas où d'anciennes minutes n'ont pas encore ces champs)
+
+  // --- Filtering State
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeFilters, setActiveFilters] = useState([]);
+
+  // Set default filter on mount
+  useEffect(() => {
+    setActiveFilters([{ id: 'my_minutes', label: '👤 Mes Devis', field: 'owner' }]);
+  }, []);
+
+  // Normalisation
   const norm = (m) => ({
     id: m.id,
     name: m.name || "Minute sans nom",
@@ -30,23 +66,41 @@ export default function ChiffrageRoot({ minutes = [], setMinutes, onOpenMinute, 
     createdAt: m.createdAt || Date.now(),
     updatedAt: m.updatedAt || Date.now(),
     owner: m.owner || currentUser?.name || "—",
-    status: m.status || "Non commencé"
+    status: m.status || "Non commencé",
+    modules: m.modules
   });
 
-  const list = (minutes || []).map(norm).filter(m => {
-    const s = (q || "").toLowerCase();
-    if (!s) return true;
-    return (
-      String(m.name).toLowerCase().includes(s) ||
-      String(m.client).toLowerCase().includes(s) ||
-      String(m.owner).toLowerCase().includes(s)
-    );
-  }).sort((a,b)=> b.updatedAt - a.updatedAt);
+  const list = useMemo(() => (minutes || []).map(norm).sort((a, b) => b.updatedAt - a.updatedAt), [minutes]);
 
-  const addMinute = () => {
-    setNewMinOpen(true); // on ouvre la popup au lieu de créer directement
-  };
+  const removeFilter = (id) => setActiveFilters(prev => prev.filter(f => f.id !== id));
 
+  const filteredList = useMemo(() => {
+    let res = list;
+
+    // 1. Filter: My Minutes
+    if (activeFilters.some(f => f.id === 'my_minutes')) {
+      const userName = currentUser?.name || currentUser?.displayName || currentUser?.email || "";
+      if (userName) {
+        res = res.filter(m => {
+          const owner = (m.owner || "").toLowerCase();
+          const user = userName.toLowerCase();
+          return owner.includes(user) || user.includes(owner) || !m.owner;
+        });
+      }
+    }
+
+    // 2. Search
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      res = res.filter(m =>
+        [m.name, m.client, m.owner, m.notes].some(x => String(x || "").toLowerCase().includes(q))
+      );
+    }
+    return res;
+  }, [list, searchQuery, activeFilters, currentUser]);
+
+
+  // Actions
   const handleCreateMinute = () => {
     const { charge, projet, note, status, modules } = newMin;
     if (!projet.trim() || !charge.trim()) return;
@@ -56,28 +110,26 @@ export default function ChiffrageRoot({ minutes = [], setMinutes, onOpenMinute, 
     const id = uid();
     const m = {
       id,
-      name: projet.trim(),             // nom du chiffrage
+      name: projet.trim(),
       client: "—",
-      notes: (note || "").trim(),      // note/commentaire
+      notes: (note || "").trim(),
       version: 1,
-      lines: [],                       // si tu sépares plus tard par module, on adaptera ici
-      // ▼▼ paramètres par défaut (drawer latéral)
-   params: [
-     { id: uid(), name: "taux_horaire",     type: "prix", value: 135 },
-     { id: uid(), name: "prix_achat_tissu", type: "prix", value: null },
-     { id: uid(), name: "nuit_hotel",       type: "prix", value: 150 },
-   ],
-   // ▼▼ (optionnel mais recommandé) tableau déplacements vide prêt à l’emploi
-   deplacements: [],
+      lines: [],
+      params: [
+        { id: uid(), name: "taux_horaire", type: "prix", value: 135 },
+        { id: uid(), name: "prix_achat_tissu", type: "prix", value: null },
+        { id: uid(), name: "nuit_hotel", type: "prix", value: 150 },
+      ],
+      deplacements: [],
       createdAt: now,
       updatedAt: now,
-      owner: charge.trim(),            // chargé d’affaires
-      status,                          // statut lisible (fr)
-      modules: { ...modules },         // flags R/S/D
+      owner: charge.trim(),
+      status,
+      modules: { ...modules },
     };
-    setMinutes((xs) => [m, ...(xs || [])]);  // ajout en tête de liste
+    setMinutes((xs) => [m, ...(xs || [])]);
     setNewMinOpen(false);
-    onOpenMinute?.(id);                       // ouvre directement la minute
+    onOpenMinute?.(id);
   };
 
   const duplicate = (id) => {
@@ -102,246 +154,271 @@ export default function ChiffrageRoot({ minutes = [], setMinutes, onOpenMinute, 
     setMinutes((xs) => xs.filter(x => x.id !== id));
   };
 
-  // petit style local pour éviter de toucher S.*
-  const T = {
-    wrap: { padding: 16 },
-    headerRow: { display: "flex", alignItems: "center", gap: 12, marginBottom: 16 },
-    back: S.smallBtn,
-    title: { fontSize: 28, fontWeight: 900, margin: 0, flex: 1 },
-    newBtn: { ...S.smallBtn, padding: "10px 14px", fontWeight: 800 },
-    search: { position: "relative", width: 420, maxWidth: "100%" },
-    searchInput: {
-      width: "100%", padding: "10px 14px 10px 38px",
-      borderRadius: 10, border: `1px solid ${COLORS.border}`, background: "#fff"
-    },
-    table: { width: "100%", borderCollapse: "separate", borderSpacing: 0, background: "#fff", borderRadius: 14, overflow: "hidden", boxShadow: "0 1px 0 rgba(0,0,0,.05)" },
-    th: { textAlign: "left", fontSize: 12, letterSpacing: .3, textTransform: "uppercase", color: "#6b7280", padding: "12px 16px", borderBottom: `1px solid ${COLORS.border}`, background: "#fafafa" },
-    td: { padding: "12px 16px", borderBottom: `1px solid ${COLORS.border}` },
-    tr: { cursor: "pointer" },
-    trHover: { background: "#fbfbfb" },
-    badge: (kind) => ({
-      display: "inline-block",
-      padding: "4px 10px",
-      borderRadius: 999,
-      fontSize: 12,
-      fontWeight: 700,
-      background: kind === "Terminé" ? "#dcfce7"
-               : kind === "En cours" ? "#fde68a"
-               : "#e5e7eb",
-      color: "#111827"
-    }),
-    actions: { display: "flex", gap: 8, justifyContent: "flex-end" },
-    iconBtn: { ...S.smallBtn, padding: "6px 8px" }
-  };
 
   return (
-    <div style={T.wrap}>
-      {/* Barre top */}
-      <div style={T.headerRow}>
-        <button style={T.back} onClick={onBack}>← Retour</button>
-        <h1 style={T.title}>Chiffrage</h1>
+    <div style={{
+      minHeight: '100vh',
+      background: '#F9F7F2', // Beige Moulinette
+      padding: '24px',
+      display: 'flex',
+      flexDirection: 'column',
+    }}>
 
-        <div style={T.search}>
-          <Search size={16} style={{ position: "absolute", left: 10, top: 11, opacity: .6 }} />
-          <input
-            placeholder="Rechercher une minute (nom, client, chargé)"
-            value={q}
-            onChange={(e)=>setQ(e.target.value)}
-            style={T.searchInput}
-          />
-        </div>
+      {/* Header & Tools */}
+      <div style={{ maxWidth: 1200, width: '100%', margin: '0 auto 24px auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-        <button style={T.newBtn} onClick={addMinute}>
-          <Plus size={16}/> Nouvelle minute
-        </button>
-      </div>
-
-{newMinOpen && (
-  <div
-    style={{
-      position: "fixed", inset: 0, background: "rgba(0,0,0,.25)",
-      display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000
-    }}
-    onClick={() => setNewMinOpen(false)}
-  >
-    <div
-      onClick={(e) => e.stopPropagation()}
-      style={{
-        width: 460, background: "#fff", borderRadius: 12, padding: 16,
-        boxShadow: "0 12px 32px rgba(0,0,0,.2)"
-      }}
-    >
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-        <h3 style={{ margin: 0 }}>Nouvelle minute</h3>
-        <button style={T.newBtn} onClick={() => setNewMinOpen(false)}>Fermer</button>
-      </div>
-
-      <div style={{ display: "grid", gap: 10 }}>
-        <label>
-          <div style={{ fontSize: 12, opacity: .7 }}>Chargé·e d’affaires</div>
-          <input
-            style={{ width: "100%" }}
-            value={newMin.charge}
-            onChange={(e)=> setNewMin(m => ({ ...m, charge: e.target.value }))}
-          />
-        </label>
-
-        <label>
-          <div style={{ fontSize: 12, opacity: .7 }}>Nom du chiffrage</div>
-          <input
-            style={{ width: "100%" }}
-            value={newMin.projet}
-            onChange={(e)=> setNewMin(m => ({ ...m, projet: e.target.value }))}
-            placeholder={`Minute ${new Date().toLocaleDateString("fr-FR")}`}
-          />
-        </label>
-
-        <label>
-          <div style={{ fontSize: 12, opacity: .7 }}>Statut</div>
-          <select
-            style={{ width: "100%" }}
-            value={newMin.status}
-            onChange={(e)=> setNewMin(m => ({ ...m, status: e.target.value }))}
-          >
-            <option>Non commencé</option>
-            <option>En cours d’étude</option>
-            <option>À valider</option>
-            <option>Validé</option>
-          </select>
-        </label>
-
-        <div>
-          <div style={{ fontSize: 12, opacity: .7, marginBottom: 4 }}>Modules à inclure</div>
-          <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <input
-              type="checkbox"
-              checked={newMin.modules.rideau}
-              onChange={(e)=> setNewMin(m => ({ ...m, modules: { ...m.modules, rideau: e.target.checked } }))}
-            />
-            Rideaux
-          </label>
-          <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <input
-              type="checkbox"
-              checked={newMin.modules.store}
-              onChange={(e)=> setNewMin(m => ({ ...m, modules: { ...m.modules, store: e.target.checked } }))}
-            />
-            Stores
-          </label>
-          <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <input
-              type="checkbox"
-              checked={newMin.modules.decor}
-              onChange={(e)=> setNewMin(m => ({ ...m, modules: { ...m.modules, decor: e.target.checked } }))}
-            />
-            Décors de lit
-          </label>
-          <div style={{ fontSize: 12, color: "#666", marginTop: 2 }}>
-            (Coche au moins un module)
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            <button onClick={onBack} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6B7280', fontWeight: 600 }}>← Retour</button>
+            <h1 style={{ fontSize: 28, fontWeight: 700, color: '#1F2937', margin: 0, letterSpacing: '-0.5px' }}>
+              Chiffrages & Devis
+            </h1>
           </div>
-        </div>
 
-        <label>
-          <div style={{ fontSize: 12, opacity: .7 }}>Note</div>
-          <textarea
-            rows={3}
-            style={{ width: "100%" }}
-            value={newMin.note}
-            onChange={(e)=> setNewMin(m => ({ ...m, note: e.target.value }))}
-            placeholder="Commentaire interne…"
-          />
-        </label>
-
-        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 6 }}>
-          <button style={S.smallBtn} onClick={()=> setNewMinOpen(false)}>Annuler</button>
           <button
-            style={S.smallBtn}
-            onClick={handleCreateMinute}
-            disabled={
-              !newMin.charge.trim() ||
-              !newMin.projet.trim() ||
-              !(newMin.modules.rideau || newMin.modules.store || newMin.modules.decor)
-            }
+            onClick={() => setNewMinOpen(true)}
+            style={{
+              background: '#1F2937',
+              color: 'white',
+              padding: '8px 16px',
+              borderRadius: 8,
+              border: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              cursor: 'pointer',
+              fontWeight: 600,
+              boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+            }}
           >
-            Créer
+            <Plus size={18} /> Nouvelle minute
           </button>
         </div>
+
+        <SmartFilterBar
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          activeFilters={activeFilters}
+          onRemoveFilter={removeFilter}
+        />
       </div>
-    </div>
-  </div>
-)}
+
+      {/* Main Card */}
+      <div style={{
+        maxWidth: 1200,
+        width: '100%',
+        margin: '0 auto',
+        background: 'white',
+        borderRadius: 12,
+        boxShadow: '0 1px 3px rgba(0,0,0,0.05), 0 4px 6px rgba(0,0,0,0.02)',
+        overflow: 'hidden'
+      }}>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+            <thead style={{ background: '#F3F4F6', borderBottom: '1px solid #E5E7EB' }}>
+              <tr>
+                <th style={{ padding: '12px 16px', fontSize: 13, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Devis / Client</th>
+                <th style={{ padding: '12px 16px', fontSize: 13, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Mise à jour</th>
+                <th style={{ padding: '12px 16px', fontSize: 13, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Chargé d'Affaires</th>
+                <th style={{ padding: '12px 16px', fontSize: 13, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Statut</th>
+                <th style={{ padding: '12px 16px', fontSize: 13, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Modules</th>
+                <th style={{ padding: '12px 16px', width: 100 }}></th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredList.map((m, idx) => {
+                const statusStyle = getStatusColor(m.status);
+                return (
+                  <tr
+                    key={m.id}
+                    className="minute-row"
+                    style={{
+                      borderBottom: '1px solid #F3F4F6',
+                      cursor: 'pointer',
+                      transition: 'background 0.1s'
+                    }}
+                    onClick={() => onOpenMinute?.(m.id)}
+                    onMouseEnter={(e) => e.currentTarget.style.background = '#F9FAFB'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+                  >
+                    <td style={{ padding: '12px 16px' }}>
+                      <div style={{ fontWeight: 600, color: '#111827', fontSize: 15 }}>{m.name || "Minute sans nom"}</div>
+                      <div style={{ fontSize: 12, color: '#9CA3AF' }}>{m.client || "—"}</div>
+                    </td>
+                    <td style={{ padding: '12px 16px', color: '#6B7280', fontSize: 14 }}>
+                      {new Date(m.updatedAt || m.createdAt).toLocaleDateString("fr-FR")} <small>{new Date(m.updatedAt || m.createdAt).toLocaleTimeString("fr-FR", { hour: '2-digit', minute: '2-digit' })}</small>
+                    </td>
+                    <td style={{ padding: '12px 16px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <Avatar sx={{ width: 28, height: 28, fontSize: 12, bgcolor: stringToColor(m.owner || "?") }}>
+                          {(m.owner?.[0] || "?").toUpperCase()}
+                        </Avatar>
+                        <span style={{ fontSize: 14, color: '#374151' }}>{m.owner || "—"}</span>
+                      </div>
+                    </td>
+                    <td style={{ padding: '12px 16px' }}>
+                      <Chip
+                        label={m.status || "Non commencé"}
+                        size="small"
+                        sx={{
+                          bgcolor: statusStyle.bg,
+                          color: statusStyle.text,
+                          fontWeight: 600,
+                          fontSize: 12,
+                          height: 24
+                        }}
+                      />
+                    </td>
+                    <td style={{ padding: '12px 16px', fontSize: 13, color: '#4B5563' }}>
+                      {(m.modules?.rideau || m.modules?.store || m.modules?.decor)
+                        ? [m.modules?.rideau && "Rideaux",
+                        m.modules?.store && "Stores",
+                        m.modules?.decor && "Décors"].filter(Boolean).join(" · ")
+                        : "—"
+                      }
+                    </td>
+                    <td style={{ padding: '12px 16px', textAlign: 'right' }} onClick={(e) => e.stopPropagation()}>
+                      <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end', opacity: 0.6 }}>
+                        <Tooltip title="Dupliquer">
+                          <IconButton size="small" onClick={(e) => { e.stopPropagation(); duplicate(m.id); }}>
+                            <Copy size={16} />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Supprimer">
+                          <IconButton size="small" onClick={(e) => { e.stopPropagation(); removeOne(m.id); }}>
+                            <Trash2 size={16} />
+                          </IconButton>
+                        </Tooltip>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+              {filteredList.length === 0 && (
+                <tr>
+                  <td colSpan={6} style={{ padding: 40, textAlign: 'center', color: '#9CA3AF' }}>
+                    <FileText size={48} style={{ opacity: 0.2, marginBottom: 16 }} />
+                    <div>Aucun chiffrage trouvé.</div>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
 
 
-      {/* Tableau */}
-      <table style={T.table}>
-        <thead>
-          <tr>
-            <th style={T.th}>Nom du devis</th>
-            <th style={T.th}>Date de la minute</th>
-            <th style={T.th}>Chargé du devis</th>
-            <th style={T.th}>Statut</th>
-            <th style={T.th}>Modules</th>
-            <th style={T.th}>Notes</th>
-            <th style={{ ...T.th, width: 140, textAlign: "right" }}>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {list.map((m, i) => (
-            <tr
-              key={m.id}
-              style={{ ...T.tr, ...(i % 2 ? { background: "#fcfcfc" } : null) }}
-              onMouseEnter={(e)=> e.currentTarget.style.background = "#f9fafb"}
-              onMouseLeave={(e)=> e.currentTarget.style.background = i % 2 ? "#fcfcfc" : "#fff"}
-              onClick={(e)=> {
-                // éviter que les boutons à droite déclenchent l'ouverture
-                if ((e.target.closest && e.target.closest(".row-actions"))) return;
-                onOpenMinute(m.id);
-              }}
-            >
-              <td style={T.td}><b>{m.name}</b><div style={{ opacity: .6, fontSize: 12 }}>{m.client || "—"}</div></td>
-              <td style={T.td}>{new Date(m.updatedAt || m.createdAt).toLocaleString("fr-FR")}</td>
-              <td style={T.td}>{m.owner || "—"}</td>
-              <td style={T.td}><span style={T.badge(m.status)}>{m.status}</span></td>
-              <td style={T.td}>
-  { (m.modules?.rideau || m.modules?.store || m.modules?.decor)
-    ? [ m.modules?.rideau && "Rideaux",
-        m.modules?.store  && "Stores",
-        m.modules?.decor  && "Décors de lit" ].filter(Boolean).join(" · ")
-    : "—"
-  }
-</td>
-              <td style={T.td}>{m.notes || "—"}</td>
-              <td style={{ ...T.td }}>
-                <div className="row-actions" style={T.actions}>
-                  <button
-  title="Dupliquer"
-  style={T.iconBtn}
-  onClick={(e)=>{ e.stopPropagation(); duplicate(m.id); }}
->
-  <Copy size={16} />
-</button>
+      {/* Modal Création (Legacy styled wrap but functional) - Keeping simple for now but could be styled better */}
+      {newMinOpen && (
+        <div
+          style={{
+            position: "fixed", inset: 0, background: "rgba(0,0,0,.5)",
+            display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000
+          }}
+          onClick={() => setNewMinOpen(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: 480, background: "#fff", borderRadius: 12, padding: 24,
+              boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)"
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Nouvelle minute</h3>
+              <IconButton onClick={() => setNewMinOpen(false)} size="small"><Trash2 size={18} style={{ transform: 'rotate(45deg)' }} /></IconButton> {/* Using trash as close X or just button */}
+            </div>
 
-<button
-  title="Supprimer"
-  style={T.iconBtn}
-  onClick={(e)=>{ e.stopPropagation(); removeOne(m.id); }}
->
-  <Trash2 size={16} />
-</button>
+            <div style={{ display: "grid", gap: 16 }}>
+              <label>
+                <div style={{ fontSize: 13, fontWeight: 500, color: "#374151", marginBottom: 4 }}>Chargé·e d’affaires</div>
+                <input
+                  style={{ width: "100%", padding: "8px 12px", borderRadius: 6, border: "1px solid #D1D5DB" }}
+                  value={newMin.charge}
+                  onChange={(e) => setNewMin(m => ({ ...m, charge: e.target.value }))}
+                />
+              </label>
+
+              <label>
+                <div style={{ fontSize: 13, fontWeight: 500, color: "#374151", marginBottom: 4 }}>Nom du chiffrage</div>
+                <input
+                  style={{ width: "100%", padding: "8px 12px", borderRadius: 6, border: "1px solid #D1D5DB" }}
+                  value={newMin.projet}
+                  onChange={(e) => setNewMin(m => ({ ...m, projet: e.target.value }))}
+                  placeholder={`Minute ${new Date().toLocaleDateString("fr-FR")}`}
+                />
+              </label>
+
+              <label>
+                <div style={{ fontSize: 13, fontWeight: 500, color: "#374151", marginBottom: 4 }}>Statut</div>
+                <select
+                  style={{ width: "100%", padding: "8px 12px", borderRadius: 6, border: "1px solid #D1D5DB" }}
+                  value={newMin.status}
+                  onChange={(e) => setNewMin(m => ({ ...m, status: e.target.value }))}
+                >
+                  <option>Non commencé</option>
+                  <option>En cours d’étude</option>
+                  <option>À valider</option>
+                  <option>Validé</option>
+                </select>
+              </label>
+
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 500, color: "#374151", marginBottom: 8 }}>Modules à inclure</div>
+                <div style={{ display: 'flex', gap: 16 }}>
+                  <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}>
+                    <input
+                      type="checkbox"
+                      checked={newMin.modules.rideau}
+                      onChange={(e) => setNewMin(m => ({ ...m, modules: { ...m.modules, rideau: e.target.checked } }))}
+                    />
+                    Rideaux
+                  </label>
+                  <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}>
+                    <input
+                      type="checkbox"
+                      checked={newMin.modules.store}
+                      onChange={(e) => setNewMin(m => ({ ...m, modules: { ...m.modules, store: e.target.checked } }))}
+                    />
+                    Stores
+                  </label>
+                  <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}>
+                    <input
+                      type="checkbox"
+                      checked={newMin.modules.decor}
+                      onChange={(e) => setNewMin(m => ({ ...m, modules: { ...m.modules, decor: e.target.checked } }))}
+                    />
+                    Décors
+                  </label>
                 </div>
-              </td>
-            </tr>
-          ))}
+              </div>
 
-          {!list.length && (
-            <tr>
-              <td colSpan={6} style={{ ...T.td, textAlign: "center", color: "#6b7280" }}>
-                Aucune minute pour le moment. Crée la première avec « Nouvelle minute ».
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+              <label>
+                <div style={{ fontSize: 13, fontWeight: 500, color: "#374151", marginBottom: 4 }}>Note</div>
+                <textarea
+                  rows={3}
+                  style={{ width: "100%", padding: "8px 12px", borderRadius: 6, border: "1px solid #D1D5DB" }}
+                  value={newMin.note}
+                  onChange={(e) => setNewMin(m => ({ ...m, note: e.target.value }))}
+                  placeholder="Commentaire interne…"
+                />
+              </label>
+
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, marginTop: 8 }}>
+                <button onClick={() => setNewMinOpen(false)} style={{ background: 'white', border: '1px solid #D1D5DB', padding: '8px 16px', borderRadius: 6, cursor: 'pointer' }}>Annuler</button>
+                <button
+                  onClick={handleCreateMinute}
+                  disabled={!newMin.charge.trim() || !newMin.projet.trim() || !(newMin.modules.rideau || newMin.modules.store || newMin.modules.decor)}
+                  style={{ background: '#1F2937', color: 'white', border: 'none', padding: '8px 16px', borderRadius: 6, cursor: 'pointer', opacity: (!newMin.charge.trim() || !newMin.projet.trim()) ? 0.5 : 1 }}
+                >
+                  Créer
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
