@@ -16,7 +16,7 @@ const normalizePhoto = (item) => {
     return item;
 };
 
-export default function GridPhotoCell({ value, rowId, api, field, onImageUpload }) {
+export default function GridPhotoCell({ value, rowId, api, field, onImageUpload, onCustomAdd }) {
     const fileInputRef = useRef(null);
 
     // Local state for Lightbox
@@ -68,6 +68,17 @@ export default function GridPhotoCell({ value, rowId, api, field, onImageUpload 
 
     const handleAddClick = (e) => {
         e.stopPropagation();
+        if (onImageUpload && typeof onImageUpload === 'function' && onImageUpload.length === 0) {
+            // Special case: if onImageUpload doesn't take args, it might be a void trigger? No.
+            // Let's rely on a separate prop `onCustomAdd` to be explicit.
+        }
+
+        // If a custom add handler is provided, use it (e.g., for SketchPad)
+        if (onCustomAdd) {
+            onCustomAdd();
+            return;
+        }
+
         fileInputRef.current?.click();
     };
 

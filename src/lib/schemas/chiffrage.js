@@ -212,6 +212,9 @@ export const CHIFFRAGE_SCHEMA = [
   { key: "quantite", label: "Quantité", type: "number", width: 100 },
   { key: "prix_total", label: "Prix Total", type: "formula", formula: "{prix_unitaire} * {quantite}", width: 140 },
 
+  // Croquis
+  { key: "croquis", label: "Croquis", type: "croquis", width: 140 },
+
   // Commentaires chiffrage
   { key: "commentaire_minute", label: "Commentaire", type: "text", width: 220 },
 ];

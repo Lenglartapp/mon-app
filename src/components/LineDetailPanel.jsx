@@ -11,8 +11,40 @@ import FormControlLabel from '@mui/material/FormControlLabel';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import Tooltip from '@mui/material/Tooltip';
 
-import CommentsSidebar from './ui/CommentsSidebar';
+import ActivitySidebar from './ui/ActivitySidebar';
 import GridPhotoCell from './ui/GridPhotoCell';
+import GridSketchCell from './ui/GridSketchCell';
+import { generateRowLogs } from '../lib/utils/logUtils';
+
+// Helper Component for Text Fields to prevent log spam
+function BlurTextField({ value, onChange, ...props }) {
+    const [localValue, setLocalValue] = useState(value ?? '');
+
+    // Sync with external value changes (reset)
+    React.useEffect(() => {
+        setLocalValue(value ?? '');
+    }, [value]);
+
+    const handleBlur = () => {
+        if (localValue !== (value ?? '')) {
+            onChange(localValue);
+        }
+    };
+
+    return (
+        <TextField
+            {...props}
+            value={localValue}
+            onChange={(e) => setLocalValue(e.target.value)}
+            onBlur={handleBlur}
+            onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                    e.target.blur();
+                }
+            }}
+        />
+    );
+}
 
 export default function LineDetailPanel({ open, onClose, row, schema, onRowChange, columnVisibilityModel }) {
     // New Sidebar Toggle State
@@ -21,23 +53,37 @@ export default function LineDetailPanel({ open, onClose, row, schema, onRowChang
     if (!row) return null;
 
     const handleFieldChange = (key, value) => {
-        onRowChange({ ...row, [key]: value });
+        const oldRow = { ...row };
+        const newRow = { ...row, [key]: value };
+
+        // Generate Logs
+        // Note: For text fields using BlurTextField, this runs only on commit, so oldRow vs newRow is valid diff.
+        const newLogs = generateRowLogs(oldRow, newRow, schema);
+
+        let updatedComments = newRow.comments || [];
+        if (newLogs.length > 0) {
+            updatedComments = [...updatedComments, ...newLogs];
+        }
+
+        onRowChange({ ...newRow, comments: updatedComments });
     };
 
+
+
     const handleAddComment = (text) => {
-        const newComment = {
+        const newActivity = {
             id: Date.now(),
             text: text,
             createdAt: new Date().toISOString(),
-            // In a real app, this should come from AuthContext
             author: 'Aristide LENGLART',
+            type: 'msg' // User Message
         };
 
-        const updatedComments = row.comments ? [...row.comments, newComment] : [newComment];
+        const updatedComments = row.comments ? [...row.comments, newActivity] : [newActivity];
         onRowChange({ ...row, comments: updatedComments });
     };
 
-    const comments = row.comments || [];
+    const activities = row.comments || [];
 
     return (
         <Dialog
@@ -66,7 +112,7 @@ export default function LineDetailPanel({ open, onClose, row, schema, onRowChang
                 </Typography>
 
                 <Box sx={{ display: 'flex', gap: 1 }}>
-                    <Tooltip title={isSidebarOpen ? "Masquer les commentaires" : "Afficher les commentaires"}>
+                    <Tooltip title={isSidebarOpen ? "Masquer l'activité" : "Afficher l'activité"}>
                         <IconButton
                             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
                             sx={{
@@ -95,6 +141,7 @@ export default function LineDetailPanel({ open, onClose, row, schema, onRowChang
                     bgcolor: 'white'
                 }}>
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, maxWidth: 800, margin: '0 auto' }}>
+
                         {schema.map((col) => {
                             if (col.key === 'sel' || col.key === 'detail') return null;
                             if (columnVisibilityModel && columnVisibilityModel[col.key] === false) return null;
@@ -103,6 +150,7 @@ export default function LineDetailPanel({ open, onClose, row, schema, onRowChang
                             const isSelect = col.type === 'select' || (col.options && col.options.length > 0);
                             const isBoolean = col.type === 'boolean' || col.type === 'checkbox';
                             const isPhoto = col.type === 'photo';
+                            const isSketch = col.type === 'croquis';
 
                             // PHOTO FIELD
                             if (isPhoto) {
@@ -124,7 +172,32 @@ export default function LineDetailPanel({ open, onClose, row, schema, onRowChang
                                                 rowId={row.id}
                                                 field={col.key}
                                                 onImageUpload={(newVal) => handleFieldChange(col.key, newVal)}
-                                            // Optional: prop to hint it's form mode if your component supports it
+                                            />
+                                        </div>
+                                    </Box>
+                                );
+                            }
+
+                            // SKETCH FIELD
+                            if (isSketch) {
+                                return (
+                                    <Box key={col.key}>
+                                        <Typography variant="subtitle2" sx={{ mb: 1, color: '#374151', fontWeight: 500 }}>
+                                            {col.label || col.key}
+                                        </Typography>
+                                        <div style={{
+                                            border: '1px solid #E5E7EB',
+                                            borderRadius: 8,
+                                            padding: 12,
+                                            minHeight: 80,
+                                            display: 'flex',
+                                            alignItems: 'center'
+                                        }}>
+                                            <GridSketchCell
+                                                value={row[col.key]}
+                                                rowId={row.id}
+                                                field={col.key}
+                                                onSketchUpdate={(newVal) => handleFieldChange(col.key, newVal)}
                                             />
                                         </div>
                                     </Box>
@@ -172,12 +245,12 @@ export default function LineDetailPanel({ open, onClose, row, schema, onRowChang
 
                             // Default Text / Number
                             return (
-                                <TextField
+                                <BlurTextField
                                     key={col.key}
                                     fullWidth
                                     label={col.label || col.key}
-                                    value={row[col.key] ?? ''}
-                                    onChange={(e) => handleFieldChange(col.key, e.target.value)}
+                                    value={row[col.key]}
+                                    onChange={(newValue) => handleFieldChange(col.key, newValue)}
                                     disabled={isReadOnly}
                                     type={col.type === 'number' || col.type === 'formula' ? 'number' : 'text'}
                                     variant="outlined"
@@ -191,9 +264,9 @@ export default function LineDetailPanel({ open, onClose, row, schema, onRowChang
 
                 {/* RIGHT: SIDEBAR (Collapsible) */}
                 {isSidebarOpen && (
-                    <CommentsSidebar
+                    <ActivitySidebar
                         isOpen={isSidebarOpen}
-                        comments={comments}
+                        activities={activities}
                         onAddComment={handleAddComment}
                         currentUser="Aristide LENGLART"
                     />

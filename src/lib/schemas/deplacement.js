@@ -47,6 +47,7 @@ export const CHIFFRAGE_SCHEMA_DEP = [
     // La formule est gérée par recomputeRow, mais on peut mettre une formule indicative
     // formula: "cout_mo + cout_nuits + cout_repas + transport_total"
   },
+  { key: "croquis", label: "Croquis", type: "croquis", width: 140 },
 ];
 
 export default CHIFFRAGE_SCHEMA_DEP;

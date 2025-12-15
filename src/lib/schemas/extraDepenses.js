@@ -27,6 +27,7 @@ export const EXTRA_DEPENSES_SCHEMA = [
     }
   },
   { key: "prix_total", label: "Montant (€)", type: "number", width: 140 },
+  { key: "croquis", label: "Croquis", type: "croquis", width: 140 },
   { key: "commentaire", label: "Commentaire", type: "text", width: 200 }
 ];
 
