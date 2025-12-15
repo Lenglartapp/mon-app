@@ -11,7 +11,7 @@ import { useLocalStorage } from "./lib/hooks/useLocalStorage.js";
 import { ActivityProvider } from "./contexts/activity";
 import { AuthProvider, useAuth } from "./auth";
 import { DEMO_PROJECTS } from "./lib/data/demo";
-import InventoryScreen from "./screens/InventoryScreen.jsx";
+import StocksModule from "./components/modules/Stocks/StocksModule";
 import { can } from "./lib/authz";
 import Require from "./components/Require";
 
@@ -49,15 +49,15 @@ function AppShell() {
   // Navigation protégée (optionnelle — tu peux garder simple aussi)
   const go = (target) => {
     if (target === "chiffrageRoot" && !can(currentUser, "chiffrage.view")) return;
-    if (target === "prodList"      && !can(currentUser, "production.view")) return;
-    if (target === "inventory"     && !can(currentUser, "inventory.view"))  return;
+    if (target === "prodList" && !can(currentUser, "production.view")) return;
+    if (target === "inventory" && !can(currentUser, "inventory.view")) return;
     // settings: accessible à tous pour profil (le screen gère l’onglet Utilisateurs)
     setScreen(target);
   };
 
   // Handlers Home
-  const onOpenProdList  = () => go("prodList");
-  const onOpenSettings  = () => setScreen("settings");
+  const onOpenProdList = () => go("prodList");
+  const onOpenSettings = () => setScreen("settings");
   const onOpenChiffrage = () => go("chiffrageRoot");
   const onOpenInventory = () => go("inventory");
 
@@ -99,15 +99,15 @@ function AppShell() {
           minutes={
             can(currentUser, "chiffrage.view")
               ? quoteMinutes.map(m => {
-                  let tables = {};
-                  try {
-                    const raw = localStorage.getItem(`chiffrage.${m.id}.tables`);
-                    if (raw) tables = JSON.parse(raw);
-                  } catch (e) {
-                    console.warn("Impossible de lire tables pour minute", m.id, e);
-                  }
-                  return { ...m, tables };
-                })
+                let tables = {};
+                try {
+                  const raw = localStorage.getItem(`chiffrage.${m.id}.tables`);
+                  if (raw) tables = JSON.parse(raw);
+                } catch (e) {
+                  console.warn("Impossible de lire tables pour minute", m.id, e);
+                }
+                return { ...m, tables };
+              })
               : []
           }
         />
@@ -147,13 +147,11 @@ function AppShell() {
         <SettingsScreen onBack={() => setScreen("home")} />
       )}
 
-      {/* Inventaire */}
+      {/* Inventaire (Nouveau Module Stocks) */}
       {screen === "inventory" && (
-        <InventoryScreen
+        <StocksModule
           minutes={quoteMinutes}
           projects={projects}
-          rows={inventoryRows}
-          setRows={setInventoryRows}
           onBack={() => setScreen("home")}
         />
       )}

@@ -1,6 +1,7 @@
 import React from 'react';
 import FormulaEditCell from '../../components/FormulaEditCell';
 import GridPhotoCell from '../../components/ui/GridPhotoCell';
+import GridSketchCell from '../../components/ui/GridSketchCell';
 import { GridEditInputCell, GridEditSingleSelectCell } from '@mui/x-data-grid';
 import Tooltip from '@mui/material/Tooltip';
 import Badge from '@mui/material/Badge';
@@ -121,6 +122,21 @@ export function schemaToGridCols(schema, enableCellFormulas = false, onOpenDetai
       gridCol.filterable = false;
     }
 
+    // SKETCH CELL
+    if (col.type === 'croquis') {
+      gridCol.renderCell = (params) => (
+        <GridSketchCell
+          value={params.value}
+          rowId={params.id}
+          field={params.field}
+          onSketchUpdate={(newVal) => onPhotoChange && onPhotoChange(params.id, params.field, newVal)}
+        />
+      );
+      gridCol.editable = false;
+      gridCol.sortable = false;
+      gridCol.filterable = false;
+    }
+
     // Currency Formatting (Force override)
     const isPriceTerm = ['prix', 'montant', 'total', 'cout', 'pa', 'pv', 'transport', 'livraison'].some(term => col.key.toLowerCase().includes(term));
     const isRepas = col.key === 'nb_repas';
@@ -218,7 +234,9 @@ export function schemaToGridCols(schema, enableCellFormulas = false, onOpenDetai
     // Handle specific types that might need custom rendering or logic
     if (col.key === 'detail' || col.type === 'button') {
       gridCol.renderCell = (params) => {
-        const commentCount = params.row.comments?.length || 0;
+        const comments = params.row.comments || [];
+        // Filter out system logs for the badge count
+        const commentCount = comments.filter(c => c.type !== 'log').length;
 
         return (
           <div

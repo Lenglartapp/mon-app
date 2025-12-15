@@ -10,6 +10,7 @@ import {
 import { frFR } from '@mui/x-data-grid/locales';
 import { schemaToGridCols } from '../lib/utils/schemaToGridCols.jsx';
 import { recomputeRow } from '../lib/formulas/recomputeRow';
+import { generateRowLogs } from '../lib/utils/logUtils';
 
 import { Plus, Trash2, FileDown, FileUp } from 'lucide-react';
 
@@ -248,7 +249,7 @@ export default function MinuteGrid({
                 updatedRow.__cellFormulas = cellFx;
             }
 
-            // 3. Force parse numbers (since we use string column type for formulas)
+            // 3. Force parse numbers
             schema.forEach(col => {
                 const val = updatedRow[col.key];
                 if (col.type === 'number' && val !== undefined && val !== null && val !== "") {
@@ -261,6 +262,15 @@ export default function MinuteGrid({
                     }
                 }
             });
+
+            // 4. AUTO-LOG SYSTEM (New)
+            // Use shared logic for consistency with Detail Panel
+            const logs = generateRowLogs(oldRow, newRow, schema);
+
+            if (logs.length > 0) {
+                const prevComments = Array.isArray(oldRow.comments) ? oldRow.comments : [];
+                updatedRow.comments = [...prevComments, ...logs];
+            }
 
             try {
                 const recomputed = recomputeRow(updatedRow, schema, formulaCtx);
