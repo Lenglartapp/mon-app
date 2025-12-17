@@ -16,35 +16,7 @@ import GridPhotoCell from './ui/GridPhotoCell';
 import GridSketchCell from './ui/GridSketchCell';
 import { generateRowLogs } from '../lib/utils/logUtils';
 
-// Helper Component for Text Fields to prevent log spam
-function BlurTextField({ value, onChange, ...props }) {
-    const [localValue, setLocalValue] = useState(value ?? '');
-
-    // Sync with external value changes (reset)
-    React.useEffect(() => {
-        setLocalValue(value ?? '');
-    }, [value]);
-
-    const handleBlur = () => {
-        if (localValue !== (value ?? '')) {
-            onChange(localValue);
-        }
-    };
-
-    return (
-        <TextField
-            {...props}
-            value={localValue}
-            onChange={(e) => setLocalValue(e.target.value)}
-            onBlur={handleBlur}
-            onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                    e.target.blur();
-                }
-            }}
-        />
-    );
-}
+import BlurTextField from './ui/BlurTextField';
 
 export default function LineDetailPanel({ open, onClose, row, schema, onRowChange, columnVisibilityModel }) {
     // New Sidebar Toggle State

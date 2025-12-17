@@ -14,29 +14,51 @@ import { DEMO_PROJECTS } from "./lib/data/demo";
 import StocksModule from "./components/modules/Stocks/StocksModule";
 import { can } from "./lib/authz";
 import Require from "./components/Require";
+import LoginScreen from "./screens/LoginScreen";
+
+import { Bell } from 'lucide-react';
+import Badge from '@mui/material/Badge';
+import IconButton from '@mui/material/IconButton';
+import NotificationMenu from "./components/NotificationMenu";
 
 // --- Badge utilisateur
 function UserBadge({ onClick }) {
-  const { currentUser } = useAuth();
+  const { currentUser, logout } = useAuth();
   const hasAvatar = Boolean(currentUser?.avatarUrl);
+
+  const handleClick = () => {
+    onClick();
+  };
+
   return (
-    <button style={S.userBtn} onClick={onClick} aria-label="Profil utilisateur" title="Ouvrir mes paramètres">
-      <div style={S.avatarBox}>
-        {hasAvatar ? (
-          <img src={currentUser.avatarUrl} alt="Avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-        ) : (
-          <div>AL</div>
-        )}
-      </div>
-      <span style={{ fontWeight: 600 }}>{currentUser?.name || "Utilisateur"}</span>
-    </button>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <button style={S.userBtn} onClick={handleClick} aria-label="Profil utilisateur" title="Ouvrir mes paramètres">
+        <div style={S.avatarBox}>
+          {hasAvatar ? (
+            <img src={currentUser.avatarUrl} alt="Avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          ) : (
+            <div>AL</div>
+          )}
+        </div>
+        <span style={{ fontWeight: 600 }}>{currentUser?.name || "Utilisateur"}</span>
+      </button>
+      <button
+        onClick={() => { if (window.confirm("Se déconnecter ?")) logout(); }}
+        style={{
+          border: 'none', background: 'transparent', cursor: 'pointer',
+          fontSize: 12, color: '#ef4444', fontWeight: 600, padding: 4
+        }}
+      >
+        Sortir
+      </button>
+    </div>
   );
 }
 
 function AppShell() {
   const { currentUser } = useAuth();
 
-  const [screen, setScreen] = useState("home"); // home | prodList | project | chiffrageRoot | chiffrage | settings | inventory
+  const [screen, setScreen] = useState("home");
   const [logoOk, setLogoOk] = useState(true);
   const [projects, setProjects] = useState(DEMO_PROJECTS);
   const [current, setCurrent] = useState(null);
@@ -44,14 +66,23 @@ function AppShell() {
   const [openMinuteId, setOpenMinuteId] = useState(null);
   const [inventoryRows, setInventoryRows] = useLocalStorage("inventory.rows", []);
 
+  // Notifications State
+  const [notifAnchor, setNotifAnchor] = useState(null);
+  const handleNotifClick = (event) => setNotifAnchor(event.currentTarget);
+  const handleNotifClose = () => setNotifAnchor(null);
+  const notifOpen = Boolean(notifAnchor);
+
   const LOGO_SRC = "/logo.png";
 
-  // Navigation protégée (optionnelle — tu peux garder simple aussi)
+  if (!currentUser) {
+    return <LoginScreen />;
+  }
+
+  // Navigation protégée
   const go = (target) => {
     if (target === "chiffrageRoot" && !can(currentUser, "chiffrage.view")) return;
     if (target === "prodList" && !can(currentUser, "production.view")) return;
     if (target === "inventory" && !can(currentUser, "inventory.view")) return;
-    // settings: accessible à tous pour profil (le screen gère l’onglet Utilisateurs)
     setScreen(target);
   };
 
@@ -61,7 +92,7 @@ function AppShell() {
   const onOpenChiffrage = () => go("chiffrageRoot");
   const onOpenInventory = () => go("inventory");
 
-  // 🔴 PERSISTENCE: appelé par ProductionProjectScreen à chaque modif
+  // Persistence
   const handleUpdateProjectRows = (projectId, newRows) => {
     setProjects((prev) => (prev || []).map((p) => (p.id === projectId ? { ...p, rows: newRows } : p)));
     setCurrent((cur) => (cur && cur.id === projectId ? { ...cur, rows: newRows } : cur));
@@ -77,8 +108,22 @@ function AppShell() {
             <span style={S.logoText}>LENGLART</span>
           )}
         </button>
-        <UserBadge onClick={onOpenSettings} />
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <IconButton onClick={handleNotifClick} sx={{ color: '#6B7280' }}>
+            <Badge badgeContent={3} color="error" sx={{ '& .MuiBadge-badge': { fontSize: 10, height: 16, minWidth: 16 } }}>
+              <Bell size={20} />
+            </Badge>
+          </IconButton>
+          <UserBadge onClick={onOpenSettings} />
+        </div>
       </header>
+
+      <NotificationMenu
+        anchorEl={notifAnchor}
+        open={notifOpen}
+        onClose={handleNotifClose}
+      />
 
       {/* Accueil */}
       {screen === "home" && (

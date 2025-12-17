@@ -3,44 +3,44 @@ import React, { useMemo } from "react";
 import { S, COLORS } from "../lib/constants/ui.js";
 import { X } from "lucide-react";
 
-export default function FilterPanel({ filters, setFilters, schema, onClose }) {
+export default function FilterPanel({ filters, setFilters, schema, onClose, inline = false }) {
   const opsByType = {
     text: [
       { v: "contains", label: "contient" },
-      { v: "eq",       label: "==" },
-      { v: "neq",      label: "!=" },
-      { v: "isEmpty",  label: "est vide" },
+      { v: "eq", label: "==" },
+      { v: "neq", label: "!=" },
+      { v: "isEmpty", label: "est vide" },
       { v: "notEmpty", label: "n'est pas vide" },
     ],
     select: [
-      { v: "eq",       label: "==" },
-      { v: "neq",      label: "!=" },
+      { v: "eq", label: "==" },
+      { v: "neq", label: "!=" },
       { v: "contains", label: "contient" },
-      { v: "isEmpty",  label: "est vide" },
+      { v: "isEmpty", label: "est vide" },
       { v: "notEmpty", label: "n'est pas vide" },
     ],
     number: [
-      { v: "eq",  label: "==" },
+      { v: "eq", label: "==" },
       { v: "neq", label: "!=" },
-      { v: "gt",  label: ">"  },
+      { v: "gt", label: ">" },
       { v: "gte", label: ">=" },
-      { v: "lt",  label: "<"  },
+      { v: "lt", label: "<" },
       { v: "lte", label: "<=" },
-      { v: "isEmpty",  label: "est vide" },
+      { v: "isEmpty", label: "est vide" },
       { v: "notEmpty", label: "n'est pas vide" },
     ],
     checkbox: [
-      { v: "isTrue",  label: "est vrai"  },
-      { v: "isFalse", label: "est faux"  },
+      { v: "isTrue", label: "est vrai" },
+      { v: "isFalse", label: "est faux" },
     ],
     formula: [
-      { v: "eq",  label: "==" },
+      { v: "eq", label: "==" },
       { v: "neq", label: "!=" },
-      { v: "gt",  label: ">"  },
+      { v: "gt", label: ">" },
       { v: "gte", label: ">=" },
-      { v: "lt",  label: "<"  },
+      { v: "lt", label: "<" },
       { v: "lte", label: "<=" },
-      { v: "isEmpty",  label: "est vide" },
+      { v: "isEmpty", label: "est vide" },
       { v: "notEmpty", label: "n'est pas vide" },
     ],
   };
@@ -76,8 +76,12 @@ export default function FilterPanel({ filters, setFilters, schema, onClose }) {
   const removeAt = (i) => setFilters(fs => (fs || []).filter((_, j) => j !== i));
   const clearAll = () => setFilters([]);
 
+  const containerStyle = inline
+    ? { border: `1px solid ${COLORS.border}`, borderRadius: 8, background: 'white' }
+    : S.pop;
+
   return (
-    <div style={S.pop}>
+    <div style={containerStyle}>
       <div
         style={{
           padding: 10,
@@ -128,7 +132,7 @@ export default function FilterPanel({ filters, setFilters, schema, onClose }) {
               </select>
 
               {/* Valeur (cachée pour checkbox ou ops sans valeur) */}
-              {type === "checkbox" || ["isTrue","isFalse","isEmpty","notEmpty"].includes(f.op) ? (
+              {type === "checkbox" || ["isTrue", "isFalse", "isEmpty", "notEmpty"].includes(f.op) ? (
                 <div style={{ opacity: .6, fontStyle: "italic" }}>—</div>
               ) : (
                 <input
