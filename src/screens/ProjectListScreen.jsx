@@ -12,7 +12,7 @@ import { useViewportWidth } from "../lib/hooks/useViewportWidth";
 import { formatDateFR } from "../lib/utils/format";
 import { truncate } from "../lib/utils/truncate";
 
-import CreateProductionProjectDialog from "../components/CreateProductionProjectDialog.jsx";
+import CreateProjectDialog from "../components/CreateProjectDialog.jsx";
 import { CHIFFRAGE_SCHEMA } from "../lib/schemas/chiffrage.js";
 import { SCHEMA_64 } from "../lib/schemas/production.js";
 import { computeFormulas } from "../lib/formulas/compute.js";
@@ -72,7 +72,7 @@ export function ProjectListScreen({
         res = res.filter(p => {
           const mgr = (p.manager || "").toLowerCase();
           const user = userName.toLowerCase();
-          return mgr.includes(user) || user.includes(mgr) || !p.manager; // Include empty if unsure? defaulting to showing empty is safer for dev
+          return mgr.includes(user) || user.includes(mgr) || !p.manager;
         });
       }
     }
@@ -123,7 +123,7 @@ export function ProjectListScreen({
                 boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
               }}
             >
-              <Plus size={18} /> Nouveau
+              <Plus size={18} /> + Nouveau Dossier
             </button>
           )}
         </div>
@@ -212,7 +212,6 @@ export function ProjectListScreen({
                             <Edit2 size={16} />
                           </IconButton>
                         </Tooltip>
-                        {/* Delete requires prop handling usually, assuming read-only list for now unless prop passed */}
                       </div>
                     </td>
                   </tr>
@@ -233,12 +232,12 @@ export function ProjectListScreen({
 
       {/* Dialog de création */}
       {showCreate && (
-        <CreateProductionProjectDialog
-          // 🔐 si l’utilisateur n’a pas accès au chiffrage, on passe une liste vide → cache l’option
+        <CreateProjectDialog
+          open={showCreate}
+          onClose={() => setShowCreate(false)}
           minutes={canSeeChiffrage ? (Array.isArray(minutes) ? minutes : []) : []}
-          minuteSchema={CHIFFRAGE_SCHEMA}
           prodSchema={SCHEMA_64}
-          onCancel={() => setShowCreate(false)}
+
           onCreateFromMinute={(payload) => {
             const { name, rows, meta } = payload || {};
             const project = createBlankProject({ name });
@@ -251,9 +250,11 @@ export function ProjectListScreen({
             setShowCreate(false);
             onOpenProject?.(project);
           }}
-          onCreateBlank={(projectName, rows) => {
+
+          onCreateBlank={(projectName, _dummyRows, config) => {
             const project = createBlankProject({ name: projectName });
-            project.rows = computeFormulas(rows, SCHEMA_64);
+            project.config = config;
+            project.rows = [];
             setProjects?.((arr) => [project, ...(Array.isArray(arr) ? arr : [])]);
             setShowCreate(false);
             onOpenProject?.(project);

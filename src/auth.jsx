@@ -1,4 +1,4 @@
-// src/auth.js
+// src/auth.jsx
 import React, { createContext, useContext, useState, useMemo } from "react";
 
 /** Rôles disponibles (clé canonique) */
@@ -7,6 +7,7 @@ export const ROLES = {
   ORDONNANCEMENT: "ordonnancement",
   PILOTAGE_PROJET: "pilotage_projet",
   PRODUCTION: "production",
+  ADV: "adv",
 };
 
 /** Démo: utilisateurs seed */
@@ -24,6 +25,7 @@ export const DEMO_USERS = [
     name: "Thomas BONNET",
     role: ROLES.ORDONNANCEMENT,
     avatarUrl: "",
+    initials: "TB"
   },
   {
     id: "u3",
@@ -31,6 +33,7 @@ export const DEMO_USERS = [
     name: "Pauline DURAND",
     role: ROLES.PILOTAGE_PROJET,
     avatarUrl: "",
+    initials: "PD"
   },
   {
     id: "u4",
@@ -38,6 +41,15 @@ export const DEMO_USERS = [
     name: "Atelier — PRODUCTION",
     role: ROLES.PRODUCTION,
     avatarUrl: "",
+    initials: "PROD"
+  },
+  {
+    id: "u5",
+    email: "murielle@lenglart.com",
+    name: "Murielle BLONDEAU",
+    role: ROLES.ADV,
+    avatarUrl: "https://i.pravatar.cc/150?u=murielle",
+    initials: "MB"
   },
 ];
 
@@ -49,8 +61,16 @@ export const AuthProvider = ({ children }) => {
   // Liste des utilisateurs (démo)
   const [users, setUsers] = useState(DEMO_USERS);
 
-  // Utilisateur courant (par défaut: le 1er = admin)
-  const [currentUser, setCurrentUser] = useState(DEMO_USERS[0]);
+  // Utilisateur courant: NULL par défaut pour forcer le login screen
+  const [currentUser, setCurrentUser] = useState(null);
+
+  const login = (user) => {
+    setCurrentUser(user);
+  };
+
+  const logout = () => {
+    setCurrentUser(null);
+  };
 
   // CRUD (démo)
   const addUser = (payload) => {
@@ -61,17 +81,14 @@ export const AuthProvider = ({ children }) => {
 
   const updateUser = (id, patch) => {
     setUsers((arr) => (arr || []).map((u) => (u.id === id ? { ...u, ...patch } : u)));
-    // si on modifie l'utilisateur courant, synchronise aussi
     setCurrentUser((cu) => (cu?.id === id ? { ...cu, ...patch } : cu));
   };
 
   const removeUser = (id) => {
     setUsers((arr) => (arr || []).filter((u) => u.id !== id));
-    // si on supprime l'utilisateur courant, repasse au premier restant
-    setCurrentUser((cu) => (cu?.id === id ? (users.find((u) => u.id !== id) || null) : cu));
+    setCurrentUser((cu) => (cu?.id === id ? null : cu));
   };
 
-  // Démo reset mot de passe (no-op visuel)
   const resetPasswordDemo = (id) => {
     console.log("Reset password DEMO pour", id);
     alert("Démo: lien de réinitialisation envoyé (factice).");
@@ -81,7 +98,9 @@ export const AuthProvider = ({ children }) => {
     () => ({
       users,
       currentUser,
-      setCurrentUser,
+      login,
+      logout,
+      setCurrentUser, // Keep for low-level if needed
       addUser,
       updateUser,
       removeUser,

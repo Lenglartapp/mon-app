@@ -309,7 +309,9 @@ function ChiffrageScreen({ minuteId, minutes, setMinutes, onBack }) {
       <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
         <button style={S.pill(activeTab === "minutes")} onClick={() => setActiveTab("minutes")}>Minutes</button>
         <button style={S.pill(activeTab === "achats")} onClick={() => setActiveTab("achats")}>Liste Achats</button>
-        <button style={S.pill(activeTab === "moulinette")} onClick={() => setActiveTab("moulinette")}>Moulinette</button>
+        {can(currentUser, "chiffrage.moulinette") && (
+          <button style={S.pill(activeTab === "moulinette")} onClick={() => setActiveTab("moulinette")}>Moulinette</button>
+        )}
       </div>
 
       {/* Notes minute */}
@@ -334,58 +336,62 @@ function ChiffrageScreen({ minuteId, minutes, setMinutes, onBack }) {
 
 
       {/* Onglet Minutes */}
-      {activeTab === "minutes" && (
-        <div style={{ display: "grid", gap: 12, overflow: "hidden" }}>
-          {/* Récap CA Dashboard */}
-          <DashboardSummary recap={recap} nf={nfEur0} />
-          {/* Rangée du bas : grand tableau des minutes (inclut maintenant Autres Dépenses et Déplacements via fusion) */}
-          <div style={{ minWidth: 0, overflowX: "auto" }}>
-            <MinuteEditor
-              minute={{
-                ...minute,
-                lines: [
-                  ...(rows || []),
-                  ...(extraRows || []).map(r => ({ ...r, produit: r.produit || "Autre Dépense" })),
-                  ...(depRows || []).map(r => ({ ...r, produit: r.produit || "Déplacement" }))
-                ],
-                modules: mods
-              }}
-              onChangeMinute={(m) => {
-                if (!canEdit) return;
-                const all = m.lines || [];
+      {
+        activeTab === "minutes" && (
+          <div style={{ display: "grid", gap: 12, overflow: "hidden" }}>
+            {/* Récap CA Dashboard */}
+            <DashboardSummary recap={recap} nf={nfEur0} />
+            {/* Rangée du bas : grand tableau des minutes (inclut maintenant Autres Dépenses et Déplacements via fusion) */}
+            <div style={{ minWidth: 0, overflowX: "auto" }}>
+              <MinuteEditor
+                minute={{
+                  ...minute,
+                  lines: [
+                    ...(rows || []),
+                    ...(extraRows || []).map(r => ({ ...r, produit: r.produit || "Autre Dépense" })),
+                    ...(depRows || []).map(r => ({ ...r, produit: r.produit || "Déplacement" }))
+                  ],
+                  modules: mods
+                }}
+                onChangeMinute={(m) => {
+                  if (!canEdit) return;
+                  const all = m.lines || [];
 
-                // Split back logic
-                const newLines = all.filter(r => r.produit !== "Autre Dépense" && r.produit !== "Déplacement");
-                const newExtras = all.filter(r => r.produit === "Autre Dépense");
-                const newDeps = all.filter(r => r.produit === "Déplacement");
+                  // Split back logic
+                  const newLines = all.filter(r => r.produit !== "Autre Dépense" && r.produit !== "Déplacement");
+                  const newExtras = all.filter(r => r.produit === "Autre Dépense");
+                  const newDeps = all.filter(r => r.produit === "Déplacement");
 
-                updateMinute({
-                  lines: newLines,
-                  extraDepenses: newExtras,
-                  deplacements: newDeps,
-                  // Also update other minute fields if modified (like name, status, catalog)
-                  name: m.name,
-                  notes: m.notes,
-                  status: m.status,
-                  catalog: m.catalog,
-                  settings: m.settings
-                });
-              }}
-              enableCellFormulas={true}
-              formulaCtx={formulaCtx}
-              schema={schema}
-              setSchema={setSchema}
-            />
+                  updateMinute({
+                    lines: newLines,
+                    extraDepenses: newExtras,
+                    deplacements: newDeps,
+                    // Also update other minute fields if modified (like name, status, catalog)
+                    name: m.name,
+                    notes: m.notes,
+                    status: m.status,
+                    catalog: m.catalog,
+                    settings: m.settings
+                  });
+                }}
+                enableCellFormulas={true}
+                formulaCtx={formulaCtx}
+                schema={schema}
+                setSchema={setSchema}
+              />
+            </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
       {activeTab === "achats" && <ShoppingListScreen minutes={[minute]} />}
 
-      {activeTab === "moulinette" && (
-        <MoulinetteView rows={rows} extraRows={extraRows} depRows={depRows} />
-      )}
-    </div>
+      {
+        activeTab === "moulinette" && can(currentUser, "chiffrage.moulinette") && (
+          <MoulinetteView rows={rows} extraRows={extraRows} depRows={depRows} />
+        )
+      }
+    </div >
   );
 }
 

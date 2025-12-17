@@ -98,44 +98,56 @@ export function ProductionProjectScreen({ project, onBack, onUpdateProjectRows }
 
   const recomputeAll = (arr) => (arr || []).map(r => recomputeRow(r, schema));
 
-  const mergeChildRowsFor = (tableKey) => {
-    return (nr) => {
-      if (!canEditProd) return; // lecture seule
-      setRows((all) => {
-        // nr contains UPDATED rows (subset of filtered rows?)
-        // We know nr are ALL the rows for this filter, but potentially recomputed.
-        // Actually MinuteGrid returns the `rows` prop modified?
-        // Wait, MinuteGrid `onRowsChange` returns the *new full list of rows passed to it*.
-        // Detailed logic:
-        // MinuteGrid receives `rowsRideaux`. `rowsRideaux` is a subset of `rows`.
-        // `onRowsChange` gets `newRowsRideaux`.
-        // We need to merge `newRowsRideaux` back into `rows` (all).
+  // Helper to handle both updates and deletions for a specific subset
+  const handleSubsetChange = (newSubsetRows, filterRegex) => {
+    if (!canEditProd) return;
 
-        // Map of updated rows by ID
-        const updatedMap = new Map(nr.map(r => [r.id, r]));
+    setRows((allRows) => {
+      // 1. Identify which rows in 'allRows' belong to this subset (based on the *same* logic used to filter them originally)
+      // This is crucial: we must know what the "previous state" of this subset was implies.
+      // Actually, we can just check which rows in 'allRows' MATCH the filter, and assume they form the 'oldSubset'.
+      const oldSubset = allRows.filter(r => filterRegex.test(String(r.produit || "")));
 
-        return all.map(r => {
+      // 2. Identify Deleted IDs
+      // IDs present in oldSubset but MISSING in newSubsetRows
+      const newIds = new Set(newSubsetRows.map(r => r.id));
+      const deletedIds = new Set(oldSubset.filter(r => !newIds.has(r.id)).map(r => r.id));
+
+      // 3. Prepare Updates
+      const updatedMap = new Map(newSubsetRows.map(r => [r.id, r]));
+
+      // 4. Reconstruct 'allRows'
+      // - Keep rows NOT in the subset (preserve them)
+      // - If in subset and Deleted -> Remove
+      // - If in subset and Kept -> Update if needed
+      return allRows
+        .filter(r => !deletedIds.has(r.id)) // Remove deleted
+        .map(r => {
           if (updatedMap.has(r.id)) {
-            // Found in update > Recompute standard formulas
+            // It's in the new subset, update it
             return recomputeRow(updatedMap.get(r.id), schema);
           }
-          return r; // Unchanged (from other products)
+          return r; // Not in the subset (or not updated, but wait, if it's in oldSubset and not in newIds, it was deleted above)
         });
-      });
-    };
+    });
+  };
+
+  const mergeChildRowsFor = (tableKey) => {
+    // Legacy wrapper if needed, or replace usages directly
+    // Define regex based on tableKey
+    let regex = /./; // Default
+    if (tableKey === "rideaux") regex = /rideau|voilage/i;
+    else if (tableKey === "stores") regex = /store/i;
+    else if (tableKey === "decors") regex = /d[ée]cor/i;
+
+    return (nr) => handleSubsetChange(nr, regex);
   };
 
   const handleRowsChangeInstallation = (nr) => {
-    // Installation view usually shows ALL rows.
-    // So nr == new full rows list?
-    // Yes, passed rows={filteredRows}.
     if (!canEditProd) return;
-
-    // If search is active, `nr` is only the filtered subset.
-    // We must merge it back into `all`.
-    const updatedMap = new Map(nr.map(r => [r.id, r]));
-
-    setRows(all => all.map(r => updatedMap.has(r.id) ? recomputeRow(updatedMap.get(r.id), schema) : r));
+    // Installation view (all rows), so we can just replace 'rows' but safely
+    // Actually simpler: just recompute all new rows
+    setRows(nr.map(r => recomputeRow(r, schema)));
   };
 
   // --- ADD ROW LOGIC ---
@@ -291,8 +303,22 @@ export function ProductionProjectScreen({ project, onBack, onUpdateProjectRows }
 
       {stage === "etiquettes" && (
         <div style={S.contentWide}>
-          <EtiquettesSection title="Etiquettes Rideaux" tableKey="rideaux" rows={rowsRideaux} schema={schema} />
-          <EtiquettesSection title="Etiquettes Stores" tableKey="stores" rows={rowsStores} schema={schema} />
+          <EtiquettesSection
+            title="Etiquettes Rideaux"
+            tableKey="rideaux"
+            rows={rowsRideaux}
+            onRowsChange={mergeChildRowsFor("rideaux")}
+            schema={schema}
+            projectName={projectName}
+          />
+          <EtiquettesSection
+            title="Etiquettes Stores"
+            tableKey="stores"
+            rows={rowsStores}
+            onRowsChange={mergeChildRowsFor("stores")}
+            schema={schema}
+            projectName={projectName}
+          />
         </div>
       )}
 
