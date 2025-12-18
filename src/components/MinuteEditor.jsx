@@ -353,6 +353,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
                 onRowSelectionModelChange={setSelAutre}
                 catalog={catalog}
                 onDuplicateRow={handleDuplicateRow}
+                hideCroquis={true}
               />
             </div>
           </div>
@@ -375,6 +376,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
                 onRowSelectionModelChange={setSelDeplacement}
                 catalog={catalog}
                 onDuplicateRow={handleDuplicateRow}
+                hideCroquis={true}
               />
             </div>
           </div>
@@ -403,6 +405,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
               initialVisibilityModel={RIDEAUX_DEFAULT_VISIBILITY}
               onImportExcel={handleImportExcel}
               onDuplicateRow={handleDuplicateRow}
+              hideCroquis={true}
             />
           </div>
         )}
@@ -426,6 +429,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
               catalog={catalog}
               initialVisibilityModel={DECORS_DEFAULT_VISIBILITY}
               onDuplicateRow={handleDuplicateRow}
+              hideCroquis={true}
             />
           </div>
         )}
@@ -449,6 +453,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
               catalog={catalog}
               initialVisibilityModel={STORES_DEFAULT_VISIBILITY}
               onDuplicateRow={handleDuplicateRow}
+              hideCroquis={true}
             />
           </div>
         )}

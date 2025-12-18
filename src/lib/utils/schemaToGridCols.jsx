@@ -38,11 +38,15 @@ const mapType = (type) => {
  * @param {boolean} enableCellFormulas - Whether cell formulas are enabled.
  * @returns {Array} - Array of GridColDef.
  */
-export function schemaToGridCols(schema, enableCellFormulas = false, onOpenDetail, catalog = [], railOptions = [], onPhotoChange, onDuplicate) {
+export function schemaToGridCols(schema, enableCellFormulas = false, onOpenDetail, catalog = [], railOptions = [], onPhotoChange, onDuplicate, hideCroquis = false) {
   if (!Array.isArray(schema)) return [];
 
   // Filter out 'sel' column and explicitly hidden columns
-  const filteredSchema = schema.filter(col => col.key !== 'sel' && col.label !== 'Sel.' && !col.hidden);
+  const filteredSchema = schema.filter(col => {
+    if (col.key === 'sel' || col.label === 'Sel.' || col.hidden) return false;
+    if (hideCroquis && col.type === 'croquis') return false;
+    return true;
+  });
 
   return filteredSchema.map((col) => {
     const isFormula = col.type === 'formula';
@@ -62,7 +66,8 @@ export function schemaToGridCols(schema, enableCellFormulas = false, onOpenDetai
       type: mapType(col.type),
       description: col.formula ? `Formula: ${col.formula}` : undefined,
       cellClassName: (params) => {
-        if (col.editable && typeof col.editable === 'function' && !col.editable(params)) {
+        // Handle styling for function-based editable
+        if (typeof col.editable === 'function' && !col.editable(params)) {
           return 'cell-read-only';
         }
 
@@ -76,6 +81,16 @@ export function schemaToGridCols(schema, enableCellFormulas = false, onOpenDetai
         return '';
       }
     };
+
+    // Generic support for functional editable (isCellEditable)
+    if (typeof col.editable === 'function') {
+      gridCol.isCellEditable = col.editable;
+    }
+
+    // Legacy manual handling for dim_mecanisme (can be removed if moved to schema, but kept for safety)
+    if (col.key === 'dim_mecanisme' && !gridCol.isCellEditable) {
+      // ... existing legacy code ...
+    }
 
     // Conditional Editing for dim_mecanisme
     if (col.key === 'dim_mecanisme') {
@@ -94,9 +109,24 @@ export function schemaToGridCols(schema, enableCellFormulas = false, onOpenDetai
 
     // Link Catalog to 'tissu', 'doublure', 'produit' columns (including variations like tissu_deco_1)
     const isCatalogColumn = col.key.includes('tissu') || col.key.includes('doublure') || (col.key === 'produit' && !col.hidden);
-    if (isCatalogColumn && catalog.length > 0) {
+    // Explicit Mechanism columns
+    const isMechColumn = ['modele_mecanisme', 'nom_tringle', 'rail'].includes(col.key);
+
+    if ((isCatalogColumn || isMechColumn) && catalog.length > 0) {
       gridCol.type = 'singleSelect';
-      gridCol.valueOptions = catalog.map(a => a.name);
+
+      // STRICT FILTERING LOGIC
+      let filteredCatalog = catalog;
+
+      if (col.key.includes('tissu') || col.key.includes('doublure')) {
+        // Tissues: Only Tissu or Confection
+        filteredCatalog = catalog.filter(item => ['Tissu', 'Confection'].includes(item.category));
+      } else if (isMechColumn) {
+        // Mechanisms: Only Rail, Tringle, Mecanisme
+        filteredCatalog = catalog.filter(item => ['Rail', 'Tringle', 'Mecanisme', 'Mécanisme'].includes(item.category));
+      }
+
+      gridCol.valueOptions = filteredCatalog.map(a => a.name);
       gridCol.editable = true;
     }
 

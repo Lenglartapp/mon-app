@@ -43,7 +43,10 @@ export function ProjectListScreen({
 
   // Auth & Permissions
   const { currentUser } = useAuth();
-  const canCreate = can(currentUser, "project.create");
+
+  // PERMISSION UPDATE: Admin, Ordonnancement, ADV can create
+  const canCreate = ["ADMIN", "ORDONNANCEMENT", "ADV"].includes(currentUser?.role) || can(currentUser, "project.create");
+
   const canSeeChiffrage = can(currentUser, "chiffrage.view");
 
   // --- FILTRAGE INTELLIGENT ---
@@ -66,13 +69,21 @@ export function ProjectListScreen({
 
     // 1. Apply Active Chips Filters
     if (activeFilters.some(f => f.id === 'my_projects')) {
-      const userName = currentUser?.displayName || currentUser?.email || "";
-      if (userName) {
-        // Loose matching: check if manager name contains part of user name or vice versa
+      const userName = (currentUser?.displayName || currentUser?.name || "").toLowerCase();
+      const userEmail = (currentUser?.email || "").toLowerCase();
+
+      if (userName || userEmail) {
+        // Loose matching: check against name OR email
         res = res.filter(p => {
           const mgr = (p.manager || "").toLowerCase();
-          const user = userName.toLowerCase();
-          return mgr.includes(user) || user.includes(mgr) || !p.manager;
+          const matchesName = userName && (mgr.includes(userName) || userName.includes(mgr));
+          // Check if mock data has email or partial email match if manager is an email
+          const matchesEmail = userEmail && mgr.includes(userEmail);
+
+          // Fix specifically for "Thomas" / "Thomas BONNET" mismatch
+          const thomasFix = (userEmail.includes("thomas") && mgr.includes("thomas"));
+
+          return matchesName || matchesEmail || thomasFix || !p.manager;
         });
       }
     }

@@ -20,6 +20,8 @@ import { Bell } from 'lucide-react';
 import Badge from '@mui/material/Badge';
 import IconButton from '@mui/material/IconButton';
 import NotificationMenu from "./components/NotificationMenu";
+import { NotificationProvider, useNotifications } from "./contexts/NotificationContext";
+
 
 // --- Badge utilisateur
 function UserBadge({ onClick }) {
@@ -66,7 +68,9 @@ function AppShell() {
   const [openMinuteId, setOpenMinuteId] = useState(null);
   const [inventoryRows, setInventoryRows] = useLocalStorage("inventory.rows", []);
 
-  // Notifications State
+  // Notifications State (Now from Context)
+  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
+
   const [notifAnchor, setNotifAnchor] = useState(null);
   const handleNotifClick = (event) => setNotifAnchor(event.currentTarget);
   const handleNotifClose = () => setNotifAnchor(null);
@@ -111,7 +115,7 @@ function AppShell() {
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           <IconButton onClick={handleNotifClick} sx={{ color: '#6B7280' }}>
-            <Badge badgeContent={3} color="error" sx={{ '& .MuiBadge-badge': { fontSize: 10, height: 16, minWidth: 16 } }}>
+            <Badge badgeContent={unreadCount} color="error" invisible={unreadCount === 0} sx={{ '& .MuiBadge-badge': { fontSize: 10, height: 16, minWidth: 16 } }}>
               <Bell size={20} />
             </Badge>
           </IconButton>
@@ -123,6 +127,9 @@ function AppShell() {
         anchorEl={notifAnchor}
         open={notifOpen}
         onClose={handleNotifClose}
+        notifications={notifications}
+        onMarkAsRead={markAsRead}
+        onMarkAllRead={markAllAsRead}
       />
 
       {/* Accueil */}
@@ -200,6 +207,8 @@ function AppShell() {
           onBack={() => setScreen("home")}
         />
       )}
+
+
     </div>
   );
 }
@@ -208,7 +217,9 @@ export default function App() {
   return (
     <AuthProvider>
       <ActivityProvider>
-        <AppShell />
+        <NotificationProvider>
+          <AppShell />
+        </NotificationProvider>
       </ActivityProvider>
     </AuthProvider>
   );

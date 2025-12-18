@@ -92,6 +92,7 @@ export default function MinuteGrid({
     initialVisibilityModel = {},
     onImportExcel,
     onDuplicateRow, // <--- New Prop
+    hideCroquis = false,
 }) {
     const [rowSelectionModel, setRowSelectionModel] = useState([]);
     const [detailRow, setDetailRow] = useState(null);
@@ -144,8 +145,8 @@ export default function MinuteGrid({
     }, [rows, onRowsChange]);
 
     const columns = useMemo(() => {
-        return schemaToGridCols(schema, enableCellFormulas, handleOpenDetail, catalog, railOptions, handlePhotoChange, onDuplicateRow);
-    }, [schema, enableCellFormulas, handleOpenDetail, catalog, railOptions, handlePhotoChange, onDuplicateRow]);
+        return schemaToGridCols(schema, enableCellFormulas, handleOpenDetail, catalog, railOptions, handlePhotoChange, onDuplicateRow, hideCroquis);
+    }, [schema, enableCellFormulas, handleOpenDetail, catalog, railOptions, handlePhotoChange, onDuplicateRow, hideCroquis]);
 
     // detailRow is now state, no need for useMemo lookup
 

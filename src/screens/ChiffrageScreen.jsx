@@ -64,38 +64,38 @@ function ChiffrageScreen({ minuteId, minutes, setMinutes, onBack }) {
   }, [minute?.params]);
 
   // Calculate Base CA (Pre-Commission) from raw minute data to avoid state loops.
-  // We sum everything EXCEPT Commission lines.
+  // NEW RULE: Base = Only Production + Logistique. Exclude ALL Extra Expenses (Extensions, Transport Vente, etc.)
   const baseCA = React.useMemo(() => {
     let sum = 0;
     // Main Lines
     (minute?.lines || []).forEach(r => sum += toNum(r.prix_total));
     // Deplacements
     (minute?.deplacements || []).forEach(r => sum += toNum(r.prix_total));
-    // Autos / Extras (Non-Commission)
-    (minute?.extraDepenses || []).forEach(r => {
-      if (!r.categorie?.includes('Commission')) {
-        sum += toNum(r.prix_total);
-      }
-    });
-    return sum;
-  }, [minute?.lines, minute?.deplacements, minute?.extraDepenses]);
 
-  const formulaCtx = React.useMemo(() => ({ paramsMap, totalCA: baseCA }), [paramsMap, baseCA]);
+    return sum;
+  }, [minute?.lines, minute?.deplacements]);
+
+  const formulaCtx = React.useMemo(() => ({
+    paramsMap,
+    totalCA: baseCA,
+    settings: minute?.settings,
+    catalog: minute?.catalog
+  }), [paramsMap, baseCA, minute?.settings, minute?.catalog]);
 
   const [rows, setRows] = React.useState(() =>
     computeFormulas(minute?.lines || [], schema, formulaCtx)
   );
 
-  const [depRows, setDepRows] = React.useState(
-    computeFormulas(minute?.deplacements || [], CHIFFRAGE_SCHEMA_DEP, formulaCtx)
-  );
+  // Trust the saved data from MinuteEditor
+  const [depRows, setDepRows] = React.useState(minute?.deplacements || []);
 
   React.useEffect(() => {
+    // 2. Main Lines: Still check formulas (for commission base etc), but preserve manuals
     const computedMain = computeFormulas(minute?.lines || [], schema, formulaCtx);
     setRows((prev) => preserveManualAfterCompute(computedMain, prev || []));
 
-    const computedDep = computeFormulas(minute?.deplacements || [], CHIFFRAGE_SCHEMA_DEP, formulaCtx);
-    setDepRows(computedDep);
+    // 3. Deplacements: Trust the saved data (MinuteEditor handles computation)
+    setDepRows(minute?.deplacements || []);
   }, [minute?.id, minute?.lines, minute?.deplacements, schema, formulaCtx]);
 
   const mods = minute?.modules || { rideau: true, store: true, decor: true };
@@ -133,6 +133,7 @@ function ChiffrageScreen({ minuteId, minutes, setMinutes, onBack }) {
   );
 
   React.useEffect(() => {
+    // Trust saved data
     setExtraRows(Array.isArray(minute?.extraDepenses) ? minute.extraDepenses : []);
   }, [minute?.id, minute?.extraDepenses]);
 
@@ -152,10 +153,18 @@ function ChiffrageScreen({ minuteId, minutes, setMinutes, onBack }) {
   // Regroupe les CA par grands blocs + totaux dépenses/dep
   const recap = React.useMemo(() => {
     let caRideaux = 0, caDecors = 0, caStores = 0, caAutres = 0;
+    let hConf = 0, hPose = 0, hPrepa = 0;
 
     for (const r of rows || []) {
       const prod = String(r?.produit || "").toLowerCase();
       const total = toNum(r?.prix_total);
+
+      // Hours Calculation (taking quantity into account)
+      const qty = toNum(r?.quantite) || 1;
+      hConf += (toNum(r?.heures_confection) * qty);
+      hPose += (toNum(r?.heures_pose) * qty);
+      hPrepa += (toNum(r?.heures_prepa) * qty);
+
       if (!total) continue;
 
       if (prod.includes("store")) caStores += total;
@@ -164,16 +173,18 @@ function ChiffrageScreen({ minuteId, minutes, setMinutes, onBack }) {
       else caAutres += total;
     }
 
-    const caTotal = caRideaux + caDecors + caStores + caAutres;
+    const caTotal = caRideaux + caDecors + caStores + caAutres; // Total Production
 
     const extrasTotal = (extraRows || []).reduce((s, r) => s + toNum(r?.prix_total), 0);
     const depTotal = (depRows || []).reduce((s, r) => s + toNum(r?.prix_total), 0);
 
-    const offreTotale = caTotal + extrasTotal + depTotal;
+    // NEW LOGIC: Total = Production + Logistique (Exclude Extras/Commissions)
+    const offreTotale = caTotal + depTotal;
 
     return {
       caRideaux, caDecors, caStores, caAutres, caTotal,
       extrasTotal, depTotal, offreTotale,
+      hConf, hPose, hPrepa // New counters
     };
   }, [rows, extraRows, depRows, toNum]);
 

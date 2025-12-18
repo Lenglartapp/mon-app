@@ -3,12 +3,19 @@ import { Paper, Grid, Typography, Divider, Box } from '@mui/material';
 
 export default function DashboardSummary({ recap, nf }) {
     // Items configuration for easier mapping
+    // Items configuration for easier mapping
     const items = [
+        // 1. Production
         { label: "Rideaux", value: recap.caRideaux },
         { label: "Décors", value: recap.caDecors },
         { label: "Stores", value: recap.caStores },
-        { label: "Autres", value: recap.extrasTotal },
         { label: "Logistique", value: recap.depTotal },
+        // 2. Heures (Suffix 'h')
+        { label: "H. Conf", value: recap.hConf, suffix: "h" },
+        { label: "H. Pose", value: recap.hPose, suffix: "h" },
+        { label: "H. Prépa", value: recap.hPrepa, suffix: "h" },
+        // 3. Autres (Grey)
+        { label: "Autres", value: recap.extrasTotal, color: "text.disabled" },
     ];
 
     return (
@@ -34,8 +41,10 @@ export default function DashboardSummary({ recap, nf }) {
                                 <Typography variant="caption" color="text.secondary" display="block" sx={{ textTransform: 'uppercase', fontWeight: 600, letterSpacing: 0.5 }}>
                                     {item.label}
                                 </Typography>
-                                <Typography variant="h6" component="div" sx={{ fontWeight: 500 }}>
-                                    {nf.format(item.value)}
+                                <Typography variant="h6" component="div" sx={{ fontWeight: 500, color: item.color || 'text.primary' }}>
+                                    {item.suffix
+                                        ? `${Math.round(item.value || 0)} ${item.suffix}`
+                                        : nf.format(item.value)}
                                 </Typography>
                             </Box>
                         </Grid>

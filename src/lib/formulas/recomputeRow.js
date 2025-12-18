@@ -1,6 +1,11 @@
 // src/lib/formulas/recomputeRow.js
 import { evalFormula } from "./eval.js";
 
+const NVL = (x, y) => {
+  const n = Number(x);
+  return Number.isFinite(n) ? n : Number(y ?? 0);
+};
+
 /**
  * Recalcule toutes les colonnes de type formula + overrides de cellule (__cellFormulas)
  * @param {object} row    Ligne source
@@ -57,16 +62,7 @@ export function recomputeRow(row, schema, ctx = {}) {
     updateFabricPrice('inter_doublure', 'ml_inter', 'pa_inter', 'pv_inter');
   }
 
-  // 3. Re-evaluate Totals dependent on Prices (Prix Unitaire, Prix Total)
-  // We explicitly re-run these specific formulas because they depend on the PA/PV we just updated.
-  const reEval = (key) => {
-    const col = cols.find(c => c.key === key);
-    const expr = cellFx[key] || col?.formula;
-    if (expr) next[key] = evalFormula(expr, next, ctx);
-  };
-
-  reEval('prix_unitaire');
-  reEval('prix_total');
+  // 3. (Moved to End)
 
   // --- Mechanism Logic (Rideaux) ---
   if (['Rail', 'Store Bateau', 'Store Enrouleur', 'Store Vénitien', 'Store Californien', 'Store Velum', 'Canishade', 'Tringle'].includes(next.type_mecanisme)) {
@@ -108,7 +104,7 @@ export function recomputeRow(row, schema, ctx = {}) {
 
   // 1. RIDEAUX / STORES / DECORS
   // Auto-calculate PV if hours are present (using global hourly rate)
-  if (['Rideau', 'Store Enrouleur', 'Store Bateau', 'Store Vénitien', 'Décor de lit', 'Voilage', 'Cache Sommier', 'Coussin'].includes(next.produit)) {
+  if (['Rideau', 'Store Enrouleur', 'Store Bateau', 'Store Vénitien', 'Store Californien', 'Store Velum', 'Décor de lit', 'Voilage', 'Cache Sommier', 'Coussin'].includes(next.produit)) {
     const taux = settings.taux_horaire || 35;
 
     // PV Pose
@@ -140,58 +136,58 @@ export function recomputeRow(row, schema, ctx = {}) {
   }
 
   // 2. DEPLACEMENTS (Advanced Logistics Logic)
-  // Overwrite unit prices with global settings
-  if (next.produit === 'Déplacement') {
-    // Inputs
-    const nbTech = Number(next.nb_tech) || 1;
-    const nbJours = Number(next.nb_jours) || 1;
-    const decouche = next.decouche === true; // Checkbox boolean
-    const format = next.format_duree || 'Journée';
+  // ─────────────────────────────────────────────────────────────
+  // 4) CAS SPÉCIFIQUE : LOGISTIQUE / DÉPLACEMENTS
+  // ─────────────────────────────────────────────────────────────
+  if (row.produit === "Déplacement") {
+    const updates = {};
 
-    // Global Settings
-    const taux = Number(settings.taux_horaire) || 35;
-    const prixNuit = Number(settings.prix_nuit) || 180;
-    const prixRepas = Number(settings.prix_repas) || 25;
+    // 1. Input Defaults
+    const nbTrajets = NVL(row.nb_trajets, 1);
+    const tempsTrajet = NVL(row.temps_trajet, 0); // Durée A/R
 
-    // --- CALCULATIONS ---
+    // 2. FORCE LOGIC: Heures Intervention available ONLY if 'Prise de côtes'
+    let heuresSurPlace = NVL(row.heures_sur_place, 0);
+    if (row.type !== "Prise de côtes") {
+      heuresSurPlace = 0;
+      updates.heures_sur_place = 0; // Force update in state
+    }
 
-    // 1. Heures Totales
-    // Base: Journée = 8h, Demi-journée = 4h
-    const baseHeures = (format === 'Demi-journée') ? 4 : 8;
-    const totalHeures = nbTech * nbJours * baseHeures;
-    next.nb_heures = totalHeures;
+    // A. Calcul Temps Brut
+    const tempsBrut = (tempsTrajet * nbTrajets) + heuresSurPlace;
 
-    // 2. Nuits
-    // Si découché = TRUE, alors Nuits = nbTech * nbJours
-    // Sinon 0
-    const totalNuits = decouche ? (nbTech * nbJours) : 0;
-    next.nb_nuits = totalNuits;
+    // B. Application du Seuil (Règle Métier 4h / 8h)
+    let heuresFacturees = 0;
+    if (tempsBrut > 0) {
+      heuresFacturees = tempsBrut <= 4 ? 4 : 8;
+    }
+    updates.nb_heures = heuresFacturees;
 
-    // 3. Repas
-    // Si découché = TRUE, alors Repas = nbTech * nbJours * 2 (Midi + Soir)
-    // Sinon = nbTech * nbJours * 1 (Midi uniquement)
-    const repasParJour = decouche ? 2 : 1;
-    const totalRepas = nbTech * nbJours * repasParJour;
-    next.nb_repas = totalRepas;
-
-    // --- COSTS ---
-
-    // Main d'Oeuvre
-    next.cout_mo = totalHeures * taux;
+    // C. Calcul Coûts
+    const nbTech = Math.max(1, NVL(row.nb_tech));
+    const tauxHoraire = NVL(settings.taux_horaire, 35);
 
     // Nuits & Repas
-    next.cout_nuits = totalNuits * prixNuit;
-    next.cout_repas = totalRepas * prixRepas;
+    // Règle simplifiée : Découché = 1 nuit + 2 repas. Sinon 1 repas.
+    const computedNuits = row.decouche ? nbTech : 0;
+    const computedRepas = (row.decouche ? 2 : 1) * nbTech;
 
-    // Transport
-    const transportUnit = Number(next.transport_unitaire) || 0;
-    next.transport_total = transportUnit * nbTech;
+    updates.nb_nuits = computedNuits;
+    updates.nb_repas = computedRepas;
 
-    // TOTAL FINAL
-    next.prix_total = next.cout_mo + next.cout_nuits + next.cout_repas + next.transport_total;
+    const coutMO = heuresFacturees * nbTech * tauxHoraire;
+    const coutNuits = computedNuits * NVL(settings.prix_nuit, 180);
+    const coutRepas = computedRepas * NVL(settings.prix_repas, 25);
 
-    // Fill hidden defaults if needed
-    next.tauxhoraire = taux; // trace
+    updates.cout_mo = coutMO;
+    updates.cout_nuits = coutNuits;
+    updates.cout_repas = coutRepas;
+
+    // D. Total Final
+    updates.transport_total = 0; // Removed separate transport cost
+    updates.prix_total = coutMO + coutNuits + coutRepas;
+
+    return { ...row, ...updates };
   }
 
 
@@ -207,6 +203,18 @@ export function recomputeRow(row, schema, ctx = {}) {
     }
     // ELSE: Ne pas toucher à next.prix_total (Standard case)
   }
+
+  // 3. Re-evaluate Totals dependent on Prices (Prix Unitaire, Prix Total)
+  // We explicitly re-run these specific formulas because they depend on the PA/PV we just updated.
+  // MOVED TO END of function to ensure all component prices (Mechanism, Labor) are ready.
+  const reEval = (key) => {
+    const col = cols.find(c => c.key === key);
+    const expr = cellFx[key] || col?.formula;
+    if (expr) next[key] = evalFormula(expr, next, ctx);
+  };
+
+  reEval('prix_unitaire');
+  reEval('prix_total');
 
   return next;
 }
