@@ -11,26 +11,13 @@ export const calculateProfitability = (rows = [], depRows = [], extraRows = []) 
     // —————————————————————————————————————————————————————————
     // 1. CALCUL DU CA TOTAL (A)
     // —————————————————————————————————————————————————————————
-    const caMinutes = rows.reduce((acc, r) => acc + toNum(r.prix_total), 0);
-    const caDeps = depRows.reduce((acc, r) => acc + toNum(r.total_eur), 0); // "total_eur" is standardized for depRows usually
-    const caExtras = extraRows.reduce((acc, r) => acc + toNum(r.montant_eur), 0);
-
-    // Note: depRows usually have 'prix_total' or 'total_eur'. 
-    // We'll try 'prix_total' first then 'total_eur' if undefined, or just handle at call site.
-    // In ChiffrageScreen, depRows are computed via formula, so usually have 'prix_total'. 
-    // BUT the old Moulinette used 'total_eur' for manual deps? Let's check schemas.
-    // CHIFFRAGE_SCHEMA_DEP usually produces 'prix_total'. 
-    // Let's sum 'prix_total' for all lists.
-
-    // Safer Re-sum based entirely on 'prix_total' which is the standard output column
+    // CA is purely the Sum of Sales Prices (prix_total)
     const sumTotal = (list) => list.reduce((acc, r) => acc + toNum(r.prix_total || r.total_eur || r.montant_eur), 0);
-
     const CA_Total = sumTotal(rows) + sumTotal(depRows) + sumTotal(extraRows);
 
     // —————————————————————————————————————————————————————————
     // 2. ACHATS FIXES (B) - Matières uniquement
     // —————————————————————————————————————————————————————————
-    // On itère sur les lignes pour extraire PA Tissus, PA Rails, PA Fournitures
     const achatsFixesDetails = {
         tissus: [],
         rails: [],
@@ -38,15 +25,11 @@ export const calculateProfitability = (rows = [], depRows = [], extraRows = []) 
         total: 0
     };
 
-    let totalAchatsFixes = 0;
-
-    // Maps for aggregation
-    // Maps for aggregation
     const mapTissus = new Map();
     const mapRails = new Map();
 
     // Helper to generate source info
-    const getSource = (r, label, qty, price) => ({
+    const getSource = (r, qty, price) => ({
         minute: r.produit || "Inconnu",
         zone: r.zone || "-",
         piece: r.piece || "-",
@@ -62,82 +45,76 @@ export const calculateProfitability = (rows = [], depRows = [], extraRows = []) 
         item.sources.push(source);
     };
 
-    // Hours Aggregation
-    const hoursDetails = {
-        prepa: { total: 0, sources: [] },
-        confection: { total: 0, sources: [] },
-        pose: { total: 0, sources: [] },
-        total: 0
-    };
-
-    const pushHours = (type, r, h) => {
-        if (h > 0) {
-            hoursDetails[type].total += h;
-            hoursDetails[type].sources.push({
-                minute: r.produit,
-                zone: r.zone,
-                piece: r.piece,
-                hours: h
-            });
-        }
-    };
-
     rows.forEach(r => {
         const q = qty(r);
 
-        // TISSUS (Déco 1, Déco 2, Doublure, Inter)
+        // STRICT KEYS MAPPING
+        // Tissu 1
         if (r.tissu_deco1) {
-            const val = toNum(r.pa_tissu_deco1);
-            pushMap(mapTissus, `T1_${r.tissu_deco1}`, r.tissu_deco1, toNum(r.ml_tissu_deco1) * q, val, getSource(r, r.tissu_deco1, q, val));
+            const val = toNum(r.pa_tissu1) * q; // PA Tissu is unit price usually, but we need total line cost here?
+            // Wait, in recomputeRow: next.pa_tissu1 = next.ml_tissu1 * (p1.pa || 0); <- This is TOTAL price for 1 unit.
+            // So we multiply by Q.
+            const ml = toNum(r.ml_tissu1) * q;
+            pushMap(mapTissus, `T1_${r.tissu_deco1}`, r.tissu_deco1, ml, val, getSource(r, q, val));
         }
-        // Deco 2
+        // Tissu 2
         if (r.tissu_deco2) {
-            const val = toNum(r.pa_tissu_deco2);
-            pushMap(mapTissus, `T2_${r.tissu_deco2}`, r.tissu_deco2, toNum(r.ml_tissu_deco2) * q, val, getSource(r, r.tissu_deco2, q, val));
+            const val = toNum(r.pa_tissu2) * q;
+            const ml = toNum(r.ml_tissu2) * q;
+            pushMap(mapTissus, `T2_${r.tissu_deco2}`, r.tissu_deco2, ml, val, getSource(r, q, val));
         }
         // Doublure
         if (r.doublure) {
-            const val = toNum(r.pa_doublure);
-            pushMap(mapTissus, `D_${r.doublure}`, `Doublure ${r.doublure}`, toNum(r.ml_doublure) * q, val, getSource(r, r.doublure, q, val));
+            const val = toNum(r.pa_doublure) * q;
+            const ml = toNum(r.ml_doublure) * q;
+            pushMap(mapTissus, `D_${r.doublure}`, `Doublure ${r.doublure}`, ml, val, getSource(r, q, val));
         }
-        // Inter
-        if (r.inter_doublure) {
-            const val = toNum(r.pa_inter);
-            pushMap(mapTissus, `I_${r.inter_doublure}`, `Inter ${r.inter_doublure}`, toNum(r.ml_inter) * q, val, getSource(r, r.inter_doublure, q, val));
+        // Interdoublure
+        if (r.interdoublure) { // Was inter_doublure
+            const val = toNum(r.pa_interdoublure) * q;
+            const ml = toNum(r.ml_interdoublure) * q;
+            pushMap(mapTissus, `I_${r.interdoublure}`, `Inter ${r.interdoublure}`, ml, val, getSource(r, q, val));
+        }
+        // Passementerie 1
+        if (r.passementerie1) {
+            const val = toNum(r.pa_pass1) * q;
+            const ml = toNum(r.ml_pass1) * q;
+            pushMap(mapTissus, `P1_${r.passementerie1}`, r.passementerie1, ml, val, getSource(r, q, val));
+        }
+        // Passementerie 2
+        if (r.passementerie2) {
+            const val = toNum(r.pa_pass2) * q;
+            const ml = toNum(r.ml_pass2) * q;
+            pushMap(mapTissus, `P2_${r.passementerie2}`, r.passementerie2, ml, val, getSource(r, q, val));
         }
 
         // RAILS / MECANISMES
-        // Field keys: type_mecanisme, nom_tringle? Schema says 'modele_mecanisme'
-        // Let's use 'modele_mecanisme' or 'type_mecanisme'.
         const mecaName = r.modele_mecanisme || r.type_mecanisme;
         if (mecaName) {
-            const val = toNum(r.pa_mecanisme);
-            const len = toNum(r.l_mecanisme || r.largeur || r.dim_mecanisme);
-            pushMap(mapRails, `M_${mecaName}`, mecaName, (len / 100) * q, val, getSource(r, mecaName, q, val));
+            const type = r.type_mecanisme;
+            const val = toNum(r.pa_mecanisme) * q;
+            let len = 0;
+            if (type === 'Rail') {
+                len = (toNum(r.largeur_mecanisme) / 100) * q;
+            } else {
+                len = q; // For Stores/Tringles, it's units
+            }
+            // Use specific key to separate Rails from Stores in aggregation if needed, or group by model
+            pushMap(mapRails, `M_${mecaName}`, mecaName, len, val, getSource(r, q, val));
         }
-
-        // HEURES
-        pushHours('prepa', r, toNum(r.heures_prepa));
-        pushHours('confection', r, toNum(r.heures_confection));
-        pushHours('pose', r, toNum(r.heures_pose));
     });
 
-    hoursDetails.total = hoursDetails.prepa.total + hoursDetails.confection.total + hoursDetails.pose.total;
-
-    // Convert Maps to Arrays
+    // Convert Maps
     achatsFixesDetails.tissus = Array.from(mapTissus.values());
     achatsFixesDetails.rails = Array.from(mapRails.values());
 
-    // Sum aggregates
     const sumPA = (arr) => arr.reduce((acc, item) => acc + item.pa, 0);
-    totalAchatsFixes = sumPA(achatsFixesDetails.tissus) + sumPA(achatsFixesDetails.rails);
+    const totalAchatsFixes = sumPA(achatsFixesDetails.tissus) + sumPA(achatsFixesDetails.rails);
     achatsFixesDetails.total = totalAchatsFixes;
 
     // —————————————————————————————————————————————————————————
     // 3. CHARGES VARIABLES (D)
     // —————————————————————————————————————————————————————————
-
-    // Aggregates with sources
     const chargesAgg = {
         st_pose: { total: 0, sources: [] },
         st_conf: { total: 0, sources: [] },
@@ -148,47 +125,88 @@ export const calculateProfitability = (rows = [], depRows = [], extraRows = []) 
 
     // 3.1 Sous-traitance
     rows.forEach(r => {
-        const stp = toNum(r.stpausepa || r.pv_pose_st_pa);
+        const q = qty(r);
+        const stp = toNum(r.st_pose_pa) * q; // Strict key st_pose_pa
         if (stp > 0) {
             chargesAgg.st_pose.total += stp;
-            chargesAgg.st_pose.sources.push(getSource(r, "ST Pose", 1, stp));
+            chargesAgg.st_pose.sources.push(getSource(r, q, stp));
         }
-        const stc = toNum(r.stconfpa);
+        const stc = toNum(r.st_conf_pa) * q; // Strict key st_conf_pa
         if (stc > 0) {
             chargesAgg.st_conf.total += stc;
-            chargesAgg.st_conf.sources.push(getSource(r, "ST Conf", 1, stc));
+            chargesAgg.st_conf.sources.push(getSource(r, q, stc));
         }
     });
 
-    // 3.2 Deplacements
+    // 3.2 Deplacements (COSTS ONLY: Nuits + Repas + Billets)
     depRows.forEach(r => {
-        const val = toNum(r.prix_total || r.total_eur);
-        if (val > 0) {
-            chargesAgg.deplacements.total += val;
-            chargesAgg.deplacements.sources.push({
-                minute: r.type_deplacement || "Déplacement",
-                price: val
-            });
+        // Exclude MO (Labor) -> It goes to Hours
+        const cNuits = toNum(r.cout_nuits);
+        const cRepas = toNum(r.cout_repas);
+        const cTrans = toNum(r.cout_billet_total);
+        const costs = cNuits + cRepas + cTrans;
+        const type = r.type_deplacement || "Déplacement";
+
+        if (costs > 0) {
+            chargesAgg.deplacements.total += costs;
+
+            // BREAKDOWN (User request: Ventilate by Nuits, Repas, Transports)
+            if (cNuits > 0) {
+                chargesAgg.deplacements.sources.push({
+                    minute: `${type} - Nuits`,
+                    price: cNuits,
+                    zone: '-', piece: '-'
+                });
+            }
+            if (cRepas > 0) {
+                chargesAgg.deplacements.sources.push({
+                    minute: `${type} - Repas`,
+                    price: cRepas,
+                    zone: '-', piece: '-'
+                });
+            }
+            if (cTrans > 0) {
+                chargesAgg.deplacements.sources.push({
+                    minute: `${type} - Transports`,
+                    price: cTrans,
+                    zone: '-', piece: '-'
+                });
+            }
         }
     });
 
     // 3.3 Commissions & Extras
     extraRows.forEach(r => {
         const val = toNum(r.montant_eur || r.prix_total);
-        const label = (r.libelle || "").toLowerCase();
-        const cat = (r.categorie || "").toLowerCase();
-        const src = { minute: r.libelle || "Charge", price: val };
+        // Better Labeling: Category - Label
+        const labelRaw = (r.libelle || "").trim();
+        const cat = (r.categorie || "").trim();
 
-        if (cat.includes('commission') || label.includes('commission')) {
+        let displayLabel = labelRaw || "Charge";
+        if (cat && labelRaw) {
+            displayLabel = `${cat} - ${labelRaw}`;
+        } else if (cat) {
+            displayLabel = cat;
+        }
+
+        const catLower = cat.toLowerCase();
+        const labelLower = labelRaw.toLowerCase();
+
+        if (catLower.includes('commission') || labelLower.includes('commission')) {
             chargesAgg.commissions.total += val;
-            chargesAgg.commissions.sources.push(src);
+            chargesAgg.commissions.sources.push({ minute: displayLabel, price: val });
         } else {
             chargesAgg.autres.total += val;
-            chargesAgg.autres.sources.push(src);
+            chargesAgg.autres.sources.push({ minute: displayLabel, price: val });
         }
     });
 
-    const Charges_Variables_Total = chargesAgg.st_pose.total + chargesAgg.st_conf.total + chargesAgg.deplacements.total + chargesAgg.commissions.total + chargesAgg.autres.total;
+    const Charges_Variables_Total =
+        chargesAgg.st_pose.total +
+        chargesAgg.st_conf.total +
+        chargesAgg.deplacements.total +
+        chargesAgg.commissions.total +
+        chargesAgg.autres.total;
 
     const chargesDetails = {
         st_pose: chargesAgg.st_pose.total,
@@ -197,16 +215,59 @@ export const calculateProfitability = (rows = [], depRows = [], extraRows = []) 
         commissions: chargesAgg.commissions.total,
         autres: chargesAgg.autres.total,
         total: Charges_Variables_Total,
-        // Detailed objects for Drill Down
         _details: chargesAgg
     };
 
     // —————————————————————————————————————————————————————————
-    // 4. RESULTATS (C, E, G)
+    // 4. HEURES DE PRODUCTION (Total Hours)
+    // —————————————————————————————————————————————————————————
+    const hoursDetails = {
+        prepa: { total: 0, sources: [] },
+        confection: { total: 0, sources: [] },
+        pose: { total: 0, sources: [] },
+        deplacements: { total: 0, sources: [] }, // NEW CATEGORY
+        total: 0
+    };
+
+    const pushHours = (type, r, h, labelOverride) => {
+        if (h > 0) {
+            hoursDetails[type].total += h;
+            hoursDetails[type].sources.push({
+                minute: labelOverride || r.produit,
+                zone: r.zone,
+                piece: r.piece,
+                hours: h
+            });
+        }
+    };
+
+    // Rows Hours
+    rows.forEach(r => {
+        const q = qty(r);
+        pushHours('prepa', r, toNum(r.heures_prepa) * q);
+        pushHours('confection', r, toNum(r.heures_confection) * q);
+        pushHours('pose', r, toNum(r.heures_pose) * q);
+    });
+
+    // Logistics Hours (Billable Travel Hours)
+    depRows.forEach(r => {
+        const h = toNum(r.heures_facturees);
+        if (h > 0) {
+            pushHours('deplacements', r, h, r.type_deplacement || "Déplacement");
+        }
+    });
+
+    hoursDetails.total =
+        hoursDetails.prepa.total +
+        hoursDetails.confection.total +
+        hoursDetails.pose.total +
+        hoursDetails.deplacements.total;
+
+    // —————————————————————————————————————————————————————————
+    // 5. RESULTATS
     // —————————————————————————————————————————————————————————
     const Marge_Brute = CA_Total - totalAchatsFixes;
     const Contribution = Marge_Brute - Charges_Variables_Total;
-
     const Contribution_Horaire = hoursDetails.total > 0 ? Contribution / hoursDetails.total : 0;
 
     return {

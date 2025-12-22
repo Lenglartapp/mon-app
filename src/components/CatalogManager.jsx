@@ -4,6 +4,7 @@ import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
 import Button from '@mui/material/Button';
+import Chip from '@mui/material/Chip';
 import TextField from '@mui/material/TextField';
 import IconButton from '@mui/material/IconButton';
 import CloseIcon from '@mui/icons-material/Close';
@@ -42,21 +43,21 @@ export default function CatalogManager({ open, onClose, catalog, onCatalogChange
         const newId = catalog.length > 0 ? Math.max(...catalog.map(r => r.id)) + 1 : 1;
         const newRow = {
             id: newId,
-            name: 'Nouveau Tissu',
+            name: '', // Will be computed
             provider: '',
-            reference: 'Nouveau',
+            reference: '',
             color: '',
-            category: 'Tissu',
-            buyPrice: 0,
-            sellPrice: 0,
-            width: 140,
+            category: '',
+            buyPrice: undefined,
+            sellPrice: undefined,
+            width: undefined,
             motif: false,
-            raccord_v: 0,
-            raccord_h: 0,
+            raccord_v: undefined,
+            raccord_h: undefined,
             unit: 'ml'
         };
         // Auto-compute name immediately
-        newRow.name = `${newRow.provider || ''} ${newRow.reference || ''} ${newRow.color || ''}`.trim() || 'Nouveau Tissu';
+        newRow.name = 'Nouvel Article (à compléter)';
         onCatalogChange([...catalog, newRow]);
     };
 
@@ -68,12 +69,34 @@ export default function CatalogManager({ open, onClose, catalog, onCatalogChange
 
     const processRowUpdate = (newRow) => {
         // Auto-concat logic: Fournisseur + Référence + Coloris
-        const name = [newRow.provider, newRow.reference, newRow.color].filter(Boolean).join(' ');
-        const updatedRow = { ...newRow, name: name || 'Article Sans Nom' };
+        const nameParts = [newRow.provider, newRow.reference, newRow.color].filter(Boolean);
+        const name = nameParts.length > 0 ? nameParts.join(' ') : 'Article Sans Nom';
+        const updatedRow = { ...newRow, name };
 
         const updatedCatalog = catalog.map(r => r.id === newRow.id ? updatedRow : r);
         onCatalogChange(updatedCatalog);
         return updatedRow;
+    };
+
+    // Helper for Category Chips (Pastel/Cute Style)
+    const stringToColor = (string) => {
+        if (!string) return '#eee';
+        let hash = 0;
+        for (let i = 0; i < string.length; i++) {
+            hash = string.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        // Generate color
+        const c = (hash & 0x00ffffff).toString(16).toUpperCase();
+        const hex = "00000".substring(0, 6 - c.length) + c;
+
+        // Mix with white for pastel (Soft & Cute)
+        const r = parseInt(hex.substring(0, 2), 16);
+        const g = parseInt(hex.substring(2, 4), 16);
+        const b = parseInt(hex.substring(4, 6), 16);
+
+        const mix = (val) => Math.round((val + 255) / 2);
+
+        return `rgb(${mix(r)}, ${mix(g)}, ${mix(b)})`;
     };
 
     const columns = [
@@ -88,7 +111,24 @@ export default function CatalogManager({ open, onClose, catalog, onCatalogChange
             width: 150,
             editable: true,
             type: 'singleSelect',
-            valueOptions: ['Tissu', 'Rail']
+            valueOptions: ['Tissu', 'Rail', 'Passementerie'],
+            renderCell: (params) => {
+                if (!params.value) return null;
+                let color = 'default';
+                if (['Tissu', 'Confection', 'Doublure', 'Inter'].includes(params.value)) color = 'primary';
+                else if (params.value === 'Rail' || params.value === 'Tringle') color = 'secondary';
+                else if (params.value === 'Passementerie') color = 'warning';
+
+                return (
+                    <Chip
+                        label={params.value}
+                        color={color}
+                        variant="filled"
+                        size="small"
+                        sx={{ fontWeight: 500 }}
+                    />
+                );
+            }
         },
         {
             field: 'buyPrice',
@@ -96,7 +136,10 @@ export default function CatalogManager({ open, onClose, catalog, onCatalogChange
             width: 130,
             editable: true,
             type: 'number',
-            valueFormatter: (value) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(value)
+            valueFormatter: (value) => {
+                if (value === undefined || value === null || value === '') return '';
+                return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(value);
+            }
         },
         {
             field: 'sellPrice',
@@ -104,7 +147,10 @@ export default function CatalogManager({ open, onClose, catalog, onCatalogChange
             width: 130,
             editable: true,
             type: 'number',
-            valueFormatter: (value) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(value)
+            valueFormatter: (value) => {
+                if (value === undefined || value === null || value === '') return '';
+                return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(value);
+            }
         },
         { field: 'width', headerName: 'Laize (cm)', width: 100, editable: true, type: 'number' },
         { field: 'motif', headerName: 'Motif ?', width: 80, editable: true, type: 'boolean' },

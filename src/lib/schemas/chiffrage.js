@@ -1,220 +1,168 @@
 // src/lib/schemas/chiffrage.js
-// Schéma de colonnes pour l'éditeur de minutes (chiffrage)
+// Schéma STRICT pour l'éditeur de minutes (Rideaux)
+// Basé sur la "Matrice de Champs" utilisateur (Ordre 1 à 75)
 
 export const CHIFFRAGE_SCHEMA = [
-  // Sélection / navigation
-  { key: "sel", label: "Sel.", type: "checkbox", width: 60 },
-  { key: "detail", label: "Détail", type: "button", width: 100 },
+  // 1 = Checkbox (Native DataGrid)
+  // 2 = Actions (Détail)
+  { key: "detail", label: "Détail", type: "button", width: 90 },
 
-  // Identité / localisation
-  { key: "zone", label: "Zone", type: "text", width: 120 },
-  { key: "piece", label: "Pièce", type: "text", width: 120 },
+  // 3
+  { key: "zone", label: "Zone", type: "text", width: 100 },
+  // 4
+  { key: "piece", label: "Pièce", type: "text", width: 100 },
+  // 5
+  { key: "produit", label: "Produit", type: "select", options: ["Rideau", "Voilage"], width: 140 },
+  // 6
+  { key: "type_confection", label: "Confection", type: "select", options: ["Wave", "Pli", "Flamand", "Œillet", "Tête Incrustée", "Fourreau", "Plat"], width: 140 },
+  // 7
+  { key: "paire_ou_un_seul_pan", label: "Format", type: "select", options: ["Paire", "Un seul pan"], width: 120 },
+  // 8
+  { key: "ampleur", label: "Ampleur", type: "number", precision: 2, width: 80 },
+  // 9
+  { key: "largeur_mecanisme", label: "L. Méca", type: "number", width: 100 },
+  // 10
+  { key: "largeur", label: "Largeur", type: "number", width: 90 },
+  // 11
+  { key: "croisement", label: "Croise.", type: "number", width: 90 },
+  // 12
+  { key: "retour_gauche", label: "Ret. G", type: "number", width: 90 },
+  // 13
+  { key: "retour_droit", label: "Ret. D", type: "number", width: 90 },
+  // 14
+  { key: "a_plat", label: "À Plat", type: "number", width: 100, readOnly: true },
+  // 15
+  { key: "hauteur", label: "Hauteur", type: "number", width: 90 },
+  // 16
+  { key: "hauteur_finie_type", label: "Type H.", type: "select", options: ["Sol Fini", "Sol Brut"], width: 110 },
+  // 17
+  { key: "finition_bas", label: "Fin. Bas", type: "number", width: 90 },
+  // 18
+  { key: "hauteur_coupe", label: "H. Coupe", type: "number", width: 100, readOnly: true },
+  // 19
+  { key: "hauteur_coupe_motif", label: "H. Motif", type: "number", width: 100, readOnly: true },
 
-  // Produit & confection
-  {
-    key: "produit",
-    label: "Produit",
-    type: "select",
-    options: [
-      "Rideau", "Voilage", "Store Bateau", "Store Enrouleur", "Store Vénitien",
-      "Cache Sommier", "Coussin", "Décor de lit", "Autres"
-    ],
-    width: 160
-  },
-  {
-    key: "type_confection",
-    label: "Type de confection",
-    type: "select",
-    options: ["Wave 80", "Wave 60", "Couteau", "Flamand", "Triplis", "Creux", "Taylor", "Tuyaux d'orgue", "Plat", "A plat"],
-    width: 180
-  },
-  {
-    key: "pair_un",
-    label: "Paire / Un seul pan",
-    type: "select",
-    options: ["Paire", "Un seul pan"],
-    width: 150
-  },
-  { key: "ampleur", label: "Ampleur", type: "number", precision: 2, width: 90 },
+  // 20
+  { key: "tissu_deco1", label: "Tissu 1", type: "text", width: 150 },
+  // 21
+  { key: "laize_tissu1", label: "Laize 1", type: "number", width: 90 },
+  // 22
+  { key: "raccord_v_tissu1", label: "Rac. V1", type: "number", width: 90 },
+  // 23
+  { key: "raccord_h_tissu1", label: "Rac. H1", type: "number", width: 90 },
+  // 24
+  { key: "nb_les_tissu1", label: "Nb Lés 1", type: "number", width: 90, readOnly: true },
+  // 25
+  { key: "ml_tissu1", label: "ML Tissu 1", type: "number", width: 110, readOnly: true },
+  // 26
+  { key: "pa_tissu1", label: "PA T1", type: "number", width: 90 },
+  // 27
+  { key: "pv_tissu1", label: "PV T1", type: "number", width: 90 },
 
-  // Cotes & géométrie
-  { key: "l_mecanisme", label: "Largeur mécanisme", type: "number", width: 150 },
-  { key: "largeur", label: "Largeur", type: "number", width: 110 },
-  { key: "hauteur", label: "Hauteur", type: "number", width: 110 },
+  // 28
+  { key: "tissu_deco2", label: "Tissu 2", type: "text", width: 150 },
+  // 29 (NEW)
+  { key: "laize_tissu2", label: "Laize 2", type: "number", width: 90 },
+  // 30
+  { key: "raccord_v_tissu2", label: "Rac. V2", type: "number", width: 90 },
+  // 31
+  { key: "raccord_h_tissu2", label: "Rac. H2", type: "number", width: 90 },
+  // 32
+  { key: "ml_tissu2", label: "ML Tissu 2", type: "number", width: 110 },
+  // 33
+  { key: "pa_tissu2", label: "PA T2", type: "number", width: 90 },
+  // 34
+  { key: "pv_tissu2", label: "PV T2", type: "number", width: 90 },
 
-  // Hauteur de coupe (minutes) — utilisée par les ML
-  {
-    key: "hauteur_coupe_minutes",
-    label: "H. coupe (min.)",
-    type: "formula",
-    formula: "hauteur + 50",
-    width: 140
-  },
+  // 35
+  { key: "doublure", label: "Doublure", type: "text", width: 140 },
+  // 36
+  { key: "laize_doublure", label: "Laize D.", type: "number", width: 90 },
+  // 37
+  { key: "nb_les_doublure", label: "Nb Lés D.", type: "number", width: 90, readOnly: true },
+  // 38
+  { key: "ml_doublure", label: "ML Doubl.", type: "number", width: 110, readOnly: true },
+  // 39
+  { key: "pa_doublure", label: "PA Doubl.", type: "number", width: 90 },
+  // 40
+  { key: "pv_doublure", label: "PV Doubl.", type: "number", width: 90 },
 
-  { key: "a_plat", label: "À plat", type: "formula", formula: "largeur * ampleur", width: 140 },
-  { key: "croisement", label: "Croisement", type: "number", width: 120 },
-  { key: "retour_g", label: "Retour Gauche", type: "number", width: 130 },
-  { key: "retour_d", label: "Retour Droit", type: "number", width: 130 },
+  // 41
+  { key: "interdoublure", label: "Inter-D.", type: "text", width: 140 },
+  // 42
+  { key: "laize_interdoublure", label: "Laize I.", type: "number", width: 90 },
+  // 43
+  { key: "nb_les_interdoublure", label: "Nb Lés I.", type: "number", width: 90, readOnly: true },
+  // 44
+  { key: "ml_interdoublure", label: "ML Inter.", type: "number", width: 110, readOnly: true },
+  // 45
+  { key: "pa_interdoublure", label: "PA Inter.", type: "number", width: 90 },
+  // 46
+  { key: "pv_interdoublure", label: "PV Inter.", type: "number", width: 90 },
 
-  // Options pièce / rendu
-  { key: "envers_visible", label: "Envers visible", type: "checkbox", width: 120 },
-  { key: "double", label: "Double", type: "checkbox", width: 100 },
+  // 47
+  { key: "passementerie1", label: "Passement. 1", type: "text", width: 140 },
+  // 48
+  { key: "application_passementerie1", label: "App. P1", type: "select", options: ["I", "U", "L", "-"], width: 100 },
+  // 49
+  { key: "ml_pass1", label: "ML Pass 1", type: "number", width: 110, readOnly: true },
+  // 50
+  { key: "pa_pass1", label: "PA Pass 1", type: "number", width: 90 },
+  // 51
+  { key: "pv_pass1", label: "PV Pass 1", type: "number", width: 90 },
 
-  // Tissus & raccords — Déco 1
-  { key: "tissu_deco1", label: "Tissu Déco 1", type: "text", width: 160 },
-  { key: "laize_tissu_deco1", label: "Laize Déco 1", type: "number", width: 140 },
-  { key: "motif_deco1", label: "Motif Déco 1", type: "text", width: 140 },
-  { key: "raccord_v1", label: "Raccord V1", type: "number", width: 130 },
-  { key: "raccord_h1", label: "Raccord H1", type: "number", width: 130 },
+  // 52
+  { key: "passementerie2", label: "Passement. 2", type: "text", width: 140 },
+  // 53
+  { key: "application_passementerie2", label: "App. P2", type: "select", options: ["I", "U", "L", "-"], width: 100 },
+  // 54
+  { key: "ml_pass2", label: "ML Pass 2", type: "number", width: 110, readOnly: true },
+  // 55
+  { key: "pa_pass2", label: "PA Pass 2", type: "number", width: 90 },
+  // 56
+  { key: "pv_pass2", label: "PV Pass 2", type: "number", width: 90 },
 
-  // ML Déco 1 : garde-fous NVL et opérateur || (pas "OR")
-  {
-    key: "ml_tissu_deco1",
-    label: "ML Déco 1",
-    type: "formula",
-    formula:
-      "IF({laize_tissu_deco1}<=0 || {hauteur_coupe_minutes}<=0, 0, " +
-      "IF({laize_tissu_deco1} > {hauteur_coupe_minutes}, " +
-      "({a_plat}+{croisement}+{retour_g}+{retour_d})/100, " +
-      "CEIL(({a_plat}+{croisement}+{retour_g}+{retour_d})/{laize_tissu_deco1}) * ({hauteur_coupe_minutes}/100)" +
-      "))",
-    width: 200
-  },
-  { key: "pa_tissu_deco1", label: "PA Déco 1", type: "number", width: 120 },
-  { key: "pv_tissu_deco1", label: "PV Déco 1", type: "number", width: 120 },
+  // 57
+  { key: "type_mecanisme", label: "Type Méca", type: "select", options: ["Rail", "Tringle"], width: 120 },
+  // 58
+  { key: "modele_mecanisme", label: "Modèle Méca", type: "text", width: 140 },
+  // 59
+  { key: "pa_mecanisme", label: "PA Méca", type: "number", width: 90 },
+  // 60
+  { key: "pv_mecanisme", label: "PV Méca", type: "number", width: 90 },
 
-  // Tissus & raccords — Déco 2
-  { key: "tissu_deco2", label: "Tissu Déco 2", type: "text", width: 160 },
-  { key: "laize_tissu_deco2", label: "Laize Déco 2", type: "number", width: 140 },
-  { key: "motif_deco2", label: "Motif Déco 2", type: "text", width: 140 },
-  { key: "raccord_v2", label: "Raccord V2", type: "number", width: 130 },
-  { key: "raccord_h2", label: "Raccord H2", type: "number", width: 130 },
-  {
-    key: "ml_tissu_deco2",
-    label: "ML Déco 2",
-    type: "formula",
-    formula:
-      "IF({laize_tissu_deco2}<=0 || {hauteur_coupe_minutes}<=0, 0, " +
-      "IF({laize_tissu_deco2} > {hauteur_coupe_minutes}, " +
-      "({a_plat}+{croisement}+{retour_g}+{retour_d})/100, " +
-      "CEIL(({a_plat}+{croisement}+{retour_g}+{retour_d})/{laize_tissu_deco2}) * ({hauteur_coupe_minutes}/100)" +
-      "))",
-    width: 200
-  },
-  { key: "pa_tissu_deco2", label: "PA Déco 2", type: "number", width: 120 },
-  { key: "pv_tissu_deco2", label: "PV Déco 2", type: "number", width: 120 },
+  // 61
+  { key: "heures_prepa", label: "H. Prépa", type: "number", width: 80 },
+  // 62
+  { key: "pv_prepa", label: "PV Prépa", type: "number", width: 90, readOnly: true },
 
-  // Passementeries
-  { key: "passementerie1", label: "Passementerie 1", type: "text", width: 160 },
-  { key: "app_passementerie1", label: "Application Passementerie 1", type: "text", width: 200 },
-  { key: "ml_passementerie1", label: "ML Passementerie 1", type: "number", width: 160 },
-  { key: "pa_passementerie1", label: "PA Passementerie 1", type: "number", width: 160 },
-  { key: "pv_passementerie1", label: "PV Passementerie 1", type: "number", width: 160 },
+  // 63
+  { key: "type_pose", label: "Pose", type: "select", options: ["Mural", "Plafond", "Tableau", "Grande hauteur"], width: 120 },
+  // 64
+  { key: "heures_pose", label: "H. Pose", type: "number", width: 80 },
+  // 65
+  { key: "pv_pose", label: "PV Pose", type: "number", width: 90, readOnly: true },
 
-  { key: "passementerie2", label: "Passementerie 2", type: "text", width: 160 },
-  { key: "app_passementerie2", label: "Application Passementerie 2", type: "text", width: 200 },
-  { key: "ml_passementerie2", label: "ML Passementerie 2", type: "number", width: 160 },
-  { key: "pa_passementerie2", label: "PA Passementerie 2", type: "number", width: 160 },
+  // 66
+  { key: "heures_confection", label: "H. Conf", type: "number", width: 80 },
+  // 67
+  { key: "pv_confection", label: "PV Conf", type: "number", width: 90, readOnly: true },
 
-  // Doublure
-  { key: "doublure", label: "Doublure", type: "text", width: 150 },
-  { key: "laize_doublure", label: "Laize Doublure", type: "number", width: 150 },
-  {
-    key: "ml_doublure",
-    label: "ML Doublure",
-    type: "formula",
-    formula:
-      "IF({laize_doublure}<=0 || {hauteur_coupe_minutes}<=0, 0, " +
-      "IF({laize_doublure} > {hauteur_coupe_minutes}, " +
-      "({a_plat}+{croisement}+{retour_g}+{retour_d})/100, " +
-      "CEIL(({a_plat}+{croisement}+{retour_g}+{retour_d})/{laize_doublure}) * ({hauteur_coupe_minutes}/100)" +
-      "))",
-    width: 200
-  },
-  { key: "pa_doublure", label: "PA Doublure", type: "number", width: 140 },
-  { key: "pv_doublure", label: "PV Doublure", type: "number", width: 140 },
+  // 68
+  { key: "st_pose_pa", label: "ST Pose PA", type: "number", width: 90 },
+  // 69
+  { key: "st_pose_pv", label: "ST Pose PV", type: "number", width: 90, readOnly: true },
+  // 70
+  { key: "st_conf_pa", label: "ST Conf PA", type: "number", width: 90 },
+  // 71
+  { key: "st_conf_pv", label: "ST Conf PV", type: "number", width: 90, readOnly: true },
 
-  // Inter-doublure
-  { key: "inter_doublure", label: "Inter Doublure", type: "text", width: 150 },
-  { key: "laize_inter", label: "Laize Inter", type: "number", width: 150 },
-  {
-    key: "ml_inter",
-    label: "ML Inter",
-    type: "formula",
-    formula:
-      "IF({laize_inter}<=0 || {hauteur_coupe_minutes}<=0, 0, " +
-      "IF({laize_inter} > {hauteur_coupe_minutes}, " +
-      "({a_plat}+{croisement}+{retour_g}+{retour_d})/100, " +
-      "CEIL(({a_plat}+{croisement}+{retour_g}+{retour_d})/{laize_inter}) * ({hauteur_coupe_minutes}/100)" +
-      "))",
-    width: 200
-  },
-  { key: "pa_inter", label: "PA Inter", type: "number", width: 140 },
-  { key: "pv_inter", label: "PV Inter", type: "number", width: 140 },
-
-  // Mécanisme (Rail / Tringle / Store)
-  {
-    key: "type_mecanisme",
-    label: "Type Mécanisme",
-    type: "select",
-    options: ['Rail', 'Tringle'],
-    width: 140
-  },
-  { key: "modele_mecanisme", label: "Modèle Mécanisme", type: "text", width: 140 },
-  { key: "dim_mecanisme", label: "Dim. Mécanisme", type: "text", width: 120 },
-  { key: "pa_mecanisme", label: "PA Mécanisme", type: "number", width: 120 },
-  { key: "pv_mecanisme", label: "PV Mécanisme", type: "number", width: 120 },
-
-  // Prépa / pose / confection (valorisations)
-  { key: "heures_prepa", label: "Heures Prépa", type: "number", width: 140 },
-  { key: "pv_prepa", label: "PV Prépa", type: "number", width: 130 },
-  { key: "type_pose", label: "Type de pose", type: "select", options: ["Murale", "Plafond", "Encastré"], width: 140 },
-
-  // Sous-traitance POSE (cachée par défaut)
-  { key: "stpausepa", label: "ST Pose PA", type: "number", width: 140 },
-  {
-    key: "stpausepv",
-    label: "ST Pose PV",
-    type: "formula",
-    width: 140,
-    formula: "{stpausepa} * 2",
-    readOnly: true,
-  },
-
-  { key: "heures_pose", label: "Heures Pose", type: "number", width: 140 },
-  { key: "pv_pose", label: "PV Pose", type: "number", width: 120 },
-  // Sous-traitance CONFECTION (cachée par défaut)
-  { key: "stconfpa", label: "ST Conf PA", type: "number", width: 140 },
-  {
-    key: "stconfpv",
-    label: "ST Conf PV",
-    type: "formula",
-    width: 140,
-    formula: "{stconfpa} * 2",
-    readOnly: true,
-  },
-
-  { key: "heures_confection", label: "Heures Confection", type: "number", width: 160 },
-  { key: "pv_confection", label: "PV Confection", type: "number", width: 140 },
-
-  // Frais / prix
-  { key: "livraison", label: "Livraison", type: "number", width: 120 },
-  {
-    key: "prix_unitaire",
-    label: "Prix Unitaire",
-    type: "formula",
-    // somme des PV composants + livraison, en ignorant les champs vides
-    formula:
-      "{pv_tissu_deco1} + {pv_tissu_deco2} + {pv_doublure} + {pv_inter} + " +
-      "{pv_mecanisme} + {pv_prepa} + {pv_pose} + {pv_confection} + {livraison}",
-    width: 160
-  },
-  { key: "quantite", label: "Quantité", type: "number", width: 100 },
-  { key: "prix_total", label: "Prix Total", type: "formula", formula: "{prix_unitaire} * {quantite}", width: 140 },
-
-  // Croquis
-  { key: "croquis", label: "Croquis", type: "croquis", width: 140 },
-
-  // Commentaires chiffrage
-  { key: "commentaire_minute", label: "Commentaire", type: "text", width: 220 },
+  // 72
+  { key: "livraison", label: "Livraison", type: "number", width: 90 },
+  // 73
+  { key: "unit_price", label: "P.U", type: "number", width: 110, readOnly: true, valueFormatter: (value) => new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(value) },
+  // 74
+  { key: "quantite", label: "Qté", type: "number", width: 70 },
+  // 75
+  { key: "total_price", label: "Total", type: "number", width: 120, readOnly: true },
 ];

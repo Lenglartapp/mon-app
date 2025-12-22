@@ -44,7 +44,8 @@ export default function StocksModule({ minutes = [], projects = [], onBack }) {
                     location: mov.location,
                     qty: 0,
                     project: mov.project, // Last project association wins or 'Stock'
-                    unit: mov.unit
+                    unit: mov.unit,
+                    category: mov.category
                 };
             }
 
@@ -111,7 +112,7 @@ export default function StocksModule({ minutes = [], projects = [], onBack }) {
                     />
                 )}
                 {tabIndex === 1 && (
-                    <StockInventoryTab inventory={inventory} />
+                    <StockInventoryTab inventory={inventory} projects={projects} movements={movements} />
                 )}
             </Box>
         </Box>

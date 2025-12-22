@@ -1,37 +1,40 @@
 export const RIDEAUX_DEFAULT_VISIBILITY = {
-    // Complexité Textile (Matières 2)
+    // Tissu 2
     tissu_deco2: false,
-    laize_tissu_deco2: false,
-    motif_deco2: false,
-    raccord_v2: false,
-    raccord_h2: false,
-    ml_tissu_deco2: false,
-    pa_tissu_deco2: false,
-    pv_tissu_deco2: false,
+    laize_tissu2: false,
+    raccord_v_tissu2: false,
+    raccord_h_tissu2: false,
+    ml_tissu2: false,
+    pa_tissu2: false,
+    pv_tissu2: false,
 
-    // Finitions Luxe (Passementerie)
+    // Inter-doublure
+    interdoublure: false,
+    laize_interdoublure: false,
+    nb_les_interdoublure: false,
+    ml_interdoublure: false,
+    pa_interdoublure: false,
+    pv_interdoublure: false,
+
+    // Passementerie 1
     passementerie1: false,
-    app_passementerie1: false,
-    ml_passementerie1: false,
-    pa_passementerie1: false,
-    pv_passementerie1: false,
+    application_passementerie1: false,
+    ml_pass1: false,
+    pa_pass1: false,
+    pv_pass1: false,
+
+    // Passementerie 2
     passementerie2: false,
-    app_passementerie2: false,
-    ml_passementerie2: false,
-    pa_passementerie2: false,
+    application_passementerie2: false,
+    ml_pass2: false,
+    pa_pass2: false,
+    pv_pass2: false,
 
-    // Structure (Inter-doublure)
-    inter_doublure: false,
-    laize_inter: false,
-    ml_inter: false,
-    pa_inter: false,
-    pv_inter: false,
-
-    // Sous-traitance (Pose & Confection)
-    stpausepa: false,
-    stpausepv: false,
-    stconfpa: false,
-    stconfpv: false
+    // Sous-traitance
+    st_pose_pa: false,
+    st_pose_pv: false,
+    st_conf_pa: false,
+    st_conf_pv: false
 };
 
 export const DECORS_DEFAULT_VISIBILITY = {

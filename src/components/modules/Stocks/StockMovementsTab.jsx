@@ -27,9 +27,9 @@ const COLUMNS = [
         field: 'date',
         headerName: 'Date / Heure',
         width: 160,
-        valueFormatter: (params) => {
-            if (!params.value) return '';
-            return new Date(params.value).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+        valueFormatter: (value) => {
+            if (!value) return '';
+            return new Date(value).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
         }
     },
     {
