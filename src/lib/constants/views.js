@@ -115,15 +115,27 @@ export const DEFAULT_VIEWS = {
   },
 
 
-  // 4) INSTALLATION : tableau unique “all/suivi” avec ta présélection
-  installation: {
+  // 4) SUIVI DE PROJET
+  suivi: {
     all: [
       "sel", "detail", "zone", "piece", "produit",
-      "statut_cotes", "statut_preparation", "statut_confection", "statut_pose",
-      "commentaire_confection",
-      "photo"
+      "statut_cotes", "statut_prepa", "statut_conf", "statut_pose",
+      "photos_sur_site", "croquis"
     ],
   },
+
+  // 5) BPP (Bon de Préparation)
+  bpp: {
+    all: [
+      "sel", "detail", "zone", "piece", "produit",
+      "type_confection", "paire_ou_un_seul_pan",
+      "largeur_mecanisme", "croisement", "retour_gauche", "retour_droit", "type_retours",
+      "type_mecanisme", "modele_mecanisme", "couleur_mecanisme",
+      "nombre_glisseur", "supports_embouts_meca",
+      "type_pose", "statut_prepa",
+      "photos_sur_site", "croquis"
+    ]
+  }
 };
 
 // ================== ETAPES / STAGES POUR L'ECRAN PRODUCTION ==================
@@ -132,6 +144,7 @@ export const STAGES = [
   { key: "dashboard", label: "Dashboard" },
   { key: "prise", label: "Prise de cotes" },
   { key: "bpf", label: "BPF" },
+  { key: "bpp", label: "BPP" },
   { key: "etiquettes", label: "Étiquettes" },
-  { key: "installation", label: "Installation" },
+  { key: "suivi", label: "Suivi de projet" },
 ];

@@ -352,15 +352,15 @@ export function ProductionProjectScreen({ project, onBack, onUpdateProjectRows }
         </>
       )}
 
-      {stage === "installation" && (
+      {stage === "suivi" && (
         <div style={cardStyle}>
-          <div style={cardHeaderStyle}>Suivi Installation / Livraison</div>
+          <div style={cardHeaderStyle}>Suivi de projet</div>
           <MinuteGrid
-            rows={filteredRows} // Installation shows all rows usually? Yes, tableKey='all'
+            rows={filteredRows} // Suivi shows all rows
             onRowsChange={handleRowsChangeInstallation}
             schema={schema}
             enableCellFormulas={true}
-            initialVisibilityModel={getVisibilityModel('installation', 'all', schema)}
+            initialVisibilityModel={getVisibilityModel('suivi', 'all', schema)}
             onDuplicateRow={handleDuplicateRow}
           />
         </div>
@@ -407,6 +407,20 @@ export function ProductionProjectScreen({ project, onBack, onUpdateProjectRows }
             />
           </div>
         </>
+      )}
+
+      {stage === "bpp" && (
+        <div style={cardStyle}>
+          <div style={cardHeaderStyle}>BPP (Préparation Mécanismes)</div>
+          <MinuteGrid
+            rows={filteredRows}
+            onRowsChange={handleRowsChangeInstallation} // reuse generic updater
+            schema={schema}
+            enableCellFormulas={true}
+            initialVisibilityModel={getVisibilityModel('bpp', 'all', schema)}
+            onDuplicateRow={handleDuplicateRow}
+          />
+        </div>
       )}
     </div>
   );
