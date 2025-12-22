@@ -82,6 +82,10 @@ export function schemaToGridCols(schema, enableCellFormulas = false, onOpenDetai
       }
     };
 
+    if (col.valueFormatter) {
+      gridCol.valueFormatter = col.valueFormatter;
+    }
+
     // Generic support for functional editable (isCellEditable)
     if (typeof col.editable === 'function') {
       gridCol.isCellEditable = col.editable;
@@ -108,7 +112,7 @@ export function schemaToGridCols(schema, enableCellFormulas = false, onOpenDetai
     }
 
     // Link Catalog to 'tissu', 'doublure', 'produit' columns (including variations like tissu_deco_1)
-    const isCatalogColumn = col.key.includes('tissu') || col.key.includes('doublure') || (col.key === 'produit' && !col.hidden);
+    const isCatalogColumn = col.key.includes('tissu') || col.key.includes('doublure') || col.key.includes('passementerie') || (col.key === 'produit' && !col.hidden);
     // Explicit Mechanism columns
     const isMechColumn = ['modele_mecanisme', 'nom_tringle', 'rail'].includes(col.key);
 
@@ -119,8 +123,11 @@ export function schemaToGridCols(schema, enableCellFormulas = false, onOpenDetai
       let filteredCatalog = catalog;
 
       if (col.key.includes('tissu') || col.key.includes('doublure')) {
-        // Tissues: Only Tissu or Confection
+        // Tissues: Only Tissu or Confection (Doublure/Inter are Tissues)
         filteredCatalog = catalog.filter(item => ['Tissu', 'Confection'].includes(item.category));
+      } else if (col.key.includes('passementerie')) {
+        // Passementerie
+        filteredCatalog = catalog.filter(item => ['Passementerie'].includes(item.category));
       } else if (isMechColumn) {
         // Mechanisms: Only Rail, Tringle, Mecanisme
         filteredCatalog = catalog.filter(item => ['Rail', 'Tringle', 'Mecanisme', 'Mécanisme'].includes(item.category));
@@ -171,11 +178,14 @@ export function schemaToGridCols(schema, enableCellFormulas = false, onOpenDetai
     const isPriceTerm = ['prix', 'montant', 'total', 'cout', 'pa', 'pv', 'transport', 'livraison'].some(term => col.key.toLowerCase().includes(term));
     const isRepas = col.key === 'nb_repas';
     const isHeuresPrepa = col.key === 'heures_prepa'; // "prepa" contains "pa"
+    const isML = col.key.startsWith('ml_'); // Exclude ML columns
+    const isNb = col.key.startsWith('nb_');
 
-    const isPrice = isPriceTerm && !isRepas && !isHeuresPrepa;
+    const isPrice = isPriceTerm && !isRepas && !isHeuresPrepa && !isML && !isNb;
 
     // Remove type check to ensure coverage
-    if (isPrice) {
+    // Priority: Explicit formatter > Auto Formatting
+    if (isPrice && !col.valueFormatter && !gridCol.valueFormatter) {
       const formatter = (value) => {
         if (value === null || value === undefined || value === '') return '';
         const n = Number(value);

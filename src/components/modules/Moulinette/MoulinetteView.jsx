@@ -291,6 +291,7 @@ function HoursTable({ details }) {
         { label: 'Confection', ...details.confection },
         { label: 'Pose', ...details.pose },
         { label: 'Préparation', ...details.prepa },
+        { label: 'Déplacements (Trajet)', ...details.deplacements },
     ].filter(r => r.total > 0);
 
     if (items.length === 0) return <div style={{ color: '#9ca3af', fontStyle: 'italic' }}>Aucune heure saisie.</div>;

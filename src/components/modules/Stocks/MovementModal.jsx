@@ -18,6 +18,8 @@ const USERS = ['Aristide LENGLART', 'Atelier 1', 'Atelier 2', 'Logistique'];
 const LOCATIONS = ['Réception', 'Étagère A1', 'Étagère A2', 'Étagère B1', 'Zone Coupe', 'Zone Expédition'];
 // Mock Units
 const UNITS = ['ml', 'm2', 'u', 'kg', 'rouleau'];
+// Categories
+const CATEGORIES = ['Tissu', 'Rail', 'Tringle', 'Mécanisme', 'Mercerie', 'Divers'];
 
 export default function MovementModal({ open, onClose, type, onSave, projects = [] }) {
     const isIN = type === 'IN';
@@ -34,7 +36,8 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
         project: '',
         location: '',
         notes: '',
-        laize: '' // Added laize field
+        laize: '',
+        category: ''
     });
 
     // Compute Source Options from PRODUCTION Projects
@@ -84,18 +87,26 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
     const handleSourceChange = (event, newValue) => {
         setSelectedItem(newValue);
         if (newValue) {
+            // Auto-determine Category
+            let autoCat = 'Divers';
+            if (newValue.type === 'FABRIC') autoCat = 'Tissu';
+            else if (newValue.type === 'HW') {
+                // Try to detect keywords in name
+                const lower = newValue.productName.toLowerCase();
+                if (lower.includes('rail')) autoCat = 'Rail';
+                else if (lower.includes('tringle')) autoCat = 'Tringle';
+                else if (lower.includes('store') || lower.includes('mecanisme')) autoCat = 'Mécanisme';
+                else autoCat = 'Rail'; // Default HW
+            }
+
             setFormData(prev => ({
                 ...prev,
                 product: newValue.productName,
                 ref: newValue.ref,
                 project: newValue.project,
-                unit: newValue.type === 'FABRIC' ? 'ml' : 'u', // Auto-set unit
-                // Store Laize in a technical field or notes if needed?
-                // User said "Remplir : Laize" but formData doesn't have Laize field visible in previous code.
-                // I should add Laize/Dim field to form or put it in description.
-                // Assuming "ref" or checking if I should add a field.
-                // User: "Remplir : Produit, Ref, Projet, Laize (Champ critique)"
-                laize: newValue.dim || ''
+                unit: newValue.type === 'FABRIC' ? 'ml' : 'u',
+                laize: newValue.dim || '',
+                category: autoCat
             }));
         }
     };
@@ -113,7 +124,8 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
         onSave({
             ...formData,
             user,
-            qty: Number(formData.qty)
+            qty: Number(formData.qty),
+            date: new Date().toISOString()
         });
     };
 
@@ -173,6 +185,19 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
                 </Box>
 
                 <Grid container spacing={2}>
+                    {/* NEW CATEGORY FIELD */}
+                    <Grid item xs={12} sm={4}>
+                        <TextField
+                            select
+                            fullWidth
+                            label="Catégorie / Type"
+                            value={formData.category}
+                            onChange={(e) => handleChange('category', e.target.value)}
+                        >
+                            {CATEGORIES.map(c => <MenuItem key={c} value={c}>{c}</MenuItem>)}
+                        </TextField>
+                    </Grid>
+
                     <Grid item xs={12} sm={8}>
                         <TextField
                             fullWidth
@@ -236,14 +261,23 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
                     </Grid>
 
                     <Grid item xs={12}>
-                        <TextField
-                            fullWidth
-                            label="Projet Affecté"
-                            value={formData.project}
-                            onChange={(e) => handleChange('project', e.target.value)}
-                            placeholder="Laisser vide pour stock libre"
-                            helperText="Ex: Mme DUPONT - Salon"
-                        />
+                        <Grid item xs={12}>
+                            <Autocomplete
+                                freeSolo
+                                options={projects.map(p => p.name || p.nom_dossier || `Projet #${p.id}`)}
+                                value={formData.project}
+                                onChange={(event, newValue) => handleChange('project', newValue)}
+                                onInputChange={(event, newInputValue) => handleChange('project', newInputValue)}
+                                renderInput={(params) => (
+                                    <TextField
+                                        {...params}
+                                        label="Projet Affecté"
+                                        placeholder="Ex: Mme DUPONT ou Saisie libre"
+                                        helperText="Sélectionnez un projet existant ou saisissez un nom libre."
+                                    />
+                                )}
+                            />
+                        </Grid>
                     </Grid>
                 </Grid>
 

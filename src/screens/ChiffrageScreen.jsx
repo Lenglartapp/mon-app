@@ -178,6 +178,12 @@ function ChiffrageScreen({ minuteId, minutes, setMinutes, onBack }) {
     const extrasTotal = (extraRows || []).reduce((s, r) => s + toNum(r?.prix_total), 0);
     const depTotal = (depRows || []).reduce((s, r) => s + toNum(r?.prix_total), 0);
 
+    // Add Logistics Hours to Installation Hours (Recap)
+    (depRows || []).forEach(r => {
+      // "Heures Facturées" from Logistics counts as Installation/Pose hours for valid KPI
+      hPose += toNum(r?.heures_facturees);
+    });
+
     // NEW LOGIC: Total = Production + Logistique (Exclude Extras/Commissions)
     const offreTotale = caTotal + depTotal;
 
@@ -372,6 +378,11 @@ function ChiffrageScreen({ minuteId, minutes, setMinutes, onBack }) {
                   const newLines = all.filter(r => r.produit !== "Autre Dépense" && r.produit !== "Déplacement");
                   const newExtras = all.filter(r => r.produit === "Autre Dépense");
                   const newDeps = all.filter(r => r.produit === "Déplacement");
+
+                  // IMMEDIATE STATE UPDATE for Real-Time Header
+                  setRows(newLines);
+                  setExtraRows(newExtras);
+                  setDepRows(newDeps);
 
                   updateMinute({
                     lines: newLines,

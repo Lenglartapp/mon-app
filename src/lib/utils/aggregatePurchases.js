@@ -48,21 +48,25 @@ export function aggregatePurchases(minutes = []) {
             };
 
             // 1. Tissus & Confection (Tissu 1, Tissu 2, Doublure, Inter, Passementerie 1 & 2)
+            // STRICT KEYS MAPPING
             const fabricFields = [
-                { key: 'tissu_deco1', mlKey: 'ml_tissu_deco1', paKey: 'pa_tissu_deco1' },
-                { key: 'tissu_deco2', mlKey: 'ml_tissu_deco2', paKey: 'pa_tissu_deco2' },
+                { key: 'tissu_deco1', mlKey: 'ml_tissu1', paKey: 'pa_tissu1' },
+                { key: 'tissu_deco2', mlKey: 'ml_tissu2', paKey: 'pa_tissu2' },
                 { key: 'doublure', mlKey: 'ml_doublure', paKey: 'pa_doublure' },
-                { key: 'inter_doublure', mlKey: 'ml_inter', paKey: 'pa_inter' },
-                { key: 'passementerie1', mlKey: 'ml_passementerie1', paKey: 'pa_passementerie1' },
-                { key: 'passementerie2', mlKey: 'ml_passementerie2', paKey: 'pa_passementerie2' }, // Assuming pa_passementerie2 exists
+                { key: 'interdoublure', mlKey: 'ml_interdoublure', paKey: 'pa_interdoublure' }, // Was 'inter_doublure'
+                { key: 'passementerie1', mlKey: 'ml_pass1', paKey: 'pa_pass1' }, // Was ml_passementerie1
+                { key: 'passementerie2', mlKey: 'ml_pass2', paKey: 'pa_pass2' },
             ];
 
             fabricFields.forEach(f => {
                 const name = row[f.key];
                 if (name) {
-                    // ML is usually per unit, so multiply by row quantity
+                    // ML is usually per unit in schema, so multiply by row quantity
                     const ml = toNum(row[f.mlKey]) * qtyRow;
-                    // PA is usually per unit too
+                    // PA is usually TOTAL PA in schema line? Let's check recomputeRow.
+                    // recomputeRow: next.pa_tissu1 = next.ml_tissu1 * (p1.pa || 0); <- This is TOTAL PA for the line (unit).
+                    // Wait, recomputeRow: next.pa_tissu1 is per UNIT (it uses next.ml_tissu1 which is per unit).
+                    // So we must multiply by qtyRow.
                     const pa = toNum(row[f.paKey]) * qtyRow;
 
                     add(aggs.tissus, name, name, ml, pa, { ...baseSource, type: 'Tissu', detail: f.key });
@@ -76,8 +80,9 @@ export function aggregatePurchases(minutes = []) {
             if (typeMeca) {
                 if (typeMeca === 'Rail' && modelMeca) {
                     // Rails -> Linear Meters (ml)
-                    const widthCm = toNum(row.l_mecanisme);
+                    const widthCm = toNum(row.largeur_mecanisme); // Was l_mecanisme
                     const ml = (widthCm / 100) * qtyRow;
+                    // pa_mecanisme in recomputeRow is (width/100 * price). So it is per unit.
                     const pa = toNum(row.pa_mecanisme) * qtyRow;
 
                     add(aggs.rails, modelMeca, modelMeca, ml, pa, { ...baseSource, type: 'Rail', detail: `${widthCm} cm` });
@@ -87,19 +92,20 @@ export function aggregatePurchases(minutes = []) {
                     const pa = toNum(row.pa_mecanisme) * qtyRow;
                     const key = `${typeMeca} - ${modelMeca}`;
 
-                    add(aggs.mecanismes, key, key, qty, pa, { ...baseSource, type: typeMeca, detail: row.dim_mecanisme });
+                    add(aggs.mecanismes, key, key, qty, pa, { ...baseSource, type: typeMeca, detail: row.modele_mecanisme });
                 }
             }
 
             // 3. Sous-traitance (Pose & Confection)
-            const stPoseCost = toNum(row.stpausepa);
+            // Schema keys: st_pose_pa, st_conf_pa
+            const stPoseCost = toNum(row.st_pose_pa);
             if (stPoseCost > 0) {
-                add(aggs.sous_traitance, 'Sous-traitance Pose', 'Sous-traitance Pose', 1, stPoseCost, { ...baseSource, type: 'ST Pose', detail: 'Forfait Pose' });
+                add(aggs.sous_traitance, 'Sous-traitance Pose', 'Sous-traitance Pose', qtyRow, stPoseCost * qtyRow, { ...baseSource, type: 'ST Pose', detail: 'Forfait Pose' });
             }
 
-            const stConfCost = toNum(row.stconfpa);
+            const stConfCost = toNum(row.st_conf_pa);
             if (stConfCost > 0) {
-                add(aggs.sous_traitance, 'Sous-traitance Confection', 'Sous-traitance Confection', 1, stConfCost, { ...baseSource, type: 'ST Conf', detail: 'Forfait Confection' });
+                add(aggs.sous_traitance, 'Sous-traitance Confection', 'Sous-traitance Confection', qtyRow, stConfCost * qtyRow, { ...baseSource, type: 'ST Conf', detail: 'Forfait Confection' });
             }
         });
     });
