@@ -86,6 +86,11 @@ export function schemaToGridCols(schema, enableCellFormulas = false, onOpenDetai
       gridCol.valueFormatter = col.valueFormatter;
     }
 
+    // MAP valueGetter (Critical Fix)
+    if (col.valueGetter) {
+      gridCol.valueGetter = col.valueGetter;
+    }
+
     // Generic support for functional editable (isCellEditable)
     if (typeof col.editable === 'function') {
       gridCol.isCellEditable = col.editable;
