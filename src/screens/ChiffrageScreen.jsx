@@ -1,4 +1,5 @@
 import React from "react";
+import { useLocation } from "react-router-dom";
 
 import MinuteEditor from "../components/MinuteEditor";
 import ShoppingListScreen from "../screens/ShoppingListScreen";
@@ -28,6 +29,9 @@ const toNum = (v) => {
 };
 
 function ChiffrageScreen({ minuteId, minutes, setMinutes, onBack }) {
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const targetRowId = searchParams.get('rowId');
   // ──────────────────────────────────────────────────────────────
   // Droits
   // ──────────────────────────────────────────────────────────────
@@ -516,6 +520,7 @@ function ChiffrageScreen({ minuteId, minutes, setMinutes, onBack }) {
                 formulaCtx={formulaCtx}
                 schema={schema}
                 setSchema={setSchema}
+                targetRowId={targetRowId}
               />
             </div>
           </div>

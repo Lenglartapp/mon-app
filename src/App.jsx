@@ -1,6 +1,6 @@
 // src/App.jsx
 import React, { useState, useEffect } from "react";
-import { BrowserRouter, useLocation } from "react-router-dom";
+import { BrowserRouter, useLocation, useNavigate } from "react-router-dom";
 import { S } from "./lib/constants/ui";
 import { ProjectListScreen } from "./screens/ProjectListScreen";
 import { ProductionProjectScreen } from "./screens/ProductionProjectScreen";
@@ -71,19 +71,38 @@ function AppShell() {
 
   // Sync URL -> State (Deep Linking)
   const location = useLocation();
+  const navigate = useNavigate();
+
   useEffect(() => {
-    // Check for Chiffrage Link: /chiffrage/MINUTE_ID
-    // Support both simple path and query param just in case
-    const match = location.pathname.match(/\/chiffrage\/([a-zA-Z0-9_-]+)/);
-    if (match && match[1]) {
-      // Only switch if we are not already there
-      if (screen !== "chiffrage" || openMinuteId !== match[1]) {
-        console.log("Deep link detected:", match[1]);
-        setOpenMinuteId(match[1]);
+    // 1. Check for Chiffrage Link: /chiffrage/MINUTE_ID
+    const matchChiffrage = location.pathname.match(/\/chiffrage\/([a-zA-Z0-9_-]+)/);
+    if (matchChiffrage && matchChiffrage[1]) {
+      if (screen !== "chiffrage" || openMinuteId !== matchChiffrage[1]) {
+        console.log("Deep link detected (Chiffrage):", matchChiffrage[1]);
+        setOpenMinuteId(matchChiffrage[1]);
         setScreen("chiffrage");
       }
+      return;
     }
-  }, [location.pathname]);
+
+    // 2. Check for Project Link: /project/PROJECT_ID
+    const matchProject = location.pathname.match(/\/project\/([a-zA-Z0-9_-]+)/);
+    if (matchProject && matchProject[1]) {
+      const pId = matchProject[1];
+      // Only switch if needed
+      if ((screen !== "project") || (current?.id !== pId)) {
+        console.log("Deep link detected (Project):", pId);
+        // Find project in state
+        const targetProject = (projects || []).find(p => String(p.id) === String(pId));
+        if (targetProject) {
+          setCurrent(targetProject);
+          setScreen("project");
+        } else {
+          console.warn("Project deep link found but project not found in state:", pId);
+        }
+      }
+    }
+  }, [location.pathname, projects]);
 
   // Notifications State (Now from Context)
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
@@ -115,7 +134,10 @@ function AppShell() {
 
   // Persistence
   const handleUpdateProjectRows = (projectId, newRows) => {
-    setProjects((prev) => (prev || []).map((p) => (p.id === projectId ? { ...p, rows: newRows } : p)));
+    setProjects((prev) => (prev || []).map((p) => {
+      if (!p) return p;
+      return p.id === projectId ? { ...p, rows: newRows } : p;
+    }));
     setCurrent((cur) => (cur && cur.id === projectId ? { ...cur, rows: newRows } : cur));
   };
 
@@ -168,15 +190,16 @@ function AppShell() {
           minutes={
             can(currentUser, "chiffrage.view")
               ? quoteMinutes.map(m => {
+                if (!m) return null; // Safety check
                 let tables = {};
                 try {
                   const raw = localStorage.getItem(`chiffrage.${m.id}.tables`);
                   if (raw) tables = JSON.parse(raw);
                 } catch (e) {
-                  console.warn("Impossible de lire tables pour minute", m.id, e);
+                  console.warn("Impossible de lire tables pour minute", m?.id, e);
                 }
                 return { ...m, tables };
-              })
+              }).filter(Boolean) // Remove nulls
               : []
           }
         />
@@ -207,7 +230,7 @@ function AppShell() {
         <ProductionProjectScreen
           project={current}
           onBack={() => setScreen("prodList")}
-          onUpdateProjectRows={(newRows) => handleUpdateProjectRows(current.id, newRows)}
+          onUpdateProjectRows={(newRows) => handleUpdateProjectRows(current?.id, newRows)}
         />
       )}
 

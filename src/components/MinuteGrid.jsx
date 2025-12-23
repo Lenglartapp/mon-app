@@ -91,29 +91,38 @@ export default function MinuteGrid({
     onAdd,
     initialVisibilityModel = {},
     onImportExcel,
-    onDuplicateRow, // <--- New Prop
+    onDuplicateRow,
     hideCroquis = false,
+    minuteId,    // <--- NEW
+    projectId,   // <--- NEW for Production
 }) {
     const [rowSelectionModel, setRowSelectionModel] = useState([]);
-    const [detailRow, setDetailRow] = useState(null);
+    const [detailRowId, setDetailRowId] = useState(null);
     const [columnVisibilityModel, setColumnVisibilityModel] = useState(initialVisibilityModel);
+
+
+
+    // Derived state: Find the row object corresponding to the selected ID
+    const detailRow = useMemo(() => {
+        if (!detailRowId || !rows) return null;
+        return rows.find(r => String(r.id) === String(detailRowId)) || null;
+    }, [rows, detailRowId]);
 
     const handleOpenDetail = useCallback((row) => {
         console.log('Opening detail for row object:', row);
-        setDetailRow(row);
+        setDetailRowId(row.id);
     }, []);
 
     const handleCloseDetail = useCallback(() => {
-        setDetailRow(null);
+        setDetailRowId(null);
     }, []);
 
     const handleDetailRowChange = useCallback((updatedRow) => {
         // Update the row in the main rows array
         const newRows = rows.map(r => r.id === updatedRow.id ? updatedRow : r);
         onRowsChange(newRows);
-        // Also update the local detail row to reflect changes immediately in the panel
-        setDetailRow(updatedRow);
-    }, [rows, onRowsChange, setDetailRow]);
+        // detailRow is re-derived automatically
+    }, [rows, onRowsChange]);
 
     const handleAddRow = useCallback(() => {
         if (onAdd) {
@@ -335,6 +344,8 @@ export default function MinuteGrid({
                 schema={schema}
                 onRowChange={handleDetailRowChange}
                 columnVisibilityModel={columnVisibilityModel}
+                minuteId={minuteId} // <--- Pass down
+                projectId={projectId}
             />
 
 

@@ -70,7 +70,11 @@ export default function NotificationMenu({ anchorEl, open, onClose }) {
                         onClick={() => {
                             if (!n.read) markAsRead(n.id);
                             if (n.targetLink) {
-                                navigate(n.targetLink);
+                                // REMOVE DEEP LINK PARAMETERS to prevent navigation loops
+                                // We keep the path (/project/ID) but drop (?rowId=...)
+                                // CONSTANT NAVIGATION LOOP FIX: Disabled navigation entirely per user request.
+                                // const cleanLink = n.targetLink.split('?')[0];
+                                // navigate(cleanLink);
                                 onClose(); // Close menu
                             }
                         }}

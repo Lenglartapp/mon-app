@@ -28,11 +28,7 @@ import { parseRideauxImport } from '../utils/importRideaux';
 const EMPTY_CTX = {};
 
 // ================ MinuteEditor (tableau des lignes d'une minute) =================
-function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formulaCtx = EMPTY_CTX, schema = [], setSchema }) {
-  // STATELESS REFACTOR: Computed directly from props
-  // STATELESS REFACTOR: Computed directly from props & Sanitized
-
-
+function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formulaCtx = EMPTY_CTX, schema = [], setSchema, targetRowId }) {
 
   // Catalog State
   const [catalog, setCatalog] = React.useState(minute?.catalog || [
@@ -99,9 +95,6 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
   const handleSettingsChange = (newSettings) => {
     onChangeMinute?.({ ...minute, settings: newSettings, updatedAt: Date.now() });
   };
-
-  // Note: Resync useEffect removed (Stateless)
-
 
   // Modules actifs (fallback = tous cochés pour anciennes minutes)
   const mods = minute?.modules || { rideau: true, store: true, decor: true };
@@ -221,11 +214,6 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
     setSelDeplacement([]);
     setSelAutre([]);
   };
-
-  // Remonte au parent à chaque modif
-  // React.useEffect(() => {
-  //   onChangeMinute?.({ ...minute, lines: rows, updatedAt: Date.now() });
-  // }, [rows]);
 
   // Extract Rail Options from Catalog for Dropdown
   const railOptions = React.useMemo(() => {
@@ -354,6 +342,8 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
                 catalog={catalog}
                 onDuplicateRow={handleDuplicateRow}
                 hideCroquis={true}
+                minuteId={minute?.id}
+                targetRowId={targetRowId}
               />
             </div>
           </div>
@@ -377,6 +367,8 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
                 catalog={catalog}
                 onDuplicateRow={handleDuplicateRow}
                 hideCroquis={true}
+                minuteId={minute?.id}
+                targetRowId={targetRowId}
               />
             </div>
           </div>
@@ -406,6 +398,8 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
               onImportExcel={handleImportExcel}
               onDuplicateRow={handleDuplicateRow}
               hideCroquis={true}
+              minuteId={minute?.id}
+              targetRowId={targetRowId}
             />
           </div>
         )}
@@ -430,6 +424,8 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
               initialVisibilityModel={DECORS_DEFAULT_VISIBILITY}
               onDuplicateRow={handleDuplicateRow}
               hideCroquis={true}
+              minuteId={minute?.id}
+              targetRowId={targetRowId}
             />
           </div>
         )}
@@ -454,6 +450,8 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
               initialVisibilityModel={STORES_DEFAULT_VISIBILITY}
               onDuplicateRow={handleDuplicateRow}
               hideCroquis={true}
+              minuteId={minute?.id}
+              targetRowId={targetRowId}
             />
           </div>
         )}
