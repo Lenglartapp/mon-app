@@ -63,7 +63,6 @@ export const CHIFFRAGE_SCHEMA_DEP = [
     type: "number",
     width: 120,
     readOnly: true,
-    valueGetter: (params) => params.row.total_price || 0,
     valueFormatter: (value) => new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(value)
   }
 ];

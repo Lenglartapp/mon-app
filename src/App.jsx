@@ -1,5 +1,6 @@
 // src/App.jsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { BrowserRouter, useLocation } from "react-router-dom";
 import { S } from "./lib/constants/ui";
 import { ProjectListScreen } from "./screens/ProjectListScreen";
 import { ProductionProjectScreen } from "./screens/ProductionProjectScreen";
@@ -67,6 +68,22 @@ function AppShell() {
   const [quoteMinutes, setQuoteMinutes] = useLocalStorage("chiffrage.minutes", []);
   const [openMinuteId, setOpenMinuteId] = useState(null);
   const [inventoryRows, setInventoryRows] = useLocalStorage("inventory.rows", []);
+
+  // Sync URL -> State (Deep Linking)
+  const location = useLocation();
+  useEffect(() => {
+    // Check for Chiffrage Link: /chiffrage/MINUTE_ID
+    // Support both simple path and query param just in case
+    const match = location.pathname.match(/\/chiffrage\/([a-zA-Z0-9_-]+)/);
+    if (match && match[1]) {
+      // Only switch if we are not already there
+      if (screen !== "chiffrage" || openMinuteId !== match[1]) {
+        console.log("Deep link detected:", match[1]);
+        setOpenMinuteId(match[1]);
+        setScreen("chiffrage");
+      }
+    }
+  }, [location.pathname]);
 
   // Notifications State (Now from Context)
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
@@ -215,12 +232,14 @@ function AppShell() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <ActivityProvider>
-        <NotificationProvider>
-          <AppShell />
-        </NotificationProvider>
-      </ActivityProvider>
-    </AuthProvider>
+    <BrowserRouter>
+      <AuthProvider>
+        <ActivityProvider>
+          <NotificationProvider>
+            <AppShell />
+          </NotificationProvider>
+        </ActivityProvider>
+      </AuthProvider>
+    </BrowserRouter>
   );
 }
