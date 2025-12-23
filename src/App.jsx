@@ -115,7 +115,10 @@ function AppShell() {
 
   // Persistence
   const handleUpdateProjectRows = (projectId, newRows) => {
-    setProjects((prev) => (prev || []).map((p) => (p.id === projectId ? { ...p, rows: newRows } : p)));
+    setProjects((prev) => (prev || []).map((p) => {
+      if (!p) return p;
+      return p.id === projectId ? { ...p, rows: newRows } : p;
+    }));
     setCurrent((cur) => (cur && cur.id === projectId ? { ...cur, rows: newRows } : cur));
   };
 

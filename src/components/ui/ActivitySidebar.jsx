@@ -373,11 +373,16 @@ const ActivitySidebar = React.memo(({ activities = [], onAddComment, currentUser
         currentUsers.forEach(u => {
             const mentionTag = '@' + u.name.split(' ')[0];
             if (text.includes(mentionTag)) {
+                let targetLink = window.location.pathname;
+                if (minuteId) {
+                    targetLink = `/chiffrage/${minuteId}?rowId=${rowId}`;
+                }
+
                 addNotification(
                     "Mention",
                     `${u.name}, vous avez été mentionné`,
                     "info",
-                    `/chiffrage/${minuteId}?rowId=${rowId}`
+                    targetLink
                 );
             }
         });
