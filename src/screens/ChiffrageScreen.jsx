@@ -15,8 +15,11 @@ import { computeFormulas, preserveManualAfterCompute } from "../lib/formulas/com
 import { uid } from "../lib/utils/uid";
 
 // 🔐 droits
-import { useAuth } from "../auth";
+// 🔐 droits
+import { useAuth, ROLES } from "../auth";
 import { can } from "../lib/authz";
+import { useNotifications } from "../contexts/NotificationContext";
+import { Dialog, DialogTitle, DialogContent, DialogActions, TextField, Button } from "@mui/material";
 
 // Helper for numeric conversion
 const toNum = (v) => {
@@ -28,7 +31,11 @@ function ChiffrageScreen({ minuteId, minutes, setMinutes, onBack }) {
   // ──────────────────────────────────────────────────────────────
   // Droits
   // ──────────────────────────────────────────────────────────────
+  // ──────────────────────────────────────────────────────────────
+  // Droits
+  // ──────────────────────────────────────────────────────────────
   const { currentUser } = useAuth();
+  const { addNotification } = useNotifications();
   const canView = can(currentUser, "chiffrage.view");
   const canEdit = can(currentUser, "chiffrage.edit");
 
@@ -263,6 +270,9 @@ function ChiffrageScreen({ minuteId, minutes, setMinutes, onBack }) {
   // Onglets
   // ──────────────────────────────────────────────────────────────
   const [activeTab, setActiveTab] = React.useState("minutes");
+  // Rejection Dialog State
+  const [rejectDialogOpen, setRejectDialogOpen] = React.useState(false);
+  const [rejectReason, setRejectReason] = React.useState("");
 
   if (!minute) {
     return (
@@ -315,12 +325,118 @@ function ChiffrageScreen({ minuteId, minutes, setMinutes, onBack }) {
         </div>
 
         <div style={{ display: "flex", gap: 8, justifySelf: "end", alignItems: "center" }}>
-          <div style={{ opacity: 0.7 }}>
+          {/* VALIDATION DEBUG (TEMPORARY) */}
+          <div style={{ fontSize: 9, color: '#6b7280', background: '#f9fafb', padding: "2px 6px", borderRadius: 4, marginRight: 10, textAlign: 'right' }}>
+            Status: <b>{minute?.status || 'DRAFT'}</b> | Total: <b>{Math.round(recap?.offreTotale || 0)}€</b><br />
+            User: <b>{currentUser?.name}</b> | Admin: <b>{currentUser?.role === ROLES.ADMIN ? 'YES' : 'NO'}</b>
+          </div>
+
+          {/* VALIDATION BUTTONS */}
+          {(() => {
+            const status = minute?.status || "DRAFT";
+            const total = recap?.offreTotale || 0;
+            const isAdmin = currentUser?.role === ROLES.ADMIN;
+            // Link to navigate back to this minute
+            const selfLink = `/chiffrage/${minute.id}`;
+
+            if (status === "PENDING_APPROVAL") {
+              if (isAdmin) {
+                return (
+                  <>
+                    <button
+                      onClick={() => {
+                        updateMinute({ status: "VALIDATED" });
+                        addNotification("Validation", `Le devis "${name}" a été validé.`, "success", selfLink);
+                      }}
+                      style={{ ...S.smallBtn, background: '#10b981', color: 'white', borderColor: '#10b981' }}
+                    >
+                      ✅ Accepter
+                    </button>
+                    <button
+                      onClick={() => setRejectDialogOpen(true)}
+                      style={{ ...S.smallBtn, background: '#ef4444', color: 'white', borderColor: '#ef4444' }}
+                    >
+                      ❌ Refuser
+                    </button>
+                  </>
+                );
+              } else {
+                return <button disabled style={{ ...S.smallBtn, background: '#e5e7eb', color: '#9ca3af', cursor: 'not-allowed' }}>⏳ En attente...</button>;
+              }
+            }
+
+            if (status === "VALIDATED") {
+              return <span style={{ color: '#10b981', fontWeight: 600, fontSize: 13, marginRight: 8 }}>✅ Validé</span>;
+            }
+
+            // DRAFT
+            if (total > 20000 && !isAdmin) {
+              return (
+                <button
+                  onClick={() => {
+                    updateMinute({ status: "PENDING_APPROVAL" });
+                    addNotification("Validation Requise", `Devis "${name}" (${Math.round(total)}€) soumis pour validation.`, "warning", selfLink);
+                  }}
+                  style={{ ...S.smallBtn, background: '#f59e0b', color: 'white', borderColor: '#f59e0b' }}
+                >
+                  ✋ Valider ({Math.round(total / 1000)}k€)
+                </button>
+              );
+            } else {
+              return (
+                <button
+                  onClick={() => {
+                    updateMinute({ status: "VALIDATED" });
+                    addNotification("Validé", `Devis "${name}" validé.`, "success", selfLink);
+                  }}
+                  style={{ ...S.smallBtn, background: '#3b82f6', color: 'white', borderColor: '#3b82f6' }}
+                >
+                  💾 Valider
+                </button>
+              );
+            }
+          })()}
+
+          <div style={{ opacity: 0.7, fontSize: 11, marginLeft: 8 }}>
             {new Date(minute.updatedAt || minute.createdAt || Date.now()).toLocaleString("fr-FR")}
           </div>
 
         </div>
       </div>
+
+      {/* REJECTION DIALOG */}
+      <Dialog open={rejectDialogOpen} onClose={() => setRejectDialogOpen(false)}>
+        <DialogTitle>Motif du refus</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Raison du rejet"
+            type="text"
+            fullWidth
+            multiline
+            rows={3}
+            value={rejectReason}
+            onChange={(e) => setRejectReason(e.target.value)}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setRejectDialogOpen(false)}>Annuler</Button>
+          <Button
+            onClick={() => {
+              const selfLink = window.location.pathname + window.location.search;
+              updateMinute({ status: "DRAFT", notes: (minute.notes || "") + `\n[REFUS] ${new Date().toLocaleDateString()}: ${rejectReason}` });
+              addNotification("Refus", `Devis "${name}" refusé : ${rejectReason}`, "error", selfLink);
+              setRejectReason("");
+              setRejectDialogOpen(false);
+            }}
+            color="error"
+            variant="contained"
+          >
+            Confirmer le rejet
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Onglets */}
       <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>

@@ -9,35 +9,44 @@ export const useNotifications = () => {
 };
 
 export const NotificationProvider = ({ children }) => {
-    const [notifications, setNotifications] = useState([
-        { id: 1, user: "Thomas BONNET", avatar: "", action: "vous a assigné sur le projet", target: "Chantier Dupont", time: "Il y a 10 min", read: false },
-        { id: 2, user: "Pauline DURAND", avatar: "", action: "a ajouté un commentaire sur", target: "Rideaux Salon", time: "Il y a 2h", read: false },
-        { id: 3, user: "Système", avatar: "SYS", action: "Le BPF du projet Villa Sud est validé", target: "", time: "Hier", read: true },
-        { id: 4, user: "Atelier", avatar: "PROD", action: "a terminé la fabrication de", target: "Store Banne", time: "Il y a 2 jours", read: true }
-    ]);
+    // Initial state could be empty or fetched from local storage/API
+    const [notifications, setNotifications] = useState([]);
 
-    const addNotification = (notif) => {
+    const addNotification = React.useCallback((title, message, type = "info", targetLink = null) => {
         const newNotif = {
             id: Date.now(),
+            user: "Système", // Default sender if not specified
+            avatar: "SYS",
+            action: title,
+            target: message,
             time: "À l'instant",
             read: false,
-            ...notif
+            type,
+            targetLink
         };
         setNotifications(prev => [newNotif, ...prev]);
-    };
+    }, []);
 
-    const markAsRead = (id) => {
+    const markAsRead = React.useCallback((id) => {
         setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
-    };
+    }, []);
 
-    const markAllAsRead = () => {
+    const markAllAsRead = React.useCallback(() => {
         setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-    };
+    }, []);
 
     const unreadCount = notifications.filter(n => !n.read).length;
 
+    const value = React.useMemo(() => ({
+        notifications,
+        unreadCount,
+        addNotification,
+        markAsRead,
+        markAllAsRead
+    }), [notifications, unreadCount, addNotification, markAsRead, markAllAsRead]);
+
     return (
-        <NotificationContext.Provider value={{ notifications, unreadCount, addNotification, markAsRead, markAllAsRead }}>
+        <NotificationContext.Provider value={value}>
             {children}
         </NotificationContext.Provider>
     );

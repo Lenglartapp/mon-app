@@ -22,14 +22,13 @@ export default function LineDetailPanel({ open, onClose, row, schema, onRowChang
     // New Sidebar Toggle State
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
-    if (!row) return null;
+    const activities = React.useMemo(() => row?.comments || [], [row?.comments]);
 
-    const handleFieldChange = (key, value) => {
+    const handleFieldChange = React.useCallback((key, value) => {
+        if (!row) return;
         const oldRow = { ...row };
         const newRow = { ...row, [key]: value };
 
-        // Generate Logs
-        // Note: For text fields using BlurTextField, this runs only on commit, so oldRow vs newRow is valid diff.
         const newLogs = generateRowLogs(oldRow, newRow, schema);
 
         let updatedComments = newRow.comments || [];
@@ -38,11 +37,10 @@ export default function LineDetailPanel({ open, onClose, row, schema, onRowChang
         }
 
         onRowChange({ ...newRow, comments: updatedComments });
-    };
+    }, [row, onRowChange, schema]);
 
-
-
-    const handleAddComment = (text) => {
+    const handleAddComment = React.useCallback((text) => {
+        if (!row) return;
         const newActivity = {
             id: Date.now(),
             text: text,
@@ -53,9 +51,9 @@ export default function LineDetailPanel({ open, onClose, row, schema, onRowChang
 
         const updatedComments = row.comments ? [...row.comments, newActivity] : [newActivity];
         onRowChange({ ...row, comments: updatedComments });
-    };
+    }, [row, onRowChange]);
 
-    const activities = row.comments || [];
+    if (!row) return null;
 
     return (
         <Dialog

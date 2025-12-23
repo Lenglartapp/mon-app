@@ -23,7 +23,11 @@ export function generateRowLogs(oldRow, newRow, schema) {
 
             logs.push({
                 id: Date.now() + Math.random(),
-                text: `Modif ${label} : ${formatVal(oldVal)} ➔ ${formatVal(newVal)}`,
+                // Text fallback for legacy support or simple display
+                text: `Modif ${label}`,
+                field: label,
+                from: formatVal(oldVal),
+                to: formatVal(newVal),
                 createdAt: new Date().toISOString(),
                 type: 'log',
                 author: 'System'
