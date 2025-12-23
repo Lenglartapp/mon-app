@@ -358,7 +358,7 @@ const ActivityList = React.memo(({ activities, currentUser }) => {
 
 // --- MAIN COMPONENT ---
 
-const ActivitySidebar = React.memo(({ activities = [], onAddComment, currentUser = "Moi", isOpen }) => {
+const ActivitySidebar = React.memo(({ activities = [], onAddComment, currentUser = "Moi", isOpen, minuteId, rowId }) => {
     const { addNotification } = useNotifications();
     const { users } = useAuth();
 
@@ -377,13 +377,13 @@ const ActivitySidebar = React.memo(({ activities = [], onAddComment, currentUser
                     "Mention",
                     `${u.name}, vous avez été mentionné`,
                     "info",
-                    window.location.pathname
+                    `/chiffrage/${minuteId}?rowId=${rowId}`
                 );
             }
         });
 
         onAddComment(text);
-    }, [users, onAddComment, addNotification]); // Dependencies are now stable
+    }, [users, onAddComment, addNotification, minuteId, rowId]); // Dependencies are now stable
 
     if (!isOpen) return null;
 

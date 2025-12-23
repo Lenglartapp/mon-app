@@ -1,5 +1,5 @@
 // src/components/MinuteGrid.jsx
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import {
     DataGrid,
     GridToolbarContainer,
@@ -91,12 +91,25 @@ export default function MinuteGrid({
     onAdd,
     initialVisibilityModel = {},
     onImportExcel,
-    onDuplicateRow, // <--- New Prop
+    onDuplicateRow,
     hideCroquis = false,
+    minuteId,    // <--- NEW
+    targetRowId  // <--- NEW
 }) {
     const [rowSelectionModel, setRowSelectionModel] = useState([]);
     const [detailRow, setDetailRow] = useState(null);
     const [columnVisibilityModel, setColumnVisibilityModel] = useState(initialVisibilityModel);
+
+    // Auto-open detail if targetRowId matches a row
+    useEffect(() => {
+        if (targetRowId && rows) {
+            const target = rows.find(r => String(r.id) === String(targetRowId));
+            if (target) {
+                console.log("Auto-opening row from URL:", target);
+                setDetailRow(target);
+            }
+        }
+    }, [targetRowId, rows]);
 
     const handleOpenDetail = useCallback((row) => {
         console.log('Opening detail for row object:', row);
@@ -335,6 +348,7 @@ export default function MinuteGrid({
                 schema={schema}
                 onRowChange={handleDetailRowChange}
                 columnVisibilityModel={columnVisibilityModel}
+                minuteId={minuteId} // <--- Pass down
             />
 
 
