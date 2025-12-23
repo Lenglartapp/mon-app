@@ -1,5 +1,6 @@
 // src/screens/ProductionProjectScreen.jsx
 import React, { useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { COLORS, S } from "../lib/constants/ui.js";
 
 import MinuteGrid from "../components/MinuteGrid.jsx"; // Replaces DataTable
@@ -52,6 +53,9 @@ export function ProductionProjectScreen({ project, onBack, onUpdateProjectRows }
   const { currentUser } = useAuth();
   const canEditProd = can(currentUser, "production.edit");
   const seeChiffrage = can(currentUser, "chiffrage.view");
+
+
+
 
   // Lignes locales (édition fluide)
   const initialRows = useMemo(
@@ -334,6 +338,8 @@ export function ProductionProjectScreen({ project, onBack, onUpdateProjectRows }
               initialVisibilityModel={getVisibilityModel('prise', 'rideaux', schema)}
               onAdd={() => handleAddRow("Rideau")}
               onDuplicateRow={handleDuplicateRow}
+              projectId={project?.id}
+
             />
           </div>
 
@@ -347,6 +353,8 @@ export function ProductionProjectScreen({ project, onBack, onUpdateProjectRows }
               initialVisibilityModel={getVisibilityModel('prise', 'stores', schema)}
               onAdd={() => handleAddRow("Store Bateau")}
               onDuplicateRow={handleDuplicateRow}
+              projectId={project?.id}
+
             />
           </div>
         </>
@@ -362,6 +370,8 @@ export function ProductionProjectScreen({ project, onBack, onUpdateProjectRows }
             enableCellFormulas={true}
             initialVisibilityModel={getVisibilityModel('suivi', 'all', schema)}
             onDuplicateRow={handleDuplicateRow}
+            projectId={project?.id}
+
           />
         </div>
       )}
@@ -378,6 +388,8 @@ export function ProductionProjectScreen({ project, onBack, onUpdateProjectRows }
               initialVisibilityModel={getVisibilityModel('bpf', 'rideaux', schema)}
               onAdd={() => handleAddRow("Rideau")}
               onDuplicateRow={handleDuplicateRow}
+              projectId={project?.id}
+
             />
           </div>
 
@@ -391,6 +403,8 @@ export function ProductionProjectScreen({ project, onBack, onUpdateProjectRows }
               initialVisibilityModel={getVisibilityModel('bpf', 'decors', schema)}
               onAdd={() => handleAddRow("Décor de lit")}
               onDuplicateRow={handleDuplicateRow}
+              projectId={project?.id}
+
             />
           </div>
 
@@ -404,6 +418,8 @@ export function ProductionProjectScreen({ project, onBack, onUpdateProjectRows }
               initialVisibilityModel={getVisibilityModel('bpf', 'stores', schema)}
               onAdd={() => handleAddRow("Store Bateau")}
               onDuplicateRow={handleDuplicateRow}
+              projectId={project?.id}
+
             />
           </div>
         </>
@@ -419,6 +435,8 @@ export function ProductionProjectScreen({ project, onBack, onUpdateProjectRows }
             enableCellFormulas={true}
             initialVisibilityModel={getVisibilityModel('bpp', 'all', schema)}
             onDuplicateRow={handleDuplicateRow}
+            projectId={project?.id}
+
           />
         </div>
       )}

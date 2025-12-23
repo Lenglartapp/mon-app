@@ -358,7 +358,7 @@ const ActivityList = React.memo(({ activities, currentUser }) => {
 
 // --- MAIN COMPONENT ---
 
-const ActivitySidebar = React.memo(({ activities = [], onAddComment, currentUser = "Moi", isOpen, minuteId, rowId }) => {
+const ActivitySidebar = React.memo(({ activities = [], onAddComment, currentUser = "Moi", isOpen, minuteId, projectId, rowId }) => {
     const { addNotification } = useNotifications();
     const { users } = useAuth();
 
@@ -376,6 +376,8 @@ const ActivitySidebar = React.memo(({ activities = [], onAddComment, currentUser
                 let targetLink = window.location.pathname;
                 if (minuteId) {
                     targetLink = `/chiffrage/${minuteId}?rowId=${rowId}`;
+                } else if (projectId) {
+                    targetLink = `/project/${projectId}?rowId=${rowId}`;
                 }
 
                 addNotification(
@@ -388,7 +390,7 @@ const ActivitySidebar = React.memo(({ activities = [], onAddComment, currentUser
         });
 
         onAddComment(text);
-    }, [users, onAddComment, addNotification, minuteId, rowId]); // Dependencies are now stable
+    }, [users, onAddComment, addNotification, minuteId, projectId, rowId]); // Dependencies are now stable
 
     if (!isOpen) return null;
 

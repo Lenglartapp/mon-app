@@ -18,7 +18,7 @@ import { generateRowLogs } from '../lib/utils/logUtils';
 
 import BlurTextField from './ui/BlurTextField';
 
-export default function LineDetailPanel({ open, onClose, row, schema, onRowChange, columnVisibilityModel, minuteId }) {
+export default function LineDetailPanel({ open, onClose, row, schema, onRowChange, columnVisibilityModel, minuteId, projectId }) {
     // New Sidebar Toggle State
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
@@ -240,6 +240,7 @@ export default function LineDetailPanel({ open, onClose, row, schema, onRowChang
                         onAddComment={handleAddComment}
                         currentUser="Aristide LENGLART"
                         minuteId={minuteId}
+                        projectId={projectId}
                         rowId={row.id}
                     />
                 )}

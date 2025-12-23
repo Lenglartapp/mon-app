@@ -1,5 +1,5 @@
 // src/components/MinuteGrid.jsx
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
     DataGrid,
     GridToolbarContainer,
@@ -94,39 +94,35 @@ export default function MinuteGrid({
     onDuplicateRow,
     hideCroquis = false,
     minuteId,    // <--- NEW
-    targetRowId  // <--- NEW
+    projectId,   // <--- NEW for Production
 }) {
     const [rowSelectionModel, setRowSelectionModel] = useState([]);
-    const [detailRow, setDetailRow] = useState(null);
+    const [detailRowId, setDetailRowId] = useState(null);
     const [columnVisibilityModel, setColumnVisibilityModel] = useState(initialVisibilityModel);
 
-    // Auto-open detail if targetRowId matches a row
-    useEffect(() => {
-        if (targetRowId && rows) {
-            const target = rows.find(r => String(r.id) === String(targetRowId));
-            if (target) {
-                console.log("Auto-opening row from URL:", target);
-                setDetailRow(target);
-            }
-        }
-    }, [targetRowId, rows]);
+
+
+    // Derived state: Find the row object corresponding to the selected ID
+    const detailRow = useMemo(() => {
+        if (!detailRowId || !rows) return null;
+        return rows.find(r => String(r.id) === String(detailRowId)) || null;
+    }, [rows, detailRowId]);
 
     const handleOpenDetail = useCallback((row) => {
         console.log('Opening detail for row object:', row);
-        setDetailRow(row);
+        setDetailRowId(row.id);
     }, []);
 
     const handleCloseDetail = useCallback(() => {
-        setDetailRow(null);
+        setDetailRowId(null);
     }, []);
 
     const handleDetailRowChange = useCallback((updatedRow) => {
         // Update the row in the main rows array
         const newRows = rows.map(r => r.id === updatedRow.id ? updatedRow : r);
         onRowsChange(newRows);
-        // Also update the local detail row to reflect changes immediately in the panel
-        setDetailRow(updatedRow);
-    }, [rows, onRowsChange, setDetailRow]);
+        // detailRow is re-derived automatically
+    }, [rows, onRowsChange]);
 
     const handleAddRow = useCallback(() => {
         if (onAdd) {
@@ -349,6 +345,7 @@ export default function MinuteGrid({
                 onRowChange={handleDetailRowChange}
                 columnVisibilityModel={columnVisibilityModel}
                 minuteId={minuteId} // <--- Pass down
+                projectId={projectId}
             />
 
 
