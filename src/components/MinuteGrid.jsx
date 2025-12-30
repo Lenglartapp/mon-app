@@ -1,5 +1,6 @@
 // src/components/MinuteGrid.jsx
 import React, { useState, useCallback, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
     DataGrid,
     GridToolbarContainer,
@@ -95,6 +96,7 @@ export default function MinuteGrid({
     hideCroquis = false,
     minuteId,    // <--- NEW
     projectId,   // <--- NEW for Production
+    onRowClick   // <--- NEW for Panel Opening
 }) {
     const [rowSelectionModel, setRowSelectionModel] = useState([]);
     const [detailRowId, setDetailRowId] = useState(null);
@@ -102,26 +104,20 @@ export default function MinuteGrid({
 
 
 
-    // Derived state: Find the row object corresponding to the selected ID
-    const detailRow = useMemo(() => {
-        if (!detailRowId || !rows) return null;
-        return rows.find(r => String(r.id) === String(detailRowId)) || null;
-    }, [rows, detailRowId]);
+    const navigate = useNavigate();
 
+    // Navigate to nested route for detail
     const handleOpenDetail = useCallback((row) => {
-        console.log('Opening detail for row object:', row);
-        setDetailRowId(row.id);
-    }, []);
-
-    const handleCloseDetail = useCallback(() => {
-        setDetailRowId(null);
-    }, []);
+        console.log('Click row:', row.id);
+        if (onRowClick) {
+            onRowClick(row.id); // On appelle le parent (ChiffrageScreen ou ProductionProjectScreen)
+        }
+    }, [onRowClick]);
 
     const handleDetailRowChange = useCallback((updatedRow) => {
         // Update the row in the main rows array
         const newRows = rows.map(r => r.id === updatedRow.id ? updatedRow : r);
         onRowsChange(newRows);
-        // detailRow is re-derived automatically
     }, [rows, onRowsChange]);
 
     const handleAddRow = useCallback(() => {
@@ -337,18 +333,6 @@ export default function MinuteGrid({
                     }
                 }}
             />
-            <LineDetailPanel
-                open={!!detailRow}
-                onClose={handleCloseDetail}
-                row={detailRow}
-                schema={schema}
-                onRowChange={handleDetailRowChange}
-                columnVisibilityModel={columnVisibilityModel}
-                minuteId={minuteId} // <--- Pass down
-                projectId={projectId}
-            />
-
-
         </div>
     );
 }

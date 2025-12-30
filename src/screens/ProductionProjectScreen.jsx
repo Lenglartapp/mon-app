@@ -1,12 +1,12 @@
-// src/screens/ProductionProjectScreen.jsx
 import React, { useEffect, useMemo, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { COLORS, S } from "../lib/constants/ui.js";
 
 import MinuteGrid from "../components/MinuteGrid.jsx"; // Replaces DataTable
 import DashboardTiles from "../components/DashboardTiles.jsx";
 import EtiquettesSection from "../components/EtiquettesSection.jsx";
 import MinutesScreen from "./MinutesScreen.jsx";
+import LineDetailPanel from "../components/LineDetailPanel";
 
 import { computeFormulas, preserveManualAfterCompute } from "../lib/formulas/compute";
 import { SCHEMA_64 } from "../lib/schemas/production.js";
@@ -39,30 +39,52 @@ const getVisibilityModel = (viewKey, tableKey, schema) => {
   return model;
 };
 
+
 /**
  * Props:
- *  - project
- *  - onBack()
- *  - onUpdateProjectRows(newRows)  ← pour persister dans App.jsx
+ * - projects (Full List from App)
+ * - onBack()
+ * - onUpdateProjectRows(projectId, newRows)
  */
-export function ProductionProjectScreen({ project, onBack, onUpdateProjectRows }) {
+export function ProductionProjectScreen({ project: propProject, projects, onBack, onUpdateProjectRows, highlightRowId }) {
+  const { projectId: urlProjectId } = useParams();
+
+  // Find Project (SECURED)
+  const project = useMemo(() => {
+    // Mode Télécommande (Prioritaire)
+    if (propProject) return propProject;
+
+    // Mode URL (Backup / Deep Link)
+    if (!projects || !urlProjectId) return null;
+
+    return projects.find(p => p && String(p.id) === String(urlProjectId));
+  }, [propProject, projects, urlProjectId]);
+
   const [stage, setStage] = useState("dashboard");
   const [search, setSearch] = useState("");
   const [schema, setSchema] = useState(SCHEMA_64);
+  const [openedRowId, setOpenedRowId] = useState(null);
+
+  // Auto-open panel from notification
+  useEffect(() => {
+    if (highlightRowId) {
+      setOpenedRowId(highlightRowId);
+    }
+  }, [highlightRowId]);
 
   const { currentUser } = useAuth();
   const canEditProd = can(currentUser, "production.edit");
   const seeChiffrage = can(currentUser, "chiffrage.view");
 
-
-
-
   // Lignes locales (édition fluide)
   const initialRows = useMemo(
     () => computeFormulas(project?.rows || [], SCHEMA_64),
-    [project?.id]
+    [project?.id] // Re-compute ONLY if project ID changes
   );
   const [rows, setRows] = useState(initialRows);
+
+  // Calculate opened row
+  const openedRow = useMemo(() => (rows || []).find(r => r.id === openedRowId), [rows, openedRowId]);
 
   // Recompute local si le schéma change
   useEffect(() => {
@@ -79,12 +101,8 @@ export function ProductionProjectScreen({ project, onBack, onUpdateProjectRows }
     );
   }, [project?.id]);
 
-  // 🧷 Persister côté parent à chaque modif locale
-  useEffect(() => {
-    if (typeof onUpdateProjectRows === "function") {
-      onUpdateProjectRows(rows);
-    }
-  }, [rows, onUpdateProjectRows]);
+  // NOTE: On a supprimé le useEffect de persistance automatique pour éviter les boucles infinies.
+  // La sauvegarde se fait maintenant manuellement dans chaque handler ("Immediate Save").
 
   // Filtrage global (Search)
   const filteredRows = useMemo(() => {
@@ -102,43 +120,36 @@ export function ProductionProjectScreen({ project, onBack, onUpdateProjectRows }
 
   const recomputeAll = (arr) => (arr || []).map(r => recomputeRow(r, schema));
 
-  // Helper to handle both updates and deletions for a specific subset
+  // --- HANDLERS (AVEC SAUVEGARDE IMMÉDIATE) ---
+
+  // 1. handleSubsetChange
   const handleSubsetChange = (newSubsetRows, filterRegex) => {
     if (!canEditProd) return;
 
-    setRows((allRows) => {
-      // 1. Identify which rows in 'allRows' belong to this subset (based on the *same* logic used to filter them originally)
-      // This is crucial: we must know what the "previous state" of this subset was implies.
-      // Actually, we can just check which rows in 'allRows' MATCH the filter, and assume they form the 'oldSubset'.
-      const oldSubset = allRows.filter(r => filterRegex.test(String(r.produit || "")));
+    // Calcul basé sur l'état 'rows' actuel
+    const allRows = rows;
+    const oldSubset = allRows.filter(r => filterRegex.test(String(r.produit || "")));
+    const newIds = new Set(newSubsetRows.map(r => r.id));
+    const deletedIds = new Set(oldSubset.filter(r => !newIds.has(r.id)).map(r => r.id));
+    const updatedMap = new Map(newSubsetRows.map(r => [r.id, r]));
 
-      // 2. Identify Deleted IDs
-      // IDs present in oldSubset but MISSING in newSubsetRows
-      const newIds = new Set(newSubsetRows.map(r => r.id));
-      const deletedIds = new Set(oldSubset.filter(r => !newIds.has(r.id)).map(r => r.id));
+    const updatedAllRows = allRows
+      .filter(r => !deletedIds.has(r.id))
+      .map(r => {
+        if (updatedMap.has(r.id)) {
+          return recomputeRow(updatedMap.get(r.id), schema);
+        }
+        return r;
+      });
 
-      // 3. Prepare Updates
-      const updatedMap = new Map(newSubsetRows.map(r => [r.id, r]));
-
-      // 4. Reconstruct 'allRows'
-      // - Keep rows NOT in the subset (preserve them)
-      // - If in subset and Deleted -> Remove
-      // - If in subset and Kept -> Update if needed
-      return allRows
-        .filter(r => !deletedIds.has(r.id)) // Remove deleted
-        .map(r => {
-          if (updatedMap.has(r.id)) {
-            // It's in the new subset, update it
-            return recomputeRow(updatedMap.get(r.id), schema);
-          }
-          return r; // Not in the subset (or not updated, but wait, if it's in oldSubset and not in newIds, it was deleted above)
-        });
-    });
+    // Mise à jour LOCALE et DISTANTE immédiate
+    setRows(updatedAllRows);
+    if (project?.id) {
+      onUpdateProjectRows(project.id, updatedAllRows);
+    }
   };
 
   const mergeChildRowsFor = (tableKey) => {
-    // Legacy wrapper if needed, or replace usages directly
-    // Define regex based on tableKey
     let regex = /./; // Default
     if (tableKey === "rideaux") regex = /rideau|voilage/i;
     else if (tableKey === "stores") regex = /store/i;
@@ -147,14 +158,30 @@ export function ProductionProjectScreen({ project, onBack, onUpdateProjectRows }
     return (nr) => handleSubsetChange(nr, regex);
   };
 
+  // 2. handleRowsChangeInstallation
   const handleRowsChangeInstallation = (nr) => {
     if (!canEditProd) return;
-    // Installation view (all rows), so we can just replace 'rows' but safely
-    // Actually simpler: just recompute all new rows
-    setRows(nr.map(r => recomputeRow(r, schema)));
+    const computed = nr.map(r => recomputeRow(r, schema));
+
+    setRows(computed);
+    if (project?.id) {
+      onUpdateProjectRows(project.id, computed);
+    }
   };
 
-  // --- ADD ROW LOGIC ---
+  // 3. handleDetailUpdate
+  const handleDetailUpdate = (updatedRow) => {
+    if (!canEditProd) return;
+    const newRows = rows.map(r => r.id === updatedRow.id ? recomputeRow(updatedRow, schema) : r);
+
+    setRows(newRows);
+    if (project?.id) {
+      onUpdateProjectRows(project.id, newRows);
+    }
+  };
+
+
+  // 4. handleAddRow
   const handleAddRow = (produitType = "Rideau") => {
     const newRow = {
       id: uid(),
@@ -171,18 +198,23 @@ export function ProductionProjectScreen({ project, onBack, onUpdateProjectRows }
       type_confection: "Wave 80",
       created: Date.now()
     };
-
     const computed = recomputeRow(newRow, schema);
-    setRows(prev => [...prev, computed]);
+
+    const newRows = [...rows, computed];
+
+    setRows(newRows);
+    if (project?.id) {
+      onUpdateProjectRows(project.id, newRows);
+    }
   };
 
+  // 5. handleDuplicateRow
   const handleDuplicateRow = (id) => {
     if (!canEditProd) return;
     const index = rows.findIndex(r => r.id === id);
     if (index === -1) return;
 
     const source = rows[index];
-    // Deep copy / safe copy
     const newRow = {
       ...source,
       id: uid(),
@@ -190,12 +222,15 @@ export function ProductionProjectScreen({ project, onBack, onUpdateProjectRows }
       comments: source.comments ? [...source.comments] : []
     };
 
-    // Recompute to ensure consistency
     const computed = recomputeRow(newRow, schema);
 
     const newRows = [...rows];
     newRows.splice(index + 1, 0, computed);
+
     setRows(newRows);
+    if (project?.id) {
+      onUpdateProjectRows(project.id, newRows);
+    }
   };
 
   // --- TEST DATA SEEDING ---
@@ -218,9 +253,10 @@ export function ProductionProjectScreen({ project, onBack, onUpdateProjectRows }
         largeur: 160, hauteur: 50, type_confection: "Jeté de lit",
         tissu_deco1: "Velours Bleu"
       }
-    ].map(r => recomputeRow(r, schema)); // Ensure formulas computed
+    ].map(r => recomputeRow(r, schema));
 
     setRows(prev => [...prev, ...testRows]);
+    // Note: Test data seeding update is usually implicit, but could be forced if desired
     alert("Données de test ajoutées ! (3 lignes)");
   };
 
@@ -245,6 +281,10 @@ export function ProductionProjectScreen({ project, onBack, onUpdateProjectRows }
     marginBottom: 24,
     overflow: 'hidden' // Ensure header border respects radius
   };
+
+  if (!project && projects && projects.length > 0) {
+    return <div style={{ padding: 40, textAlign: 'center', color: '#666' }}>Chargement du projet en cours...</div>;
+  }
 
   return (
     <div style={S.contentWide}>
@@ -339,6 +379,7 @@ export function ProductionProjectScreen({ project, onBack, onUpdateProjectRows }
               onAdd={() => handleAddRow("Rideau")}
               onDuplicateRow={handleDuplicateRow}
               projectId={project?.id}
+              onRowClick={(id) => setOpenedRowId(id)}
 
             />
           </div>
@@ -354,6 +395,7 @@ export function ProductionProjectScreen({ project, onBack, onUpdateProjectRows }
               onAdd={() => handleAddRow("Store Bateau")}
               onDuplicateRow={handleDuplicateRow}
               projectId={project?.id}
+              onRowClick={(id) => setOpenedRowId(id)}
 
             />
           </div>
@@ -371,6 +413,7 @@ export function ProductionProjectScreen({ project, onBack, onUpdateProjectRows }
             initialVisibilityModel={getVisibilityModel('suivi', 'all', schema)}
             onDuplicateRow={handleDuplicateRow}
             projectId={project?.id}
+            onRowClick={(id) => setOpenedRowId(id)}
 
           />
         </div>
@@ -389,6 +432,7 @@ export function ProductionProjectScreen({ project, onBack, onUpdateProjectRows }
               onAdd={() => handleAddRow("Rideau")}
               onDuplicateRow={handleDuplicateRow}
               projectId={project?.id}
+              onRowClick={(id) => setOpenedRowId(id)}
 
             />
           </div>
@@ -404,6 +448,7 @@ export function ProductionProjectScreen({ project, onBack, onUpdateProjectRows }
               onAdd={() => handleAddRow("Décor de lit")}
               onDuplicateRow={handleDuplicateRow}
               projectId={project?.id}
+              onRowClick={(id) => setOpenedRowId(id)}
 
             />
           </div>
@@ -419,6 +464,7 @@ export function ProductionProjectScreen({ project, onBack, onUpdateProjectRows }
               onAdd={() => handleAddRow("Store Bateau")}
               onDuplicateRow={handleDuplicateRow}
               projectId={project?.id}
+              onRowClick={(id) => setOpenedRowId(id)}
 
             />
           </div>
@@ -436,9 +482,22 @@ export function ProductionProjectScreen({ project, onBack, onUpdateProjectRows }
             initialVisibilityModel={getVisibilityModel('bpp', 'all', schema)}
             onDuplicateRow={handleDuplicateRow}
             projectId={project?.id}
+            onRowClick={(id) => setOpenedRowId(id)}
 
           />
         </div>
+      )}
+
+      {openedRow && (
+        <LineDetailPanel
+          open={true}
+          onClose={() => setOpenedRowId(null)}
+          row={openedRow}
+          schema={schema}
+          onRowChange={handleDetailUpdate}
+          projectId={project?.id}
+          minuteId={null} // Pas de minuteId en prod global
+        />
       )}
     </div>
   );

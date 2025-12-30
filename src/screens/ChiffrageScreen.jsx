@@ -6,6 +6,7 @@ import ShoppingListScreen from "../screens/ShoppingListScreen";
 import DataTable from "../components/DataTable";
 import MoulinetteView from "../components/modules/Moulinette/MoulinetteView";
 import DashboardSummary from "../components/DashboardSummary";
+import LineDetailPanel from "../components/LineDetailPanel";
 
 import { COLORS, S } from "../lib/constants/ui";
 import { CHIFFRAGE_SCHEMA } from "../lib/schemas/chiffrage";
@@ -28,11 +29,17 @@ const toNum = (v) => {
   return Number.isFinite(n) ? n : 0;
 };
 
-function ChiffrageScreen({ minuteId, minutes, setMinutes, onBack }) {
-  const location = useLocation();
-  const searchParams = new URLSearchParams(location.search);
-  const targetRowId = searchParams.get('rowId');
+function ChiffrageScreen({ minuteId, minutes, setMinutes, onBack, highlightRowId }) {
+  // On utilise un state local pour l'ouverture des panneaux, plus simple et sûr
+  const [localRowId, setLocalRowId] = React.useState(null);
   // ──────────────────────────────────────────────────────────────
+  // Auto-open panel from notification
+  React.useEffect(() => {
+    if (highlightRowId) {
+      setLocalRowId(highlightRowId);
+    }
+  }, [highlightRowId]);
+
   // Droits
   // ──────────────────────────────────────────────────────────────
   // ──────────────────────────────────────────────────────────────
@@ -60,7 +67,7 @@ function ChiffrageScreen({ minuteId, minutes, setMinutes, onBack }) {
   // Données minute
   // ──────────────────────────────────────────────────────────────
   const minute = React.useMemo(
-    () => (minutes || []).find((m) => m.id === minuteId),
+    () => (minutes || []).find((m) => String(m.id) === String(minuteId)),
     [minutes, minuteId]
   );
 
@@ -89,8 +96,8 @@ function ChiffrageScreen({ minuteId, minutes, setMinutes, onBack }) {
   const formulaCtx = React.useMemo(() => ({
     paramsMap,
     totalCA: baseCA,
-    settings: minute?.settings,
-    catalog: minute?.catalog
+    settings: minute?.settings || {},
+    catalog: minute?.catalog || [] // Sécurité ici : évite le crash si catalog est undefined
   }), [paramsMap, baseCA, minute?.settings, minute?.catalog]);
 
   const [rows, setRows] = React.useState(() =>
@@ -154,6 +161,27 @@ function ChiffrageScreen({ minuteId, minutes, setMinutes, onBack }) {
     setExtraRows(next);
     updateMinute({ extraDepenses: next });
   };
+
+  // Recherche de la ligne à ouvrir dans toutes les listes
+  const openedRow = React.useMemo(() => {
+    if (!localRowId) return null;
+    const all = [...(rows || []), ...(depRows || []), ...(extraRows || [])];
+    return all.find(r => r.id === localRowId);
+  }, [localRowId, rows, depRows, extraRows]);
+
+  // Handler pour mettre à jour la ligne depuis le panneau
+  const handleDetailUpdate = (updatedRow) => {
+    if (!canEdit) return;
+    // On détecte dans quelle liste se trouve la ligne pour la mettre à jour au bon endroit
+    if ((rows || []).some(r => r.id === updatedRow.id)) {
+      handleRowsChange(rows.map(r => r.id === updatedRow.id ? updatedRow : r));
+    } else if ((depRows || []).some(r => r.id === updatedRow.id)) {
+      handleDepRowsChange(depRows.map(r => r.id === updatedRow.id ? updatedRow : r));
+    } else if ((extraRows || []).some(r => r.id === updatedRow.id)) {
+      handleExtraRowsChange(extraRows.map(r => r.id === updatedRow.id ? updatedRow : r));
+    }
+  };
+
   // ——— Helpers récap CA ———
 
   const nfEur0 = React.useMemo(
@@ -340,8 +368,9 @@ function ChiffrageScreen({ minuteId, minutes, setMinutes, onBack }) {
             const status = minute?.status || "DRAFT";
             const total = recap?.offreTotale || 0;
             const isAdmin = currentUser?.role === ROLES.ADMIN;
-            // Link to navigate back to this minute
-            const selfLink = `/chiffrage/${minute.id}`;
+
+            // --- CORRECTION : On définit une ACTION (Objet) et non un LIEN (String) ---
+            const navAction = { screen: "chiffrage", id: minute.id };
 
             if (status === "PENDING_APPROVAL") {
               if (isAdmin) {
@@ -350,7 +379,7 @@ function ChiffrageScreen({ minuteId, minutes, setMinutes, onBack }) {
                     <button
                       onClick={() => {
                         updateMinute({ status: "VALIDATED" });
-                        addNotification("Validation", `Le devis "${name}" a été validé.`, "success", selfLink);
+                        addNotification("Validation", `Le devis "${name}" a été validé.`, "success", navAction);
                       }}
                       style={{ ...S.smallBtn, background: '#10b981', color: 'white', borderColor: '#10b981' }}
                     >
@@ -379,7 +408,7 @@ function ChiffrageScreen({ minuteId, minutes, setMinutes, onBack }) {
                 <button
                   onClick={() => {
                     updateMinute({ status: "PENDING_APPROVAL" });
-                    addNotification("Validation Requise", `Devis "${name}" (${Math.round(total)}€) soumis pour validation.`, "warning", selfLink);
+                    addNotification("Validation Requise", `Devis "${name}" (${Math.round(total)}€) soumis pour validation.`, "warning", navAction);
                   }}
                   style={{ ...S.smallBtn, background: '#f59e0b', color: 'white', borderColor: '#f59e0b' }}
                 >
@@ -391,7 +420,7 @@ function ChiffrageScreen({ minuteId, minutes, setMinutes, onBack }) {
                 <button
                   onClick={() => {
                     updateMinute({ status: "VALIDATED" });
-                    addNotification("Validé", `Devis "${name}" validé.`, "success", selfLink);
+                    addNotification("Validé", `Devis "${name}" validé.`, "success", navAction);
                   }}
                   style={{ ...S.smallBtn, background: '#3b82f6', color: 'white', borderColor: '#3b82f6' }}
                 >
@@ -428,9 +457,11 @@ function ChiffrageScreen({ minuteId, minutes, setMinutes, onBack }) {
           <Button onClick={() => setRejectDialogOpen(false)}>Annuler</Button>
           <Button
             onClick={() => {
-              const selfLink = window.location.pathname + window.location.search;
+              // navAction is defined in the parent scope, but we need to pass it here.
+              // Re-defining it here for clarity within the dialog callback scope
+              const action = { screen: "chiffrage", id: minute.id };
               updateMinute({ status: "DRAFT", notes: (minute.notes || "") + `\n[REFUS] ${new Date().toLocaleDateString()}: ${rejectReason}` });
-              addNotification("Refus", `Devis "${name}" refusé : ${rejectReason}`, "error", selfLink);
+              addNotification("Refus", `Devis "${name}" refusé : ${rejectReason}`, "error", action);
               setRejectReason("");
               setRejectDialogOpen(false);
             }}
@@ -520,7 +551,8 @@ function ChiffrageScreen({ minuteId, minutes, setMinutes, onBack }) {
                 formulaCtx={formulaCtx}
                 schema={schema}
                 setSchema={setSchema}
-                targetRowId={targetRowId}
+                targetRowId={localRowId}
+                onRowClick={(id) => setLocalRowId(id)}
               />
             </div>
           </div>
@@ -534,6 +566,18 @@ function ChiffrageScreen({ minuteId, minutes, setMinutes, onBack }) {
           <MoulinetteView rows={rows} extraRows={extraRows} depRows={depRows} />
         )
       }
+
+      {openedRow && (
+        <LineDetailPanel
+          open={true}
+          onClose={() => setLocalRowId(null)}
+          row={openedRow}
+          schema={schema} // Ou un schéma générique si besoin
+          onRowChange={handleDetailUpdate}
+          minuteId={minute.id}
+          projectId={null}
+        />
+      )}
     </div >
   );
 }

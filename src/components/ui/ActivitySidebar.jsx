@@ -368,29 +368,35 @@ const ActivitySidebar = React.memo(({ activities = [], onAddComment, currentUser
     // Memoized Handler to prevent re-renders of CommentInputForm
     const handleSendMessage = useCallback((text) => {
         // Trigger Notifications for Mentions
-        // Use a local variable to avoid dependency on 'users' changing identity if not memoized upstream (though it is)
         const currentUsers = users || [];
+
         currentUsers.forEach(u => {
+            // On cherche le prénom (ex: @Aristide)
             const mentionTag = '@' + u.name.split(' ')[0];
+
             if (text.includes(mentionTag)) {
-                let targetLink = window.location.pathname;
+                // --- CORRECTION : On crée un objet ACTION, pas un lien ---
+                let navAction = null;
+
                 if (minuteId) {
-                    targetLink = `/chiffrage/${minuteId}?rowId=${rowId}`;
+                    navAction = { screen: "chiffrage", id: minuteId, rowId: rowId };
                 } else if (projectId) {
-                    targetLink = `/project/${projectId}?rowId=${rowId}`;
+                    navAction = { screen: "project", id: projectId, rowId: rowId };
                 }
 
-                addNotification(
-                    "Mention",
-                    `${u.name}, vous avez été mentionné`,
-                    "info",
-                    targetLink
-                );
+                if (navAction) {
+                    addNotification(
+                        "Mention",
+                        `${currentUser} vous a mentionné`,
+                        "info",
+                        navAction // On passe l'objet pour la télécommande
+                    );
+                }
             }
         });
 
         onAddComment(text);
-    }, [users, onAddComment, addNotification, minuteId, projectId, rowId]); // Dependencies are now stable
+    }, [users, onAddComment, addNotification, minuteId, projectId, currentUser]);
 
     if (!isOpen) return null;
 

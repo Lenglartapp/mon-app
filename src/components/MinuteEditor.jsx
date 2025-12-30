@@ -28,7 +28,7 @@ import { parseRideauxImport } from '../utils/importRideaux';
 const EMPTY_CTX = {};
 
 // ================ MinuteEditor (tableau des lignes d'une minute) =================
-function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formulaCtx = EMPTY_CTX, schema = [], setSchema, targetRowId }) {
+function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formulaCtx = EMPTY_CTX, schema = [], setSchema, targetRowId, onRowClick }) {
 
   // Catalog State
   const [catalog, setCatalog] = React.useState(minute?.catalog || [
@@ -344,6 +344,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
                 hideCroquis={true}
                 minuteId={minute?.id}
                 targetRowId={targetRowId}
+                onRowClick={onRowClick}
               />
             </div>
           </div>
@@ -369,6 +370,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
                 hideCroquis={true}
                 minuteId={minute?.id}
                 targetRowId={targetRowId}
+                onRowClick={onRowClick}
               />
             </div>
           </div>
@@ -400,6 +402,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
               hideCroquis={true}
               minuteId={minute?.id}
               targetRowId={targetRowId}
+              onRowClick={onRowClick}
             />
           </div>
         )}
@@ -426,6 +429,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
               hideCroquis={true}
               minuteId={minute?.id}
               targetRowId={targetRowId}
+              onRowClick={onRowClick}
             />
           </div>
         )}
@@ -452,6 +456,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
               hideCroquis={true}
               minuteId={minute?.id}
               targetRowId={targetRowId}
+              onRowClick={onRowClick}
             />
           </div>
         )}
