@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useMemo, useCallback } from 'react';
 
 const NotificationContext = createContext();
 
@@ -9,35 +9,33 @@ export const useNotifications = () => {
 };
 
 export const NotificationProvider = ({ children }) => {
-    // Initial state could be empty or fetched from local storage/API
     const [notifications, setNotifications] = useState([]);
 
-    const addNotification = React.useCallback((title, message, type = "info", targetLink = null) => {
+    // MAJ: On ajoute 'action' pour le mode télécommande { screen: '...', id: '...' }
+    const addNotification = useCallback((title, message, type = "info", action = null) => {
         const newNotif = {
             id: Date.now(),
-            user: "Système", // Default sender if not specified
-            avatar: "SYS",
-            action: title,
-            target: message,
             time: "À l'instant",
-            read: false,
+            title,
+            message,
             type,
-            targetLink
+            read: false,
+            action // Stockage de l'action
         };
         setNotifications(prev => [newNotif, ...prev]);
     }, []);
 
-    const markAsRead = React.useCallback((id) => {
+    const markAsRead = useCallback((id) => {
         setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
     }, []);
 
-    const markAllAsRead = React.useCallback(() => {
+    const markAllAsRead = useCallback(() => {
         setNotifications(prev => prev.map(n => ({ ...n, read: true })));
     }, []);
 
     const unreadCount = notifications.filter(n => !n.read).length;
 
-    const value = React.useMemo(() => ({
+    const value = useMemo(() => ({
         notifications,
         unreadCount,
         addNotification,

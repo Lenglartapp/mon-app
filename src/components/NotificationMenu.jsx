@@ -20,7 +20,7 @@ function stringToColor(string) {
     return color;
 }
 
-export default function NotificationMenu({ anchorEl, open, onClose }) {
+export default function NotificationMenu({ anchorEl, open, onClose, onAction }) {
     const { notifications, markAsRead, markAllAsRead } = useNotifications();
     const [tab, setTab] = useState(0);
     const navigate = useNavigate();
@@ -65,43 +65,49 @@ export default function NotificationMenu({ anchorEl, open, onClose }) {
             <List sx={{ p: 0, maxHeight: 400, overflow: 'auto' }}>
                 {displayList.map((n) => (
                     <ListItem
-                        key={n.id}
+                        key={n?.id}
                         button
                         onClick={() => {
-                            if (!n.read) markAsRead(n.id);
-                            if (n.targetLink) {
-                                // REMOVE DEEP LINK PARAMETERS to prevent navigation loops
-                                // We keep the path (/project/ID) but drop (?rowId=...)
-                                // CONSTANT NAVIGATION LOOP FIX: Disabled navigation entirely per user request.
-                                // const cleanLink = n.targetLink.split('?')[0];
-                                // navigate(cleanLink);
-                                onClose(); // Close menu
+                            if (!n?.read) markAsRead(n?.id);
+
+                            // Mode Télécommande
+                            if (n?.action && onAction) {
+                                onAction(n.action);
+                                onClose();
                             }
                         }}
                         sx={{
-                            bgcolor: !n.read ? 'rgba(3, 169, 244, 0.04)' : 'transparent',
+                            bgcolor: !n?.read ? 'rgba(3, 169, 244, 0.04)' : 'transparent',
                             '&:hover': { bgcolor: 'rgba(0,0,0,0.02)' },
                             borderBottom: '1px solid #f3f4f6'
                         }}
                     >
                         <ListItemAvatar>
-                            <Avatar sx={{ width: 36, height: 36, fontSize: 14, bgcolor: stringToColor(n.user) }}>
-                                {n.avatar !== "SYS" && n.avatar !== "PROD" && n.user
-                                    ? n.user.substring(0, 1)
-                                    : n.avatar
+                            <Avatar sx={{ width: 36, height: 36, fontSize: 14, bgcolor: stringToColor(n?.user || "?") }}>
+                                {n?.avatar !== "SYS" && n?.avatar !== "PROD" && n?.user
+                                    ? n?.user.substring(0, 1)
+                                    : n?.avatar
                                 }
                             </Avatar>
                         </ListItemAvatar>
                         <ListItemText
                             primary={
-                                <Typography variant="body2" sx={{ lineHeight: 1.3 }}>
-                                    <span style={{ fontWeight: 700 }}>{n.user}</span> {n.action} <span style={{ fontWeight: 600 }}>{n.target}</span>
+                                <Typography variant="body2" sx={{ lineHeight: 1.3, fontWeight: 700 }}>
+                                    {n?.title || "Notification"}
                                 </Typography>
                             }
-                            secondary={n.time}
-                            secondaryTypographyProps={{ fontSize: 11, mt: 0.5 }}
+                            secondary={
+                                <>
+                                    <Typography component="span" variant="body2" sx={{ display: 'block', mb: 0.5 }}>
+                                        {n?.message}
+                                    </Typography>
+                                    <Typography component="span" variant="caption" color="text.secondary">
+                                        {n?.time}
+                                    </Typography>
+                                </>
+                            }
                         />
-                        {!n.read && <Circle size={8} fill="#3b82f6" color="#3b82f6" />}
+                        {!n?.read && <Circle size={8} fill="#3b82f6" color="#3b82f6" />}
                     </ListItem>
                 ))}
                 {displayList.length === 0 && (

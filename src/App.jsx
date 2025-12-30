@@ -1,6 +1,5 @@
-// src/App.jsx
-import React, { useState, useEffect } from "react";
-import { BrowserRouter, useLocation, useNavigate } from "react-router-dom";
+import React, { useState, useMemo, useCallback } from "react";
+import { BrowserRouter } from "react-router-dom";
 import { S } from "./lib/constants/ui";
 import { ProjectListScreen } from "./screens/ProjectListScreen";
 import { ProductionProjectScreen } from "./screens/ProductionProjectScreen";
@@ -14,7 +13,6 @@ import { AuthProvider, useAuth } from "./auth";
 import { DEMO_PROJECTS } from "./lib/data/demo";
 import StocksModule from "./components/modules/Stocks/StocksModule";
 import { can } from "./lib/authz";
-import Require from "./components/Require";
 import LoginScreen from "./screens/LoginScreen";
 
 import { Bell } from 'lucide-react';
@@ -23,37 +21,21 @@ import IconButton from '@mui/material/IconButton';
 import NotificationMenu from "./components/NotificationMenu";
 import { NotificationProvider, useNotifications } from "./contexts/NotificationContext";
 
-
-// --- Badge utilisateur
+// --- Composants UI ---
 function UserBadge({ onClick }) {
   const { currentUser, logout } = useAuth();
   const hasAvatar = Boolean(currentUser?.avatarUrl);
-
-  const handleClick = () => {
-    onClick();
-  };
-
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-      <button style={S.userBtn} onClick={handleClick} aria-label="Profil utilisateur" title="Ouvrir mes paramètres">
+      <button style={S.userBtn} onClick={onClick} aria-label="Profil utilisateur" title="Ouvrir mes paramètres">
         <div style={S.avatarBox}>
           {hasAvatar ? (
             <img src={currentUser.avatarUrl} alt="Avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-          ) : (
-            <div>AL</div>
-          )}
+          ) : (<div>AL</div>)}
         </div>
         <span style={{ fontWeight: 600 }}>{currentUser?.name || "Utilisateur"}</span>
       </button>
-      <button
-        onClick={() => { if (window.confirm("Se déconnecter ?")) logout(); }}
-        style={{
-          border: 'none', background: 'transparent', cursor: 'pointer',
-          fontSize: 12, color: '#ef4444', fontWeight: 600, padding: 4
-        }}
-      >
-        Sortir
-      </button>
+      <button onClick={() => { if (window.confirm("Se déconnecter ?")) logout(); }} style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 12, color: '#ef4444', fontWeight: 600, padding: 4 }}>Sortir</button>
     </div>
   );
 }
@@ -61,85 +43,99 @@ function UserBadge({ onClick }) {
 function AppShell() {
   const { currentUser } = useAuth();
 
+  // --- 1. CHARGEMENT DONNÉES ---
+  const [rawProjects, setProjects] = useLocalStorage("production.projects", DEMO_PROJECTS);
+  const [rawMinutes, setQuoteMinutes] = useLocalStorage("chiffrage.minutes", []);
+
+  // --- 2. NETTOYAGE DONNÉES ---
+  const cleanProjects = useMemo(() => {
+    if (!Array.isArray(rawProjects)) return [];
+    return rawProjects.filter(p => p && typeof p === 'object' && p.id);
+  }, [rawProjects]);
+
+  const cleanMinutes = useMemo(() => {
+    if (!Array.isArray(rawMinutes)) return [];
+    return rawMinutes
+      .filter(m => m && typeof m === 'object' && m.id)
+      .map(m => {
+        let tables = {};
+        try {
+          const safeId = String(m.id);
+          const raw = localStorage.getItem(`chiffrage.${safeId}.tables`);
+          if (raw) tables = JSON.parse(raw);
+        } catch (e) { }
+        return { ...m, tables };
+      });
+  }, [rawMinutes]);
+
+  // --- 3. STATE UI ---
   const [screen, setScreen] = useState("home");
   const [logoOk, setLogoOk] = useState(true);
-  const [projects, setProjects] = useState(DEMO_PROJECTS);
-  const [current, setCurrent] = useState(null);
-  const [quoteMinutes, setQuoteMinutes] = useLocalStorage("chiffrage.minutes", []);
+  const [currentProject, setCurrentProject] = useState(null);
   const [openMinuteId, setOpenMinuteId] = useState(null);
-  const [inventoryRows, setInventoryRows] = useLocalStorage("inventory.rows", []);
+  const [pendingRowId, setPendingRowId] = useState(null);
 
-  // Sync URL -> State (Deep Linking)
-  const location = useLocation();
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    // 1. Check for Chiffrage Link: /chiffrage/MINUTE_ID
-    const matchChiffrage = location.pathname.match(/\/chiffrage\/([a-zA-Z0-9_-]+)/);
-    if (matchChiffrage && matchChiffrage[1]) {
-      if (screen !== "chiffrage" || openMinuteId !== matchChiffrage[1]) {
-        console.log("Deep link detected (Chiffrage):", matchChiffrage[1]);
-        setOpenMinuteId(matchChiffrage[1]);
-        setScreen("chiffrage");
-      }
-      return;
-    }
-
-    // 2. Check for Project Link: /project/PROJECT_ID
-    const matchProject = location.pathname.match(/\/project\/([a-zA-Z0-9_-]+)/);
-    if (matchProject && matchProject[1]) {
-      const pId = matchProject[1];
-      // Only switch if needed
-      if ((screen !== "project") || (current?.id !== pId)) {
-        console.log("Deep link detected (Project):", pId);
-        // Find project in state
-        const targetProject = (projects || []).find(p => String(p.id) === String(pId));
-        if (targetProject) {
-          setCurrent(targetProject);
-          setScreen("project");
-        } else {
-          console.warn("Project deep link found but project not found in state:", pId);
-        }
-      }
-    }
-  }, [location.pathname, projects]);
-
-  // Notifications State (Now from Context)
+  // Notifications
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
-
   const [notifAnchor, setNotifAnchor] = useState(null);
   const handleNotifClick = (event) => setNotifAnchor(event.currentTarget);
   const handleNotifClose = () => setNotifAnchor(null);
-  const notifOpen = Boolean(notifAnchor);
 
-  const LOGO_SRC = "/logo.png";
-
-  if (!currentUser) {
-    return <LoginScreen />;
-  }
-
-  // Navigation protégée
+  // Navigation interne
   const go = (target) => {
     if (target === "chiffrageRoot" && !can(currentUser, "chiffrage.view")) return;
     if (target === "prodList" && !can(currentUser, "production.view")) return;
     if (target === "inventory" && !can(currentUser, "inventory.view")) return;
+    setPendingRowId(null);
     setScreen(target);
   };
 
-  // Handlers Home
-  const onOpenProdList = () => go("prodList");
-  const onOpenSettings = () => setScreen("settings");
-  const onOpenChiffrage = () => go("chiffrageRoot");
-  const onOpenInventory = () => go("inventory");
+  // --- FONCTION DE SAUVEGARDE (Déclarée AVANT le return conditionnel) ---
+  const handleUpdateProjectRows = useCallback((projectId, newRows) => {
+    // 1. Mise à jour persistante
+    setProjects((prev) => {
+      if (!Array.isArray(prev)) return [];
+      return prev.map((p) => {
+        if (p && String(p.id) === String(projectId)) {
+          return { ...p, rows: Array.isArray(newRows) ? newRows : [] };
+        }
+        return p;
+      });
+    });
 
-  // Persistence
-  const handleUpdateProjectRows = (projectId, newRows) => {
-    setProjects((prev) => (prev || []).map((p) => {
-      if (!p) return p;
-      return p.id === projectId ? { ...p, rows: newRows } : p;
-    }));
-    setCurrent((cur) => (cur && cur.id === projectId ? { ...cur, rows: newRows } : cur));
+    // 2. Mise à jour visuelle immédiate
+    setCurrentProject((cur) => {
+      if (cur && String(cur.id) === String(projectId)) {
+        return { ...cur, rows: Array.isArray(newRows) ? newRows : [] };
+      }
+      return cur;
+    });
+  }, [setProjects, setCurrentProject]);
+
+  const handleNotificationAction = (action) => {
+    if (!action) return;
+    setPendingRowId(action.rowId || null);
+
+    if (action.screen === "chiffrage") {
+      const target = cleanMinutes.find(m => String(m.id) === String(action.id));
+      if (target) {
+        setOpenMinuteId(target.id);
+        setScreen("chiffrage");
+      }
+    }
+    else if (action.screen === "project") {
+      const target = cleanProjects.find(p => String(p.id) === String(action.id));
+      if (target) {
+        setCurrentProject(target);
+        setScreen("project");
+      }
+    }
   };
+
+  const LOGO_SRC = "/logo.png";
+
+  // --- VÉRIFICATION UTILISATEUR (Déplacée ICI, APRÈS tous les hooks) ---
+  if (!currentUser) return <LoginScreen />;
 
   return (
     <div style={S.page}>
@@ -158,97 +154,76 @@ function AppShell() {
               <Bell size={20} />
             </Badge>
           </IconButton>
-          <UserBadge onClick={onOpenSettings} />
+          <UserBadge onClick={() => setScreen("settings")} />
         </div>
       </header>
 
       <NotificationMenu
         anchorEl={notifAnchor}
-        open={notifOpen}
+        open={Boolean(notifAnchor)}
         onClose={handleNotifClose}
         notifications={notifications}
         onMarkAsRead={markAsRead}
         onMarkAllRead={markAllAsRead}
+        onAction={handleNotificationAction}
       />
 
-      {/* Accueil */}
       {screen === "home" && (
         <HomeScreen
-          onOpenProdList={onOpenProdList}
-          onOpenSettings={onOpenSettings}
-          onOpenChiffrage={onOpenChiffrage}
-          onOpenInventory={onOpenInventory}
+          onOpenProdList={() => go("prodList")}
+          onOpenSettings={() => setScreen("settings")}
+          onOpenChiffrage={() => go("chiffrageRoot")}
+          onOpenInventory={() => go("inventory")}
         />
       )}
 
-      {/* Production : liste */}
       {screen === "prodList" && (
         <ProjectListScreen
-          projects={projects}
+          projects={cleanProjects}
           setProjects={setProjects}
-          onOpenProject={(p) => { setCurrent(p); setScreen("project"); }}
-          minutes={
-            can(currentUser, "chiffrage.view")
-              ? quoteMinutes.map(m => {
-                if (!m) return null; // Safety check
-                let tables = {};
-                try {
-                  const raw = localStorage.getItem(`chiffrage.${m.id}.tables`);
-                  if (raw) tables = JSON.parse(raw);
-                } catch (e) {
-                  console.warn("Impossible de lire tables pour minute", m?.id, e);
-                }
-                return { ...m, tables };
-              }).filter(Boolean) // Remove nulls
-              : []
-          }
+          onOpenProject={(p) => { setCurrentProject(p); setScreen("project"); }}
+          minutes={can(currentUser, "chiffrage.view") ? cleanMinutes : []}
         />
       )}
 
-      {/* Chiffrage : liste */}
       {screen === "chiffrageRoot" && (
         <ChiffrageRoot
-          minutes={quoteMinutes}
+          minutes={cleanMinutes}
           setMinutes={setQuoteMinutes}
           onBack={() => setScreen("home")}
           onOpenMinute={(id) => { setOpenMinuteId(id); setScreen("chiffrage"); }}
         />
       )}
 
-      {/* Chiffrage : éditeur */}
       {screen === "chiffrage" && openMinuteId && (
         <ChiffrageScreen
           minuteId={openMinuteId}
-          minutes={quoteMinutes}
+          minutes={cleanMinutes}
           setMinutes={setQuoteMinutes}
           onBack={() => setScreen("chiffrageRoot")}
+          highlightRowId={pendingRowId}
         />
       )}
 
-      {/* Projet Production */}
-      {screen === "project" && current && (
+      {screen === "project" && currentProject && (
         <ProductionProjectScreen
-          project={current}
+          project={cleanProjects.find(p => String(p.id) === String(currentProject.id)) || currentProject}
+          projects={cleanProjects}
           onBack={() => setScreen("prodList")}
-          onUpdateProjectRows={(newRows) => handleUpdateProjectRows(current?.id, newRows)}
+          onUpdateProjectRows={handleUpdateProjectRows}
+          highlightRowId={pendingRowId}
         />
       )}
 
-      {/* Paramètres */}
-      {screen === "settings" && (
-        <SettingsScreen onBack={() => setScreen("home")} />
-      )}
+      {screen === "settings" && <SettingsScreen onBack={() => setScreen("home")} />}
 
-      {/* Inventaire (Nouveau Module Stocks) */}
       {screen === "inventory" && (
         <StocksModule
-          minutes={quoteMinutes}
-          projects={projects}
+          minutes={cleanMinutes}
+          projects={cleanProjects}
           onBack={() => setScreen("home")}
         />
       )}
-
-
     </div>
   );
 }
