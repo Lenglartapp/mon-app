@@ -99,7 +99,7 @@ const COLUMNS = [
     },
 ];
 
-export default function StockMovementsTab({ movements, onAddMovement, projects = [] }) {
+export default function StockMovementsTab({ movements, onAddMovement, projects = [], inventory = [] }) {
     const [modalOpen, setModalOpen] = useState(false);
     const [modalType, setModalType] = useState('IN'); // 'IN' or 'OUT'
 
@@ -164,6 +164,7 @@ export default function StockMovementsTab({ movements, onAddMovement, projects =
                     type={modalType}
                     onSave={handleSaveMovement}
                     projects={projects}
+                    inventory={inventory} // <--- AJOUT INDISPENSABLE
                 />
             )}
         </Box>

@@ -39,11 +39,13 @@ export default function LineDetailPanel({ open, onClose, row, schema, onRowChang
         onRowChange({ ...newRow, comments: updatedComments });
     }, [row, onRowChange, schema]);
 
+    // CORRECTION ICI : Ajout du champ 'date' pour le Journal
     const handleAddComment = React.useCallback((text) => {
         if (!row) return;
         const newActivity = {
             id: Date.now(),
             text: text,
+            date: Date.now(), // <--- AJOUT CRUCIAL (Timestamp pour le tri et l'affichage)
             createdAt: new Date().toISOString(),
             author: 'Aristide LENGLART',
             type: 'msg' // User Message

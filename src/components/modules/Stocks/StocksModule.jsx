@@ -109,6 +109,7 @@ export default function StocksModule({ minutes = [], projects = [], onBack }) {
                         onAddMovement={handleAddMovement}
                         minutes={minutes} // Fallback
                         projects={projects} // Main source for Production items
+                        inventory={inventory} // <--- AJOUT INDISPENSABLE
                     />
                 )}
                 {tabIndex === 1 && (
