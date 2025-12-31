@@ -4,6 +4,7 @@ import { COLORS, S } from "../lib/constants/ui.js";
 
 import MinuteGrid from "../components/MinuteGrid.jsx"; // Replaces DataTable
 import DashboardTiles from "../components/DashboardTiles.jsx";
+import ProjectActivityFeed from "../components/ProjectActivityFeed.jsx";
 import EtiquettesSection from "../components/EtiquettesSection.jsx";
 import MinutesScreen from "./MinutesScreen.jsx";
 import LineDetailPanel from "../components/LineDetailPanel";
@@ -120,13 +121,53 @@ export function ProductionProjectScreen({ project: propProject, projects, onBack
 
   const recomputeAll = (arr) => (arr || []).map(r => recomputeRow(r, schema));
 
+  // Utilitaire pour comparer et logger les changements
+  const updateRowWithHistory = (oldRow, newRowRaw, authorName = "Utilisateur") => {
+    const changes = [];
+    const now = Date.now();
+
+    // Liste des champs à surveiller pour l'historique
+    const watchedFields = [
+      { key: 'statut_cotes', label: 'Statut Côtes' },
+      { key: 'statut_prepa', label: 'Statut Prépa' },
+      { key: 'statut_conf', label: 'Statut Conf' },
+      { key: 'statut_pose', label: 'Statut Pose' },
+      { key: 'largeur', label: 'Largeur' },
+      { key: 'hauteur', label: 'Hauteur' },
+      { key: 'produit', label: 'Produit' },
+      { key: 'piece', label: 'Pièce' }
+    ];
+
+    watchedFields.forEach(field => {
+      const oldVal = oldRow[field.key];
+      const newVal = newRowRaw[field.key];
+      // Comparaison simple (attention aux types string/number)
+      if (oldVal != newVal && (oldVal || newVal)) {
+        changes.push({
+          date: now,
+          author: authorName,
+          field: field.label,
+          oldVal: oldVal || '-',
+          newVal: newVal || '-'
+        });
+      }
+    });
+
+    // Si changements, on les ajoute à l'historique de la ligne
+    if (changes.length > 0) {
+      return {
+        ...newRowRaw,
+        history: [...(oldRow.history || []), ...changes]
+      };
+    }
+    return newRowRaw;
+  };
+
   // --- HANDLERS (AVEC SAUVEGARDE IMMÉDIATE) ---
 
-  // 1. handleSubsetChange
+  // 1. handleSubsetChange (Mise à jour avec historique)
   const handleSubsetChange = (newSubsetRows, filterRegex) => {
     if (!canEditProd) return;
-
-    // Calcul basé sur l'état 'rows' actuel
     const allRows = rows;
     const oldSubset = allRows.filter(r => filterRegex.test(String(r.produit || "")));
     const newIds = new Set(newSubsetRows.map(r => r.id));
@@ -137,16 +178,16 @@ export function ProductionProjectScreen({ project: propProject, projects, onBack
       .filter(r => !deletedIds.has(r.id))
       .map(r => {
         if (updatedMap.has(r.id)) {
-          return recomputeRow(updatedMap.get(r.id), schema);
+          const newRaw = updatedMap.get(r.id);
+          // On compare pour l'historique
+          const rowWithHistory = updateRowWithHistory(r, newRaw, currentUser?.name);
+          return recomputeRow(rowWithHistory, schema);
         }
         return r;
       });
 
-    // Mise à jour LOCALE et DISTANTE immédiate
     setRows(updatedAllRows);
-    if (project?.id) {
-      onUpdateProjectRows(project.id, updatedAllRows);
-    }
+    if (project?.id) onUpdateProjectRows(project.id, updatedAllRows);
   };
 
   const mergeChildRowsFor = (tableKey) => {
@@ -158,26 +199,37 @@ export function ProductionProjectScreen({ project: propProject, projects, onBack
     return (nr) => handleSubsetChange(nr, regex);
   };
 
-  // 2. handleRowsChangeInstallation
+  // 2. handleRowsChangeInstallation (Mise à jour avec historique)
   const handleRowsChangeInstallation = (nr) => {
     if (!canEditProd) return;
-    const computed = nr.map(r => recomputeRow(r, schema));
+    // Difficile de comparer en masse sans map, mais on tente une map par ID
+    const oldMap = new Map(rows.map(r => [r.id, r]));
+
+    const computed = nr.map(newR => {
+      const oldR = oldMap.get(newR.id);
+      if (oldR) {
+        const rowWithHistory = updateRowWithHistory(oldR, newR, currentUser?.name);
+        return recomputeRow(rowWithHistory, schema);
+      }
+      return recomputeRow(newR, schema);
+    });
 
     setRows(computed);
-    if (project?.id) {
-      onUpdateProjectRows(project.id, computed);
-    }
+    if (project?.id) onUpdateProjectRows(project.id, computed);
   };
 
-  // 3. handleDetailUpdate
+  // 3. handleDetailUpdate (Mise à jour avec historique)
   const handleDetailUpdate = (updatedRow) => {
     if (!canEditProd) return;
-    const newRows = rows.map(r => r.id === updatedRow.id ? recomputeRow(updatedRow, schema) : r);
-
+    const newRows = rows.map(r => {
+      if (r.id === updatedRow.id) {
+        const rowWithHistory = updateRowWithHistory(r, updatedRow, currentUser?.name);
+        return recomputeRow(rowWithHistory, schema);
+      }
+      return r;
+    });
     setRows(newRows);
-    if (project?.id) {
-      onUpdateProjectRows(project.id, newRows);
-    }
+    if (project?.id) onUpdateProjectRows(project.id, newRows);
   };
 
 
@@ -332,7 +384,10 @@ export function ProductionProjectScreen({ project: propProject, projects, onBack
       </div>
 
       {stage === "dashboard" && (
-        <DashboardTiles rows={rows} projectHours={{ conf: 0, pose: 0 }} />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+          <DashboardTiles rows={rows} projectHours={{ conf: 0, pose: 0 }} />
+          <ProjectActivityFeed rows={rows} />
+        </div>
       )}
 
       {stage === "chiffrage" && seeChiffrage && (

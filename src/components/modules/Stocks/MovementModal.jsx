@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
@@ -11,122 +11,111 @@ import MenuItem from '@mui/material/MenuItem';
 import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
 import Divider from '@mui/material/Divider';
+import Chip from '@mui/material/Chip';
 
-// Mock Users
 const USERS = ['Aristide LENGLART', 'Atelier 1', 'Atelier 2', 'Logistique'];
-// Mock Locations
-const LOCATIONS = ['Réception', 'Étagère A1', 'Étagère A2', 'Étagère B1', 'Zone Coupe', 'Zone Expédition'];
-// Mock Units
-const UNITS = ['ml', 'm2', 'u', 'kg', 'rouleau'];
-// Categories
-const CATEGORIES = ['Tissu', 'Rail', 'Tringle', 'Mécanisme', 'Mercerie', 'Divers'];
+const EXIT_REASONS = ['Production', 'Solde / Déstockage', 'Perte / Inventaire', 'Autre'];
 
-export default function MovementModal({ open, onClose, type, onSave, projects = [] }) {
+export default function MovementModal({ open, onClose, type, onSave, projects = [], inventory = [] }) {
     const isIN = type === 'IN';
 
-    // Form State
+    // --- ETAT GLOBAL ---
     const [user, setUser] = useState('Aristide LENGLART');
-    const [selectedItem, setSelectedItem] = useState(null); // From Autocomplete
+    const [selectedItem, setSelectedItem] = useState(null);
+    const [exitReason, setExitReason] = useState('Production'); // Pour OUT
 
+    // Etat Formulaire
     const [formData, setFormData] = useState({
-        product: '',
-        ref: '',
-        qty: '',
-        unit: 'ml',
-        project: '',
-        location: '',
-        notes: '',
-        laize: '',
-        category: ''
+        product: '', ref: '', qty: '', unit: 'ml', project: '', location: '',
+        notes: '', laize: '', category: ''
     });
 
-    // Compute Source Options from PRODUCTION Projects
-    const sourceOptions = React.useMemo(() => {
-        if (!projects || !Array.isArray(projects)) return [];
+    // Reset à l'ouverture
+    useEffect(() => {
+        if (open) {
+            setSelectedItem(null);
+            setExitReason('Production');
+            setFormData({ product: '', ref: '', qty: '', unit: 'ml', project: '', location: '', notes: '', laize: '', category: '' });
+        }
+    }, [open, type]);
+
+    // --- LOGIQUE ENTREE (Source = Projets Production) ---
+    const sourceOptionsIN = useMemo(() => {
+        if (!isIN || !projects) return [];
         const opts = [];
-
-        // Helper to push option
-        const addOpt = (label, ref, projName, type, dim = null) => {
-            if (!label) return;
-            // Avoid duplicates? Or allow seeing same fabric in multiple projects?
-            // User likely wants to pick a specific project context, so show duplicates with Project Label.
-            opts.push({
-                label: `${label} (${projName})`,
-                productName: label,
-                ref: ref || '',
-                project: projName,
-                type: type, // 'FABRIC' or 'HW' (Hardware)
-                dim: dim // Laize or Dimension
-            });
-        };
-
         projects.forEach(proj => {
             (proj.rows || []).forEach(row => {
-                // 1. Tissus
-                // Check tissu_deco1, tissu_deco2, doublure, inter_doublure
-                if (row.tissu_deco1) addOpt(row.tissu_deco1, '', proj.name, 'FABRIC', row.laize_tissu_deco1);
-                if (row.tissu_deco2) addOpt(row.tissu_deco2, '', proj.name, 'FABRIC', row.laize_tissu_deco2);
-                if (row.doublure) addOpt(row.doublure, '', proj.name, 'FABRIC', row.laize_doublure);
-
-                // 2. Hardware (Rails / Tringles)
-                if (row.type_rail && row.type_rail !== 'Free') {
-                    // Compose name like "Rail Kontrak"
-                    const name = `${row.type_rail} ${row.couleur_rail || ''}`.trim();
-                    addOpt(name, '', proj.name, 'HW');
-                }
-                if (row.nom_tringle) {
-                    addOpt(row.nom_tringle, '', proj.name, 'HW');
-                }
+                if (row.tissu_deco1) opts.push({ label: `${row.tissu_deco1} (${proj.name})`, productName: row.tissu_deco1, type: 'Tissu', dim: row.laize_tissu_deco1, project: proj.name });
+                if (row.type_rail && row.type_rail !== 'Free') opts.push({ label: `${row.type_rail} (${proj.name})`, productName: row.type_rail, type: 'Rail', project: proj.name });
             });
         });
-
         return opts;
-    }, [projects]);
+    }, [projects, isIN]);
 
-    // Handle Autocomplete Selection
+    // --- LOGIQUE SORTIE (Source = Inventaire Réel) ---
+    const sourceOptionsOUT = useMemo(() => {
+        if (isIN || !inventory) return [];
+        // On ne propose que ce qui est en stock positif
+        return inventory.filter(i => i.qty > 0).map(item => ({
+            ...item,
+            label: `${item.product} | ${item.location} (Stock: ${item.qty} ${item.unit})`
+        }));
+    }, [inventory, isIN]);
+
+    // --- HANDLERS ---
     const handleSourceChange = (event, newValue) => {
         setSelectedItem(newValue);
-        if (newValue) {
-            // Auto-determine Category
-            let autoCat = 'Divers';
-            if (newValue.type === 'FABRIC') autoCat = 'Tissu';
-            else if (newValue.type === 'HW') {
-                // Try to detect keywords in name
-                const lower = newValue.productName.toLowerCase();
-                if (lower.includes('rail')) autoCat = 'Rail';
-                else if (lower.includes('tringle')) autoCat = 'Tringle';
-                else if (lower.includes('store') || lower.includes('mecanisme')) autoCat = 'Mécanisme';
-                else autoCat = 'Rail'; // Default HW
-            }
+        if (!newValue) return;
 
+        if (isIN) {
+            // Remplissage auto pour ENTRÉE
             setFormData(prev => ({
                 ...prev,
                 product: newValue.productName,
-                ref: newValue.ref,
                 project: newValue.project,
-                unit: newValue.type === 'FABRIC' ? 'ml' : 'u',
-                laize: newValue.dim || '',
-                category: autoCat
+                unit: newValue.type === 'Tissu' ? 'ml' : 'u',
+                category: newValue.type || 'Divers',
+                laize: newValue.dim || ''
+            }));
+        } else {
+            // Remplissage auto pour SORTIE (depuis Stock)
+            setFormData(prev => ({
+                ...prev,
+                product: newValue.product,
+                ref: newValue.ref,
+                unit: newValue.unit,
+                location: newValue.location, // Emplacement figé car on sort de là
+                category: newValue.category,
+                project: exitReason === 'Production' ? (newValue.project || '') : '' // Pré-remplir projet si dispo
             }));
         }
     };
 
-    const handleChange = (key, value) => {
-        setFormData(prev => ({ ...prev, [key]: value }));
-    };
-
     const handleSubmit = () => {
-        if (!formData.product || !formData.qty || !formData.location || !user) {
-            alert("Merci de remplir les champs obligatoires (Produit, Qté, Emplacement, Opérateur).");
+        // Validation basique
+        if (!formData.product || !formData.qty || !user) {
+            alert("Champs obligatoires manquants.");
             return;
+        }
+
+        // Validation Stock Sortie
+        if (!isIN && selectedItem) {
+            if (Number(formData.qty) > selectedItem.qty) {
+                alert(`Impossible de sortir ${formData.qty} ${formData.unit}. Stock disponible : ${selectedItem.qty} ${selectedItem.unit}.`);
+                return;
+            }
         }
 
         onSave({
             ...formData,
             user,
             qty: Number(formData.qty),
-            date: new Date().toISOString()
+            type: type,
+            date: new Date().toISOString(),
+            // Si c'est une sortie, on ajoute le motif en note ou champ spécifique
+            reason: !isIN ? exitReason : null
         });
+        onClose();
     };
 
     return (
@@ -136,167 +125,109 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
             </DialogTitle>
 
             <DialogContent sx={{ mt: 2 }}>
-                <Typography variant="subtitle2" sx={{ mb: 2, color: 'text.secondary', textTransform: 'uppercase', fontWeight: 600 }}>
-                    1. IDENTIFICATION
-                </Typography>
-
-                <Grid container spacing={2} sx={{ mb: 4 }}>
+                {/* 1. OPERATEUR & MOTIF */}
+                <Grid container spacing={2} sx={{ mb: 3 }}>
                     <Grid item xs={12} sm={6}>
-                        <TextField
-                            select
-                            fullWidth
-                            label="Opérateur"
-                            value={user}
-                            onChange={(e) => setUser(e.target.value)}
-                        >
+                        <TextField select fullWidth label="Opérateur" value={user} onChange={(e) => setUser(e.target.value)}>
                             {USERS.map(u => <MenuItem key={u} value={u}>{u}</MenuItem>)}
                         </TextField>
                     </Grid>
+                    {!isIN && (
+                        <Grid item xs={12} sm={6}>
+                            <TextField select fullWidth label="Motif de sortie" value={exitReason} onChange={(e) => setExitReason(e.target.value)}>
+                                {EXIT_REASONS.map(r => <MenuItem key={r} value={r}>{r}</MenuItem>)}
+                            </TextField>
+                        </Grid>
+                    )}
                 </Grid>
 
                 <Divider sx={{ mb: 3 }} />
 
-                <Typography variant="subtitle2" sx={{ mb: 2, color: 'text.secondary', textTransform: 'uppercase', fontWeight: 600 }}>
-                    2. PRODUIT & QUANTITÉ
-                </Typography>
-
-                {/* AUTOCOMPLETE SEARCH */}
+                {/* 2. SELECTION PRODUIT */}
                 <Box sx={{ mb: 3, bgcolor: '#F9FAFB', p: 2, borderRadius: 2 }}>
-                    <Typography variant="caption" sx={{ display: 'block', mb: 1, color: '#6B7280' }}>
-                        Rechercher dans les dossiers en Production (Tissus, Rails...)
+                    <Typography variant="caption" sx={{ display: 'block', mb: 1, color: '#6B7280', fontWeight: 600 }}>
+                        {isIN ? "IDENTIFIER LE PRODUIT ENTRANT (Nouveau ou Existant)" : "SÉLECTIONNER LE STOCK À SORTIR"}
                     </Typography>
+
                     <Autocomplete
-                        options={sourceOptions}
-                        getOptionLabel={(option) => option.label}
+                        options={isIN ? sourceOptionsIN : sourceOptionsOUT}
+                        getOptionLabel={(option) => option.label || ""}
                         value={selectedItem}
                         onChange={handleSourceChange}
-                        openOnFocus={false} // User Request: Wait for typing
                         renderInput={(params) => (
                             <TextField
                                 {...params}
-                                label="Rechercher Produit / Référence..."
-                                placeholder="Tapez 'Lin', 'Rail'..."
-                                fullWidth
+                                label={isIN ? "Rechercher Tissu / Rail..." : "Rechercher dans le stock..."}
+                                placeholder="Tapez 'Lin', 'A1'..."
                                 sx={{ bgcolor: 'white' }}
                             />
                         )}
-                        noOptionsText="Aucun produit trouvé en production."
+                        noOptionsText={isIN ? "Aucun produit trouvé." : "Aucun stock correspondant."}
                     />
+
+                    {!isIN && selectedItem && (
+                        <Box sx={{ mt: 1, display: 'flex', gap: 1 }}>
+                            <Chip size="small" label={`Stock: ${selectedItem.qty} ${selectedItem.unit}`} color="primary" variant="outlined" />
+                            <Chip size="small" label={`Emplacement: ${selectedItem.location}`} />
+                        </Box>
+                    )}
                 </Box>
 
+                {/* 3. DETAILS FORMULAIRE */}
                 <Grid container spacing={2}>
-                    {/* NEW CATEGORY FIELD */}
-                    <Grid item xs={12} sm={4}>
-                        <TextField
-                            select
-                            fullWidth
-                            label="Catégorie / Type"
-                            value={formData.category}
-                            onChange={(e) => handleChange('category', e.target.value)}
-                        >
-                            {CATEGORIES.map(c => <MenuItem key={c} value={c}>{c}</MenuItem>)}
-                        </TextField>
-                    </Grid>
-
                     <Grid item xs={12} sm={8}>
                         <TextField
-                            fullWidth
-                            label="Nom du Produit"
+                            fullWidth label="Nom du Produit"
                             value={formData.product}
-                            onChange={(e) => handleChange('product', e.target.value)}
-                            required
+                            onChange={(e) => setFormData({ ...formData, product: e.target.value })}
+                            disabled={!isIN} // Bloqué en sortie pour éviter les erreurs
                         />
                     </Grid>
                     <Grid item xs={12} sm={4}>
+                        {/* En sortie, l'emplacement est fixé par le stock sélectionné */}
                         <TextField
-                            fullWidth
-                            label="Laize / Dim (cm)"
-                            value={formData.laize || ''}
-                            onChange={(e) => handleChange('laize', e.target.value)}
-                            helperText="Infos tech (Laize, Diamètre...)"
+                            fullWidth label="Emplacement"
+                            value={formData.location}
+                            onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                            disabled={!isIN}
                         />
                     </Grid>
 
-                    <Grid item xs={12} sm={6}>
+                    <Grid item xs={6} sm={6}>
                         <TextField
-                            fullWidth
-                            label="Référence Fabricant"
-                            value={formData.ref}
-                            onChange={(e) => handleChange('ref', e.target.value)}
-                        />
-                    </Grid>
-
-                    <Grid item xs={12} sm={3}>
-                        <TextField
-                            fullWidth
-                            label="Quantité"
-                            type="number"
+                            fullWidth type="number" label="Quantité"
                             value={formData.qty}
-                            onChange={(e) => handleChange('qty', e.target.value)}
+                            onChange={(e) => setFormData({ ...formData, qty: e.target.value })}
                             required
-                            sx={{ '& input': { fontSize: 20, fontWeight: 700 } }}
+                            helperText={!isIN && selectedItem ? `Max: ${selectedItem.qty}` : ''}
+                            sx={{ '& input': { fontSize: 20, fontWeight: 700, color: !isIN ? '#C2410C' : 'inherit' } }}
                         />
                     </Grid>
-                    <Grid item xs={6} sm={3}>
-                        <TextField
-                            select
-                            fullWidth
-                            label="Unité"
-                            value={formData.unit}
-                            onChange={(e) => handleChange('unit', e.target.value)}
-                        >
-                            {UNITS.map(u => <MenuItem key={u} value={u}>{u}</MenuItem>)}
+                    <Grid item xs={6} sm={6}>
+                        <TextField select fullWidth label="Unité" value={formData.unit} onChange={(e) => setFormData({ ...formData, unit: e.target.value })} disabled={!isIN}>
+                            {['ml', 'm2', 'u', 'kg'].map(u => <MenuItem key={u} value={u}>{u}</MenuItem>)}
                         </TextField>
                     </Grid>
 
-                    <Grid item xs={6} sm={4}>
-                        <Autocomplete
-                            freeSolo
-                            options={LOCATIONS}
-                            value={formData.location}
-                            onChange={(e, val) => handleChange('location', val)}
-                            onInputChange={(e, val) => handleChange('location', val)}
-                            renderInput={(params) => <TextField {...params} label="Emplacement" required />}
-                        />
-                    </Grid>
-
-                    <Grid item xs={12}>
+                    {/* PROJET AFFECTÉ : Seulement si Entrée OU (Sortie ET Motif = Production) */}
+                    {(isIN || exitReason === 'Production') && (
                         <Grid item xs={12}>
                             <Autocomplete
                                 freeSolo
-                                options={projects.map(p => p.name || p.nom_dossier || `Projet #${p.id}`)}
+                                options={projects.map(p => p.name || `Projet #${p.id}`)}
                                 value={formData.project}
-                                onChange={(event, newValue) => handleChange('project', newValue)}
-                                onInputChange={(event, newInputValue) => handleChange('project', newInputValue)}
-                                renderInput={(params) => (
-                                    <TextField
-                                        {...params}
-                                        label="Projet Affecté"
-                                        placeholder="Ex: Mme DUPONT ou Saisie libre"
-                                        helperText="Sélectionnez un projet existant ou saisissez un nom libre."
-                                    />
-                                )}
+                                onChange={(e, val) => setFormData({ ...formData, project: val })}
+                                renderInput={(params) => <TextField {...params} label="Projet Affecté" placeholder="Nom du chantier" />}
                             />
                         </Grid>
-                    </Grid>
+                    )}
                 </Grid>
 
             </DialogContent>
             <DialogActions sx={{ p: 3, borderTop: '1px solid #E5E7EB', bgcolor: '#F9FAFB' }}>
-                <Button onClick={onClose} size="large" sx={{ color: '#6B7280' }}>
-                    Annuler
-                </Button>
-                <Button
-                    variant="contained"
-                    onClick={handleSubmit}
-                    size="large"
-                    sx={{
-                        bgcolor: isIN ? '#10B981' : '#F97316',
-                        px: 4, py: 1.5, fontWeight: 700,
-                        '&:hover': { bgcolor: isIN ? '#059669' : '#EA580C' }
-                    }}
-                >
-                    {isIN ? 'VALIDER LA RÉCEPTION' : 'VALIDER LA SORTIE'}
+                <Button onClick={onClose}>Annuler</Button>
+                <Button variant="contained" onClick={handleSubmit} sx={{ bgcolor: isIN ? '#10B981' : '#F97316', fontWeight: 700 }}>
+                    {isIN ? 'VALIDER ENTRÉE' : 'VALIDER SORTIE'}
                 </Button>
             </DialogActions>
         </Dialog>

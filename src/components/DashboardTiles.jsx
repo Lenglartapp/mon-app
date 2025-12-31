@@ -1,73 +1,62 @@
-import React from "react";
-import { S, COLORS } from "../lib/constants/ui.js";
-import { dashCompute } from "../lib/utils/dashCompute.js";
+import React, { useMemo } from "react";
+import { Activity, Ruler, Scissors, Hammer, Clock } from "lucide-react";
 
-export default function DashboardTiles({ rows, projectHours }) {
-  const d = React.useMemo(() => dashCompute(rows), [rows]);
+const calculateStats = (rows) => {
+  if (!Array.isArray(rows) || rows.length === 0) return null;
+  const total = rows.length;
+  let cotesOk = 0, prepaOk = 0, confOk = 0, poseOk = 0;
 
-  const ph = projectHours || { confectionReport: 0, poseReport: 0 };
+  rows.forEach(r => {
+    if (r.statut_cotes === 'Définitive') cotesOk++;
+    if (r.statut_prepa === 'Terminé') prepaOk++;
+    if (r.statut_conf === 'Terminé') confOk++;
+    if (r.statut_pose === 'Terminé') poseOk++;
+  });
 
-  const Tile = ({ title, val, sub }) => (
-    <div
-      style={{
-        background: "#fff",
-        border: "1px solid #e5e7eb",
-        borderRadius: 12,
-        padding: 16,
-        minWidth: 220,
-        boxShadow: "0 1px 2px rgba(0,0,0,.04)",
-      }}
-    >
-      <div style={{ fontSize: 14, fontWeight: 700 }}>{title}</div>
-      <div style={{ fontSize: 28, fontWeight: 800, marginTop: 6 }}>{val}</div>
-      {sub && <div style={{ fontSize: 12, opacity: 0.7, marginTop: 4 }}>{sub}</div>}
-    </div>
-  );
+  return {
+    total,
+    pctCotes: Math.round((cotesOk / total) * 100),
+    pctPrepa: Math.round((prepaOk / total) * 100),
+    pctConf: Math.round((confOk / total) * 100),
+    pctPose: Math.round((poseOk / total) * 100),
+    raw: { cotesOk, prepaOk, confOk, poseOk }
+  };
+};
+
+export default function DashboardTiles({ rows }) {
+  const stats = useMemo(() => calculateStats(rows), [rows]);
+
+  const tileStyle = (bg, color) => ({
+    background: bg, color: color, borderRadius: 16, padding: "20px",
+    flex: "1 1 180px", display: "flex", flexDirection: "column", justifyContent: "space-between",
+    boxShadow: "0 2px 5px rgba(0,0,0,0.05)", minHeight: 110, border: '1px solid rgba(0,0,0,0.03)'
+  });
+  const valStyle = { fontSize: 28, fontWeight: 800, letterSpacing: "-0.5px" };
+  const subStyle = { fontSize: 11, fontWeight: 500, marginTop: 4, opacity: 0.7 };
+
+  if (!stats) return <div style={{ padding: 20, color: '#888' }}>Ajoutez des lignes pour voir les statistiques.</div>;
 
   return (
-    <div style={{ display: "grid", gap: 16 }}>
-      {/* Ligne 1 : Avancement par étape */}
-      <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-        <Tile
-          title="Préparation — terminé"
-          val={`${d.steps.preparation.done} / ${d.total}`}
-          sub={`${d.steps.preparation.pct}%`}
-        />
-        <Tile
-          title="Confection — terminé"
-          val={`${d.steps.confection.done} / ${d.total}`}
-          sub={`${d.steps.confection.pct}%`}
-        />
-        <Tile
-          title="Pose — terminé"
-          val={`${d.steps.pose.done} / ${d.total}`}
-          sub={`${d.steps.pose.pct}%`}
-        />
-        <Tile
-          title="Cumulé (prépa + conf + pose)"
-          val={`${d.full.done} / ${d.total}`}
-          sub={`${d.full.pct}%`}
-        />
+    <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 24 }}>
+      <div style={tileStyle("#EFF6FF", "#1E40AF")}>
+        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, display: 'flex', gap: 6 }}><Ruler size={16} /> Prise de Cotes</div>
+        <div><div style={valStyle}>{stats.pctCotes}%</div><div style={subStyle}>{stats.raw.cotesOk}/{stats.total} validées</div></div>
       </div>
-
-      {/* Ligne 2 : Heures */}
-      <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-        <Tile
-          title="Heures confection (somme lignes)"
-          val={`${d.hours.sumConfection.toLocaleString("fr-FR")} h`}
-        />
-        <Tile
-          title="Heures pose (somme lignes)"
-          val={`${d.hours.sumPose.toLocaleString("fr-FR")} h`}
-        />
-        <Tile
-          title="Déclaré (projet) — confection"
-          val={`${Number(ph.confectionReport || 0).toLocaleString("fr-FR")} h`}
-        />
-        <Tile
-          title="Déclaré (projet) — pose"
-          val={`${Number(ph.poseReport || 0).toLocaleString("fr-FR")} h`}
-        />
+      <div style={tileStyle("#F5F3FF", "#5B21B6")}>
+        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, display: 'flex', gap: 6 }}><Activity size={16} /> Préparation</div>
+        <div><div style={valStyle}>{stats.pctPrepa}%</div><div style={subStyle}>{stats.raw.prepaOk}/{stats.total} terminées</div></div>
+      </div>
+      <div style={tileStyle("#FDF2F8", "#9D174D")}>
+        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, display: 'flex', gap: 6 }}><Scissors size={16} /> Confection</div>
+        <div><div style={valStyle}>{stats.pctConf}%</div><div style={subStyle}>{stats.raw.confOk}/{stats.total} terminées</div></div>
+      </div>
+      <div style={tileStyle("#ECFDF5", "#065F46")}>
+        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, display: 'flex', gap: 6 }}><Hammer size={16} /> Pose</div>
+        <div><div style={valStyle}>{stats.pctPose}%</div><div style={subStyle}>{stats.raw.poseOk}/{stats.total} installées</div></div>
+      </div>
+      <div style={tileStyle("#FFFBEB", "#92400E")}>
+        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, display: 'flex', gap: 6 }}><Clock size={16} /> Heures (Est.)</div>
+        <div><div style={valStyle}>0 h</div><div style={subStyle}>Budget non défini</div></div>
       </div>
     </div>
   );
