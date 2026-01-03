@@ -14,6 +14,8 @@ import { DEMO_PROJECTS } from "./lib/data/demo";
 import StocksModule from "./components/modules/Stocks/StocksModule";
 import { can } from "./lib/authz";
 import LoginScreen from "./screens/LoginScreen";
+import PlanningScreen from "./screens/PlanningScreen";
+
 
 import { Bell } from 'lucide-react';
 import Badge from '@mui/material/Badge';
@@ -31,7 +33,7 @@ function UserBadge({ onClick }) {
         <div style={S.avatarBox}>
           {hasAvatar ? (
             <img src={currentUser.avatarUrl} alt="Avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-          ) : (<div>AL</div>)}
+          ) : (<div>{currentUser?.initials || "AL"}</div>)}
         </div>
         <span style={{ fontWeight: 600 }}>{currentUser?.name || "Utilisateur"}</span>
       </button>
@@ -46,6 +48,8 @@ function AppShell() {
   // --- 1. CHARGEMENT DONNÉES ---
   const [rawProjects, setProjects] = useLocalStorage("production.projects", DEMO_PROJECTS);
   const [rawMinutes, setQuoteMinutes] = useLocalStorage("chiffrage.minutes", []);
+  const [planningEvents, setPlanningEvents] = useLocalStorage("planning.events", []);
+
 
   // --- 2. NETTOYAGE DONNÉES ---
   const cleanProjects = useMemo(() => {
@@ -86,13 +90,13 @@ function AppShell() {
     if (target === "chiffrageRoot" && !can(currentUser, "chiffrage.view")) return;
     if (target === "prodList" && !can(currentUser, "production.view")) return;
     if (target === "inventory" && !can(currentUser, "inventory.view")) return;
+    if (target === "planning" && !can(currentUser, "planning.view")) return;
     setPendingRowId(null);
     setScreen(target);
   };
 
-  // --- FONCTION DE SAUVEGARDE (Déclarée AVANT le return conditionnel) ---
+  // --- FONCTION DE SAUVEGARDE LIGNES (Legacy) ---
   const handleUpdateProjectRows = useCallback((projectId, newRows) => {
-    // 1. Mise à jour persistante
     setProjects((prev) => {
       if (!Array.isArray(prev)) return [];
       return prev.map((p) => {
@@ -102,8 +106,6 @@ function AppShell() {
         return p;
       });
     });
-
-    // 2. Mise à jour visuelle immédiate
     setCurrentProject((cur) => {
       if (cur && String(cur.id) === String(projectId)) {
         return { ...cur, rows: Array.isArray(newRows) ? newRows : [] };
@@ -111,6 +113,34 @@ function AppShell() {
       return cur;
     });
   }, [setProjects, setCurrentProject]);
+
+  // --- FONCTION DE SAUVEGARDE GLOBALE (Nouveau : Mur, Épingles, etc.) ---
+  const handleUpdateProject = useCallback((projectId, updates) => {
+    setProjects((prev) => {
+      if (!Array.isArray(prev)) return [];
+      return prev.map((p) => {
+        if (p && String(p.id) === String(projectId)) {
+          return { ...p, ...updates, lastModified: Date.now() };
+        }
+        return p;
+      });
+    });
+    setCurrentProject((cur) => {
+      if (cur && String(cur.id) === String(projectId)) {
+        return { ...cur, ...updates };
+      }
+      return cur;
+    });
+  }, [setProjects, setCurrentProject]);
+
+  const handleUpdateEvent = useCallback((event) => {
+    setPlanningEvents(prev => {
+      const exists = prev.find(e => e.id === event.id);
+      if (exists) return prev.map(e => e.id === event.id ? event : e);
+      return [...prev, event];
+    });
+  }, [setPlanningEvents]);
+
 
   const handleNotificationAction = (action) => {
     if (!action) return;
@@ -134,7 +164,6 @@ function AppShell() {
 
   const LOGO_SRC = "/logo.png";
 
-  // --- VÉRIFICATION UTILISATEUR (Déplacée ICI, APRÈS tous les hooks) ---
   if (!currentUser) return <LoginScreen />;
 
   return (
@@ -174,7 +203,9 @@ function AppShell() {
           onOpenSettings={() => setScreen("settings")}
           onOpenChiffrage={() => go("chiffrageRoot")}
           onOpenInventory={() => go("inventory")}
+          onOpenPlanning={() => go("planning")}
         />
+
       )}
 
       {screen === "prodList" && (
@@ -211,6 +242,7 @@ function AppShell() {
           projects={cleanProjects}
           onBack={() => setScreen("prodList")}
           onUpdateProjectRows={handleUpdateProjectRows}
+          onUpdateProject={handleUpdateProject}
           highlightRowId={pendingRowId}
         />
       )}
@@ -224,6 +256,16 @@ function AppShell() {
           onBack={() => setScreen("home")}
         />
       )}
+
+      {screen === "planning" && (
+        <PlanningScreen
+          projects={cleanProjects}
+          events={planningEvents}
+          onUpdateEvent={handleUpdateEvent}
+          onBack={() => setScreen("home")}
+        />
+      )}
+
     </div>
   );
 }

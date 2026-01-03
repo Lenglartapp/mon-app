@@ -14,6 +14,7 @@ export default function HomeScreen({
   onOpenSettings,
   onOpenChiffrage,
   onOpenInventory,
+  onOpenPlanning,
 }) {
   const width = useViewportWidth();
   const cols = width < 700 ? 2 : 4;
@@ -22,10 +23,10 @@ export default function HomeScreen({
 
   const { currentUser } = useAuth();
   const may = {
-    chiffrage:  can(currentUser, "chiffrage.view"),
+    chiffrage: can(currentUser, "chiffrage.view"),
     production: can(currentUser, "production.view"),
-    inventory:  can(currentUser, "inventory.view"),
-    planning:   can(currentUser, "planning.view"), // plus tard
+    inventory: can(currentUser, "inventory.view"),
+    planning: can(currentUser, "planning.view"), // plus tard
     // ⚠️ pas de garde pour Settings : visible pour tous
   };
 
@@ -53,7 +54,7 @@ export default function HomeScreen({
 
           {hideTile(
             may.planning,
-            <AppTile label="Planning" Icon={GanttChart} size={tileSize} onClick={() => console.log("/planning")} />
+            <AppTile label="Planning" Icon={GanttChart} size={tileSize} onClick={onOpenPlanning} />
           )}
 
           {/* ✅ Toujours visible, quel que soit le rôle */}
