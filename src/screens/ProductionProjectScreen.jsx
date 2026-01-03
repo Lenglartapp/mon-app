@@ -15,7 +15,7 @@ import { STAGES, DEFAULT_VIEWS } from "../lib/constants/views.js"; // Import DEF
 import { recomputeRow } from "../lib/formulas/recomputeRow";
 import { uid } from "../lib/utils/uid"; // Import uid
 
-import { Search, Filter, Layers3, Star, FlaskConical } from "lucide-react";
+import { Search, Filter, Layers3, Star, FlaskConical, Image as ImageIcon, Pin } from "lucide-react";
 import { useAuth } from "../auth";
 import { can } from "../lib/authz";
 
@@ -41,13 +41,8 @@ const getVisibilityModel = (viewKey, tableKey, schema) => {
 };
 
 
-/**
- * Props:
- * - projects (Full List from App)
- * - onBack()
- * - onUpdateProjectRows(projectId, newRows)
- */
-export function ProductionProjectScreen({ project: propProject, projects, onBack, onUpdateProjectRows, highlightRowId }) {
+// 1. SIGNATURE MISE A JOUR
+export function ProductionProjectScreen({ project: propProject, projects, onBack, onUpdateProjectRows, onUpdateProject, highlightRowId }) {
   const { projectId: urlProjectId } = useParams();
 
   // Find Project (SECURED)
@@ -65,6 +60,66 @@ export function ProductionProjectScreen({ project: propProject, projects, onBack
   const [search, setSearch] = useState("");
   const [schema, setSchema] = useState(SCHEMA_64);
   const [openedRowId, setOpenedRowId] = useState(null);
+
+  // --- LOGIQUE MUR & PHOTOS ---
+  const [wallMsg, setWallMsg] = useState("");
+  const [wallImg, setWallImg] = useState(null);
+  const [isPinned, setIsPinned] = useState(false);
+
+  const compressImage = (file, maxWidth = 1200, quality = 0.7) => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target.result;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width, height = img.height;
+          if (width > maxWidth) { height = (height * maxWidth) / width; width = maxWidth; }
+          canvas.width = width; canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/webp', quality));
+        };
+      };
+    });
+  };
+
+  const handlePostMessage = async () => {
+    if (!wallMsg.trim() && !wallImg) return;
+    const newPost = {
+      id: Date.now(),
+      date: Date.now(),
+      author: currentUser?.name || "Utilisateur",
+      content: wallMsg,
+      image: wallImg
+    };
+    const currentWall = project.wall || [];
+    if (onUpdateProject) {
+      onUpdateProject(project.id, { wall: [newPost, ...currentWall] });
+    }
+    setWallMsg(""); setWallImg(null);
+  };
+
+  const handleImageSelect = async (e) => {
+    if (e.target.files && e.target.files[0]) {
+      const compressed = await compressImage(e.target.files[0]);
+      setWallImg(compressed);
+    }
+  };
+
+  // Gère l'ajout/retrait d'ID dans la liste des épingles
+  const handleTogglePin = (eventId) => {
+    const currentPinned = project.pinnedIds || [];
+    let newPinned;
+    if (currentPinned.includes(eventId)) {
+      newPinned = currentPinned.filter(id => id !== eventId);
+    } else {
+      newPinned = [eventId, ...currentPinned];
+    }
+    if (onUpdateProject) onUpdateProject(project.id, { pinnedIds: newPinned });
+  };
 
   // Auto-open panel from notification
   useEffect(() => {
@@ -386,7 +441,38 @@ export function ProductionProjectScreen({ project: propProject, projects, onBack
       {stage === "dashboard" && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
           <DashboardTiles rows={rows} projectHours={{ conf: 0, pose: 0 }} />
-          <ProjectActivityFeed rows={rows} />
+
+          {/* MUR DU PROJET (NOUVEAU) */}
+          <div style={{ background: 'white', padding: 16, borderRadius: 12, border: `1px solid ${COLORS.border}` }}>
+            <textarea
+              placeholder="Écrire un message global..."
+              value={wallMsg}
+              onChange={(e) => setWallMsg(e.target.value)}
+              style={{ width: '100%', border: '1px solid #E5E7EB', borderRadius: 8, padding: 12, minHeight: 60, marginBottom: 12, fontFamily: 'inherit' }}
+            />
+            {wallImg && (
+              <div style={{ marginBottom: 12, position: 'relative', display: 'inline-block' }}>
+                <img src={wallImg} alt="Preview" style={{ height: 80, borderRadius: 6, border: '1px solid #ddd' }} />
+                <button onClick={() => setWallImg(null)} style={{ position: 'absolute', top: -5, right: -5, background: 'red', color: 'white', borderRadius: '50%', width: 20, height: 20, border: 'none', cursor: 'pointer', fontSize: 12 }}>×</button>
+              </div>
+            )}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <label style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#4B5563', padding: '6px 12px', borderRadius: 6, background: '#F3F4F6' }}>
+                <ImageIcon size={16} /> Ajouter photo
+                <input type="file" accept="image/*" hidden onChange={handleImageSelect} />
+              </label>
+              <button onClick={handlePostMessage} style={{ background: '#2563EB', color: 'white', border: 'none', padding: '8px 20px', borderRadius: 6, fontWeight: 600, cursor: 'pointer' }}>
+                Publier
+              </button>
+            </div>
+          </div>
+
+          <ProjectActivityFeed
+            rows={rows}
+            wall={project?.wall}
+            pinnedIds={project?.pinnedIds || []}
+            onTogglePin={handleTogglePin}
+          />
         </div>
       )}
 

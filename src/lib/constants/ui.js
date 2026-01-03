@@ -96,3 +96,12 @@ export const EXTRA = {
   cardRow: { display: "grid", gridTemplateColumns: "110px 1fr", gap: 8, alignItems: "baseline", margin: "4px 0" },
   cardLabel: { fontWeight: 700 },
 };
+
+// --- COULEURS MÉTIER PLANNING ---
+export const PLANNING_COLORS = {
+  prepa: { bg: "#FEF9C3", border: "#FACC15", text: "#854D0E" }, // Jaune
+  conf: { bg: "#DBEAFE", border: "#60A5FA", text: "#1E40AF" },  // Bleu
+  pose: { bg: "#DCFCE7", border: "#4ADE80", text: "#166534" },  // Vert
+  autre: { bg: "#F3F4F6", border: "#9CA3AF", text: "#374151" }, // Gris
+  absence: { bg: "#FEE2E2", border: "#F87171", text: "#991B1B", pattern: true } // Rouge hachuré
+};
