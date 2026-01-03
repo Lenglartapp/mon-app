@@ -378,7 +378,14 @@ function ChiffrageScreen({ minuteId, minutes, setMinutes, onBack, highlightRowId
                   <>
                     <button
                       onClick={() => {
-                        updateMinute({ status: "VALIDATED" });
+                        updateMinute({
+                          status: "VALIDATED",
+                          budgetSnapshot: {
+                            prepa: recap?.hPrepa || 0,
+                            conf: recap?.hConf || 0,
+                            pose: recap?.hPose || 0
+                          }
+                        });
                         addNotification("Validation", `Le devis "${name}" a été validé.`, "success", navAction);
                       }}
                       style={{ ...S.smallBtn, background: '#10b981', color: 'white', borderColor: '#10b981' }}
@@ -419,7 +426,14 @@ function ChiffrageScreen({ minuteId, minutes, setMinutes, onBack, highlightRowId
               return (
                 <button
                   onClick={() => {
-                    updateMinute({ status: "VALIDATED" });
+                    updateMinute({
+                      status: "VALIDATED",
+                      budgetSnapshot: {
+                        prepa: recap?.hPrepa || 0,
+                        conf: recap?.hConf || 0,
+                        pose: recap?.hPose || 0
+                      }
+                    });
                     addNotification("Validé", `Devis "${name}" validé.`, "success", navAction);
                   }}
                   style={{ ...S.smallBtn, background: '#3b82f6', color: 'white', borderColor: '#3b82f6' }}

@@ -137,6 +137,7 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
             project.id = project.id || uid();
             project.name = name || meta?.minuteName || project.name || "Nouveau Dossier";
             project.sourceMinuteId = meta?.id || null;
+            project.budget = meta?.budgetSnapshot || { prepa: 0, conf: 0, pose: 0 };
             project.manager = meta?.owner || project.manager;
             project.notes = meta?.notes || project.notes;
             project.rows = computeFormulas(rows || [], SCHEMA_64);
@@ -149,6 +150,7 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
             // 👇 ET ICI
             project.id = project.id || uid();
             project.name = projectName || "Nouveau Dossier";
+            project.budget = { prepa: 0, conf: 0, pose: 0 };
             project.config = config;
             project.rows = [];
             setProjects?.((arr) => [project, ...(Array.isArray(arr) ? arr : [])]);
