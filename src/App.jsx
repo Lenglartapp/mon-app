@@ -7,20 +7,19 @@ import ChiffrageRoot from "./screens/ChiffrageRoot.jsx";
 import ChiffrageScreen from "./screens/ChiffrageScreen";
 import HomeScreen from "./screens/HomeScreen.jsx";
 import SettingsScreen from "./screens/SettingsScreen.jsx";
-import { useLocalStorage } from "./lib/hooks/useLocalStorage.js";
 import { ActivityProvider } from "./contexts/activity";
 import { AuthProvider, useAuth } from "./auth";
-import { DEMO_PROJECTS } from "./lib/data/demo";
 import StocksModule from "./components/modules/Stocks/StocksModule";
 import { can } from "./lib/authz";
 import LoginScreen from "./screens/LoginScreen";
 import PlanningScreen from "./screens/PlanningScreen";
-
+import { useProjects, useMinutes, useEvents, useStocks } from './hooks/useSupabase';
 
 import { Bell } from 'lucide-react';
 import Badge from '@mui/material/Badge';
 import IconButton from '@mui/material/IconButton';
 import NotificationMenu from "./components/NotificationMenu";
+
 import { NotificationProvider, useNotifications } from "./contexts/NotificationContext";
 
 // --- Composants UI ---
@@ -45,32 +44,15 @@ function UserBadge({ onClick }) {
 function AppShell() {
   const { currentUser } = useAuth();
 
-  // --- 1. CHARGEMENT DONNÉES ---
-  const [rawProjects, setProjects] = useLocalStorage("production.projects", DEMO_PROJECTS);
-  const [rawMinutes, setQuoteMinutes] = useLocalStorage("chiffrage.minutes", []);
-  const [planningEvents, setPlanningEvents] = useLocalStorage("planning.events", []);
+  // --- 1. CHARGEMENT DONNÉES (Supabase) ---
+  const { projects, addProject, updateProject, deleteProject } = useProjects();
+  const { minutes, addMinute, updateMinute, deleteMinute } = useMinutes();
+  const { events: planningEvents, updateEvent } = useEvents();
+  const { inventory, movements, addMovement } = useStocks();
 
-
-  // --- 2. NETTOYAGE DONNÉES ---
-  const cleanProjects = useMemo(() => {
-    if (!Array.isArray(rawProjects)) return [];
-    return rawProjects.filter(p => p && typeof p === 'object' && p.id);
-  }, [rawProjects]);
-
-  const cleanMinutes = useMemo(() => {
-    if (!Array.isArray(rawMinutes)) return [];
-    return rawMinutes
-      .filter(m => m && typeof m === 'object' && m.id)
-      .map(m => {
-        let tables = {};
-        try {
-          const safeId = String(m.id);
-          const raw = localStorage.getItem(`chiffrage.${safeId}.tables`);
-          if (raw) tables = JSON.parse(raw);
-        } catch (e) { }
-        return { ...m, tables };
-      });
-  }, [rawMinutes]);
+  // Alias pour compatibilité
+  const cleanProjects = projects;
+  const cleanMinutes = minutes;
 
   // --- 3. STATE UI ---
   const [screen, setScreen] = useState("home");
@@ -97,49 +79,23 @@ function AppShell() {
 
   // --- FONCTION DE SAUVEGARDE LIGNES (Legacy) ---
   const handleUpdateProjectRows = useCallback((projectId, newRows) => {
-    setProjects((prev) => {
-      if (!Array.isArray(prev)) return [];
-      return prev.map((p) => {
-        if (p && String(p.id) === String(projectId)) {
-          return { ...p, rows: Array.isArray(newRows) ? newRows : [] };
-        }
-        return p;
-      });
-    });
-    setCurrentProject((cur) => {
-      if (cur && String(cur.id) === String(projectId)) {
-        return { ...cur, rows: Array.isArray(newRows) ? newRows : [] };
-      }
-      return cur;
-    });
-  }, [setProjects, setCurrentProject]);
+    updateProject(projectId, { rows: newRows });
+    if (currentProject && String(currentProject.id) === String(projectId)) {
+      setCurrentProject((cur) => ({ ...cur, rows: newRows }));
+    }
+  }, [updateProject, currentProject]);
 
-  // --- FONCTION DE SAUVEGARDE GLOBALE (Nouveau : Mur, Épingles, etc.) ---
+  // --- FONCTION DE SAUVEGARDE GLOBALE ---
   const handleUpdateProject = useCallback((projectId, updates) => {
-    setProjects((prev) => {
-      if (!Array.isArray(prev)) return [];
-      return prev.map((p) => {
-        if (p && String(p.id) === String(projectId)) {
-          return { ...p, ...updates, lastModified: Date.now() };
-        }
-        return p;
-      });
-    });
-    setCurrentProject((cur) => {
-      if (cur && String(cur.id) === String(projectId)) {
-        return { ...cur, ...updates };
-      }
-      return cur;
-    });
-  }, [setProjects, setCurrentProject]);
+    updateProject(projectId, updates);
+    if (currentProject && String(currentProject.id) === String(projectId)) {
+      setCurrentProject((cur) => ({ ...cur, ...updates }));
+    }
+  }, [updateProject, currentProject]);
 
   const handleUpdateEvent = useCallback((event) => {
-    setPlanningEvents(prev => {
-      const exists = prev.find(e => e.id === event.id);
-      if (exists) return prev.map(e => e.id === event.id ? event : e);
-      return [...prev, event];
-    });
-  }, [setPlanningEvents]);
+    updateEvent(event);
+  }, [updateEvent]);
 
 
   const handleNotificationAction = (action) => {
@@ -211,7 +167,8 @@ function AppShell() {
       {screen === "prodList" && (
         <ProjectListScreen
           projects={cleanProjects}
-          setProjects={setProjects}
+          onCreate={addProject}
+          onDelete={deleteProject}
           onOpenProject={(p) => { setCurrentProject(p); setScreen("project"); }}
           minutes={can(currentUser, "chiffrage.view") ? cleanMinutes : []}
         />
@@ -220,7 +177,8 @@ function AppShell() {
       {screen === "chiffrageRoot" && (
         <ChiffrageRoot
           minutes={cleanMinutes}
-          setMinutes={setQuoteMinutes}
+          onCreate={addMinute}
+          onDelete={deleteMinute}
           onBack={() => setScreen("home")}
           onOpenMinute={(id) => { setOpenMinuteId(id); setScreen("chiffrage"); }}
         />
@@ -230,7 +188,7 @@ function AppShell() {
         <ChiffrageScreen
           minuteId={openMinuteId}
           minutes={cleanMinutes}
-          setMinutes={setQuoteMinutes}
+          onUpdate={updateMinute}
           onBack={() => setScreen("chiffrageRoot")}
           highlightRowId={pendingRowId}
         />
@@ -254,6 +212,9 @@ function AppShell() {
         <StocksModule
           minutes={cleanMinutes}
           projects={cleanProjects}
+          inventory={inventory}
+          movements={movements}
+          onAddMovement={addMovement}
           onBack={() => setScreen("home")}
         />
       )}
@@ -266,6 +227,8 @@ function AppShell() {
           onBack={() => setScreen("home")}
         />
       )}
+
+
 
     </div>
   );

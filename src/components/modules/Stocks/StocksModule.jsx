@@ -9,56 +9,19 @@ import StockMovementsTab from './StockMovementsTab';
 import StockInventoryTab from './StockInventoryTab';
 
 // Mock Data for initial state
-const INITIAL_MOVEMENTS = [
-    { id: 1, date: new Date().toISOString(), type: 'IN', user: 'Aristide LENGLART', product: 'Velours Royal', ref: 'TIS-001', qty: 50, unit: 'ml', location: 'Étagère A1', project: 'Mme DUPONT' },
-    { id: 2, date: new Date(Date.now() - 86400000).toISOString(), type: 'OUT', user: 'Aristide LENGLART', product: 'Velours Royal', ref: 'TIS-001', qty: 10, unit: 'ml', location: 'Étagère A1', project: 'Mme DUPONT' },
-];
-
-export default function StocksModule({ minutes = [], projects = [], onBack }) {
+export default function StocksModule({
+    minutes = [],
+    projects = [],
+    onBack,
+    // On récupère les props injectées par App.jsx
+    inventory = [],
+    movements = [],
+    onAddMovement
+}) {
     const [tabIndex, setTabIndex] = useState(0);
-    const [movements, setMovements] = useState(INITIAL_MOVEMENTS);
 
-    const handleAddMovement = (movement) => {
-        const newMov = {
-            ...movement,
-            id: Date.now(),
-            date: new Date().toISOString(),
-        };
-        setMovements(prev => [newMov, ...prev]);
-    };
-
-    // Compute Inventory from Movements
-    // In a real app this would be server-side or a more robust reducer
-    const inventory = useMemo(() => {
-        const inv = {};
-        // Sort by date asc to replay history
-        const sorted = [...movements].sort((a, b) => new Date(a.date) - new Date(b.date));
-
-        sorted.forEach(mov => {
-            const key = `${mov.product}_${mov.location}`; // Aggregate by Product + Location
-            if (!inv[key]) {
-                inv[key] = {
-                    id: key,
-                    product: mov.product,
-                    ref: mov.ref,
-                    location: mov.location,
-                    qty: 0,
-                    project: mov.project, // Last project association wins or 'Stock'
-                    unit: mov.unit,
-                    category: mov.category
-                };
-            }
-
-            if (mov.type === 'IN') {
-                inv[key].qty += Number(mov.qty);
-            } else {
-                inv[key].qty -= Number(mov.qty);
-            }
-        });
-
-        // Filter out zero or negative qty if desired, or keep to show out of stock
-        return Object.values(inv).filter(i => i.qty > 0);
-    }, [movements]);
+    // PLUS BESOIN DE STATE LOCAL POUR LES MOUVEMENTS
+    // PLUS BESOIN DE USEMEMO POUR L'INVENTAIRE (C'est Supabase qui gère)
 
     // Define Tabs
     const TABS = [
@@ -106,7 +69,7 @@ export default function StocksModule({ minutes = [], projects = [], onBack }) {
                 {tabIndex === 0 && (
                     <StockMovementsTab
                         movements={movements}
-                        onAddMovement={handleAddMovement}
+                        onAddMovement={onAddMovement}
                         minutes={minutes} // Fallback
                         projects={projects} // Main source for Production items
                         inventory={inventory} // <--- AJOUT INDISPENSABLE

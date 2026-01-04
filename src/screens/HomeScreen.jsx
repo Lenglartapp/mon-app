@@ -22,12 +22,16 @@ export default function HomeScreen({
   const tileSize = Math.max(88, Math.min(112, Math.round(width * 0.18)));
 
   const { currentUser } = useAuth();
+
+  // DEBUG : Voir ce que le système détecte vraiment
+  const detectedRole = currentUser?.role || "Aucun rôle détecté";
+  console.log("Role actuel:", detectedRole);
+
   const may = {
     chiffrage: can(currentUser, "chiffrage.view"),
     production: can(currentUser, "production.view"),
     inventory: can(currentUser, "inventory.view"),
-    planning: can(currentUser, "planning.view"), // plus tard
-    // ⚠️ pas de garde pour Settings : visible pour tous
+    planning: can(currentUser, "planning.view"),
   };
 
   // helper pour MASQUER totalement une tuile si non autorisé
@@ -35,6 +39,11 @@ export default function HomeScreen({
 
   return (
     <div style={S.mainCenter}>
+      {/* Petit bandeau de debug discret pour comprendre pourquoi ça bloque */}
+      <div style={{ position: 'absolute', top: 60, right: 20, fontSize: 10, color: '#999', opacity: 0.5 }}>
+        Debug: {currentUser?.name} ({detectedRole})
+      </div>
+
       <div style={S.appsWrap}>
         <div style={{ ...S.appsBase, gridTemplateColumns: `repeat(${cols}, 1fr)`, gap }}>
           {hideTile(
@@ -57,7 +66,7 @@ export default function HomeScreen({
             <AppTile label="Planning" Icon={GanttChart} size={tileSize} onClick={onOpenPlanning} />
           )}
 
-          {/* ✅ Toujours visible, quel que soit le rôle */}
+          {/* ✅ Toujours visible */}
           <AppTile label="Paramètres" Icon={Settings2} size={tileSize} onClick={onOpenSettings} />
         </div>
       </div>

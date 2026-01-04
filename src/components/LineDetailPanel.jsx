@@ -17,10 +17,12 @@ import GridSketchCell from './ui/GridSketchCell';
 import { generateRowLogs } from '../lib/utils/logUtils';
 
 import BlurTextField from './ui/BlurTextField';
+import { useAuth } from '../auth'; // <--- NEW IMPORT
 
 export default function LineDetailPanel({ open, onClose, row, schema, onRowChange, columnVisibilityModel, minuteId, projectId }) {
     // New Sidebar Toggle State
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+    const { currentUser } = useAuth(); // <--- GET CURRENT USER
 
     const activities = React.useMemo(() => row?.comments || [], [row?.comments]);
 
@@ -29,7 +31,9 @@ export default function LineDetailPanel({ open, onClose, row, schema, onRowChang
         const oldRow = { ...row };
         const newRow = { ...row, [key]: value };
 
-        const newLogs = generateRowLogs(oldRow, newRow, schema);
+        // Pass Current User Name to Log Generator
+        const authorName = currentUser?.name || 'Utilisateur';
+        const newLogs = generateRowLogs(oldRow, newRow, schema, authorName);
 
         let updatedComments = newRow.comments || [];
         if (newLogs.length > 0) {
@@ -37,7 +41,7 @@ export default function LineDetailPanel({ open, onClose, row, schema, onRowChang
         }
 
         onRowChange({ ...newRow, comments: updatedComments });
-    }, [row, onRowChange, schema]);
+    }, [row, onRowChange, schema, currentUser]);
 
     // CORRECTION ICI : Ajout du champ 'date' pour le Journal
     const handleAddComment = React.useCallback((text) => {
@@ -47,13 +51,13 @@ export default function LineDetailPanel({ open, onClose, row, schema, onRowChang
             text: text,
             date: Date.now(), // <--- AJOUT CRUCIAL (Timestamp pour le tri et l'affichage)
             createdAt: new Date().toISOString(),
-            author: 'Aristide LENGLART',
+            author: currentUser?.name || 'Utilisateur', // <--- FIX HARDCODED NAME
             type: 'msg' // User Message
         };
 
         const updatedComments = row.comments ? [...row.comments, newActivity] : [newActivity];
         onRowChange({ ...row, comments: updatedComments });
-    }, [row, onRowChange]);
+    }, [row, onRowChange, currentUser]); // <--- DEP currentUser
 
     if (!row) return null;
 
@@ -240,7 +244,7 @@ export default function LineDetailPanel({ open, onClose, row, schema, onRowChang
                         isOpen={isSidebarOpen}
                         activities={activities}
                         onAddComment={handleAddComment}
-                        currentUser="Aristide LENGLART"
+                        currentUser={currentUser?.name || "Utilisateur"}
                         minuteId={minuteId}
                         projectId={projectId}
                         rowId={row.id}

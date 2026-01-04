@@ -1,5 +1,5 @@
-// src/auth.jsx
-import React, { createContext, useContext, useState, useMemo } from "react";
+import React, { createContext, useContext, useState, useEffect, useMemo } from "react";
+import { supabase } from "./lib/supabaseClient";
 
 /** Rôles disponibles (clé canonique) */
 export const ROLES = {
@@ -10,16 +10,27 @@ export const ROLES = {
   ADV: "adv",
 };
 
-/** Démo: utilisateurs seed basés sur l'organisation réelle */
+/** Démo: utilisateurs seed basés sur l'organisation réelle 
+ * IDs mis à jour avec Supabase pour Aristide et Thomas
+ */
 export const DEMO_USERS = [
   // --- PILOTAGE & BUREAU ---
   {
-    id: "u1", email: "aristide@lenglart.com", name: "Aristide LENGLART",
-    role: ROLES.ADMIN, avatarUrl: "/avatar.jpg", initials: "AL", resourceType: "bureau"
+    id: "efeda64d-2476-48d2-9242-ea153471659c", // UUID RÉEL SUPABASE
+    email: "aristide.lenglart@lenglart.com",
+    name: "Aristide LENGLART",
+    role: ROLES.ADMIN,
+    avatarUrl: "/avatar.jpg",
+    initials: "AL",
+    resourceType: "bureau"
   },
   {
-    id: "u2", email: "thomas@lenglart.com", name: "Thomas BONNET",
-    role: ROLES.ORDONNANCEMENT, initials: "TB", resourceType: "bureau"
+    id: "399e495b-fc14-42f6-9864-10748f4c8001", // UUID RÉEL SUPABASE
+    email: "thomas.bonnet@lenglart.com",
+    name: "Thomas BONNET",
+    role: ROLES.ORDONNANCEMENT,
+    initials: "TB",
+    resourceType: "bureau"
   },
   {
     id: "u3", email: "pauline@lenglart.com", name: "Pauline DURAND",
@@ -71,62 +82,70 @@ export const DEMO_USERS = [
 
 const AuthCtx = createContext(null);
 
-const uid = () => Math.random().toString(36).slice(2, 10);
-
 export const AuthProvider = ({ children }) => {
-  // Liste des utilisateurs (démo)
-  const [users, setUsers] = useState(DEMO_USERS);
-
-  // Utilisateur courant: NULL par défaut pour forcer le login screen
+  const [users] = useState(DEMO_USERS);
   const [currentUser, setCurrentUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  const login = (user) => {
-    setCurrentUser(user);
+  // Synchronisation Session Supabase <-> Profil Visuel
+  useEffect(() => {
+    // 1. Vérification au chargement (Refresh)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        syncUser(session.user);
+      } else {
+        setLoading(false);
+      }
+    });
+
+    // 2. Écoute des changements (Login/Logout)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        syncUser(session.user);
+      } else {
+        setCurrentUser(null);
+        setLoading(false);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const syncUser = (supabaseUser) => {
+    // On cherche le profil visuel correspondant à l'UUID connecté
+    const demoProfile = DEMO_USERS.find(u => u.id === supabaseUser.id);
+
+    if (demoProfile) {
+      // ✅ CORRECT : demoProfile écrase les champs techniques de supabaseUser
+      setCurrentUser({ ...supabaseUser, ...demoProfile });
+    } else {
+      // Fallback pour un user non listé (sécurité)
+      setCurrentUser({
+        ...supabaseUser,
+        role: "user",
+        initials: "??",
+      });
+    }
+    setLoading(false);
   };
 
-  const logout = () => {
+  const login = async (email, password) => {
+    // VRAIE CONNEXION SUPABASE
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+    return data;
+  };
+
+  const logout = async () => {
+    await supabase.auth.signOut();
     setCurrentUser(null);
   };
 
-  // CRUD (démo)
-  const addUser = (payload) => {
-    const user = { id: uid(), avatarUrl: "", ...payload };
-    setUsers((arr) => [user, ...(arr || [])]);
-    return user;
-  };
+  const value = useMemo(() => ({
+    users, currentUser, loading, login, logout, ROLES
+  }), [users, currentUser, loading]);
 
-  const updateUser = (id, patch) => {
-    setUsers((arr) => (arr || []).map((u) => (u.id === id ? { ...u, ...patch } : u)));
-    setCurrentUser((cu) => (cu?.id === id ? { ...cu, ...patch } : cu));
-  };
-
-  const removeUser = (id) => {
-    setUsers((arr) => (arr || []).filter((u) => u.id !== id));
-    setCurrentUser((cu) => (cu?.id === id ? null : cu));
-  };
-
-  const resetPasswordDemo = (id) => {
-    console.log("Reset password DEMO pour", id);
-    alert("Démo: lien de réinitialisation envoyé (factice).");
-  };
-
-  const value = useMemo(
-    () => ({
-      users,
-      currentUser,
-      login,
-      logout,
-      setCurrentUser, // Keep for low-level if needed
-      addUser,
-      updateUser,
-      removeUser,
-      resetPasswordDemo,
-      ROLES,
-    }),
-    [users, currentUser]
-  );
-
-  return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>;
+  return <AuthCtx.Provider value={value}>{!loading && children}</AuthCtx.Provider>;
 };
 
 export const useAuth = () => {

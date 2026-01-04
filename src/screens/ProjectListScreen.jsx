@@ -4,7 +4,7 @@ import Chip from '@mui/material/Chip';
 import Avatar from '@mui/material/Avatar';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
-import { Edit2, Plus, FileText } from 'lucide-react';
+import { Edit2, Plus, FileText, Trash2 } from 'lucide-react';
 
 import { SmartFilterBar } from "../components/ui/SmartFilterBar.jsx";
 import { useViewportWidth } from "../lib/hooks/useViewportWidth";
@@ -29,7 +29,7 @@ const getStatusColor = (status) => {
   return { bg: "#F3F4F6", text: "#374151" };
 };
 
-export function ProjectListScreen({ projects, setProjects, onOpenProject, minutes = [] }) {
+export function ProjectListScreen({ projects, setProjects, onOpenProject, minutes = [], onCreate, onDelete }) {
   const [showCreate, setShowCreate] = useState(false);
   const list = Array.isArray(projects) ? projects : [];
   const { currentUser } = useAuth();
@@ -113,6 +113,20 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
                     <td style={{ padding: '12px 16px' }} onClick={(e) => e.stopPropagation()}>
                       <div style={{ display: 'flex', gap: 4, opacity: 0.6 }} className="actions">
                         <Tooltip title="Éditer"><IconButton size="small" onClick={() => onOpenProject?.(p)}><Edit2 size={16} /></IconButton></Tooltip>
+                        <Tooltip title="Supprimer">
+                          <IconButton
+                            size="small"
+                            sx={{ color: '#ef4444' }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (window.confirm(`Supprimer le dossier "${p.name}" définitivement ?`)) {
+                                onDelete?.(p.id);
+                              }
+                            }}
+                          >
+                            <Trash2 size={16} />
+                          </IconButton>
+                        </Tooltip>
                       </div>
                     </td>
                   </tr>
@@ -130,10 +144,9 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
           onClose={() => setShowCreate(false)}
           minutes={canSeeChiffrage ? (Array.isArray(minutes) ? minutes : []) : []}
           prodSchema={SCHEMA_64}
-          onCreateFromMinute={(payload) => {
+          onCreateFromMinute={async (payload) => {
             const { name, rows, meta } = payload || {};
             const project = createBlankProject({ name });
-            // 👇 ICI
             project.id = project.id || uid();
             project.name = name || meta?.minuteName || project.name || "Nouveau Dossier";
             project.sourceMinuteId = meta?.id || null;
@@ -141,21 +154,54 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
             project.manager = meta?.owner || project.manager;
             project.notes = meta?.notes || project.notes;
             project.rows = computeFormulas(rows || [], SCHEMA_64);
-            setProjects?.((arr) => [project, ...(Array.isArray(arr) ? arr : [])]);
-            setShowCreate(false);
-            onOpenProject?.(project);
+
+            if (onCreate) {
+              try {
+                const { data, error } = await onCreate(project);
+                if (error) {
+                  alert("Erreur création projet (Supabase) :\n" + error.message);
+                  return;
+                }
+                if (data && data[0]) {
+                  setShowCreate(false);
+                  onOpenProject?.(data[0]);
+                }
+              } catch (e) {
+                alert("Erreur : " + e.message);
+              }
+            } else if (setProjects) {
+              setProjects((arr) => [project, ...(Array.isArray(arr) ? arr : [])]);
+              onOpenProject?.(project);
+              setShowCreate(false);
+            }
           }}
-          onCreateBlank={(projectName, _dummyRows, config) => {
+          onCreateBlank={async (projectName, _dummyRows, config) => {
             const project = createBlankProject({ name: projectName });
-            // 👇 ET ICI
             project.id = project.id || uid();
             project.name = projectName || "Nouveau Dossier";
             project.budget = { prepa: 0, conf: 0, pose: 0 };
             project.config = config;
             project.rows = [];
-            setProjects?.((arr) => [project, ...(Array.isArray(arr) ? arr : [])]);
-            setShowCreate(false);
-            onOpenProject?.(project);
+
+            if (onCreate) {
+              try {
+                const { data, error } = await onCreate(project);
+                if (error) {
+                  alert("Erreur création projet (Supabase) :\n" + error.message);
+                  return;
+                }
+                if (data && data[0]) {
+                  setShowCreate(false);
+                  onOpenProject?.(data[0]);
+                }
+              } catch (e) {
+                alert("Erreur : " + e.message);
+              }
+            } else if (setProjects) {
+              setProjects((arr) => [project, ...(Array.isArray(arr) ? arr : [])]);
+              onOpenProject?.(project);
+              setShowCreate(false);
+            }
           }}
         />
       )}

@@ -29,7 +29,7 @@ const toNum = (v) => {
   return Number.isFinite(n) ? n : 0;
 };
 
-function ChiffrageScreen({ minuteId, minutes, setMinutes, onBack, highlightRowId }) {
+function ChiffrageScreen({ minuteId, minutes, onUpdate, onBack, highlightRowId }) {
   // On utilise un state local pour l'ouverture des panneaux, plus simple et sûr
   const [localRowId, setLocalRowId] = React.useState(null);
   // ──────────────────────────────────────────────────────────────
@@ -123,8 +123,7 @@ function ChiffrageScreen({ minuteId, minutes, setMinutes, onBack, highlightRowId
   // ──────────────────────────────────────────────────────────────
   const updateMinute = (patch) => {
     if (!canEdit) return;
-    const next = { ...minute, ...patch };
-    setMinutes((prev) => prev.map((m) => (m.id === minute.id ? next : m)));
+    if (onUpdate) onUpdate(minute.id, patch);
   };
 
   // Lignes principales
@@ -295,7 +294,16 @@ function ChiffrageScreen({ minuteId, minutes, setMinutes, onBack, highlightRowId
 
   const saveHeader = () => {
     if (!canEdit) return;
-    updateMinute({ name: name || "Minute sans nom", notes });
+    updateMinute({
+      name: name || "Minute sans nom",
+      notes,
+      // On force la sauvegarde du budget actuel
+      budgetSnapshot: {
+        prepa: recap?.hPrepa || 0,
+        conf: recap?.hConf || 0,
+        pose: recap?.hPose || 0
+      }
+    });
   };
 
   // ──────────────────────────────────────────────────────────────
@@ -549,11 +557,29 @@ function ChiffrageScreen({ minuteId, minutes, setMinutes, onBack, highlightRowId
                   setExtraRows(newExtras);
                   setDepRows(newDeps);
 
+                  // --- CALCUL BUDGET TEMPS RÉEL ---
+                  let hConf = 0, hPose = 0, hPrepa = 0;
+
+                  // 1. Production
+                  newLines.forEach(r => {
+                    const q = toNum(r.quantite) || 1;
+                    hConf += (toNum(r.heures_confection) * q);
+                    hPose += (toNum(r.heures_pose) * q);
+                    hPrepa += (toNum(r.heures_prepa) * q);
+                  });
+
+                  // 2. Logistique (Compte comme Pose)
+                  newDeps.forEach(r => {
+                    hPose += toNum(r.heures_facturees); // Logistique = Pose
+                  });
+
                   updateMinute({
                     lines: newLines,
                     extraDepenses: newExtras,
                     deplacements: newDeps,
-                    // Also update other minute fields if modified (like name, status, catalog)
+                    // ON SAUVEGARDE LE BUDGET MAINTENANT :
+                    budgetSnapshot: { prepa: hPrepa, conf: hConf, pose: hPose },
+
                     name: m.name,
                     notes: m.notes,
                     status: m.status,
