@@ -244,6 +244,7 @@ function AppShell() {
           onUpdateProjectRows={handleUpdateProjectRows}
           onUpdateProject={handleUpdateProject}
           highlightRowId={pendingRowId}
+          events={planningEvents}
         />
       )}
 

@@ -3,8 +3,9 @@ import { S, COLORS } from '../lib/constants/ui';
 import { useAuth } from '../auth';
 import {
     ChevronLeft, ChevronRight, Search, ChevronDown, ChevronRight as ChevronRightIcon,
-    X, Check, User, Briefcase, Clock, Calendar as CalendarIcon, ArrowRight
+    X, Check, User, Briefcase, Clock, Calendar as CalendarIcon, ArrowRight, CheckCircle
 } from 'lucide-react';
+import { ROLES } from '../auth';
 import {
     format, startOfWeek, addDays, addWeeks, subWeeks,
     isSameDay, startOfMonth, endOfMonth, eachDayOfInterval,
@@ -13,6 +14,7 @@ import {
     differenceInDays, parseISO, getHours, getMinutes, differenceInMinutes, setHours, setMinutes
 } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { useCapacityPlanning } from '../hooks/useCapacityPlanning';
 
 // --- CONFIGURATION ---
 const GROUPS_CONFIG = {
@@ -52,7 +54,7 @@ const WORK_END_HOUR = 17;   // 17h00
 const TOTAL_WORK_MINUTES = (WORK_END_HOUR - WORK_START_HOUR) * 60; // 9h = 540 min
 
 // --- COMPOSANT MODALE AVANCÉE ---
-const EventModal = ({ isOpen, onClose, onSave, projects = [], eventToEdit, initialData }) => {
+const EventModal = ({ isOpen, onClose, onSave, onValidate, projects = [], eventToEdit, initialData, currentUser }) => {
     // États Formulaire
     const [projectSearch, setProjectSearch] = useState('');
     const [selectedProject, setSelectedProject] = useState(null);
@@ -146,6 +148,13 @@ const EventModal = ({ isOpen, onClose, onSave, projects = [], eventToEdit, initi
             onClose();
         }
     };
+
+    const canValidate = useMemo(() => {
+        if (!currentUser || !eventToEdit) return false;
+        const role = currentUser.role;
+        // ADMIN, ORDO, et PRODUCTION (chef d'équipe) peuvent valider/déclarer réalisé
+        return [ROLES.ADMIN, ROLES.ORDONNANCEMENT, ROLES.PRODUCTION].includes(role);
+    }, [currentUser, eventToEdit]);
 
     if (!isOpen) return null;
 
@@ -301,13 +310,23 @@ const EventModal = ({ isOpen, onClose, onSave, projects = [], eventToEdit, initi
                     </div>
 
 
-                    {/* Footer */}
-                    <div style={{ padding: '20px 24px', background: '#F9FAFB', borderTop: '1px solid #F3F4F6', display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
-                        <button onClick={onClose} style={{ padding: '10px 20px', borderRadius: 8, border: '1px solid #D1D5DB', background: 'white', fontWeight: 600, color: '#374151', cursor: 'pointer', fontSize: 14 }}>Annuler</button>
-                        <button onClick={handleSubmit} style={{ padding: '10px 24px', borderRadius: 8, border: 'none', background: '#111827', color: 'white', fontWeight: 600, cursor: 'pointer', fontSize: 14, boxShadow: '0 1px 2px rgba(0,0,0,0.1)' }}>
-                            Planifier
+                </div>
+
+                {/* Footer */}
+                <div style={{ padding: '20px 24px', background: '#F9FAFB', borderTop: '1px solid #F3F4F6', display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+                    {eventToEdit && canValidate && eventToEdit.meta?.status !== 'validated' && (
+                        <button
+                            onClick={() => { onValidate(eventToEdit); onClose(); }}
+                            style={{ marginRight: 'auto', padding: '10px 20px', borderRadius: 8, border: 'none', background: '#059669', color: 'white', fontWeight: 600, cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', gap: 8 }}
+                        >
+                            <CheckCircle size={16} /> Valider (Réalisé)
                         </button>
-                    </div>
+                    )}
+
+                    <button onClick={onClose} style={{ padding: '10px 20px', borderRadius: 8, border: '1px solid #D1D5DB', background: 'white', fontWeight: 600, color: '#374151', cursor: 'pointer', fontSize: 14 }}>Annuler</button>
+                    <button onClick={handleSubmit} style={{ padding: '10px 24px', borderRadius: 8, border: 'none', background: '#111827', color: 'white', fontWeight: 600, cursor: 'pointer', fontSize: 14, boxShadow: '0 1px 2px rgba(0,0,0,0.1)' }}>
+                        {eventToEdit ? 'Enregistrer' : 'Planifier'}
+                    </button>
                 </div>
             </div>
         </div>
@@ -361,13 +380,33 @@ const ViewSelector = ({ view, onViewChange, customRange, onCustomRangeChange }) 
 const TopBar = ({
     view, onViewChange, currentDate, onPrev, onNext, onToday,
     customRange, onCustomRangeChange, onNew,
-    searchQuery, setSearchQuery, activeFilters, onAddFilter, onRemoveFilter
+    searchQuery, setSearchQuery, activeFilters, onAddFilter, onRemoveFilter,
+    assistantMode, onToggleAssistant
 }) => {
     return (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 24px', background: '#FAF5EE' }}>
             <div style={{ display: 'flex', gap: 12 }}>
                 <button onClick={onNew} style={{ background: '#111827', color: '#fff', border: 'none', borderRadius: 6, padding: '8px 16px', fontWeight: 600, fontSize: 14, cursor: 'pointer' }}>Nouveau</button>
-                <button style={{ background: '#111827', color: '#fff', border: 'none', borderRadius: 6, padding: '8px 16px', fontWeight: 600, fontSize: 14, cursor: 'pointer' }}>Publier</button>
+                <button
+                    onClick={onToggleAssistant}
+                    style={{
+                        background: assistantMode ? '#2563EB' : 'white',
+                        color: assistantMode ? 'white' : '#374151',
+                        border: '1px solid #E5E7EB',
+                        borderRadius: 6,
+                        padding: '8px 16px',
+                        fontWeight: 600,
+                        fontSize: 14,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        transition: 'all 0.2s'
+                    }}
+                >
+                    {assistantMode ? <CalendarIcon size={16} /> : <Briefcase size={16} />}
+                    {assistantMode ? "Vue Calendrier" : "Vue Assistant"}
+                </button>
             </div>
 
             <div style={{ flex: 1, maxWidth: 600, margin: '0 24px', position: 'relative' }}>
@@ -436,7 +475,7 @@ const TopBar = ({
 };
 
 export default function PlanningScreen({ projects, events: initialEvents, onUpdateEvent, onBack }) {
-    const { users } = useAuth();
+    const { users, currentUser } = useAuth();
 
     const [currentDate, setCurrentDate] = useState(new Date());
     const [view, setView] = useState('week');
@@ -455,6 +494,10 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
     // --- RECHERCHE MULTI-CRITÈRES ---
     const [searchQuery, setSearchQuery] = useState('');
     const [activeFilters, setActiveFilters] = useState([]);
+
+    // --- MODE ASSISTANT ---
+    const [assistantMode, setAssistantMode] = useState(false);
+    const stats = useCapacityPlanning(projects, localEvents, { conf: 11, pose: 3 });
 
     const filteredGroups = useMemo(() => {
         if (activeFilters.length === 0) return GROUPS_CONFIG;
@@ -570,11 +613,27 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
             meta: {
                 start: `${formData.startDate}T${formData.startTime}`,
                 end: `${formData.endDate}T${formData.endTime}`,
-                projectId: formData.projectId
+                projectId: formData.projectId,
+                status: 'planned' // Défaut
             }
         }));
 
         setLocalEvents(prev => [...prev, ...newEvents]);
+    };
+
+    const handleValidateEvent = (event) => {
+        const updatedEvent = {
+            ...event,
+            meta: {
+                ...event.meta,
+                status: 'validated',
+                validatedBy: currentUser?.name || 'Inconnu',
+                validatedAt: new Date().toISOString()
+            }
+        };
+
+        setLocalEvents(prev => prev.map(e => e.id === event.id ? updatedEvent : e));
+        if (onUpdateEvent) onUpdateEvent(updatedEvent);
     };
 
     // --- MOTEUR TEMPOREL (Inchangé) ---
@@ -642,6 +701,10 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                 labelTime = `${format(eventStart, 'HH:mm')} - ${format(eventEnd, 'HH:mm')}`;
             }
 
+            const isValidated = evt.meta?.status === 'validated';
+            const opacity = isValidated ? 1 : 0.75;
+            const borderStyle = isValidated ? 'solid' : 'dashed';
+
             return (
                 <div key={evt.id} draggable
                     onDragStart={(e) => handleDragStart(e, evt)}
@@ -650,15 +713,22 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                     style={{
                         position: 'absolute', top: 4, bottom: 4,
                         left: `${leftPercent}%`, width: `${widthPercent}%`,
-                        backgroundColor: style.bg, borderLeft: `4px solid ${style.border}`,
+                        backgroundColor: style.bg,
+                        borderLeft: `4px ${borderStyle} ${style.border}`,
+                        borderTop: isValidated ? `1px solid ${style.border}` : 'none', // Cadre complet si validé
+                        borderRight: isValidated ? `1px solid ${style.border}` : 'none',
+                        borderBottom: isValidated ? `1px solid ${style.border}` : 'none',
                         color: style.text, borderRadius: 6, padding: '2px 4px',
-                        fontSize: 10, fontWeight: 600, zIndex: 10,
+                        fontSize: 10, fontWeight: 600, zIndex: 10, opacity,
                         whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                         cursor: 'grab', display: 'flex', flexDirection: 'column', justifyContent: 'center',
-                        minWidth: 25 // Minimum visible pour les micro-tâches
+                        minWidth: 25, transition: 'all 0.2s'
                     }}
                 >
-                    <div style={{ fontSize: 9, opacity: 0.9 }}>{labelTime}</div>
+                    <div style={{ fontSize: 9, opacity: 0.9, display: 'flex', justifyContent: 'space-between' }}>
+                        {labelTime}
+                        {isValidated && <CheckCircle size={10} color={style.text} />}
+                    </div>
                     <div>{evt.title}</div>
                 </div>
             );
@@ -682,6 +752,8 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                 activeFilters={activeFilters}
                 onAddFilter={(f) => setActiveFilters([...activeFilters, f])}
                 onRemoveFilter={(f) => setActiveFilters(activeFilters.filter(x => x !== f))}
+                assistantMode={assistantMode}
+                onToggleAssistant={() => setAssistantMode(!assistantMode)}
             />
 
             {/* MODALE AVANCÉE */}
@@ -689,44 +761,96 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                 isOpen={isModalOpen}
                 onClose={() => { setIsModalOpen(false); setEditingEvent(null); setInitialModalData(null); }}
                 onSave={handleSaveEvent}
+                onValidate={handleValidateEvent}
                 projects={projects}
                 eventToEdit={editingEvent}
                 initialData={initialModalData}
+                currentUser={currentUser}
             />
 
-            <div style={{ flex: 1, overflow: 'hidden', padding: '0 24px 24px', display: 'flex', flexDirection: 'column' }}>
-                <div style={{ height: 'fit-content', maxHeight: '100%', overflow: 'auto', background: 'white', border: '1px solid #E5E7EB', borderRadius: 12, position: 'relative' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: `260px repeat(${columns.length}, minmax(${MIN_WIDTH}px, 1fr))`, gridAutoRows: 'max-content', width: 'max-content', minWidth: '100%' }}>
-                        <StickyCorner style={{ height: HEADER_HEIGHT_1, borderBottom: 'none' }} />
-                        {superHeaders.map((header, i) => (<div key={i} style={{ gridColumn: `span ${header.span}`, position: 'sticky', top: 0, zIndex: 40, background: 'white', borderBottom: '1px solid #E5E7EB', borderRight: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: 1 }}>{header.label}</div>))}
-                        <StickyCorner style={{ top: HEADER_HEIGHT_1, height: HEADER_HEIGHT_2 }}>Ressources</StickyCorner>
-                        {columns.map(col => (<StickyTopCell key={col.toString()} style={{ top: HEADER_HEIGHT_1, height: HEADER_HEIGHT_2, background: isSameDay(col, new Date()) && view !== 'year' ? '#EFF6FF' : 'white', color: isSameDay(col, new Date()) && view !== 'year' ? '#2563EB' : '#4B5563' }}>{getCellContent(col)}</StickyTopCell>))}
-
-                        {Object.entries(filteredGroups).map(([key, group]) => (
-                            <React.Fragment key={key}>
-                                <StickyLeftCell onClick={() => setExpandedGroups(prev => ({ ...prev, [key]: !prev[key] }))} bg={group.bg} style={{ fontWeight: 800, color: '#111827' }}>{expandedGroups[key] ? <ChevronDown size={14} style={{ marginRight: 8 }} /> : <ChevronRightIcon size={14} style={{ marginRight: 8 }} />}{group.label}</StickyLeftCell>
-                                <div style={{ gridColumn: `span ${columns.length}`, background: group.bg, borderBottom: '1px solid #E5E7EB', height: ROW_HEIGHT }} />
-                                {expandedGroups[key] && group.members.map(member => (
-                                    <React.Fragment key={member}>
-                                        <StickyLeftCell style={{ paddingLeft: 42, color: '#4B5563', fontWeight: 500 }}>{member}</StickyLeftCell>
-                                        {columns.map(col => (
-                                            <div
-                                                key={`${member}-${col}`}
-                                                onClick={() => handleCellClick(member, col)}
-                                                onDragOver={handleDragOver}
-                                                onDrop={(e) => handleDrop(e, member, col)}
-                                                style={{ borderBottom: '1px solid #E5E7EB', borderRight: '1px solid #F3F4F6', background: (view !== 'year' && isSameDay(col, new Date())) ? '#F9FAFB' : 'transparent', height: ROW_HEIGHT, position: 'relative' }}
-                                            >
-                                                {renderEventsForCell(member, col)}
+            {assistantMode ? (
+                <div style={{ flex: 1, padding: 24, overflowY: 'auto' }}>
+                    <div style={{ background: 'white', borderRadius: 12, border: '1px solid #E5E7EB', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                            <thead style={{ background: '#F9FAFB', borderBottom: '1px solid #E5E7EB' }}>
+                                <tr>
+                                    <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Projet</th>
+                                    <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Deadline</th>
+                                    <th style={{ padding: '12px 16px', textAlign: 'right', fontSize: 12, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Budget (h)</th>
+                                    <th style={{ padding: '12px 16px', textAlign: 'right', fontSize: 12, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Planifié (h)</th>
+                                    <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: 12, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Progression</th>
+                                    <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: 12, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>État</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {stats.map(proj => (
+                                    <tr key={proj.id} style={{ borderBottom: '1px solid #F3F4F6', background: proj.status === 'late' ? '#FEF2F2' : 'white' }}>
+                                        <td style={{ padding: '12px 16px', fontWeight: 600, color: '#111827' }}>
+                                            {proj.name}
+                                            <div style={{ fontSize: 12, color: '#6B7280', fontWeight: 400 }}>{proj.manager || "Non assigné"}</div>
+                                        </td>
+                                        <td style={{ padding: '12px 16px', fontSize: 13, color: '#374151' }}>
+                                            {proj.deadline ? format(new Date(proj.deadline), 'dd MMM yyyy', { locale: fr }) : '-'}
+                                        </td>
+                                        <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 600 }}>{proj.totalSold}h</td>
+                                        <td style={{ padding: '12px 16px', textAlign: 'right', color: proj.totalPlanned > proj.totalSold ? '#EF4444' : '#111827' }}>
+                                            {proj.totalPlanned}h
+                                        </td>
+                                        <td style={{ padding: '12px 16px', width: 120 }}>
+                                            <div style={{ height: 6, background: '#E5E7EB', borderRadius: 3, overflow: 'hidden' }}>
+                                                <div style={{ width: `${Math.min(proj.progress, 100)}%`, height: '100%', background: proj.progress > 100 ? '#EF4444' : '#10B981', transition: 'width 0.3s' }} />
                                             </div>
-                                        ))}
-                                    </React.Fragment>
+                                            <div style={{ textAlign: 'center', fontSize: 11, color: '#6B7280', marginTop: 4 }}>{Math.round(proj.progress)}%</div>
+                                        </td>
+                                        <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                                            {proj.status === 'late' && <span style={{ background: '#FEE2E2', color: '#991B1B', padding: '2px 8px', borderRadius: 12, fontSize: 11, fontWeight: 700 }}>EN RETARD</span>}
+                                            {proj.status === 'warning' && <span style={{ background: '#FEF3C7', color: '#92400E', padding: '2px 8px', borderRadius: 12, fontSize: 11, fontWeight: 700 }}>SURCHARGE</span>}
+                                            {proj.status === 'ok' && <span style={{ background: '#D1FAE5', color: '#065F46', padding: '2px 8px', borderRadius: 12, fontSize: 11, fontWeight: 700 }}>OK</span>}
+                                        </td>
+                                    </tr>
                                 ))}
-                            </React.Fragment>
-                        ))}
+                                {stats.length === 0 && (
+                                    <tr><td colSpan={6} style={{ padding: 24, textAlign: 'center', color: '#9CA3AF' }}>Aucun projet actif.</td></tr>
+                                )}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
-            </div>
+            ) : (
+                <div style={{ flex: 1, overflow: 'hidden', padding: '0 24px 24px', display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ height: 'fit-content', maxHeight: '100%', overflow: 'auto', background: 'white', border: '1px solid #E5E7EB', borderRadius: 12, position: 'relative' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: `260px repeat(${columns.length}, minmax(${MIN_WIDTH}px, 1fr))`, gridAutoRows: 'max-content', width: 'max-content', minWidth: '100%' }}>
+                            <StickyCorner style={{ height: HEADER_HEIGHT_1, borderBottom: 'none' }} />
+                            {superHeaders.map((header, i) => (<div key={i} style={{ gridColumn: `span ${header.span}`, position: 'sticky', top: 0, zIndex: 40, background: 'white', borderBottom: '1px solid #E5E7EB', borderRight: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: 1 }}>{header.label}</div>))}
+                            <StickyCorner style={{ top: HEADER_HEIGHT_1, height: HEADER_HEIGHT_2 }}>Ressources</StickyCorner>
+                            {columns.map(col => (<StickyTopCell key={col.toString()} style={{ top: HEADER_HEIGHT_1, height: HEADER_HEIGHT_2, background: isSameDay(col, new Date()) && view !== 'year' ? '#EFF6FF' : 'white', color: isSameDay(col, new Date()) && view !== 'year' ? '#2563EB' : '#4B5563' }}>{getCellContent(col)}</StickyTopCell>))}
+
+                            {Object.entries(filteredGroups).map(([key, group]) => (
+                                <React.Fragment key={key}>
+                                    <StickyLeftCell onClick={() => setExpandedGroups(prev => ({ ...prev, [key]: !prev[key] }))} bg={group.bg} style={{ fontWeight: 800, color: '#111827' }}>{expandedGroups[key] ? <ChevronDown size={14} style={{ marginRight: 8 }} /> : <ChevronRightIcon size={14} style={{ marginRight: 8 }} />}{group.label}</StickyLeftCell>
+                                    <div style={{ gridColumn: `span ${columns.length}`, background: group.bg, borderBottom: '1px solid #E5E7EB', height: ROW_HEIGHT }} />
+                                    {expandedGroups[key] && group.members.map(member => (
+                                        <React.Fragment key={member}>
+                                            <StickyLeftCell style={{ paddingLeft: 42, color: '#4B5563', fontWeight: 500 }}>{member}</StickyLeftCell>
+                                            {columns.map(col => (
+                                                <div
+                                                    key={`${member}-${col}`}
+                                                    onClick={() => handleCellClick(member, col)}
+                                                    onDragOver={handleDragOver}
+                                                    onDrop={(e) => handleDrop(e, member, col)}
+                                                    style={{ borderBottom: '1px solid #E5E7EB', borderRight: '1px solid #F3F4F6', background: (view !== 'year' && isSameDay(col, new Date())) ? '#F9FAFB' : 'transparent', height: ROW_HEIGHT, position: 'relative' }}
+                                                >
+                                                    {renderEventsForCell(member, col)}
+                                                </div>
+                                            ))}
+                                        </React.Fragment>
+                                    ))}
+                                </React.Fragment>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

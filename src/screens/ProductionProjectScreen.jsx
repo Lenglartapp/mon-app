@@ -15,7 +15,9 @@ import { STAGES, DEFAULT_VIEWS } from "../lib/constants/views.js"; // Import DEF
 import { recomputeRow } from "../lib/formulas/recomputeRow";
 import { uid } from "../lib/utils/uid"; // Import uid
 
-import { Search, Filter, Layers3, Star, FlaskConical, Image as ImageIcon, Pin } from "lucide-react";
+import { Search, Filter, Layers3, Star, FlaskConical, Image as ImageIcon, Pin, Edit2 } from "lucide-react";
+import { Dialog, DialogTitle, DialogContent, TextField, DialogActions, Button } from "@mui/material";
+import { differenceInMinutes } from "date-fns";
 import { useAuth } from "../auth";
 import { can } from "../lib/authz";
 
@@ -42,7 +44,7 @@ const getVisibilityModel = (viewKey, tableKey, schema) => {
 
 
 // 1. SIGNATURE MISE A JOUR
-export function ProductionProjectScreen({ project: propProject, projects, onBack, onUpdateProjectRows, onUpdateProject, highlightRowId }) {
+export function ProductionProjectScreen({ project: propProject, projects, onBack, onUpdateProjectRows, onUpdateProject, highlightRowId, events = [] }) {
   const { projectId: urlProjectId } = useParams();
 
   // Find Project (SECURED)
@@ -131,6 +133,54 @@ export function ProductionProjectScreen({ project: propProject, projects, onBack
   const { currentUser } = useAuth();
   const canEditProd = can(currentUser, "production.edit");
   const seeChiffrage = can(currentUser, "chiffrage.view");
+
+  // --- CALCUL REALISÉ (Temps Réel) ---
+  const realized = useMemo(() => {
+    const counts = { prepa: 0, conf: 0, pose: 0 };
+    if (!project || !events) return counts;
+
+    const projEvents = events.filter(e =>
+      e.meta?.projectId === project.id &&
+      e.meta?.status === 'validated'
+    );
+
+    projEvents.forEach(evt => {
+      const start = new Date(evt.meta?.start);
+      const end = new Date(evt.meta?.end);
+      const rawMinutes = differenceInMinutes(end, start);
+
+      // Règle 8h/j : si plus de 5h consécutives, on déduit 1h de pause déjeuner
+      const netMinutes = rawMinutes > 300 ? rawMinutes - 60 : rawMinutes;
+      const hours = Math.max(0, netMinutes / 60);
+
+      // Categorisation stricte
+      const type = (evt.type || "").toLowerCase();
+
+      if (type === 'rdv' || type === 'prepa' || type === 'metrage') {
+        counts.prepa += hours;
+      } else if (type === 'atelier' || type === 'conf' || type === 'confection') {
+        counts.conf += hours;
+      } else if (type === 'chantier' || type === 'pose' || type === 'installation') {
+        counts.pose += hours;
+      }
+      // Les autres types ne sont PAS comptabilisés (ex: congés, autre...)
+    });
+
+    return counts;
+  }, [events, project]);
+
+  const [budgetOpen, setBudgetOpen] = useState(false);
+  const [budgetDraft, setBudgetDraft] = useState({ prepa: 0, conf: 0, pose: 0 });
+
+  const handleOpenBudget = () => {
+    setBudgetDraft(project.budget || { prepa: 0, conf: 0, pose: 0 });
+    setBudgetOpen(true);
+  };
+
+  const saveBudget = () => {
+    onUpdateProject(project.id, { budget: budgetDraft });
+    setBudgetOpen(false);
+  };
 
   // Lignes locales (édition fluide)
   const initialRows = useMemo(
@@ -440,6 +490,43 @@ export function ProductionProjectScreen({ project: propProject, projects, onBack
 
       {stage === "dashboard" && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+
+          {/* BUDGET SECTION */}
+          <div style={{ background: 'white', borderRadius: 12, border: `1px solid ${COLORS.border}`, padding: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+              <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0, color: '#111827', display: 'flex', alignItems: 'center', gap: 8 }}>
+                ⏱️ Suivi Budgétaire
+              </h3>
+              {canEditProd && (
+                <button onClick={handleOpenBudget} style={{ ...S.smallBtn, padding: 4 }} title="Ajuster le budget">
+                  <Edit2 size={14} />
+                </button>
+              )}
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
+              {['prepa', 'conf', 'pose'].map(key => {
+                const budgetVal = Number(project.budget?.[key] || 0);
+                const realVal = realized[key] || 0;
+                const percent = budgetVal > 0 ? (realVal / budgetVal) * 100 : 0;
+                const color = percent > 100 ? '#ef4444' : percent > 80 ? '#f59e0b' : '#10b981';
+                const labels = { prepa: "Préparation & Métrage", conf: "Atelier / Confection", pose: "Pose & Logistique" };
+
+                return (
+                  <div key={key} style={{ background: '#F9FAFB', borderRadius: 8, padding: 12, border: '1px solid #F3F4F6' }}>
+                    <div style={{ fontSize: 12, color: '#6B7280', fontWeight: 600, marginBottom: 4 }}>{labels[key]}</div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
+                      <span style={{ fontSize: 20, fontWeight: 800, color: '#1F2937' }}>{realVal.toFixed(1)}h</span>
+                      <span style={{ fontSize: 13, color: '#9CA3AF' }}>/ {budgetVal}h</span>
+                    </div>
+                    <div style={{ height: 6, background: '#E5E7EB', borderRadius: 3, overflow: 'hidden' }}>
+                      <div style={{ width: `${Math.min(percent, 100)}%`, height: '100%', background: color, transition: 'width 0.3s' }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
           <DashboardTiles rows={rows} projectHours={{ conf: 0, pose: 0 }} />
 
           {/* MUR DU PROJET (NOUVEAU) */}
@@ -640,6 +727,20 @@ export function ProductionProjectScreen({ project: propProject, projects, onBack
           minuteId={null} // Pas de minuteId en prod global
         />
       )}
+      <Dialog open={budgetOpen} onClose={() => setBudgetOpen(false)}>
+        <DialogTitle>Ajuster le Budget Heures</DialogTitle>
+        <DialogContent>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 8 }}>
+            <TextField label="Heures Prépa / Métrage" type="number" value={budgetDraft.prepa} onChange={e => setBudgetDraft({ ...budgetDraft, prepa: Number(e.target.value) })} fullWidth />
+            <TextField label="Heures Confection" type="number" value={budgetDraft.conf} onChange={e => setBudgetDraft({ ...budgetDraft, conf: Number(e.target.value) })} fullWidth />
+            <TextField label="Heures Pose" type="number" value={budgetDraft.pose} onChange={e => setBudgetDraft({ ...budgetDraft, pose: Number(e.target.value) })} fullWidth />
+          </div>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setBudgetOpen(false)}>Annuler</Button>
+          <Button onClick={saveBudget} variant="contained">Enregistrer</Button>
+        </DialogActions>
+      </Dialog>
     </div>
   );
 }
