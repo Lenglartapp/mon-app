@@ -2,21 +2,23 @@
 export function can(user, action) {
   const role = user?.role;
   if (!role) return false;
-  if (role === "admin") return true; // admin = tout
+  if (role === "admin") return true; // Admin voit tout
 
   const RIGHTS = {
+    // Rôle : Ordonnancement (Thomas)
     ordonnancement: {
       "users.manage": false,
       "chiffrage.view": true,
       "chiffrage.edit": true,
-      "chiffrage.moulinette": true, // Access to Moulinette Tab
-      "production.view": true,
+      "chiffrage.moulinette": true,
+      "production.view": true, // <--- C'est ici que ça se joue
       "production.edit": true,
       "inventory.view": true,
       "inventory.edit": true,
       "planning.view": true,
       "planning.edit": true,
     },
+    // Rôle : Pilotage Projet (Pauline)
     pilotage_projet: {
       "users.manage": false,
       "chiffrage.view": true,
@@ -29,37 +31,36 @@ export function can(user, action) {
       "planning.view": true,
       "planning.edit": false,
     },
+    // Rôle : Production / Atelier / Pose
     production: {
       "users.manage": false,
       "chiffrage.view": false,
       "chiffrage.edit": false,
-      "chiffrage.moulinette": false,
       "production.view": true,
-      "production.edit": true,
+      "production.edit": true, // Peut avancer les statuts
       "inventory.view": true,
       "inventory.edit": true,
       "planning.view": true,
       "planning.edit": false,
     },
+    // Rôle : ADV
     adv: {
       "users.manage": false,
       "chiffrage.view": true,
       "chiffrage.edit": true,
-      "chiffrage.moulinette": false, // RESTRICTED
-      "production.view": true, // Can view production progress
-      "production.edit": false, // But cannot edit rows
+      "production.view": true,
+      "production.edit": false,
       "inventory.view": true,
-      "inventory.edit": false,
       "planning.view": true,
       "planning.edit": false,
     },
   };
 
   const map = RIGHTS[role];
-  if (!map) return false;
+  if (!map) return false; // Rôle inconnu = rien
+
+  // Si l'action est listée, on retourne sa valeur, sinon false
   if (action in map) return !!map[action];
 
-  // Default fallbacks if keys missing in map but present in concept
-  // Actually better to be strict, return false if not in map
   return false;
 }

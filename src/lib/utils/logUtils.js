@@ -1,4 +1,4 @@
-export function generateRowLogs(oldRow, newRow, schema) {
+export function generateRowLogs(oldRow, newRow, schema, authorName = 'Système') {
     const logs = [];
     if (!oldRow || !newRow) return logs;
 
@@ -30,7 +30,7 @@ export function generateRowLogs(oldRow, newRow, schema) {
                 to: formatVal(newVal),
                 createdAt: new Date().toISOString(),
                 type: 'log',
-                author: 'System'
+                author: authorName
             });
         }
     });

@@ -15,6 +15,7 @@ import {
 } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useCapacityPlanning } from '../hooks/useCapacityPlanning';
+import { uid } from '../lib/utils/uid';
 
 // --- CONFIGURATION ---
 const GROUPS_CONFIG = {
@@ -576,6 +577,15 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
             return evt;
         }));
         setDraggedEvent(null);
+
+        // SAUVEGARDE DB
+        const updatedEvent = {
+            ...draggedEvent,
+            resourceId: targetResourceId,
+            date: format(targetDate, 'yyyy-MM-dd'),
+            meta: { ...draggedEvent.meta, start: newStart.toISOString(), end: newEnd.toISOString() }
+        };
+        if (onUpdateEvent) onUpdateEvent(updatedEvent);
     };
 
     // --- HANDLER SAUVEGARDE (Création OU Édition) ---
@@ -590,6 +600,25 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                 ...evt, title: formData.title, resourceId: formData.resourceIds[0], date: formData.startDate, duration: durationDays, type: formData.type,
                 meta: { ...evt.meta, start: start.toISOString(), end: end.toISOString(), projectId: formData.projectId }
             } : evt));
+
+            // SAUVEGARDE DB (Modification)
+            if (onUpdateEvent) {
+                const updatedEvt = {
+                    id: formData.id,
+                    title: formData.title,
+                    resourceId: formData.resourceIds[0],
+                    date: formData.startDate,
+                    duration: durationDays,
+                    type: formData.type,
+                    meta: {
+                        ...localEvents.find(e => e.id === formData.id)?.meta,
+                        start: start.toISOString(),
+                        end: end.toISOString(),
+                        projectId: formData.projectId
+                    }
+                };
+                onUpdateEvent(updatedEvt);
+            }
         } else {
             // Création (Code existant...)
             handleAddEvent(formData);
@@ -604,7 +633,7 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
         const durationDays = Math.max(1, differenceInDays(end, start) + 1);
 
         const newEvents = formData.resourceIds.map(resId => ({
-            id: Date.now() + Math.random(),
+            id: uid(),
             title: formData.title,
             resourceId: resId,
             date: formData.startDate, // IMPORTANT: On garde la String 'YYYY-MM-DD'
@@ -619,6 +648,11 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
         }));
 
         setLocalEvents(prev => [...prev, ...newEvents]);
+
+        // SAUVEGARDE DB (Création Multiple)
+        if (onUpdateEvent) {
+            newEvents.forEach(evt => onUpdateEvent(evt));
+        }
     };
 
     const handleValidateEvent = (event) => {

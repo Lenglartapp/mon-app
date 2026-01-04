@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react';
 import { Plus } from 'lucide-react';
 import { COLORS } from '../../lib/constants/ui';
 import ImageLightbox from './ImageLightbox'; // Import du nouveau composant
+import { useAuth } from '../../auth'; // <--- Import
 
 const normalizePhoto = (item) => {
     if (typeof item === 'string') {
@@ -14,6 +15,7 @@ export default function GridPhotoCell({ value, onImageUpload, onCustomAdd }) {
     const fileInputRef = useRef(null);
     const [isOpen, setIsOpen] = useState(false);
     const [currentIndex, setCurrentIndex] = useState(0);
+    const { currentUser } = useAuth(); // <--- Use
 
     const rawArray = Array.isArray(value) ? value : (value ? [value] : []);
     const photos = rawArray.map(normalizePhoto);
@@ -26,7 +28,7 @@ export default function GridPhotoCell({ value, onImageUpload, onCustomAdd }) {
         const newPhoto = {
             url,
             timestamp: new Date().toISOString(),
-            user: "Aristide LENGLART",
+            user: currentUser?.name || "Utilisateur", // <--- Fix
             id: Date.now()
         };
         if (onImageUpload) onImageUpload([...rawArray, newPhoto]);

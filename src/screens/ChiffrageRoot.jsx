@@ -31,7 +31,7 @@ function stringToColor(string) {
   return color;
 }
 
-export default function ChiffrageRoot({ minutes = [], setMinutes, onOpenMinute, onBack }) {
+export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, onDelete, onBack }) {
   const { currentUser } = useAuth?.() || { currentUser: { name: "—" } };
   const [newMinOpen, setNewMinOpen] = useState(false);
   const [newMin, setNewMin] = useState({
@@ -41,6 +41,7 @@ export default function ChiffrageRoot({ minutes = [], setMinutes, onOpenMinute, 
     status: "Non commencé",
     modules: { rideau: true, store: true, decor: true },
   });
+  const [isCreating, setIsCreating] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilters, setActiveFilters] = useState([]);
@@ -86,51 +87,84 @@ export default function ChiffrageRoot({ minutes = [], setMinutes, onOpenMinute, 
     return res;
   }, [list, searchQuery, activeFilters, currentUser]);
 
-  const handleCreateMinute = () => {
+  const handleCreateMinute = async () => {
     const { charge, projet, note, status, modules } = newMin;
     if (!projet.trim() || !charge.trim()) return;
     if (!modules.rideau && !modules.store && !modules.decor) return;
 
-    const now = Date.now();
-    // 👇 ID SOLIDE
-    const id = uid();
+    setIsCreating(true);
+    try {
+      const now = Date.now();
+      // On garde l'ID local pour l'envoi initial, mais on ne s'y fie pas pour la navigation.
+      const localId = uid();
 
-    const m = {
-      id,
-      name: projet.trim(),
-      client: "—",
-      notes: (note || "").trim(),
-      version: 1,
-      lines: [],
-      params: [
-        { id: uid(), name: "taux_horaire", type: "prix", value: 135 },
-        { id: uid(), name: "prix_achat_tissu", type: "prix", value: null },
-        { id: uid(), name: "nuit_hotel", type: "prix", value: 150 },
-      ],
-      deplacements: [],
-      createdAt: now,
-      updatedAt: now,
-      owner: charge.trim(),
-      status,
-      modules: { ...modules },
-    };
-    setMinutes((xs) => [m, ...(xs || [])]);
-    setNewMinOpen(false);
-    if (onOpenMinute) onOpenMinute(id);
+      const m = {
+        id: localId,
+        name: projet.trim(),
+        client: "—",
+        notes: (note || "").trim(),
+        version: 1,
+        lines: [],
+        params: [
+          { id: uid(), name: "taux_horaire", type: "prix", value: 135 },
+          { id: uid(), name: "prix_achat_tissu", type: "prix", value: null },
+          { id: uid(), name: "nuit_hotel", type: "prix", value: 150 },
+        ],
+        deplacements: [],
+        createdAt: now,
+        updatedAt: now,
+        owner: charge.trim(),
+        status,
+        modules: { ...modules },
+      };
+
+      if (onCreate) {
+        // 1. On attend la réponse OFFICIELLE de Supabase
+        const { data, error } = await onCreate(m);
+
+        if (error) {
+          console.error("ERREUR CRITIQUE SUPABASE:", error);
+          // On affiche le détail technique à l'utilisateur pour le diagnostic
+          alert(`ERREUR SUPABASE :\nCode: ${error.code}\nMessage: ${error.message}\nDetails: ${error.details}\nHint: ${error.hint}`);
+          throw new Error(error.message);
+        }
+
+        if (!data || data.length === 0) {
+          alert("Erreur : Aucune donnée renvoyée par Supabase (Insert silencieux).");
+          throw new Error("No data returned");
+        }
+
+        // 3. On récupère le VRAI ID
+        const realId = data[0].id;
+
+        setNewMinOpen(false);
+
+        // 4. Navigation sécurisée
+        if (onOpenMinute) onOpenMinute(realId);
+      }
+    } catch (e) {
+      console.error("Catch global:", e);
+      // Si c'est déjà géré par le if(error) plus haut, on ne ré-alerte pas forcément, 
+      // mais au cas où c'est une autre erreur JS :
+      if (!e.message.includes("ERREUR SUPABASE")) {
+        alert("Erreur JS : " + e.message);
+      }
+    } finally {
+      setIsCreating(false);
+    }
   };
 
   const duplicate = (id) => {
-    setMinutes((xs) => {
-      const src = xs.find(x => x.id === id);
-      if (!src) return xs;
-      const copy = norm({ ...src, id: uid(), name: `${src.name} (copie)`, version: (src.version ?? 1) + 1, createdAt: Date.now(), updatedAt: Date.now(), status: "Non commencé" });
-      return [copy, ...xs];
-    });
+    const src = minutes.find(x => x.id === id);
+    if (!src) return;
+    const copy = { ...src, id: uid(), name: `${src.name} (copie)`, version: (src.version ?? 1) + 1, createdAt: Date.now(), updatedAt: Date.now(), status: "Non commencé" };
+    if (onCreate) onCreate(copy);
   };
 
   const removeOne = (id) => {
-    if (!confirm("Supprimer cette minute ?")) return;
-    setMinutes((xs) => xs.filter(x => x.id !== id));
+    if (window.confirm("Voulez-vous vraiment supprimer ce chiffrage ? Cette action est irréversible.")) {
+      if (onDelete) onDelete(id);
+    }
   };
 
   return (
@@ -218,7 +252,7 @@ export default function ChiffrageRoot({ minutes = [], setMinutes, onOpenMinute, 
               <label><div style={{ fontSize: 13, fontWeight: 500, color: "#374151", marginBottom: 4 }}>Statut</div><select style={{ width: "100%", padding: "8px 12px", borderRadius: 6, border: "1px solid #D1D5DB" }} value={newMin.status} onChange={(e) => setNewMin(m => ({ ...m, status: e.target.value }))}><option>Non commencé</option><option>En cours d’étude</option><option>À valider</option><option>Validé</option></select></label>
               <div><div style={{ fontSize: 13, fontWeight: 500, color: "#374151", marginBottom: 8 }}>Modules à inclure</div><div style={{ display: 'flex', gap: 16 }}><label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}><input type="checkbox" checked={newMin.modules.rideau} onChange={(e) => setNewMin(m => ({ ...m, modules: { ...m.modules, rideau: e.target.checked } }))} /> Rideaux</label><label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}><input type="checkbox" checked={newMin.modules.store} onChange={(e) => setNewMin(m => ({ ...m, modules: { ...m.modules, store: e.target.checked } }))} /> Stores</label><label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}><input type="checkbox" checked={newMin.modules.decor} onChange={(e) => setNewMin(m => ({ ...m, modules: { ...m.modules, decor: e.target.checked } }))} /> Décors</label></div></div>
               <label><div style={{ fontSize: 13, fontWeight: 500, color: "#374151", marginBottom: 4 }}>Note</div><textarea rows={3} style={{ width: "100%", padding: "8px 12px", borderRadius: 6, border: "1px solid #D1D5DB" }} value={newMin.note} onChange={(e) => setNewMin(m => ({ ...m, note: e.target.value }))} placeholder="Commentaire interne…" /></label>
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, marginTop: 8 }}><button onClick={() => setNewMinOpen(false)} style={{ background: 'white', border: '1px solid #D1D5DB', padding: '8px 16px', borderRadius: 6, cursor: 'pointer' }}>Annuler</button><button onClick={handleCreateMinute} disabled={!newMin.charge.trim() || !newMin.projet.trim() || !(newMin.modules.rideau || newMin.modules.store || newMin.modules.decor)} style={{ background: '#1F2937', color: 'white', border: 'none', padding: '8px 16px', borderRadius: 6, cursor: 'pointer', opacity: (!newMin.charge.trim() || !newMin.projet.trim()) ? 0.5 : 1 }}>Créer</button></div>
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, marginTop: 8 }}><button onClick={() => setNewMinOpen(false)} style={{ background: 'white', border: '1px solid #D1D5DB', padding: '8px 16px', borderRadius: 6, cursor: 'pointer' }}>Annuler</button><button onClick={handleCreateMinute} disabled={isCreating || !newMin.charge.trim() || !newMin.projet.trim() || !(newMin.modules.rideau || newMin.modules.store || newMin.modules.decor)} style={{ background: '#1F2937', color: 'white', border: 'none', padding: '8px 16px', borderRadius: 6, cursor: 'pointer', opacity: (isCreating || !newMin.charge.trim() || !newMin.projet.trim()) ? 0.5 : 1 }}>{isCreating ? "Création..." : "Créer"}</button></div>
             </div>
           </div>
         </div>

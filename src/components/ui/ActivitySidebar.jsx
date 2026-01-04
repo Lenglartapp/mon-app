@@ -112,7 +112,6 @@ const CommentInputForm = React.memo(({ onSend, users = [] }) => {
 
             // Restore focus and cursor
             input.focus();
-            // Optional: careful cursor placement could be added here if really needed
         }
     };
 
@@ -210,7 +209,7 @@ const LogItem = React.memo(({ act }) => {
             <Box sx={{ flex: 1 }}>
                 <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, mb: 0.5 }}>
                     <Typography variant="caption" sx={{ fontWeight: 600, color: '#374151' }}>
-                        Modification du dossier
+                        Modification par {act.author || "Système"}
                     </Typography>
                     <Typography variant="caption" sx={{ color: '#9CA3AF', fontSize: 10 }}>
                         {formatRelativeTime(act.createdAt || act.ts)}
@@ -282,21 +281,21 @@ const processMessageText = (text) => {
 };
 
 const MessageItem = React.memo(({ act, isMe }) => {
+    const authorName = act.author || act.user || "Utilisateur";
+
     return (
         <Box sx={{ display: 'flex', gap: 1.5, mb: 2, px: 1, flexDirection: isMe ? 'row-reverse' : 'row' }}>
-            {!isMe && (
-                <Avatar sx={{ width: 28, height: 28, bgcolor: stringToColor(act.author), fontSize: 12 }}>
-                    {act.author?.charAt(0)}
-                </Avatar>
-            )}
+            {/* Always show Avatar */}
+            <Avatar sx={{ width: 28, height: 28, bgcolor: stringToColor(authorName), fontSize: 12 }}>
+                {authorName?.charAt(0)}
+            </Avatar>
 
             <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: isMe ? 'flex-end' : 'flex-start', maxWidth: '85%' }}>
                 <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, mb: 0.5, flexDirection: isMe ? 'row-reverse' : 'row' }}>
-                    {!isMe && (
-                        <Typography variant="caption" sx={{ fontWeight: 700, color: '#374151' }}>
-                            {act.author}
-                        </Typography>
-                    )}
+                    {/* Always show Name */}
+                    <Typography variant="caption" sx={{ fontWeight: 700, color: '#374151' }}>
+                        {authorName}
+                    </Typography>
                     <Typography variant="caption" sx={{ color: '#9CA3AF', fontSize: 10 }}>
                         {formatRelativeTime(act.createdAt || act.ts)}
                     </Typography>
@@ -358,7 +357,7 @@ const ActivityList = React.memo(({ activities, currentUser }) => {
 
 // --- MAIN COMPONENT ---
 
-const ActivitySidebar = React.memo(({ activities = [], onAddComment, currentUser = "Moi", isOpen, minuteId, projectId, rowId }) => {
+const ActivitySidebar = React.memo(({ activities = [], onAddComment, currentUser = "Moi", isOpen, minuteId, projectId, rowId, row }) => {
     const { addNotification } = useNotifications();
     const { users } = useAuth();
 
@@ -371,13 +370,17 @@ const ActivitySidebar = React.memo(({ activities = [], onAddComment, currentUser
         const currentUsers = users || [];
 
         currentUsers.forEach(u => {
-            // On cherche le prénom (ex: @Aristide)
-            const mentionTag = '@' + u.name.split(' ')[0];
+            if (!u.name) return;
 
-            if (text.includes(mentionTag)) {
-                // --- CORRECTION : On crée un objet ACTION, pas un lien ---
+            // Prénom seul (ex: "Thomas" pour "Thomas DUPONT")
+            const firstName = u.name.split(' ')[0];
+
+            // On cherche "@Thomas" ou "@thomas"
+            const regex = new RegExp(`@${firstName}`, 'i'); // 'i' = insensible à la casse
+
+            if (regex.test(text)) {
                 let navAction = null;
-
+                // On construit le lien de redirection
                 if (minuteId) {
                     navAction = { screen: "chiffrage", id: minuteId, rowId: rowId };
                 } else if (projectId) {
@@ -385,18 +388,24 @@ const ActivitySidebar = React.memo(({ activities = [], onAddComment, currentUser
                 }
 
                 if (navAction) {
+                    // Définir le nom du projet/zone pour le contexte
+                    const projectContext = row?.designation || row?.nom || row?.produit || row?.piece || row?.zone || `Ligne #${row?.id || '?'}`;
+                    const messagePreview = text.length > 40 ? text.substring(0, 40) + "..." : text;
+
+                    // Appel à addNotification avec l'ID CIBLE (u.id)
                     addNotification(
                         "Mention",
-                        `${currentUser} vous a mentionné`,
+                        `${projectContext} : "${messagePreview}"`, // Le message contiendra l'aperçu
                         "info",
-                        navAction // On passe l'objet pour la télécommande
+                        navAction,
+                        u.id // <--- IMPORTANT : On envoie l'ID de la cible pour que la notif aille chez LUI
                     );
                 }
             }
         });
 
         onAddComment(text);
-    }, [users, onAddComment, addNotification, minuteId, projectId, currentUser]);
+    }, [users, onAddComment, addNotification, minuteId, projectId, currentUser, rowId]);
 
     if (!isOpen) return null;
 
@@ -434,7 +443,7 @@ const ActivitySidebar = React.memo(({ activities = [], onAddComment, currentUser
             </Box>
 
             {/* List */}
-            <ActivityList activities={activities} currentUser={currentUser} />
+            <ActivityList activities={activities} currentUser={currentUser?.name || currentUser} />
 
             {/* Input Form */}
             <CommentInputForm
