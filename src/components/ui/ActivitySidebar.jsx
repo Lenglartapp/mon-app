@@ -4,6 +4,7 @@ import Typography from '@mui/material/Typography';
 import TextField from '@mui/material/TextField';
 import IconButton from '@mui/material/IconButton';
 import SendIcon from '@mui/icons-material/Send';
+import AttachFileIcon from '@mui/icons-material/AttachFile'; // <--- New Icon
 import Chip from '@mui/material/Chip';
 import Avatar from '@mui/material/Avatar';
 import Popover from '@mui/material/Popover';
@@ -17,6 +18,8 @@ import MenuItem from '@mui/material/MenuItem';
 
 import { useNotifications } from '../../contexts/NotificationContext';
 import { useAuth } from '../../auth';
+import { supabase } from '../../lib/supabaseClient'; // <--- Import Supabase
+import ImageLightbox from './ImageLightbox'; // <--- Lightbox
 
 // --- HELPERS ---
 
@@ -49,10 +52,12 @@ function formatRelativeTime(dateStr) {
 // --- SUB-COMPONENTS ---
 
 // 1. INPUT FORM (ISOLATED & MEMOIZED)
-const CommentInputForm = React.memo(({ onSend, users = [] }) => {
+const CommentInputForm = React.memo(({ onSend, onUploadImage, users = [] }) => {
     // Uncontrolled input for maximum performance
     const inputRef = useRef(null);
+    const fileInputRef = useRef(null);
     const [hasText, setHasText] = useState(false);
+    const [uploading, setUploading] = useState(false);
 
     // Mention states
     const [anchorEl, setAnchorEl] = useState(null);
@@ -135,6 +140,22 @@ const CommentInputForm = React.memo(({ onSend, users = [] }) => {
         }
     };
 
+    const handleFileChange = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        try {
+            setUploading(true);
+            await onUploadImage(file);
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setUploading(false);
+            // Reset input
+            if (fileInputRef.current) fileInputRef.current.value = "";
+        }
+    };
+
     const filteredUsers = useMemo(() => {
         if (!anchorEl) return [];
         return users.filter(u => u.name.toLowerCase().includes(mentionQuery.toLowerCase()));
@@ -156,6 +177,28 @@ const CommentInputForm = React.memo(({ onSend, users = [] }) => {
                     maxRows={4}
                     sx={{ fontSize: 13 }}
                 />
+                <input
+                    type="file"
+                    ref={fileInputRef}
+                    style={{ display: 'none' }}
+                    accept="image/*"
+                    onChange={handleFileChange}
+                />
+                <IconButton
+                    color="default"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                    size="small"
+                >
+                    {uploading ? (
+                        <div style={{
+                            width: 14, height: 14,
+                            border: '2px solid #ccc', borderTopColor: '#333',
+                            borderRadius: '50%', animation: 'spin 1s linear infinite'
+                        }} />
+                    ) : <AttachFileIcon fontSize="small" />}
+                </IconButton>
+
                 <IconButton
                     color="primary"
                     onClick={handleSendClick}
@@ -256,6 +299,7 @@ const LogItem = React.memo(({ act }) => {
 });
 
 const processMessageText = (text) => {
+    if (!text) return "";
     const parts = text.split(/(@\w+)/g);
     return parts.map((part, i) => {
         if (part.startsWith('@')) {
@@ -282,41 +326,74 @@ const processMessageText = (text) => {
 
 const MessageItem = React.memo(({ act, isMe }) => {
     const authorName = act.author || act.user || "Utilisateur";
+    const [lightboxOpen, setLightboxOpen] = useState(false);
+
+    // Image Content?
+    const isImage = act.type === 'image';
+    const content = isImage ? act.content : act.text; // 'content' holds URL for images, 'text' for messages (legacy) or 'content' mapped to 'text'
 
     return (
-        <Box sx={{ display: 'flex', gap: 1.5, mb: 2, px: 1, flexDirection: isMe ? 'row-reverse' : 'row' }}>
-            {/* Always show Avatar */}
-            <Avatar sx={{ width: 28, height: 28, bgcolor: stringToColor(authorName), fontSize: 12 }}>
-                {authorName?.charAt(0)}
-            </Avatar>
+        <>
+            <Box sx={{ display: 'flex', gap: 1.5, mb: 2, px: 1, flexDirection: isMe ? 'row-reverse' : 'row' }}>
+                {/* Always show Avatar */}
+                <Avatar sx={{ width: 28, height: 28, bgcolor: stringToColor(authorName), fontSize: 12 }}>
+                    {authorName?.charAt(0)}
+                </Avatar>
 
-            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: isMe ? 'flex-end' : 'flex-start', maxWidth: '85%' }}>
-                <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, mb: 0.5, flexDirection: isMe ? 'row-reverse' : 'row' }}>
-                    {/* Always show Name */}
-                    <Typography variant="caption" sx={{ fontWeight: 700, color: '#374151' }}>
-                        {authorName}
-                    </Typography>
-                    <Typography variant="caption" sx={{ color: '#9CA3AF', fontSize: 10 }}>
-                        {formatRelativeTime(act.createdAt || act.ts)}
-                    </Typography>
-                </Box>
+                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: isMe ? 'flex-end' : 'flex-start', maxWidth: '85%' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, mb: 0.5, flexDirection: isMe ? 'row-reverse' : 'row' }}>
+                        {/* Always show Name */}
+                        <Typography variant="caption" sx={{ fontWeight: 700, color: '#374151' }}>
+                            {authorName}
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: '#9CA3AF', fontSize: 10 }}>
+                            {formatRelativeTime(act.createdAt || act.ts)}
+                        </Typography>
+                    </Box>
 
-                <Box sx={{
-                    bgcolor: isMe ? '#EFF6FF' : 'white',
-                    border: '1px solid',
-                    borderColor: isMe ? '#BFDBFE' : '#E5E7EB',
-                    borderRadius: 2,
-                    borderTopLeftRadius: !isMe ? 0 : 2,
-                    borderTopRightRadius: isMe ? 0 : 2,
-                    p: '8px 12px',
-                    boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
-                }}>
-                    <Typography variant="body2" sx={{ fontSize: 13, lineHeight: 1.6, color: '#1F2937' }}>
-                        {processMessageText(act.text)}
-                    </Typography>
+                    <Box sx={{
+                        bgcolor: isMe ? '#EFF6FF' : 'white',
+                        border: '1px solid',
+                        borderColor: isMe ? '#BFDBFE' : '#E5E7EB',
+                        borderRadius: 2,
+                        borderTopLeftRadius: !isMe ? 0 : 2,
+                        borderTopRightRadius: isMe ? 0 : 2,
+                        p: '8px 12px',
+                        boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
+                        // If image, transparent bg
+                        ...(isImage && { bgcolor: 'transparent', border: 'none', boxShadow: 'none', p: 0 })
+                    }}>
+                        {isImage ? (
+                            <Box
+                                component="img"
+                                src={content}
+                                onClick={() => setLightboxOpen(true)}
+                                sx={{
+                                    maxWidth: 200,
+                                    maxHeight: 200,
+                                    borderRadius: 2,
+                                    border: '1px solid #E5E7EB',
+                                    cursor: 'zoom-in'
+                                }}
+                            />
+                        ) : (
+                            <Typography variant="body2" sx={{ fontSize: 13, lineHeight: 1.6, color: '#1F2937' }}>
+                                {processMessageText(content || act.text)}
+                            </Typography>
+                        )}
+                    </Box>
                 </Box>
             </Box>
-        </Box>
+            {/* Lightbox for this image */}
+            {isImage && (
+                <ImageLightbox
+                    open={lightboxOpen}
+                    onClose={() => setLightboxOpen(false)}
+                    images={[{ url: content, user: authorName, timestamp: act.createdAt }]}
+                    initialIndex={0}
+                />
+            )}
+        </>
     );
 });
 
@@ -357,9 +434,9 @@ const ActivityList = React.memo(({ activities, currentUser }) => {
 
 // --- MAIN COMPONENT ---
 
-const ActivitySidebar = React.memo(({ activities = [], onAddComment, currentUser = "Moi", isOpen, minuteId, projectId, rowId, row }) => {
+const ActivitySidebar = React.memo(({ activities = [], onAddComment, onAddImage, currentUser = "Moi", isOpen, minuteId, projectId, rowId, row }) => {
     const { addNotification } = useNotifications();
-    const { users } = useAuth();
+    const { users } = useAuth(); // We might need this, but maybe not if we just pass callback
 
     // Notification Menu State (Visual)
     const [headerAnchor, setHeaderAnchor] = useState(null);
@@ -407,6 +484,14 @@ const ActivitySidebar = React.memo(({ activities = [], onAddComment, currentUser
         onAddComment(text);
     }, [users, onAddComment, addNotification, minuteId, projectId, currentUser, rowId]);
 
+    const handleUploadImage = useCallback(async (file) => {
+        if (!onAddImage) {
+            console.error("onAddImage not provided to ActivitySidebar");
+            return;
+        }
+        await onAddImage(file);
+    }, [onAddImage]);
+
     if (!isOpen) return null;
 
     return (
@@ -448,6 +533,7 @@ const ActivitySidebar = React.memo(({ activities = [], onAddComment, currentUser
             {/* Input Form */}
             <CommentInputForm
                 onSend={handleSendMessage}
+                onUploadImage={handleUploadImage}
                 users={users}
             />
         </Box>

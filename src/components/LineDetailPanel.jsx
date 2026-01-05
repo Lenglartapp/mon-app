@@ -18,6 +18,7 @@ import { generateRowLogs } from '../lib/utils/logUtils';
 
 import BlurTextField from './ui/BlurTextField';
 import { useAuth } from '../auth'; // <--- NEW IMPORT
+import { supabase } from '../lib/supabaseClient'; // <--- NEW IMPORT
 
 export default function LineDetailPanel({ open, onClose, row, schema, onRowChange, columnVisibilityModel, minuteId, projectId }) {
     // New Sidebar Toggle State
@@ -49,15 +50,61 @@ export default function LineDetailPanel({ open, onClose, row, schema, onRowChang
         const newActivity = {
             id: Date.now(),
             text: text,
-            date: Date.now(), // <--- AJOUT CRUCIAL (Timestamp pour le tri et l'affichage)
+            date: Date.now(),
             createdAt: new Date().toISOString(),
-            author: currentUser?.name || 'Utilisateur', // <--- FIX HARDCODED NAME
-            type: 'msg' // User Message
+            author: currentUser?.name || 'Utilisateur',
+            type: 'msg'
         };
 
         const updatedComments = row.comments ? [...row.comments, newActivity] : [newActivity];
         onRowChange({ ...row, comments: updatedComments });
-    }, [row, onRowChange, currentUser]); // <--- DEP currentUser
+    }, [row, onRowChange, currentUser]);
+
+    // NEW: Handle Image Upload for Activity Sidebar
+    const handleAddImage = React.useCallback(async (file) => {
+        if (!row || !file) return;
+
+        try {
+            const fileExt = file.name.split('.').pop();
+            const fileName = `activity/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9]/g, '')}`;
+
+            const { error: uploadError } = await supabase.storage
+                .from('attachments')
+                .upload(fileName, file);
+
+            if (uploadError) throw uploadError;
+
+            const { data: { publicUrl } } = supabase.storage
+                .from('attachments')
+                .getPublicUrl(fileName);
+
+            // 1. Update Local Row (Legacy/Immediate Display)
+            const newActivity = {
+                id: Date.now(),
+                content: publicUrl,
+                text: publicUrl, // Fallback
+                type: 'image',
+                createdAt: new Date().toISOString(),
+                date: Date.now(),
+                author: currentUser?.name || 'Utilisateur'
+            };
+            const updatedComments = row.comments ? [...row.comments, newActivity] : [newActivity];
+            onRowChange({ ...row, comments: updatedComments });
+
+            // 2. Insert into Supabase Activity Table (Persistent)
+            await supabase.from('activity').insert({
+                type: 'image',
+                content: publicUrl,
+                user_name: currentUser?.name || 'Utilisateur',
+                row_id: String(row.id),
+                created_at: new Date().toISOString()
+            });
+
+        } catch (error) {
+            console.error("Error uploading image:", error);
+            alert("Erreur lors de l'envoi de l'image");
+        }
+    }, [row, onRowChange, currentUser]);
 
     if (!row) return null;
 
@@ -244,10 +291,12 @@ export default function LineDetailPanel({ open, onClose, row, schema, onRowChang
                         isOpen={isSidebarOpen}
                         activities={activities}
                         onAddComment={handleAddComment}
+                        onAddImage={handleAddImage} // <--- Pass Handler
                         currentUser={currentUser?.name || "Utilisateur"}
                         minuteId={minuteId}
                         projectId={projectId}
                         rowId={row.id}
+                        row={row} // <--- Pass row for context
                     />
                 )}
 
