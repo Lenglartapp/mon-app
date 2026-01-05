@@ -99,12 +99,31 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onBack, highlightRowId }
   }, [minute?.lines, minute?.deplacements]);
 
   // --- CONNECT GLOBAL SETTINGS & CATALOG TO FORMULAS ---
-  const formulaCtx = React.useMemo(() => ({
-    paramsMap,
-    totalCA: baseCA,
-    settings: globalSettings || { hourlyRate: 50, vatRate: 20 }, // Use DB Settings
-    catalog: catalog || [] // Use DB Catalog
-  }), [paramsMap, baseCA, globalSettings, catalog]);
+  // --- CONNECT GLOBAL SETTINGS & CATALOG TO FORMULAS ---
+  const formulaCtx = React.useMemo(() => {
+    // 1. Defaults
+    const defaults = { taux_horaire: 135, prix_nuit: 180, prix_repas: 25, vatRate: 20 };
+
+    // 2. Global (DB App Settings)
+    // Note: App Settings might use 'hourlyRate', formulas need 'taux_horaire'
+    const global = globalSettings ? {
+      ...globalSettings,
+      taux_horaire: globalSettings.hourlyRate ?? globalSettings.taux_horaire
+    } : {};
+
+    // 3. Local (Minute Specific Override)
+    const local = minute?.settings || {};
+
+    // Merge: Local > Global > Defaults
+    const effectiveSettings = { ...defaults, ...global, ...local };
+
+    return {
+      paramsMap,
+      totalCA: baseCA,
+      settings: effectiveSettings,
+      catalog: catalog || []
+    };
+  }, [paramsMap, baseCA, globalSettings, catalog, minute?.settings]);
 
   // ... (rest of the file)
 

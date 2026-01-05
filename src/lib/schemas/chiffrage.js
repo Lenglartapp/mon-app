@@ -14,7 +14,7 @@ export const CHIFFRAGE_SCHEMA = [
   // 5
   { key: "produit", label: "Produit", type: "select", options: ["Rideau", "Voilage"], width: 140 },
   // 6
-  { key: "type_confection", label: "Confection", type: "select", options: ["Wave", "Pli", "Flamand", "Œillet", "Tête Incrustée", "Fourreau", "Plat"], width: 140 },
+  { key: "type_confection", label: "Confection", type: "select", options: ["Pli Flamand", "Plis Creux", "Pli Plat", "Tripli", "Wave 80", "Wave 60", "Pli Couteau", "A Plat"], width: 140 },
   // 7
   { key: "paire_ou_un_seul_pan", label: "Format", type: "select", options: ["Paire", "Un seul pan"], width: 120 },
   // 8

@@ -46,7 +46,7 @@ export default function SettingsScreen({ onBack }) {
 
   // --- GLOBAL SETTINGS ---
   const { settings: dbSettings, updateSettings } = useAppSettings();
-  const [globalSettings, setGlobalSettings] = useState({ hourlyRate: 50, vatRate: 20 });
+  const [globalSettings, setGlobalSettings] = useState({ hourlyRate: 135, vatRate: 20 });
 
   // Sync state when DB settings load
   React.useEffect(() => {

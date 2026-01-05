@@ -3,7 +3,7 @@ import { S, COLORS } from '../lib/constants/ui';
 import { useAuth } from '../auth';
 import {
     ChevronLeft, ChevronRight, Search, ChevronDown, ChevronRight as ChevronRightIcon,
-    X, Check, User, Briefcase, Clock, Calendar as CalendarIcon, ArrowRight, CheckCircle
+    X, Check, User, Briefcase, Clock, Calendar as CalendarIcon, ArrowRight, CheckCircle, Trash2
 } from 'lucide-react';
 import { ROLES } from '../auth';
 import {
@@ -55,7 +55,7 @@ const WORK_END_HOUR = 17;   // 17h00
 const TOTAL_WORK_MINUTES = (WORK_END_HOUR - WORK_START_HOUR) * 60; // 9h = 540 min
 
 // --- COMPOSANT MODALE AVANCÉE ---
-const EventModal = ({ isOpen, onClose, onSave, onValidate, projects = [], eventToEdit, initialData, currentUser }) => {
+const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = [], eventToEdit, initialData, currentUser }) => {
     // États Formulaire
     const [projectSearch, setProjectSearch] = useState('');
     const [selectedProject, setSelectedProject] = useState(null);
@@ -314,10 +314,19 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, projects = [], eventT
 
                 {/* Footer */}
                 <div style={{ padding: '20px 24px', background: '#F9FAFB', borderTop: '1px solid #F3F4F6', display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+                    {eventToEdit && onDelete && eventToEdit.meta?.status !== 'validated' && (
+                        <button
+                            onClick={() => { if (window.confirm('Supprimer ce créneau ?')) { onDelete(eventToEdit); onClose(); } }}
+                            style={{ marginRight: 'auto', padding: '10px 16px', borderRadius: 8, border: '1px solid #fee2e2', background: '#fef2f2', color: '#ef4444', fontWeight: 600, cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}
+                        >
+                            <Trash2 size={16} /> Supprimer
+                        </button>
+                    )}
+
                     {eventToEdit && canValidate && eventToEdit.meta?.status !== 'validated' && (
                         <button
                             onClick={() => { onValidate(eventToEdit); onClose(); }}
-                            style={{ marginRight: 'auto', padding: '10px 20px', borderRadius: 8, border: 'none', background: '#059669', color: 'white', fontWeight: 600, cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', gap: 8 }}
+                            style={{ padding: '10px 20px', borderRadius: 8, border: 'none', background: '#059669', color: 'white', fontWeight: 600, cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', gap: 8 }}
                         >
                             <CheckCircle size={16} /> Valider (Réalisé)
                         </button>
@@ -474,7 +483,7 @@ const TopBar = ({
     );
 };
 
-export default function PlanningScreen({ projects, events: initialEvents, onUpdateEvent, onBack }) {
+export default function PlanningScreen({ projects, events: initialEvents, onUpdateEvent, onDeleteEvent, onBack }) {
     const { users, currentUser } = useAuth();
 
     const [currentDate, setCurrentDate] = useState(new Date());
@@ -490,6 +499,7 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
     const [editingEvent, setEditingEvent] = useState(null);
     const [draggedEvent, setDraggedEvent] = useState(null);
     const [initialModalData, setInitialModalData] = useState(null);
+    const [hoveredEventId, setHoveredEventId] = useState(null);
 
     // --- RECHERCHE MULTI-CRITÈRES ---
     const [searchQuery, setSearchQuery] = useState('');
@@ -669,6 +679,11 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
         if (onUpdateEvent) onUpdateEvent(updatedEvent);
     };
 
+    const handleDeleteEvent = (event) => {
+        setLocalEvents(prev => prev.filter(e => e.id !== event.id));
+        if (onDeleteEvent) onDeleteEvent(event.id);
+    };
+
     // --- MOTEUR TEMPOREL (Inchangé) ---
     const columns = useMemo(() => {
         if (view === 'day') return [currentDate];
@@ -740,6 +755,8 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
 
             return (
                 <div key={evt.id} draggable
+                    onMouseEnter={() => setHoveredEventId(evt.id)}
+                    onMouseLeave={() => setHoveredEventId(null)}
                     onDragStart={(e) => handleDragStart(e, evt)}
                     onClick={(e) => { e.stopPropagation(); setEditingEvent(evt); setIsModalOpen(true); }}
                     title={`${evt.title} (${labelTime})`}
@@ -763,6 +780,25 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                         {isValidated && <CheckCircle size={10} color={style.text} />}
                     </div>
                     <div>{evt.title}</div>
+
+                    {/* HOVER DELETE ICON */}
+                    {!isValidated && onDeleteEvent && hoveredEventId === evt.id && (
+                        <div
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                if (window.confirm('Supprimer ce créneau ?')) handleDeleteEvent(evt);
+                            }}
+                            style={{
+                                position: 'absolute', top: 2, right: 2,
+                                background: 'rgba(255,255,255,0.9)', borderRadius: 4,
+                                width: 16, height: 16, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                cursor: 'pointer', color: '#ef4444', boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
+                            }}
+                            title="Supprimer"
+                        >
+                            <X size={12} strokeWidth={3} />
+                        </div>
+                    )}
                 </div>
             );
         });
@@ -795,6 +831,7 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                 onClose={() => { setIsModalOpen(false); setEditingEvent(null); setInitialModalData(null); }}
                 onSave={handleSaveEvent}
                 onValidate={handleValidateEvent}
+                onDelete={handleDeleteEvent}
                 projects={projects}
                 eventToEdit={editingEvent}
                 initialData={initialModalData}

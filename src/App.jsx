@@ -47,7 +47,7 @@ function AppShell() {
   // --- 1. CHARGEMENT DONNÉES (Supabase) ---
   const { projects, addProject, updateProject, deleteProject } = useProjects();
   const { minutes, addMinute, updateMinute, deleteMinute } = useMinutes();
-  const { events: planningEvents, updateEvent } = useEvents();
+  const { events: planningEvents, updateEvent, deleteEvent } = useEvents();
   const { inventory, movements, addMovement } = useStocks();
 
   // Alias pour compatibilité
@@ -223,7 +223,8 @@ function AppShell() {
         <PlanningScreen
           projects={cleanProjects}
           events={planningEvents}
-          onUpdateEvent={handleUpdateEvent}
+          onUpdateEvent={updateEvent}
+          onDeleteEvent={(id) => deleteEvent(id)}
           onBack={() => setScreen("home")}
         />
       )}
