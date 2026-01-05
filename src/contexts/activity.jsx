@@ -56,6 +56,26 @@ export function ActivityProvider({ children }) {
     }
   };
 
+  const addImage = async (rowId, imageUrl, user = "Utilisateur", projectId = null) => {
+    if (!rowId || !imageUrl) return;
+
+    const entry = {
+      type: "image",
+      content: imageUrl,
+      user_name: String(user),
+      row_id: String(rowId),
+      project_id: projectId ? String(projectId) : null,
+      created_at: new Date().toISOString()
+    };
+
+    const { data, error } = await supabase.from('activity').insert(entry).select().single();
+    if (error) {
+      console.error("Erreur ajout image:", error);
+    } else {
+      setLastActivity(data);
+    }
+  };
+
   // Récupération asynchrone
   const getRow = async (rowId) => {
     if (!rowId) return [];
@@ -82,7 +102,7 @@ export function ActivityProvider({ children }) {
   };
 
   const value = useMemo(
-    () => ({ addComment, addChange, getRow, lastActivity, setLastActivity }),
+    () => ({ addComment, addChange, addImage, getRow, lastActivity, setLastActivity }),
     [lastActivity]
   );
 

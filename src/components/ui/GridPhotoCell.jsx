@@ -11,27 +11,72 @@ const normalizePhoto = (item) => {
     return item;
 };
 
+import { supabase } from '../../lib/supabaseClient'; // <--- Import Supabase
+
+// ... imports remain the same
+
+// Add style for spinner
+if (typeof document !== 'undefined') {
+    const styleSheet = document.createElement("style");
+    styleSheet.innerText = `
+@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+`;
+    document.head.appendChild(styleSheet);
+}
+
 export default function GridPhotoCell({ value, onImageUpload, onCustomAdd }) {
     const fileInputRef = useRef(null);
     const [isOpen, setIsOpen] = useState(false);
     const [currentIndex, setCurrentIndex] = useState(0);
-    const { currentUser } = useAuth(); // <--- Use
+    const [uploading, setUploading] = useState(false); // <--- Loading State
+    const { currentUser } = useAuth();
 
     const rawArray = Array.isArray(value) ? value : (value ? [value] : []);
     const photos = rawArray.map(normalizePhoto);
 
-    const handleUpload = (e) => {
+    // Fonction d'upload vers Supabase
+    const uploadToSupabase = async (file) => {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+        const filePath = `minutes/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+            .from('attachments')
+            .upload(filePath, file);
+
+        if (uploadError) {
+            console.error('Error uploading image:', uploadError);
+            throw uploadError;
+        }
+
+        const { data: { publicUrl } } = supabase.storage
+            .from('attachments')
+            .getPublicUrl(filePath);
+
+        return publicUrl;
+    };
+
+    const handleUpload = async (e) => {
         e.stopPropagation();
         const file = e.target.files?.[0];
         if (!file) return;
-        const url = URL.createObjectURL(file);
-        const newPhoto = {
-            url,
-            timestamp: new Date().toISOString(),
-            user: currentUser?.name || "Utilisateur", // <--- Fix
-            id: Date.now()
-        };
-        if (onImageUpload) onImageUpload([...rawArray, newPhoto]);
+
+        try {
+            setUploading(true);
+            const publicUrl = await uploadToSupabase(file);
+
+            const newPhoto = {
+                url: publicUrl,
+                timestamp: new Date().toISOString(),
+                user: currentUser?.name || "Utilisateur",
+                id: Date.now()
+            };
+            if (onImageUpload) onImageUpload([...rawArray, newPhoto]);
+        } catch (error) {
+            alert("Erreur lors de l'upload de l'image.");
+        } finally {
+            setUploading(false);
+        }
     };
 
     const handleRemove = (idToRemove) => {
@@ -64,14 +109,25 @@ export default function GridPhotoCell({ value, onImageUpload, onCustomAdd }) {
 
             <button
                 onClick={handleAddClick}
+                disabled={uploading}
                 style={{
                     width: 30, height: 30, flexShrink: 0, borderRadius: 4,
                     border: `1px dashed ${COLORS.border}`,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    cursor: 'pointer', background: '#F9FAFB', color: '#6B7280'
+                    cursor: uploading ? 'wait' : 'pointer',
+                    background: '#F9FAFB', color: '#6B7280',
+                    opacity: uploading ? 0.5 : 1
                 }}
             >
-                <Plus size={14} />
+                {uploading ? (
+                    <div style={{
+                        width: 14, height: 14,
+                        border: '2px solid #ccc', borderTopColor: '#333',
+                        borderRadius: '50%', animation: 'spin 1s linear infinite'
+                    }} />
+                ) : (
+                    <Plus size={14} />
+                )}
             </button>
 
             <input type="file" ref={fileInputRef} style={{ display: 'none' }} accept="image/*" onChange={handleUpload} onClick={(e) => e.stopPropagation()} />
