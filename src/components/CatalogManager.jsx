@@ -167,15 +167,39 @@ export default function CatalogManager({ open, onClose, catalog, onCatalogChange
     ];
 
     const [activeTab, setActiveTab] = React.useState('catalog');
-    const settings = props.settings || { taux_horaire: 35, prix_nuit: 180, prix_repas: 25 };
+    const [localSettings, setLocalSettings] = React.useState(props.settings || { taux_horaire: 135, prix_nuit: 180, prix_repas: 25 });
+
+    // Track previous props to prevent overwrite loops caused by parent re-renders
+    const prevSettingsRef = React.useRef(JSON.stringify(props.settings));
+
+    React.useEffect(() => {
+        const nextStr = JSON.stringify(props.settings);
+        if (nextStr !== prevSettingsRef.current) {
+            // Only update if external data genuinely changed
+            setLocalSettings(props.settings);
+            prevSettingsRef.current = nextStr;
+        }
+    }, [props.settings]);
+
     const onSettingsChange = props.onSettingsChange;
 
+    // Debounce ref
+    const debounceRef = React.useRef(null);
+
     const handleSettingChange = (key, val) => {
-        if (onSettingsChange) {
-            // Allow empty string to clear input, otherwise number
-            const finalVal = val === '' ? '' : Number(val);
-            onSettingsChange({ ...settings, [key]: finalVal });
-        }
+        // 1. Update local UI immediately
+        const finalVal = val === '' ? '' : Number(val);
+        const newSettings = { ...localSettings, [key]: finalVal };
+        setLocalSettings(newSettings);
+
+        // 2. Debounce parent update
+        if (debounceRef.current) clearTimeout(debounceRef.current);
+
+        debounceRef.current = setTimeout(() => {
+            if (onSettingsChange) {
+                onSettingsChange(newSettings);
+            }
+        }, 800);
     };
 
     return (
@@ -225,7 +249,7 @@ export default function CatalogManager({ open, onClose, catalog, onCatalogChange
                                 <TextField
                                     label="Taux Horaire (€/h)"
                                     type="number"
-                                    value={settings.taux_horaire ?? ''}
+                                    value={localSettings.taux_horaire ?? ''}
                                     onChange={(e) => handleSettingChange('taux_horaire', e.target.value)}
                                     fullWidth
                                     variant="outlined"
@@ -238,7 +262,7 @@ export default function CatalogManager({ open, onClose, catalog, onCatalogChange
                                 <TextField
                                     label="Prix Nuit Hôtel (€)"
                                     type="number"
-                                    value={settings.prix_nuit ?? ''}
+                                    value={localSettings.prix_nuit ?? ''}
                                     onChange={(e) => handleSettingChange('prix_nuit', e.target.value)}
                                     fullWidth
                                     variant="outlined"
@@ -251,7 +275,7 @@ export default function CatalogManager({ open, onClose, catalog, onCatalogChange
                                 <TextField
                                     label="Prix Repas (€)"
                                     type="number"
-                                    value={settings.prix_repas ?? ''}
+                                    value={localSettings.prix_repas ?? ''}
                                     onChange={(e) => handleSettingChange('prix_repas', e.target.value)}
                                     fullWidth
                                     variant="outlined"
@@ -264,7 +288,7 @@ export default function CatalogManager({ open, onClose, catalog, onCatalogChange
                                 <TextField
                                     label="Coeff. Marge Sous-traitance"
                                     type="number"
-                                    value={settings.coef_sous_traitance ?? 2}
+                                    value={localSettings.coef_sous_traitance ?? 2}
                                     onChange={(e) => handleSettingChange('coef_sous_traitance', e.target.value)}
                                     fullWidth
                                     variant="outlined"

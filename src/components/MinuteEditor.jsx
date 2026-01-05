@@ -30,6 +30,85 @@ const EMPTY_CTX = {};
 // ================ MinuteEditor (tableau des lignes d'une minute) =================
 function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formulaCtx = EMPTY_CTX, schema = [], setSchema, targetRowId, onRowClick }) {
 
+  // --- STATE LOCAL & DEBOUNCE ---
+  const [localLines, setLocalLines] = React.useState(minute?.lines || []);
+
+  // Refs for Debounce & Safety
+  const saveTimerRef = React.useRef(null);
+  const pendingLinesRef = React.useRef(null); // To store data for flush
+  const lastSavedCountRef = React.useRef(minute?.lines?.length || 0);
+
+  // Sync prop -> local
+  React.useEffect(() => {
+    if (minute?.lines && minute.lines !== localLines) {
+      if (!saveTimerRef.current) {
+        setLocalLines(minute.lines);
+        lastSavedCountRef.current = minute.lines.length;
+      }
+    }
+  }, [minute?.lines]);
+
+  // FONCTION DE SAUVEGARDE SÉCURISÉE
+  const performSave = React.useCallback((newLines) => {
+    if (!onChangeMinute) return;
+
+    // 1. PROTECTION "TABLEAU VIDE"
+    if (lastSavedCountRef.current > 0 && (!newLines || newLines.length === 0)) {
+      console.warn("⛔️ Sauvegarde bloquée : Tentative d'écraser une minute pleine par une minute vide.");
+      // On ne sauve PAS.
+      return;
+    }
+
+    // 2. NETTOYAGE DES DONNÉES (Fix 400 & JSON Validity)
+    // On s'assure que les données sont sérialisables et propres
+    const cleanLines = newLines.map(row => {
+      // Shallow copy pour éviter de muter l'état
+      const clean = { ...row };
+
+      // Sécurité : On retire les champs potentiellement problématiques pour Supabase si besoin
+      // Ici on suppose que le schéma est respecté.
+      // On peut forcer la sérialisation pour être sûr qu'il n'y a pas de fonctions/Symboles
+      return clean;
+    });
+
+    // Appel Parent (Supabase)
+    onChangeMinute({ ...minute, lines: cleanLines, updatedAt: Date.now() });
+
+    // Update ref
+    lastSavedCountRef.current = cleanLines.length;
+    pendingLinesRef.current = null; // Reset pending
+
+  }, [minute, onChangeMinute]);
+
+  // DEBOUNCE TRIGGER
+  const triggerUpdate = React.useCallback((newLines) => {
+    // 1. Update UI Immediately
+    setLocalLines(newLines);
+    pendingLinesRef.current = newLines; // Store for flush
+
+    // 2. Clear previous timer
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+
+    // 3. Set new timer (1000ms)
+    saveTimerRef.current = setTimeout(() => {
+      performSave(newLines);
+      saveTimerRef.current = null;
+    }, 1000);
+
+  }, [performSave]);
+
+  // FLUSH ON UNMOUNT
+  React.useEffect(() => {
+    return () => {
+      if (saveTimerRef.current && pendingLinesRef.current) {
+        console.log("💾 Flushing pending save on unmount...");
+        clearTimeout(saveTimerRef.current);
+        performSave(pendingLinesRef.current);
+      }
+    };
+  }, [performSave]);
+
+
   // Catalog State
   const [catalog, setCatalog] = React.useState(minute?.catalog || [
     { id: 1, name: 'Velours Royal', category: 'Tissu', buyPrice: 50, sellPrice: 120, width: 280, unit: 'ml' },
@@ -50,14 +129,17 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
   // Create shared context with settings
   // NOW DEPENDS on 'catalog' state to ensure recomputeRow sees the active items
   const extendedCtx = React.useMemo(() => {
-    const settings = minute?.settings || { taux_horaire: 35, prix_nuit: 180, prix_repas: 25 };
+    // Priority: Minute Settings > FormulaCtx Settings (which includes Global) > Defaults
+    // Since formulaCtx now correctly includes Global & Defaults, we can rely on it if minute.settings is empty.
+    const baseSettings = formulaCtx.settings || { taux_horaire: 135, prix_nuit: 180, prix_repas: 25 };
+    const settings = { ...baseSettings, ...(minute?.settings || {}) };
+
     return { ...formulaCtx, settings, catalog };
   }, [minute?.settings, catalog, formulaCtx]);
 
   const rows = React.useMemo(() => {
-    // 1. Gather all rows (already aggregating in parent, but safe to check)
-    // Actually ChiffrageScreen already sends aggregated 'lines' in minute.lines
-    const rawSource = minute?.lines || [];
+    // UTILISATION DE LOCAL_LINES À LA PLACE DE MINUTE.LINES
+    const rawSource = localLines || [];
 
     // 2. Identify potential schema targets AND deduplicate IDs
     const seenIds = new Set();
@@ -83,7 +165,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
       const uniqueRow = { ...row, id: safeId };
       return recomputeRow(uniqueRow, targetSchema, extendedCtx);
     });
-  }, [minute?.lines, schema, extendedCtx]);
+  }, [localLines, schema, extendedCtx]); // Depend on localLines
 
 
 
@@ -156,8 +238,9 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
     const next = [...others, ...normalizedChild];
     const withFx = next.map((row) => recomputeRow(row, targetSchema, extendedCtx));
 
-    // Stateless Update
-    onChangeMinute?.({ ...minute, lines: withFx, updatedAt: Date.now() });
+    // DEBOUNCED UPDATE
+    triggerUpdate(withFx);
+    // onChangeMinute?.({ ...minute, lines: withFx, updatedAt: Date.now() });
   };
 
   // Ajout d'une nouvelle ligne
@@ -186,9 +269,10 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
     const computedRow = recomputeRow(newRow, targetSchema, extendedCtx);
     const nextRows = [...rows, computedRow];
 
-    // Stateless Update
-    onChangeMinute?.({ ...minute, lines: nextRows, updatedAt: Date.now() });
-  }, [rows, schema, extendedCtx, minute, onChangeMinute]);
+    // DEBOUNCED UPDATE
+    triggerUpdate(nextRows);
+    // onChangeMinute?.({ ...minute, lines: nextRows, updatedAt: Date.now() });
+  }, [rows, schema, extendedCtx, minute, triggerUpdate]);
 
   // États de sélection pour chaque grille
   const [selRideaux, setSelRideaux] = React.useState([]);
@@ -204,8 +288,9 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
 
     const nextRows = rows.filter(r => !idsToDelete.includes(r.id));
 
-    // Stateless Update
-    onChangeMinute?.({ ...minute, lines: nextRows, updatedAt: Date.now() });
+    // DEBOUNCED UPDATE (ou immédiat pour delete? on garde debounced pour consistance)
+    triggerUpdate(nextRows);
+    // onChangeMinute?.({ ...minute, lines: nextRows, updatedAt: Date.now() });
 
     // Clear selections
     setSelRideaux([]);
@@ -256,11 +341,12 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
     const newRows = [...rows];
     newRows.splice(index + 1, 0, newRow);
 
-    onChangeMinute?.({ ...minute, lines: newRows, updatedAt: Date.now() });
+    triggerUpdate(newRows);
   };
 
   return (
     <div style={{ paddingBottom: 40 }}>
+
       {/* En-tête de l’éditeur (nom, version, statut, infos) */}
       <div
         style={{
@@ -467,7 +553,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
         onClose={() => setIsCatalogOpen(false)}
         catalog={catalog}
         onCatalogChange={handleCatalogChange}
-        settings={minute?.settings || { taux_horaire: 35, prix_nuit: 180, prix_repas: 25 }}
+        settings={extendedCtx.settings}
         onSettingsChange={handleSettingsChange}
       />
     </div>

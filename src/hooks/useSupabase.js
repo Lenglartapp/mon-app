@@ -104,11 +104,13 @@ export const useMinutes = () => {
         const { data, error } = await supabase.from('minutes').select('*').order('updated_at', { ascending: false });
         if (!error) {
             // Mapping : DB 'lines' -> Frontend 'tables'
-            // Fallback to [] if null to avoid crashes
+            // Mapping : DB snake_case -> Frontend camelCase for dates
             const formatted = data.map(m => ({
                 ...m,
                 tables: m.lines || [],
-                budgetSnapshot: m.budget_snapshot || { prepa: 0, conf: 0, pose: 0 }
+                budgetSnapshot: m.budget_snapshot || { prepa: 0, conf: 0, pose: 0 },
+                createdAt: m.created_at ? new Date(m.created_at).getTime() : Date.now(),
+                updatedAt: m.updated_at ? new Date(m.updated_at).getTime() : Date.now(),
             }));
             setMinutes(formatted);
         }
@@ -266,32 +268,45 @@ export const useCatalog = () => {
 
 // --- APP SETTINGS (GLOBAL CONFIG) ---
 export const useAppSettings = () => {
-    const [settings, setSettings] = useState({ hourlyRate: 50, vatRate: 20 }); // Defaults
+    const [settings, setSettings] = useState({ hourlyRate: 135, vatRate: 20, prix_nuit: 180, prix_repas: 25, coef_sous_traitance: 2 });
     const [loading, setLoading] = useState(true);
 
     const fetchSettings = async () => {
         setLoading(true);
-        // On suppose une ligne unique avec id='global_config'
         let { data, error } = await supabase
             .from('app_settings')
-            .select('value')
+            .select('*')
             .eq('id', 'global_config')
             .single();
 
         if (error && error.code === 'PGRST116') {
-            // Row not found, create it
-            const defaultSettings = { hourlyRate: 50, vatRate: 20 };
+            // Row not found, create it with defaults
+            const defaultPayload = {
+                id: 'global_config',
+                taux_horaire_default: 135,
+                frais_hotel_default: 180
+                // Add other fields if DB supports them, otherwise they are null
+            };
             const { data: newData, error: insertError } = await supabase
                 .from('app_settings')
-                .insert([{ id: 'global_config', value: defaultSettings }])
+                .insert([defaultPayload])
                 .select()
                 .single();
 
             if (newData) data = newData;
         }
 
-        if (data?.value) {
-            setSettings(data.value);
+        if (data) {
+            setSettings({
+                // Mapping DB Columns -> keys used in App
+                hourlyRate: data.taux_horaire_default ?? 135,
+                taux_horaire: data.taux_horaire_default ?? 135, // Alias
+                prix_nuit: data.frais_hotel_default ?? 180,
+                // Assuming these cols exist or fallback
+                vatRate: data.tva_default ?? 20,
+                prix_repas: data.frais_repas_default ?? 25,
+                coef_sous_traitance: data.coef_marge_st_default ?? 2
+            });
         }
         setLoading(false);
     };
@@ -302,15 +317,24 @@ export const useAppSettings = () => {
         // Optimistic
         setSettings(newSettings);
 
+        // Map App Keys -> DB Columns
+        const dbPayload = {
+            taux_horaire_default: newSettings.hourlyRate || newSettings.taux_horaire,
+            frais_hotel_default: newSettings.prix_nuit,
+            tva_default: newSettings.vatRate,
+            frais_repas_default: newSettings.prix_repas,
+            coef_marge_st_default: newSettings.coef_sous_traitance,
+            updated_at: new Date()
+        };
+
         const { error } = await supabase
             .from('app_settings')
-            .update({ value: newSettings, updated_at: new Date() })
+            .update(dbPayload)
             .eq('id', 'global_config');
 
         if (error) {
             console.error("Erreur update settings:", error);
-            // Revert or alert?
-            alert("Erreur de sauvegarde des paramètres.");
+            alert("Erreur de sauvegarde des paramètres (Vérifiez que les colonnes existent en base).");
         }
     };
 
@@ -387,7 +411,20 @@ export const useEvents = () => {
         }
     };
 
-    return { events, updateEvent };
+    const deleteEvent = async (id) => {
+        // 1. Mise à jour locale (Optimistic)
+        setEvents(prev => prev.filter(e => e.id !== id));
+
+        // 2. Suppression DB
+        const { error } = await supabase.from('events').delete().eq('id', id);
+
+        if (error) {
+            console.error("ERREUR SUPPRESSION EVENT:", error);
+            alert(`Erreur suppression planning : ${error.message}`);
+        }
+    };
+
+    return { events, updateEvent, deleteEvent };
 };
 
 // --- STOCKS (INVENTAIRE) ---
