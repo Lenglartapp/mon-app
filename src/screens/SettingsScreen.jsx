@@ -16,6 +16,9 @@ const ROLE_OPTIONS = [
   { value: ROLES.ADV, label: "ADV", color: "#be185d" }, // Pink 700
 ];
 
+import { supabase } from "../lib/supabaseClient";
+import { useAppSettings } from "../hooks/useSupabase"; // <-- IMPORT HERE
+
 export default function SettingsScreen({ onBack }) {
   const {
     currentUser, setCurrentUser,
@@ -23,9 +26,9 @@ export default function SettingsScreen({ onBack }) {
   } = useAuth();
 
   const isAdmin = currentUser?.role === ROLES.ADMIN;
-  const [tab, setTab] = useState("profile"); // "profile" | "users"
+  const [tab, setTab] = useState("profile");
 
-  // --- Profile State ---
+  // --- Profile State --- (keeps state)
   const [name, setName] = useState(currentUser?.name || "");
   const [email] = useState(currentUser?.email || "");
   const [phone, setPhone] = useState(currentUser?.phone || "");
@@ -41,22 +44,72 @@ export default function SettingsScreen({ onBack }) {
   const [notifMentions, setNotifMentions] = useState(currentUser?.preferences?.mentions ?? true);
   const [notifActivity, setNotifActivity] = useState(currentUser?.preferences?.activity ?? false);
 
-  const handleSaveProfile = () => {
+  // --- GLOBAL SETTINGS ---
+  const { settings: dbSettings, updateSettings } = useAppSettings();
+  const [globalSettings, setGlobalSettings] = useState({ hourlyRate: 50, vatRate: 20 });
+
+  // Sync state when DB settings load
+  React.useEffect(() => {
+    if (dbSettings) setGlobalSettings(dbSettings);
+  }, [dbSettings]);
+
+
+  const handleSaveProfile = async () => {
     if (password && password !== confirmPassword) {
       alert("Les mots de passe ne correspondent pas.");
       return;
     }
-    const updated = {
-      ...currentUser,
-      name, phone, jobTitle, avatarUrl,
-      preferences: {
-        ...currentUser?.preferences,
-        notifEmail, notifMentions, notifActivity
+
+    try {
+      // 0. Update Global Settings (Admin Only)
+      if (isAdmin) {
+        await updateSettings(globalSettings);
       }
-    };
-    setCurrentUser(updated);
-    alert("Profil mis à jour avec succès.");
-    if (onBack) onBack();
+
+      const updates = {
+        first_name: name.split(' ')[0], // Simple split for first/last name mapping
+        last_name: name.split(' ').slice(1).join(' '),
+        phone,
+        job_title: jobTitle,
+        avatar_url: avatarUrl,
+        preferences: {
+          notifEmail,
+          mentions: notifMentions,
+          activity: notifActivity
+        }
+      };
+
+      // 1. Update Supabase Profile
+      const { error } = await supabase
+        .from('profiles')
+        .update(updates)
+        .eq('id', currentUser.id);
+
+      if (error) throw error;
+
+      // 2. Update Password if changed (Requires separate auth API call)
+      if (password) {
+        const { error: pwdError } = await supabase.auth.updateUser({ password: password });
+        if (pwdError) throw pwdError;
+      }
+
+      // 3. Update Local State
+      const updatedUser = {
+        ...currentUser,
+        name, // Keep display name
+        phone,
+        jobTitle,
+        avatarUrl,
+        preferences: updates.preferences
+      };
+      setCurrentUser(updatedUser);
+      alert("Profil et paramètres mis à jour avec succès.");
+      if (onBack) onBack();
+
+    } catch (err) {
+      console.error("Error updating profile:", err);
+      alert("Erreur lors de la mise à jour du profil : " + err.message);
+    }
   };
 
   const handleAvatarFile = (e) => {
@@ -143,9 +196,9 @@ export default function SettingsScreen({ onBack }) {
         {/* === TAB: PROFILE === */}
         {tab === 'profile' && (
           <Grid container spacing={4}>
-
-            {/* COLONNE GAUCHE: IDENTITE */}
+            {/* ... (Keep existing Left Column) */}
             <Grid item xs={12} md={4}>
+              {/* ... (Avatar & User Info Card Content - same as before) ... */}
               <Paper
                 elevation={0}
                 sx={{
@@ -228,7 +281,6 @@ export default function SettingsScreen({ onBack }) {
                 <Typography variant="caption" color="text.secondary">
                   Membre depuis 2024
                 </Typography>
-
               </Paper>
             </Grid>
 
@@ -241,10 +293,50 @@ export default function SettingsScreen({ onBack }) {
                   overflow: 'hidden'
                 }}
               >
+                {/* --- GLOBAL SETTINGS (ADMIN ONLY) --- */}
+                {isAdmin && (
+                  <>
+                    <CardHeader
+                      title="Paramètres de l'Application"
+                      titleTypographyProps={{ variant: 'subtitle1', fontWeight: 800, color: '#be185d', letterSpacing: '0.05em', textTransform: 'uppercase', fontSize: 12 }}
+                      sx={{ px: 4, pt: 4, pb: 0 }}
+                    />
+                    <CardContent sx={{ px: 4, py: 3 }}>
+                      <Grid container spacing={3}>
+                        <Grid item xs={12} sm={6}>
+                          <TextField
+                            label="Taux Horaire Global (€/h)"
+                            type="number"
+                            fullWidth
+                            variant="outlined"
+                            size="small"
+                            value={globalSettings.hourlyRate}
+                            onChange={(e) => setGlobalSettings(prev => ({ ...prev, hourlyRate: Number(e.target.value) }))}
+                            InputProps={{ sx: inputStyle }}
+                          />
+                        </Grid>
+                        <Grid item xs={12} sm={6}>
+                          <TextField
+                            label="Taux TVA (%)"
+                            type="number"
+                            fullWidth
+                            variant="outlined"
+                            size="small"
+                            value={globalSettings.vatRate}
+                            onChange={(e) => setGlobalSettings(prev => ({ ...prev, vatRate: Number(e.target.value) }))}
+                            InputProps={{ sx: inputStyle }}
+                          />
+                        </Grid>
+                      </Grid>
+                    </CardContent>
+                    <Divider sx={{ mx: 4, borderColor: 'rgba(0,0,0,0.06)' }} />
+                  </>
+                )}
+
                 <CardHeader
                   title="Informations Personnelles"
                   titleTypographyProps={{ variant: 'subtitle1', fontWeight: 800, color: '#111827', letterSpacing: '0.05em', textTransform: 'uppercase', fontSize: 12 }}
-                  sx={{ px: 4, pt: 4, pb: 0 }}
+                  sx={{ px: 4, pt: isAdmin ? 3 : 4, pb: 0 }}
                 />
                 <CardContent sx={{ px: 4, py: 3 }}>
                   <Grid container spacing={3}>
@@ -387,7 +479,6 @@ export default function SettingsScreen({ onBack }) {
                     Enregistrer les modifications
                   </Button>
                 </Box>
-
               </Paper>
             </Grid>
           </Grid>
