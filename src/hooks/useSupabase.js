@@ -135,8 +135,18 @@ export const useMinutes = () => {
             delete dbUpdates.updatedAt;
         }
 
+        // --- RELIABILITY FIX: Wait for DB first ---
+        const { error } = await supabase.from('minutes').update(dbUpdates).eq('id', id);
+
+        if (error) {
+            console.error("Erreur update minute:", error);
+            // On ne met PAS à jour le state local si erreur
+            return;
+        }
+
+        // Success: Update local state to reflect changes
+        // Note: For perfect sync we could re-fetch, but merging updates is usually fine if no other data changed.
         setMinutes(prev => prev.map(m => m.id === id ? { ...m, ...updates } : m));
-        await supabase.from('minutes').update(dbUpdates).eq('id', id);
     };
 
     const addMinute = async (minute) => {
@@ -152,10 +162,8 @@ export const useMinutes = () => {
         const dbMinute = {
             ...minute,
             lines: linesData,
-            // CONVERSION CRUCIALE ICI :
             created_at: toIsoString(minute.createdAt),
             updated_at: toIsoString(minute.updatedAt),
-            // AJOUT CRUCIAL ICI :
             budget_snapshot: minute.budgetSnapshot || {}
         };
 
@@ -183,11 +191,130 @@ export const useMinutes = () => {
     };
 
     const deleteMinute = async (id) => {
-        setMinutes(prev => prev.filter(m => m.id !== id));
-        await supabase.from('minutes').delete().eq('id', id);
+        // Optimistic delete is usually safer than update, but consistent with reliability:
+        const { error } = await supabase.from('minutes').delete().eq('id', id);
+        if (!error) {
+            setMinutes(prev => prev.filter(m => m.id !== id));
+        } else {
+            console.error("Erreur delete minute:", error);
+        }
     };
 
-    return { minutes, addMinute, updateMinute, deleteMinute };
+    return { minutes, addMinute, updateMinute, deleteMinute, refreshMinutes: fetchMinutes };
+};
+
+// --- CATALOG (BIBLIOTHEQUE) ---
+export const useCatalog = () => {
+    const [catalog, setCatalog] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    const fetchCatalog = async () => {
+        setLoading(true);
+        // Supabase Select
+        const { data, error } = await supabase.from('catalog').select('*').order('name');
+        if (!error) {
+            // Ensure numeric values are numbers
+            const formatted = (data || []).map(item => ({
+                ...item,
+                price: Number(item.price || 0)
+            }));
+            setCatalog(formatted);
+        } else {
+            console.error("Erreur fetch catalog:", error);
+        }
+        setLoading(false);
+    };
+
+    useEffect(() => { fetchCatalog(); }, []);
+
+    const addItem = async (item) => {
+        // Prepare for DB
+        const dbItem = { ...item };
+        // Ensure price is number
+        if (dbItem.price) dbItem.price = Number(dbItem.price);
+
+        const { data, error } = await supabase.from('catalog').insert([dbItem]).select();
+
+        if (data && data[0]) {
+            setCatalog(prev => [...prev, data[0]]);
+            return data[0];
+        }
+        if (error) console.error("Erreur add item:", error);
+        return null;
+    };
+
+    const updateItem = async (id, updates) => {
+        const { error } = await supabase.from('catalog').update(updates).eq('id', id);
+        if (!error) {
+            setCatalog(prev => prev.map(i => i.id === id ? { ...i, ...updates } : i));
+        } else {
+            console.error("Erreur update item:", error);
+        }
+    };
+
+    const deleteItem = async (id) => {
+        const { error } = await supabase.from('catalog').delete().eq('id', id);
+        if (!error) {
+            setCatalog(prev => prev.filter(i => i.id !== id));
+        } else {
+            console.error("Erreur delete item:", error);
+        }
+    };
+
+    return { catalog, loading, addItem, updateItem, deleteItem, refreshCatalog: fetchCatalog };
+};
+
+// --- APP SETTINGS (GLOBAL CONFIG) ---
+export const useAppSettings = () => {
+    const [settings, setSettings] = useState({ hourlyRate: 50, vatRate: 20 }); // Defaults
+    const [loading, setLoading] = useState(true);
+
+    const fetchSettings = async () => {
+        setLoading(true);
+        // On suppose une ligne unique avec id='global_config'
+        let { data, error } = await supabase
+            .from('app_settings')
+            .select('value')
+            .eq('id', 'global_config')
+            .single();
+
+        if (error && error.code === 'PGRST116') {
+            // Row not found, create it
+            const defaultSettings = { hourlyRate: 50, vatRate: 20 };
+            const { data: newData, error: insertError } = await supabase
+                .from('app_settings')
+                .insert([{ id: 'global_config', value: defaultSettings }])
+                .select()
+                .single();
+
+            if (newData) data = newData;
+        }
+
+        if (data?.value) {
+            setSettings(data.value);
+        }
+        setLoading(false);
+    };
+
+    useEffect(() => { fetchSettings(); }, []);
+
+    const updateSettings = async (newSettings) => {
+        // Optimistic
+        setSettings(newSettings);
+
+        const { error } = await supabase
+            .from('app_settings')
+            .update({ value: newSettings, updated_at: new Date() })
+            .eq('id', 'global_config');
+
+        if (error) {
+            console.error("Erreur update settings:", error);
+            // Revert or alert?
+            alert("Erreur de sauvegarde des paramètres.");
+        }
+    };
+
+    return { settings, loading, updateSettings };
 };
 
 // --- PLANNING ---

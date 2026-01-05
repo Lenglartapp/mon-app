@@ -29,9 +29,16 @@ const toNum = (v) => {
   return Number.isFinite(n) ? n : 0;
 };
 
+import { useAppSettings, useCatalog } from "../hooks/useSupabase";
+
 function ChiffrageScreen({ minuteId, minutes, onUpdate, onBack, highlightRowId }) {
   // On utilise un state local pour l'ouverture des panneaux, plus simple et sûr
   const [localRowId, setLocalRowId] = React.useState(null);
+
+  // HOOKS : REAL DATA FROM DB
+  const { settings: globalSettings } = useAppSettings();
+  const { catalog } = useCatalog();
+
   // ──────────────────────────────────────────────────────────────
   // Auto-open panel from notification
   React.useEffect(() => {
@@ -71,6 +78,7 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onBack, highlightRowId }
     [minutes, minuteId]
   );
 
+
   const [schema, setSchema] = React.useState(CHIFFRAGE_SCHEMA);
 
   const paramsMap = React.useMemo(() => {
@@ -85,20 +93,20 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onBack, highlightRowId }
   // NEW RULE: Base = Only Production + Logistique. Exclude ALL Extra Expenses (Extensions, Transport Vente, etc.)
   const baseCA = React.useMemo(() => {
     let sum = 0;
-    // Main Lines
     (minute?.lines || []).forEach(r => sum += toNum(r.prix_total));
-    // Deplacements
     (minute?.deplacements || []).forEach(r => sum += toNum(r.prix_total));
-
     return sum;
   }, [minute?.lines, minute?.deplacements]);
 
+  // --- CONNECT GLOBAL SETTINGS & CATALOG TO FORMULAS ---
   const formulaCtx = React.useMemo(() => ({
     paramsMap,
     totalCA: baseCA,
-    settings: minute?.settings || {},
-    catalog: minute?.catalog || [] // Sécurité ici : évite le crash si catalog est undefined
-  }), [paramsMap, baseCA, minute?.settings, minute?.catalog]);
+    settings: globalSettings || { hourlyRate: 50, vatRate: 20 }, // Use DB Settings
+    catalog: catalog || [] // Use DB Catalog
+  }), [paramsMap, baseCA, globalSettings, catalog]);
+
+  // ... (rest of the file)
 
   const [rows, setRows] = React.useState(() =>
     computeFormulas(minute?.lines || [], schema, formulaCtx)

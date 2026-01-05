@@ -151,10 +151,9 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, projects = [], eventT
     };
 
     const canValidate = useMemo(() => {
+        // TEMP: Allow all authenticated users to validate
         if (!currentUser || !eventToEdit) return false;
-        const role = currentUser.role;
-        // ADMIN, ORDO, et PRODUCTION (chef d'équipe) peuvent valider/déclarer réalisé
-        return [ROLES.ADMIN, ROLES.ORDONNANCEMENT, ROLES.PRODUCTION].includes(role);
+        return true;
     }, [currentUser, eventToEdit]);
 
     if (!isOpen) return null;

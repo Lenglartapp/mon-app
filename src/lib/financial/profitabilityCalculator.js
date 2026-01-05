@@ -11,9 +11,10 @@ export const calculateProfitability = (rows = [], depRows = [], extraRows = []) 
     // —————————————————————————————————————————————————————————
     // 1. CALCUL DU CA TOTAL (A)
     // —————————————————————————————————————————————————————————
-    // CA is purely the Sum of Sales Prices (prix_total)
+    // CA is purely the Sum of Sales Prices (prix_total) of Main Rows and Logistics (Deplacements)
     const sumTotal = (list) => list.reduce((acc, r) => acc + toNum(r.prix_total || r.total_eur || r.montant_eur), 0);
-    const CA_Total = sumTotal(rows) + sumTotal(depRows) + sumTotal(extraRows);
+    // FIX: Do NOT include extraRows (Autres Dépenses) in CA, they are charges only.
+    const CA_Total = sumTotal(rows) + sumTotal(depRows);
 
     // —————————————————————————————————————————————————————————
     // 2. ACHATS FIXES (B) - Matières uniquement
