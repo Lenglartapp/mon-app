@@ -18,32 +18,33 @@ import { useCapacityPlanning } from '../hooks/useCapacityPlanning';
 import { uid } from '../lib/utils/uid';
 
 // --- CONFIGURATION ---
-const GROUPS_CONFIG = {
+// --- CONFIGURATION INITIALE (Structure Seulement) ---
+const INITIAL_GROUPS_CONFIG = {
     prepa: {
         id: 'prepa',
-        label: 'PRÉPARATION & BUREAU',
+        label: 'PRÉPARATION DES MÉCANISMES',
         bg: '#FFF7ED',
-        members: ['Bureau d\'Études']
+        members: [] // Sera rempli dynamiquement
     },
     conf: {
         id: 'conf',
         label: 'ATELIER CONFECTION',
         bg: '#F8FAFC',
-        members: ['Atelier Global']
+        members: []
     },
     pose: {
         id: 'pose',
         label: 'ÉQUIPES DE POSE',
         bg: '#F0FDF4',
-        members: ['Alain', 'Guillaume', 'Nicolas']
+        members: []
     }
 };
 
 const PLANNING_COLORS = {
-    pose: { bg: '#1F2937', text: '#FFF', border: '#000' },
-    conf: { bg: '#E5E7EB', text: '#1F2937', border: '#9CA3AF' },
-    prepa: { bg: '#FEF3C7', text: '#92400E', border: '#F59E0B' },
-    default: { bg: '#3B82F6', text: '#FFF', border: '#2563EB' }
+    pose: { bg: '#DCFCE7', border: '#4ADE80', text: '#166534' },  // Vert
+    conf: { bg: '#DBEAFE', border: "#60A5FA", text: "#1E40AF" },  // Bleu
+    prepa: { bg: '#FEF9C3', border: "#FACC15", text: "#854D0E" }, // Jaune
+    default: { bg: '#F3F4F6', border: "#9CA3AF", text: "#374151" } // Gris
 };
 
 // CONSTANTES DIMENSION
@@ -55,7 +56,7 @@ const WORK_END_HOUR = 17;   // 17h00
 const TOTAL_WORK_MINUTES = (WORK_END_HOUR - WORK_START_HOUR) * 60; // 9h = 540 min
 
 // --- COMPOSANT MODALE AVANCÉE ---
-const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = [], eventToEdit, initialData, currentUser }) => {
+const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = [], eventToEdit, initialData, currentUser, groupsConfig }) => {
     // États Formulaire
     const [projectSearch, setProjectSearch] = useState('');
     const [selectedProject, setSelectedProject] = useState(null);
@@ -73,11 +74,11 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
     const [endTime, setEndTime] = useState('17:00');
 
     // Aplatir la liste des membres pour l'affichage
-    const allMembers = [
-        ...GROUPS_CONFIG.prepa.members.map(m => ({ id: m, group: 'prepa', label: m })),
-        ...GROUPS_CONFIG.conf.members.map(m => ({ id: m, group: 'conf', label: m })),
-        ...GROUPS_CONFIG.pose.members.map(m => ({ id: m, group: 'pose', label: m }))
-    ];
+    const allMembers = useMemo(() => [
+        ...(groupsConfig.prepa?.members.map(m => ({ id: m.id, group: 'prepa', label: `${m.first_name} ${m.last_name || ''}` })) || []),
+        ...(groupsConfig.conf?.members.map(m => ({ id: m.id, group: 'conf', label: `${m.first_name} ${m.last_name || ''}` })) || []),
+        ...(groupsConfig.pose?.members.map(m => ({ id: m.id, group: 'pose', label: `${m.first_name} ${m.last_name || ''}` })) || [])
+    ], [groupsConfig]);
 
     useEffect(() => {
         if (isOpen) {
@@ -278,18 +279,18 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
                                 {['prepa', 'conf', 'pose'].map(grpKey => (
                                     <div key={grpKey}>
                                         <div style={{ padding: '8px 12px', background: '#F3F4F6', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#6B7280', borderRadius: 4, margin: 4 }}>
-                                            {GROUPS_CONFIG[grpKey].label}
+                                            {groupsConfig[grpKey].label}
                                         </div>
-                                        {GROUPS_CONFIG[grpKey].members.map(member => (
+                                        {groupsConfig[grpKey].members.map(member => (
                                             <div
-                                                key={member}
-                                                onClick={() => toggleResource(member)}
+                                                key={member.id}
+                                                onClick={() => toggleResource(member.id)}
                                                 style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', cursor: 'pointer', margin: '0 4px', borderRadius: 6, background: selectedResources.includes(member) ? '#EFF6FF' : 'transparent' }}
                                             >
-                                                <div style={{ width: 18, height: 18, border: selectedResources.includes(member) ? '1px solid #2563EB' : '1px solid #D1D5DB', borderRadius: 4, marginRight: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', background: selectedResources.includes(member) ? '#2563EB' : 'white', transition: 'all 0.2s' }}>
-                                                    {selectedResources.includes(member) && <Check size={12} color="white" />}
+                                                <div style={{ width: 18, height: 18, border: selectedResources.includes(member.id) ? '1px solid #2563EB' : '1px solid #D1D5DB', borderRadius: 4, marginRight: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', background: selectedResources.includes(member.id) ? '#2563EB' : 'white', transition: 'all 0.2s' }}>
+                                                    {selectedResources.includes(member.id) && <Check size={12} color="white" />}
                                                 </div>
-                                                <span style={{ fontSize: 13, fontWeight: selectedResources.includes(member) ? 600 : 400, color: '#374151' }}>{member}</span>
+                                                <span style={{ fontSize: 13, fontWeight: selectedResources.includes(member.id) ? 600 : 400, color: '#374151' }}>{member.first_name} {member.last_name}</span>
                                             </div>
                                         ))}
                                     </div>
@@ -505,25 +506,58 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
     const [searchQuery, setSearchQuery] = useState('');
     const [activeFilters, setActiveFilters] = useState([]);
 
+    // --- CONSTRUCTION DYNAMIQUE DES GROUPES ---
+    const groupsConfig = useMemo(() => {
+        if (!users || users.length === 0) return INITIAL_GROUPS_CONFIG;
+
+        // Initialisation d'une structure vide propre (basée sur la structure initiale pour garder les labels/couleurs)
+        // On ne copie PAS les membres s'il y en avait par défaut (ils sont vides dans INITIAL_GROUPS_CONFIG de toute façon)
+        const config = {
+            prepa: { ...INITIAL_GROUPS_CONFIG.prepa, members: [] },
+            conf: { ...INITIAL_GROUPS_CONFIG.conf, members: [] },
+            pose: { ...INITIAL_GROUPS_CONFIG.pose, members: [] }
+        };
+
+        // Remplissage STRICT avec les users réels
+        // Si le rôle n'est pas 'conf', 'pose' ou 'prepa', l'utilisateur est IGNORÉ (ex: admin, dev)
+        users.forEach(u => {
+            if (u.role && config[u.role]) {
+                config[u.role].members.push(u);
+            }
+        });
+
+        return config;
+    }, [users]);
+
+
     // --- MODE ASSISTANT ---
     const [assistantMode, setAssistantMode] = useState(false);
-    const stats = useCapacityPlanning(projects, localEvents, { conf: 11, pose: 3 });
+
+    // Calcul dynamique des capacités
+    const capacityConfig = useMemo(() => ({
+        conf: groupsConfig.conf.members.length,
+        pose: groupsConfig.pose.members.length
+    }), [groupsConfig]);
+
+    const stats = useCapacityPlanning(projects, localEvents, capacityConfig);
 
     const filteredGroups = useMemo(() => {
-        if (activeFilters.length === 0) return GROUPS_CONFIG;
+        if (activeFilters.length === 0) return groupsConfig;
 
         const newConfig = {};
-        Object.keys(GROUPS_CONFIG).forEach(key => {
-            const group = GROUPS_CONFIG[key];
+        Object.keys(groupsConfig).forEach(key => {
+            const group = groupsConfig[key];
             const filteredMembers = group.members.filter(member => {
+                const fullName = `${member.first_name} ${member.last_name}`.toLowerCase();
                 return activeFilters.every(filter => {
                     if (filter.type === 'resource') {
-                        return member.toLowerCase().includes(filter.value.toLowerCase());
+                        return fullName.includes(filter.value.toLowerCase());
                     }
                     if (filter.type === 'project') {
                         // On cherche si un événement de ce membre correspond au projet
+                        // member.id est l'UUID désormais
                         return localEvents.some(evt =>
-                            evt.resourceId === member &&
+                            evt.resourceId === member.id &&
                             evt.title && evt.title.toLowerCase().includes(filter.value.toLowerCase())
                         );
                     }
@@ -536,7 +570,7 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
             }
         });
         return newConfig;
-    }, [activeFilters, localEvents]);
+    }, [activeFilters, localEvents, groupsConfig]);
 
     // --- HANDLERS DRAG & DROP ---
     const handleCellClick = (resourceId, date) => {
@@ -836,6 +870,7 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                 eventToEdit={editingEvent}
                 initialData={initialModalData}
                 currentUser={currentUser}
+                groupsConfig={groupsConfig}
             />
 
             {assistantMode ? (
@@ -900,17 +935,19 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                                     <StickyLeftCell onClick={() => setExpandedGroups(prev => ({ ...prev, [key]: !prev[key] }))} bg={group.bg} style={{ fontWeight: 800, color: '#111827' }}>{expandedGroups[key] ? <ChevronDown size={14} style={{ marginRight: 8 }} /> : <ChevronRightIcon size={14} style={{ marginRight: 8 }} />}{group.label}</StickyLeftCell>
                                     <div style={{ gridColumn: `span ${columns.length}`, background: group.bg, borderBottom: '1px solid #E5E7EB', height: ROW_HEIGHT }} />
                                     {expandedGroups[key] && group.members.map(member => (
-                                        <React.Fragment key={member}>
-                                            <StickyLeftCell style={{ paddingLeft: 42, color: '#4B5563', fontWeight: 500 }}>{member}</StickyLeftCell>
+                                        <React.Fragment key={member.id}>
+                                            <StickyLeftCell style={{ paddingLeft: 42, color: '#4B5563', fontWeight: 500 }}>
+                                                {member.first_name} {member.last_name?.charAt(0)}.
+                                            </StickyLeftCell>
                                             {columns.map(col => (
                                                 <div
-                                                    key={`${member}-${col}`}
-                                                    onClick={() => handleCellClick(member, col)}
+                                                    key={`${member.id}-${col}`}
+                                                    onClick={() => handleCellClick(member.id, col)}
                                                     onDragOver={handleDragOver}
-                                                    onDrop={(e) => handleDrop(e, member, col)}
+                                                    onDrop={(e) => handleDrop(e, member.id, col)}
                                                     style={{ borderBottom: '1px solid #E5E7EB', borderRight: '1px solid #F3F4F6', background: (view !== 'year' && isSameDay(col, new Date())) ? '#F9FAFB' : 'transparent', height: ROW_HEIGHT, position: 'relative' }}
                                                 >
-                                                    {renderEventsForCell(member, col)}
+                                                    {renderEventsForCell(member.id, col)}
                                                 </div>
                                             ))}
                                         </React.Fragment>
