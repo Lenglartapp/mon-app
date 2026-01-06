@@ -44,6 +44,7 @@ const PLANNING_COLORS = {
     pose: { bg: '#DCFCE7', border: '#4ADE80', text: '#166534' },  // Vert
     conf: { bg: '#DBEAFE', border: "#60A5FA", text: "#1E40AF" },  // Bleu
     prepa: { bg: '#FEF9C3', border: "#FACC15", text: "#854D0E" }, // Jaune
+    absence: { bg: "#FEE2E2", border: "#EF4444", text: "#991B1B", pattern: true }, // Rouge
     default: { bg: '#F3F4F6', border: "#9CA3AF", text: "#374151" } // Gris
 };
 
@@ -343,6 +344,190 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
     );
 };
 
+// --- PANNEAU GESTION ÉQUIPE (Droit) ---
+const ResourcePanel = ({ isOpen, onClose, users, hiddenResources, onToggleVisibility, onAddAbsence }) => {
+    // État local pour le formulaire d'absence
+    const [selectedUserForAbsence, setSelectedUserForAbsence] = useState(null);
+    const [selectedGroupForAbsence, setSelectedGroupForAbsence] = useState(null); // Pour absence groupée
+    const [absType, setAbsType] = useState('Congés');
+    const [absStart, setAbsStart] = useState(format(new Date(), 'yyyy-MM-dd'));
+    const [absStartTime, setAbsStartTime] = useState('08:00');
+    const [absEnd, setAbsEnd] = useState(format(new Date(), 'yyyy-MM-dd'));
+    const [absEndTime, setAbsEndTime] = useState('17:00');
+
+    if (!isOpen) return null;
+
+    // Grouper les users pour l'affichage
+    const groupedUsers = {
+        prepa: users.filter(u => u.role === 'prepa'),
+        conf: users.filter(u => u.role === 'conf'),
+        pose: users.filter(u => u.role === 'pose')
+    };
+
+    const handleCreateAbsence = () => {
+        if (selectedGroupForAbsence) {
+            // -- MODE GROUPE --
+            const members = groupedUsers[selectedGroupForAbsence];
+            members.forEach(member => {
+                onAddAbsence(member.id, absType, absStart, absStartTime, absEnd, absEndTime);
+            });
+            setSelectedGroupForAbsence(null);
+        } else if (selectedUserForAbsence) {
+            // -- MODE INDIVIDUEL --
+            onAddAbsence(selectedUserForAbsence, absType, absStart, absStartTime, absEnd, absEndTime);
+            setSelectedUserForAbsence(null);
+        }
+
+        // Reset form defaults 
+        setAbsType('Congés');
+        setAbsStart(format(new Date(), 'yyyy-MM-dd'));
+        setAbsStartTime('08:00');
+        setAbsEnd(format(new Date(), 'yyyy-MM-dd'));
+        setAbsEndTime('17:00');
+    };
+
+    const openModal = (userId = null, groupId = null) => {
+        setAbsStart(format(new Date(), 'yyyy-MM-dd'));
+        setAbsEnd(format(new Date(), 'yyyy-MM-dd'));
+        setSelectedUserForAbsence(userId);
+        setSelectedGroupForAbsence(groupId);
+    };
+
+    return (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 120, display: 'flex', justifyContent: 'flex-end' }}>
+            <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.3)', backdropFilter: 'blur(2px)' }} />
+            <div style={{ position: 'relative', width: 420, background: 'white', height: '100%', boxShadow: '-5px 0 25px rgba(0,0,0,0.1)', display: 'flex', flexDirection: 'column', animation: 'slideInRight 0.3s ease-out' }}>
+
+                <div style={{ padding: '20px 24px', borderBottom: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#FAFAFA' }}>
+                    <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#111827' }}>Gérer l'équipe</h3>
+                    <button onClick={onClose} style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}><X size={24} color="#6B7280" /></button>
+                </div>
+
+                <div style={{ flex: 1, overflowY: 'auto', padding: 24 }}>
+                    {Object.entries(groupedUsers).map(([role, members]) => (
+                        <div key={role} style={{ marginBottom: 32 }}>
+                            <div style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', color: '#6B7280', marginBottom: 16, borderBottom: '1px solid #F3F4F6', paddingBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <span>
+                                    {role === 'prepa' && 'Préparation'}
+                                    {role === 'conf' && 'Atelier Confection'}
+                                    {role === 'pose' && 'Équipes de Pose'}
+                                    ({members.length})
+                                </span>
+                                {/* Bouton Absence Groupe */}
+                                <button
+                                    onClick={() => openModal(null, role)}
+                                    title="Absence pour tout le groupe"
+                                    style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 4, padding: '2px 8px', color: '#EF4444', fontSize: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, textTransform: 'none' }}
+                                >
+                                    <CalendarIcon size={12} /> Tout le groupe
+                                </button>
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                {members.map(user => {
+                                    const isVisible = !hiddenResources.includes(user.id);
+                                    return (
+                                        <div key={user.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'white', border: '1px solid #E5E7EB', borderRadius: 8, padding: '12px 14px', opacity: isVisible ? 1 : 0.6 }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                                <div style={{ width: 32, height: 32, borderRadius: '50%', background: isVisible ? '#DBEAFE' : '#F3F4F6', color: isVisible ? '#1E40AF' : '#9CA3AF', display: 'grid', placeItems: 'center', fontWeight: 600, fontSize: 13 }}>
+                                                    {user.first_name?.[0]}
+                                                </div>
+                                                <div>
+                                                    <div style={{ fontWeight: 600, fontSize: 14, color: '#374151' }}>{user.first_name} {user.last_name}</div>
+                                                    <div style={{ fontSize: 12, color: isVisible ? '#10B981' : '#9CA3AF' }}>{isVisible ? 'Actif' : 'Masqué'}</div>
+                                                </div>
+                                            </div>
+
+                                            <div style={{ display: 'flex', gap: 8 }}>
+                                                {/* Bouton Absence */}
+                                                <button
+                                                    onClick={() => openModal(user.id, null)}
+                                                    title="Déclarer absence"
+                                                    style={{ padding: 6, borderRadius: 6, border: '1px solid #E5E7EB', background: 'white', cursor: 'pointer', color: '#EF4444' }}
+                                                >
+                                                    <CalendarIcon size={16} />
+                                                </button>
+
+                                                {/* Switch Visibilité */}
+                                                <button
+                                                    onClick={() => onToggleVisibility(user.id)}
+                                                    style={{
+                                                        width: 36, height: 20, borderRadius: 999,
+                                                        background: isVisible ? '#2563EB' : '#E5E7EB',
+                                                        position: 'relative', border: 'none', cursor: 'pointer', transition: 'background 0.2s'
+                                                    }}
+                                                >
+                                                    <div style={{
+                                                        width: 16, height: 16, borderRadius: '50%', background: 'white',
+                                                        position: 'absolute', top: 2, left: isVisible ? 18 : 2,
+                                                        transition: 'left 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.2)'
+                                                    }} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+                {/* MODALE INTERNE POUR ABSENCE */}
+                {(selectedUserForAbsence || selectedGroupForAbsence) && (
+                    <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.95)', zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+                        <div style={{ width: '100%', background: 'white', border: '1px solid #E5E7EB', borderRadius: 12, boxShadow: '0 10px 25px rgba(0,0,0,0.1)', padding: 20 }}>
+                            <h4 style={{ margin: '0 0 16px', fontSize: 16, fontWeight: 700 }}>
+                                {selectedGroupForAbsence ? `Absence Groupe : ${selectedGroupForAbsence.toUpperCase()}` : 'Déclarer une absence'}
+                            </h4>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+
+                                {/* Type d'absence */}
+                                <div>
+                                    <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Type</label>
+                                    <select value={absType} onChange={e => setAbsType(e.target.value)} style={{ width: '100%', padding: 8, border: '1px solid #D1D5DB', borderRadius: 6 }}>
+                                        <option value="Congés">Congés</option>
+                                        <option value="RTT">RTT</option>
+                                        <option value="Maladie">Maladie</option>
+                                        <option value="Autre">Autre</option>
+                                    </select>
+                                </div>
+
+                                {/* Début */}
+                                <div style={{ display: 'flex', gap: 8 }}>
+                                    <div style={{ flex: 2 }}>
+                                        <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Date de début</label>
+                                        <input type="date" value={absStart} onChange={e => setAbsStart(e.target.value)} style={{ width: '100%', padding: 8, border: '1px solid #D1D5DB', borderRadius: 6 }} />
+                                    </div>
+                                    <div style={{ flex: 1 }}>
+                                        <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Heure</label>
+                                        <input type="time" value={absStartTime} onChange={e => setAbsStartTime(e.target.value)} style={{ width: '100%', padding: 8, border: '1px solid #D1D5DB', borderRadius: 6 }} />
+                                    </div>
+                                </div>
+
+                                {/* Fin */}
+                                <div style={{ display: 'flex', gap: 8 }}>
+                                    <div style={{ flex: 2 }}>
+                                        <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Date de fin (incluse)</label>
+                                        <input type="date" value={absEnd} onChange={e => setAbsEnd(e.target.value)} style={{ width: '100%', padding: 8, border: '1px solid #D1D5DB', borderRadius: 6 }} />
+                                    </div>
+                                    <div style={{ flex: 1 }}>
+                                        <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Heure</label>
+                                        <input type="time" value={absEndTime} onChange={e => setAbsEndTime(e.target.value)} style={{ width: '100%', padding: 8, border: '1px solid #D1D5DB', borderRadius: 6 }} />
+                                    </div>
+                                </div>
+
+                                <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                                    <button onClick={() => { setSelectedUserForAbsence(null); setSelectedGroupForAbsence(null); }} style={{ flex: 1, padding: '8px', border: '1px solid #D1D5DB', borderRadius: 6, background: 'white', fontWeight: 600 }}>Annuler</button>
+                                    <button onClick={handleCreateAbsence} style={{ flex: 1, padding: '8px', border: 'none', borderRadius: 6, background: '#EF4444', color: 'white', fontWeight: 600 }}>Valider</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
+
 // --- LE RESTE DU FICHIER RESTE INCHANGÉ MAIS DOIT ÊTRE PRÉSENT ---
 // (StickyLeftCell, StickyTopCell, StickyCorner, ViewSelector, TopBar, PlanningScreen...)
 
@@ -389,7 +574,7 @@ const ViewSelector = ({ view, onViewChange, customRange, onCustomRangeChange }) 
 };
 const TopBar = ({
     view, onViewChange, currentDate, onPrev, onNext, onToday,
-    customRange, onCustomRangeChange, onNew,
+    customRange, onCustomRangeChange, onNew, onManageTeam,
     searchQuery, setSearchQuery, activeFilters, onAddFilter, onRemoveFilter,
     assistantMode, onToggleAssistant
 }) => {
@@ -397,6 +582,9 @@ const TopBar = ({
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 24px', background: '#FAF5EE' }}>
             <div style={{ display: 'flex', gap: 12 }}>
                 <button onClick={onNew} style={{ background: '#111827', color: '#fff', border: 'none', borderRadius: 6, padding: '8px 16px', fontWeight: 600, fontSize: 14, cursor: 'pointer' }}>Nouveau</button>
+                <button onClick={onManageTeam} style={{ background: 'white', color: '#374151', border: '1px solid #D1D5DB', borderRadius: 6, padding: '8px 16px', fontWeight: 600, fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <User size={16} /> Gérer l'équipe
+                </button>
                 <button
                     onClick={onToggleAssistant}
                     style={{
@@ -501,6 +689,255 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
     const [draggedEvent, setDraggedEvent] = useState(null);
     const [initialModalData, setInitialModalData] = useState(null);
     const [hoveredEventId, setHoveredEventId] = useState(null);
+    const [hiddenResources, setHiddenResources] = useState([]); // Nouveau state pour masquer
+    const [showResourcePanel, setShowResourcePanel] = useState(false); // Panel gestion équipe
+
+    // --- RESIZING STATE & LOGIC ---
+    const [resizingEvent, setResizingEvent] = useState(null);
+    const resizeRef = React.useRef(null); // Ref pour garder trace des valeurs sans fermeture
+
+    // Initialisation
+    useEffect(() => {
+        resizeRef.current = resizingEvent;
+    }, [resizingEvent]);
+
+    useEffect(() => {
+        if (!resizingEvent) return;
+
+        // Utilitaires de Slots (2h de travail)
+        // Slots valides : 8-10, 10-12, (12-13 off), 13-15, 15-17
+        const getSlotsFromDate = (date) => {
+            // Retourne le nombre de slots complets depuis le début de la journée (8h)
+            // 10h -> 1, 12h -> 2, 15h -> 3, 17h -> 4
+            const h = getHours(date);
+            if (h <= 8) return 0;
+            if (h <= 10) return 1;
+            if (h <= 12) return 2; // (ou 13h)
+            if (h <= 15) return 3;
+            return 4; // > 15h -> 17h
+        };
+
+        const getDateFromSlots = (start, totalSlots) => {
+            // On projette à partir de start
+            let cursor = new Date(start);
+            // On aligne le curseur sur le début de journée si besoin?
+            // Non, on suppose start propre (8h).
+            // Mais start peut être 13h ? Supposons start toujours 8h pour la simplicité de la grille 
+            // (ou adapté si start != 8h, mais le User part de journées complètes).
+
+            // On avance jour par jour
+            let remaining = totalSlots;
+
+            // Alignement curseur à "Début de travail ce jour"
+            // Si start est 8h, ok.
+
+            while (remaining > 0) {
+                const h = getHours(cursor);
+                // Combien de slots restent-ils ajd ?
+                // Si 8h: 4 slots. If 10h: 3 slots...
+                let slotsTodayLeft = 0;
+                if (h < 10) slotsTodayLeft = 4;
+                else if (h < 12) slotsTodayLeft = 3;
+                else if (h < 13) slotsTodayLeft = 2; // midi
+                else if (h < 15) slotsTodayLeft = 2; // 13h -> 15 (1), 15->17(2) -> wait. 13-15 is slot 3. 15-17 is slot 4.
+                // Si on est à 13h. On peut faire 13-15 (1 slot), 15-17 (2eme slot). -> 2 slots left.
+                else if (h < 17) slotsTodayLeft = 1;
+
+                if (remaining <= slotsTodayLeft) {
+                    // On finit aujourd'hui
+                    // On ajoute remaining * 2h (en sautant 12-13)
+                    let endH = h;
+                    for (let i = 0; i < remaining; i++) {
+                        endH += 2;
+                        if (endH === 12) {
+                            // Arrivé à 12h. Prochain +2 part de 13h.
+                            // Mais ma boucle ajoute juste +2h au compteur.
+                            // Si je suis à 10h. +1 slot -> 12h.
+                            // Si je suis à 10h. +2 slots -> 12h ... hop 15h ?
+                        }
+                    }
+
+                    // Méthode plus simple : mappage statique
+                    // 1 slot ajouté à 8h -> 10h
+                    // 2 slots -> 12h
+                    // 3 slots -> 15h
+                    // 4 slots -> 17h
+
+                    // Si départ 8h
+                    if (h === 8) {
+                        if (remaining === 1) cursor.setHours(10, 0);
+                        else if (remaining === 2) cursor.setHours(12, 0);
+                        else if (remaining === 3) cursor.setHours(15, 0);
+                        else if (remaining === 4) cursor.setHours(17, 0);
+                    } else if (h === 10) { // slotsLeft = 3
+                        if (remaining === 1) cursor.setHours(12, 0);
+                        else if (remaining === 2) cursor.setHours(15, 0);
+                        else if (remaining === 3) cursor.setHours(17, 0);
+                    } else if (h === 13) { // slotsLeft = 2
+                        if (remaining === 1) cursor.setHours(15, 0);
+                        else if (remaining === 2) cursor.setHours(17, 0);
+                    }
+                    return cursor;
+                } else {
+                    // On consomme la journée et on passe à la suivante
+                    remaining -= slotsTodayLeft;
+                    cursor = addDays(cursor, 1);
+                    cursor.setHours(WORK_START_HOUR, 0, 0, 0); // On commence à 8h demain
+                }
+            }
+            return cursor;
+        };
+
+        const handleResizeMove = (e) => {
+            const { startX, initialSeries, cellWidth, resourceId, seriesId, type, title, meta, tempSeriesId } = resizeRef.current;
+            const safeCellWidth = cellWidth && cellWidth > 0 ? cellWidth : 100;
+            const deltaX = e.clientX - startX;
+
+            // 4 slots par jour (cellWidth)
+            const pixelsPerSlot = safeCellWidth / 4;
+            const deltaSlots = Math.round(deltaX / pixelsPerSlot);
+
+            // Calcul Slots initiaux
+            const start = new Date(initialSeries[0].meta.start);
+            const initialEnd = new Date(initialSeries[initialSeries.length - 1].meta.end);
+
+            // On compte combien de slots couvre la série initiale
+            // Approximation : nombre jours * 4 + slots de fin - slots de début
+            // Plus robuste : on itère
+            // TODO: Optimiser. Pour l'instant on recalcule à la volée
+            // On assume que le User part d'un état propre.
+            // On va tricher : on prend le nombre de jours * 4 (si plein) + partiel
+
+            // VERSION SIMPLE : On applique deltaSlots à la fin actuelle
+            // On a besoin de savoir "où on est" en slots à la fin.
+            // Fin actuelle : initialEnd.
+            // Slots "dans la journée de fin" :
+            const endH = getHours(initialEnd);
+            let endSlotsIdx = 0; // 0=8h, 1=10h, 2=12h, 3=15h, 4=17h
+            if (endH >= 17) endSlotsIdx = 4;
+            else if (endH >= 15) endSlotsIdx = 3;
+            else if (endH >= 12) endSlotsIdx = 2; // ou 13
+            else if (endH >= 10) endSlotsIdx = 1;
+
+            // On doit ajouter deltaSlots.
+            // 1. On recule si delta négatif
+            // 2. On avance si positif
+
+            let currentCursor = new Date(initialEnd);
+            // On remet au propre (si 12h01 -> 12h00)
+            if (endSlotsIdx === 4) currentCursor.setHours(17, 0);
+            else if (endSlotsIdx === 3) currentCursor.setHours(15, 0);
+            else if (endSlotsIdx === 2) currentCursor.setHours(12, 0);
+            else if (endSlotsIdx === 1) currentCursor.setHours(10, 0);
+            else currentCursor.setHours(8, 0);
+
+            let slotsToDo = deltaSlots;
+
+            // Itération pour trouver newEnd
+            if (slotsToDo > 0) {
+                while (slotsToDo > 0) {
+                    const h = getHours(currentCursor);
+                    if (h === 8) currentCursor.setHours(10, 0);
+                    else if (h === 10) currentCursor.setHours(12, 0);
+                    else if (h === 12) currentCursor.setHours(15, 0); // Jump MIDI
+                    else if (h === 15) currentCursor.setHours(17, 0);
+                    else if (h >= 17) {
+                        currentCursor = addDays(currentCursor, 1);
+                        currentCursor.setHours(10, 0); // Premier slot de demain (8->10)
+                    }
+                    slotsToDo--;
+                }
+            } else if (slotsToDo < 0) {
+                while (slotsToDo < 0) {
+                    const h = getHours(currentCursor);
+                    if (h === 17) currentCursor.setHours(15, 0);
+                    else if (h === 15) currentCursor.setHours(12, 0); // Jump MIDI
+                    else if (h === 12) currentCursor.setHours(10, 0);
+                    else if (h === 10) currentCursor.setHours(8, 0);
+                    else if (h <= 8) {
+                        currentCursor = addDays(currentCursor, -1);
+                        currentCursor.setHours(15, 0); // Dernier slot d'hier (15->17 => fin 17, recul 1 = fin 15)
+                    }
+                    slotsToDo++;
+                }
+            }
+
+            const newEnd = currentCursor;
+
+            // Sécurité : min 1 slot (10h le premier jour)
+            // Si newEnd <= start + 2h
+            const minEnd = new Date(start); minEnd.setHours(10, 0);
+            if (newEnd < minEnd) newEnd.setTime(minEnd.getTime());
+
+            // --- RECONSTRUCTION (Inchangée mais avec newEnd précis) ---
+            const effectiveSeriesId = seriesId || tempSeriesId;
+            const originalIds = new Set(initialSeries.map(i => i.id));
+
+            setLocalEvents(prev => {
+                const others = prev.filter(ev => {
+                    if (originalIds.has(ev.id)) return false;
+                    if (effectiveSeriesId && ev.meta?.seriesId === effectiveSeriesId) return false;
+                    return true;
+                });
+
+                const newSeries = [];
+                let loopDate = new Date(start);
+                let idx = 0;
+
+                while (loopDate < newEnd) {
+                    const currentDayStr = format(loopDate, 'yyyy-MM-dd');
+
+                    const s = new Date(`${currentDayStr}T08:00`);
+                    if (isSameDay(s, start)) s.setTime(start.getTime());
+
+                    const e = new Date(`${currentDayStr}T17:00`);
+                    if (isSameDay(e, newEnd)) e.setTime(newEnd.getTime());
+
+                    if (e > s) {
+                        const existingId = initialSeries[idx]?.id || uid();
+                        newSeries.push({
+                            id: existingId,
+                            title: title,
+                            resourceId: resourceId,
+                            date: currentDayStr,
+                            duration: 1,
+                            type: type,
+                            meta: {
+                                ...meta,
+                                start: s.toISOString(),
+                                end: e.toISOString(),
+                                seriesId: effectiveSeriesId
+                            }
+                        });
+                        idx++;
+                    }
+
+                    loopDate = addDays(loopDate, 1);
+                    loopDate.setHours(WORK_START_HOUR, 0);
+                    if (differenceInDays(loopDate, start) > 365) break;
+                }
+
+                return [...others, ...newSeries];
+            });
+        };
+
+        const handleResizeUp = () => {
+            const { seriesId, tempSeriesId } = resizeRef.current;
+            const effectiveSeriesId = seriesId || tempSeriesId;
+            const finalSeries = localEvents.filter(e => e.meta?.seriesId === effectiveSeriesId);
+            finalSeries.forEach(evt => {
+                if (onUpdateEvent) onUpdateEvent(evt);
+            });
+            setResizingEvent(null);
+        };
+
+        window.addEventListener('mousemove', handleResizeMove);
+        window.addEventListener('mouseup', handleResizeUp);
+        return () => {
+            window.removeEventListener('mousemove', handleResizeMove);
+            window.removeEventListener('mouseup', handleResizeUp);
+        };
+    }, [resizingEvent]); // localEvents omis pour éviter reset, on utilise setLocalEvents(cb)
 
     // --- RECHERCHE MULTI-CRITÈRES ---
     const [searchQuery, setSearchQuery] = useState('');
@@ -529,24 +966,34 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
         return config;
     }, [users]);
 
+    // --- FILTRAGE DES RESSOURCES MASQUÉES ---
+    // (Utilisé pour l'affichage ET le calcul de capacité)
+    const visibleGroupsConfig = useMemo(() => {
+        const config = JSON.parse(JSON.stringify(groupsConfig));
+        Object.keys(config).forEach(key => {
+            config[key].members = config[key].members.filter(m => !hiddenResources.includes(m.id));
+        });
+        return config;
+    }, [groupsConfig, hiddenResources]);
+
 
     // --- MODE ASSISTANT ---
     const [assistantMode, setAssistantMode] = useState(false);
 
-    // Calcul dynamique des capacités
+    // Calcul dynamique des capacités (basé sur visibleGroupsConfig)
     const capacityConfig = useMemo(() => ({
-        conf: groupsConfig.conf.members.length,
-        pose: groupsConfig.pose.members.length
-    }), [groupsConfig]);
+        conf: visibleGroupsConfig.conf.members.length,
+        pose: visibleGroupsConfig.pose.members.length
+    }), [visibleGroupsConfig]);
 
-    const stats = useCapacityPlanning(projects, localEvents, capacityConfig);
+    const { projectStats: stats } = useCapacityPlanning(projects, localEvents, capacityConfig);
 
     const filteredGroups = useMemo(() => {
-        if (activeFilters.length === 0) return groupsConfig;
+        if (activeFilters.length === 0) return visibleGroupsConfig;
 
         const newConfig = {};
-        Object.keys(groupsConfig).forEach(key => {
-            const group = groupsConfig[key];
+        Object.keys(visibleGroupsConfig).forEach(key => {
+            const group = visibleGroupsConfig[key];
             const filteredMembers = group.members.filter(member => {
                 const fullName = `${member.first_name} ${member.last_name}`.toLowerCase();
                 return activeFilters.every(filter => {
@@ -554,8 +1001,6 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                         return fullName.includes(filter.value.toLowerCase());
                     }
                     if (filter.type === 'project') {
-                        // On cherche si un événement de ce membre correspond au projet
-                        // member.id est l'UUID désormais
                         return localEvents.some(evt =>
                             evt.resourceId === member.id &&
                             evt.title && evt.title.toLowerCase().includes(filter.value.toLowerCase())
@@ -570,7 +1015,7 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
             }
         });
         return newConfig;
-    }, [activeFilters, localEvents, groupsConfig]);
+    }, [activeFilters, localEvents, visibleGroupsConfig]);
 
     // --- HANDLERS DRAG & DROP ---
     const handleCellClick = (resourceId, date) => {
@@ -596,103 +1041,124 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
         e.preventDefault();
         if (!draggedEvent) return;
 
-        // On garde les heures d'origine, on change juste la date et la ressource
-        const originalStart = new Date(draggedEvent.meta.start);
-        const originalEnd = new Date(draggedEvent.meta.end);
+        // Calcul du décalage en jours
+        const originalDate = parseISO(draggedEvent.date);
+        const deltaDays = differenceInDays(targetDate, originalDate);
 
-        const newStart = new Date(targetDate);
-        newStart.setHours(getHours(originalStart), getMinutes(originalStart));
+        // Si c'est 0 jours et même ressource, rien à faire
+        if (deltaDays === 0 && draggedEvent.resourceId === targetResourceId) {
+            setDraggedEvent(null);
+            return;
+        }
 
-        const durationMinutes = differenceInMinutes(originalEnd, originalStart);
-        const newEnd = new Date(newStart);
-        newEnd.setMinutes(newStart.getMinutes() + durationMinutes);
+        const isSeries = !!draggedEvent.meta?.seriesId;
+        const eventsToUpdate = isSeries
+            ? localEvents.filter(e => e.meta?.seriesId === draggedEvent.meta.seriesId)
+            : [draggedEvent];
+
+        // Préparation des mises à jour
+        const updates = eventsToUpdate.map(evt => {
+            const currentEvtDate = parseISO(evt.date);
+            const newEvtDate = addDays(currentEvtDate, deltaDays);
+
+            const currentStart = new Date(evt.meta.start);
+            const currentEnd = new Date(evt.meta.end);
+
+            const newStart = addDays(currentStart, deltaDays);
+            const newEnd = addDays(currentEnd, deltaDays);
+
+            return {
+                ...evt,
+                resourceId: targetResourceId, // On déplace tout vers la nouvelle ressource cible
+                date: format(newEvtDate, 'yyyy-MM-dd'),
+                meta: {
+                    ...evt.meta,
+                    start: newStart.toISOString(),
+                    end: newEnd.toISOString()
+                }
+            };
+        });
 
         // Mise à jour locale
-        setLocalEvents(prev => prev.map(evt => {
-            if (evt.id === draggedEvent.id) {
-                return {
-                    ...evt,
-                    resourceId: targetResourceId,
-                    date: format(targetDate, 'yyyy-MM-dd'),
-                    meta: { ...evt.meta, start: newStart.toISOString(), end: newEnd.toISOString() }
-                };
-            }
-            return evt;
+        setLocalEvents(prev => prev.map(e => {
+            const updated = updates.find(u => u.id === e.id);
+            return updated || e;
         }));
-        setDraggedEvent(null);
 
-        // SAUVEGARDE DB
-        const updatedEvent = {
-            ...draggedEvent,
-            resourceId: targetResourceId,
-            date: format(targetDate, 'yyyy-MM-dd'),
-            meta: { ...draggedEvent.meta, start: newStart.toISOString(), end: newEnd.toISOString() }
-        };
-        if (onUpdateEvent) onUpdateEvent(updatedEvent);
+        // Sauvegarde DB
+        if (onUpdateEvent) {
+            updates.forEach(u => onUpdateEvent(u));
+        }
+
+        setDraggedEvent(null);
     };
 
     // --- HANDLER SAUVEGARDE (Création OU Édition) ---
     const handleSaveEvent = (formData) => {
-        const start = new Date(`${formData.startDate}T${formData.startTime}`);
-        const end = new Date(`${formData.endDate}T${formData.endTime}`);
-        const durationDays = Math.max(1, differenceInDays(end, start) + 1);
-
         if (formData.id) {
-            // Modification
-            setLocalEvents(prev => prev.map(evt => evt.id === formData.id ? {
-                ...evt, title: formData.title, resourceId: formData.resourceIds[0], date: formData.startDate, duration: durationDays, type: formData.type,
-                meta: { ...evt.meta, start: start.toISOString(), end: end.toISOString(), projectId: formData.projectId }
-            } : evt));
-
-            // SAUVEGARDE DB (Modification)
-            if (onUpdateEvent) {
-                const updatedEvt = {
-                    id: formData.id,
-                    title: formData.title,
-                    resourceId: formData.resourceIds[0],
-                    date: formData.startDate,
-                    duration: durationDays,
-                    type: formData.type,
-                    meta: {
-                        ...localEvents.find(e => e.id === formData.id)?.meta,
-                        start: start.toISOString(),
-                        end: end.toISOString(),
-                        projectId: formData.projectId
-                    }
-                };
-                onUpdateEvent(updatedEvt);
+            // -- ÉDITION --
+            // 1. Trouver l'événement original
+            const originalEvt = localEvents.find(e => e.id === formData.id);
+            if (originalEvt) {
+                // 2. Supprimer l'ancien (ou la série complète)
+                if (originalEvt.meta?.seriesId) {
+                    setLocalEvents(prev => prev.filter(e => e.meta?.seriesId !== originalEvt.meta.seriesId));
+                } else {
+                    setLocalEvents(prev => prev.filter(e => e.id !== formData.id));
+                }
             }
+            // 3. Recréer proprement (via handleAddEvent qui gère le découpage)
+            // On s'assure que formData a les bons champs pour handleAddEvent
+            handleAddEvent(formData);
         } else {
-            // Création (Code existant...)
+            // -- CRÉATION --
             handleAddEvent(formData);
         }
     };
 
     // --- LOGIQUE AJOUT EVENTS (Multi) ---
     const handleAddEvent = (formData) => {
-        const start = new Date(formData.startDate);
-        const end = new Date(formData.endDate);
-        // Calcul durée inclusive (min 1 jour)
-        const durationDays = Math.max(1, differenceInDays(end, start) + 1);
+        // Logique de découpage par jour pour respecter "8h à 17h sur chaque jour"
+        const startDate = new Date(formData.startDate);
+        const endDate = new Date(formData.endDate);
+        const newEvents = [];
 
-        const newEvents = formData.resourceIds.map(resId => ({
-            id: uid(),
-            title: formData.title,
-            resourceId: resId,
-            date: formData.startDate, // IMPORTANT: On garde la String 'YYYY-MM-DD'
-            duration: durationDays,
-            type: formData.type,
-            meta: {
-                start: `${formData.startDate}T${formData.startTime}`,
-                end: `${formData.endDate}T${formData.endTime}`,
-                projectId: formData.projectId,
-                status: 'planned' // Défaut
-            }
-        }));
+        // ID pour lier visuellement les blocs
+        const seriesId = uid();
+
+        // Itérer sur chaque ressource sélectionnée
+        formData.resourceIds.forEach(resId => {
+            // Itérer sur chaque jour de l'intervalle
+            const days = eachDayOfInterval({ start: startDate, end: endDate });
+
+            days.forEach(dayDate => {
+                const dayStr = format(dayDate, 'yyyy-MM-dd');
+
+                // Reconstruire les bornes précises pour CE jour
+                const startDateTime = new Date(`${dayStr}T${formData.startTime}`);
+                const endDateTime = new Date(`${dayStr}T${formData.endTime}`);
+
+                newEvents.push({
+                    id: uid(),
+                    title: formData.title,
+                    resourceId: resId,
+                    date: dayStr,
+                    duration: 1, // Chaque event dure explicitement 1 "journée" (enfin, un créneau) sur la grille
+                    type: formData.type,
+                    meta: {
+                        start: startDateTime.toISOString(),
+                        end: endDateTime.toISOString(),
+                        projectId: formData.projectId,
+                        status: 'planned',
+                        seriesId: seriesId
+                    }
+                });
+            });
+        });
 
         setLocalEvents(prev => [...prev, ...newEvents]);
 
-        // SAUVEGARDE DB (Création Multiple)
+        // SAUVEGARDE DB
         if (onUpdateEvent) {
             newEvents.forEach(evt => onUpdateEvent(evt));
         }
@@ -716,6 +1182,50 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
     const handleDeleteEvent = (event) => {
         setLocalEvents(prev => prev.filter(e => e.id !== event.id));
         if (onDeleteEvent) onDeleteEvent(event.id);
+    };
+
+    // --- HANDLER ABSENCE RAPIDE ---
+    const handleAddAbsence = (resourceId, type, startStr, startTime, endStr, endTime) => {
+        // Même logique de découpage par jour
+        const startDate = new Date(startStr);
+        const endDate = new Date(endStr);
+        const newEvents = [];
+        const seriesId = uid();
+
+        try {
+            const days = eachDayOfInterval({ start: startDate, end: endDate });
+
+            days.forEach(dayDate => {
+                const dayStr = format(dayDate, 'yyyy-MM-dd');
+                const startDateTime = new Date(`${dayStr}T${startTime}`);
+                const endDateTime = new Date(`${dayStr}T${endTime}`);
+
+                newEvents.push({
+                    id: uid(),
+                    title: 'Absence',
+                    resourceId: resourceId,
+                    date: dayStr,
+                    duration: 1,
+                    type: 'absence',
+                    meta: {
+                        start: startDateTime.toISOString(),
+                        end: endDateTime.toISOString(),
+                        status: 'validated',
+                        description: `${type} - Absence déclarée via panneau`,
+                        seriesId: seriesId
+                    }
+                });
+            });
+
+            setLocalEvents(prev => [...prev, ...newEvents]);
+
+            if (onUpdateEvent) {
+                newEvents.forEach(evt => onUpdateEvent(evt));
+            }
+        } catch (e) {
+            console.error("Erreur création absence", e);
+            // Fallback si dates invalides
+        }
     };
 
     // --- MOTEUR TEMPOREL (Inchangé) ---
@@ -787,51 +1297,194 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
             const opacity = isValidated ? 1 : 0.75;
             const borderStyle = isValidated ? 'solid' : 'dashed';
 
+            const isAbsence = evt.type === 'absence';
+            const displayTitle = isAbsence ? (evt.meta?.description || 'Absence') : `${evt.title}`;
+
+            // --- GESTION FUSION VISUELLE (SERIES) ---
+            let widthMultiplier = 1;
+            let isStartOfVisibleSeries = true;
+
+            if (evt.meta?.seriesId) {
+                const prevDate = addDays(dayDate, -1);
+
+                // Est-ce que le jour précédent fait partie de la série ET est visible dans la vue actuelle ?
+                const prevVisible = columns.some(col => isSameDay(col, prevDate));
+                const hasPrev = localEvents.some(e =>
+                    e.resourceId === memberId &&
+                    e.meta?.seriesId === evt.meta.seriesId &&
+                    isSameDay(parseISO(e.date), prevDate)
+                );
+
+                // Si le bloc continue depuis un jour visible précédent, on ne le rend pas ici (c'est le précédent qui s'étend)
+                if (hasPrev && prevVisible) {
+                    return null;
+                }
+
+                // Sinon, c'est le début du bloc visible. On calcule combien de jours il doit couvrir.
+                let cumulativeWidth = widthPercent; // On commence avec la largeur du jour courant
+                let lookAhead = addDays(dayDate, 1);
+
+                // On cherche les jours suivants
+                let maxDays = 20; // Sécurité
+                while (maxDays > 0) {
+                    const nextEvt = localEvents.find(e =>
+                        e.resourceId === memberId &&
+                        e.meta?.seriesId === evt.meta.seriesId &&
+                        isSameDay(parseISO(e.date), lookAhead)
+                    );
+
+                    if (!nextEvt) break;
+
+                    // Calcul de la largeur de ce segment
+                    const s = new Date(nextEvt.meta.start);
+                    const e = new Date(nextEvt.meta.end); // Note: e peut être undefined si c'est event sans meta ? Non on a filtré sur seriesId donc meta existe.
+                    const dur = Math.min(TOTAL_WORK_MINUTES, Math.max(0, differenceInMinutes(e, s)));
+                    const segWidth = (dur / TOTAL_WORK_MINUTES) * 100;
+
+                    cumulativeWidth += segWidth;
+
+                    lookAhead = addDays(lookAhead, 1);
+                    maxDays--;
+                }
+                widthMultiplier = cumulativeWidth / 100; // Juste pour l'échelle si besoin, mais on utilise cumulativeWidth direct
+                isStartOfVisibleSeries = !hasPrev;
+            }
+
+            // Si c'est une série, on force la largeur calculée en cumulé
+            let finalWidth = evt.meta?.seriesId ? `calc(${isStartOfVisibleSeries ? widthMultiplier * 100 : widthPercent}% - 2px)` : `${widthPercent}%`;
+            // Correction : widthMultiplier contient déjà le ratio total. 
+            // Si widthMultiplier = 2.5 (250%), on veut calc(250% - 2px).
+            if (evt.meta?.seriesId) {
+                finalWidth = `calc(${widthMultiplier * 100}% - 2px)`;
+            }
+
             return (
                 <div key={evt.id} draggable
                     onMouseEnter={() => setHoveredEventId(evt.id)}
                     onMouseLeave={() => setHoveredEventId(null)}
                     onDragStart={(e) => handleDragStart(e, evt)}
-                    onClick={(e) => { e.stopPropagation(); setEditingEvent(evt); setIsModalOpen(true); }}
-                    title={`${evt.title} (${labelTime})`}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        if (evt.meta?.seriesId) {
+                            // Reconstituer l'événement complet (série)
+                            const seriesEvents = localEvents.filter(e => e.meta?.seriesId === evt.meta.seriesId);
+                            // On trie pour avoir le premier et dernier jour
+                            seriesEvents.sort((a, b) => new Date(a.date) - new Date(b.date));
+                            if (seriesEvents.length > 0) {
+                                const first = seriesEvents[0];
+                                const last = seriesEvents[seriesEvents.length - 1];
+                                // On crée un objet événement "virtuel" qui couvre toute la période
+                                const aggregatedEvent = {
+                                    ...first,
+                                    meta: {
+                                        ...first.meta,
+                                        end: last.meta.end // On prend la fin du dernier jour
+                                    }
+                                };
+                                setEditingEvent(aggregatedEvent);
+                            }
+                        } else {
+                            setEditingEvent(evt);
+                        }
+                        setIsModalOpen(true);
+                    }}
+                    title={`${displayTitle} (${labelTime})`}
                     style={{
                         position: 'absolute', top: 4, bottom: 4,
-                        left: `${leftPercent}%`, width: `${widthPercent}%`,
+                        left: `${leftPercent}%`,
+                        width: finalWidth,
                         backgroundColor: style.bg,
-                        borderLeft: `4px ${borderStyle} ${style.border}`,
-                        borderTop: isValidated ? `1px solid ${style.border}` : 'none', // Cadre complet si validé
-                        borderRight: isValidated ? `1px solid ${style.border}` : 'none',
-                        borderBottom: isValidated ? `1px solid ${style.border}` : 'none',
-                        color: style.text, borderRadius: 6, padding: '2px 4px',
-                        fontSize: 10, fontWeight: 600, zIndex: 10, opacity,
-                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                        cursor: 'grab', display: 'flex', flexDirection: 'column', justifyContent: 'center',
-                        minWidth: 25, transition: 'all 0.2s'
+
+                        // Bordure générale légère
+                        border: `1px solid ${style.border}`,
+
+                        // Bordure GAUCHE épaisse pour le statut (si début de série visible)
+                        borderLeft: isStartOfVisibleSeries ? `4px ${borderStyle} ${style.border}` : 'none',
+
+                        // Arrondis adaptés
+                        borderTopLeftRadius: isStartOfVisibleSeries ? 8 : 0,
+                        borderBottomLeftRadius: isStartOfVisibleSeries ? 8 : 0,
+                        borderTopRightRadius: 8,
+                        borderBottomRightRadius: 8,
+
+                        zIndex: evt.meta?.seriesId ? 20 : 10,
+                        padding: '2px 4px',
+                        overflow: 'hidden',
+                        cursor: 'pointer',
+                        opacity: opacity,
+                        boxShadow: evt.meta?.seriesId ? '0 1px 2px rgba(0,0,0,0.1)' : 'none',
+                        backgroundImage: style.pattern ? 'repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(0,0,0,0.05) 5px, rgba(0,0,0,0.05) 10px)' : 'none'
                     }}
                 >
-                    <div style={{ fontSize: 9, opacity: 0.9, display: 'flex', justifyContent: 'space-between' }}>
-                        {labelTime}
-                        {isValidated && <CheckCircle size={10} color={style.text} />}
+                    <div style={{ fontSize: 11, fontWeight: 700, color: style.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {displayTitle}
                     </div>
-                    <div>{evt.title}</div>
 
-                    {/* HOVER DELETE ICON */}
-                    {!isValidated && onDeleteEvent && hoveredEventId === evt.id && (
+                    {/* Icone Validation (bas droite) */}
+                    {isValidated && (
+                        <CheckCircle size={10} color={style.text} style={{ position: 'absolute', bottom: 2, right: 2 }} />
+                    )}
+
+                    {/* Icone Suppression (haut droite, au survol, si non validé) */}
+                    {hoveredEventId === evt.id && !isValidated && (
                         <div
                             onClick={(e) => {
                                 e.stopPropagation();
-                                if (window.confirm('Supprimer ce créneau ?')) handleDeleteEvent(evt);
+                                if (window.confirm('Supprimer ce créneau ?')) {
+                                    // Suppression intelligente : si série, on supprime tout, sinon juste l'event
+                                    if (evt.meta?.seriesId) {
+                                        setLocalEvents(prev => prev.filter(e => e.meta?.seriesId !== evt.meta.seriesId));
+                                    } else {
+                                        handleDeleteEvent(evt);
+                                    }
+                                }
                             }}
                             style={{
                                 position: 'absolute', top: 2, right: 2,
-                                background: 'rgba(255,255,255,0.9)', borderRadius: 4,
+                                background: 'rgba(255,255,255,0.6)', borderRadius: '50%',
                                 width: 16, height: 16, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                cursor: 'pointer', color: '#ef4444', boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
+                                cursor: 'pointer', zIndex: 60
                             }}
                             title="Supprimer"
                         >
-                            <X size={12} strokeWidth={3} />
+                            <X size={10} color="#EF4444" />
                         </div>
+                    )}
+
+                    {/* Poignée de redimensionnement (Bord Droit) */}
+                    {!isValidated && (
+                        <div
+                            className="resize-handle"
+                            style={{
+                                position: 'absolute', top: 0, bottom: 0, right: 0, width: 12,
+                                cursor: 'col-resize', zIndex: 50,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center'
+                            }}
+                            onMouseDown={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault(); // Empêche drag du parent
+                                const rect = e.target.parentElement.getBoundingClientRect();
+                                const currentSpan = widthMultiplier || 1;
+                                const singleCellWidth = rect.width / currentSpan;
+
+                                const seriesEvents = evt.meta?.seriesId
+                                    ? localEvents.filter(ev => ev.meta?.seriesId === evt.meta.seriesId)
+                                    : [evt];
+                                seriesEvents.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+                                setResizingEvent({
+                                    startX: e.clientX,
+                                    initialSeries: seriesEvents,
+                                    cellWidth: singleCellWidth,
+                                    resourceId: evt.resourceId,
+                                    seriesId: evt.meta?.seriesId,
+                                    tempSeriesId: evt.meta?.seriesId ? null : uid(), // On génère un ID si manquant (legacy)
+                                    type: evt.type,
+                                    title: evt.title,
+                                    meta: evt.meta
+                                });
+                            }}
+                        />
                     )}
                 </div>
             );
@@ -850,6 +1503,7 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                 customRange={customRange}
                 onCustomRangeChange={(r) => { setCustomRange(r); setView('custom'); }}
                 onNew={() => { setEditingEvent(null); setIsModalOpen(true); }}
+                onManageTeam={() => setShowResourcePanel(true)}
                 searchQuery={searchQuery}
                 setSearchQuery={setSearchQuery}
                 activeFilters={activeFilters}
@@ -870,7 +1524,19 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                 eventToEdit={editingEvent}
                 initialData={initialModalData}
                 currentUser={currentUser}
-                groupsConfig={groupsConfig}
+                groupsConfig={visibleGroupsConfig}
+            />
+
+            <ResourcePanel
+                isOpen={showResourcePanel}
+                onClose={() => setShowResourcePanel(false)}
+                users={users}
+                hiddenResources={hiddenResources}
+                onToggleVisibility={(id) => {
+                    if (hiddenResources.includes(id)) setHiddenResources(hiddenResources.filter(x => x !== id));
+                    else setHiddenResources([...hiddenResources, id]);
+                }}
+                onAddAbsence={handleAddAbsence}
             />
 
             {assistantMode ? (
