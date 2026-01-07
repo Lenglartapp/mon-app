@@ -1,4 +1,4 @@
-export function generateRowLogs(oldRow, newRow, schema, authorName = 'Système') {
+export function generateRowLogs(oldRow, newRow, schema, authorName = 'Utilisateur') {
     const logs = [];
     if (!oldRow || !newRow) return logs;
 

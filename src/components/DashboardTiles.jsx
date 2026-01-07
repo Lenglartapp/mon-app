@@ -54,10 +54,7 @@ export default function DashboardTiles({ rows }) {
         <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, display: 'flex', gap: 6 }}><Hammer size={16} /> Pose</div>
         <div><div style={valStyle}>{stats.pctPose}%</div><div style={subStyle}>{stats.raw.poseOk}/{stats.total} installées</div></div>
       </div>
-      <div style={tileStyle("#FFFBEB", "#92400E")}>
-        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, display: 'flex', gap: 6 }}><Clock size={16} /> Heures (Est.)</div>
-        <div><div style={valStyle}>0 h</div><div style={subStyle}>Budget non défini</div></div>
-      </div>
+
     </div>
   );
 }

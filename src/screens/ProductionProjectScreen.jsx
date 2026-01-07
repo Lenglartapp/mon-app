@@ -42,6 +42,14 @@ const getVisibilityModel = (viewKey, tableKey, schema) => {
   return model;
 };
 
+const PROJECT_STATUS_OPTIONS = {
+  TODO: { label: "À commencer", color: "#6B7280", bg: "#F3F4F6" },
+  IN_PROGRESS: { label: "En cours", color: "#3B82F6", bg: "#EFF6FF" },
+  DONE: { label: "Terminé", color: "#10B981", bg: "#ECFDF5" },
+  SAV: { label: "SAV", color: "#F59E0B", bg: "#FFFBEB" },
+  ARCHIVED: { label: "Archivé", color: "#374151", bg: "#F9FAFB" }
+};
+
 
 // 1. SIGNATURE MISE A JOUR
 export function ProductionProjectScreen({ project: propProject, projects, onBack, onUpdateProjectRows, onUpdateProject, highlightRowId, events = [] }) {
@@ -445,17 +453,83 @@ export function ProductionProjectScreen({ project: propProject, projects, onBack
 
   return (
     <div style={S.contentWide}>
-      <div style={{ margin: "4px 0 12px", color: COLORS.text, fontWeight: 600 }}>
+      {/* Header Minimalist Refactor */}
+      <div style={{ marginBottom: 24, marginTop: 8 }}>
         <button
           onClick={onBack}
-          style={{ background: "none", border: "none", padding: 0, margin: 0, cursor: "pointer", color: COLORS.text }}
+          style={{
+            background: "none", border: "none", cursor: "pointer",
+            color: "#6B7280", fontWeight: 600, fontSize: 13,
+            display: "flex", alignItems: "center", gap: 4, marginBottom: 8, padding: 0
+          }}
         >
-          Production
+          ← Retour
         </button>
-        {" / "}<span style={{ fontWeight: 800 }}>{projectName}</span>
-        {project?.manager ? (
-          <span style={{ marginLeft: 8, opacity: .7 }}>— {project.manager}</span>
-        ) : null}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
+          <div>
+            <h1 style={{ margin: 0, fontSize: 32, fontWeight: 800, color: '#111827', letterSpacing: '-0.02em' }}>
+              {projectName}
+            </h1>
+            <div style={{ fontSize: 16, color: '#6B7280', marginTop: 4, fontWeight: 300 }}>
+              Chargé·e d'affaires : <span style={{ color: '#374151', fontWeight: 500 }}>{project?.manager || "—"}</span>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            {/* Delivery Date */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'white', border: '1px solid #E5E7EB', borderRadius: 20, padding: '6px 12px', boxShadow: "0 1px 2px rgba(0,0,0,0.05)" }}>
+              <span style={{ fontSize: 13, color: '#6B7280', fontWeight: 500 }}>Livraison :</span>
+              <input
+                type="date"
+                value={project?.delivery_date || ""}
+                onChange={(e) => onUpdateProject(project.id, { delivery_date: e.target.value })}
+                style={{
+                  border: 'none',
+                  background: 'transparent',
+                  color: '#374151',
+                  fontSize: 13,
+                  fontFamily: 'inherit',
+                  cursor: 'pointer',
+                  outline: 'none'
+                }}
+              />
+            </div>
+
+            {/* Project Status Selector */}
+            <div style={{ position: 'relative' }}>
+              <select
+                value={project?.status || "TODO"}
+                onChange={(e) => onUpdateProject(project.id, { status: e.target.value })}
+                style={{
+                  appearance: 'none',
+                  padding: "8px 12px 8px 24px",
+                  borderRadius: 20,
+                  border: "1px solid #E5E7EB",
+                  background: 'white',
+                  color: "#374151",
+                  fontWeight: 600,
+                  fontSize: 13,
+                  cursor: 'pointer',
+                  textAlign: 'center',
+                  minWidth: 120,
+                  outline: 'none',
+                  boxShadow: "0 1px 2px rgba(0,0,0,0.05)"
+                }}
+              >
+                {Object.entries(PROJECT_STATUS_OPTIONS).map(([key, opt]) => (
+                  <option key={key} value={key}>{opt.label}</option>
+                ))}
+              </select>
+              {/* Colored Dot Overlay */}
+              <div style={{
+                position: 'absolute', top: '50%', left: 10, transform: 'translateY(-50%)',
+                width: 8, height: 8, borderRadius: '50%',
+                background: PROJECT_STATUS_OPTIONS[project?.status || "TODO"]?.color || "#9CA3AF",
+                pointerEvents: 'none'
+              }} />
+            </div>
+          </div>
+        </div>
       </div>
 
       <div style={S.pills}>
@@ -466,27 +540,7 @@ export function ProductionProjectScreen({ project: propProject, projects, onBack
         ))}
       </div>
 
-      <div style={S.searchRow}>
-        <div style={S.searchBox}>
-          <Search size={18} style={{ position: "absolute", left: 10, top: 12, opacity: 0.6 }} />
-          <input
-            placeholder="Recherche"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            style={S.searchInput}
-          />
-        </div>
-        <div style={S.toolsRow}>
-          <span style={S.toolBtn}><Filter size={16} /> Filtre</span>
-          <span style={S.toolBtn}><Layers3 size={16} /> Regrouper</span>
-          <button
-            style={{ ...S.toolBtn, border: "none", background: "none", color: "#6366f1", fontWeight: 600 }}
-            onClick={handleLoadTestData}
-          >
-            <FlaskConical size={16} /> Test Data
-          </button>
-        </div>
-      </div>
+
 
       {stage === "dashboard" && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>

@@ -38,7 +38,7 @@ const mapType = (type) => {
  * @param {boolean} enableCellFormulas - Whether cell formulas are enabled.
  * @returns {Array} - Array of GridColDef.
  */
-export function schemaToGridCols(schema, enableCellFormulas = false, onOpenDetail, catalog = [], railOptions = [], onPhotoChange, onDuplicate, hideCroquis = false) {
+export function schemaToGridCols(schema, enableCellFormulas = false, onOpenDetail, catalog = [], railOptions = [], onPhotoChange, onDuplicate, hideCroquis = false, readOnly = false) {
   if (!Array.isArray(schema)) return [];
 
   // Filter out 'sel' column and explicitly hidden columns
@@ -50,11 +50,14 @@ export function schemaToGridCols(schema, enableCellFormulas = false, onOpenDetai
 
   return filteredSchema.map((col) => {
     const isFormula = col.type === 'formula';
-    const isReadOnly = !!col.readOnly;
+    const isReadOnly = !!col.readOnly || readOnly; // Force readOnly if global flag
 
     // Determine editability
     let editable = col.editable !== undefined ? col.editable : !isReadOnly;
     if (isFormula && !enableCellFormulas) {
+      editable = false;
+    }
+    if (readOnly) {
       editable = false;
     }
 
@@ -93,7 +96,10 @@ export function schemaToGridCols(schema, enableCellFormulas = false, onOpenDetai
 
     // Generic support for functional editable (isCellEditable)
     if (typeof col.editable === 'function') {
-      gridCol.isCellEditable = col.editable;
+      gridCol.isCellEditable = (params) => {
+        if (readOnly) return false;
+        return col.editable(params);
+      };
     }
 
     // Legacy manual handling for dim_mecanisme (can be removed if moved to schema, but kept for safety)
@@ -104,6 +110,7 @@ export function schemaToGridCols(schema, enableCellFormulas = false, onOpenDetai
     // Conditional Editing for dim_mecanisme
     if (col.key === 'dim_mecanisme') {
       gridCol.isCellEditable = (params) => {
+        if (readOnly) return false;
         const type = params.row.type_mecanisme || '';
         // Lock if Rail or Store
         if (type === 'Rail' || type.includes('Store') || type === 'Canishade') return false;

@@ -33,7 +33,10 @@ export default function LineDetailPanel({ open, onClose, row, schema, onRowChang
         const newRow = { ...row, [key]: value };
 
         // Pass Current User Name to Log Generator
-        const authorName = currentUser?.name || 'Utilisateur';
+        // Force 'Utilisateur' if name is missing to avoid 'Système' default in helper
+        const safeUser = currentUser && (currentUser.name || currentUser.email);
+        const authorName = safeUser || 'Utilisateur';
+
         const newLogs = generateRowLogs(oldRow, newRow, schema, authorName);
 
         let updatedComments = newRow.comments || [];

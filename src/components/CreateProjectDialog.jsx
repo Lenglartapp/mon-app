@@ -39,6 +39,7 @@ export default function CreateProjectDialog({
 
     // -- IMPORT STATE --
     const [selectedMinute, setSelectedMinute] = useState(null);
+    const [deliveryDate, setDeliveryDate] = useState("");
 
     // RESET ON OPEN
     React.useEffect(() => {
@@ -46,6 +47,7 @@ export default function CreateProjectDialog({
             setTab(minutes.length > 0 ? 0 : 1);
             setProjectName("");
             setSelectedMinute(null);
+            setDeliveryDate("");
             setUseRideaux(true);
             setUseStores(false);
             setUseDecors(false);
@@ -58,15 +60,17 @@ export default function CreateProjectDialog({
         // For now, just pass empty rows and let parent/lib handle it
         // Or we pass a 'config' object?
         // User asked: "stocke juste l'info"
-        onCreateBlank(projectName, [], { useRideaux, useStores, useDecors });
+        onCreateBlank(projectName, [], { useRideaux, useStores, useDecors, deliveryDate });
     };
 
     const handleImport = () => {
         if (!selectedMinute) return;
         onCreateFromMinute({
             name: selectedMinute.name || "Dossier Importé",
+            name: selectedMinute.name || "Dossier Importé",
             rows: selectedMinute.lines || [],
-            meta: selectedMinute
+            meta: selectedMinute,
+            deliveryDate // Pass separately
         });
     };
 
@@ -112,6 +116,16 @@ export default function CreateProjectDialog({
                         )}
                     />
 
+                    <TextField
+                        type="date"
+                        label="Date de livraison prévue"
+                        value={deliveryDate}
+                        onChange={(e) => setDeliveryDate(e.target.value)}
+                        fullWidth
+                        InputLabelProps={{ shrink: true }}
+                        sx={{ mt: 3 }}
+                    />
+
                     {selectedMinute && (
                         <Box sx={{ mt: 2, p: 2, bgcolor: '#f9fafb', borderRadius: 2, border: '1px solid #e5e7eb' }}>
                             <Typography variant="caption" fontWeight={700} color="text.secondary" display="block">RÉSUMÉ</Typography>
@@ -134,6 +148,16 @@ export default function CreateProjectDialog({
                         value={projectName}
                         onChange={(e) => setProjectName(e.target.value)}
                         placeholder="Ex: Mr. Martin - Salon"
+                        sx={{ mb: 2 }}
+                    />
+
+                    <TextField
+                        type="date"
+                        label="Date de livraison prévue"
+                        value={deliveryDate}
+                        onChange={(e) => setDeliveryDate(e.target.value)}
+                        fullWidth
+                        InputLabelProps={{ shrink: true }}
                         sx={{ mb: 3 }}
                     />
 
@@ -164,7 +188,7 @@ export default function CreateProjectDialog({
                     <Button
                         variant="contained"
                         onClick={handleImport}
-                        disabled={!selectedMinute}
+                        disabled={!selectedMinute || !deliveryDate}
                     >
                         Importer le dossier
                     </Button>
@@ -172,7 +196,7 @@ export default function CreateProjectDialog({
                     <Button
                         variant="contained"
                         onClick={handleCreateBlank}
-                        disabled={!projectName.trim()}
+                        disabled={!projectName.trim() || !deliveryDate}
                     >
                         Créer le dossier
                     </Button>
