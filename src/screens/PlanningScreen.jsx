@@ -3,7 +3,7 @@ import { S, COLORS } from '../lib/constants/ui';
 import { useAuth } from '../auth';
 import {
     ChevronLeft, ChevronRight, Search, ChevronDown, ChevronRight as ChevronRightIcon,
-    X, Check, User, Briefcase, Clock, Calendar as CalendarIcon, ArrowRight, CheckCircle, Trash2
+    X, Check, User, Briefcase, Clock, Calendar as CalendarIcon, ArrowRight, CheckCircle, Trash2, Edit2
 } from 'lucide-react';
 import { ROLES } from '../auth';
 import {
@@ -11,7 +11,8 @@ import {
     isSameDay, startOfMonth, endOfMonth, eachDayOfInterval,
     startOfQuarter, endOfQuarter, startOfYear, endOfYear, eachMonthOfInterval,
     addMonths, subMonths, addQuarters, subQuarters, addYears, subYears, startOfDay,
-    differenceInDays, parseISO, getHours, getMinutes, differenceInMinutes, setHours, setMinutes
+    differenceInDays, parseISO, getHours, getMinutes, differenceInMinutes, setHours, setMinutes,
+    isWeekend
 } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useCapacityPlanning } from '../hooks/useCapacityPlanning';
@@ -67,6 +68,10 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
     const [selectedResources, setSelectedResources] = useState([]);
     const [showResourceList, setShowResourceList] = useState(false);
     const [description, setDescription] = useState('');
+    const [absType, setAbsType] = useState('Congés'); // Utilisé par ResourcePanel mais on le définit ici pour check les types
+
+    // Types d'absence pour le calcul de capacité
+    const ABSENCE_TYPES = ['Congés', 'RTT', 'Maladie', 'Autre'];
 
     // Dates & Heures
     const [startDate, setStartDate] = useState(format(new Date(), 'yyyy-MM-dd'));
@@ -345,7 +350,7 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
 };
 
 // --- PANNEAU GESTION ÉQUIPE (Droit) ---
-const ResourcePanel = ({ isOpen, onClose, users, hiddenResources, onToggleVisibility, onAddAbsence }) => {
+const ResourcePanel = ({ isOpen, onClose, users, hiddenResources, onToggleVisibility, onAddAbsence, onUpdateUser }) => {
     // État local pour le formulaire d'absence
     const [selectedUserForAbsence, setSelectedUserForAbsence] = useState(null);
     const [selectedGroupForAbsence, setSelectedGroupForAbsence] = useState(null); // Pour absence groupée
@@ -354,6 +359,9 @@ const ResourcePanel = ({ isOpen, onClose, users, hiddenResources, onToggleVisibi
     const [absStartTime, setAbsStartTime] = useState('08:00');
     const [absEnd, setAbsEnd] = useState(format(new Date(), 'yyyy-MM-dd'));
     const [absEndTime, setAbsEndTime] = useState('17:00');
+
+    // État local pour l'édition d'un user (Interim)
+    const [editingUser, setEditingUser] = useState(null); // { id, first_name, last_name }
 
     if (!isOpen) return null;
 
@@ -393,6 +401,13 @@ const ResourcePanel = ({ isOpen, onClose, users, hiddenResources, onToggleVisibi
         setSelectedGroupForAbsence(groupId);
     };
 
+    const handleSaveUser = () => {
+        if (editingUser) {
+            onUpdateUser(editingUser); // Envoie { id, first_name, last_name, ... }
+            setEditingUser(null);
+        }
+    };
+
     return (
         <div style={{ position: 'fixed', inset: 0, zIndex: 120, display: 'flex', justifyContent: 'flex-end' }}>
             <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.3)', backdropFilter: 'blur(2px)' }} />
@@ -424,45 +439,117 @@ const ResourcePanel = ({ isOpen, onClose, users, hiddenResources, onToggleVisibi
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                                 {members.map(user => {
+                                    // isVisible = Actif dans le switch. Mais attention, le user a dit "désactivé via is_active".
+                                    // On va utiliser le champ "active" du user s'il existe, sinon fallback sur hiddenResources.
+                                    // Mais le code existant utilise hiddenResources pour le toggle "Visibilité".
+                                    // On va unifier : Le switch "Actif/Inactif" contrôle hiddenResources (Masqué = Inactif).
+                                    // Pour la consistance UI, on garde hiddenResources.
                                     const isVisible = !hiddenResources.includes(user.id);
+
+                                    // Identification CDI vs Interim
+                                    // "Considère comme Profil Flottant tout utilisateur dont le first_name commence par Interim"
+                                    // Attention : si on le renomme, il ne commence plus par Interim. 
+                                    // IL FAUT UN MOYEN DE SAVOIR SI C'EST UN COMPTE FLOTTANT A L'ORIGINE.
+                                    // Supposons que le login/email ou un ID spécifique ou un champ 'is_interim' serait mieux.
+                                    // FAUTE DE MIEUX : On se base sur le fait qu'il EST interim SI on peut l'éditer. 
+                                    // MAIS si on ré-ouvre l'app, comment savoir ?
+                                    // L'user dit : "tout utilisateur dont le first_name commence par Interim".
+                                    // Si on le renomme "Sonia", il devient un CDI aux yeux du système ? C'est le risque.
+                                    // Idéalement on stocke is_interim dans l'objet user.
+                                    // On va supposer qu'on ajoute une propriété is_interim lors du chargement initial si ça commence par Interim, et on la garde.
+                                    // Ou alors on checke si l'ID contient par exemple "temp" ou si une propriété custom existe.
+                                    // Pour cet exercice, on va check "Interim" dans le nom OU si on a déjà flaggé comme interim.
+
+                                    const isInterim = user.first_name?.startsWith('Interim') || user.is_interim;
+                                    // Note: on ajoute is_interim dans l'objet user mis à jour pour persister ce statut après renommage.
+
+                                    const isEditing = editingUser?.id === user.id;
+
                                     return (
-                                        <div key={user.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'white', border: '1px solid #E5E7EB', borderRadius: 8, padding: '12px 14px', opacity: isVisible ? 1 : 0.6 }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                                <div style={{ width: 32, height: 32, borderRadius: '50%', background: isVisible ? '#DBEAFE' : '#F3F4F6', color: isVisible ? '#1E40AF' : '#9CA3AF', display: 'grid', placeItems: 'center', fontWeight: 600, fontSize: 13 }}>
-                                                    {user.first_name?.[0]}
+                                        <div key={user.id} style={{ display: 'flex', flexDirection: 'column', background: 'white', border: '1px solid #E5E7EB', borderRadius: 8, padding: '12px 14px', opacity: isVisible ? 1 : 0.6 }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: isEditing ? 12 : 0 }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                                    <div style={{ width: 32, height: 32, borderRadius: '50%', background: isVisible ? (isInterim ? '#FEF3C7' : '#DBEAFE') : '#F3F4F6', color: isVisible ? (isInterim ? '#D97706' : '#1E40AF') : '#9CA3AF', display: 'grid', placeItems: 'center', fontWeight: 600, fontSize: 13 }}>
+                                                        {user.first_name?.[0]}
+                                                    </div>
+                                                    <div>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                            <div style={{ fontWeight: 600, fontSize: 14, color: '#374151' }}>
+                                                                {user.first_name} {user.last_name}
+                                                            </div>
+                                                            {/* Badge */}
+                                                            <span style={{ fontSize: 9, padding: '1px 4px', borderRadius: 4, fontWeight: 700, background: isInterim ? '#FFFbeb' : '#EFF6FF', color: isInterim ? '#B45309' : '#1D4ED8', border: `1px solid ${isInterim ? '#FCD34D' : '#BFDBFE'}` }}>
+                                                                {isInterim ? 'INTERIM' : 'CDI'}
+                                                            </span>
+                                                        </div>
+                                                        <div style={{ fontSize: 12, color: isVisible ? '#10B981' : '#9CA3AF', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                                            {isVisible ? 'Actif' : 'Désactivé'}
+                                                            {/* Bouton Edit pour Interim */}
+                                                            {isInterim && !isEditing && (
+                                                                <button
+                                                                    onClick={() => setEditingUser({ ...user, is_interim: true })} // On garde le flag
+                                                                    style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: 0, marginLeft: 4 }}
+                                                                    title="Renommer"
+                                                                >
+                                                                    <Edit2 size={10} color="#6B7280" />
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                                <div>
-                                                    <div style={{ fontWeight: 600, fontSize: 14, color: '#374151' }}>{user.first_name} {user.last_name}</div>
-                                                    <div style={{ fontSize: 12, color: isVisible ? '#10B981' : '#9CA3AF' }}>{isVisible ? 'Actif' : 'Masqué'}</div>
+
+                                                <div style={{ display: 'flex', gap: 8 }}>
+                                                    {/* Bouton Absence */}
+                                                    <button
+                                                        onClick={() => openModal(user.id, null)}
+                                                        title="Déclarer absence"
+                                                        style={{ padding: 6, borderRadius: 6, border: '1px solid #E5E7EB', background: 'white', cursor: 'pointer', color: '#EF4444' }}
+                                                    >
+                                                        <CalendarIcon size={16} />
+                                                    </button>
+
+                                                    {/* BOUTON TOGGLE ACTIF/INACTIF */}
+                                                    <button
+                                                        onClick={() => onToggleVisibility(user.id)}
+                                                        title={isVisible ? "Désactiver" : "Activer"}
+                                                        style={{
+                                                            width: 36, height: 20, borderRadius: 999,
+                                                            background: isVisible ? '#10B981' : '#E5E7EB',
+                                                            position: 'relative', border: 'none', cursor: 'pointer', transition: 'background 0.2s'
+                                                        }}
+                                                    >
+                                                        <div style={{
+                                                            width: 16, height: 16, borderRadius: '50%', background: 'white',
+                                                            position: 'absolute', top: 2, left: isVisible ? 18 : 2,
+                                                            transition: 'left 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.2)'
+                                                        }} />
+                                                    </button>
                                                 </div>
                                             </div>
 
-                                            <div style={{ display: 'flex', gap: 8 }}>
-                                                {/* Bouton Absence */}
-                                                <button
-                                                    onClick={() => openModal(user.id, null)}
-                                                    title="Déclarer absence"
-                                                    style={{ padding: 6, borderRadius: 6, border: '1px solid #E5E7EB', background: 'white', cursor: 'pointer', color: '#EF4444' }}
-                                                >
-                                                    <CalendarIcon size={16} />
-                                                </button>
-
-                                                {/* Switch Visibilité */}
-                                                <button
-                                                    onClick={() => onToggleVisibility(user.id)}
-                                                    style={{
-                                                        width: 36, height: 20, borderRadius: 999,
-                                                        background: isVisible ? '#2563EB' : '#E5E7EB',
-                                                        position: 'relative', border: 'none', cursor: 'pointer', transition: 'background 0.2s'
-                                                    }}
-                                                >
-                                                    <div style={{
-                                                        width: 16, height: 16, borderRadius: '50%', background: 'white',
-                                                        position: 'absolute', top: 2, left: isVisible ? 18 : 2,
-                                                        transition: 'left 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.2)'
-                                                    }} />
-                                                </button>
-                                            </div>
+                                            {/* FORMULAIRE D'ÉDITION POUR INTERIM */}
+                                            {isEditing && (
+                                                <div style={{ marginTop: 8, padding: 8, background: '#F9FAFB', borderRadius: 6, border: '1px solid #E5E7EB' }}>
+                                                    <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                                                        <input
+                                                            value={editingUser.first_name || ''}
+                                                            onChange={e => setEditingUser({ ...editingUser, first_name: e.target.value })}
+                                                            placeholder="Prénom"
+                                                            style={{ flex: 1, padding: '4px 8px', fontSize: 12, borderRadius: 4, border: '1px solid #D1D5DB' }}
+                                                        />
+                                                        <input
+                                                            value={editingUser.last_name || ''}
+                                                            onChange={e => setEditingUser({ ...editingUser, last_name: e.target.value })}
+                                                            placeholder="Nom"
+                                                            style={{ flex: 1, padding: '4px 8px', fontSize: 12, borderRadius: 4, border: '1px solid #D1D5DB' }}
+                                                        />
+                                                    </div>
+                                                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                                                        <button onClick={() => setEditingUser(null)} style={{ fontSize: 11, padding: '4px 8px', border: '1px solid #D1D5DB', background: 'white', borderRadius: 4, cursor: 'pointer' }}>Annuler</button>
+                                                        <button onClick={handleSaveUser} style={{ fontSize: 11, padding: '4px 8px', border: 'none', background: '#2563EB', color: 'white', borderRadius: 4, cursor: 'pointer' }}>Enregistrer</button>
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     );
                                 })}
@@ -546,7 +633,7 @@ const StickyCorner = ({ children, style }) => (
         {children}
     </div>
 );
-const ViewSelector = ({ view, onViewChange, customRange, onCustomRangeChange }) => {
+const ViewSelector = ({ view, onViewChange, customRange, onCustomRangeChange, showWeekends, onToggleWeekends }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [tempStart, setTempStart] = useState('');
     const [tempEnd, setTempEnd] = useState('');
@@ -561,7 +648,13 @@ const ViewSelector = ({ view, onViewChange, customRange, onCustomRangeChange }) 
                 <>
                     <div style={{ position: 'fixed', inset: 0, zIndex: 80 }} onClick={() => setIsOpen(false)} />
                     <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 4, width: 280, background: 'white', borderRadius: 8, boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', border: '1px solid #E5E7EB', zIndex: 90, padding: 4 }}>
-                        <div style={{ paddingBottom: 4, borderBottom: '1px solid #F3F4F6' }}>{options.map(opt => (<div key={opt.id} onClick={() => { onViewChange(opt.id); setIsOpen(false); }} style={{ padding: '8px 12px', fontSize: 13, cursor: 'pointer', borderRadius: 4, background: view === opt.id ? '#EFF6FF' : 'transparent', color: view === opt.id ? '#2563EB' : '#374151', fontWeight: view === opt.id ? 600 : 400 }}>{opt.label}</div>))}</div>
+                        <div style={{ paddingBottom: 4, borderBottom: '1px solid #F3F4F6' }}>
+                            {options.map(opt => (<div key={opt.id} onClick={() => { onViewChange(opt.id); setIsOpen(false); }} style={{ padding: '8px 12px', fontSize: 13, cursor: 'pointer', borderRadius: 4, background: view === opt.id ? '#EFF6FF' : 'transparent', color: view === opt.id ? '#2563EB' : '#374151', fontWeight: view === opt.id ? 600 : 400 }}>{opt.label}</div>))}
+                            <div onClick={() => onToggleWeekends(!showWeekends)} style={{ padding: '8px 12px', fontSize: 13, cursor: 'pointer', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: '#374151' }}>
+                                Afficher les week-ends
+                                {showWeekends && <Check size={14} color="#111827" />}
+                            </div>
+                        </div>
                         <div style={{ padding: 12 }}>
                             <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}> <input type="date" style={{ ...S.input, padding: 4, fontSize: 12 }} onChange={e => setTempStart(e.target.value)} /> <input type="date" style={{ ...S.input, padding: 4, fontSize: 12 }} onChange={e => setTempEnd(e.target.value)} /> </div>
                             <button onClick={handleApply} style={{ width: '100%', background: '#1F2937', color: 'white', border: 'none', padding: '6px', borderRadius: 4, fontSize: 12, cursor: 'pointer' }}>Appliquer</button>
@@ -576,7 +669,7 @@ const TopBar = ({
     view, onViewChange, currentDate, onPrev, onNext, onToday,
     customRange, onCustomRangeChange, onNew, onManageTeam,
     searchQuery, setSearchQuery, activeFilters, onAddFilter, onRemoveFilter,
-    assistantMode, onToggleAssistant
+    assistantMode, onToggleAssistant, showWeekends, onToggleWeekends
 }) => {
     return (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 24px', background: '#FAF5EE' }}>
@@ -665,7 +758,7 @@ const TopBar = ({
                     <button onClick={onPrev} style={{ border: 'none', background: 'transparent', padding: '6px 8px', cursor: 'pointer' }}><ChevronLeft size={16} /></button>
                     <button onClick={onNext} style={{ border: 'none', background: 'transparent', padding: '6px 8px', cursor: 'pointer' }}><ChevronRight size={16} /></button>
                 </div>
-                <ViewSelector view={view} onViewChange={onViewChange} customRange={customRange} onCustomRangeChange={onCustomRangeChange} />
+                <ViewSelector view={view} onViewChange={onViewChange} customRange={customRange} onCustomRangeChange={onCustomRangeChange} showWeekends={showWeekends} onToggleWeekends={onToggleWeekends} />
                 <button onClick={onToday} style={{ background: 'transparent', color: '#111827', border: 'none', padding: '0 8px', fontSize: 13, fontWeight: 700, cursor: 'pointer', textDecoration: 'underline' }}>Aujourd'hui</button>
             </div>
         </div>
@@ -673,10 +766,26 @@ const TopBar = ({
 };
 
 export default function PlanningScreen({ projects, events: initialEvents, onUpdateEvent, onDeleteEvent, onBack }) {
-    const { users, currentUser } = useAuth();
+    const { users: authUsers, currentUser } = useAuth();
+    // STATE LOCAL USERS (pour permettre renommage en pseudo temps réel)
+    const [localUsers, setLocalUsers] = useState(authUsers || []);
+
+    // Sync if authUsers changes but keep local improvements if unmatched
+    useEffect(() => {
+        if (authUsers && authUsers.length > 0 && localUsers.length === 0) {
+            setLocalUsers(authUsers);
+        }
+    }, [authUsers]);
+
+    // Handler pour update user (Renommage Interim)
+    const handleUpdateUser = (updatedUser) => {
+        setLocalUsers(prev => prev.map(u => u.id === updatedUser.id ? updatedUser : u));
+        // Ici on pourrait aussi appeler une API Supabase update
+    };
 
     const [currentDate, setCurrentDate] = useState(new Date());
     const [view, setView] = useState('week');
+    const [showWeekends, setShowWeekends] = useState(false);
     const [customRange, setCustomRange] = useState(null);
     const [expandedGroups, setExpandedGroups] = useState({ pose: true, conf: true, prepa: true });
 
@@ -945,7 +1054,7 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
 
     // --- CONSTRUCTION DYNAMIQUE DES GROUPES ---
     const groupsConfig = useMemo(() => {
-        if (!users || users.length === 0) return INITIAL_GROUPS_CONFIG;
+        if (!localUsers || localUsers.length === 0) return INITIAL_GROUPS_CONFIG;
 
         // Initialisation d'une structure vide propre (basée sur la structure initiale pour garder les labels/couleurs)
         // On ne copie PAS les membres s'il y en avait par défaut (ils sont vides dans INITIAL_GROUPS_CONFIG de toute façon)
@@ -957,14 +1066,14 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
 
         // Remplissage STRICT avec les users réels
         // Si le rôle n'est pas 'conf', 'pose' ou 'prepa', l'utilisateur est IGNORÉ (ex: admin, dev)
-        users.forEach(u => {
+        localUsers.forEach(u => {
             if (u.role && config[u.role]) {
                 config[u.role].members.push(u);
             }
         });
 
         return config;
-    }, [users]);
+    }, [localUsers]);
 
     // --- FILTRAGE DES RESSOURCES MASQUÉES ---
     // (Utilisé pour l'affichage ET le calcul de capacité)
@@ -1138,19 +1247,25 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                 const startDateTime = new Date(`${dayStr}T${formData.startTime}`);
                 const endDateTime = new Date(`${dayStr}T${formData.endTime}`);
 
+                // SNAPSHOT NOM RESSOURCE
+                const assignedUser = localUsers.find(u => u.id === resId);
+                const assignedName = assignedUser ? `${assignedUser.first_name} ${assignedUser.last_name || ''}`.trim() : 'Inconnu';
+
                 newEvents.push({
-                    id: uid(),
-                    title: formData.title,
+                    id: uid(), // unique ID pour cette occurence
                     resourceId: resId,
                     date: dayStr,
                     duration: 1, // Chaque event dure explicitement 1 "journée" (enfin, un créneau) sur la grille
-                    type: formData.type,
+                    type: formData.type || 'default',
+                    title: formData.title,
                     meta: {
+                        projectId: formData.projectId,
+                        description: formData.description,
                         start: startDateTime.toISOString(),
                         end: endDateTime.toISOString(),
-                        projectId: formData.projectId,
                         status: 'planned',
-                        seriesId: seriesId
+                        seriesId: seriesId, // On lie tous les jours
+                        assigned_name: assignedName // Snapshot identité
                     }
                 });
             });
@@ -1230,14 +1345,20 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
 
     // --- MOTEUR TEMPOREL (Inchangé) ---
     const columns = useMemo(() => {
-        if (view === 'day') return [currentDate];
-        if (view === 'week') return Array.from({ length: 7 }).map((_, i) => addDays(startOfWeek(currentDate, { weekStartsOn: 1 }), i));
-        if (view === 'month') return eachDayOfInterval({ start: startOfMonth(currentDate), end: endOfMonth(currentDate) });
-        if (view === 'quarter') return eachDayOfInterval({ start: startOfQuarter(currentDate), end: endOfQuarter(currentDate) });
-        if (view === 'year') return eachMonthOfInterval({ start: startOfYear(currentDate), end: endOfYear(currentDate) });
-        if (view === 'custom' && customRange) return eachDayOfInterval(customRange);
-        return [currentDate];
-    }, [view, currentDate, customRange]);
+        let cols = [];
+        if (view === 'day') cols = [currentDate];
+        else if (view === 'week') cols = Array.from({ length: 7 }).map((_, i) => addDays(startOfWeek(currentDate, { weekStartsOn: 1 }), i));
+        else if (view === 'month') cols = eachDayOfInterval({ start: startOfMonth(currentDate), end: endOfMonth(currentDate) });
+        else if (view === 'quarter') cols = eachDayOfInterval({ start: startOfQuarter(currentDate), end: endOfQuarter(currentDate) });
+        else if (view === 'year') cols = eachMonthOfInterval({ start: startOfYear(currentDate), end: endOfYear(currentDate) });
+        else if (view === 'custom' && customRange) cols = eachDayOfInterval(customRange);
+        else cols = [currentDate];
+
+        if (!showWeekends && view !== 'year') {
+            return cols.filter(d => !isWeekend(d));
+        }
+        return cols;
+    }, [view, currentDate, customRange, showWeekends]);
 
     const superHeaders = useMemo(() => {
         const headers = [];
@@ -1496,6 +1617,8 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
             <TopBar
                 view={view}
                 onViewChange={(v) => { setView(v); if (v === 'custom') setCustomRange(null); }}
+                showWeekends={showWeekends}
+                onToggleWeekends={setShowWeekends}
                 currentDate={currentDate}
                 onPrev={navPrev}
                 onNext={navNext}
@@ -1530,13 +1653,14 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
             <ResourcePanel
                 isOpen={showResourcePanel}
                 onClose={() => setShowResourcePanel(false)}
-                users={users}
+                users={localUsers}
                 hiddenResources={hiddenResources}
                 onToggleVisibility={(id) => {
                     if (hiddenResources.includes(id)) setHiddenResources(hiddenResources.filter(x => x !== id));
                     else setHiddenResources([...hiddenResources, id]);
                 }}
                 onAddAbsence={handleAddAbsence}
+                onUpdateUser={handleUpdateUser}
             />
 
             {assistantMode ? (
@@ -1599,7 +1723,110 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                             {Object.entries(filteredGroups).map(([key, group]) => (
                                 <React.Fragment key={key}>
                                     <StickyLeftCell onClick={() => setExpandedGroups(prev => ({ ...prev, [key]: !prev[key] }))} bg={group.bg} style={{ fontWeight: 800, color: '#111827' }}>{expandedGroups[key] ? <ChevronDown size={14} style={{ marginRight: 8 }} /> : <ChevronRightIcon size={14} style={{ marginRight: 8 }} />}{group.label}</StickyLeftCell>
-                                    <div style={{ gridColumn: `span ${columns.length}`, background: group.bg, borderBottom: '1px solid #E5E7EB', height: ROW_HEIGHT }} />
+                                    {/* LIGNE DE CAPACITÉ (Jauges) */}
+                                    {columns.map(col => {
+                                        // 1. Définir la période (Jour ou Mois)
+                                        const isMonthColumn = view === 'year';
+                                        const colStart = isMonthColumn ? startOfMonth(col) : startOfDay(col);
+                                        const colEnd = isMonthColumn ? endOfMonth(col) : new Date(col.getFullYear(), col.getMonth(), col.getDate(), 23, 59, 59);
+
+                                        // 2. Membres Actifs
+                                        const activeMembers = group.members.filter(m => !hiddenResources.includes(m.id));
+
+                                        // 3. Calcul Capacité Théorique
+                                        // 7h par jour ouvré par membre
+                                        let workDaysCount = 0;
+                                        if (isMonthColumn) {
+                                            // Compter jours ouvrés du mois
+                                            const daysInMonth = eachDayOfInterval({ start: colStart, end: colEnd });
+                                            workDaysCount = daysInMonth.filter(d => !isWeekend(d)).length;
+                                        } else {
+                                            // Si c'est un jour unique
+                                            workDaysCount = isWeekend(colStart) ? 0 : 1;
+                                        }
+                                        const theoreticalCapacity = activeMembers.length * 7 * workDaysCount; // en heures
+
+                                        // 4. Parcourir les events pour Calculer Charge & Absences
+                                        let totalAbsenceHours = 0;
+                                        let totalLoadHours = 0;
+
+                                        // Optimisation : Pré-filtrer les events du groupe qui chevauchent la période
+                                        // On pourrait faire un filter global avant, en attendant on itère.
+                                        // Note: c'est un peu lourd dans une boucle de rendu, idéalement useMemo, mais on tente.
+                                        const activeMemberIds = activeMembers.map(m => m.id);
+
+                                        localEvents.forEach(evt => {
+                                            if (!activeMemberIds.includes(evt.resourceId)) return;
+
+                                            const eStart = new Date(evt.meta?.start || evt.date);
+                                            const eEnd = new Date(evt.meta?.end || evt.date);
+
+                                            // Chevauchement ?
+                                            if (eEnd <= colStart || eStart >= colEnd) return;
+
+                                            // Calcul durée intersection en heures
+                                            const interStart = eStart < colStart ? colStart : eStart;
+                                            const interEnd = eEnd > colEnd ? colEnd : eEnd;
+                                            const durationMinutes = differenceInMinutes(interEnd, interStart);
+                                            // On retire la pause midi (12-13) UNIQUEMENT si on est en vue fine (Jour) ?
+                                            // Simplification : On prend brut divisé pour l'instant. L'user a dit "sautant la pause de 12-13".
+                                            // Si nos events sont bien découpés (8-12, 13-17), le brut est juste.
+                                            // Si l'event traverse midi (ex 8-17 continuous), on devrait soustraire.
+                                            // Notre resize logic force le saut, donc on suppose que les données sont propres (2 blocs ou saut).
+                                            // Mais soyons prudents : si duration > 5h (300min) sur une journée, on enlève 1h?
+                                            // Non, on a dit "Somme des heures d'interventions".
+                                            const hours = durationMinutes / 60;
+
+                                            // Type
+                                            // "type" dans event peut être le groupe ou 'absence' ou autre.
+                                            // On check si c'est une absence via le type stocké ou méta ?
+                                            // Dans le code actuel on ne stocke pas toujours 'Congés' dans type.
+                                            // On va vérifier si le titre ou un champ meta indique absence, ou si type == 'absence' (PLANNING_COLORS)
+                                            // Ou check ABSENCE_TYPES
+                                            // Faute de mieux, on suppose que si ResourcePanel met absType dans type ou titre...
+                                            // Edit précédent handleCreateAbsence : onAddAbsence(..., absType, ...)
+                                            // Il faudrait voir comment onAddAbsence stocke le type.
+                                            // Hypothèse : evt.title contient le type ("Congés", "RTT") ou evt.type.
+                                            // On va check evt.title contre ABSENCE_TYPES aussi pour être sûr.
+                                            const isAbsence = ['Congés', 'RTT', 'Maladie', 'Autre', 'absence'].includes(evt.type) || ['Congés', 'RTT', 'Maladie', 'Autre'].includes(evt.title);
+
+                                            if (isAbsence) {
+                                                totalAbsenceHours += hours;
+                                            } else {
+                                                totalLoadHours += hours;
+                                            }
+                                        });
+
+                                        const realCapacity = Math.max(0, theoreticalCapacity - totalAbsenceHours);
+                                        const loadPercent = realCapacity > 0 ? (totalLoadHours / realCapacity) * 100 : 0;
+
+                                        // Couleur Jauge
+                                        let barColor = '#10B981'; // Vert
+                                        if (loadPercent >= 80) barColor = '#F59E0B'; // Orange
+                                        if (loadPercent > 100) barColor = '#EF4444'; // Rouge
+
+                                        return (
+                                            <div key={col.toString()} style={{
+                                                borderRight: '1px solid #E5E7EB',
+                                                borderBottom: '1px solid #E5E7EB',
+                                                background: group.bg,
+                                                height: ROW_HEIGHT,
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                justifyContent: 'center',
+                                                padding: '0 8px'
+                                            }}>
+                                                {/* Text: Charge / Capacité */}
+                                                <div style={{ fontSize: 10, fontWeight: 700, color: '#374151', marginBottom: 4, display: 'flex', justifyContent: 'space-between' }}>
+                                                    <span>{Math.round(totalLoadHours)}h <span style={{ color: '#9CA3AF', fontWeight: 400 }}>/ {Math.round(realCapacity)}h</span></span>
+                                                </div>
+                                                {/* Barre de progression */}
+                                                <div style={{ width: '100%', height: 6, background: 'rgba(0,0,0,0.05)', borderRadius: 3, overflow: 'hidden' }}>
+                                                    <div style={{ width: `${Math.min(loadPercent, 100)}%`, height: '100%', background: barColor, transition: 'width 0.3s ease' }} />
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
                                     {expandedGroups[key] && group.members.map(member => (
                                         <React.Fragment key={member.id}>
                                             <StickyLeftCell style={{ paddingLeft: 42, color: '#4B5563', fontWeight: 500 }}>
