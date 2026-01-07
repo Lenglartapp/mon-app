@@ -34,6 +34,20 @@ const formatRelativeTime = (dateStr) => {
     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 };
 
+// Status Labels Mapping
+const STATUS_LABELS = {
+    DRAFT: "À faire",
+    IN_PROGRESS: "En cours",
+    PENDING_APPROVAL: "À valider",
+    REVISE: "À reprendre",
+    VALIDATED: "Validée"
+};
+
+const formatValue = (val, type) => {
+    if (type === 'status' && STATUS_LABELS[val]) return STATUS_LABELS[val];
+    return String(val ?? 'vide');
+};
+
 // Item Component
 const HistoryItem = ({ item }) => {
     // Type: 'log' (Field Change), 'status' (Status Change), 'msg' (Comment)
@@ -65,11 +79,11 @@ const HistoryItem = ({ item }) => {
                         </Typography>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, fontSize: 13 }}>
                             <Typography sx={{ textDecoration: 'line-through', color: '#EF4444', bgcolor: '#FEF2F2', px: 0.5, borderRadius: 0.5 }}>
-                                {String(item.from ?? 'vide')}
+                                {formatValue(item.from, item.type)}
                             </Typography>
                             <ArrowForwardIcon sx={{ fontSize: 12, color: '#9CA3AF' }} />
                             <Typography sx={{ color: '#10B981', fontWeight: 500, bgcolor: '#ECFDF5', px: 0.5, borderRadius: 0.5 }}>
-                                {String(item.to ?? 'vide')}
+                                {formatValue(item.to, item.type)}
                             </Typography>
                         </Box>
                     </Box>
@@ -114,8 +128,8 @@ export default function MinuteHistoryDialog({ open, onClose, minute }) {
 
         const all = [];
 
-        // 1. Minute Level Logs (Status changes, stored in settings.history or root logs)
-        const globalLogs = minute?.settings?.history || minute?.logs || [];
+        // 1. Minute Level Logs (Status changes, stored in modules.history or settings.history or root logs)
+        const globalLogs = minute?.modules?.history || minute?.settings?.history || minute?.logs || [];
         if (Array.isArray(globalLogs)) {
             all.push(...globalLogs);
         }

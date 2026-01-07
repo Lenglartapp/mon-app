@@ -28,7 +28,7 @@ import { parseRideauxImport } from '../utils/importRideaux';
 const EMPTY_CTX = {};
 
 // ================ MinuteEditor (tableau des lignes d'une minute) =================
-function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formulaCtx = EMPTY_CTX, schema = [], setSchema, targetRowId, onRowClick, readOnly = false }) {
+function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formulaCtx = EMPTY_CTX, schema = [], setSchema, targetRowId, onRowClick, readOnly = false, currentUser }) {
 
   // --- STATE LOCAL & DEBOUNCE ---
   const [localLines, setLocalLines] = React.useState(minute?.lines || []);
@@ -374,6 +374,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
                 targetRowId={targetRowId}
                 onRowClick={onRowClick}
                 readOnly={readOnly}
+                currentUser={currentUser}
               />
             </div>
           </div>
@@ -401,6 +402,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
                 targetRowId={targetRowId}
                 onRowClick={onRowClick}
                 readOnly={readOnly}
+                currentUser={currentUser}
               />
             </div>
           </div>
@@ -434,6 +436,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
               targetRowId={targetRowId}
               onRowClick={onRowClick}
               readOnly={readOnly}
+              currentUser={currentUser}
             />
           </div>
         )}
@@ -462,6 +465,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
               targetRowId={targetRowId}
               onRowClick={onRowClick}
               readOnly={readOnly}
+              currentUser={currentUser}
             />
           </div>
         )}
@@ -490,6 +494,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
               targetRowId={targetRowId}
               onRowClick={onRowClick}
               readOnly={readOnly}
+              currentUser={currentUser}
             />
           </div>
         )}

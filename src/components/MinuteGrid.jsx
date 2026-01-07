@@ -99,7 +99,8 @@ export default function MinuteGrid({
     minuteId,    // <--- NEW
     projectId,   // <--- NEW for Production
     onRowClick,   // <--- NEW for Panel Opening
-    readOnly = false // <--- NEW ReadOnly Mode
+    readOnly = false, // <--- NEW ReadOnly Mode
+    currentUser // <--- NEW IDENTITY
 }) {
     const [rowSelectionModel, setRowSelectionModel] = useState([]);
     const [detailRowId, setDetailRowId] = useState(null);
@@ -274,7 +275,8 @@ export default function MinuteGrid({
 
             // 4. AUTO-LOG SYSTEM (New)
             // Use shared logic for consistency with Detail Panel
-            const logs = generateRowLogs(oldRow, newRow, schema);
+            const author = currentUser?.name || currentUser?.email || 'Utilisateur';
+            const logs = generateRowLogs(oldRow, newRow, schema, author);
 
             if (logs.length > 0) {
                 const prevComments = Array.isArray(oldRow.comments) ? oldRow.comments : [];

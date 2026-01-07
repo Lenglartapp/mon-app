@@ -126,6 +126,9 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onBack, highlightRowId }
     setLocalStatus(newStatus);
 
     const performUpdate = () => {
+      // Ensure Author Name is valid
+      const safeAuthor = currentUser?.name || currentUser?.email || 'Utilisateur';
+
       const logEntry = {
         id: Date.now(),
         type: 'status',
@@ -133,17 +136,18 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onBack, highlightRowId }
         to: newStatus,
         date: Date.now(),
         createdAt: new Date().toISOString(),
-        author: currentUser?.name || 'Utilisateur',
+        author: safeAuthor,
         context: 'Minute'
       };
 
-      const currentSettings = minute?.settings || {};
-      const oldLogs = Array.isArray(currentSettings.history) ? currentSettings.history : (minute?.logs || []);
+      // Use modules.history for storage (Safer fallback)
+      const currentModules = minute?.modules || { rideau: true, store: true, decor: true };
+      const oldLogs = Array.isArray(currentModules.history) ? currentModules.history : [];
       const newLogs = [...oldLogs, logEntry];
 
       const payload = {
         status: newStatus,
-        settings: { ...currentSettings, history: newLogs }
+        modules: { ...currentModules, history: newLogs }
       };
 
       if (newStatus === "VALIDATED") {
@@ -197,6 +201,15 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onBack, highlightRowId }
   // Header State
   const [name, setName] = React.useState(minute?.name || "Minute sans nom");
   const [notes, setNotes] = React.useState(minute?.notes || "");
+  const notesRef = React.useRef(null);
+
+  // Auto-resize notes
+  React.useEffect(() => {
+    if (notesRef.current) {
+      notesRef.current.style.height = "auto";
+      notesRef.current.style.height = notesRef.current.scrollHeight + "px";
+    }
+  }, [notes]);
 
   React.useEffect(() => {
     setName(minute?.name || "Minute sans nom");
@@ -248,14 +261,15 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onBack, highlightRowId }
             ) : <h1 style={{ fontSize: 32, fontWeight: 800, margin: 0 }}>{name}</h1>}
             <div style={{ fontSize: 16, color: '#6B7280', fontWeight: 300 }}>{minute?.client || "Client non spécifié"}</div>
           </div>
-          <div style={{ marginTop: 16, maxWidth: 600 }}>
+          <div style={{ marginTop: 16, width: '50vw', maxWidth: '800px' }}>
             <textarea
+              ref={notesRef}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               onBlur={() => updateMinute({ notes })}
               placeholder="Ajouter une note de contexte..."
               rows={1}
-              style={{ width: '100%', border: 'none', background: 'transparent', borderBottom: '1px dashed #E5E7EB', outline: 'none', resize: 'none', fontSize: 14 }}
+              style={{ width: '100%', border: 'none', background: 'transparent', borderBottom: '1px dashed #E5E7EB', outline: 'none', resize: 'none', fontSize: 14, overflow: 'hidden', fontFamily: 'Roboto, sans-serif' }}
               readOnly={!canEdit}
             />
           </div>
@@ -319,6 +333,7 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onBack, highlightRowId }
                 modules: mods
               }}
               readOnly={minute?.status === "VALIDATED"}
+              currentUser={currentUser}
               onChangeMinute={(m) => {
                 if (!canEdit) return;
                 const all = m.lines || [];
@@ -372,6 +387,8 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onBack, highlightRowId }
           onRowChange={handleDetailUpdate}
           minuteId={minute.id}
           projectId={null}
+          authorName={currentUser?.name || currentUser?.email || 'Utilisateur'}
+          currentUser={currentUser}
         />
       )}
     </div>
