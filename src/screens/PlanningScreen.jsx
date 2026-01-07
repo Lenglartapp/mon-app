@@ -9,6 +9,7 @@ import {
 } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useCapacityPlanning } from '../hooks/useCapacityPlanning';
+import { can } from '../lib/authz';
 import { uid } from '../lib/utils/uid';
 import { INITIAL_GROUPS_CONFIG, WORK_START_HOUR, WORK_END_HOUR } from '../components/planning/constants';
 import EventModal from '../components/planning/EventModal';
@@ -19,6 +20,9 @@ import AssistantView from '../components/planning/AssistantView';
 
 export default function PlanningScreen({ projects, events: initialEvents, onUpdateEvent, onDeleteEvent: onDeleteEventProp, onBack }) {
     const { users: authUsers, currentUser } = useAuth();
+    const canEdit = can(currentUser, 'planning.edit');
+    const showGauges = can(currentUser, 'planning.view_gauges');
+
     // STATE LOCAL USERS (pour permettre renommage en pseudo temps réel)
     const [localUsers, setLocalUsers] = useState(authUsers || []);
 
@@ -310,6 +314,7 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
     };
 
     const handleCellClick = (resourceId, col) => {
+        if (!canEdit) return;
         setInitialModalData({ resourceId, date: format(col, 'yyyy-MM-dd') });
         setIsModalOpen(true);
     };
@@ -371,7 +376,7 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                 onToday={() => setCurrentDate(new Date())}
                 customRange={customRange}
                 onCustomRangeChange={(r) => { setCustomRange(r); setView('custom'); }}
-                onNew={() => { setEditingEvent(null); setIsModalOpen(true); }}
+                onNew={() => { if (canEdit) { setEditingEvent(null); setIsModalOpen(true); } }}
                 onManageTeam={() => setShowResourcePanel(true)}
                 searchQuery={searchQuery}
                 setSearchQuery={setSearchQuery}
@@ -393,6 +398,7 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                 initialData={initialModalData}
                 currentUser={currentUser}
                 groupsConfig={visibleGroupsConfig}
+                readOnly={!canEdit}
             />
 
             <ResourcePanel
@@ -431,6 +437,8 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                     onHoverEvent={setHoveredEventId}
                     onResizeStart={handleResizeStart}
                     getCellContent={getCellContent}
+                    readOnly={!canEdit}
+                    showGauges={showGauges}
                 />
             )}
         </div>

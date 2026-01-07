@@ -29,7 +29,9 @@ const PlanningGrid = ({
     onDragStart, onDragOver, onDrop,
     hoveredEventId, onHoverEvent,
     onResizeStart,
-    getCellContent
+    getCellContent,
+    showGauges = true,
+    readOnly = false
 }) => {
 
     const MIN_WIDTH = view === 'year' ? 80 : (view === 'quarter' || view === 'month' ? 40 : 120);
@@ -170,7 +172,7 @@ const PlanningGrid = ({
                 : evt.title;
 
             return (
-                <div key={evt.id} draggable
+                <div key={evt.id} draggable={!readOnly}
                     onMouseEnter={() => onHoverEvent && onHoverEvent(evt.id)}
                     onMouseLeave={() => onHoverEvent && onHoverEvent(null)}
                     onDragStart={(e) => onDragStart(e, evt)}
@@ -207,7 +209,7 @@ const PlanningGrid = ({
                         <CheckCircle size={10} color={style.text} style={{ position: 'absolute', bottom: 2, right: 2 }} />
                     )}
 
-                    {hoveredEventId === evt.id && !isValidated && (
+                    {hoveredEventId === evt.id && !isValidated && !readOnly && (
                         <div
                             onClick={(e) => {
                                 e.stopPropagation();
@@ -225,7 +227,7 @@ const PlanningGrid = ({
                         </div>
                     )}
 
-                    {!isValidated && (
+                    {!isValidated && !readOnly && (
                         <div
                             className="resize-handle"
                             style={{
@@ -281,6 +283,17 @@ const PlanningGrid = ({
                             <StickyLeftCell onClick={() => onToggleGroup(key)} bg={group.bg} style={{ fontWeight: 800, color: '#111827' }}>{expandedGroups[key] ? <ChevronDown size={14} style={{ marginRight: 8 }} /> : <ChevronRightIcon size={14} style={{ marginRight: 8 }} />}{group.label}</StickyLeftCell>
                             {/* LIGNE DE CAPACITÉ (Jauges) */}
                             {columns.map(col => {
+                                if (!showGauges) {
+                                    return (
+                                        <div key={col.toString()} style={{
+                                            borderRight: '1px solid #E5E7EB',
+                                            borderBottom: '1px solid #E5E7EB',
+                                            background: group.bg,
+                                            height: ROW_HEIGHT
+                                        }} />
+                                    );
+                                }
+
                                 const isMonthColumn = view === 'year';
                                 const colStart = isMonthColumn ? startOfMonth(col) : startOfDay(col);
                                 const colEnd = isMonthColumn ? endOfMonth(col) : new Date(col.getFullYear(), col.getMonth(), col.getDate(), 23, 59, 59);

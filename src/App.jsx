@@ -69,9 +69,9 @@ function AppShell() {
 
   // Navigation interne
   const go = (target) => {
-    if (target === "chiffrageRoot" && !can(currentUser, "chiffrage.view")) return;
-    if (target === "prodList" && !can(currentUser, "production.view")) return;
-    if (target === "inventory" && !can(currentUser, "inventory.view")) return;
+    if (target === "chiffrageRoot" && !can(currentUser, "nav.chiffrage")) return;
+    if (target === "prodList" && !can(currentUser, "nav.production")) return;
+    if (target === "inventory" && !can(currentUser, "nav.inventory")) return;
     if (target === "planning" && !can(currentUser, "planning.view")) return;
     setPendingRowId(null);
     setScreen(target);

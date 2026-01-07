@@ -1,69 +1,132 @@
 // src/lib/authz.js
+
+// CENTRALIZED PERMISSIONS CONFIGURATION
+const PERMISSIONS = {
+  // ADMIN : Full Access
+  admin: "*",
+
+  // SALES (Commercial)
+  sales: {
+    "nav.chiffrage": true,
+    "nav.production": true,
+    "nav.inventory": true,
+    "nav.settings": true,
+
+    "chiffrage.view": true,
+    "chiffrage.edit": true,
+    "chiffrage.moulinette": false, // Blocked
+
+    "planning.view": true,
+    "planning.edit": false, // Read Only
+    "planning.view_gauges": true,
+
+    "inventory.view": true,
+    "inventory.edit": false, // Read Only
+  },
+
+  // ORDO (Ordonnancement)
+  ordo: {
+    "nav.chiffrage": false,
+    "nav.production": true,
+    "nav.inventory": true,
+    "nav.settings": true,
+
+    "planning.view": true,
+    "planning.edit": true, // Can Drag & Drop
+    "planning.view_gauges": true,
+
+    "inventory.view": true,
+    "inventory.edit": true, // Can Edit
+  },
+
+  // OP (Opérateur / Chef d'atelier ?)
+  op: {
+    "nav.chiffrage": false,
+    "nav.production": true,
+    "nav.inventory": true,
+    "nav.settings": true,
+
+    "planning.view": true,
+    "planning.edit": false,
+    "planning.view_gauges": true,
+
+    "inventory.view": true,
+    "inventory.edit": false,
+  },
+
+  // PREPA (Préparation)
+  prepa: {
+    "nav.chiffrage": false,
+    "nav.production": true,
+    "nav.inventory": true,
+    "nav.settings": true,
+
+    "planning.view": true,
+    "planning.edit": false,
+    "planning.view_gauges": false, // Hidden
+
+    "inventory.view": true,
+    "inventory.edit": true, // Can Edit
+  },
+
+  // POSE (Poseurs)
+  pose: {
+    "nav.chiffrage": false,
+    "nav.production": true,
+    "nav.inventory": false, // Hidden
+    "nav.settings": true,
+
+    "planning.view": true,
+    "planning.edit": false,
+    "planning.view_gauges": false, // Hidden
+
+    "inventory.view": false,
+  },
+
+  // CONF (Confection)
+  conf: {
+    "nav.chiffrage": false,
+    "nav.production": false, // Hidden
+    "nav.inventory": false, // Hidden
+    "nav.settings": true,
+
+    "planning.view": true,
+    "planning.edit": false,
+    "planning.view_gauges": false, // Hidden
+  },
+
+  // COMPTA (Comptabilité)
+  compta: {
+    "nav.chiffrage": false,
+    "nav.production": false, // Hidden
+    "nav.inventory": true,
+    "nav.settings": true,
+
+    "planning.view": true,
+    "planning.edit": false,
+    "planning.view_gauges": false, // Hidden
+
+    "inventory.view": true,
+    "inventory.edit": false,
+  },
+};
+
 export function can(user, action) {
-  // TEMPORAIRE : Accès total pour tout le monde le temps du déploiement
-  if (user) return true;
+  if (!user || !user.role) return false;
 
-  const role = user?.role;
-  if (!role) return false;
-  if (role === "admin") return true; // Admin voit tout
+  const role = user.role.toLowerCase(); // Align case
 
-  const RIGHTS = {
-    // Rôle : Ordonnancement (Thomas)
-    ordonnancement: {
-      "users.manage": false,
-      "chiffrage.view": true,
-      "chiffrage.edit": true,
-      "chiffrage.moulinette": true,
-      "production.view": true, // <--- C'est ici que ça se joue
-      "production.edit": true,
-      "inventory.view": true,
-      "inventory.edit": true,
-      "planning.view": true,
-      "planning.edit": true,
-    },
-    // Rôle : Pilotage Projet (Pauline)
-    pilotage_projet: {
-      "users.manage": false,
-      "chiffrage.view": true,
-      "chiffrage.edit": true,
-      "chiffrage.moulinette": true,
-      "production.view": true,
-      "production.edit": true,
-      "inventory.view": true,
-      "inventory.edit": true,
-      "planning.view": true,
-      "planning.edit": false,
-    },
-    // Rôle : Production / Atelier / Pose
-    production: {
-      "users.manage": false,
-      "chiffrage.view": false,
-      "chiffrage.edit": false,
-      "production.view": true,
-      "production.edit": true, // Peut avancer les statuts
-      "inventory.view": true,
-      "inventory.edit": true,
-      "planning.view": true,
-      "planning.edit": false,
-    },
-    // Rôle : ADV
-    adv: {
-      "users.manage": false,
-      "chiffrage.view": true,
-      "chiffrage.edit": true,
-      "production.view": true,
-      "production.edit": false,
-      "inventory.view": true,
-      "planning.view": true,
-      "planning.edit": false,
-    },
-  };
+  // Admin Bypass
+  if (role === 'admin') return true;
 
-  const map = RIGHTS[role];
-  if (!map) return false; // Rôle inconnu = rien
+  const rules = PERMISSIONS[role];
+  if (!rules) return false; // Unknown role
 
-  // Si l'action est listée, on retourne sa valeur, sinon false
-  if (action in map) return !!map[action];
+  if (rules === "*") return true;
 
-  return false;
+  return !!rules[action];
+}
+
+export function role(user) {
+  return user?.role?.toLowerCase() || 'guest';
 }
