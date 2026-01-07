@@ -6,7 +6,10 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 
 import { S } from '../../../lib/constants/ui';
 import StockMovementsTab from './StockMovementsTab';
+
 import StockInventoryTab from './StockInventoryTab';
+import { useAuth } from '../../../auth';
+import { can } from '../../../lib/authz';
 
 // Mock Data for initial state
 export default function StocksModule({
@@ -18,6 +21,8 @@ export default function StocksModule({
     movements = [],
     onAddMovement
 }) {
+    const { currentUser } = useAuth();
+    const canEdit = can(currentUser, 'inventory.edit');
     const [tabIndex, setTabIndex] = useState(0);
 
     // PLUS BESOIN DE STATE LOCAL POUR LES MOUVEMENTS
@@ -73,6 +78,7 @@ export default function StocksModule({
                         minutes={minutes} // Fallback
                         projects={projects} // Main source for Production items
                         inventory={inventory} // <--- AJOUT INDISPENSABLE
+                        canEdit={canEdit}
                     />
                 )}
                 {tabIndex === 1 && (

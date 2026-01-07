@@ -28,9 +28,9 @@ export default function HomeScreen({
   console.log("Role actuel:", detectedRole);
 
   const may = {
-    chiffrage: can(currentUser, "chiffrage.view"),
-    production: can(currentUser, "production.view"),
-    inventory: can(currentUser, "inventory.view"),
+    chiffrage: can(currentUser, "nav.chiffrage"),
+    production: can(currentUser, "nav.production"),
+    inventory: can(currentUser, "nav.inventory"),
     planning: can(currentUser, "planning.view"),
   };
 

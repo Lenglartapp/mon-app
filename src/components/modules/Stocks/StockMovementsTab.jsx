@@ -99,7 +99,7 @@ const COLUMNS = [
     },
 ];
 
-export default function StockMovementsTab({ movements, onAddMovement, projects = [], inventory = [] }) {
+export default function StockMovementsTab({ movements, onAddMovement, projects = [], inventory = [], canEdit = false }) {
     const [modalOpen, setModalOpen] = useState(false);
     const [modalType, setModalType] = useState('IN'); // 'IN' or 'OUT'
 
@@ -116,27 +116,29 @@ export default function StockMovementsTab({ movements, onAddMovement, projects =
     return (
         <Box>
             {/* TOOLBAR ACTIONS */}
-            <Box sx={{ display: 'flex', gap: 2, mb: 2, justifyContent: 'flex-end' }}>
-                <Button
-                    variant="contained"
-                    color="success"
-                    startIcon={<PackagePlus />}
-                    onClick={() => handleOpenModal('IN')}
-                    sx={{ fontWeight: 700, px: 3 }}
-                >
-                    RÉCEPTION
-                </Button>
+            {canEdit && (
+                <Box sx={{ display: 'flex', gap: 2, mb: 2, justifyContent: 'flex-end' }}>
+                    <Button
+                        variant="contained"
+                        color="success"
+                        startIcon={<PackagePlus />}
+                        onClick={() => handleOpenModal('IN')}
+                        sx={{ fontWeight: 700, px: 3 }}
+                    >
+                        RÉCEPTION
+                    </Button>
 
-                <Button
-                    variant="contained"
-                    color="warning"
-                    startIcon={<PackageMinus />}
-                    onClick={() => handleOpenModal('OUT')}
-                    sx={{ fontWeight: 700, px: 3, color: 'white' }}
-                >
-                    SORTIE / CONSOMMATION
-                </Button>
-            </Box>
+                    <Button
+                        variant="contained"
+                        color="warning"
+                        startIcon={<PackageMinus />}
+                        onClick={() => handleOpenModal('OUT')}
+                        sx={{ fontWeight: 700, px: 3, color: 'white' }}
+                    >
+                        SORTIE / CONSOMMATION
+                    </Button>
+                </Box>
+            )}
 
             {/* HISTORY GRID */}
             <Card sx={{ height: 600, width: '100%', borderRadius: 3, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
