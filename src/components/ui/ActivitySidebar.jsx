@@ -243,6 +243,7 @@ const LogItem = React.memo(({ act }) => {
     const field = act.field || "Champ Inconnu";
     const from = act.from || "vide";
     const to = act.to || "vide";
+    const author = act.author || act.user || "Système"; // Robust fallback
 
     return (
         <Box sx={{ display: 'flex', gap: 1.5, mb: 2, px: 1 }}>
@@ -252,7 +253,7 @@ const LogItem = React.memo(({ act }) => {
             <Box sx={{ flex: 1 }}>
                 <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, mb: 0.5 }}>
                     <Typography variant="caption" sx={{ fontWeight: 600, color: '#374151' }}>
-                        Modification par {act.author || "Système"}
+                        Modification par {author}
                     </Typography>
                     <Typography variant="caption" sx={{ color: '#9CA3AF', fontSize: 10 }}>
                         {formatRelativeTime(act.createdAt || act.ts)}

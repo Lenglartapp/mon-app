@@ -15,7 +15,7 @@ import { generateRowLogs } from '../lib/utils/logUtils';
 
 import { Plus, Trash2, FileDown, FileUp } from 'lucide-react';
 
-function CustomToolbar({ onAdd, onDelete, selectedCount, onImportExcel }) {
+function CustomToolbar({ onAdd, onDelete, selectedCount, onImportExcel, readOnly }) {
     const fileInputRef = React.useRef(null);
 
     const handleImportClick = () => {
@@ -34,13 +34,15 @@ function CustomToolbar({ onAdd, onDelete, selectedCount, onImportExcel }) {
     return (
         <GridToolbarContainer style={{ padding: 10, borderBottom: '1px solid #e5e7eb' }}>
             <div style={{ display: 'flex', gap: 10, marginRight: 'auto' }}>
-                <button
-                    onClick={onAdd}
-                    style={{ cursor: 'pointer', padding: '6px 12px', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, display: 'flex', alignItems: 'center', gap: 6 }}
-                >
-                    <Plus size={16} /> Ajouter
-                </button>
-                {selectedCount > 0 && (
+                {!readOnly && (
+                    <button
+                        onClick={onAdd}
+                        style={{ cursor: 'pointer', padding: '6px 12px', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, display: 'flex', alignItems: 'center', gap: 6 }}
+                    >
+                        <Plus size={16} /> Ajouter
+                    </button>
+                )}
+                {selectedCount > 0 && !readOnly && (
                     <button
                         onClick={onDelete}
                         style={{ cursor: 'pointer', padding: '6px 12px', background: '#ef4444', color: 'white', border: 'none', borderRadius: 4, display: 'flex', alignItems: 'center', gap: 6 }}
@@ -50,7 +52,7 @@ function CustomToolbar({ onAdd, onDelete, selectedCount, onImportExcel }) {
                 )}
 
                 {/* Excel Actions */}
-                {onImportExcel && (
+                {onImportExcel && !readOnly && (
                     <>
                         <button
                             onClick={handleImportClick}
@@ -96,7 +98,9 @@ export default function MinuteGrid({
     hideCroquis = false,
     minuteId,    // <--- NEW
     projectId,   // <--- NEW for Production
-    onRowClick   // <--- NEW for Panel Opening
+    onRowClick,   // <--- NEW for Panel Opening
+    readOnly = false, // <--- NEW ReadOnly Mode
+    currentUser // <--- NEW IDENTITY
 }) {
     const [rowSelectionModel, setRowSelectionModel] = useState([]);
     const [detailRowId, setDetailRowId] = useState(null);
@@ -150,8 +154,8 @@ export default function MinuteGrid({
     }, [rows, onRowsChange]);
 
     const columns = useMemo(() => {
-        return schemaToGridCols(schema, enableCellFormulas, handleOpenDetail, catalog, railOptions, handlePhotoChange, onDuplicateRow, hideCroquis);
-    }, [schema, enableCellFormulas, handleOpenDetail, catalog, railOptions, handlePhotoChange, onDuplicateRow, hideCroquis]);
+        return schemaToGridCols(schema, enableCellFormulas, handleOpenDetail, catalog, railOptions, handlePhotoChange, onDuplicateRow, hideCroquis, readOnly);
+    }, [schema, enableCellFormulas, handleOpenDetail, catalog, railOptions, handlePhotoChange, onDuplicateRow, hideCroquis, readOnly]);
 
     // detailRow is now state, no need for useMemo lookup
 
@@ -271,7 +275,8 @@ export default function MinuteGrid({
 
             // 4. AUTO-LOG SYSTEM (New)
             // Use shared logic for consistency with Detail Panel
-            const logs = generateRowLogs(oldRow, newRow, schema);
+            const author = currentUser?.name || currentUser?.email || 'Utilisateur';
+            const logs = generateRowLogs(oldRow, newRow, schema, author);
 
             if (logs.length > 0) {
                 const prevComments = Array.isArray(oldRow.comments) ? oldRow.comments : [];
@@ -316,7 +321,8 @@ export default function MinuteGrid({
                         onAdd: handleAddRow,
                         onDelete: handleDeleteRows,
                         selectedCount: rowSelectionModel?.length || 0,
-                        onImportExcel
+                        onImportExcel,
+                        readOnly
                     },
                 }}
                 rowSelectionModel={rowSelectionModel}

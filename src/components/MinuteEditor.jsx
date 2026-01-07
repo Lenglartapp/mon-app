@@ -28,7 +28,7 @@ import { parseRideauxImport } from '../utils/importRideaux';
 const EMPTY_CTX = {};
 
 // ================ MinuteEditor (tableau des lignes d'une minute) =================
-function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formulaCtx = EMPTY_CTX, schema = [], setSchema, targetRowId, onRowClick }) {
+function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formulaCtx = EMPTY_CTX, schema = [], setSchema, targetRowId, onRowClick, readOnly = false, currentUser }) {
 
   // --- STATE LOCAL & DEBOUNCE ---
   const [localLines, setLocalLines] = React.useState(minute?.lines || []);
@@ -347,64 +347,6 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
   return (
     <div style={{ paddingBottom: 40 }}>
 
-      {/* En-tête de l’éditeur (nom, version, statut, infos) */}
-      <div
-        style={{
-          ...S.modernCard,
-          padding: '16px 20px',
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          gap: 12,
-          marginBottom: 24
-        }}
-      >
-        <div>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-            <b style={{ fontSize: 18 }}>{minute?.name || "Minute sans nom"}</b>
-            <span style={{ opacity: 0.6, fontSize: 13, background: '#f3f4f6', padding: '2px 6px', borderRadius: 4 }}>v{minute?.version ?? 1}</span>
-          </div>
-          <div style={{ fontSize: 13, color: "#6b7280", marginTop: 4 }}>
-            Chargé·e : <b>{minute?.owner || "—"}</b>
-            {" · "}Créé le {new Date(minute?.createdAt || Date.now()).toLocaleDateString("fr-FR")}
-          </div>
-          {minute?.notes && (
-            <div style={{ fontSize: 13, color: "#374151", marginTop: 8, whiteSpace: "pre-wrap", background: '#f9fafb', padding: 8, borderRadius: 6 }}>
-              {minute.notes}
-            </div>
-          )}
-        </div>
-
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-          <button
-            onClick={() => setIsCatalogOpen(true)}
-            style={{ cursor: 'pointer', padding: '8px 14px', background: '#10b981', color: 'white', border: 'none', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600, fontSize: 13 }}
-          >
-            <Library size={16} /> Bibliothèque
-          </button>
-
-          <select
-            value={minute?.status || "Non commencé"}
-            onChange={(e) =>
-              onChangeMinute?.({ ...minute, status: e.target.value, updatedAt: Date.now() })
-            }
-            style={{
-              fontSize: 13,
-              padding: "8px 12px",
-              borderRadius: 8,
-              border: `1px solid ${COLORS.border}`,
-              background: "white",
-              fontWeight: 500
-            }}
-          >
-            <option>Non commencé</option>
-            <option>En cours d’étude</option>
-            <option>À valider</option>
-            <option>Validé</option>
-          </select>
-        </div>
-      </div>
-
       {/* 1/2/3 tableaux selon modules */}
       <>
         {/* --- NOUVEAUX TABLEAUX : Autres Dépenses & Déplacement (EN HAUT) --- */}
@@ -431,6 +373,8 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
                 minuteId={minute?.id}
                 targetRowId={targetRowId}
                 onRowClick={onRowClick}
+                readOnly={readOnly}
+                currentUser={currentUser}
               />
             </div>
           </div>
@@ -457,6 +401,8 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
                 minuteId={minute?.id}
                 targetRowId={targetRowId}
                 onRowClick={onRowClick}
+                readOnly={readOnly}
+                currentUser={currentUser}
               />
             </div>
           </div>
@@ -489,6 +435,8 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
               minuteId={minute?.id}
               targetRowId={targetRowId}
               onRowClick={onRowClick}
+              readOnly={readOnly}
+              currentUser={currentUser}
             />
           </div>
         )}
@@ -516,6 +464,8 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
               minuteId={minute?.id}
               targetRowId={targetRowId}
               onRowClick={onRowClick}
+              readOnly={readOnly}
+              currentUser={currentUser}
             />
           </div>
         )}
@@ -543,6 +493,8 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
               minuteId={minute?.id}
               targetRowId={targetRowId}
               onRowClick={onRowClick}
+              readOnly={readOnly}
+              currentUser={currentUser}
             />
           </div>
         )}

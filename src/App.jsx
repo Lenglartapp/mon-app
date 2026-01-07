@@ -169,8 +169,10 @@ function AppShell() {
           projects={cleanProjects}
           onCreate={addProject}
           onDelete={deleteProject}
+          onUpdateProject={handleUpdateProject}
           onOpenProject={(p) => { setCurrentProject(p); setScreen("project"); }}
           minutes={can(currentUser, "chiffrage.view") ? cleanMinutes : []}
+          onBack={() => setScreen("home")}
         />
       )}
 

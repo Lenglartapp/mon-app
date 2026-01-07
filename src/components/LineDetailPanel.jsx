@@ -20,10 +20,17 @@ import BlurTextField from './ui/BlurTextField';
 import { useAuth } from '../auth'; // <--- NEW IMPORT
 import { supabase } from '../lib/supabaseClient'; // <--- NEW IMPORT
 
-export default function LineDetailPanel({ open, onClose, row, schema, onRowChange, columnVisibilityModel, minuteId, projectId }) {
+export default function LineDetailPanel({ open, onClose, row, schema, onRowChange, columnVisibilityModel, minuteId, projectId, currentUser: propUser, authorName: propAuthorName }) {
     // New Sidebar Toggle State
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-    const { currentUser } = useAuth(); // <--- GET CURRENT USER
+    const { currentUser: ctxUser } = useAuth(); // <--- GET CURRENT USER
+    const currentUser = propUser || ctxUser;
+
+    // Prioritize explicit author name string, but prevent 'Utilisateur' if context has better data
+    // This handles race conditions where prop might be 'Utilisateur' (initial load) but context is ready
+    const nameFromProp = propAuthorName && propAuthorName !== 'Utilisateur' ? propAuthorName : null;
+    const nameFromCtx = ctxUser?.name;
+    const resolvedAuthor = nameFromProp || nameFromCtx || propAuthorName || "Utilisateur";
 
     const activities = React.useMemo(() => row?.comments || [], [row?.comments]);
 
@@ -32,9 +39,7 @@ export default function LineDetailPanel({ open, onClose, row, schema, onRowChang
         const oldRow = { ...row };
         const newRow = { ...row, [key]: value };
 
-        // Pass Current User Name to Log Generator
-        const authorName = currentUser?.name || 'Utilisateur';
-        const newLogs = generateRowLogs(oldRow, newRow, schema, authorName);
+        const newLogs = generateRowLogs(oldRow, newRow, schema, resolvedAuthor);
 
         let updatedComments = newRow.comments || [];
         if (newLogs.length > 0) {
@@ -42,7 +47,7 @@ export default function LineDetailPanel({ open, onClose, row, schema, onRowChang
         }
 
         onRowChange({ ...newRow, comments: updatedComments });
-    }, [row, onRowChange, schema, currentUser]);
+    }, [row, onRowChange, schema, resolvedAuthor]);
 
     // CORRECTION ICI : Ajout du champ 'date' pour le Journal
     const handleAddComment = React.useCallback((text) => {
