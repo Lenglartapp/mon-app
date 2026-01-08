@@ -39,7 +39,8 @@ const PlanningTopBar = ({
     view, onViewChange, currentDate, onPrev, onNext, onToday,
     customRange, onCustomRangeChange, onNew, onManageTeam,
     searchQuery, setSearchQuery, activeFilters, onAddFilter, onRemoveFilter,
-    assistantMode, onToggleAssistant, showWeekends, onToggleWeekends
+    assistantMode, onToggleAssistant, showWeekends, onToggleWeekends,
+    myViewMode, onToggleMyView
 }) => {
     return (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 24px', background: '#FAF5EE' }}>
@@ -128,6 +129,27 @@ const PlanningTopBar = ({
                     <button onClick={onPrev} style={{ border: 'none', background: 'transparent', padding: '6px 8px', cursor: 'pointer' }}><ChevronLeft size={16} /></button>
                     <button onClick={onNext} style={{ border: 'none', background: 'transparent', padding: '6px 8px', cursor: 'pointer' }}><ChevronRight size={16} /></button>
                 </div>
+
+                <button
+                    onClick={onToggleMyView}
+                    title="Ma Vue (Agenda Personnel)"
+                    style={{
+                        background: myViewMode ? '#2563EB' : 'white',
+                        color: myViewMode ? 'white' : '#374151',
+                        border: '1px solid #E5E7EB',
+                        borderRadius: 6,
+                        padding: '8px 12px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        fontWeight: 600,
+                        fontSize: 13
+                    }}
+                >
+                    <User size={16} /> Ma Vue
+                </button>
+
                 <ViewSelector view={view} onViewChange={onViewChange} customRange={customRange} onCustomRangeChange={onCustomRangeChange} showWeekends={showWeekends} onToggleWeekends={onToggleWeekends} />
                 <button onClick={onToday} style={{ background: 'transparent', color: '#111827', border: 'none', padding: '0 8px', fontSize: 13, fontWeight: 700, cursor: 'pointer', textDecoration: 'underline' }}>Aujourd'hui</button>
             </div>

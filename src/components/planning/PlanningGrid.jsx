@@ -1,7 +1,8 @@
 import React, { useMemo } from 'react';
 import { ChevronDown, ChevronRight as ChevronRightIcon, CheckCircle, X } from 'lucide-react';
 import { format, isSameDay, startOfMonth, startOfDay, endOfMonth, eachDayOfInterval, isWeekend, differenceInMinutes, addDays, parseISO, getHours, getMinutes } from 'date-fns';
-import { PLANNING_COLORS, ROW_HEIGHT, HEADER_HEIGHT_1, HEADER_HEIGHT_2, TOTAL_WORK_MINUTES } from './constants';
+import { fr } from 'date-fns/locale';
+import { PLANNING_COLORS, ROW_HEIGHT, HEADER_HEIGHT_1, HEADER_HEIGHT_2, TOTAL_WORK_MINUTES, WORK_START_HOUR, WORK_END_HOUR } from './constants';
 import { uid } from '../../lib/utils/uid';
 
 // --- STICKY CELLS ---
@@ -31,7 +32,8 @@ const PlanningGrid = ({
     onResizeStart,
     getCellContent,
     showGauges = true,
-    readOnly = false
+    readOnly = false,
+    isVertical = false
 }) => {
 
     const MIN_WIDTH = view === 'year' ? 80 : (view === 'quarter' || view === 'month' ? 40 : 120);
@@ -269,6 +271,95 @@ const PlanningGrid = ({
     // Helpler to access latest events in loop if needed, but here we pass events prop
     const localEventsRef = (evts) => evts;
 
+    if (isVertical) {
+        const V_START = 6;
+        const V_END = 19;
+        const hourHeight = 60;
+        const totalHeight = (V_END - V_START) * 60;
+
+        return (
+            <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', background: 'white' }}>
+                {/* Header Dates */}
+                <div style={{ display: 'flex', borderBottom: '1px solid #E5E7EB', paddingLeft: 60 }}>
+                    {columns.map(col => (
+                        <div key={col.toString()} style={{ flex: 1, textAlign: 'center', padding: '12px', fontWeight: 700, textTransform: 'uppercase', fontSize: 13, color: '#374151' }}>
+                            {format(col, 'EEEE d', { locale: fr })}
+                        </div>
+                    ))}
+                </div>
+
+                {/* Body */}
+                <div style={{ flex: 1, overflowY: 'auto', display: 'flex', position: 'relative' }}>
+                    {/* Time Sidebar */}
+                    <div style={{ width: 60, flexShrink: 0, borderRight: '1px solid #E5E7EB', background: '#F9FAFB' }}>
+                        {Array.from({ length: V_END - V_START + 1 }).map((_, i) => (
+                            <div key={i} style={{ height: hourHeight, borderBottom: '1px solid #E5E7EB', position: 'relative', overflow: 'visible' }}>
+                                <span style={{ position: 'absolute', top: -10, right: 8, fontSize: 11, color: '#9CA3AF', background: '#F9FAFB', padding: '0 4px', zIndex: 10 }}>
+                                    {V_START + i}:00
+                                </span>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Day Columns */}
+                    {columns.map(col => (
+                        <div key={col.toString()} style={{ flex: 1, borderRight: '1px solid #E5E7EB', position: 'relative', height: totalHeight, minHeight: totalHeight }}>
+                            {/* Grid Lines */}
+                            {Array.from({ length: V_END - V_START }).map((_, i) => (
+                                <div key={i} style={{ position: 'absolute', top: (i + 1) * hourHeight, left: 0, right: 0, borderTop: '1px solid #F3F4F6', pointerEvents: 'none' }} />
+                            ))}
+
+                            {/* Events */}
+                            {Object.values(filteredGroups).flatMap(g => g.members).map(member => {
+                                const dayEvents = events.filter(e => e.resourceId === member.id && isSameDay(parseISO(e.date), col));
+
+                                return dayEvents.map(evt => {
+                                    const style = PLANNING_COLORS[evt.type] || PLANNING_COLORS.default;
+                                    const start = new Date(evt.meta?.start || evt.date);
+                                    const end = new Date(evt.meta?.end || evt.date);
+
+                                    const sMinutes = getHours(start) * 60 + getMinutes(start);
+                                    const eMinutes = getHours(end) * 60 + getMinutes(end);
+                                    const startWorkMinutes = V_START * 60;
+
+                                    const top = Math.max(0, sMinutes - startWorkMinutes);
+                                    const duration = Math.max(15, eMinutes - sMinutes);
+
+                                    return (
+                                        <div key={evt.id}
+                                            onClick={(e) => { e.stopPropagation(); onEventClick(evt); }}
+                                            style={{
+                                                position: 'absolute',
+                                                top: top,
+                                                height: duration,
+                                                left: 4, right: 4,
+                                                background: style.bg,
+                                                border: `1px solid ${style.border}`,
+                                                borderLeft: `4px solid ${style.border}`,
+                                                borderRadius: 4,
+                                                padding: '4px 8px',
+                                                fontSize: 12,
+                                                color: style.text,
+                                                cursor: 'pointer',
+                                                overflow: 'hidden',
+                                                zIndex: 10,
+                                                boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
+                                            }}
+                                        >
+                                            <div style={{ fontWeight: 700 }}>{evt.title}</div>
+                                            <div>{format(start, 'HH:mm')} - {format(end, 'HH:mm')}</div>
+                                            {evt.meta?.description && <div style={{ fontSize: 11, opacity: 0.8, marginTop: 4 }}>{evt.meta.description}</div>}
+                                        </div>
+                                    );
+                                });
+                            })}
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div style={{ flex: 1, overflow: 'hidden', padding: '0 24px 24px', display: 'flex', flexDirection: 'column' }}>
             <div style={{ height: 'fit-content', maxHeight: '100%', overflow: 'auto', background: 'white', border: '1px solid #E5E7EB', borderRadius: 12, position: 'relative' }}>
@@ -306,7 +397,7 @@ const PlanningGrid = ({
                                 } else {
                                     workDaysCount = isWeekend(colStart) ? 0 : 1;
                                 }
-                                const theoreticalCapacity = activeMembers.length * 7 * workDaysCount; // en heures
+                                const theoreticalCapacity = activeMembers.length * 8 * workDaysCount; // en heures
 
                                 let totalAbsenceHours = 0;
                                 let totalLoadHours = 0;
@@ -321,9 +412,26 @@ const PlanningGrid = ({
                                     if (eEnd <= colStart || eStart >= colEnd) return;
 
                                     const interStart = eStart < colStart ? colStart : eStart;
-                                    const interEnd = eEnd > colEnd ? colEnd : eEnd;
-                                    const durationMinutes = differenceInMinutes(interEnd, interStart);
-                                    const hours = durationMinutes / 60;
+                                    const interEnd = eEnd > colEnd ? colEnd : eEnd; // Clip end
+                                    const rawDurationMinutes = differenceInMinutes(interEnd, interStart);
+
+                                    // DÉDUCTION PAUSE DÉJEUNER (12h-13h)
+                                    // On déduit l'intersection avec la pause
+                                    let effectiveMinutes = rawDurationMinutes;
+                                    if (!isMonthColumn) { // Si c'est une colonne "Jour"
+                                        const lunchStart = new Date(colStart); lunchStart.setHours(12, 0, 0, 0);
+                                        const lunchEnd = new Date(colStart); lunchEnd.setHours(13, 0, 0, 0);
+
+                                        const lStart = interStart < lunchStart ? lunchStart : interStart;
+                                        const lEnd = interEnd > lunchEnd ? lunchEnd : interEnd;
+
+                                        if (lStart < lEnd) {
+                                            const overlap = differenceInMinutes(lEnd, lStart);
+                                            effectiveMinutes -= overlap;
+                                        }
+                                    }
+
+                                    const hours = effectiveMinutes / 60;
 
                                     const isAbsence = ['Congés', 'RTT', 'Maladie', 'Autre', 'absence'].includes(evt.type) || ['Congés', 'RTT', 'Maladie', 'Autre'].includes(evt.title);
 

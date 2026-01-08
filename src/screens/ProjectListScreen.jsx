@@ -17,7 +17,8 @@ import { computeFormulas } from "../lib/formulas/compute.js";
 import { createBlankProject } from "../lib/import/createBlankProject.js";
 
 import { useAuth } from "../auth";
-import { can } from "../lib/authz";
+
+import { can, role } from "../lib/authz";
 // 👇 IMPORT IMPORTANT
 import { uid } from "../lib/utils/uid";
 
@@ -73,6 +74,15 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
     }
     return res;
   }, [list, searchQuery, activeFilters, currentUser]);
+
+  const potentialManagers = useMemo(() => {
+    if (!users) return [];
+    return users.filter(u => {
+      // Use helper to normalize role (handles 'PILOTAGE_PROJET' -> 'op', etc.)
+      const r = role(u);
+      return ['admin', 'sales', 'op'].includes(r);
+    });
+  }, [users]);
 
   return (
     <div style={{ minHeight: '100vh', background: '#F9F7F2', padding: '24px', display: 'flex', flexDirection: 'column' }}>
@@ -141,10 +151,14 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
                           }}
                         >
                           <option value="" disabled>—</option>
-                          {users && users.length > 0 ? users.map(u => (
+                          {potentialManagers.length > 0 ? potentialManagers.map(u => (
                             <option key={u.id} value={u.name}>{u.name}</option>
                           )) : (
                             <option value={p?.manager}>{p?.manager || "—"}</option>
+                          )}
+                          {/* Fallback if current manager is not in list */}
+                          {p?.manager && !potentialManagers.find(u => u.name === p.manager) && (
+                            <option value={p.manager} disabled>{p.manager}</option>
                           )}
                         </select>
                       </div>

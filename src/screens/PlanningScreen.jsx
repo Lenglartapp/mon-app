@@ -55,6 +55,7 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
     const [hoveredEventId, setHoveredEventId] = useState(null);
     const [hiddenResources, setHiddenResources] = useState([]); // Nouveau state pour masquer
     const [showResourcePanel, setShowResourcePanel] = useState(false); // Panel gestion équipe
+    const [myViewMode, setMyViewMode] = useState(false); // Mode "Ma Vue" (Agenda Perso)
 
     // --- RESIZING STATE & LOGIC ---
     // Note: La logique de resize complexe est gérée globalement via listener window
@@ -141,18 +142,48 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
     const { projectStats: stats } = useCapacityPlanning(projects, localEvents, capacityConfig);
 
     const filteredGroups = useMemo(() => {
+        if (myViewMode && currentUser) {
+            const config = JSON.parse(JSON.stringify(visibleGroupsConfig));
+            Object.keys(config).forEach(key => {
+                config[key].members = config[key].members.filter(m => m.id === currentUser.id || m.email === currentUser.email);
+            });
+            return config;
+        }
+
         if (activeFilters.length === 0 && !searchQuery) return visibleGroupsConfig;
 
         // TODO: Implémenter logique de filtrage avancée si nécessaire
         return visibleGroupsConfig;
-    }, [visibleGroupsConfig, activeFilters, searchQuery]);
+    }, [visibleGroupsConfig, activeFilters, searchQuery, myViewMode, currentUser]);
+
+    const handleToggleMyView = () => {
+        if (!myViewMode) {
+            setMyViewMode(true);
+            setView('day');
+            setCurrentDate(new Date());
+        } else {
+            setMyViewMode(false);
+            setView('week');
+        }
+    };
 
 
     // --- HANDLERS ÉVÉNEMENTS ---
 
     const handleSaveEvent = (eventData) => {
         let newEvents = localEvents;
+
+        // PERSISTENCE: Suppression ancienne version (si édition)
         if (eventData.id) {
+            const eventsToDelete = localEvents.filter(e =>
+                e.id === eventData.id ||
+                (eventData.meta?.seriesId && e.meta?.seriesId === eventData.meta?.seriesId)
+            );
+            eventsToDelete.forEach(e => {
+                if (onDeleteEventProp) onDeleteEventProp(e.id);
+            });
+
+            // Filtre local
             newEvents = newEvents.filter(e => e.id !== eventData.id && e.meta?.seriesId !== eventData.meta?.seriesId);
         }
 
@@ -167,7 +198,7 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                 const assignedUser = localUsers.find(u => u.id === resId);
                 const assignedName = assignedUser ? `${assignedUser.first_name} ${assignedUser.last_name || ''}`.trim() : 'Inconnu';
 
-                createdEvents.push({
+                const evt = {
                     id: uid(),
                     resourceId: resId,
                     date: format(d, 'yyyy-MM-dd'),
@@ -183,7 +214,11 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                         assigned_name: assignedName,
                         status: 'validated'
                     }
-                });
+                };
+
+                createdEvents.push(evt);
+                // PERSIST: CREATE
+                if (onUpdateEvent) onUpdateEvent(evt);
             });
         });
 
@@ -228,9 +263,17 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
         const newStatus = 'validated';
         const updater = e => ({ ...e, meta: { ...e.meta, status: newStatus } });
         if (evt.meta?.seriesId) {
+            // Update local
             setLocalEvents(prev => prev.map(e => e.meta?.seriesId === evt.meta.seriesId ? updater(e) : e));
+            // Persist
+            localEvents.filter(e => e.meta?.seriesId === evt.meta.seriesId).forEach(e => {
+                if (onUpdateEvent) onUpdateEvent(updater(e));
+            });
         } else {
+            // Update local
             setLocalEvents(prev => prev.map(e => e.id === evt.id ? updater(e) : e));
+            // Persist
+            if (onUpdateEvent) onUpdateEvent(updater(evt));
         }
     };
 
@@ -248,7 +291,7 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                 const startDateTime = new Date(`${dayStr}T${startTime}`);
                 const endDateTime = new Date(`${dayStr}T${endTime}`);
 
-                newEvents.push({
+                const evt = {
                     id: uid(),
                     title: type, // 'Congés', etc.
                     resourceId: resourceId,
@@ -263,7 +306,10 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                         seriesId: seriesId,
                         type: type // Sous-type important pour PlanningGrid
                     }
-                });
+                };
+                newEvents.push(evt);
+                // PERSIST
+                if (onUpdateEvent) onUpdateEvent(evt);
             });
             setLocalEvents(prev => [...prev, ...newEvents]);
         } catch (e) {
@@ -286,29 +332,51 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
 
         // Si série
         if (draggedEvent.meta?.seriesId) {
+            // Local Update
             setLocalEvents(prev => prev.map(evt => {
                 if (evt.meta?.seriesId === draggedEvent.meta.seriesId) {
                     const newDate = addDays(parseISO(evt.date), diffDays);
                     const newDateStr = format(newDate, 'yyyy-MM-dd');
-                    // Update meta start/end too
-                    // Simplifié: on garde l'heure
-                    return {
+                    const updated = {
                         ...evt,
                         date: newDateStr,
-                        resourceId: resourceId // Move to new resource
+                        resourceId: resourceId
                     };
+                    // PERSIST (side effect inside map... dirty but works for this block)
+                    // Better to loop separately or rely on setLocalEvents triggering something? No.
+                    // We must call onUpdateEvent.
+                    return updated;
                 }
                 return evt;
             }));
+
+            // PERSIST LOOP
+            const seriesEvents = localEvents.filter(e => e.meta?.seriesId === draggedEvent.meta.seriesId);
+            seriesEvents.forEach(evt => {
+                const newDate = addDays(parseISO(evt.date), diffDays);
+                const updated = {
+                    ...evt,
+                    date: format(newDate, 'yyyy-MM-dd'),
+                    resourceId: resourceId
+                };
+                if (onUpdateEvent) onUpdateEvent(updated);
+            });
+
         } else {
             // Single event
             const newDateStr = format(date, 'yyyy-MM-dd');
+            const updated = { ...draggedEvent, date: newDateStr, resourceId: resourceId };
+
+            // Local
             setLocalEvents(prev => prev.map(evt => {
                 if (evt.id === draggedEvent.id) {
-                    return { ...evt, date: newDateStr, resourceId: resourceId };
+                    return updated;
                 }
                 return evt;
             }));
+
+            // PERSIST
+            if (onUpdateEvent) onUpdateEvent(updated);
         }
         setDraggedEvent(null);
     };
@@ -385,6 +453,8 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                 onRemoveFilter={(f) => setActiveFilters(activeFilters.filter(x => x !== f))}
                 assistantMode={assistantMode}
                 onToggleAssistant={() => setAssistantMode(!assistantMode)}
+                myViewMode={myViewMode}
+                onToggleMyView={handleToggleMyView}
             />
 
             <EventModal
@@ -439,6 +509,7 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                     getCellContent={getCellContent}
                     readOnly={!canEdit}
                     showGauges={showGauges}
+                    isVertical={myViewMode}
                 />
             )}
         </div>
