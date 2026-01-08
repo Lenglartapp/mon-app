@@ -8,79 +8,9 @@ import TextField from '@mui/material/TextField';
 import MenuItem from '@mui/material/MenuItem';
 import SearchIcon from '@mui/icons-material/Search';
 import InputAdornment from '@mui/material/InputAdornment';
-
-const COLUMNS = [
-    {
-        field: 'product',
-        headerName: 'Produit',
-        flex: 1,
-        minWidth: 200,
-        renderCell: (params) => (
-            <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                <span style={{ fontWeight: 600, color: '#111827' }}>{params.value}</span>
-                <span style={{ fontSize: 11, color: '#6B7280' }}>Réf: {params.row.ref || '—'}</span>
-            </div>
-        )
-    },
-    {
-        field: 'category',
-        headerName: 'Type',
-        width: 120,
-        renderCell: (params) => {
-            let color = '#E5E7EB'; // Default gray
-            let text = '#374151';
-
-            const cat = params.value || 'Divers';
-            if (cat === 'Tissu') { color = '#DBEAFE'; text = '#1E40AF'; }
-            if (cat === 'Rail' || cat === 'Tringle') { color = '#F3F4F6'; text = '#1F2937'; }
-            if (cat === 'Mécanisme') { color = '#FEF3C7'; text = '#92400E'; }
-            if (cat === 'Mercerie') { color = '#FCE7F3'; text = '#9D174D'; }
-
-            return (
-                <Chip
-                    label={cat}
-                    size="small"
-                    sx={{ bgcolor: color, color: text, fontWeight: 700, borderRadius: 1 }}
-                />
-            );
-        }
-    },
-    {
-        field: 'location',
-        headerName: 'Emplacement',
-        width: 150,
-        renderCell: (params) => (
-            <Chip
-                label={params.value}
-                size="small"
-                sx={{ bgcolor: '#F3F4F6', fontWeight: 600, color: '#374151', borderRadius: 1 }}
-            />
-        )
-    },
-    {
-        field: 'project',
-        headerName: 'Affectation',
-        width: 200,
-        renderCell: (params) => params.value ? (
-            <Chip label={params.value} size="small" variant="outlined" sx={{ borderColor: '#6366F1', color: '#4F46E5', bgcolor: '#EEF2FF' }} />
-        ) : <span style={{ color: '#9CA3AF', fontStyle: 'italic' }}>Stock Libre</span>
-    },
-    {
-        field: 'qty',
-        headerName: 'Stock Dispo',
-        width: 150,
-        align: 'right',
-        headerAlign: 'right',
-        renderCell: (params) => (
-            <div style={{ fontWeight: 700, fontSize: 15, color: params.value > 0 ? '#059669' : '#EF4444' }}>
-                {params.value} <span style={{ fontSize: 11, fontWeight: 400, color: '#6B7280' }}>{params.row.unit}</span>
-            </div>
-        )
-    },
-];
-
 import Autocomplete from '@mui/material/Autocomplete';
 import ProductHistoryModal from './ProductHistoryModal';
+import { useMemo } from 'react';
 
 export default function StockInventoryTab({ inventory, projects = [], movements = [] }) {
     const [search, setSearch] = useState('');
@@ -101,6 +31,103 @@ export default function StockInventoryTab({ inventory, projects = [], movements 
 
     // Extract unique locations for filter
     const locations = ['ALL', ...new Set(inventory.map(i => i.location).filter(Boolean))];
+
+    const columns = useMemo(() => [
+        {
+            field: 'product',
+            headerName: 'Produit',
+            flex: 1,
+            minWidth: 200,
+            renderCell: (params) => (
+                <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                    <span style={{ fontWeight: 600, color: '#111827' }}>{params.value}</span>
+                    <span style={{ fontSize: 11, color: '#6B7280' }}>Réf: {params.row.ref || '—'}</span>
+                </div>
+            )
+        },
+        {
+            field: 'category',
+            headerName: 'Type',
+            width: 120,
+            renderCell: (params) => {
+                let color = '#E5E7EB';
+                let text = '#374151';
+                const cat = params.value || 'Divers';
+                if (cat === 'Tissu') { color = '#DBEAFE'; text = '#1E40AF'; }
+                if (cat === 'Rail' || cat === 'Tringle') { color = '#F3F4F6'; text = '#1F2937'; }
+                if (cat === 'Mécanisme') { color = '#FEF3C7'; text = '#92400E'; }
+                if (cat === 'Mercerie') { color = '#FCE7F3'; text = '#9D174D'; }
+                return <Chip label={cat} size="small" sx={{ bgcolor: color, color: text, fontWeight: 700, borderRadius: 1 }} />;
+            }
+        },
+        {
+            field: 'location',
+            headerName: 'Emplacement',
+            width: 140,
+            renderCell: (params) => (
+                <Chip label={params.value} size="small" sx={{ bgcolor: '#F3F4F6', fontWeight: 600, color: '#374151', borderRadius: 1 }} />
+            )
+        },
+        {
+            field: 'project',
+            headerName: 'Affectation',
+            width: 180,
+            renderCell: (params) => params.value ? (
+                <Chip label={params.value} size="small" variant="outlined" sx={{ borderColor: '#6366F1', color: '#4F46E5', bgcolor: '#EEF2FF' }} />
+            ) : <span style={{ color: '#9CA3AF', fontStyle: 'italic' }}>Stock Libre</span>
+        },
+        {
+            field: 'stockStatus',
+            headerName: 'État Stock',
+            width: 140,
+            renderCell: (params) => {
+                const pName = params.row.project;
+                if (!pName) return <Chip label="LIBRE" size="small" sx={{ bgcolor: '#F0FDF4', color: '#15803D', border: '1px solid #BBF7D0' }} />;
+
+                // Find project
+                const proj = projects.find(p => p.name === pName || p.nom_dossier === pName);
+                // Si pas trouvé, on affiche un Chip neutre avec le statut ou '?'
+                if (!proj) return <Chip label="?" size="small" sx={{ bgcolor: '#F3F4F6' }} />;
+
+                // Map Status
+                const map = {
+                    'TODO': { label: 'RÉSERVÉ', color: '#B91C1C', bg: '#FEE2E2', border: '#FECACA' }, // Rouge
+                    'IN_PROGRESS': { label: 'ACTIF', color: '#15803D', bg: '#DCFCE7', border: '#86EFAC' }, // Vert
+                    'DONE': { label: 'RELIQUAT', color: '#7C3AED', bg: '#F3E8FF', border: '#D8B4FE' }, // Violet
+                    'SAV': { label: 'SAV', color: '#B45309', bg: '#FEF3C7', border: '#FDE68A' }, // Orange
+                    'ARCHIVED': { label: 'MORT', color: '#374151', bg: '#F9FAFB', border: '#E5E7EB' } // Gris
+                };
+
+                const config = map[proj.status] || { label: proj.status || '?', color: '#4B5563', bg: '#F3F4F6' };
+
+                return (
+                    <Chip
+                        label={config.label}
+                        size="small"
+                        sx={{
+                            bgcolor: config.bg,
+                            color: config.color,
+                            fontWeight: 800,
+                            letterSpacing: 0.5,
+                            border: `1px solid ${config.border || 'transparent'}`
+                        }}
+                    />
+                );
+            }
+        },
+        {
+            field: 'qty',
+            headerName: 'Stock Dispo',
+            width: 150,
+            align: 'right',
+            headerAlign: 'right',
+            renderCell: (params) => (
+                <div style={{ fontWeight: 700, fontSize: 15, color: params.value > 0 ? '#059669' : '#EF4444' }}>
+                    {params.value} <span style={{ fontSize: 11, fontWeight: 400, color: '#6B7280' }}>{params.row.unit}</span>
+                </div>
+            )
+        },
+    ], [projects]);
 
     const filteredRows = inventory.filter(item => {
         // 1. Text Search
@@ -183,6 +210,7 @@ export default function StockInventoryTab({ inventory, projects = [], movements 
                         label="Réinitialiser"
                         onDelete={() => { setSearch(''); setFilterLoc('ALL'); setFilterProj(null); setFilterCat('ALL'); }}
                         color="default"
+                        size="small"
                     />
                 )}
             </Card>
@@ -191,7 +219,7 @@ export default function StockInventoryTab({ inventory, projects = [], movements 
             <Card sx={{ height: 600, width: '100%', borderRadius: 3, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
                 <DataGrid
                     rows={filteredRows}
-                    columns={COLUMNS}
+                    columns={columns}
                     density="comfortable"
                     disableSelectionOnClick
                     onRowDoubleClick={handleRowDoubleClick}
