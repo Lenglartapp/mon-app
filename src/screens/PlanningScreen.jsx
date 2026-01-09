@@ -18,7 +18,7 @@ import PlanningTopBar from '../components/planning/PlanningTopBar';
 import PlanningGrid from '../components/planning/PlanningGrid';
 import AssistantView from '../components/planning/AssistantView';
 
-export default function PlanningScreen({ projects, events: initialEvents, onUpdateEvent, onDeleteEvent: onDeleteEventProp, onBack }) {
+export default function PlanningScreen({ projects, events: initialEvents, onUpdateEvent, onDeleteEvent: onDeleteEventProp, onUpdateProject, onBack }) {
     const { users: authUsers, currentUser } = useAuth();
     const canEdit = can(currentUser, 'planning.edit');
     const showGauges = can(currentUser, 'planning.view_gauges');
@@ -485,7 +485,7 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
             />
 
             {assistantMode ? (
-                <AssistantView stats={stats} />
+                <AssistantView stats={stats} onUpdateProject={onUpdateProject} />
             ) : (
                 <PlanningGrid
                     days={columns}

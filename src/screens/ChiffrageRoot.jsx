@@ -24,8 +24,9 @@ const STATUS_OPTIONS = {
   DRAFT: { label: "À faire", color: "#9CA3AF", bg: "#F3F4F6", text: "#374151" }, // Gray
   IN_PROGRESS: { label: "En cours", color: "#3B82F6", bg: "#EFF6FF", text: "#1E3A8A" }, // Blue
   PENDING_APPROVAL: { label: "À valider", color: "#F59E0B", bg: "#FFFBEB", text: "#92400E" }, // Orange
-  REVISE: { label: "À reprendre", color: "#EF4444", bg: "#FEF2F2", text: "#991B1B" }, // Red
-  VALIDATED: { label: "Validée", color: "#10B981", bg: "#ECFDF5", text: "#065F46" }, // Green
+  REVISE: { label: 'À reprendre', color: '#EF4444', bg: '#FEF2F2', text: '#991B1B' },
+  VALIDATED: { label: 'Validée', color: '#10B981', bg: '#ECFDF5', text: '#065F46' },
+  ORDERED: { label: 'Commande', color: '#8B5CF6', bg: '#F5F3FF', text: '#5B21B6' }
 };
 
 // Helper for numeric conversion (same as ChiffrageScreen)

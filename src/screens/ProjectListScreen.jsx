@@ -30,7 +30,7 @@ const PROJECT_STATUS_OPTIONS = {
   ARCHIVED: { label: "Archivé", color: "#374151", bg: "#F9FAFB" }
 };
 
-export function ProjectListScreen({ projects, setProjects, onOpenProject, minutes = [], onCreate, onDelete, onUpdateProject, onBack }) {
+export function ProjectListScreen({ projects, setProjects, onOpenProject, minutes = [], onCreate, onDelete, onUpdateProject, onUpdateMinute, onBack }) {
   const [showCreate, setShowCreate] = useState(false);
   const list = Array.isArray(projects) ? projects : [];
   const { currentUser, users } = useAuth();
@@ -258,12 +258,12 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
                     <td style={{ padding: '12px 16px' }} onClick={(e) => e.stopPropagation()}>
                       <input
                         type="date"
-                        value={p?.delivery_date || ""}
-                        onChange={(e) => handleUpdate(p.id, { delivery_date: e.target.value })}
+                        value={p?.due ? p.due.split('T')[0] : ""}
+                        onChange={(e) => handleUpdate(p.id, { due: e.target.value })}
                         style={{
                           border: 'none',
                           background: 'transparent',
-                          color: p?.delivery_date ? '#374151' : '#9CA3AF',
+                          color: p?.due ? '#374151' : '#9CA3AF',
                           fontSize: 13,
                           fontFamily: 'inherit',
                           cursor: 'pointer',
@@ -326,7 +326,7 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
             project.budget = meta?.budgetSnapshot || { prepa: 0, conf: 0, pose: 0 };
             project.manager = meta?.owner || project.manager;
             project.notes = meta?.notes || project.notes;
-            project.delivery_date = deliveryDate || null;
+            project.due = deliveryDate || null;
             project.rows = computeFormulas(rows || [], SCHEMA_64);
 
             if (onCreate) {
@@ -339,6 +339,10 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
                 if (data && data[0]) {
                   setShowCreate(false);
                   onOpenProject?.(data[0]);
+                  // Update source minute status to ORDERED
+                  if (project.sourceMinuteId && onUpdateMinute) {
+                    onUpdateMinute(project.sourceMinuteId, { status: "ORDERED" });
+                  }
                 }
               } catch (e) {
                 alert("Erreur : " + e.message);
@@ -346,6 +350,10 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
             } else if (setProjects) {
               setProjects((arr) => [project, ...(Array.isArray(arr) ? arr : [])]);
               onOpenProject?.(project);
+              // Update source minute status to ORDERED
+              if (project.sourceMinuteId && onUpdateMinute) {
+                onUpdateMinute(project.sourceMinuteId, { status: "ORDERED" });
+              }
               setShowCreate(false);
             }
           }}
@@ -355,7 +363,7 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
             project.name = projectName || "Nouveau Dossier";
             project.budget = { prepa: 0, conf: 0, pose: 0 };
             project.config = config;
-            project.delivery_date = config?.deliveryDate || null;
+            project.due = config?.deliveryDate || null;
             project.rows = [];
 
             if (onCreate) {
