@@ -41,8 +41,10 @@ export function useCapacityPlanning(projects, events, capacityConfig = {}) {
 
             // 2. Planifié (Somme des events du projet)
             const projEvents = events.filter(e => e.meta?.projectId === proj.id && e.type !== 'absence');
-            let totalPlanned = 0;
+            let totalConsumed = 0;
+            let totalFuture = 0;
             let lastEventDate = null;
+            const now = new Date();
 
             projEvents.forEach(evt => {
                 const start = new Date(evt.meta?.start || evt.date);
@@ -51,7 +53,13 @@ export function useCapacityPlanning(projects, events, capacityConfig = {}) {
                 // Calcul Net (Règle 5h -> -1h pause)
                 const rawMinutes = differenceInMinutes(end, start);
                 const netMinutes = rawMinutes > 300 ? rawMinutes - 60 : rawMinutes;
-                totalPlanned += Math.max(0, netMinutes / 60);
+                const hours = Math.max(0, netMinutes / 60);
+
+                if (isAfter(end, now)) {
+                    totalFuture += hours;
+                } else {
+                    totalConsumed += hours;
+                }
 
                 // Tracking date max pour retard
                 if (!lastEventDate || isAfter(end, lastEventDate)) {
@@ -59,21 +67,20 @@ export function useCapacityPlanning(projects, events, capacityConfig = {}) {
                 }
             });
 
-            // 3. Statut
+            // 3. Statut (Legacy, peut-être moins utile si on enlève la colonne état)
             let status = 'ok';
-            if (totalPlanned > totalSold && totalSold > 0) status = 'warning';
+            const totalScheduled = totalConsumed + totalFuture;
+            if (totalScheduled > totalSold && totalSold > 0) status = 'warning';
 
             // Check Retard Deadline (si projet a une due date)
             if (proj.due && lastEventDate) {
-                // Si le dernier event planifié dépasse la deadline du projet
                 if (isAfter(lastEventDate, new Date(proj.due))) {
                     status = 'late';
                 }
             }
 
-            // Reste à faire
-            const remaining = Math.max(0, totalSold - totalPlanned);
-            const progress = totalSold > 0 ? (totalPlanned / totalSold) * 100 : 0;
+            // Reste à faire (Legacy computation kept for reference if needed, but we use precise fields now)
+            const remainingBudget = totalSold - totalConsumed;
 
             return {
                 id: proj.id,
@@ -81,11 +88,12 @@ export function useCapacityPlanning(projects, events, capacityConfig = {}) {
                 manager: proj.manager,
                 deadline: proj.due,
                 totalSold: Math.round(totalSold),
-                totalPlanned: Math.round(totalPlanned),
-                remaining: Math.round(remaining),
-                progress: Math.round(progress),
+                totalConsumed: Math.round(totalConsumed),
+                totalFuture: Math.round(totalFuture),
+                remainingBudget: Math.round(remainingBudget),
                 lastEventDate,
-                status
+                schedulerStatus: status, // Renamed computed status to avoid collision
+                projectStatus: proj.status || 'TODO'
             };
         }).sort((a, b) => {
             // Tri par urgence (Retard > Warning > Reste à faire décroissant)
