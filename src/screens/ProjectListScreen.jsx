@@ -4,7 +4,7 @@ import Chip from '@mui/material/Chip';
 import Avatar from '@mui/material/Avatar';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
-import { Edit2, Plus, FileText, Trash2 } from 'lucide-react';
+import { Edit2, Plus, FileText, Trash2, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 
 import { SmartFilterBar } from "../components/ui/SmartFilterBar.jsx";
 import { useViewportWidth } from "../lib/hooks/useViewportWidth";
@@ -38,6 +38,14 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
   const canSeeChiffrage = can(currentUser, "chiffrage.view");
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilters, setActiveFilters] = useState([]);
+  const [sortConfig, setSortConfig] = useState({ key: 'created_at', direction: 'desc' });
+
+  const handleSort = (key) => {
+    setSortConfig(current => ({
+      key,
+      direction: current.key === key && current.direction === 'desc' ? 'asc' : 'desc'
+    }));
+  };
 
   const handleUpdate = (id, patch) => {
     // Optimistic local update
@@ -72,8 +80,25 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
       const q = searchQuery.toLowerCase();
       res = res.filter(p => [p.name, p.manager, p.status, p.notes].some(x => String(x || "").toLowerCase().includes(q)));
     }
+
+    // Sort
+    if (sortConfig.key) {
+      res = [...res].sort((a, b) => {
+        const getValue = (obj, k) => {
+          if (k.includes('.')) return k.split('.').reduce((o, i) => o?.[i], obj);
+          return obj?.[k];
+        };
+        const valA = getValue(a, sortConfig.key) || 0;
+        const valB = getValue(b, sortConfig.key) || 0;
+
+        if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+
     return res;
-  }, [list, searchQuery, activeFilters, currentUser]);
+  }, [list, searchQuery, activeFilters, currentUser, sortConfig]);
 
   const potentialManagers = useMemo(() => {
     if (!users) return [];
@@ -102,7 +127,7 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
             <h1 style={{ fontSize: 28, fontWeight: 700, color: '#1F2937', margin: 0, letterSpacing: '-0.5px' }}>Dossiers</h1>
           </div>
           {canCreate && (
-            <button onClick={() => setShowCreate(true)} style={{ background: '#1F2937', color: 'white', padding: '8px 16px', borderRadius: 8, border: 'none', display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontWeight: 600, boxShadow: '0 2px 4px rgba(0,0,0,0.1)', marginBottom: 4 }}>
+            <button onClick={() => setShowCreate(true)} style={{ background: '#1E2447', color: 'white', padding: '8px 16px', borderRadius: 8, border: 'none', display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontWeight: 600, boxShadow: '0 2px 4px rgba(0,0,0,0.1)', marginBottom: 4 }}>
               <Plus size={18} /> Nouveau Dossier
             </button>
           )}
@@ -119,9 +144,38 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
                 <th style={{ padding: '12px 16px', fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Responsable</th>
                 <th style={{ padding: '12px 16px', fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: 'center' }}>Statut</th>
                 <th style={{ padding: '12px 16px', fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Livraison</th>
-                <th style={{ padding: '12px 16px', fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: 'right' }}>H. Prépa</th>
-                <th style={{ padding: '12px 16px', fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: 'right' }}>H. Conf</th>
-                <th style={{ padding: '12px 16px', fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: 'right' }}>H. Pose</th>
+
+                {/* Creation Date */}
+                <th
+                  onClick={() => handleSort('created_at')}
+                  style={{ padding: '12px 16px', fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.5px', cursor: 'pointer', userSelect: 'none' }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    Création
+                    {sortConfig.key === 'created_at' ? (
+                      sortConfig.direction === 'asc' ? <ArrowUp size={12} /> : <ArrowDown size={12} />
+                    ) : <ArrowUpDown size={12} style={{ opacity: 0.3 }} />}
+                  </div>
+                </th>
+
+                {[
+                  { key: 'budget.prepa', label: 'H. Prépa' },
+                  { key: 'budget.conf', label: 'H. Conf' },
+                  { key: 'budget.pose', label: 'H. Pose' },
+                ].map(({ key, label }) => (
+                  <th
+                    key={key}
+                    onClick={() => handleSort(key)}
+                    style={{ padding: '12px 16px', fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: 'right', cursor: 'pointer', userSelect: 'none' }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
+                      {label}
+                      {sortConfig.key === key ? (
+                        sortConfig.direction === 'asc' ? <ArrowUp size={12} /> : <ArrowDown size={12} />
+                      ) : <ArrowUpDown size={12} style={{ opacity: 0.3 }} />}
+                    </div>
+                  </th>
+                ))}
                 <th style={{ padding: '12px 16px', width: 60 }}></th>
               </tr>
             </thead>
@@ -216,6 +270,11 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
                           outline: 'none'
                         }}
                       />
+                    </td>
+
+                    {/* CREATION */}
+                    <td style={{ padding: '12px 16px', fontSize: 13, color: '#6B7280' }}>
+                      {new Date(p.created_at || p.createdAt || Date.now()).toLocaleDateString("fr-FR")}
                     </td>
 
                     {/* BUDGETS */}

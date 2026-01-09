@@ -7,10 +7,6 @@ import { DataGrid } from '@mui/x-data-grid';
 import { frFR } from '@mui/x-data-grid/locales';
 import Chip from '@mui/material/Chip';
 import Avatar from '@mui/material/Avatar';
-import { PackagePlus, PackageMinus } from 'lucide-react';
-
-import MovementModal from './MovementModal';
-
 // Helper for avatar color
 function stringToColor(string) {
     if (!string) return '#ccc';
@@ -100,46 +96,9 @@ const COLUMNS = [
 ];
 
 export default function StockMovementsTab({ movements, onAddMovement, projects = [], inventory = [], canEdit = false }) {
-    const [modalOpen, setModalOpen] = useState(false);
-    const [modalType, setModalType] = useState('IN'); // 'IN' or 'OUT'
-
-    const handleOpenModal = (type) => {
-        setModalType(type);
-        setModalOpen(true);
-    };
-
-    const handleSaveMovement = (data) => {
-        onAddMovement({ ...data, type: modalType });
-        setModalOpen(false);
-    };
-
+    // Buttons/Modal Lifted to Parent
     return (
         <Box>
-            {/* TOOLBAR ACTIONS */}
-            {canEdit && (
-                <Box sx={{ display: 'flex', gap: 2, mb: 2, justifyContent: 'flex-end' }}>
-                    <Button
-                        variant="contained"
-                        color="success"
-                        startIcon={<PackagePlus />}
-                        onClick={() => handleOpenModal('IN')}
-                        sx={{ fontWeight: 700, px: 3 }}
-                    >
-                        RÉCEPTION
-                    </Button>
-
-                    <Button
-                        variant="contained"
-                        color="warning"
-                        startIcon={<PackageMinus />}
-                        onClick={() => handleOpenModal('OUT')}
-                        sx={{ fontWeight: 700, px: 3, color: 'white' }}
-                    >
-                        SORTIE / CONSOMMATION
-                    </Button>
-                </Box>
-            )}
-
             {/* HISTORY GRID */}
             <Card sx={{ height: 600, width: '100%', borderRadius: 3, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
                 <DataGrid
@@ -158,17 +117,6 @@ export default function StockMovementsTab({ movements, onAddMovement, projects =
                 />
             </Card>
 
-            {/* MODAL FORM */}
-            {modalOpen && (
-                <MovementModal
-                    open={modalOpen}
-                    onClose={() => setModalOpen(false)}
-                    type={modalType}
-                    onSave={handleSaveMovement}
-                    projects={projects}
-                    inventory={inventory} // <--- AJOUT INDISPENSABLE
-                />
-            )}
         </Box>
     );
 }

@@ -1,15 +1,23 @@
 // src/screens/ChiffrageRoot.jsx
 import React, { useState, useMemo, useEffect } from "react";
-import { Plus, Copy, Trash2, FileText } from "lucide-react";
+import { Plus, Copy, Trash2, FileText, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import Chip from '@mui/material/Chip';
 import Avatar from '@mui/material/Avatar';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
+import Menu from '@mui/material/Menu';
+import MenuItem from '@mui/material/MenuItem';
 
-import { useAuth } from "../auth";
+import { useAuth, ROLES } from "../auth";
 // 👇 IMPORT CRUCIAL
 import { uid } from "../lib/utils/uid";
 import { SmartFilterBar } from "../components/ui/SmartFilterBar.jsx";
+import { DataGrid } from '@mui/x-data-grid';
+import { frFR } from '@mui/x-data-grid/locales';
+import { calculateProfitability } from '../lib/financial/profitabilityCalculator';
+import { useAppSettings, useCatalog } from "../hooks/useSupabase";
+import { computeFormulas } from "../lib/formulas/compute";
+import { CHIFFRAGE_SCHEMA } from "../lib/schemas/chiffrage";
 
 // CONSTANTES & HELPERS
 const STATUS_OPTIONS = {
@@ -53,9 +61,61 @@ function stringToColor(string) {
   return color;
 }
 
-export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, onDelete, onBack }) {
-  const { currentUser } = useAuth?.() || { currentUser: { name: "—" } };
+export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, onDelete, onUpdate, onBack }) {
+  const { currentUser, users } = useAuth?.() || { currentUser: { name: "—" }, users: [] };
+  const { settings: globalSettings } = useAppSettings();
+  const { catalog } = useCatalog();
   const [newMinOpen, setNewMinOpen] = useState(false);
+
+  // Status Menu State
+  const [statusMenu, setStatusMenu] = useState({ anchor: null, minuteId: null });
+  // Owner Menu State
+  const [ownerMenu, setOwnerMenu] = useState({ anchor: null, minuteId: null });
+
+  const showKPIs = currentUser?.role === ROLES.ADMIN;
+
+  const handleStatusClick = (event, id) => {
+    event.stopPropagation();
+    setStatusMenu({ anchor: event.currentTarget, minuteId: id });
+  };
+
+  const handleStatusClose = () => setStatusMenu({ anchor: null, minuteId: null });
+
+  const handleStatusSelect = (status) => {
+    if (statusMenu.minuteId && onUpdate) {
+      onUpdate(statusMenu.minuteId, { status });
+    }
+    handleStatusClose();
+  };
+
+  const handleOwnerClick = (event, id) => {
+    event.stopPropagation();
+    setOwnerMenu({ anchor: event.currentTarget, minuteId: id });
+  };
+
+  const handleOwnerClose = () => setOwnerMenu({ anchor: null, minuteId: null });
+
+  const handleOwnerSelect = (ownerName) => {
+    if (ownerMenu.minuteId && onUpdate) {
+      onUpdate(ownerMenu.minuteId, { owner: ownerName });
+    }
+    handleOwnerClose();
+  };
+
+  // Filter Sales/Admin users
+  const assignableUsers = users.filter(u => u.role === ROLES.ADMIN || u.role === ROLES.ADV || u.role === 'sales');
+
+  // Sort State
+
+  // Sort State
+  const [sortConfig, setSortConfig] = useState({ key: 'updatedAt', direction: 'desc' });
+
+  const handleSort = (key) => {
+    setSortConfig(current => ({
+      key,
+      direction: current.key === key && current.direction === 'desc' ? 'asc' : 'desc'
+    }));
+  };
 
   // Creation Form State
   const [newMin, setNewMin] = useState({
@@ -76,23 +136,61 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
     setActiveFilters([{ id: 'my_minutes', label: '👤 Mes chiffrages', field: 'owner' }]);
   }, []);
 
-  const norm = (m) => ({
-    id: m.id,
-    name: m.name || "Minute sans nom",
-    client: m.client || "",
-    notes: m.notes || "",
-    version: m.version ?? 1,
-    lines: m.lines || [],
-    params: m.params || [],
-    deplacements: m.deplacements || [],
-    createdAt: m.createdAt || Date.now(),
-    updatedAt: m.updatedAt || Date.now(),
-    owner: m.owner || currentUser?.name || "—",
-    status: m.status || "DRAFT",
-    modules: m.modules
-  });
+  const norm = (m) => {
+    // 1. Recompute Lines (Logic duplicated from ChiffrageScreen for consistency)
+    const paramsMap = {};
+    (m.params || []).forEach((p) => { if (p?.name) paramsMap[p.name] = p?.value; });
 
-  const list = useMemo(() => (minutes || []).map(norm).sort((a, b) => b.updatedAt - a.updatedAt), [minutes]);
+    let baseCA = 0;
+    (m.lines || []).forEach(r => baseCA += toNum(r.prix_total));
+    (m.deplacements || []).forEach(r => baseCA += toNum(r.prix_total));
+
+    const defaults = { taux_horaire: 135, prix_nuit: 180, prix_repas: 25, vatRate: 20 };
+    const globalSelect = globalSettings ? { ...globalSettings, taux_horaire: globalSettings.hourlyRate ?? globalSettings.taux_horaire } : {};
+    const local = m.settings || {};
+    const effectiveSettings = { ...defaults, ...globalSelect, ...local };
+
+    const formulaCtx = {
+      paramsMap,
+      totalCA: baseCA,
+      settings: effectiveSettings,
+      catalog: catalog || []
+    };
+
+    // Compute Rows
+    const computedRows = computeFormulas(m.lines || [], CHIFFRAGE_SCHEMA, formulaCtx);
+
+    // 2. Calculate KPIs using computed rows
+    const kpiData = calculateProfitability(computedRows || [], m.deplacements || [], m.extraDepenses || []);
+    const kpis = kpiData.kpis;
+
+    return {
+      id: m.id,
+      name: m.name || "Minute sans nom",
+      client: m.client || "",
+      notes: m.notes || "",
+      version: m.version ?? 1,
+      lines: m.lines || [],
+      params: m.params || [],
+      deplacements: m.deplacements || [],
+      createdAt: m.createdAt || Date.now(),
+      updatedAt: m.updatedAt || Date.now(),
+      owner: m.owner || currentUser?.name || "—",
+      status: m.status || "DRAFT",
+      modules: m.modules,
+      // KPIs
+      ca_ht: kpis.ca_total || 0,
+      marge_eur: kpis.contribution || 0, // Contribution displayed as Marge EUR
+      marge_pct: kpis.contribution_pct || 0, // Contribution % displayed as Marge %
+      renta_hh: kpis.contribution_horaire || 0,
+    };
+  };
+
+  const list = useMemo(() => {
+    // Recalculate only if we have settings (avoid double calc on mount if settings not loaded yet, or just calc)
+    // Actually safe to calc with defaults
+    return (minutes || []).map(norm).sort((a, b) => b.updatedAt - a.updatedAt);
+  }, [minutes, globalSettings, catalog]); // Dependency on Settings
 
   const removeFilter = (id) => setActiveFilters(prev => prev.filter(f => f.id !== id));
 
@@ -112,8 +210,21 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
       const q = searchQuery.toLowerCase();
       res = res.filter(m => [m.name, m.client, m.owner, m.notes].some(x => String(x || "").toLowerCase().includes(q)));
     }
+
+    // Apply Sort
+    if (sortConfig.key) {
+      res = [...res].sort((a, b) => { // Copy to avoid mutating
+        const valA = a[sortConfig.key];
+        const valB = b[sortConfig.key];
+
+        if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+
     return res;
-  }, [list, searchQuery, activeFilters, currentUser]);
+  }, [list, searchQuery, activeFilters, currentUser, sortConfig]);
 
   const handleCreateMinute = async () => {
     const { charge, projet, client, note, status, modules } = newMin;
@@ -203,8 +314,8 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
             </button>
             <h1 style={{ fontSize: 28, fontWeight: 700, color: '#1F2937', margin: 0, letterSpacing: '-0.5px' }}>Chiffrages</h1>
           </div>
-          <button onClick={() => setNewMinOpen(true)} style={{ background: '#1F2937', color: 'white', padding: '8px 16px', borderRadius: 8, border: 'none', display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontWeight: 600, boxShadow: '0 2px 4px rgba(0,0,0,0.1)', marginBottom: 4 }}>
-            <Plus size={18} /> Nouvelle minute
+          <button onClick={() => setNewMinOpen(true)} style={{ background: '#1E2447', color: 'white', padding: '8px 16px', borderRadius: 8, border: 'none', display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontWeight: 600, boxShadow: '0 2px 4px rgba(0,0,0,0.1)', marginBottom: 4 }}>
+            <Plus size={18} /> Nouveau Chiffrage
           </button>
         </div>
         <SmartFilterBar searchQuery={searchQuery} onSearchChange={setSearchQuery} activeFilters={activeFilters} onRemoveFilter={removeFilter} />
@@ -218,7 +329,30 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
                 <th style={{ padding: '12px 16px', fontSize: 13, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Nom Chiffrage</th>
                 <th style={{ padding: '12px 16px', fontSize: 13, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Client</th>
                 <th style={{ padding: '12px 16px', fontSize: 13, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Statut</th>
-                <th style={{ padding: '12px 16px', fontSize: 13, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Montant HT</th>
+
+                {/* Sortable Columns Helper */}
+                {[
+                  { key: 'ca_ht', label: 'Montant HT' },
+                  ...(showKPIs ? [
+                    { key: 'marge_pct', label: 'Contribution %' },
+                    { key: 'marge_eur', label: 'Contribution €' },
+                    { key: 'renta_hh', label: 'Contr. Horaire' },
+                  ] : [])
+                ].map(({ key, label }) => (
+                  <th
+                    key={key}
+                    onClick={() => handleSort(key)}
+                    style={{ padding: '12px 16px', fontSize: 13, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', textAlign: 'right', cursor: 'pointer', userSelect: 'none' }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
+                      {label}
+                      {sortConfig.key === key ? (
+                        sortConfig.direction === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />
+                      ) : <ArrowUpDown size={14} style={{ opacity: 0.3 }} />}
+                    </div>
+                  </th>
+                ))}
+
                 <th style={{ padding: '12px 16px', fontSize: 13, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Mise à jour</th>
                 <th style={{ padding: '12px 16px', fontSize: 13, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Chargé d'Affaires</th>
                 <th style={{ padding: '12px 16px', fontSize: 13, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Modules</th>
@@ -228,7 +362,13 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
             <tbody>
               {filteredList.map((m) => {
                 const statusInfo = STATUS_OPTIONS[m.status] || STATUS_OPTIONS.DRAFT;
-                const caTotal = calculateTotalCA(m);
+
+                // Color Logic for Marge %
+                const mpct = m.marge_pct || 0;
+                let mColor = '#F59E0B'; // Orange default
+                if (mpct > 60) mColor = '#10B981'; // Green
+                else if (mpct < 45) mColor = '#EF4444'; // Red
+
                 return (
                   <tr key={m.id} className="minute-row" style={{ borderBottom: '1px solid #F3F4F6', cursor: 'pointer', transition: 'background 0.1s' }} onClick={() => onOpenMinute?.(m.id)} onMouseEnter={(e) => e.currentTarget.style.background = '#F9FAFB'} onMouseLeave={(e) => e.currentTarget.style.background = 'white'}>
                     <td style={{ padding: '12px 16px' }}>
@@ -246,25 +386,47 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
                       <Chip
                         label={statusInfo.label}
                         size="small"
+                        onClick={(e) => handleStatusClick(e, m.id)}
                         sx={{
                           bgcolor: statusInfo.bg,
                           color: statusInfo.text,
                           fontWeight: 700,
                           fontSize: 11,
-                          height: 24
+                          height: 24,
+                          cursor: 'pointer',
+                          '&:hover': { opacity: 0.8 }
                         }}
                       />
                     </td>
-                    <td style={{ padding: '12px 16px' }}>
+                    <td style={{ padding: '12px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
                       <div style={{ fontWeight: 700, color: '#111827', fontSize: 14 }}>
-                        {Math.round(caTotal).toLocaleString("fr-FR")} €
+                        {Math.round(m.ca_ht).toLocaleString("fr-FR")} €
                       </div>
                     </td>
+                    {showKPIs && (
+                      <>
+                        <td style={{ padding: '12px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                          <div style={{ fontWeight: 700, color: mColor, fontSize: 14 }}>
+                            {Math.round(m.marge_pct)} %
+                          </div>
+                        </td>
+                        <td style={{ padding: '12px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                          <div style={{ fontSize: 14, color: '#4B5563' }}>
+                            {Math.round(m.marge_eur).toLocaleString("fr-FR")} €
+                          </div>
+                        </td>
+                        <td style={{ padding: '12px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                          <div style={{ fontWeight: 700, color: '#1E3A8A', fontSize: 14 }}>
+                            {Math.round(m.renta_hh).toLocaleString("fr-FR")} <small style={{ fontSize: 10, color: '#9CA3AF' }}>€/h</small>
+                          </div>
+                        </td>
+                      </>
+                    )}
                     <td style={{ padding: '12px 16px', color: '#6B7280', fontSize: 13 }}>
                       {new Date(m.updatedAt || m.createdAt).toLocaleDateString("fr-FR")} <small>{new Date(m.updatedAt || m.createdAt).toLocaleTimeString("fr-FR", { hour: '2-digit', minute: '2-digit' })}</small>
                     </td>
                     <td style={{ padding: '12px 16px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }} onClick={(e) => handleOwnerClick(e, m.id)}>
                         <Avatar sx={{ width: 26, height: 26, fontSize: 11, bgcolor: stringToColor(m.owner || "?") }}>{(m.owner?.[0] || "?").toUpperCase()}</Avatar>
                         <span style={{ fontSize: 13, color: '#374151', fontWeight: 500 }}>{m.owner || "—"}</span>
                       </div>
@@ -282,7 +444,7 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
                 );
               })}
               {filteredList.length === 0 && (
-                <tr><td colSpan={8} style={{ padding: 40, textAlign: 'center', color: '#9CA3AF' }}><FileText size={48} style={{ opacity: 0.2, marginBottom: 16 }} /><div>Aucun chiffrage trouvé.</div></td></tr>
+                <tr><td colSpan={showKPIs ? 11 : 8} style={{ padding: 40, textAlign: 'center', color: '#9CA3AF' }}><FileText size={48} style={{ opacity: 0.2, marginBottom: 16 }} /><div>Aucun chiffrage trouvé.</div></td></tr>
               )}
             </tbody>
           </table>
@@ -353,6 +515,37 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
           </div>
         </div>
       )}
+
+      <Menu
+        anchorEl={statusMenu.anchor}
+        open={Boolean(statusMenu.anchor)}
+        onClose={handleStatusClose}
+      >
+        {Object.entries(STATUS_OPTIONS).map(([key, opt]) => (
+          <MenuItem key={key} onClick={() => handleStatusSelect(key)}>
+            <Chip label={opt.label} size="small" sx={{ bgcolor: opt.bg, color: opt.text, fontWeight: 700, fontSize: 11, height: 24 }} />
+          </MenuItem>
+        ))}
+      </Menu>
+
+      {/* OWNER MENU */}
+      <Menu
+        anchorEl={ownerMenu.anchor}
+        open={Boolean(ownerMenu.anchor)}
+        onClose={handleOwnerClose}
+      >
+        {assignableUsers.length > 0 ? assignableUsers.map((u) => (
+          <MenuItem key={u.id} onClick={() => handleOwnerSelect(u.name)}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Avatar sx={{ width: 24, height: 24, fontSize: 10, bgcolor: stringToColor(u.name) }}>{u.initials}</Avatar>
+              <span style={{ fontSize: 13, fontWeight: 500 }}>{u.name}</span>
+              <span style={{ fontSize: 10, color: '#9CA3AF' }}>({u.role})</span>
+            </div>
+          </MenuItem>
+        )) : (
+          <MenuItem disabled><span style={{ fontSize: 12, color: '#9CA3AF' }}>Aucun utilisateur éligible (Admin/Sales)</span></MenuItem>
+        )}
+      </Menu>
     </div>
   );
 }
