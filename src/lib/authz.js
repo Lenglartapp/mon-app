@@ -5,7 +5,7 @@ const PERMISSIONS = {
   // ADMIN : Full Access
   admin: "*",
 
-  // SALES (Commercial)
+  // SALES (Commercial / ADV)
   sales: {
     "nav.chiffrage": true,
     "nav.production": true,
@@ -14,14 +14,29 @@ const PERMISSIONS = {
 
     "chiffrage.view": true,
     "chiffrage.edit": true,
-    "chiffrage.moulinette": false, // Blocked
+    "chiffrage.moulinette": false,
+
+    "project.create": true, // Added
 
     "planning.view": true,
-    "planning.edit": false, // Read Only
+    "planning.edit": false,
     "planning.view_gauges": true,
 
     "inventory.view": true,
-    "inventory.edit": false, // Read Only
+    "inventory.edit": false,
+  },
+
+  // ADV (Alias for Sales)
+  adv: {
+    "nav.chiffrage": true,
+    "nav.production": true,
+    "nav.inventory": true,
+    "nav.settings": true,
+    "chiffrage.view": true,
+    "chiffrage.edit": true,
+    "project.create": true,
+    "planning.view": true,
+    "inventory.view": true,
   },
 
   // ORDO (Ordonnancement)

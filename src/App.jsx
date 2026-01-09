@@ -181,6 +181,7 @@ function AppShell() {
           minutes={cleanMinutes}
           onCreate={addMinute}
           onDelete={deleteMinute}
+          onUpdate={updateMinute}
           onBack={() => setScreen("home")}
           onOpenMinute={(id) => { setOpenMinuteId(id); setScreen("chiffrage"); }}
         />
