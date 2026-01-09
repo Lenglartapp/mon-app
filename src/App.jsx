@@ -198,6 +198,7 @@ function AppShell() {
 
       {screen === "project" && currentProject && (
         <ProductionProjectScreen
+          inventory={inventory}
           project={cleanProjects.find(p => String(p.id) === String(currentProject.id)) || currentProject}
           projects={cleanProjects}
           onBack={() => setScreen("prodList")}

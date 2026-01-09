@@ -8,6 +8,7 @@ import ProjectActivityFeed from "../components/ProjectActivityFeed.jsx";
 import EtiquettesSection from "../components/EtiquettesSection.jsx";
 import MinutesScreen from "./MinutesScreen.jsx";
 import LineDetailPanel from "../components/LineDetailPanel";
+import StockInventoryTab from "../components/modules/Stocks/StockInventoryTab.jsx";
 
 import { computeFormulas, preserveManualAfterCompute } from "../lib/formulas/compute";
 import { SCHEMA_64 } from "../lib/schemas/production.js";
@@ -52,7 +53,7 @@ const PROJECT_STATUS_OPTIONS = {
 
 
 // 1. SIGNATURE MISE A JOUR
-export function ProductionProjectScreen({ project: propProject, projects, onBack, onUpdateProjectRows, onUpdateProject, highlightRowId, events = [] }) {
+export function ProductionProjectScreen({ project: propProject, projects, inventory, onBack, onUpdateProjectRows, onUpdateProject, highlightRowId, events = [] }) {
   const { projectId: urlProjectId } = useParams();
 
   // Find Project (SECURED)
@@ -70,6 +71,7 @@ export function ProductionProjectScreen({ project: propProject, projects, onBack
   const [search, setSearch] = useState("");
   const [schema, setSchema] = useState(SCHEMA_64);
   const [openedRowId, setOpenedRowId] = useState(null);
+  const [stockOpen, setStockOpen] = useState(false);
 
   // --- LOGIQUE MUR & PHOTOS ---
   const [wallMsg, setWallMsg] = useState("");
@@ -447,6 +449,21 @@ export function ProductionProjectScreen({ project: propProject, projects, onBack
     overflow: 'hidden' // Ensure header border respects radius
   };
 
+  // Helper Style Island Nav (White + Navy Pill)
+  const getNavStyle = (isActive) => ({
+    padding: '8px 20px',
+    borderRadius: 99,
+    border: 'none',
+    cursor: 'pointer',
+    fontSize: 14,
+    fontWeight: 500,
+    transition: 'all 0.2s cubic-bezier(0.25, 1, 0.5, 1)',
+    outline: 'none',
+    background: isActive ? '#1E2447' : 'transparent', // Navy Active
+    color: isActive ? '#FFFFFF' : '#4B5563', // White Text Active, Gray Text Inactive
+    boxShadow: isActive ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+  });
+
   if (!project && projects && projects.length > 0) {
     return <div style={{ padding: 40, textAlign: 'center', color: '#666' }}>Chargement du projet en cours...</div>;
   }
@@ -476,6 +493,26 @@ export function ProductionProjectScreen({ project: propProject, projects, onBack
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            {/* Stock Button (Header) */}
+            <button
+              onClick={() => setStockOpen(true)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                background: 'white',
+                border: '1px solid #E5E7EB',
+                borderRadius: 20,
+                padding: '7px 16px',
+                boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+                cursor: 'pointer',
+                fontSize: 13,
+                color: '#374151',
+                fontWeight: 600,
+                outline: 'none'
+              }}
+            >
+              Stock
+            </button>
+
             {/* Delivery Date */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'white', border: '1px solid #E5E7EB', borderRadius: 20, padding: '6px 12px', boxShadow: "0 1px 2px rgba(0,0,0,0.05)" }}>
               <span style={{ fontSize: 13, color: '#6B7280', fontWeight: 500 }}>Livraison :</span>
@@ -532,12 +569,28 @@ export function ProductionProjectScreen({ project: propProject, projects, onBack
         </div>
       </div>
 
-      <div style={S.pills}>
-        {visibleStages.map((p) => (
-          <button key={p.key} style={S.pill(stage === p.key)} onClick={() => setStage(p.key)}>
-            {p.label}
-          </button>
-        ))}
+      {/* Island Navigation */}
+      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 24 }}>
+        <div style={{
+          display: 'inline-flex',
+          background: 'white',
+          padding: 5,
+          borderRadius: 99,
+          gap: 4,
+          flexWrap: 'wrap',
+          justifyContent: 'center',
+          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)'
+        }}>
+          {visibleStages.map((p) => (
+            <button
+              key={p.key}
+              style={getNavStyle(stage === p.key)}
+              onClick={() => setStage(p.key)}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
       </div>
 
 
@@ -795,7 +848,31 @@ export function ProductionProjectScreen({ project: propProject, projects, onBack
           <Button onClick={saveBudget} variant="contained">Enregistrer</Button>
         </DialogActions>
       </Dialog>
-    </div>
+
+      {/* MODALE STOCK PROJET */}
+      <Dialog
+        open={stockOpen}
+        onClose={() => setStockOpen(false)}
+        maxWidth="xl"
+        fullWidth
+        PaperProps={{ sx: { height: '80vh' } }}
+      >
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span>Stock Projet : {projectName}</span>
+          <Button onClick={() => setStockOpen(false)}>Fermer</Button>
+        </DialogTitle>
+        <DialogContent dividers sx={{ p: 0 }}>
+          <StockInventoryTab
+            inventory={inventory ? inventory.filter(item => {
+              if (!item.project) return false;
+              const pName = project?.name || project?.nom_dossier;
+              return item.project === pName;
+            }) : []}
+            projects={projects}
+          />
+        </DialogContent>
+      </Dialog>
+    </div >
   );
 }
 
