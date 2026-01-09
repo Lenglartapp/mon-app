@@ -219,6 +219,21 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onBack, highlightRowId }
   // Tabs
   const [activeTab, setActiveTab] = React.useState("minutes");
 
+  // Helper Style Island Nav
+  const getNavStyle = (isActive) => ({
+    padding: '8px 20px',
+    borderRadius: 99,
+    border: 'none',
+    cursor: 'pointer',
+    fontSize: 14,
+    fontWeight: 500,
+    transition: 'all 0.2s cubic-bezier(0.25, 1, 0.5, 1)',
+    outline: 'none',
+    background: isActive ? '#1E2447' : 'transparent',
+    color: isActive ? '#FFFFFF' : '#4B5563',
+    boxShadow: isActive ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+  });
+
   // Row Opening
   const openedRow = React.useMemo(() => {
     if (!localRowId) return null;
@@ -311,10 +326,22 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onBack, highlightRowId }
       <MinuteHistoryDialog open={showHistory} onClose={() => setShowHistory(false)} minute={minute} />
 
       {/* Tabs */}
-      <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
-        <button style={S.pill(activeTab === "minutes")} onClick={() => setActiveTab("minutes")}>Minutes</button>
-        <button style={S.pill(activeTab === "achats")} onClick={() => setActiveTab("achats")}>Liste Achats</button>
-        {can(currentUser, "chiffrage.moulinette") && <button style={S.pill(activeTab === "moulinette")} onClick={() => setActiveTab("moulinette")}>Moulinette</button>}
+      {/* Tabs */}
+      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 24 }}>
+        <div style={{
+          display: 'inline-flex',
+          background: 'white',
+          padding: 5,
+          borderRadius: 99,
+          gap: 4,
+          flexWrap: 'wrap',
+          justifyContent: 'center',
+          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)'
+        }}>
+          <button style={getNavStyle(activeTab === "minutes")} onClick={() => setActiveTab("minutes")}>Minutes</button>
+          <button style={getNavStyle(activeTab === "achats")} onClick={() => setActiveTab("achats")}>Liste Achats</button>
+          {can(currentUser, "chiffrage.moulinette") && <button style={getNavStyle(activeTab === "moulinette")} onClick={() => setActiveTab("moulinette")}>Moulinette</button>}
+        </div>
       </div>
 
       {/* Minutes Tab */}

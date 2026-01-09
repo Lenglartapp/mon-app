@@ -311,7 +311,7 @@ export default function MinutesScreen({ onExportToProduction }) {
             <MinuteEditor
               minute={selected}
               onChangeMinute={(m) => saveMinute(m)}
-              readOnly={isReadOnly} // <-- Pass readonly prop
+              readOnly={isReadOnly}
             />
           </>
         ) : (
