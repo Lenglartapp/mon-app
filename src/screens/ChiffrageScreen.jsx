@@ -316,10 +316,12 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onBack, highlightRowId }
               <option value="REVISE">À reprendre</option>
               <option value="VALIDATED">Validée</option>
               <option value="ORDERED">Commande</option>
+              <option value="ORDER_COMPLETED">Commande terminée</option>
+              <option value="LOST">Perdu</option>
             </select>
             <div style={{
               position: 'absolute', top: '50%', left: 10, transform: 'translateY(-50%)', width: 8, height: 8, borderRadius: '50%', pointerEvents: 'none',
-              background: localStatus === 'ORDERED' ? '#8B5CF6' : localStatus === 'VALIDATED' ? '#10B981' : localStatus === 'PENDING_APPROVAL' ? '#F59E0B' : localStatus === 'IN_PROGRESS' ? '#3B82F6' : '#9CA3AF'
+              background: localStatus === 'ORDERED' ? '#8B5CF6' : localStatus === 'VALIDATED' ? '#10B981' : localStatus === 'ORDER_COMPLETED' ? '#059669' : localStatus === 'LOST' ? '#EF4444' : localStatus === 'PENDING_APPROVAL' ? '#F59E0B' : localStatus === 'IN_PROGRESS' ? '#3B82F6' : '#9CA3AF'
             }} />
           </div>
         </div>

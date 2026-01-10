@@ -1,7 +1,7 @@
-import React from "react";
-import { S } from "../../lib/constants/ui";
+import Autocomplete from "@mui/material/Autocomplete";
+import TextField from "@mui/material/TextField";
 
-const TOKEN_RX = /[A-Za-z0-9_\- ]/;
+
 
 function getTokenRange(str = "", caret = 0) {
   let a = caret - 1;
@@ -69,28 +69,28 @@ function InputCell({
       : undefined;
 
   // ===== HOOKS — tjs en haut (pas de hooks conditionnels) =====
-  const textRef   = React.useRef(null);
+  const textRef = React.useRef(null);
   const numberRef = React.useRef(null);
   const selectRef = React.useRef(null);
-  const multiRef  = React.useRef(null);
-  const fileRef   = React.useRef(null);
-  const inputRef  = React.useRef(null);
+  const multiRef = React.useRef(null);
+  const fileRef = React.useRef(null);
+  const inputRef = React.useRef(null);
 
   const [draft, setDraft] = React.useState(value);
 
   // chaque fois qu’on (re)entre en édition, resynchroniser le draft avec la valeur
   React.useEffect(() => {
-  if (!isEditing) return;
-  if (type === "formula") {
-    const base = typeof fxForceDraft === "string"
-      ? fxForceDraft
-      : (cellOverride ? `=${cellOverride}`
-         : (col?.formula ? `=${col.formula}` : (value ?? "")));
-    setDraft(base ?? "");
-  } else {
-    setDraft(value ?? "");
-  }
-}, [isEditing, value, type, cellOverride, fxForceDraft, col]);
+    if (!isEditing) return;
+    if (type === "formula") {
+      const base = typeof fxForceDraft === "string"
+        ? fxForceDraft
+        : (cellOverride ? `=${cellOverride}`
+          : (col?.formula ? `=${col.formula}` : (value ?? "")));
+      setDraft(base ?? "");
+    } else {
+      setDraft(value ?? "");
+    }
+  }, [isEditing, value, type, cellOverride, fxForceDraft, col]);
 
   React.useEffect(() => {
     if (!fxPendingToken) return;
@@ -110,7 +110,7 @@ function InputCell({
       requestAnimationFrame(() => {
         try {
           (inputRef.current || textRef.current)?.setSelectionRange(c2, c2);
-        } catch {}
+        } catch { }
       });
     }
     onFxConsumeToken?.();
@@ -124,11 +124,11 @@ function InputCell({
   // focus auto quand on passe en édition
   React.useEffect(() => {
     if (!isEditing) return;
-    if (type === "text"       && textRef.current)   { textRef.current.focus(); textRef.current.select?.(); }
-    if (type === "number"     && numberRef.current) { numberRef.current.focus(); numberRef.current.select?.(); }
-    if (type === "select"     && selectRef.current) { selectRef.current.focus(); selectRef.current.showPicker?.(); }
-    if (type === "multiselect"&& multiRef.current)  { multiRef.current.focus(); }
-    if (type === "photo"      && fileRef.current)   { fileRef.current.focus(); }
+    if (type === "text" && textRef.current) { textRef.current.focus(); textRef.current.select?.(); }
+    if (type === "number" && numberRef.current) { numberRef.current.focus(); numberRef.current.select?.(); }
+    if (type === "select" && selectRef.current) { selectRef.current.focus(); selectRef.current.showPicker?.(); }
+    if (type === "multiselect" && multiRef.current) { multiRef.current.focus(); }
+    if (type === "photo" && fileRef.current) { fileRef.current.focus(); }
   }, [isEditing, type]);
 
   // ===== Helpers communs =====
@@ -457,6 +457,79 @@ function InputCell({
       >
         Ouvrir
       </button>
+    );
+  }
+
+  // 10) Catalog Item (Autocomplete from library)
+  if (type === "catalog_item") {
+    // 1. Get Catalog (from formulaCtx or empty)
+    const catalog = formulaCtx?.catalog || [];
+
+    // 2. Filter by Category if specified
+    const category = col?.category;
+    const filtered = React.useMemo(() => {
+      if (!category) return catalog;
+      // Support multiple categories? e.g. "Rail,Tringle" -> split
+      const cats = category.split(",").map(c => c.trim().toLowerCase());
+      return catalog.filter(item => {
+        if (!item.category) return false;
+        return cats.includes(item.category.toLowerCase());
+      });
+    }, [catalog, category]);
+
+    // 3. Render
+    return isEditing ? (
+      <Autocomplete
+        freeSolo
+        options={filtered}
+        getOptionLabel={(option) => {
+          if (typeof option === "string") return option;
+          return option.name || "";
+        }}
+        value={value || null}
+        onChange={(event, newValue) => {
+          const name = (typeof newValue === "object" && newValue) ? newValue.name : newValue;
+          commitOnce(name || "");
+        }}
+        renderInput={(params) => (
+          <TextField
+            {...params}
+            autoFocus
+            fullWidth
+            variant="standard"
+            InputProps={{ ...params.InputProps, disableUnderline: true }}
+            onBlur={(e) => {
+              // Only commit if needed. Autocomplete onChange handles selection.
+              // But if users types manual text and leaves, we need this.
+              // Problem: e.target.value might be weird in Autocomplete?
+              // Usually for freeSolo strictly, it works.
+              commitOnce(e.target.value);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.stopPropagation();
+                commitOnce(e.target.value);
+              }
+            }}
+          />
+        )}
+        style={{ width: "100%" }}
+        componentsProps={{
+          popper: {
+            onClick: stopAll,
+            onMouseDown: stopAll
+          }
+        }}
+        onMouseDown={stopAll} // Prevent grid click hijack
+        onClick={stopAll}
+      />
+    ) : (
+      <div
+        onDoubleClick={() => !readOnly && onStartEdit?.()}
+        style={{ cursor: readOnly ? "default" : "text" }}
+      >
+        {value ?? "—"}
+      </div>
     );
   }
 
