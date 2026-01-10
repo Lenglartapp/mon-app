@@ -1,6 +1,6 @@
 // src/screens/ChiffrageRoot.jsx
 import React, { useState, useMemo, useEffect } from "react";
-import { Plus, Copy, Trash2, FileText, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { Plus, Copy, Trash2, FileText, ArrowUpDown, ArrowUp, ArrowDown, Archive } from "lucide-react";
 import Chip from '@mui/material/Chip';
 import Avatar from '@mui/material/Avatar';
 import IconButton from '@mui/material/IconButton';
@@ -26,7 +26,9 @@ const STATUS_OPTIONS = {
   PENDING_APPROVAL: { label: "À valider", color: "#F59E0B", bg: "#FFFBEB", text: "#92400E" }, // Orange
   REVISE: { label: 'À reprendre', color: '#EF4444', bg: '#FEF2F2', text: '#991B1B' },
   VALIDATED: { label: 'Validée', color: '#10B981', bg: '#ECFDF5', text: '#065F46' },
-  ORDERED: { label: 'Commande', color: '#8B5CF6', bg: '#F5F3FF', text: '#5B21B6' }
+  ORDERED: { label: 'Commande', color: '#8B5CF6', bg: '#F5F3FF', text: '#5B21B6' },
+  ORDER_COMPLETED: { label: 'Commande terminée', color: '#059669', bg: '#ECFDF5', text: '#064E3B' },
+  LOST: { label: 'Perdu', color: '#EF4444', bg: '#FEF2F2', text: '#991B1B' }
 };
 
 // Helper for numeric conversion (same as ChiffrageScreen)
@@ -137,6 +139,8 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
     setActiveFilters([{ id: 'my_minutes', label: '👤 Mes chiffrages', field: 'owner' }]);
   }, []);
 
+  const [showArchived, setShowArchived] = useState(false);
+
   const norm = (m) => {
     // 1. Recompute Lines (Logic duplicated from ChiffrageScreen for consistency)
     const paramsMap = {};
@@ -212,6 +216,10 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
       res = res.filter(m => [m.name, m.client, m.owner, m.notes].some(x => String(x || "").toLowerCase().includes(q)));
     }
 
+    if (!showArchived) {
+      res = res.filter(m => !['LOST', 'ORDER_COMPLETED'].includes(m.status));
+    }
+
     // Apply Sort
     if (sortConfig.key) {
       res = [...res].sort((a, b) => { // Copy to avoid mutating
@@ -225,7 +233,7 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
     }
 
     return res;
-  }, [list, searchQuery, activeFilters, currentUser, sortConfig]);
+  }, [list, searchQuery, activeFilters, currentUser, sortConfig, showArchived]);
 
   const handleCreateMinute = async () => {
     const { charge, projet, client, note, status, modules } = newMin;
@@ -315,9 +323,16 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
             </button>
             <h1 style={{ fontSize: 28, fontWeight: 700, color: '#1F2937', margin: 0, letterSpacing: '-0.5px' }}>Chiffrages</h1>
           </div>
-          <button onClick={() => setNewMinOpen(true)} style={{ background: '#1E2447', color: 'white', padding: '8px 16px', borderRadius: 8, border: 'none', display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontWeight: 600, boxShadow: '0 2px 4px rgba(0,0,0,0.1)', marginBottom: 4 }}>
-            <Plus size={18} /> Nouveau Chiffrage
-          </button>
+          <div style={{ display: 'flex', gap: 12 }}>
+            <Tooltip title={showArchived ? "Masquer dossiers terminés" : "Voir dossiers terminés"}>
+              <IconButton onClick={() => setShowArchived(!showArchived)} color={showArchived ? "primary" : "default"}>
+                <Archive size={20} />
+              </IconButton>
+            </Tooltip>
+            <button onClick={() => setNewMinOpen(true)} style={{ background: '#1E2447', color: 'white', padding: '8px 16px', borderRadius: 8, border: 'none', display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontWeight: 600, boxShadow: '0 2px 4px rgba(0,0,0,0.1)', marginBottom: 4 }}>
+              <Plus size={18} /> Nouveau Chiffrage
+            </button>
+          </div>
         </div>
         <SmartFilterBar searchQuery={searchQuery} onSearchChange={setSearchQuery} activeFilters={activeFilters} onRemoveFilter={removeFilter} />
       </div>
@@ -451,71 +466,73 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
           </table>
         </div>
       </div>
-      {newMinOpen && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={() => setNewMinOpen(false)}>
-          <div onClick={(e) => e.stopPropagation()} style={{ width: 480, background: "#fff", borderRadius: 12, padding: 24, boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1)" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Nouvelle minute</h3>
-              <IconButton onClick={() => setNewMinOpen(false)} size="small"><Trash2 size={18} style={{ transform: 'rotate(45deg)' }} /></IconButton>
-            </div>
-            <div style={{ display: "grid", gap: 16 }}>
-              {/* Charge d'affaire */}
-              <label>
-                <div style={{ fontSize: 13, fontWeight: 500, color: "#374151", marginBottom: 4 }}>Chargé·e d’affaires</div>
-                <input style={{ width: "100%", padding: "8px 12px", borderRadius: 6, border: "1px solid #D1D5DB" }} value={newMin.charge} onChange={(e) => setNewMin(m => ({ ...m, charge: e.target.value }))} />
-              </label>
-
-              {/* Nom Projet */}
-              <label>
-                <div style={{ fontSize: 13, fontWeight: 500, color: "#374151", marginBottom: 4 }}>Nom du chiffrage *</div>
-                <input autoFocus style={{ width: "100%", padding: "8px 12px", borderRadius: 6, border: "1px solid #D1D5DB" }} value={newMin.projet} onChange={(e) => setNewMin(m => ({ ...m, projet: e.target.value }))} placeholder={`Ex: Villa Saint-Tropez`} />
-              </label>
-
-              {/* Client (New) */}
-              <label>
-                <div style={{ fontSize: 13, fontWeight: 500, color: "#374151", marginBottom: 4 }}>Client *</div>
-                <input style={{ width: "100%", padding: "8px 12px", borderRadius: 6, border: "1px solid #D1D5DB" }} value={newMin.client} onChange={(e) => setNewMin(m => ({ ...m, client: e.target.value }))} placeholder="Ex: M. Dupont" />
-              </label>
-
-              {/* Status */}
-              <label>
-                <div style={{ fontSize: 13, fontWeight: 500, color: "#374151", marginBottom: 4 }}>Statut</div>
-                <select
-                  style={{ width: "100%", padding: "8px 12px", borderRadius: 6, border: "1px solid #D1D5DB" }}
-                  value={newMin.status}
-                  onChange={(e) => setNewMin(m => ({ ...m, status: e.target.value }))}
-                >
-                  {Object.entries(STATUS_OPTIONS).map(([k, v]) => (
-                    <option key={k} value={k}>{v.label}</option>
-                  ))}
-                </select>
-              </label>
-
-              {/* Modules */}
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 500, color: "#374151", marginBottom: 8 }}>Modules à inclure</div>
-                <div style={{ display: 'flex', gap: 16 }}>
-                  <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}><input type="checkbox" checked={newMin.modules.rideau} onChange={(e) => setNewMin(m => ({ ...m, modules: { ...m.modules, rideau: e.target.checked } }))} /> Rideaux</label>
-                  <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}><input type="checkbox" checked={newMin.modules.store} onChange={(e) => setNewMin(m => ({ ...m, modules: { ...m.modules, store: e.target.checked } }))} /> Stores</label>
-                  <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}><input type="checkbox" checked={newMin.modules.decor} onChange={(e) => setNewMin(m => ({ ...m, modules: { ...m.modules, decor: e.target.checked } }))} /> Décors</label>
-                </div>
+      {
+        newMinOpen && (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={() => setNewMinOpen(false)}>
+            <div onClick={(e) => e.stopPropagation()} style={{ width: 480, background: "#fff", borderRadius: 12, padding: 24, boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1)" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Nouvelle minute</h3>
+                <IconButton onClick={() => setNewMinOpen(false)} size="small"><Trash2 size={18} style={{ transform: 'rotate(45deg)' }} /></IconButton>
               </div>
+              <div style={{ display: "grid", gap: 16 }}>
+                {/* Charge d'affaire */}
+                <label>
+                  <div style={{ fontSize: 13, fontWeight: 500, color: "#374151", marginBottom: 4 }}>Chargé·e d’affaires</div>
+                  <input style={{ width: "100%", padding: "8px 12px", borderRadius: 6, border: "1px solid #D1D5DB" }} value={newMin.charge} onChange={(e) => setNewMin(m => ({ ...m, charge: e.target.value }))} />
+                </label>
 
-              {/* Note */}
-              <label>
-                <div style={{ fontSize: 13, fontWeight: 500, color: "#374151", marginBottom: 4 }}>Note</div>
-                <textarea rows={3} style={{ width: "100%", padding: "8px 12px", borderRadius: 6, border: "1px solid #D1D5DB" }} value={newMin.note} onChange={(e) => setNewMin(m => ({ ...m, note: e.target.value }))} placeholder="Commentaire interne…" />
-              </label>
+                {/* Nom Projet */}
+                <label>
+                  <div style={{ fontSize: 13, fontWeight: 500, color: "#374151", marginBottom: 4 }}>Nom du chiffrage *</div>
+                  <input autoFocus style={{ width: "100%", padding: "8px 12px", borderRadius: 6, border: "1px solid #D1D5DB" }} value={newMin.projet} onChange={(e) => setNewMin(m => ({ ...m, projet: e.target.value }))} placeholder={`Ex: Villa Saint-Tropez`} />
+                </label>
 
-              {/* Actions */}
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, marginTop: 8 }}>
-                <button onClick={() => setNewMinOpen(false)} style={{ background: 'white', border: '1px solid #D1D5DB', padding: '8px 16px', borderRadius: 6, cursor: 'pointer' }}>Annuler</button>
-                <button onClick={handleCreateMinute} disabled={isCreating || !newMin.charge.trim() || !newMin.projet.trim() || !newMin.client.trim() || !(newMin.modules.rideau || newMin.modules.store || newMin.modules.decor)} style={{ background: '#1F2937', color: 'white', border: 'none', padding: '8px 16px', borderRadius: 6, cursor: 'pointer', opacity: (isCreating || !newMin.projet.trim() || !newMin.client.trim()) ? 0.5 : 1 }}>{isCreating ? "Création..." : "Créer"}</button>
+                {/* Client (New) */}
+                <label>
+                  <div style={{ fontSize: 13, fontWeight: 500, color: "#374151", marginBottom: 4 }}>Client *</div>
+                  <input style={{ width: "100%", padding: "8px 12px", borderRadius: 6, border: "1px solid #D1D5DB" }} value={newMin.client} onChange={(e) => setNewMin(m => ({ ...m, client: e.target.value }))} placeholder="Ex: M. Dupont" />
+                </label>
+
+                {/* Status */}
+                <label>
+                  <div style={{ fontSize: 13, fontWeight: 500, color: "#374151", marginBottom: 4 }}>Statut</div>
+                  <select
+                    style={{ width: "100%", padding: "8px 12px", borderRadius: 6, border: "1px solid #D1D5DB" }}
+                    value={newMin.status}
+                    onChange={(e) => setNewMin(m => ({ ...m, status: e.target.value }))}
+                  >
+                    {Object.entries(STATUS_OPTIONS).map(([k, v]) => (
+                      <option key={k} value={k}>{v.label}</option>
+                    ))}
+                  </select>
+                </label>
+
+                {/* Modules */}
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 500, color: "#374151", marginBottom: 8 }}>Modules à inclure</div>
+                  <div style={{ display: 'flex', gap: 16 }}>
+                    <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}><input type="checkbox" checked={newMin.modules.rideau} onChange={(e) => setNewMin(m => ({ ...m, modules: { ...m.modules, rideau: e.target.checked } }))} /> Rideaux</label>
+                    <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}><input type="checkbox" checked={newMin.modules.store} onChange={(e) => setNewMin(m => ({ ...m, modules: { ...m.modules, store: e.target.checked } }))} /> Stores</label>
+                    <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}><input type="checkbox" checked={newMin.modules.decor} onChange={(e) => setNewMin(m => ({ ...m, modules: { ...m.modules, decor: e.target.checked } }))} /> Décors</label>
+                  </div>
+                </div>
+
+                {/* Note */}
+                <label>
+                  <div style={{ fontSize: 13, fontWeight: 500, color: "#374151", marginBottom: 4 }}>Note</div>
+                  <textarea rows={3} style={{ width: "100%", padding: "8px 12px", borderRadius: 6, border: "1px solid #D1D5DB" }} value={newMin.note} onChange={(e) => setNewMin(m => ({ ...m, note: e.target.value }))} placeholder="Commentaire interne…" />
+                </label>
+
+                {/* Actions */}
+                <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, marginTop: 8 }}>
+                  <button onClick={() => setNewMinOpen(false)} style={{ background: 'white', border: '1px solid #D1D5DB', padding: '8px 16px', borderRadius: 6, cursor: 'pointer' }}>Annuler</button>
+                  <button onClick={handleCreateMinute} disabled={isCreating || !newMin.charge.trim() || !newMin.projet.trim() || !newMin.client.trim() || !(newMin.modules.rideau || newMin.modules.store || newMin.modules.decor)} style={{ background: '#1F2937', color: 'white', border: 'none', padding: '8px 16px', borderRadius: 6, cursor: 'pointer', opacity: (isCreating || !newMin.projet.trim() || !newMin.client.trim()) ? 0.5 : 1 }}>{isCreating ? "Création..." : "Créer"}</button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
       <Menu
         anchorEl={statusMenu.anchor}
@@ -547,6 +564,6 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
           <MenuItem disabled><span style={{ fontSize: 12, color: '#9CA3AF' }}>Aucun utilisateur éligible (Admin/Sales)</span></MenuItem>
         )}
       </Menu>
-    </div>
+    </div >
   );
 }

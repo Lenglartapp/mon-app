@@ -91,7 +91,15 @@ function AppShell() {
     if (currentProject && String(currentProject.id) === String(projectId)) {
       setCurrentProject((cur) => ({ ...cur, ...updates }));
     }
-  }, [updateProject, currentProject]);
+
+    // SYNC: When project archived -> Complete source Minute
+    if (updates.status === 'ARCHIVED') {
+      const targetProject = cleanProjects.find(p => String(p.id) === String(projectId));
+      if (targetProject && targetProject.sourceMinuteId) {
+        updateMinute(targetProject.sourceMinuteId, { status: 'ORDER_COMPLETED' });
+      }
+    }
+  }, [updateProject, currentProject, cleanProjects, updateMinute]);
 
   const handleUpdateEvent = useCallback((event) => {
     updateEvent(event);

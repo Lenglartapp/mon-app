@@ -43,7 +43,7 @@ export const CHIFFRAGE_SCHEMA = [
   { key: "hauteur_coupe_motif", label: "H. Motif", type: "number", width: 100, readOnly: true },
 
   // 20
-  { key: "tissu_deco1", label: "Tissu 1", type: "text", width: 150 },
+  { key: "tissu_deco1", label: "Tissu 1", type: "catalog_item", category: "Tissu", width: 150 },
   // 21
   { key: "laize_tissu1", label: "Laize 1", type: "number", width: 90 },
   // 22
@@ -60,7 +60,7 @@ export const CHIFFRAGE_SCHEMA = [
   { key: "pv_tissu1", label: "PV T1", type: "number", width: 90 },
 
   // 28
-  { key: "tissu_deco2", label: "Tissu 2", type: "text", width: 150 },
+  { key: "tissu_deco2", label: "Tissu 2", type: "catalog_item", category: "Tissu", width: 150 },
   // 29 (NEW)
   { key: "laize_tissu2", label: "Laize 2", type: "number", width: 90 },
   // 30
@@ -75,7 +75,7 @@ export const CHIFFRAGE_SCHEMA = [
   { key: "pv_tissu2", label: "PV T2", type: "number", width: 90 },
 
   // 35
-  { key: "doublure", label: "Doublure", type: "text", width: 140 },
+  { key: "doublure", label: "Doublure", type: "catalog_item", category: "Doublure", width: 140 },
   // 36
   { key: "laize_doublure", label: "Laize D.", type: "number", width: 90 },
   // 37
@@ -88,7 +88,7 @@ export const CHIFFRAGE_SCHEMA = [
   { key: "pv_doublure", label: "PV Doubl.", type: "number", width: 90 },
 
   // 41
-  { key: "interdoublure", label: "Inter-D.", type: "text", width: 140 },
+  { key: "interdoublure", label: "Inter-D.", type: "catalog_item", category: "Interdoublure", width: 140 },
   // 42
   { key: "laize_interdoublure", label: "Laize I.", type: "number", width: 90 },
   // 43
@@ -101,7 +101,7 @@ export const CHIFFRAGE_SCHEMA = [
   { key: "pv_interdoublure", label: "PV Inter.", type: "number", width: 90 },
 
   // 47
-  { key: "passementerie1", label: "Passement. 1", type: "text", width: 140 },
+  { key: "passementerie1", label: "Passement. 1", type: "catalog_item", category: "Passementerie", width: 140 },
   // 48
   { key: "application_passementerie1", label: "App. P1", type: "select", options: ["I", "U", "L", "-"], width: 100 },
   // 49
@@ -112,7 +112,7 @@ export const CHIFFRAGE_SCHEMA = [
   { key: "pv_pass1", label: "PV Pass 1", type: "number", width: 90 },
 
   // 52
-  { key: "passementerie2", label: "Passement. 2", type: "text", width: 140 },
+  { key: "passementerie2", label: "Passement. 2", type: "catalog_item", category: "Passementerie", width: 140 },
   // 53
   { key: "application_passementerie2", label: "App. P2", type: "select", options: ["I", "U", "L", "-"], width: 100 },
   // 54
@@ -125,7 +125,7 @@ export const CHIFFRAGE_SCHEMA = [
   // 57
   { key: "type_mecanisme", label: "Type Méca", type: "select", options: ["Rail", "Tringle"], width: 120 },
   // 58
-  { key: "modele_mecanisme", label: "Modèle Méca", type: "text", width: 140 },
+  { key: "modele_mecanisme", label: "Modèle Méca", type: "catalog_item", category: "Rail,Rails,Tringle,Tringles,Mecanisme,Mécanisme,Mecanismes,Mécanismes", width: 140 },
   // 59
   { key: "pa_mecanisme", label: "PA Méca", type: "number", width: 90 },
   // 60
