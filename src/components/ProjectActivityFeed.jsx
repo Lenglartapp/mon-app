@@ -60,7 +60,7 @@ const extractActivity = (rows, wall, pinnedIds = []) => {
     return allEvents.sort((a, b) => b.date - a.date);
 };
 
-export default function ProjectActivityFeed({ rows, wall, pinnedIds, onTogglePin }) {
+export default function ProjectActivityFeed({ rows, wall, pinnedIds, onTogglePin, isMobile = false }) {
     const [filter, setFilter] = useState('all');
 
     // Lightbox States
@@ -135,7 +135,15 @@ export default function ProjectActivityFeed({ rows, wall, pinnedIds, onTogglePin
                                 src={evt.image}
                                 alt="Joint"
                                 onClick={() => handleImageClick(evt.image)}
-                                style={{ maxHeight: 200, maxWidth: '100%', borderRadius: 8, border: '1px solid #E5E7EB', objectFit: 'cover', cursor: 'zoom-in' }}
+                                style={{
+                                    maxHeight: isMobile ? 'none' : 200, // Full height on mobile
+                                    width: isMobile ? '100%' : 'auto', // Full width on mobile
+                                    maxWidth: '100%',
+                                    borderRadius: 8,
+                                    border: '1px solid #E5E7EB',
+                                    objectFit: 'cover',
+                                    cursor: 'zoom-in'
+                                }}
                             />
                         </div>
                     )}

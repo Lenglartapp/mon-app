@@ -23,15 +23,16 @@ const calculateStats = (rows) => {
   };
 };
 
-export default function DashboardTiles({ rows }) {
+export default function DashboardTiles({ rows, isMobile = false }) {
   const stats = useMemo(() => calculateStats(rows), [rows]);
 
   const tileStyle = (bg, color) => ({
     background: bg, color: color, borderRadius: 16, padding: "20px",
-    flex: "1 1 180px", display: "flex", flexDirection: "column", justifyContent: "space-between",
-    boxShadow: "0 2px 5px rgba(0,0,0,0.05)", minHeight: 110, border: '1px solid rgba(0,0,0,0.03)'
+    flex: isMobile ? "1 1 100%" : "1 1 180px", // Force 100% width on mobile
+    display: "flex", flexDirection: "column", justifyContent: "space-between",
+    boxShadow: "0 2px 5px rgba(0,0,0,0.05)", minHeight: isMobile ? 120 : 110, border: '1px solid rgba(0,0,0,0.03)'
   });
-  const valStyle = { fontSize: 28, fontWeight: 800, letterSpacing: "-0.5px" };
+  const valStyle = { fontSize: isMobile ? 36 : 28, fontWeight: 800, letterSpacing: "-0.5px" }; // Larger font on mobile
   const subStyle = { fontSize: 11, fontWeight: 500, marginTop: 4, opacity: 0.7 };
 
   if (!stats) return <div style={{ padding: 20, color: '#888' }}>Ajoutez des lignes pour voir les statistiques.</div>;

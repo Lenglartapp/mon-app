@@ -110,6 +110,11 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
     return res;
   }, [list, searchQuery, activeFilters, currentUser, sortConfig, showArchived]);
 
+  // FIX: useViewportWidth returns a number, not an object
+  const width = useViewportWidth();
+  console.log("Largeur actuelle :", width, "isMobile :", width <= 768);
+  const isMobile = width <= 768;
+
   const potentialManagers = useMemo(() => {
     if (!users) return [];
     return users.filter(u => {
@@ -120,10 +125,27 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
   }, [users]);
 
   return (
-    <div style={{ minHeight: '100vh', background: '#F9F7F2', padding: '24px', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ minHeight: '100vh', background: '#F9F7F2', padding: isMobile ? '16px' : '24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {/* CSS Fallback for Responsive Toggle */}
+      <style>{`
+        @media (max-width: 768px) {
+          .desktop-only { display: none !important; }
+          .mobile-only { display: block !important; }
+          .header-row { flexDirection: column !important; alignItems: flex-start !important; }
+          .header-actions { width: 100% !important; }
+        }
+        @media (min-width: 769px) {
+          .desktop-only { display: block !important; }
+          .mobile-only { display: none !important; }
+        }
+      `}</style>
+
       <div style={{ maxWidth: 1200, width: '100%', margin: '0 auto 24px auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-          <div>
+        <div
+          className="header-row"
+          style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'flex-end', gap: isMobile ? 12 : 0 }}
+        >
+          <div style={{ width: isMobile ? '100%' : 'auto' }}>
             <button
               onClick={onBack}
               style={{
@@ -137,14 +159,29 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
             <h1 style={{ fontSize: 28, fontWeight: 700, color: '#1F2937', margin: 0, letterSpacing: '-0.5px' }}>Dossiers</h1>
           </div>
           {canCreate && (
-            <button onClick={() => setShowCreate(true)} style={{ background: '#1E2447', color: 'white', padding: '8px 16px', borderRadius: 8, border: 'none', display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontWeight: 600, boxShadow: '0 2px 4px rgba(0,0,0,0.1)', marginBottom: 4 }}>
+            <button
+              className="header-actions"
+              onClick={() => setShowCreate(true)}
+              style={{
+                background: '#1E2447', color: 'white', padding: '8px 16px', borderRadius: 8, border: 'none',
+                display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontWeight: 600,
+                boxShadow: '0 2px 4px rgba(0,0,0,0.1)', marginBottom: isMobile ? 0 : 4,
+                width: isMobile ? '100%' : 'auto', justifyContent: isMobile ? 'center' : 'flex-start'
+              }}
+            >
               <Plus size={18} /> Nouveau Dossier
             </button>
           )}
         </div>
 
         <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-          <SmartFilterBar searchQuery={searchQuery} onSearchChange={setSearchQuery} activeFilters={activeFilters} onRemoveFilter={handleRemoveFilter} />
+          <SmartFilterBar
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            activeFilters={activeFilters}
+            onRemoveFilter={handleRemoveFilter}
+            style={{ flex: 1 }} // Ensure full width
+          />
           <Tooltip title={showArchived ? "Retour aux dossiers actifs" : "Voir archives"}>
             <IconButton
               onClick={() => setShowArchived(!showArchived)}
@@ -164,7 +201,108 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
         </div>
       </div>
 
-      <div style={{ maxWidth: 1200, width: '100%', margin: '0 auto', background: 'white', borderRadius: 12, boxShadow: '0 1px 3px rgba(0,0,0,0.05), 0 4px 6px rgba(0,0,0,0.02)', overflow: 'hidden' }}>
+      {/* --- MOBILE VIEW (CARDS) --- */}
+      <div
+        style={{
+          maxWidth: 1200, width: '100%', margin: '0 auto',
+          display: isMobile ? 'flex' : 'none', // JS Toggle
+          flexDirection: 'column', gap: 12
+        }}
+      >
+        {filteredProjects.map((p) => {
+          const statusOpt = PROJECT_STATUS_OPTIONS[p?.status] || PROJECT_STATUS_OPTIONS.TODO;
+          const budget = p.budget || { prepa: 0, conf: 0, pose: 0 };
+          const dateStr = p.due ? formatDateFR(p.due) : "—";
+
+          return (
+            <div key={p.id} style={{
+              background: 'white', borderRadius: 12, padding: 16,
+              boxShadow: '0 1px 3px rgba(0,0,0,0.05)', border: '1px solid #E5E7EB', display: 'flex', flexDirection: 'column', gap: 12
+            }}>
+              {/* HEADER: Name + Status */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 16, color: '#111827', marginBottom: 2 }}>
+                    {truncate(p.name || "Sans nom", 25)}
+                  </div>
+                  <div style={{ fontSize: 11, color: '#9CA3AF' }}>#{String(p.id).slice(-4)}</div>
+                </div>
+                {/* STATUS BADGE SIMPLIFIED */}
+                <div style={{
+                  padding: "4px 10px", borderRadius: 16, background: statusOpt.bg, color: statusOpt.color,
+                  fontSize: 11, fontWeight: 700
+                }}>
+                  {statusOpt.label}
+                </div>
+              </div>
+
+              {/* BODY: Manager + Date */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Avatar sx={{ width: 24, height: 24, fontSize: 10, bgcolor: stringToColor(p?.manager || "?") }}>
+                    {(p?.manager?.[0] || "?").toUpperCase()}
+                  </Avatar>
+                  <span style={{ fontSize: 13, color: '#374151', fontWeight: 500 }}>
+                    {p.manager || "Non assigné"}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#4B5563' }}>
+                  <span role="img" aria-label="date">📅</span> {dateStr}
+                </div>
+              </div>
+
+              {/* FOOTER: Budgets + Actions */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #F3F4F6', paddingTop: 12, marginTop: 4 }}>
+                <div style={{ fontSize: 12, color: '#6B7280', display: 'flex', gap: 8 }}>
+                  <span><strong style={{ color: '#374151' }}>P:</strong> {budget.prepa}h</span>
+                  <span><strong style={{ color: '#374151' }}>C:</strong> {budget.conf}h</span>
+                  <span><strong style={{ color: '#374151' }}>I:</strong> {budget.pose}h</span>
+                </div>
+
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    onClick={() => onOpenProject?.(p)}
+                    style={{
+                      background: '#F3F4F6', border: 'none', borderRadius: 6, padding: 8,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4B5563'
+                    }}
+                  >
+                    <Edit2 size={16} />
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (window.confirm(`Supprimer ${p.name} ?`)) onDelete?.(p.id);
+                    }}
+                    style={{
+                      background: '#FEF2F2', border: 'none', borderRadius: 6, padding: 8,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#DC2626'
+                    }}
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+        {filteredProjects.length === 0 && (
+          <div style={{ padding: 40, textAlign: 'center', color: '#9CA3AF', background: 'white', borderRadius: 12 }}>
+            <FileText size={48} style={{ opacity: 0.2, marginBottom: 16 }} />
+            <div>Aucun projet trouvé.</div>
+          </div>
+        )}
+      </div>
+
+      {/* --- DESKTOP VIEW (TABLE) --- */}
+      <div
+        className="desktop-only"
+        style={{
+          maxWidth: 1200, width: '100%', margin: '0 auto',
+          background: 'white', borderRadius: 12, boxShadow: '0 1px 3px rgba(0,0,0,0.05), 0 4px 6px rgba(0,0,0,0.02)', overflow: 'hidden',
+          display: isMobile ? 'none' : 'block' // JS Toggle
+        }}
+      >
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
             <thead style={{ background: '#F9FAFB', borderBottom: '1px solid #E5E7EB' }}>
@@ -339,85 +477,89 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
           </table>
         </div>
       </div>
+      )
+}
 
-      {showCreate && (
-        <CreateProjectDialog
-          open={showCreate}
-          onClose={() => setShowCreate(false)}
-          minutes={canSeeChiffrage ? (Array.isArray(minutes) ? minutes : []) : []}
-          prodSchema={SCHEMA_64}
-          onCreateFromMinute={async (payload) => {
-            const { name, rows, meta, deliveryDate } = payload || {};
-            const project = createBlankProject({ name });
-            project.id = project.id || uid();
-            project.name = name || meta?.minuteName || project.name || "Nouveau Dossier";
-            project.sourceMinuteId = meta?.id || null;
-            project.budget = meta?.budgetSnapshot || { prepa: 0, conf: 0, pose: 0 };
-            project.manager = meta?.owner || project.manager;
-            project.notes = meta?.notes || project.notes;
-            project.due = deliveryDate || null;
-            project.rows = computeFormulas(rows || [], SCHEMA_64);
+      {
+        showCreate && (
+          <CreateProjectDialog
+            open={showCreate}
+            onClose={() => setShowCreate(false)}
+            minutes={canSeeChiffrage ? (Array.isArray(minutes) ? minutes : []) : []}
+            prodSchema={SCHEMA_64}
+            onCreateFromMinute={async (payload) => {
+              const { name, rows, meta, deliveryDate } = payload || {};
+              const project = createBlankProject({ name });
+              project.id = project.id || uid();
+              project.name = name || meta?.minuteName || project.name || "Nouveau Dossier";
+              project.sourceMinuteId = meta?.id || null;
+              project.budget = meta?.budgetSnapshot || { prepa: 0, conf: 0, pose: 0 };
+              project.manager = meta?.owner || project.manager;
+              project.notes = meta?.notes || project.notes;
+              project.due = deliveryDate || null;
+              project.rows = computeFormulas(rows || [], SCHEMA_64);
 
-            if (onCreate) {
-              try {
-                const { data, error } = await onCreate(project);
-                if (error) {
-                  alert("Erreur création projet (Supabase) :\n" + error.message);
-                  return;
-                }
-                if (data && data[0]) {
-                  setShowCreate(false);
-                  onOpenProject?.(data[0]);
-                  // Update source minute status to ORDERED
-                  if (project.sourceMinuteId && onUpdateMinute) {
-                    onUpdateMinute(project.sourceMinuteId, { status: "ORDERED" });
+              if (onCreate) {
+                try {
+                  const { data, error } = await onCreate(project);
+                  if (error) {
+                    alert("Erreur création projet (Supabase) :\n" + error.message);
+                    return;
                   }
+                  if (data && data[0]) {
+                    setShowCreate(false);
+                    onOpenProject?.(data[0]);
+                    // Update source minute status to ORDERED
+                    if (project.sourceMinuteId && onUpdateMinute) {
+                      onUpdateMinute(project.sourceMinuteId, { status: "ORDERED" });
+                    }
+                  }
+                } catch (e) {
+                  alert("Erreur : " + e.message);
                 }
-              } catch (e) {
-                alert("Erreur : " + e.message);
+              } else if (setProjects) {
+                setProjects((arr) => [project, ...(Array.isArray(arr) ? arr : [])]);
+                onOpenProject?.(project);
+                // Update source minute status to ORDERED
+                if (project.sourceMinuteId && onUpdateMinute) {
+                  onUpdateMinute(project.sourceMinuteId, { status: "ORDERED" });
+                }
+                setShowCreate(false);
               }
-            } else if (setProjects) {
-              setProjects((arr) => [project, ...(Array.isArray(arr) ? arr : [])]);
-              onOpenProject?.(project);
-              // Update source minute status to ORDERED
-              if (project.sourceMinuteId && onUpdateMinute) {
-                onUpdateMinute(project.sourceMinuteId, { status: "ORDERED" });
-              }
-              setShowCreate(false);
-            }
-          }}
-          onCreateBlank={async (projectName, _dummyRows, config) => {
-            const project = createBlankProject({ name: projectName });
-            project.id = project.id || uid();
-            project.name = projectName || "Nouveau Dossier";
-            project.budget = { prepa: 0, conf: 0, pose: 0 };
-            project.config = config;
-            project.due = config?.deliveryDate || null;
-            project.rows = [];
+            }}
+            onCreateBlank={async (projectName, _dummyRows, config) => {
+              const project = createBlankProject({ name: projectName });
+              project.id = project.id || uid();
+              project.name = projectName || "Nouveau Dossier";
+              project.budget = { prepa: 0, conf: 0, pose: 0 };
+              project.config = config;
+              project.due = config?.deliveryDate || null;
+              project.rows = [];
 
-            if (onCreate) {
-              try {
-                const { data, error } = await onCreate(project);
-                if (error) {
-                  alert("Erreur création projet (Supabase) :\n" + error.message);
-                  return;
+              if (onCreate) {
+                try {
+                  const { data, error } = await onCreate(project);
+                  if (error) {
+                    alert("Erreur création projet (Supabase) :\n" + error.message);
+                    return;
+                  }
+                  if (data && data[0]) {
+                    setShowCreate(false);
+                    onOpenProject?.(data[0]);
+                  }
+                } catch (e) {
+                  alert("Erreur : " + e.message);
                 }
-                if (data && data[0]) {
-                  setShowCreate(false);
-                  onOpenProject?.(data[0]);
-                }
-              } catch (e) {
-                alert("Erreur : " + e.message);
+              } else if (setProjects) {
+                setProjects((arr) => [project, ...(Array.isArray(arr) ? arr : [])]);
+                onOpenProject?.(project);
+                setShowCreate(false);
               }
-            } else if (setProjects) {
-              setProjects((arr) => [project, ...(Array.isArray(arr) ? arr : [])]);
-              onOpenProject?.(project);
-              setShowCreate(false);
-            }
-          }}
-        />
-      )}
-    </div>
+            }}
+          />
+        )
+      }
+    </div >
   );
 }
 
