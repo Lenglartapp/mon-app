@@ -360,6 +360,115 @@ const PlanningGrid = ({
         );
     }
 
+    // --- UTILS CALCULATION ---
+    const getStats = (memberIds, dateRange, allEvents) => {
+        let totalAbsenceHours = 0;
+        let totalLoadHours = 0;
+        let theoreticalCapacity = 0;
+        let activeMemberCount = 0;
+
+        // On peut optimiser en ne faisant le calcul que si memberIds > 0
+        if (memberIds.length === 0) return { load: 0, cap: 0, percent: 0 };
+
+        dateRange.forEach(col => {
+            const isMonthColumn = view === 'year';
+            const colStart = isMonthColumn ? startOfMonth(col) : startOfDay(col);
+            const colEnd = isMonthColumn ? endOfMonth(col) : new Date(col.getFullYear(), col.getMonth(), col.getDate(), 23, 59, 59);
+
+            let workDaysCount = 0;
+            if (isMonthColumn) {
+                const daysInMonth = eachDayOfInterval({ start: colStart, end: colEnd });
+                workDaysCount = daysInMonth.filter(d => !isWeekend(d)).length;
+            } else {
+                workDaysCount = isWeekend(colStart) ? 0 : 1;
+            }
+            // For this column (Day or Month), capacity is:
+            theoreticalCapacity += memberIds.length * 8 * workDaysCount;
+        });
+
+        activeMemberCount = memberIds.length;
+
+        // Loop events once? Or per member?
+        // Using existing logic structure: per event check is safest given data structure
+        allEvents.forEach(evt => {
+            if (!memberIds.includes(evt.resourceId)) return;
+
+            // Check if event intersects with ANY of the dateRange?
+            // Actually, we process ALL events against ALL columns? That's O(N*M).
+            // Better: loop events, calculate duration within the total range defined by columns[0] and columns[end].
+            // BUT: weekends must be excluded from calculation if 'theoreticalCapacity' excludes them?
+            // Yes, theoreticalCapacity excludes weekends.
+            // So if an event spans a weekend, does it count as load? 
+            // In the grid cell loop, we iterate by column, so weekend columns (if hidden) are skipped.
+            // If shown, they might have 0 capacity (if workDaysCount=0 for weekend).
+            // Let's stick to the column iteration method to be consistency with detailed cells.
+
+            dateRange.forEach(col => {
+                const isMonthColumn = view === 'year';
+                const colStart = isMonthColumn ? startOfMonth(col) : startOfDay(col);
+                const colEnd = isMonthColumn ? endOfMonth(col) : new Date(col.getFullYear(), col.getMonth(), col.getDate(), 23, 59, 59);
+
+                // Quick check bounds
+                const evtS = new Date(evt.meta?.start || evt.date);
+                const evtE = new Date(evt.meta?.end || evt.date);
+                if (evtE <= colStart || evtS >= colEnd) return;
+
+
+                const interStart = evtS < colStart ? colStart : evtS;
+                const interEnd = evtE > colEnd ? colEnd : evtE;
+                const rawDurationMinutes = differenceInMinutes(interEnd, interStart);
+
+                let effectiveMinutes = rawDurationMinutes;
+                if (!isMonthColumn) {
+                    const lunchStart = new Date(colStart); lunchStart.setHours(12, 0, 0, 0);
+                    const lunchEnd = new Date(colStart); lunchEnd.setHours(13, 0, 0, 0);
+                    const lStart = interStart < lunchStart ? lunchStart : interStart;
+                    const lEnd = interEnd > lunchEnd ? lunchEnd : interEnd;
+                    if (lStart < lEnd) effectiveMinutes -= differenceInMinutes(lEnd, lStart);
+                }
+
+                const hours = effectiveMinutes / 60;
+                const isAbsence = ['Congés', 'RTT', 'Maladie', 'Autre', 'absence'].includes(evt.type) || ['Congés', 'RTT', 'Maladie', 'Autre'].includes(evt.title);
+
+                if (isAbsence) totalAbsenceHours += hours;
+                else totalLoadHours += hours;
+            });
+        });
+
+        const realCapacity = Math.max(0, theoreticalCapacity - totalAbsenceHours);
+        const percent = realCapacity > 0 ? (totalLoadHours / realCapacity) * 100 : 0;
+
+        return { load: totalLoadHours, cap: realCapacity, percent };
+    };
+
+    // Helper to render a Gauge Cell
+    const renderGaugeCell = (load, cap, percent, keyPrefix) => {
+        let barColor = '#10B981';
+        if (percent >= 80) barColor = '#F59E0B';
+        if (percent > 100) barColor = '#EF4444';
+
+        return (
+            <div key={keyPrefix} style={{
+                borderRight: '1px solid #E5E7EB',
+                borderBottom: '1px solid #E5E7EB',
+                background: 'transparent',
+                height: ROW_HEIGHT,
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                padding: '0 8px'
+            }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#374151', marginBottom: 4, display: 'flex', justifyContent: 'space-between' }}>
+                    <span>{Math.round(load)}h <span style={{ color: '#9CA3AF', fontWeight: 400 }}>/ {Math.round(cap)}h</span></span>
+                </div>
+                <div style={{ width: '100%', height: 6, background: 'rgba(0,0,0,0.05)', borderRadius: 3, overflow: 'hidden' }}>
+                    <div style={{ width: `${Math.min(percent, 100)}%`, height: '100%', background: barColor, transition: 'width 0.3s ease' }} />
+                </div>
+            </div>
+        );
+    };
+
+
     return (
         <div style={{ flex: 1, overflow: 'hidden', padding: '0 24px 24px', display: 'flex', flexDirection: 'column' }}>
             <div style={{ height: 'fit-content', maxHeight: '100%', overflow: 'auto', background: 'white', border: '1px solid #E5E7EB', borderRadius: 12, position: 'relative' }}>
@@ -369,127 +478,102 @@ const PlanningGrid = ({
                     <StickyCorner style={{ top: HEADER_HEIGHT_1, height: HEADER_HEIGHT_2 }}>Ressources</StickyCorner>
                     {columns.map(col => (<StickyTopCell key={col.toString()} style={{ top: HEADER_HEIGHT_1, height: HEADER_HEIGHT_2, background: isSameDay(col, new Date()) && view !== 'year' ? '#EFF6FF' : 'white', color: isSameDay(col, new Date()) && view !== 'year' ? '#2563EB' : '#4B5563' }}>{getCellContent(col)}</StickyTopCell>))}
 
-                    {Object.entries(filteredGroups).map(([key, group]) => (
-                        <React.Fragment key={key}>
-                            <StickyLeftCell onClick={() => onToggleGroup(key)} bg={group.bg} style={{ fontWeight: 800, color: '#111827' }}>{expandedGroups[key] ? <ChevronDown size={14} style={{ marginRight: 8 }} /> : <ChevronRightIcon size={14} style={{ marginRight: 8 }} />}{group.label}</StickyLeftCell>
-                            {/* LIGNE DE CAPACITÉ (Jauges) */}
-                            {columns.map(col => {
-                                if (!showGauges) {
-                                    return (
-                                        <div key={col.toString()} style={{
-                                            borderRight: '1px solid #E5E7EB',
-                                            borderBottom: '1px solid #E5E7EB',
-                                            background: group.bg,
-                                            height: ROW_HEIGHT
-                                        }} />
-                                    );
-                                }
+                    {Object.entries(filteredGroups).map(([key, group]) => {
+                        const activeMembers = group.members.filter(m => !hiddenResources.includes(m.id));
+                        // Calc Global Stats for Header
+                        const groupStats = getStats(activeMembers.map(m => m.id), columns, events);
 
-                                const isMonthColumn = view === 'year';
-                                const colStart = isMonthColumn ? startOfMonth(col) : startOfDay(col);
-                                const colEnd = isMonthColumn ? endOfMonth(col) : new Date(col.getFullYear(), col.getMonth(), col.getDate(), 23, 59, 59);
-
-                                const activeMembers = group.members.filter(m => !hiddenResources.includes(m.id));
-                                let workDaysCount = 0;
-                                if (isMonthColumn) {
-                                    const daysInMonth = eachDayOfInterval({ start: colStart, end: colEnd });
-                                    workDaysCount = daysInMonth.filter(d => !isWeekend(d)).length;
-                                } else {
-                                    workDaysCount = isWeekend(colStart) ? 0 : 1;
-                                }
-                                const theoreticalCapacity = activeMembers.length * 8 * workDaysCount; // en heures
-
-                                let totalAbsenceHours = 0;
-                                let totalLoadHours = 0;
-                                const activeMemberIds = activeMembers.map(m => m.id);
-
-                                events.forEach(evt => {
-                                    if (!activeMemberIds.includes(evt.resourceId)) return;
-
-                                    const eStart = new Date(evt.meta?.start || evt.date);
-                                    const eEnd = new Date(evt.meta?.end || evt.date);
-
-                                    if (eEnd <= colStart || eStart >= colEnd) return;
-
-                                    const interStart = eStart < colStart ? colStart : eStart;
-                                    const interEnd = eEnd > colEnd ? colEnd : eEnd; // Clip end
-                                    const rawDurationMinutes = differenceInMinutes(interEnd, interStart);
-
-                                    // DÉDUCTION PAUSE DÉJEUNER (12h-13h)
-                                    // On déduit l'intersection avec la pause
-                                    let effectiveMinutes = rawDurationMinutes;
-                                    if (!isMonthColumn) { // Si c'est une colonne "Jour"
-                                        const lunchStart = new Date(colStart); lunchStart.setHours(12, 0, 0, 0);
-                                        const lunchEnd = new Date(colStart); lunchEnd.setHours(13, 0, 0, 0);
-
-                                        const lStart = interStart < lunchStart ? lunchStart : interStart;
-                                        const lEnd = interEnd > lunchEnd ? lunchEnd : interEnd;
-
-                                        if (lStart < lEnd) {
-                                            const overlap = differenceInMinutes(lEnd, lStart);
-                                            effectiveMinutes -= overlap;
-                                        }
-                                    }
-
-                                    const hours = effectiveMinutes / 60;
-
-                                    const isAbsence = ['Congés', 'RTT', 'Maladie', 'Autre', 'absence'].includes(evt.type) || ['Congés', 'RTT', 'Maladie', 'Autre'].includes(evt.title);
-
-                                    if (isAbsence) {
-                                        totalAbsenceHours += hours;
-                                    } else {
-                                        totalLoadHours += hours;
-                                    }
-                                });
-
-                                const realCapacity = Math.max(0, theoreticalCapacity - totalAbsenceHours);
-                                const loadPercent = realCapacity > 0 ? (totalLoadHours / realCapacity) * 100 : 0;
-
-                                let barColor = '#10B981'; // Vert
-                                if (loadPercent >= 80) barColor = '#F59E0B'; // Orange
-                                if (loadPercent > 100) barColor = '#EF4444'; // Rouge
-
-                                return (
-                                    <div key={col.toString()} style={{
-                                        borderRight: '1px solid #E5E7EB',
-                                        borderBottom: '1px solid #E5E7EB',
-                                        background: group.bg,
-                                        height: ROW_HEIGHT,
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        justifyContent: 'center',
-                                        padding: '0 8px'
-                                    }}>
-                                        <div style={{ fontSize: 10, fontWeight: 700, color: '#374151', marginBottom: 4, display: 'flex', justifyContent: 'space-between' }}>
-                                            <span>{Math.round(totalLoadHours)}h <span style={{ color: '#9CA3AF', fontWeight: 400 }}>/ {Math.round(realCapacity)}h</span></span>
-                                        </div>
-                                        <div style={{ width: '100%', height: 6, background: 'rgba(0,0,0,0.05)', borderRadius: 3, overflow: 'hidden' }}>
-                                            <div style={{ width: `${Math.min(loadPercent, 100)}%`, height: '100%', background: barColor, transition: 'width 0.3s ease' }} />
-                                        </div>
+                        return (
+                            <React.Fragment key={key}>
+                                <StickyLeftCell onClick={() => onToggleGroup(key)} bg={group.bg} style={{ fontWeight: 800, color: '#111827' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
+                                        {expandedGroups[key] ? <ChevronDown size={14} style={{ marginRight: 8 }} /> : <ChevronRightIcon size={14} style={{ marginRight: 8 }} />}
+                                        {group.label}
                                     </div>
-                                );
-                            })}
-
-                            {expandedGroups[key] && group.members.map(member => (
-                                <React.Fragment key={member.id}>
-                                    <StickyLeftCell style={{ paddingLeft: 42, color: '#4B5563', fontWeight: 500 }}>
-                                        {member.first_name} {member.last_name?.charAt(0)}.
-                                    </StickyLeftCell>
-                                    {columns.map(col => (
-                                        <div
-                                            key={`${member.id}-${col}`}
-                                            onClick={() => onCellClick(member.id, col)}
-                                            onDragOver={onDragOver}
-                                            onDrop={(e) => onDrop(e, member.id, col)}
-                                            style={{ borderBottom: '1px solid #E5E7EB', borderRight: '1px solid #F3F4F6', background: (view !== 'year' && isSameDay(col, new Date())) ? '#F9FAFB' : 'transparent', height: ROW_HEIGHT, position: 'relative' }}
-                                        >
-                                            {renderEventsForCell(member.id, col)}
+                                    {showGauges && (
+                                        <div style={{ fontSize: 11, fontWeight: 600, color: groupStats.percent > 100 ? '#EF4444' : '#6B7280', background: 'rgba(255,255,255,0.5)', padding: '2px 6px', borderRadius: 4 }}>
+                                            {Math.round(groupStats.percent)}%
                                         </div>
-                                    ))}
-                                </React.Fragment>
-                            ))}
-                        </React.Fragment>
-                    ))}
+                                    )}
+                                </StickyLeftCell>
+
+                                {/* LIGNE DE CAPACITÉ (Jauges) */}
+                                {columns.map(col => {
+                                    if (!showGauges) {
+                                        return (
+                                            <div key={col.toString()} style={{
+                                                borderRight: '1px solid #E5E7EB',
+                                                borderBottom: '1px solid #E5E7EB',
+                                                background: group.bg,
+                                                height: ROW_HEIGHT
+                                            }} />
+                                        );
+                                    }
+                                    // Reuse calculation per cell
+                                    const cellStats = getStats(activeMembers.map(m => m.id), [col], events);
+                                    return (
+                                        <div key={col.toString()} style={{ background: group.bg }}>
+                                            {renderGaugeCell(cellStats.load, cellStats.cap, cellStats.percent, col.toString())}
+                                        </div>
+                                    )
+                                })}
+
+                                {expandedGroups[key] && group.members.map(member => (
+                                    <React.Fragment key={member.id}>
+                                        <StickyLeftCell style={{ paddingLeft: 42, color: '#4B5563', fontWeight: 500 }}>
+                                            {member.first_name} {member.last_name?.charAt(0)}.
+                                        </StickyLeftCell>
+                                        {columns.map(col => (
+                                            <div
+                                                key={`${member.id}-${col}`}
+                                                onClick={() => onCellClick(member.id, col)}
+                                                onDragOver={onDragOver}
+                                                onDrop={(e) => onDrop(e, member.id, col)}
+                                                style={{ borderBottom: '1px solid #E5E7EB', borderRight: '1px solid #F3F4F6', background: (view !== 'year' && isSameDay(col, new Date())) ? '#F9FAFB' : 'transparent', height: ROW_HEIGHT, position: 'relative' }}
+                                            >
+                                                {renderEventsForCell(member.id, col)}
+                                            </div>
+                                        ))}
+                                    </React.Fragment>
+                                ))}
+                            </React.Fragment>
+                        )
+                    })}
+
+                    {/* --- TOTAL ROW --- */}
+                    {showGauges && (() => {
+                        // Gather ALL visible members
+                        const allActiveMembers = Object.values(filteredGroups).flatMap(g => g.members).filter(m => !hiddenResources.includes(m.id));
+                        const allMemberIds = allActiveMembers.map(m => m.id);
+
+                        // Global Stats
+                        const globalStats = getStats(allMemberIds, columns, events);
+
+                        return (
+                            <>
+                                <StickyLeftCell
+                                    bg="#FFF"
+                                    style={{ fontWeight: 800, color: '#111827', borderTop: '2px solid #E5E7EB' }}
+                                >
+                                    <div style={{ display: 'flex', alignItems: 'center', flex: 1, fontSize: 14 }}>
+                                        TOTAL
+                                    </div>
+                                    <div style={{ fontSize: 12, fontWeight: 700, color: globalStats.percent > 100 ? '#EF4444' : '#374151', background: '#F3F4F6', padding: '2px 8px', borderRadius: 4 }}>
+                                        {Math.round(globalStats.percent)}%
+                                    </div>
+                                </StickyLeftCell>
+
+                                {columns.map(col => {
+                                    const cellStats = getStats(allMemberIds, [col], events);
+                                    return (
+                                        <div key={`total-${col.toString()}`} style={{ borderTop: '2px solid #E5E7EB' }}>
+                                            {renderGaugeCell(cellStats.load, cellStats.cap, cellStats.percent, `total-${col.toString()}`)}
+                                        </div>
+                                    );
+                                })}
+                            </>
+                        )
+                    })()}
                 </div>
             </div>
         </div>

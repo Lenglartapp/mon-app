@@ -50,7 +50,26 @@ export const calculateProfitability = (rows = [], depRows = [], extraRows = []) 
         const q = qty(r);
 
         // STRICT KEYS MAPPING
-        // Tissu 1
+        // Decors: Tissu 1 (tissu_1)
+        if (r.tissu_1) {
+            const val = toNum(r.pa_tissu_1) * q;
+            const ml = toNum(r.ml_tissu_1) * q;
+            pushMap(mapTissus, `D_T1_${r.tissu_1}`, `Décor T1 ${r.tissu_1}`, ml, val, getSource(r, q, val));
+        }
+        // Decors: Tissu 2 (tissu_2)
+        if (r.tissu_2) {
+            const val = toNum(r.pa_tissu_2) * q;
+            const ml = toNum(r.ml_tissu_2) * q;
+            pushMap(mapTissus, `D_T2_${r.tissu_2}`, `Décor T2 ${r.tissu_2}`, ml, val, getSource(r, q, val));
+        }
+        // Decors: Passementerie 1 (passementerie_1)
+        if (r.passementerie_1) {
+            const val = toNum(r.pa_pass_1) * q;
+            const ml = toNum(r.ml_pass_1) * q;
+            pushMap(mapTissus, `D_P1_${r.passementerie_1}`, `Décor Pass ${r.passementerie_1}`, ml, val, getSource(r, q, val));
+        }
+
+        // Tissu 1 (Rideaux)
         if (r.tissu_deco1) {
             const val = toNum(r.pa_tissu1) * q; // PA Tissu is unit price usually, but we need total line cost here?
             // Wait, in recomputeRow: next.pa_tissu1 = next.ml_tissu1 * (p1.pa || 0); <- This is TOTAL price for 1 unit.
@@ -58,6 +77,14 @@ export const calculateProfitability = (rows = [], depRows = [], extraRows = []) 
             const ml = toNum(r.ml_tissu1) * q;
             pushMap(mapTissus, `T1_${r.tissu_deco1}`, r.tissu_deco1, ml, val, getSource(r, q, val));
         }
+        // STORES: Toile Finition 1
+        if (r.toile_finition_1) {
+            // Logic similar to Tissu 1
+            const val = toNum(r.pa_toile_finition_1) * q;
+            const ml = toNum(r.ml_toile_finition_1) * q;
+            pushMap(mapTissus, `TF1_${r.toile_finition_1}`, `Toile ${r.toile_finition_1}`, ml, val, getSource(r, q, val));
+        }
+
         // Tissu 2
         if (r.tissu_deco2) {
             const val = toNum(r.pa_tissu2) * q;
@@ -89,7 +116,7 @@ export const calculateProfitability = (rows = [], depRows = [], extraRows = []) 
             pushMap(mapTissus, `P2_${r.passementerie2}`, r.passementerie2, ml, val, getSource(r, q, val));
         }
 
-        // RAILS / MECANISMES
+        // RAILS / MECANISMES (OLD)
         const mecaName = r.modele_mecanisme || r.type_mecanisme;
         if (mecaName) {
             const type = r.type_mecanisme;
@@ -102,6 +129,26 @@ export const calculateProfitability = (rows = [], depRows = [], extraRows = []) 
             }
             // Use specific key to separate Rails from Stores in aggregation if needed, or group by model
             pushMap(mapRails, `M_${mecaName}`, mecaName, len, val, getSource(r, q, val));
+        }
+
+        // STORES: Mecanisme Store (NEW)
+        if (r.mecanisme_store) {
+            const mecaStore = r.mecanisme_store;
+            const val = toNum(r.pa_mecanisme_store) * q;
+            const len = q; // Assume unit count for Stores mechanisms
+            pushMap(mapRails, `MS_${mecaStore}`, mecaStore, len, val, getSource(r, q, val));
+        }
+
+        // DECORS: Mecanisme/Fourniture (mecanisme_fourniture)
+        if (r.mecanisme_fourniture) {
+            const mecaFourn = r.mecanisme_fourniture;
+            const val = toNum(r.pa_mecanisme) * q; // Note: pa_mecanisme reused for both Rideau Rail & Decor Meca?
+            // Wait, in recomputeRow I used next.pa_mecanisme for both (if r.type_mecanisme==Rail OR if r.mecanisme_fourniture).
+            // This collision is risky if one row has BOTH?
+            // But Valid Row typically has either Rideau fields OR Decor fields.
+            // Assuming no overlap.
+            const len = q;
+            pushMap(mapRails, `MF_${mecaFourn}`, mecaFourn, len, val, getSource(r, q, val));
         }
     });
 

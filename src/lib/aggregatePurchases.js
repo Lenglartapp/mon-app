@@ -12,21 +12,25 @@ export function aggregatePurchases(rows = []) {
     }
     return Array.from(map.entries()).map(([label, items]) => ({
       label,
-      total_ml: sum(items.map(x => toNum(x.ml_tissu_deco1 || x.ml_tissu_deco2 || x.ml_doublure || x.l_mecanisme))),
-      total_pa: sum(items.map(x => toNum(x.pa_tissu_deco1 || x.pa_tissu_deco2 || x.pa_doublure || x.pa_meca) *
-                                   toNum(x.ml_tissu_deco1 || x.ml_tissu_deco2 || x.ml_doublure || x.l_mecanisme))),
+      total_ml: sum(items.map(x => toNum(x.ml_tissu_deco1 || x.ml_tissu_deco2 || x.ml_toile_finition_1 || x.ml_doublure || x.l_mecanisme))),
+      total_pa: sum(items.map(x => toNum(x.pa_tissu_deco1 || x.pa_tissu_deco2 || x.pa_toile_finition_1 || x.pa_doublure || x.pa_meca || x.pa_mecanisme_store) *
+        toNum(x.ml_tissu_deco1 || x.ml_tissu_deco2 || x.ml_toile_finition_1 || x.ml_doublure || x.l_mecanisme || 1))),
       children: items,
     }));
   };
 
   const tissus = [];
-  for (const key of ["tissu_deco1", "tissu_deco2"]) {
+  for (const key of ["tissu_deco1", "tissu_deco2", "toile_finition_1"]) {
     const groups = byGroup(rows, (r) => r[key]);
     for (const g of groups) tissus.push(g);
   }
 
   const doublures = byGroup(rows, (r) => r.doublure);
-  const rails     = byGroup(rows, (r) => r.type_mecanisme);
+
+  // Aggregate both legacy type_mecanisme and new mecanisme_store
+  const railsLegacy = byGroup(rows, (r) => r.type_mecanisme);
+  const railsNew = byGroup(rows, (r) => r.mecanisme_store);
+  const rails = [...railsLegacy, ...railsNew];
 
   return { tissus, doublures, rails };
 }

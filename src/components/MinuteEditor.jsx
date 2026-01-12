@@ -22,6 +22,7 @@ import { EXTRA_DEPENSES_SCHEMA } from "../lib/schemas/extraDepenses";
 import { RIDEAUX_DEFAULT_VISIBILITY, DECORS_DEFAULT_VISIBILITY, STORES_DEFAULT_VISIBILITY } from "../lib/constants/gridDefaults";
 import { DECORS_SCHEMA } from "../lib/schemas/decors";
 import { STORES_SCHEMA } from "../lib/schemas/stores";
+import { AUTRES_SCHEMA } from "../lib/schemas/autres";
 import { parseRideauxImport } from '../utils/importRideaux';
 
 
@@ -148,7 +149,8 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
       // Determine schema for recompute
       let targetSchema = schema;
       const p = row.produit;
-      if (p === 'Autre Dépense') targetSchema = EXTRA_DEPENSES_SCHEMA;
+      if (row.section === 'autre') targetSchema = AUTRES_SCHEMA;
+      else if (p === 'Autre Dépense') targetSchema = EXTRA_DEPENSES_SCHEMA;
       else if (p === 'Déplacement') targetSchema = CHIFFRAGE_SCHEMA_DEP;
       // Handle Decors specific schema
       else if (/d[ée]cor|coussin|plaid|t[êe]te|tenture|cache/i.test(p)) targetSchema = DECORS_SCHEMA;
@@ -188,6 +190,10 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
   const rowsStores = rows.filter((r) => /store/i.test(String(r.produit || "")));
 
   // Nouveaux sous-ensembles
+  // "Autre Confection" -> use 'section' property primarily to avoid confusion with "Autre Dépense"
+  // If section is missing (legacy), we rely on nothing? No, legacy rows won't be here.
+  const rowsAutreConfection = rows.filter(r => r.section === 'autre');
+
   const rowsDeplacement = rows.filter((r) => String(r.produit || "") === "Déplacement");
   const rowsAutre = rows.filter((r) => String(r.produit || "") === "Autre Dépense");
 
@@ -200,6 +206,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
     if (key === "rideaux") return { ...r, produit: "Rideau" };
     if (key === "decors") return { ...r, produit: "Coussins" }; // Default to Coussins
     if (key === "stores") return { ...r, produit: "Store Enrouleur" };
+    if (key === "autre_confection") return { ...r, produit: "", section: 'autre' };
     if (key === "deplacement") return { ...r, produit: "Déplacement" };
     if (key === "autre") return { ...r, produit: "Autre Dépense" };
     return r;
@@ -216,7 +223,14 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
 
     // Garder uniquement les lignes des AUTRES sous-ensembles
     const isInSubset = (r) => {
+      // Priority check for Section='autre' (new module)
+      if (key === 'autre_confection') return r.section === 'autre';
+
       const p = String(r.produit || "");
+
+      // Existing checks... avoid capturing 'section=autre' rows here!
+      if (r.section === 'autre') return false;
+
       if (key === "rideaux") return /rideau|voilage/i.test(p);
       if (key === "decors") return /d[ée]cor|coussin|plaid|t[êe]te|tenture|cache/i.test(p);
       if (key === "stores") return /store/i.test(p);
@@ -233,6 +247,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
     else if (key === 'deplacement') targetSchema = CHIFFRAGE_SCHEMA_DEP;
     else if (key === 'decors') targetSchema = DECORS_SCHEMA;
     else if (key === 'stores') targetSchema = STORES_SCHEMA;
+    else if (key === 'autre_confection') targetSchema = AUTRES_SCHEMA;
 
     // Fusion + recalcul des formules
     const next = [...others, ...normalizedChild];
@@ -250,7 +265,9 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
       produit: key === "rideaux" ? "Rideau" :
         key === "decors" ? "Coussins" : // Default to Coussins
           key === "stores" ? "Store Enrouleur" :
-            key === "deplacement" ? "Déplacement" : "Autre Dépense",
+            key === "deplacement" ? "Déplacement" :
+              key === "autre_confection" ? "" : "Autre Dépense",
+      section: key === "autre_confection" ? 'autre' : undefined, // TAG SECTION
       // Valeurs par défaut pour éviter les vides
       quantite: 1,
       largeur: 0,
@@ -264,6 +281,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
     else if (key === 'deplacement') targetSchema = CHIFFRAGE_SCHEMA_DEP;
     else if (key === 'decors') targetSchema = DECORS_SCHEMA;
     else if (key === 'stores') targetSchema = STORES_SCHEMA;
+    else if (key === 'autre_confection') targetSchema = AUTRES_SCHEMA;
 
     // 2. Recompute the new row immediately
     const computedRow = recomputeRow(newRow, targetSchema, extendedCtx);
@@ -280,6 +298,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
   const [selStores, setSelStores] = React.useState([]);
   const [selDeplacement, setSelDeplacement] = React.useState([]);
   const [selAutre, setSelAutre] = React.useState([]);
+  const [selAutreConfection, setSelAutreConfection] = React.useState([]);
 
   // Suppression de lignes
   const handleDeleteRows = (idsToDelete) => {
@@ -498,6 +517,34 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
             />
           </div>
         )}
+
+        {/* --- NOUVEAU MODULE AUTRE (Confection Générique) --- */}
+        <div style={{ ...S.modernCard, padding: 0, marginBottom: 24 }}>
+          <div style={{ padding: '20px 24px', borderBottom: `1px solid ${COLORS.border}` }}>
+            <div style={{ fontWeight: 700, fontSize: 16, color: '#374151', textTransform: 'uppercase' }}>AUTRE</div>
+          </div>
+          <MinuteGrid
+            title=""
+            rows={rowsAutreConfection}
+            onRowsChange={mergeChildRowsFor("autre_confection")}
+            schema={AUTRES_SCHEMA}
+            enableCellFormulas={enableCellFormulas}
+            formulaCtx={extendedCtx}
+            onAdd={React.useCallback(() => handleAddRow("autre_confection"), [handleAddRow])}
+            onDelete={() => handleDeleteRows(selAutreConfection)}
+            rowSelectionModel={selAutreConfection}
+            onRowSelectionModelChange={setSelAutreConfection}
+            catalog={catalog}
+            initialVisibilityModel={{ st_conf_pa: false, st_conf_pv: false, st_pose_pa: false, st_pose_pv: false }}
+            onDuplicateRow={handleDuplicateRow}
+            hideCroquis={true}
+            minuteId={minute?.id}
+            targetRowId={targetRowId}
+            onRowClick={onRowClick}
+            readOnly={readOnly}
+            currentUser={currentUser}
+          />
+        </div>
       </>
 
       <CatalogManager

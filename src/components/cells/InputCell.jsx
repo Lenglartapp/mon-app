@@ -55,7 +55,10 @@ function InputCell({
 
   // 🔓 NEW: autorise l’édition des colonnes "formula" (pour taper =...)
   // même si le schéma met readOnly: true.
-  const baseReadOnly = !!col?.readOnly;
+  // 🔓 NEW: autorise l’édition des colonnes "formula" (pour taper =...)
+  // même si le schéma met readOnly: true.
+  const colReadOnly = typeof col?.readOnly === "function" ? col.readOnly(row) : !!col?.readOnly;
+  const baseReadOnly = colReadOnly;
   const allowOverrideForFormula = type === "formula";
   const readOnly = allowOverrideForFormula ? false : baseReadOnly;
 
@@ -303,7 +306,15 @@ function InputCell({
         inputMode="decimal"
       />
     ) : (
-      <div onDoubleClick={() => !readOnly && onStartEdit?.()}>
+      <div
+        onDoubleClick={() => !readOnly && onStartEdit?.()}
+        style={{
+          color: readOnly ? "#9CA3AF" : "inherit",
+          backgroundColor: readOnly ? "#F9FAFB" : "transparent",
+          fontStyle: readOnly ? "italic" : "normal",
+          padding: "2px 4px", borderRadius: 4
+        }}
+      >
         {format(value) || "—"}
       </div>
     );
@@ -526,7 +537,14 @@ function InputCell({
     ) : (
       <div
         onDoubleClick={() => !readOnly && onStartEdit?.()}
-        style={{ cursor: readOnly ? "default" : "text" }}
+        style={{
+          cursor: readOnly ? "default" : "text",
+          color: readOnly ? "#9CA3AF" : "inherit", // Gray text
+          backgroundColor: readOnly ? "#F9FAFB" : "transparent", // Light gray bg
+          fontStyle: readOnly ? "italic" : "normal",
+          padding: "2px 4px",
+          borderRadius: 4
+        }}
       >
         {value ?? "—"}
       </div>
@@ -538,7 +556,7 @@ function InputCell({
     <input
       ref={textRef}
       type="text"
-      defaultValue={editDefault ?? (value ?? "")}  // ← NEW: montre "=..." si override
+      defaultValue={editDefault ?? (value ?? "")}
       onKeyDown={handleInputKeyDown}
       onBlur={(e) => commitOnce(e.target.value)}
       onClick={stopAll}
@@ -548,7 +566,14 @@ function InputCell({
   ) : (
     <div
       onDoubleClick={() => !readOnly && onStartEdit?.()}
-      style={{ cursor: readOnly ? "default" : "text" }}
+      style={{
+        cursor: readOnly ? "default" : "text",
+        color: readOnly ? "#9CA3AF" : "inherit",
+        backgroundColor: readOnly ? "#F9FAFB" : "transparent",
+        fontStyle: readOnly ? "italic" : "normal",
+        padding: "2px 4px",
+        borderRadius: 4
+      }}
     >
       {value ?? "—"}
     </div>

@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
@@ -11,6 +11,22 @@ import CloseIcon from '@mui/icons-material/Close';
 import { DataGrid, GridToolbarContainer, GridToolbarFilterButton } from '@mui/x-data-grid';
 import { frFR } from '@mui/x-data-grid/locales';
 import { Plus, Trash2 } from 'lucide-react';
+import { COLORS } from '../lib/constants/ui';
+
+// Helper Style Island Nav (Copied from ChiffrageScreen)
+const getNavStyle = (isActive) => ({
+    padding: '6px 16px', // Reduced padding for finer look
+    borderRadius: 99,
+    border: 'none',
+    cursor: 'pointer',
+    fontSize: 14,
+    fontWeight: 500,
+    transition: 'all 0.2s cubic-bezier(0.25, 1, 0.5, 1)',
+    outline: 'none',
+    background: isActive ? '#1E2447' : 'transparent',
+    color: isActive ? '#FFFFFF' : '#4B5563',
+    boxShadow: isActive ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+});
 
 function CatalogToolbar({ onAdd, onDelete, selectedCount }) {
     return (
@@ -38,27 +54,40 @@ function CatalogToolbar({ onAdd, onDelete, selectedCount }) {
 
 export default function CatalogManager({ open, onClose, catalog, onCatalogChange, ...props }) {
     const [selectionModel, setSelectionModel] = useState([]);
+    const [activeTab, setActiveTab] = React.useState('catalog');
+    const [activeCategoryTab, setActiveCategoryTab] = React.useState('tissus'); // New Sub-tab state
+    const [localSettings, setLocalSettings] = React.useState(props.settings || { taux_horaire: 135, prix_nuit: 180, prix_repas: 25 });
 
-    const handleAddRow = () => {
-        const newId = catalog.length > 0 ? Math.max(...catalog.map(r => r.id)) + 1 : 1;
-        const newRow = {
-            id: newId,
-            name: '', // Will be computed
-            provider: '',
-            reference: '',
-            color: '',
-            category: '',
-            buyPrice: undefined,
-            sellPrice: undefined,
-            width: undefined,
-            motif: false,
-            raccord_v: undefined,
-            raccord_h: undefined,
-            unit: 'ml'
-        };
-        // Auto-compute name immediately
-        newRow.name = 'Nouvel Article (à compléter)';
-        onCatalogChange([...catalog, newRow]);
+    // Track previous props to prevent overwrite loops caused by parent re-renders
+    const prevSettingsRef = useRef(JSON.stringify(props.settings));
+
+    useEffect(() => {
+        const nextStr = JSON.stringify(props.settings);
+        if (nextStr !== prevSettingsRef.current) {
+            // Only update if external data genuinely changed
+            setLocalSettings(props.settings);
+            prevSettingsRef.current = nextStr;
+        }
+    }, [props.settings]);
+
+    const onSettingsChange = props.onSettingsChange;
+    // Debounce ref
+    const debounceRef = useRef(null);
+
+    const handleSettingChange = (key, val) => {
+        // 1. Update local UI immediately
+        const finalVal = val === '' ? '' : Number(val);
+        const newSettings = { ...localSettings, [key]: finalVal };
+        setLocalSettings(newSettings);
+
+        // 2. Debounce parent update
+        if (debounceRef.current) clearTimeout(debounceRef.current);
+
+        debounceRef.current = setTimeout(() => {
+            if (onSettingsChange) {
+                onSettingsChange(newSettings);
+            }
+        }, 800);
     };
 
     const handleDeleteRows = () => {
@@ -78,155 +107,171 @@ export default function CatalogManager({ open, onClose, catalog, onCatalogChange
         return updatedRow;
     };
 
-    // Helper for Category Chips (Pastel/Cute Style)
-    const stringToColor = (string) => {
-        if (!string) return '#eee';
-        let hash = 0;
-        for (let i = 0; i < string.length; i++) {
-            hash = string.charCodeAt(i) + ((hash << 5) - hash);
+    // Filtered Rows for DataGrid
+    const filteredRows = useMemo(() => {
+        if (!catalog) return [];
+        if (activeCategoryTab === 'tissus') {
+            return catalog.filter(r => ['Tissu', 'Tissus', 'Doublure', 'Doublures', 'Inter', 'Confection'].includes(r.category));
         }
-        // Generate color
-        const c = (hash & 0x00ffffff).toString(16).toUpperCase();
-        const hex = "00000".substring(0, 6 - c.length) + c;
+        if (activeCategoryTab === 'rails') {
+            return catalog.filter(r => ['Rail', 'Rails', 'Tringle', 'Mecanisme', 'Mécanisme'].includes(r.category));
+        }
+        if (activeCategoryTab === 'stores') {
+            return catalog.filter(r => ['Store', 'Stores', 'Mecanisme Store'].includes(r.category));
+        }
+        if (activeCategoryTab === 'passementerie') {
+            return catalog.filter(r => ['Passementerie'].includes(r.category));
+        }
+        return catalog;
+    }, [catalog, activeCategoryTab]);
 
-        // Mix with white for pastel (Soft & Cute)
-        const r = parseInt(hex.substring(0, 2), 16);
-        const g = parseInt(hex.substring(2, 4), 16);
-        const b = parseInt(hex.substring(4, 6), 16);
+    const handleAddRow = () => {
+        const newId = catalog.length > 0 ? Math.max(...catalog.map(r => r.id)) + 1 : 1;
 
-        const mix = (val) => Math.round((val + 255) / 2);
+        // Determine category based on active tab
+        let defaultCategory = 'Tissu';
+        if (activeCategoryTab === 'rails') defaultCategory = 'Rail';
+        if (activeCategoryTab === 'stores') defaultCategory = 'Store';
+        if (activeCategoryTab === 'passementerie') defaultCategory = 'Passementerie';
 
-        return `rgb(${mix(r)}, ${mix(g)}, ${mix(b)})`;
+        const newRow = {
+            id: newId,
+            name: '', // Will be computed
+            provider: '',
+            reference: '',
+            color: '',
+            category: defaultCategory, // Pre-fill based on tab
+            buyPrice: undefined,
+            sellPrice: undefined,
+            width: undefined,
+            motif: false,
+            raccord_v: undefined,
+            raccord_h: undefined,
+            unit: 'ml'
+        };
+        // Auto-compute name immediately
+        newRow.name = 'Nouvel Article (à compléter)';
+        onCatalogChange([...catalog, newRow]);
     };
 
-    const columns = [
-        { field: 'provider', headerName: 'Fournisseur', width: 140, editable: true },
-        { field: 'reference', headerName: 'Référence', width: 140, editable: true },
-        { field: 'color', headerName: 'Coloris', width: 120, editable: true },
-        // Name is hidden but maintained as the ID for other components
-        { field: 'name', headerName: 'Nom Complet(ID)', width: 250, editable: false, description: 'Généré automatiquement (Fournisseur + Ref + Coloris)' },
-        {
-            field: 'category',
-            headerName: 'Catégorie',
-            width: 150,
-            editable: true,
-            type: 'singleSelect',
-            valueOptions: ['Tissu', 'Rail', 'Passementerie'],
-            renderCell: (params) => {
-                if (!params.value) return null;
-                let color = 'default';
-                if (['Tissu', 'Confection', 'Doublure', 'Inter'].includes(params.value)) color = 'primary';
-                else if (params.value === 'Rail' || params.value === 'Tringle') color = 'secondary';
-                else if (params.value === 'Passementerie') color = 'warning';
+    const columns = useMemo(() => {
+        const base = [
+            { field: 'provider', headerName: 'Fournisseur', width: 140, editable: true },
+            { field: 'reference', headerName: 'Référence', width: 140, editable: true },
+            { field: 'color', headerName: 'Coloris', width: 120, editable: true },
+            { field: 'name', headerName: 'Nom Complet(ID)', width: 250, editable: false, description: 'Généré automatiquement (Fournisseur + Ref + Coloris)' },
+        ];
 
-                return (
-                    <Chip
-                        label={params.value}
-                        color={color}
-                        variant="filled"
-                        size="small"
-                        sx={{ fontWeight: 500 }}
-                    />
-                );
-            }
-        },
-        {
-            field: 'buyPrice',
-            headerName: 'Prix Achat (€)',
-            width: 130,
-            editable: true,
-            type: 'number',
-            valueFormatter: (value) => {
-                if (value === undefined || value === null || value === '') return '';
-                return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(value);
-            }
-        },
-        {
-            field: 'sellPrice',
-            headerName: 'Prix Vente (€)',
-            width: 130,
-            editable: true,
-            type: 'number',
-            valueFormatter: (value) => {
-                if (value === undefined || value === null || value === '') return '';
-                return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(value);
-            }
-        },
-        { field: 'width', headerName: 'Laize (cm)', width: 100, editable: true, type: 'number' },
-        { field: 'motif', headerName: 'Motif ?', width: 80, editable: true, type: 'boolean' },
-        { field: 'raccord_v', headerName: 'Raccord V (cm)', width: 110, editable: true, type: 'number' },
-        { field: 'raccord_h', headerName: 'Raccord H (cm)', width: 110, editable: true, type: 'number' },
-        {
-            field: 'unit',
-            headerName: 'Unité',
-            width: 100,
-            editable: true,
-            type: 'singleSelect',
-            valueOptions: ['ml', 'm2', 'pce', 'h']
-        },
-    ];
+        const priceCols = [
+            {
+                field: 'buyPrice',
+                headerName: 'Prix Achat (€)',
+                width: 130,
+                editable: true,
+                type: 'number',
+                valueFormatter: (value) => {
+                    if (value === undefined || value === null || value === '') return '';
+                    return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(value);
+                }
+            },
+            {
+                field: 'sellPrice',
+                headerName: 'Prix Vente (€)',
+                width: 130,
+                editable: true,
+                type: 'number',
+                valueFormatter: (value) => {
+                    if (value === undefined || value === null || value === '') return '';
+                    return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(value);
+                }
+            },
+            {
+                field: 'unit',
+                headerName: 'Unité',
+                width: 100,
+                editable: true,
+                type: 'singleSelect',
+                valueOptions: ['ml', 'm2', 'pce', 'h']
+            },
+        ];
 
-    const [activeTab, setActiveTab] = React.useState('catalog');
-    const [localSettings, setLocalSettings] = React.useState(props.settings || { taux_horaire: 135, prix_nuit: 180, prix_repas: 25 });
+        const fabricCols = [
+            { field: 'width', headerName: 'Laize (cm)', width: 100, editable: true, type: 'number' },
+            { field: 'motif', headerName: 'Motif ?', width: 80, editable: true, type: 'boolean' },
+            { field: 'raccord_v', headerName: 'Raccord V (cm)', width: 110, editable: true, type: 'number' },
+            { field: 'raccord_h', headerName: 'Raccord H (cm)', width: 110, editable: true, type: 'number' },
+        ];
 
-    // Track previous props to prevent overwrite loops caused by parent re-renders
-    const prevSettingsRef = React.useRef(JSON.stringify(props.settings));
+        let cols = [...base];
 
-    React.useEffect(() => {
-        const nextStr = JSON.stringify(props.settings);
-        if (nextStr !== prevSettingsRef.current) {
-            // Only update if external data genuinely changed
-            setLocalSettings(props.settings);
-            prevSettingsRef.current = nextStr;
+        // PA / PV / Unit: Visible for Tissus, Rails AND Passementerie
+        if (['tissus', 'rails', 'passementerie'].includes(activeCategoryTab)) {
+            cols = [...cols, ...priceCols];
         }
-    }, [props.settings]);
 
-    const onSettingsChange = props.onSettingsChange;
+        // Fabric Specs (Laize, Motif, Raccords): Visible for Tissus ONLY
+        if (activeCategoryTab === 'tissus') {
+            cols = [...cols, ...fabricCols];
+        }
 
-    // Debounce ref
-    const debounceRef = React.useRef(null);
-
-    const handleSettingChange = (key, val) => {
-        // 1. Update local UI immediately
-        const finalVal = val === '' ? '' : Number(val);
-        const newSettings = { ...localSettings, [key]: finalVal };
-        setLocalSettings(newSettings);
-
-        // 2. Debounce parent update
-        if (debounceRef.current) clearTimeout(debounceRef.current);
-
-        debounceRef.current = setTimeout(() => {
-            if (onSettingsChange) {
-                onSettingsChange(newSettings);
-            }
-        }, 800);
-    };
+        return cols;
+    }, [activeCategoryTab]);
 
     return (
         <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
-            <DialogTitle sx={{ m: 0, p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ display: 'flex', gap: 20 }}>
-                    <span
-                        onClick={() => setActiveTab('catalog')}
-                        style={{ cursor: 'pointer', opacity: activeTab === 'catalog' ? 1 : 0.5, textDecoration: activeTab === 'catalog' ? 'underline' : 'none' }}
-                    >
-                        Bibliothèque d'Articles
-                    </span>
-                    <span
-                        onClick={() => setActiveTab('settings')}
-                        style={{ cursor: 'pointer', opacity: activeTab === 'settings' ? 1 : 0.5, textDecoration: activeTab === 'settings' ? 'underline' : 'none' }}
-                    >
-                        Paramètres Globaux
-                    </span>
+            <DialogTitle sx={{ m: 0, p: 2, background: COLORS.page }}>
+                {/* Header Row: Titles + Close */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', gap: 20 }}>
+                        <span
+                            onClick={() => setActiveTab('catalog')}
+                            style={{ cursor: 'pointer', opacity: activeTab === 'catalog' ? 1 : 0.5, textDecoration: activeTab === 'catalog' ? 'underline' : 'none', fontWeight: activeTab === 'catalog' ? 'bold' : 'normal' }}
+                        >
+                            Bibliothèque d'Articles
+                        </span>
+                        <span
+                            onClick={() => setActiveTab('settings')}
+                            style={{ cursor: 'pointer', opacity: activeTab === 'settings' ? 1 : 0.5, textDecoration: activeTab === 'settings' ? 'underline' : 'none', fontWeight: activeTab === 'settings' ? 'bold' : 'normal' }}
+                        >
+                            Paramètres Globaux
+                        </span>
+                    </div>
+                    <IconButton onClick={onClose}>
+                        <CloseIcon />
+                    </IconButton>
                 </div>
-                <IconButton onClick={onClose}>
-                    <CloseIcon />
-                </IconButton>
+
+                {/* Sub-Tabs (Capsule Style) - Centered below title */}
+                {activeTab === 'catalog' && (
+                    <div style={{ display: 'flex', justifyContent: 'center', marginTop: 16 }}>
+                        <div style={{
+                            display: 'inline-flex',
+                            background: 'white', // White background as requested
+                            padding: 3, // Reduced container padding
+                            borderRadius: 99,
+                            gap: 4,
+                            flexWrap: 'wrap',
+                            justifyContent: 'center',
+                            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)', // Drop Shadow
+                            border: '1px solid #f3f4f6' // Subtle border to ensure visibility on white dialog
+                        }}>
+                            {['tissus', 'rails', 'stores', 'passementerie'].map((tab) => (
+                                <button
+                                    key={tab}
+                                    style={getNavStyle(activeCategoryTab === tab)}
+                                    onClick={() => setActiveCategoryTab(tab)}
+                                >
+                                    {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
             </DialogTitle>
-            <DialogContent dividers sx={{ height: '70vh', p: 0 }}>
+            <DialogContent dividers sx={{ height: '70vh', p: 0, background: 'white' }}>
                 {activeTab === 'catalog' ? (
                     <DataGrid
-                        rows={catalog}
+                        rows={filteredRows}
                         columns={columns}
                         processRowUpdate={processRowUpdate}
                         checkboxSelection

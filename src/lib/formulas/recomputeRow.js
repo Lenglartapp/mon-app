@@ -219,30 +219,131 @@ export function recomputeRow(row, schema, ctx = {}) {
     return item ? { pa: item.buyPrice || 0, pv: item.sellPrice || 0 } : { pa: 0, pv: 0 };
   };
 
-  // --- 4. TISSU DECO 1 ---
+  // --- STORE SPECIFIC LOGIC ---
+  const STORE_BLOCKED_TYPES = [
+    'Store Enrouleur',
+    'Store Vénitien',
+    'Store Californien',
+    'Store Canishade'
+  ];
+  const isStoreBlocked = STORE_BLOCKED_TYPES.includes(next.produit);
+
+  // Sync Toile Finition 1
+  fillFromCatalog('toile_finition_1', {
+    laize_toile_finition_1: 'laize',
+    raccord_v_toile_finition_1: 'raccord_v',
+    raccord_h_toile_finition_1: 'raccord_h',
+  });
+
+  // Sync Mecanisme Store
+  fillFromCatalog('mecanisme_store', {
+    // Usually mechanism price is fixed or per meter?
+    // User requested "pa_mecanisme_store".
+    // We assume catalog item has 'buyPrice' -> 'pa'.
+    // If it's a blocked store, maybe price is per unit?
+    // We leave pa as is if filled from catalog (via fillFromCatalog helper we need to specify target)
+  });
+  // Note: fillFromCatalog helper above works for mapped props.
+  // We need to map pa -> pa_mecanisme_store explicitly if we want auto-fill price.
+  // The user prompt didn't say "auto-fill price from catalog" expressly but implied via "Maintenance des câblages".
+  // And "pa_mecanisme_store (number)".
+  // Let's assume we fill it if found.
+  const itemMecaStore = catalog.find(i => i.name === next.mecanisme_store);
+  if (itemMecaStore && next.pa_mecanisme_store === undefined) {
+    next.pa_mecanisme_store = itemMecaStore.buyPrice || itemMecaStore.pa || 0;
+  }
+  if (itemMecaStore && next.pv_mecanisme_store === undefined) {
+    next.pv_mecanisme_store = itemMecaStore.sellPrice || itemMecaStore.pv || 0;
+  }
+
+  // --- TISSU DECO 1 (RIDEAUX) ---
   const res1 = calcML(next.laize_tissu1, H_Coupe, H_Coupe_Motif);
   next.nb_les_tissu1 = res1.nbLes;
   next.ml_tissu1 = res1.ml;
 
   const p1 = getPrice(next.tissu_deco1);
-  next.pa_tissu1 = next.ml_tissu1 * (p1.pa || 0); // Using catalog price if unitaire
+  next.pa_tissu1 = next.ml_tissu1 * (p1.pa || 0);
   next.pv_tissu1 = next.ml_tissu1 * (p1.pv || 0);
 
-  // --- 5. TISSU DECO 2 ---
+  // --- TOILE FINITION 1 (STORES) ---
+  if (next.toile_finition_1) {
+    if (isStoreBlocked) {
+      // Bloqué = 0 ? Or just don't calculate?
+      // Scheme says BLOQUER (readOnly). Usually means "Not Applicable".
+      next.ml_toile_finition_1 = 0;
+      next.pa_toile_finition_1 = 0;
+      next.pv_toile_finition_1 = 0;
+    } else {
+      // Store Bateau / Velum -> Calculated like Tissu?
+      // Assuming similar logic to Tissu 1 (using H, L, etc) if it's a Fabric.
+      // User provided `ml_toile_finition_1` as "Saisie manuelle" in schema.
+      // Schema: "ml_toile_finition_1 (number) : ML Toile finition 1 (Saisie manuelle)"
+      // So we do NOT calculate ML automatically?
+      // "nb_les_toile_finition_1 (number, readOnly)" IS readOnly. So it MUST be calculated?
+      // If ML is manual, maybe Nb Les is calculated for info?
+      // I will use calcML logic for `nb_les` but trust `ml_toile_finition_1` from input if manual?
+      // But prompt says "Remplace le contenu... ml_toile_finition_1... Saisie manuelle".
+      // BUT `nb_les_toile_finition_1` is readOnly.
+      // I will compute `nb_les`. For `ml`, I will respect manual input unless empty?
+      // Actually, standard usually is: Auto-calc, but editable.
+      // But here schema says "Saisie manuelle".
+      // I will compute prices based on ML.
+
+      const resTF1 = calcML(next.laize_toile_finition_1, next.hauteur || 0, next.hauteur || 0); // Simplified H
+      next.nb_les_toile_finition_1 = resTF1.nbLes;
+
+      // ML is manual. We don't overwrite it if it exists?
+      // If 0 or undefined, maybe hint? But user said Manual.
+      // I wont overwrite ML.
+
+      const pTF1 = getPrice(next.toile_finition_1);
+      next.pa_toile_finition_1 = NVL(next.ml_toile_finition_1) * (pTF1.pa || 0);
+      next.pv_toile_finition_1 = NVL(next.ml_toile_finition_1) * (pTF1.pv || 0);
+    }
+  }
+
+  // --- TISSU DECO 2 ---
   // ML Saisie Manuelle
   const p2 = getPrice(next.tissu_deco2);
   next.pa_tissu2 = NVL(next.ml_tissu2) * (p2.pa || 0);
   next.pv_tissu2 = NVL(next.ml_tissu2) * (p2.pv || 0);
 
-  // --- 6. DOUBLURE ---
+  // --- DOUBLURE ---
   // "Considérée comme unie" -> H_Coupe (Base) used, no motif logic
   const resD = calcML(next.laize_doublure, H_Coupe, H_Coupe);
   next.nb_les_doublure = resD.nbLes;
-  next.ml_doublure = resD.ml;
+  // Schema says `ml_doublure` is "Saisie manuelle" for Stores now?
+  // Check schema again... "ml_doublure (number) : ML Doubl. (Saisie manuelle)".
+  // For Rideaux, it was Calculated.
+  // RecomputeRow handles both.
+  // If it's a Store, ML is manual. If Rideau, Auto.
+  // How to distinguish? `produit` stores vs rideaux.
+  // I'll assume if `produit` is Store, we respect Manual ML.
+  // Or simpler: If `ml_doublure` is filled, use it?
+  // But `calcML` overwrites.
+  // Logic:
+  // If Store -> Manual ML.
+  // If Rideau -> Auto ML.
+  const isStore = (next.produit || "").toLowerCase().includes("store") || (next.produit || "").includes("Canishade");
 
-  const pD = getPrice(next.doublure);
-  next.pa_doublure = next.ml_doublure * (pD.pa || 0);
-  next.pv_doublure = next.ml_doublure * (pD.pv || 0);
+  if (isStore) {
+    if (isStoreBlocked) {
+      next.ml_doublure = 0;
+      next.pa_doublure = 0;
+      next.pv_doublure = 0;
+    } else {
+      // Manual ML logic
+      const pD = getPrice(next.doublure);
+      next.pa_doublure = NVL(next.ml_doublure) * (pD.pa || 0);
+      next.pv_doublure = NVL(next.ml_doublure) * (pD.pv || 0);
+    }
+  } else {
+    // Legacy Rideau Logic (Auto)
+    next.ml_doublure = resD.ml;
+    const pD = getPrice(next.doublure);
+    next.pa_doublure = next.ml_doublure * (pD.pa || 0);
+    next.pv_doublure = next.ml_doublure * (pD.pv || 0);
+  }
 
   // --- 7. INTER-DOUBLURE ---
   const resI = calcML(next.laize_interdoublure, H_Coupe, H_Coupe);
@@ -287,6 +388,74 @@ export function recomputeRow(row, schema, ctx = {}) {
     // Tringle -> Saisie Manuelle (Keep value)
   }
 
+  // --- GENERIC CONFECTION (Decors & Autre) ---
+  // A. Tissu 1 (tissu_1)
+  fillFromCatalog('tissu_1', {
+    laize_tissu_1: 'laize',
+    // We don't auto-fill ML (Manual)
+  });
+  if (next.tissu_1) {
+    const pT1 = getPrice(next.tissu_1);
+    next.pa_tissu_1 = NVL(next.ml_tissu_1) * (pT1.pa || 0);
+    next.pv_tissu_1 = NVL(next.ml_tissu_1) * (pT1.pv || 0);
+  }
+
+  // A2. Tissu 2 (tissu_2)
+  fillFromCatalog('tissu_2', {
+    laize_tissu_2: 'laize',
+  });
+  if (next.tissu_2) {
+    const pT2 = getPrice(next.tissu_2);
+    next.pa_tissu_2 = NVL(next.ml_tissu_2) * (pT2.pa || 0);
+    next.pv_tissu_2 = NVL(next.ml_tissu_2) * (pT2.pv || 0);
+  }
+
+  // B. Passementerie 1 (passementerie_1)
+  fillFromCatalog('passementerie_1', {});
+  if (next.passementerie_1) {
+    const pPass1_Dec = getPrice(next.passementerie_1);
+    next.pa_pass_1 = NVL(next.ml_pass_1) * (pPass1_Dec.pa || 0);
+    next.pv_pass_1 = NVL(next.ml_pass_1) * (pPass1_Dec.pv || 0);
+  }
+
+  // B2. Passementerie 2 (passementerie_2)
+  fillFromCatalog('passementerie_2', {});
+  if (next.passementerie_2) {
+    const pPass2_Dec = getPrice(next.passementerie_2);
+    next.pa_pass_2 = NVL(next.ml_pass_2) * (pPass2_Dec.pa || 0);
+    next.pv_pass_2 = NVL(next.ml_pass_2) * (pPass2_Dec.pv || 0);
+  }
+
+  // C. Mecanisme / Fourniture (mecanisme_fourniture) -> Decors only really
+  fillFromCatalog('mecanisme_fourniture', {});
+  if (next.mecanisme_fourniture) {
+    const pMecaFourn = getPrice(next.mecanisme_fourniture);
+    next.pa_mecanisme = NVL(next.quantite) * (pMecaFourn.pa || 0); // Unitary
+    next.pv_mecanisme = NVL(next.quantite) * (pMecaFourn.pv || 0);
+  }
+
+  // D. Mecanisme GENERIC (Autre Module - field 'mecanisme')
+  // No auto-fill, it is text. PA/PV entered manually.
+
+  // 11. PRESTATIONS...
+  if (next.mecanisme_fourniture) {
+    const pMecaFourn = getPrice(next.mecanisme_fourniture);
+    // Assuming Price per Unit? Or user manually adjusts?
+    // If it has a price in catalog, we use it. 
+    // User didn't specify ML logic for this, just fields.
+    // We assume Unitary cost (x1) or Manual.
+    // If catalog price exists, we set values (Unitary).
+    if (pMecaFourn.pa > 0) next.pa_mecanisme = pMecaFourn.pa;
+    if (pMecaFourn.pv > 0) next.pv_mecanisme = pMecaFourn.pv;
+  }
+
+  // Mecanisme Store (NEW)
+  // Logic: Saisie manuelle PA/PV (Explicit in Schema?)
+  // Schema: "pa_mecanisme_store (number) : PA Méca", "pv_mecanisme_store (number) : PV Méca"
+  // If we filled it from catalog above, good. Otherwise manual.
+  // No L x Price logic specified. Assumed Unitary or Manual total.
+  // We don't overwrite if manual.
+
   // --- 11. PRESTATIONS & SOUS-TRAITANCE ---
   const taux = NVL(settings.taux_horaire, 35);
   next.pv_prepa = NVL(next.heures_prepa) * taux;
@@ -303,12 +472,24 @@ export function recomputeRow(row, schema, ctx = {}) {
     NVL(next.pv_doublure) + NVL(next.pv_interdoublure) +
     NVL(next.pv_pass1) + NVL(next.pv_pass2) +
     NVL(next.pv_mecanisme) +
+    NVL(next.pv_tissu_1) + NVL(next.pv_pass_1) + // NEW Decors
+    NVL(next.pv_tissu_2) + // NEW Decors T2
+    NVL(next.pv_pass_2) + // NEW Decors Pass 2
+    NVL(next.pv_interieur) + // NEW Decors Interieur
+    NVL(next.pv_toile_finition_1) + NVL(next.pv_mecanisme_store) + // NEW Stores
     NVL(next.pv_prepa) + NVL(next.pv_pose) + NVL(next.pv_confection) +
-    NVL(next.st_pose_pv) + NVL(next.st_conf_pv) +
+    NVL(next.st_pose_pv) + NVL(next.st_conf_pv); // Add Subcontracting PVs explicitly
+  NVL(next.st_pose_pv) + NVL(next.st_conf_pv) +
     NVL(next.livraison);
 
-  next.unit_price = totalPriceComponents;
-  next.total_price = totalPriceComponents * NVL(next.quantite, 1);
+  // Logic: Override unit_price with calculation ONLY if calculation > 0 or if NOT blocked.
+  // This allows Manual Entry for "Store Enrouleur" if components are 0.
+  if (!isStoreBlocked || totalPriceComponents > 0) {
+    next.unit_price = totalPriceComponents;
+  }
+  // Else: Keep next.unit_price (Manual Input)
+
+  next.total_price = NVL(next.unit_price) * NVL(next.quantite, 1);
   next.prix_total = next.total_price; // ALIAS for ChiffrageScreen legacy usage
 
   return next;

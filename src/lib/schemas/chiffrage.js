@@ -5,7 +5,7 @@
 export const CHIFFRAGE_SCHEMA = [
   // 1 = Checkbox (Native DataGrid)
   // 2 = Actions (Détail)
-  { key: "detail", label: "Détail", type: "button", width: 90 },
+  { key: "detail", label: "Détail", type: "button", width: 100 },
 
   // 3
   { key: "zone", label: "Zone", type: "text", width: 100 },
