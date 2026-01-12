@@ -14,6 +14,9 @@ import { computeFormulas, preserveManualAfterCompute } from "../lib/formulas/com
 import { SCHEMA_64 } from "../lib/schemas/production.js";
 import { STAGES, DEFAULT_VIEWS } from "../lib/constants/views.js"; // Import DEFAULT_VIEWS
 import { recomputeRow } from "../lib/formulas/recomputeRow";
+import { DECORS_PROD_SCHEMA } from "../lib/schemas/decors"; // Import Prod Schema
+import { STORES_PROD_SCHEMA } from "../lib/schemas/stores";
+import { AUTRES_PROD_SCHEMA } from "../lib/schemas/autres";
 import { uid } from "../lib/utils/uid"; // Import uid
 
 import { Search, Filter, Layers3, Star, FlaskConical, Image as ImageIcon, Pin, Edit2 } from "lucide-react";
@@ -233,6 +236,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
   const rowsRideaux = filteredRows.filter((r) => /rideau|voilage/i.test(String(r.produit || "")));
   const rowsDecors = filteredRows.filter((r) => /d[ée]cor/i.test(String(r.produit || "")));
   const rowsStores = filteredRows.filter((r) => /store/i.test(String(r.produit || "")));
+  const rowsAutreConfection = filteredRows.filter(r => r.section === 'autre');
 
   const recomputeAll = (arr) => (arr || []).map(r => recomputeRow(r, schema));
 
@@ -281,10 +285,16 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
   // --- HANDLERS (AVEC SAUVEGARDE IMMÉDIATE) ---
 
   // 1. handleSubsetChange (Mise à jour avec historique)
-  const handleSubsetChange = (newSubsetRows, filterRegex) => {
+  const handleSubsetChange = (newSubsetRows, filterRegex, filterPredicate) => {
     if (!canEditProd) return;
     const allRows = rows;
-    const oldSubset = allRows.filter(r => filterRegex.test(String(r.produit || "")));
+
+    let oldSubset;
+    if (filterPredicate) {
+      oldSubset = allRows.filter(filterPredicate);
+    } else {
+      oldSubset = allRows.filter(r => filterRegex.test(String(r.produit || "")));
+    }
     const newIds = new Set(newSubsetRows.map(r => r.id));
     const deletedIds = new Set(oldSubset.filter(r => !newIds.has(r.id)).map(r => r.id));
     const updatedMap = new Map(newSubsetRows.map(r => [r.id, r]));
@@ -308,8 +318,28 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
   const mergeChildRowsFor = (tableKey) => {
     let regex = /./; // Default
     if (tableKey === "rideaux") regex = /rideau|voilage/i;
+    else if (tableKey === "rideaux") regex = /rideau|voilage/i;
     else if (tableKey === "stores") regex = /store/i;
     else if (tableKey === "decors") regex = /d[ée]cor/i;
+
+    // For Autre Confection, we might not use regex but direct check in handleSubsetChange? 
+    // Actually handleSubsetChange uses regex to IDENTIFY old rows to replace.
+    // IF section='autre', regex is weak. We should ideally update handleSubsetChange to support custom filter predicate.
+    // For now, let's skip regex for 'section' based updates if possible, or use a dummy regex that matches nothing if we rely on IDs?
+    // No, handleSubsetChange uses regex to find `oldSubset`.
+    // We should modify handleSubsetChange OR provide a regex that matches `rowsAutreConfection`.
+    // Since 'produit' is free text, no specific regex works perfectly unless we enforce a tag.
+    // BUT we filter by `section === 'autre'`.
+    // Let's adapt `mergeChildRowsFor` to pass a predicate function instead of regex?
+    // Changing that would break other calls.
+    // Alternative: pass a regex that matches EVERYTHING if we want? No that deletes everything.
+
+    // QUICK FIX: If tableKey is "autre_confection", we assume we shouldn't use regex for filtering old rows based on Product Name.
+    // We need to pass a "filter function" to handleSubsetChange.
+
+    if (tableKey === "autre_confection") {
+      return (nr) => handleSubsetChange(nr, null, (r) => r.section === 'autre');
+    }
 
     return (nr) => handleSubsetChange(nr, regex);
   };
@@ -348,11 +378,11 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
   };
 
 
-  // 4. handleAddRow
   const handleAddRow = (produitType = "Rideau") => {
     const newRow = {
       id: uid(),
-      produit: produitType,
+      produit: produitType === "Autre" ? "" : produitType, // Empty default for Autre
+      section: produitType === "Autre" ? "autre" : undefined, // Tag for Autre
       pair_un: "Paire",
       ampleur: 1.8,
       largeur: 100,
@@ -777,9 +807,9 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
             <MinuteGrid
               rows={rowsDecors}
               onRowsChange={mergeChildRowsFor("decors")}
-              schema={schema}
+              schema={DECORS_PROD_SCHEMA} // <--- PROD SCHEMA
               enableCellFormulas={true}
-              initialVisibilityModel={getVisibilityModel('bpf', 'decors', schema)}
+              // initialVisibilityModel={...} // No visibility model needed, schema is already trimmed
               onAdd={() => handleAddRow("Décor de lit")}
               onDuplicateRow={handleDuplicateRow}
               projectId={project?.id}
@@ -793,14 +823,28 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
             <MinuteGrid
               rows={rowsStores}
               onRowsChange={mergeChildRowsFor("stores")}
-              schema={schema}
+              schema={STORES_PROD_SCHEMA} // <--- PROD SCHEMA
               enableCellFormulas={true}
-              initialVisibilityModel={getVisibilityModel('bpf', 'stores', schema)}
+              // initialVisibilityModel={...} // No visibility model needed
               onAdd={() => handleAddRow("Store Bateau")}
               onDuplicateRow={handleDuplicateRow}
               projectId={project?.id}
               onRowClick={(id) => setOpenedRowId(id)}
 
+            />
+          </div>
+
+          <div style={cardStyle}>
+            <div style={cardHeaderStyle}>BPF Autre (Confection sur mesure)</div>
+            <MinuteGrid
+              rows={rowsAutreConfection}
+              onRowsChange={mergeChildRowsFor("autre_confection")}
+              schema={AUTRES_PROD_SCHEMA}
+              enableCellFormulas={true}
+              onAdd={() => handleAddRow("Autre")}
+              onDuplicateRow={handleDuplicateRow}
+              projectId={project?.id}
+              onRowClick={(id) => setOpenedRowId(id)}
             />
           </div>
         </>

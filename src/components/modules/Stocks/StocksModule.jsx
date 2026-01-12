@@ -11,7 +11,7 @@ import StockInventoryTab from './StockInventoryTab';
 import { useAuth } from '../../../auth';
 import { can } from '../../../lib/authz';
 import MovementModal from './MovementModal'; // Imported Modal
-import { PackagePlus, PackageMinus } from 'lucide-react'; // Icons
+import { PackagePlus, PackageMinus, ArrowLeftRight } from 'lucide-react'; // Icons
 
 // Mock Data for initial state
 export default function StocksModule({
@@ -93,6 +93,15 @@ export default function StocksModule({
                                     sx={{ fontWeight: 700, px: 3, color: 'white', textTransform: 'none', borderRadius: 2 }}
                                 >
                                     Sortie
+                                </Button>
+                                <Button
+                                    variant="contained"
+                                    color="primary"
+                                    startIcon={<ArrowLeftRight size={18} />}
+                                    onClick={() => handleOpenModal('MOVE')}
+                                    sx={{ fontWeight: 700, px: 3, textTransform: 'none', borderRadius: 2 }}
+                                >
+                                    Changer Emplacement
                                 </Button>
                             </>
                         )}

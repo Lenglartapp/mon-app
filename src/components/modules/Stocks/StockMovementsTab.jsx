@@ -33,14 +33,28 @@ const COLUMNS = [
         headerName: 'Flux',
         width: 120,
         renderCell: (params) => {
-            const isIn = params.value === 'IN';
+            const type = params.value; // IN, OUT, MOVE
+            let label = 'SORTIE';
+            let bg = '#FEE2E2';
+            let color = '#991B1B';
+
+            if (type === 'IN') {
+                label = 'ENTRÉE';
+                bg = '#D1FAE5';
+                color = '#065F46';
+            } else if (type === 'MOVE') {
+                label = 'DÉPLACEMENT';
+                bg = '#DBEAFE'; // Blue Light
+                color = '#1E40AF'; // Blue Dark
+            }
+
             return (
                 <Chip
-                    label={isIn ? 'ENTRÉE' : 'SORTIE'}
+                    label={label}
                     size="small"
                     sx={{
-                        bgcolor: isIn ? '#D1FAE5' : '#FEE2E2',
-                        color: isIn ? '#065F46' : '#991B1B',
+                        bgcolor: bg,
+                        color: color,
                         fontWeight: 700
                     }}
                 />

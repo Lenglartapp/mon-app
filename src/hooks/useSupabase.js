@@ -462,9 +462,12 @@ export const useStocks = () => {
             qty: Number(movement.qty),
             unit: movement.unit,
             user_name: movement.user,
-            location: movement.location,
+            location: movement.location, // Destination
             project: movement.project,
-            reason: movement.reason || null
+            // Pour MOVE, on indique l'origine dans le motif si pas déjà fait
+            reason: movement.type === 'MOVE'
+                ? `Déplacement depuis ${movement.from_location || '?'}`
+                : (movement.reason || null)
         };
 
         const { error: logError } = await supabase.from('inventory_logs').insert([logEntry]);
@@ -476,37 +479,89 @@ export const useStocks = () => {
         }
 
         // B. Mettre à jour le Stock (ITEMS)
-        const existingItem = inventory.find(i =>
-            i.product === movement.product &&
-            i.location === movement.location &&
-            (i.project === movement.project || (!i.project && !movement.project))
-        );
-
         let itemError = null;
 
-        if (existingItem) {
-            // UPDATE
-            const newQty = movement.type === 'IN'
-                ? Number(existingItem.qty) + Number(movement.qty)
-                : Number(existingItem.qty) - Number(movement.qty);
+        if (movement.type === 'MOVE') {
+            // --- LOGIQUE TRANSFERT (2 opérations) ---
 
-            const res = await supabase.from('inventory_items')
-                .update({ qty: newQty, updated_at: new Date() })
-                .eq('id', existingItem.id);
-            itemError = res.error;
-        } else if (movement.type === 'IN') {
-            // INSERT
-            // Attention : Si une colonne ici n'existe pas dans la DB, ça plantera
-            const res = await supabase.from('inventory_items').insert([{
-                product: movement.product,
-                ref: movement.ref,
-                location: movement.location,
-                qty: Number(movement.qty),
-                unit: movement.unit,
-                project: movement.project,
-                category: movement.category // Vérifier que cette colonne existe
-            }]);
-            itemError = res.error;
+            // 1. Décrémenter Source
+            const sourceItem = inventory.find(i =>
+                i.product === movement.product &&
+                i.location === movement.from_location
+            );
+
+            if (sourceItem) {
+                const newSourceQty = Number(sourceItem.qty) - Number(movement.qty);
+                // Si < 0 ? On laisse faire (ou delete si 0? Supabase ne delete pas auto)
+                const { error: srcErr } = await supabase.from('inventory_items')
+                    .update({ qty: newSourceQty, updated_at: new Date() })
+                    .eq('id', sourceItem.id);
+                if (srcErr) itemError = srcErr;
+            } else {
+                console.warn("Source item not found for MOVE (Sync issue?)");
+            }
+
+            // 2. Incrémenter Destination
+            const destItem = inventory.find(i =>
+                i.product === movement.product &&
+                i.location === movement.location
+            );
+
+            if (!itemError) {
+                if (destItem) {
+                    const newDestQty = Number(destItem.qty) + Number(movement.qty);
+                    const { error: dstErr } = await supabase.from('inventory_items')
+                        .update({ qty: newDestQty, updated_at: new Date() })
+                        .eq('id', destItem.id);
+                    if (dstErr) itemError = dstErr;
+                } else {
+                    // Création destination
+                    // On copie les infos du produit (Category, Ref...) depuis la source si possible
+                    const baseInfo = sourceItem || {};
+                    const { error: dstErr } = await supabase.from('inventory_items').insert([{
+                        product: movement.product,
+                        ref: movement.ref || baseInfo.ref,
+                        location: movement.location,
+                        qty: Number(movement.qty),
+                        unit: movement.unit,
+                        project: movement.project, // ? keep project link? usually yes
+                        category: movement.category || baseInfo.category
+                    }]);
+                    if (dstErr) itemError = dstErr;
+                }
+            }
+
+        } else {
+            // --- LOGIQUE STANDARD (IN/OUT) ---
+            const existingItem = inventory.find(i =>
+                i.product === movement.product &&
+                i.location === movement.location &&
+                (i.project === movement.project || (!i.project && !movement.project))
+            );
+
+            if (existingItem) {
+                // UPDATE
+                const newQty = movement.type === 'IN'
+                    ? Number(existingItem.qty) + Number(movement.qty)
+                    : Number(existingItem.qty) - Number(movement.qty);
+
+                const res = await supabase.from('inventory_items')
+                    .update({ qty: newQty, updated_at: new Date() })
+                    .eq('id', existingItem.id);
+                itemError = res.error;
+            } else if (movement.type === 'IN') {
+                // INSERT
+                const res = await supabase.from('inventory_items').insert([{
+                    product: movement.product,
+                    ref: movement.ref,
+                    location: movement.location,
+                    qty: Number(movement.qty),
+                    unit: movement.unit,
+                    project: movement.project,
+                    category: movement.category
+                }]);
+                itemError = res.error;
+            }
         }
 
         if (itemError) {

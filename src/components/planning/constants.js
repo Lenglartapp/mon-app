@@ -1,7 +1,7 @@
 export const INITIAL_GROUPS_CONFIG = {
     prepa: {
         id: 'prepa',
-        label: 'PRÉPARATION DES MÉCANISMES',
+        label: 'PRÉPARATION',
         bg: '#FFF7ED',
         members: [] // Sera rempli dynamiquement
     },

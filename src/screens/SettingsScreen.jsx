@@ -293,50 +293,10 @@ export default function SettingsScreen({ onBack }) {
                   overflow: 'hidden'
                 }}
               >
-                {/* --- GLOBAL SETTINGS (ADMIN ONLY) --- */}
-                {isAdmin && (
-                  <>
-                    <CardHeader
-                      title="Paramètres de l'Application"
-                      titleTypographyProps={{ variant: 'subtitle1', fontWeight: 800, color: '#be185d', letterSpacing: '0.05em', textTransform: 'uppercase', fontSize: 12 }}
-                      sx={{ px: 4, pt: 4, pb: 0 }}
-                    />
-                    <CardContent sx={{ px: 4, py: 3 }}>
-                      <Grid container spacing={3}>
-                        <Grid item xs={12} sm={6}>
-                          <TextField
-                            label="Taux Horaire Global (€/h)"
-                            type="number"
-                            fullWidth
-                            variant="outlined"
-                            size="small"
-                            value={globalSettings.hourlyRate}
-                            onChange={(e) => setGlobalSettings(prev => ({ ...prev, hourlyRate: Number(e.target.value) }))}
-                            InputProps={{ sx: inputStyle }}
-                          />
-                        </Grid>
-                        <Grid item xs={12} sm={6}>
-                          <TextField
-                            label="Taux TVA (%)"
-                            type="number"
-                            fullWidth
-                            variant="outlined"
-                            size="small"
-                            value={globalSettings.vatRate}
-                            onChange={(e) => setGlobalSettings(prev => ({ ...prev, vatRate: Number(e.target.value) }))}
-                            InputProps={{ sx: inputStyle }}
-                          />
-                        </Grid>
-                      </Grid>
-                    </CardContent>
-                    <Divider sx={{ mx: 4, borderColor: 'rgba(0,0,0,0.06)' }} />
-                  </>
-                )}
-
                 <CardHeader
                   title="Informations Personnelles"
                   titleTypographyProps={{ variant: 'subtitle1', fontWeight: 800, color: '#111827', letterSpacing: '0.05em', textTransform: 'uppercase', fontSize: 12 }}
-                  sx={{ px: 4, pt: isAdmin ? 3 : 4, pb: 0 }}
+                  sx={{ px: 4, pt: 4, pb: 0 }}
                 />
                 <CardContent sx={{ px: 4, py: 3 }}>
                   <Grid container spacing={3}>

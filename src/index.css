@@ -83,3 +83,9 @@ button{ background:none; border:0; padding:0; margin:0; font:inherit; color:inhe
   /* Couleurs fidèles à l’impression */
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
+/* AUTOMATICALLY ADDED FOR READONLY CELLS */
+.cell-read-only {
+  background-color: #f3f4f6 !important;
+  color: #9ca3af !important;
+  cursor: not-allowed !important;
+}

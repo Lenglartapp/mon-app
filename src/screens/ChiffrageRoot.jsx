@@ -127,7 +127,7 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
     client: "", // New Client Field
     note: "",
     status: "DRAFT",
-    modules: { rideau: true, store: true, decor: true },
+    modules: { rideau: true, store: true, decor: true, autre_confection: true },
   });
 
   const [isCreating, setIsCreating] = useState(false);
@@ -216,7 +216,11 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
       res = res.filter(m => [m.name, m.client, m.owner, m.notes].some(x => String(x || "").toLowerCase().includes(q)));
     }
 
-    if (!showArchived) {
+    if (showArchived) {
+      // Show ONLY Archived (Lost/Completed)
+      res = res.filter(m => ['LOST', 'ORDER_COMPLETED'].includes(m.status));
+    } else {
+      // Show ONLY Active (Not Lost/Completed)
       res = res.filter(m => !['LOST', 'ORDER_COMPLETED'].includes(m.status));
     }
 
@@ -238,7 +242,7 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
   const handleCreateMinute = async () => {
     const { charge, projet, client, note, status, modules } = newMin;
     if (!projet.trim() || !charge.trim()) return;
-    if (!modules.rideau && !modules.store && !modules.decor) return;
+    if (!modules.rideau && !modules.store && !modules.decor && !modules.autre_confection) return;
 
     setIsCreating(true);
     try {
@@ -324,17 +328,32 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
             <h1 style={{ fontSize: 28, fontWeight: 700, color: '#1F2937', margin: 0, letterSpacing: '-0.5px' }}>Chiffrages</h1>
           </div>
           <div style={{ display: 'flex', gap: 12 }}>
-            <Tooltip title={showArchived ? "Masquer dossiers terminés" : "Voir dossiers terminés"}>
-              <IconButton onClick={() => setShowArchived(!showArchived)} color={showArchived ? "primary" : "default"}>
-                <Archive size={20} />
-              </IconButton>
-            </Tooltip>
             <button onClick={() => setNewMinOpen(true)} style={{ background: '#1E2447', color: 'white', padding: '8px 16px', borderRadius: 8, border: 'none', display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontWeight: 600, boxShadow: '0 2px 4px rgba(0,0,0,0.1)', marginBottom: 4 }}>
               <Plus size={18} /> Nouveau Chiffrage
             </button>
           </div>
         </div>
-        <SmartFilterBar searchQuery={searchQuery} onSearchChange={setSearchQuery} activeFilters={activeFilters} onRemoveFilter={removeFilter} />
+
+        {/* Search & Filter Row */}
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          <SmartFilterBar searchQuery={searchQuery} onSearchChange={setSearchQuery} activeFilters={activeFilters} onRemoveFilter={removeFilter} />
+          <Tooltip title={showArchived ? "Retour aux dossiers actifs" : "Voir archives (Terminés/Perdus)"}>
+            <IconButton
+              onClick={() => setShowArchived(!showArchived)}
+              sx={{
+                bgcolor: showArchived ? '#DBEAFE' : 'white',
+                color: showArchived ? '#1E40AF' : '#6B7280',
+                border: '1px solid #E5E7EB',
+                borderRadius: 2,
+                height: 38, // Match FilterBar height roughly (smaller)
+                width: 38,
+                '&:hover': { bgcolor: showArchived ? '#BFDBFE' : '#F9FAFB' }
+              }}
+            >
+              <Archive size={20} />
+            </IconButton>
+          </Tooltip>
+        </div>
       </div>
 
       <div style={{ maxWidth: 1200, width: '100%', margin: '0 auto', background: 'white', borderRadius: 12, boxShadow: '0 1px 3px rgba(0,0,0,0.05), 0 4px 6px rgba(0,0,0,0.02)', overflow: 'hidden' }}>
@@ -448,7 +467,7 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
                       </div>
                     </td>
                     <td style={{ padding: '12px 16px', fontSize: 12, color: '#4B5563' }}>
-                      {(m.modules?.rideau || m.modules?.store || m.modules?.decor) ? [m.modules?.rideau && "Rideaux", m.modules?.store && "Stores", m.modules?.decor && "Décors"].filter(Boolean).join(" · ") : "—"}
+                      {(m.modules?.rideau || m.modules?.store || m.modules?.decor || m.modules?.autre_confection) ? [m.modules?.rideau && "Rideaux", m.modules?.store && "Stores", m.modules?.decor && "Décors", m.modules?.autre_confection && "Autre"].filter(Boolean).join(" · ") : "—"}
                     </td>
                     <td style={{ padding: '12px 16px', textAlign: 'right' }} onClick={(e) => e.stopPropagation()}>
                       <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end', opacity: 0.6 }}>
@@ -510,10 +529,11 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
                 {/* Modules */}
                 <div>
                   <div style={{ fontSize: 13, fontWeight: 500, color: "#374151", marginBottom: 8 }}>Modules à inclure</div>
-                  <div style={{ display: 'flex', gap: 16 }}>
+                  <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
                     <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}><input type="checkbox" checked={newMin.modules.rideau} onChange={(e) => setNewMin(m => ({ ...m, modules: { ...m.modules, rideau: e.target.checked } }))} /> Rideaux</label>
                     <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}><input type="checkbox" checked={newMin.modules.store} onChange={(e) => setNewMin(m => ({ ...m, modules: { ...m.modules, store: e.target.checked } }))} /> Stores</label>
                     <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}><input type="checkbox" checked={newMin.modules.decor} onChange={(e) => setNewMin(m => ({ ...m, modules: { ...m.modules, decor: e.target.checked } }))} /> Décors</label>
+                    <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}><input type="checkbox" checked={newMin.modules.autre_confection} onChange={(e) => setNewMin(m => ({ ...m, modules: { ...m.modules, autre_confection: e.target.checked } }))} /> Autre / Sur-mesure</label>
                   </div>
                 </div>
 
@@ -526,7 +546,7 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
                 {/* Actions */}
                 <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, marginTop: 8 }}>
                   <button onClick={() => setNewMinOpen(false)} style={{ background: 'white', border: '1px solid #D1D5DB', padding: '8px 16px', borderRadius: 6, cursor: 'pointer' }}>Annuler</button>
-                  <button onClick={handleCreateMinute} disabled={isCreating || !newMin.charge.trim() || !newMin.projet.trim() || !newMin.client.trim() || !(newMin.modules.rideau || newMin.modules.store || newMin.modules.decor)} style={{ background: '#1F2937', color: 'white', border: 'none', padding: '8px 16px', borderRadius: 6, cursor: 'pointer', opacity: (isCreating || !newMin.projet.trim() || !newMin.client.trim()) ? 0.5 : 1 }}>{isCreating ? "Création..." : "Créer"}</button>
+                  <button onClick={handleCreateMinute} disabled={isCreating || !newMin.charge.trim() || !newMin.projet.trim() || !newMin.client.trim() || !(newMin.modules.rideau || newMin.modules.store || newMin.modules.decor || newMin.modules.autre_confection)} style={{ background: '#1F2937', color: 'white', border: 'none', padding: '8px 16px', borderRadius: 6, cursor: 'pointer', opacity: (isCreating || !newMin.projet.trim() || !newMin.client.trim()) ? 0.5 : 1 }}>{isCreating ? "Création..." : "Créer"}</button>
                 </div>
               </div>
             </div>

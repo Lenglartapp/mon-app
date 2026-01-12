@@ -50,23 +50,36 @@ export function aggregatePurchases(minutes = []) {
             // 1. Tissus & Confection (Tissu 1, Tissu 2, Doublure, Inter, Passementerie 1 & 2)
             // STRICT KEYS MAPPING
             const fabricFields = [
+                // RIDEAUX
                 { key: 'tissu_deco1', mlKey: 'ml_tissu1', paKey: 'pa_tissu1' },
                 { key: 'tissu_deco2', mlKey: 'ml_tissu2', paKey: 'pa_tissu2' },
                 { key: 'doublure', mlKey: 'ml_doublure', paKey: 'pa_doublure' },
                 { key: 'interdoublure', mlKey: 'ml_interdoublure', paKey: 'pa_interdoublure' }, // Was 'inter_doublure'
-                { key: 'passementerie1', mlKey: 'ml_pass1', paKey: 'pa_pass1' }, // Was ml_passementerie1
+                { key: 'passementerie1', mlKey: 'ml_pass1', paKey: 'pa_pass1' }, // Rideaux Pass 1
                 { key: 'passementerie2', mlKey: 'ml_pass2', paKey: 'pa_pass2' },
+
+                // DECORS (Underscored keys)
+                { key: 'tissu_1', mlKey: 'ml_tissu_1', paKey: 'pa_tissu_1' },
+                { key: 'tissu_2', mlKey: 'ml_tissu_2', paKey: 'pa_tissu_2' },
+                { key: 'passementerie_1', mlKey: 'ml_pass_1', paKey: 'pa_pass_1' },
+                { key: 'passementerie_2', mlKey: 'ml_pass_2', paKey: 'pa_pass_2' },
+                // Interior/Garniture (Decors)
+                // Using 'type_interieur' as name, and 'pa_interieur' as price. No ML.
+                { key: 'type_interieur', mlKey: null, paKey: 'pa_interieur' },
+
+                // STORES
+                { key: 'toile_finition_1', mlKey: 'ml_toile_finition_1', paKey: 'pa_toile_finition_1' },
             ];
 
             fabricFields.forEach(f => {
                 const name = row[f.key];
                 if (name) {
                     // ML is usually per unit in schema, so multiply by row quantity
-                    const ml = toNum(row[f.mlKey]) * qtyRow;
-                    // PA is usually TOTAL PA in schema line? Let's check recomputeRow.
-                    // recomputeRow: next.pa_tissu1 = next.ml_tissu1 * (p1.pa || 0); <- This is TOTAL PA for the line (unit).
-                    // Wait, recomputeRow: next.pa_tissu1 is per UNIT (it uses next.ml_tissu1 which is per unit).
-                    // So we must multiply by qtyRow.
+                    // Handle case where mlKey is null (e.g. Interieur)
+                    const unitML = f.mlKey ? toNum(row[f.mlKey]) : 0;
+                    const ml = unitML * qtyRow;
+
+                    // PA is usually TOTAL PA for the line (unit).
                     const pa = toNum(row[f.paKey]) * qtyRow;
 
                     add(aggs.tissus, name, name, ml, pa, { ...baseSource, type: 'Tissu', detail: f.key });
@@ -74,26 +87,41 @@ export function aggregatePurchases(minutes = []) {
             });
 
             // 2. Mechanisms (Rail vs Others)
+            // A. RIDEAUX (Rail / Tringle / Store legacy?)
             const typeMeca = row.type_mecanisme;
             const modelMeca = row.modele_mecanisme;
 
             if (typeMeca) {
                 if (typeMeca === 'Rail' && modelMeca) {
                     // Rails -> Linear Meters (ml)
-                    const widthCm = toNum(row.largeur_mecanisme); // Was l_mecanisme
+                    const widthCm = toNum(row.largeur_mecanisme);
                     const ml = (widthCm / 100) * qtyRow;
-                    // pa_mecanisme in recomputeRow is (width/100 * price). So it is per unit.
                     const pa = toNum(row.pa_mecanisme) * qtyRow;
 
                     add(aggs.rails, modelMeca, modelMeca, ml, pa, { ...baseSource, type: 'Rail', detail: `${widthCm} cm` });
                 } else if (modelMeca) {
-                    // Stores / Tringles -> Units
+                    // Tringles / Autres -> Units
                     const qty = qtyRow;
                     const pa = toNum(row.pa_mecanisme) * qtyRow;
                     const key = `${typeMeca} - ${modelMeca}`;
 
                     add(aggs.mecanismes, key, key, qty, pa, { ...baseSource, type: typeMeca, detail: row.modele_mecanisme });
                 }
+            }
+
+            // B. DECORS (Mecanisme Fourniture)
+            if (row.mecanisme_fourniture) {
+                const name = row.mecanisme_fourniture;
+                const pa = toNum(row.pa_mecanisme) * qtyRow;
+                // Assuming Unitary
+                add(aggs.mecanismes, name, name, qtyRow, pa, { ...baseSource, type: 'Fourniture Décors', detail: name });
+            }
+
+            // C. STORES (Mecanisme Store)
+            if (row.mecanisme_store) {
+                const name = row.mecanisme_store;
+                const pa = toNum(row.pa_mecanisme_store) * qtyRow;
+                add(aggs.mecanismes, name, name, qtyRow, pa, { ...baseSource, type: 'Méca Store', detail: name });
             }
 
             // 3. Sous-traitance (Pose & Confection)

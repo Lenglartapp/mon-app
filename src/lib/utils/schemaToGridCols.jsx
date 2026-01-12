@@ -50,27 +50,41 @@ export function schemaToGridCols(schema, enableCellFormulas = false, onOpenDetai
 
   return filteredSchema.map((col) => {
     const isFormula = col.type === 'formula';
-    const isReadOnly = !!col.readOnly || readOnly; // Force readOnly if global flag
+    // --- DETERMINING EDITABILITY ---
+    let isCellEditableFn = null;
 
-    // Determine editability
-    let editable = col.editable !== undefined ? col.editable : !isReadOnly;
-    if (isFormula && !enableCellFormulas) {
-      editable = false;
-    }
-    if (readOnly) {
-      editable = false;
+    if (typeof col.readOnly === 'function') {
+      // Prioritize functional readOnly
+      isCellEditableFn = (params) => !col.readOnly(params.row);
+    } else if (col.editable !== undefined) {
+      if (typeof col.editable === 'function') {
+        isCellEditableFn = col.editable;
+      } else {
+        isCellEditableFn = () => !!col.editable; // Boolean
+      }
+    } else {
+      // Default: editable unless readOnly
+      const isReadOnly = !!col.readOnly || readOnly;
+      isCellEditableFn = () => !isReadOnly;
     }
 
     const gridCol = {
       field: col.key,
-      headerName: col.label || col.key,
+      headerName: col.headerName || col.label || col.key,
       width: col.width || 100,
-      editable: editable,
       type: mapType(col.type),
       description: col.formula ? `Formula: ${col.formula}` : undefined,
+      isCellEditable: (params) => {
+        if (readOnly) return false; // Global readOnly override
+        return isCellEditableFn(params);
+      },
+      // Ensure 'editable' is mostly true so isCellEditable triggers (MUI quirks)
+      editable: true,
+
       cellClassName: (params) => {
-        // Handle styling for function-based editable
-        if (typeof col.editable === 'function' && !col.editable(params)) {
+        // Handle readOnly styling
+        if (readOnly) return 'cell-read-only';
+        if (isCellEditableFn && !isCellEditableFn(params)) {
           return 'cell-read-only';
         }
 
@@ -89,64 +103,46 @@ export function schemaToGridCols(schema, enableCellFormulas = false, onOpenDetai
       gridCol.valueFormatter = col.valueFormatter;
     }
 
-    // MAP valueGetter (Critical Fix)
+    // MAP valueGetter
     if (col.valueGetter) {
       gridCol.valueGetter = col.valueGetter;
     }
 
-    // Generic support for functional editable (isCellEditable)
-    if (typeof col.editable === 'function') {
-      gridCol.isCellEditable = (params) => {
-        if (readOnly) return false;
-        return col.editable(params);
-      };
-    }
+    // Link Catalog to 'tissu', 'doublure', 'produit', OR explicit catalog_item type
+    const isCatalogType = col.type === 'catalog_item';
 
-    // Legacy manual handling for dim_mecanisme (can be removed if moved to schema, but kept for safety)
-    if (col.key === 'dim_mecanisme' && !gridCol.isCellEditable) {
-      // ... existing legacy code ...
-    }
-
-    // Conditional Editing for dim_mecanisme
-    if (col.key === 'dim_mecanisme') {
-      gridCol.isCellEditable = (params) => {
-        if (readOnly) return false;
-        const type = params.row.type_mecanisme || '';
-        // Lock if Rail or Store
-        if (type === 'Rail' || type.includes('Store') || type === 'Canishade') return false;
-        // Unlock if Tringle or others
-        return true;
-      };
-    }
-
-    if (col.key === 'commentaire') {
-      gridCol.renderEditCell = (params) => <GridEditInputCell {...params} multiline />;
-    }
-
-    // Link Catalog to 'tissu', 'doublure', 'produit' columns (including variations like tissu_deco_1)
-    const isCatalogColumn = col.key.includes('tissu') || col.key.includes('doublure') || col.key.includes('passementerie') || (col.key === 'produit' && !col.hidden);
-    // Explicit Mechanism columns
+    // Legacy check for other schemas that don't use 'catalog_item' yet?
+    // Keep legacy support for chiffrage.js unless upgraded.
+    const isLegacyCatalogCol = col.key.includes('tissu') || col.key.includes('doublure') || col.key.includes('passementerie') || (col.key === 'produit' && !col.hidden && col.type !== 'text');
     const isMechColumn = ['modele_mecanisme', 'nom_tringle', 'rail'].includes(col.key);
 
-    if ((isCatalogColumn || isMechColumn) && catalog.length > 0) {
+    if ((isCatalogType || isLegacyCatalogCol || isMechColumn) && catalog.length > 0) {
       gridCol.type = 'singleSelect';
 
       // STRICT FILTERING LOGIC
       let filteredCatalog = catalog;
 
-      if (col.key.includes('tissu') || col.key.includes('doublure')) {
-        // Tissues: Only Tissu or Confection (Doublure/Inter are Tissues)
-        filteredCatalog = catalog.filter(item => ['Tissu', 'Confection'].includes(item.category));
-      } else if (col.key.includes('passementerie')) {
-        // Passementerie
-        filteredCatalog = catalog.filter(item => ['Passementerie'].includes(item.category));
-      } else if (isMechColumn) {
-        // Mechanisms: Only Rail, Tringle, Mecanisme
-        filteredCatalog = catalog.filter(item => ['Rail', 'Tringle', 'Mecanisme', 'Mécanisme'].includes(item.category));
+      if (isCatalogType && col.category) {
+        // NEW Logic: Use Schema Category
+        const cats = col.category.split(',').map(c => c.trim().toLowerCase());
+        filteredCatalog = catalog.filter(item => {
+          if (!item.category) return false;
+          // Robust check: trim and lowercase
+          return cats.includes(item.category.trim().toLowerCase());
+        });
+      } else {
+        // LEGACY Logic
+        if (col.key.includes('tissu') || col.key.includes('doublure')) {
+          filteredCatalog = catalog.filter(item => ['Tissu', 'Confection'].includes(item.category));
+        } else if (col.key.includes('passementerie')) {
+          filteredCatalog = catalog.filter(item => ['Passementerie'].includes(item.category));
+        } else if (isMechColumn) {
+          filteredCatalog = catalog.filter(item => ['Rail', 'Tringle', 'Mecanisme', 'Mécanisme', 'Store'].includes(item.category));
+        }
       }
 
       gridCol.valueOptions = filteredCatalog.map(a => a.name);
-      gridCol.editable = true;
+      // We rely on isCellEditable from above
     }
 
     // Handle standard singleSelect with valueOptions

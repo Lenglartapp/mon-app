@@ -14,14 +14,21 @@ import Box from '@mui/material/Box';
 import Divider from '@mui/material/Divider';
 import Chip from '@mui/material/Chip';
 
-const USERS = ['Aristide LENGLART', 'Atelier 1', 'Atelier 2', 'Logistique'];
+const USERS = [
+    'Elisa Laprune', 'Guillaume Mailly', 'David Vergel', 'Lucie Jaulin', 'Maelane Poulaud',
+    'Thomas Bonnet', 'Delphine Butez', 'Catherine Bosse', 'Thierry Menant', 'Alain Houdemont',
+    'Nicolas Podyma', 'Audry Papin', 'Julie Rabin', 'Alison Gloaguen', 'Samuel Blandin',
+    'Emilie David', 'Emmanuel Peltier', 'Malcolm Jeantal', 'Florence Gobbe'
+].sort();
 const EXIT_REASONS = ['Production', 'Solde / Déstockage', 'Perte / Inventaire', 'Autre'];
 
 export default function MovementModal({ open, onClose, type, onSave, projects = [], inventory = [] }) {
     const isIN = type === 'IN';
+    const isMOVE = type === 'MOVE';
+    const isOUT = type === 'OUT'; // Helper
 
     // --- ETAT GLOBAL ---
-    const [user, setUser] = useState('Aristide LENGLART');
+    const [user, setUser] = useState('');
     const [selectedItem, setSelectedItem] = useState(null);
     const [exitReason, setExitReason] = useState('Production'); // Pour OUT
 
@@ -97,13 +104,13 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
         return Array.from(optsMap.values()).sort((a, b) => a.label.localeCompare(b.label));
     }, [projects, isIN]);
 
-    // --- LOGIQUE SORTIE (Source = Inventaire Réel) ---
+    // --- LOGIQUE SORTIE / MOVE (Source = Inventaire Réel) ---
     const sourceOptionsOUT = useMemo(() => {
         if (isIN || !inventory) return [];
         // On ne propose que ce qui est en stock positif
         return inventory.filter(i => i.qty > 0).map(item => ({
             ...item,
-            label: `${item.product} | ${item.location} (Stock: ${item.qty} ${item.unit})`
+            label: `${item.product} | ${item.location} (Stock: ${item.qty} ${item.unit})${item.project ? ` [${item.project}]` : ''}`
         }));
     }, [inventory, isIN]);
 
@@ -123,15 +130,17 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
                 laize: newValue.dim || ''
             }));
         } else {
-            // Remplissage auto pour SORTIE (depuis Stock)
+            // Remplissage auto pour SORTIE / MOVE (depuis Stock)
             setFormData(prev => ({
                 ...prev,
                 product: newValue.product,
                 ref: newValue.ref,
                 unit: newValue.unit,
-                location: newValue.location, // Emplacement figé car on sort de là
+                location: isMOVE ? '' : newValue.location, // MOVE: Location vide (à saisir) ou newValue.location? Vaut mieux vide pour forcer saisie
+                // Mais wait, si on veut juste déplacer on a besoin de l'origine. SelectedItem A L'ORIGINE.
+                // FormData.location est la DESTINATION.
                 category: newValue.category,
-                project: exitReason === 'Production' ? (newValue.project || '') : '' // Pré-remplir projet si dispo
+                project: exitReason === 'Production' ? (newValue.project || '') : ''
             }));
         }
     };
@@ -151,6 +160,12 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
             }
         }
 
+        // Validation MOVE
+        if (isMOVE && !formData.location) {
+            alert("Veuillez saisir le nouvel emplacement.");
+            return;
+        }
+
         onSave({
             ...formData,
             user,
@@ -158,22 +173,36 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
             type: type,
             date: new Date().toISOString(),
             // Si c'est une sortie, on ajoute le motif en note ou champ spécifique
-            reason: !isIN ? exitReason : null
+            reason: isOUT ? exitReason : null,
+            // MOVE: Capture Origin
+            from_location: isMOVE && selectedItem ? selectedItem.location : null
         });
         onClose();
     };
+
+    const getHeaderColor = () => {
+        if (isIN) return '#047857'; // Green
+        if (isMOVE) return '#1d4ed8'; // Blue
+        return '#9A3412'; // Orange
+    }
+
+    const getBgColor = () => {
+        if (isIN) return '#ECFDF5';
+        if (isMOVE) return '#EFF6FF';
+        return '#FFF7ED';
+    }
 
     return (
         <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 3, overflow: 'hidden' } }}>
             {/* EN-TÊTE */}
             <Box sx={{
-                bgcolor: isIN ? '#ECFDF5' : '#FFF7ED',
+                bgcolor: getBgColor(),
                 p: 3,
-                borderBottom: `1px solid ${isIN ? '#D1FAE5' : '#FFEDD5'}`,
+                borderBottom: `1px solid ${isIN ? '#D1FAE5' : isMOVE ? '#DBEAFE' : '#FFEDD5'}`,
                 textAlign: 'center'
             }}>
-                <Typography variant="h6" sx={{ fontWeight: 800, color: isIN ? '#047857' : '#9A3412', letterSpacing: 0.5 }}>
-                    {isIN ? 'RÉCEPTION DE MARCHANDISE' : 'SORTIE DE STOCK'}
+                <Typography variant="h6" sx={{ fontWeight: 800, color: getHeaderColor(), letterSpacing: 0.5 }}>
+                    {isIN ? 'RÉCEPTION DE MARCHANDISE' : isMOVE ? 'CHANGEMENT D\'EMPLACEMENT' : 'SORTIE DE STOCK'}
                 </Typography>
             </Box>
 
@@ -200,7 +229,7 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
                         {!isIN && selectedItem && (
                             <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
                                 <Chip size="small" label={`Stock: ${selectedItem.qty} ${selectedItem.unit}`} color="primary" />
-                                <Chip size="small" label={selectedItem.location} variant="outlined" />
+                                <Chip size="small" label={`Emplacement: ${selectedItem.location}`} variant="outlined" />
                             </Stack>
                         )}
                     </Box>
@@ -240,10 +269,11 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
                             {/* LOCATION & LAIZE */}
                             <Grid item xs={6}>
                                 <TextField
-                                    fullWidth label="Emplacement"
+                                    fullWidth label={isMOVE ? "Nouvel Emplacement" : "Emplacement"}
                                     value={formData.location}
                                     onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                                    disabled={!isIN}
+                                    disabled={!isIN && !isMOVE}
+                                    required={isMOVE}
                                     size="small"
                                 />
                             </Grid>
@@ -288,7 +318,7 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
                         <TextField select fullWidth label="Opérateur" value={user} onChange={(e) => setUser(e.target.value)} size="small">
                             {USERS.map(u => <MenuItem key={u} value={u}>{u}</MenuItem>)}
                         </TextField>
-                        {!isIN && (
+                        {!isIN && !isMOVE && (
                             <TextField select fullWidth label="Motif" value={exitReason} onChange={(e) => setExitReason(e.target.value)} size="small">
                                 {EXIT_REASONS.map(r => <MenuItem key={r} value={r}>{r}</MenuItem>)}
                             </TextField>
@@ -306,14 +336,14 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
                     size="large"
                     disabled={!formData.qty || !formData.product}
                     sx={{
-                        bgcolor: isIN ? '#10B981' : '#F97316',
+                        bgcolor: isIN ? '#10B981' : isMOVE ? '#3b82f6' : '#F97316',
                         fontWeight: 700,
                         px: 4,
                         boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                        '&:hover': { bgcolor: isIN ? '#059669' : '#EA580C' }
+                        '&:hover': { bgcolor: isIN ? '#059669' : isMOVE ? '#2563eb' : '#EA580C' }
                     }}
                 >
-                    {isIN ? 'VALIDER ENTRÉE' : 'CONFIRMER SORTIE'}
+                    {isIN ? 'VALIDER ENTRÉE' : isMOVE ? 'VALIDER TRANSFERT' : 'CONFIRMER SORTIE'}
                 </Button>
             </DialogActions>
         </Dialog>

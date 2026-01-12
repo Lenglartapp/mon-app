@@ -4,7 +4,7 @@ import Chip from '@mui/material/Chip';
 import Avatar from '@mui/material/Avatar';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
-import { Edit2, Plus, FileText, Trash2, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { Edit2, Plus, FileText, Trash2, ArrowUpDown, ArrowUp, ArrowDown, Archive } from 'lucide-react';
 
 import { SmartFilterBar } from "../components/ui/SmartFilterBar.jsx";
 import { useViewportWidth } from "../lib/hooks/useViewportWidth";
@@ -39,6 +39,8 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilters, setActiveFilters] = useState([]);
   const [sortConfig, setSortConfig] = useState({ key: 'created_at', direction: 'desc' });
+
+  const [showArchived, setShowArchived] = useState(false);
 
   const handleSort = (key) => {
     setSortConfig(current => ({
@@ -81,6 +83,14 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
       res = res.filter(p => [p.name, p.manager, p.status, p.notes].some(x => String(x || "").toLowerCase().includes(q)));
     }
 
+    if (showArchived) {
+      // Show ONLY Archived
+      res = res.filter(p => p.status === 'ARCHIVED');
+    } else {
+      // Show ONLY Active (Not Archived)
+      res = res.filter(p => p.status !== 'ARCHIVED');
+    }
+
     // Sort
     if (sortConfig.key) {
       res = [...res].sort((a, b) => {
@@ -98,7 +108,7 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
     }
 
     return res;
-  }, [list, searchQuery, activeFilters, currentUser, sortConfig]);
+  }, [list, searchQuery, activeFilters, currentUser, sortConfig, showArchived]);
 
   const potentialManagers = useMemo(() => {
     if (!users) return [];
@@ -132,7 +142,26 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
             </button>
           )}
         </div>
-        <SmartFilterBar searchQuery={searchQuery} onSearchChange={setSearchQuery} activeFilters={activeFilters} onRemoveFilter={handleRemoveFilter} />
+
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          <SmartFilterBar searchQuery={searchQuery} onSearchChange={setSearchQuery} activeFilters={activeFilters} onRemoveFilter={handleRemoveFilter} />
+          <Tooltip title={showArchived ? "Retour aux dossiers actifs" : "Voir archives"}>
+            <IconButton
+              onClick={() => setShowArchived(!showArchived)}
+              sx={{
+                bgcolor: showArchived ? '#DBEAFE' : 'white',
+                color: showArchived ? '#1E40AF' : '#6B7280',
+                border: '1px solid #E5E7EB',
+                borderRadius: 2,
+                height: 38,
+                width: 38,
+                '&:hover': { bgcolor: showArchived ? '#BFDBFE' : '#F9FAFB' }
+              }}
+            >
+              <Archive size={20} />
+            </IconButton>
+          </Tooltip>
+        </div>
       </div>
 
       <div style={{ maxWidth: 1200, width: '100%', margin: '0 auto', background: 'white', borderRadius: 12, boxShadow: '0 1px 3px rgba(0,0,0,0.05), 0 4px 6px rgba(0,0,0,0.02)', overflow: 'hidden' }}>
