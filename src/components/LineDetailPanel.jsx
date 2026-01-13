@@ -20,9 +20,10 @@ import BlurTextField from './ui/BlurTextField';
 import { useAuth } from '../auth'; // <--- NEW IMPORT
 import { supabase } from '../lib/supabaseClient'; // <--- NEW IMPORT
 
-export default function LineDetailPanel({ open, onClose, row, schema, onRowChange, columnVisibilityModel, minuteId, projectId, currentUser: propUser, authorName: propAuthorName }) {
+export default function LineDetailPanel({ open, onClose, row, schema, onRowChange, columnVisibilityModel, minuteId, projectId, currentUser: propUser, authorName: propAuthorName, fullScreen = false }) {
     // New Sidebar Toggle State
-    const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+    // New Sidebar Toggle State. On mobile (fullScreen), default to closed (false). On desktop, open (true).
+    const [isSidebarOpen, setIsSidebarOpen] = useState(!fullScreen);
     const { currentUser: ctxUser } = useAuth(); // <--- GET CURRENT USER
     const currentUser = propUser || ctxUser;
 
@@ -113,14 +114,22 @@ export default function LineDetailPanel({ open, onClose, row, schema, onRowChang
 
     if (!row) return null;
 
+    // Rerender logic ... omitted for brevity in replace block, targeting just function signature and Dialog props if possible.
+    // Actually I can't easily target just signature and Dialog start due to distance.
+    // I will replace the Dialog start.
+
+    // Wait, I need to update signature too.
     return (
         <Dialog
             open={open}
             onClose={onClose}
             maxWidth="xl" // Wider to accommodate sidebar
             fullWidth
+            fullScreen={fullScreen} // <--- NEW PROP
             PaperProps={{
-                sx: { height: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', borderRadius: 3 },
+                sx: fullScreen
+                    ? { height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', borderRadius: 0 }
+                    : { height: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', borderRadius: 3 },
             }}
         >
             {/* Header */}

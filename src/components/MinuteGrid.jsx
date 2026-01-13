@@ -100,13 +100,13 @@ export default function MinuteGrid({
     projectId,   // <--- NEW for Production
     onRowClick,   // <--- NEW for Panel Opening
     readOnly = false, // <--- NEW ReadOnly Mode
-    currentUser // <--- NEW IDENTITY
+
+    currentUser, // <--- NEW IDENTITY
+    isMobile = false // <--- NEW Mobile Prop
 }) {
     const [rowSelectionModel, setRowSelectionModel] = useState([]);
     const [detailRowId, setDetailRowId] = useState(null);
     const [columnVisibilityModel, setColumnVisibilityModel] = useState(initialVisibilityModel);
-
-
 
     const navigate = useNavigate();
 
@@ -154,8 +154,19 @@ export default function MinuteGrid({
     }, [rows, onRowsChange]);
 
     const columns = useMemo(() => {
-        return schemaToGridCols(schema, enableCellFormulas, handleOpenDetail, catalog, railOptions, handlePhotoChange, onDuplicateRow, hideCroquis, readOnly);
-    }, [schema, enableCellFormulas, handleOpenDetail, catalog, railOptions, handlePhotoChange, onDuplicateRow, hideCroquis, readOnly]);
+        const cols = schemaToGridCols(schema, enableCellFormulas, handleOpenDetail, catalog, railOptions, handlePhotoChange, onDuplicateRow, hideCroquis, readOnly);
+
+        // MOBILE OPTIMIZATION
+        if (isMobile) {
+            // Force only specific columns: Piece, Produit, Statuts
+            // Note: 'statut' might need to cover multiple fields like 'statut_conf', 'statut_pose' etc.
+            // Or we rely on 'detail' column or specific keys.
+            // User asked for "Vitales: piece, produit, statut".
+            const mobileKeys = ['piece', 'produit', 'statut_cotes', 'statut_prepa', 'statut_conf', 'statut_pose'];
+            return cols.filter(c => mobileKeys.includes(c.field) || c.field === 'detail');
+        }
+        return cols;
+    }, [schema, enableCellFormulas, handleOpenDetail, catalog, railOptions, handlePhotoChange, onDuplicateRow, hideCroquis, readOnly, isMobile]);
 
     // detailRow is now state, no need for useMemo lookup
 
@@ -300,45 +311,101 @@ export default function MinuteGrid({
         console.error("Row update error:", error);
     }, []);
 
+    const MobileCard = ({ row }) => {
+        const statusOpt = row.statut_pose ? { label: row.statut_pose, color: '#065F46', bg: '#ECFDF5' } : { label: 'À faire', color: '#6B7280', bg: '#F3F4F6' };
+        // Simple logic for status display - adjusting as per schema
+        // Taking 'statut_conf' or 'statut_pose' as primary status or 'statut_cotes'
+        // Priority: Pose > Conf > Prepa > Cotes
+        let mainStatus = { label: '—', bg: '#F3F4F6', color: '#6B7280' };
+        if (row.statut_pose === 'Terminé') mainStatus = { label: 'Posé', bg: '#ECFDF5', color: '#065F46' };
+        else if (row.statut_conf === 'Terminé') mainStatus = { label: 'Confectionné', bg: '#FDF2F8', color: '#9D174D' };
+        else if (row.statut_prepa === 'Terminé') mainStatus = { label: 'Prêt', bg: '#F5F3FF', color: '#5B21B6' };
+        else if (row.statut_cotes === 'Définitive') mainStatus = { label: 'Coté', bg: '#EFF6FF', color: '#1E40AF' };
+
+        return (
+            <div
+                onClick={() => handleOpenDetail(row)}
+                style={{
+                    background: 'white', borderRadius: 12, padding: 16, marginBottom: 12,
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.05)', border: '1px solid #E5E7EB',
+                    display: 'flex', flexDirection: 'column', gap: 10
+                }}
+            >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div>
+                        <div style={{ fontSize: 16, fontWeight: 700, color: '#111827' }}>{row.piece || 'Sans pièce'}</div>
+                        <div style={{ fontSize: 13, color: '#4B5563', marginTop: 2 }}>{row.produit || '—'}</div>
+                    </div>
+                    <div style={{
+                        padding: '4px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700,
+                        background: mainStatus.bg, color: mainStatus.color, textTransform: 'uppercase'
+                    }}>
+                        {mainStatus.label}
+                    </div>
+                </div>
+                <div style={{ display: 'flex', gap: 16, fontSize: 13, color: '#6B7280', borderTop: '1px solid #F9FAFB', paddingTop: 8 }}>
+                    <div>L: <span style={{ color: '#111827', fontWeight: 600 }}>{row.largeur || '—'}</span></div>
+                    <div>H: <span style={{ color: '#111827', fontWeight: 600 }}>{row.hauteur || '—'}</span></div>
+                    {/* Add more vital info here if needed */}
+                </div>
+            </div>
+        );
+    };
+
     return (
         <div style={{ width: '100%' }}>
             {title && <h3>{title}</h3>}
-            <DataGrid
-                rows={rows}
-                columns={columns}
-                // Auto height to avoid vertical scrollbars
-                autoHeight
-                processRowUpdate={processRowUpdate}
-                onProcessRowUpdateError={handleProcessRowUpdateError}
-                checkboxSelection
-                disableColumnResize={false}
-                localeText={frFR.components.MuiDataGrid.defaultProps.localeText}
-                slots={{
-                    toolbar: CustomToolbar,
-                }}
-                slotProps={{
-                    toolbar: {
-                        onAdd: handleAddRow,
-                        onDelete: handleDeleteRows,
-                        selectedCount: rowSelectionModel?.length || 0,
-                        onImportExcel,
-                        readOnly
-                    },
-                }}
-                rowSelectionModel={rowSelectionModel}
-                onRowSelectionModelChange={(newSelection) => setRowSelectionModel(newSelection)}
-                columnVisibilityModel={columnVisibilityModel}
-                onColumnVisibilityModelChange={(newModel) => {
-                    console.log('Visibility model changed:', newModel);
-                    setColumnVisibilityModel(newModel);
-                }}
-                onCellClick={(params, event) => {
-                    if (params.field === 'detail') {
-                        event.stopPropagation(); // Prevent row selection if possible
-                        handleOpenDetail(params.row);
-                    }
-                }}
-            />
+
+            {isMobile ? (
+                <div className="mobile-grid-cards">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: '#6B7280' }}>{rows.length} Lignes</span>
+                        {!readOnly && <button onClick={handleAddRow} style={{ background: '#2563EB', color: 'white', border: 'none', padding: '6px 12px', borderRadius: 20, fontSize: 12, fontWeight: 600 }}>+ Ajouter</button>}
+                    </div>
+                    {rows.length === 0 ? (
+                        <div style={{ padding: 30, textAlign: 'center', color: '#9CA3AF', background: 'transparent', borderRadius: 8, border: '1px dashed #D1D5DB' }}>Aucune ligne</div>
+                    ) : (
+                        rows.map(row => <MobileCard key={row.id} row={row} />)
+                    )}
+                </div>
+            ) : (
+                <DataGrid
+                    rows={rows}
+                    columns={columns}
+                    // Auto height to avoid vertical scrollbars
+                    autoHeight
+                    processRowUpdate={processRowUpdate}
+                    onProcessRowUpdateError={handleProcessRowUpdateError}
+                    checkboxSelection
+                    disableColumnResize={false}
+                    localeText={frFR.components.MuiDataGrid.defaultProps.localeText}
+                    slots={{
+                        toolbar: CustomToolbar,
+                    }}
+                    slotProps={{
+                        toolbar: {
+                            onAdd: handleAddRow,
+                            onDelete: handleDeleteRows,
+                            selectedCount: rowSelectionModel?.length || 0,
+                            onImportExcel,
+                            readOnly
+                        },
+                    }}
+                    rowSelectionModel={rowSelectionModel}
+                    onRowSelectionModelChange={(newSelection) => setRowSelectionModel(newSelection)}
+                    columnVisibilityModel={columnVisibilityModel}
+                    onColumnVisibilityModelChange={(newModel) => {
+                        console.log('Visibility model changed:', newModel);
+                        setColumnVisibilityModel(newModel);
+                    }}
+                    onCellClick={(params, event) => {
+                        if (params.field === 'detail') {
+                            event.stopPropagation(); // Prevent row selection if possible
+                            handleOpenDetail(params.row);
+                        }
+                    }}
+                />
+            )}
         </div>
     );
 }
