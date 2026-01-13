@@ -11,7 +11,7 @@ import { fr } from 'date-fns/locale';
 import { useCapacityPlanning } from '../hooks/useCapacityPlanning';
 import { can } from '../lib/authz';
 import { uid } from '../lib/utils/uid';
-import { INITIAL_GROUPS_CONFIG, WORK_START_HOUR, WORK_END_HOUR } from '../components/planning/constants';
+import { INITIAL_GROUPS_CONFIG, WORK_START_HOUR, WORK_END_HOUR, TOTAL_WORK_MINUTES } from '../components/planning/constants';
 import EventModal from '../components/planning/EventModal';
 import ResourcePanel from '../components/planning/ResourcePanel';
 import PlanningTopBar from '../components/planning/PlanningTopBar';
@@ -74,14 +74,288 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
             if (!resizeRef.current) return;
             const state = resizeRef.current;
             const diffX = e.clientX - state.startX;
-            const slotsDiff = Math.round(diffX / state.cellWidth);
 
-            if (slotsDiff === 0) return;
-            // Note: Implémentation simplifiée pour le refactoring. 
-            // Idéalement on recalcule la date de fin en fonction des slots.
+            // 1. Calculate Delta Visual Minutes (08h-17h timeline)
+            // columnPixelWidth = 9h = 540min
+            const minutesPerPixel = TOTAL_WORK_MINUTES / state.columnPixelWidth;
+            let deltaVisualMinutes = diffX * minutesPerPixel;
+
+            // 2. Determine Candidate End Date (Visual Projection)
+            // We project the initial end date by deltaVisualMinutes, skipping nights (17h->08h)
+            // but INCLUDING lunch (visually linear).
+            const initialStart = new Date(state.initialSeries[0].meta.start || state.initialSeries[0].date);
+            // Robust initialEnd finding (sort is safe due to init)
+            const lastEvt = state.initialSeries[state.initialSeries.length - 1];
+            const initialEnd = new Date(lastEvt.meta.end || lastEvt.date);
+
+            // Helper: Add Visual Minutes (08-17)
+            const addVisualMinutes = (date, minutes) => {
+                let d = new Date(date);
+                let minsToAdd = Math.round(minutes);
+                // Safety loop
+                let safety = 0;
+                while (minsToAdd !== 0 && safety < 1000) {
+                    safety++;
+                    const currentHour = getHours(d);
+                    const currentMin = getMinutes(d);
+                    const minOfDay = currentHour * 60 + currentMin; // e.g. 17*60=1020
+                    const workEndMin = WORK_END_HOUR * 60; // 17*60
+                    const workStartMin = WORK_START_HOUR * 60; // 8*60
+
+                    if (minsToAdd > 0) {
+                        // Forward
+                        const remainingToday = workEndMin - minOfDay;
+                        if (minsToAdd <= remainingToday) {
+                            d = new Date(d.getTime() + minsToAdd * 60000);
+                            minsToAdd = 0;
+                        } else {
+                            // Consume today
+                            d = new Date(d.getTime() + remainingToday * 60000);
+                            minsToAdd -= remainingToday;
+                            // Jump to next morning
+                            d = addDays(d, 1);
+                            d.setHours(WORK_START_HOUR, 0, 0, 0);
+                            // Skip weekends? (User didn't specify, but safer)
+                            while (!showWeekends && isWeekend(d)) {
+                                d = addDays(d, 1);
+                            }
+                        }
+                    } else {
+                        // Backward
+                        const passedToday = minOfDay - workStartMin;
+                        if (Math.abs(minsToAdd) <= passedToday) {
+                            d = new Date(d.getTime() + minsToAdd * 60000); // minsToAdd is negative
+                            minsToAdd = 0;
+                        } else {
+                            // Consume today
+                            d = new Date(d.getTime() - passedToday * 60000);
+                            minsToAdd += passedToday;
+                            // Jump to prev evening
+                            d = addDays(d, -1);
+                            d.setHours(WORK_END_HOUR, 0, 0, 0);
+                            while (!showWeekends && isWeekend(d)) {
+                                d = addDays(d, -1);
+                            }
+                        }
+                    }
+                }
+                return d;
+            };
+
+            const candidateEnd = addVisualMinutes(initialEnd, deltaVisualMinutes);
+
+            // 3. Calculate Work Duration (08-12, 13-17)
+            // Between initialStart and candidateEnd.
+            const getWorkMinutes = (s, e) => {
+                if (s >= e) return 0;
+                let total = 0;
+                let current = new Date(s);
+                // Align start time rules
+                // If s is in 12-13, effective start for work is 13.
+                // If s < 8, effective is 8.
+                // If s > 17, effective is next day 8.
+                // We assume start is valid (snapped).
+
+                // Iterate days
+                const end = new Date(e);
+                while (current < end) {
+                    const cYear = current.getFullYear();
+                    const cMonth = current.getMonth();
+                    const cDate = current.getDate();
+
+                    // Define blocks for current day
+                    const block1Start = new Date(cYear, cMonth, cDate, 8, 0, 0);
+                    const block1End = new Date(cYear, cMonth, cDate, 12, 0, 0);
+                    const block2Start = new Date(cYear, cMonth, cDate, 13, 0, 0);
+                    const block2End = new Date(cYear, cMonth, cDate, 17, 0, 0);
+
+                    // Calc overlap
+                    const overlap1 = Math.max(0, differenceInMinutes(Math.min(end, block1End), Math.max(current, block1Start)));
+                    const overlap2 = Math.max(0, differenceInMinutes(Math.min(end, block2End), Math.max(current, block2Start)));
+
+                    total += overlap1 + overlap2;
+
+                    // Move to next day
+                    current = addDays(current, 1);
+                    current.setHours(8, 0, 0, 0);
+                    while (!showWeekends && isWeekend(current)) {
+                        current = addDays(current, 1);
+                    }
+                }
+                return total;
+            };
+
+            const rawWorkDuration = getWorkMinutes(initialStart, candidateEnd);
+
+            // 4. Snap to 2h (120min)
+            // Minimum 2h
+            const snappedDuration = Math.max(120, Math.round(rawWorkDuration / 120) * 120);
+
+            // 5. Project Final End Date (Work Time Projection)
+            // Add snappedDuration to initialStart, skipping 12-13 and nights.
+            const addWorkMinutes = (date, minutes) => {
+                let remaining = minutes;
+                let current = new Date(date);
+
+                while (remaining > 0) {
+                    const cYear = current.getFullYear();
+                    const cMonth = current.getMonth();
+                    const cDate = current.getDate();
+
+                    // Check current position and remaining blocks today
+                    // Blocks: 08-12, 13-17.
+                    const b1S = new Date(cYear, cMonth, cDate, 8, 0, 0);
+                    const b1E = new Date(cYear, cMonth, cDate, 12, 0, 0);
+                    const b2S = new Date(cYear, cMonth, cDate, 13, 0, 0);
+                    const b2E = new Date(cYear, cMonth, cDate, 17, 0, 0);
+
+                    // If current < b1S, jump to b1S
+                    if (current < b1S) current = b1S;
+
+                    if (current < b1E) {
+                        const available = differenceInMinutes(b1E, current);
+                        const take = Math.min(remaining, available);
+                        current = new Date(current.getTime() + take * 60000);
+                        remaining -= take;
+                        if (remaining <= 0) break;
+                    }
+
+                    // If we are at b1E (12:00) or between b1E and b2S, jump to b2S
+                    if (current >= b1E && current < b2S) current = b2S;
+
+                    if (current < b2E) {
+                        const available = differenceInMinutes(b2E, current);
+                        const take = Math.min(remaining, available);
+                        current = new Date(current.getTime() + take * 60000);
+                        remaining -= take;
+                        if (remaining <= 0) break;
+                    }
+
+                    // If reached b2E (17:00), next day
+                    if (current >= b2E) {
+                        current = addDays(current, 1);
+                        current.setHours(8, 0, 0, 0);
+                        while (!showWeekends && isWeekend(current)) {
+                            current = addDays(current, 1);
+                        }
+                    }
+                }
+                return current;
+            };
+
+            const finalEnd = addWorkMinutes(initialStart, snappedDuration);
+
+            // 6. Redistribute into Segments (Standard Rendering Splitting)
+            // We have New End Date. We now just split this interval [initialStart, finalEnd] 
+            // into display segments (standard logic: one segment per day, respecting 8-17 visual bounds).
+            // NOTE: But display must also respect lunch? 
+            // No, the grid is continuous 08-17 visual. 
+            // If I have an event 08-15 (skipping lunch), visually it is 08-12 + 12-?? 
+            // The grid doesn't have a gap for lunch.
+            // If I work 08-15 (with lunch break), it means 08-12 work, 12-13 break, 13-15 work.
+            // So I finish at 15:00.
+            // Visually on valid grid 08-17: 08:00 to 15:00.
+            // Does the user want the event to visually BREAK at 12?
+            // User: "globalement, ça fait 2h, 8h, 10h, 2h, 10h, midi, 2h, 13h, 15h et 2h, 15h, 17h"
+            // Implies alignment.
+            // If I end at 15:00, the event is 08:00-15:00.
+            // My logic above calculates finalEnd correctly (15:00).
+            // Now I just need to generate the segments for localEvents.
+
+            let segCurrent = new Date(initialStart);
+            let finalSegments = [];
+
+            while (segCurrent < finalEnd) {
+                const segDayStr = format(segCurrent, 'yyyy-MM-dd');
+                const dayEnd = new Date(segCurrent);
+                dayEnd.setHours(17, 0, 0, 0);
+
+                const effectiveEnd = (finalEnd < dayEnd) ? finalEnd : dayEnd;
+
+                finalSegments.push({
+                    date: segDayStr,
+                    start: segCurrent,
+                    end: effectiveEnd
+                });
+
+                // Next day
+                if (effectiveEnd >= finalEnd) break;
+                segCurrent = addDays(segCurrent, 1);
+                segCurrent.setHours(8, 0, 0, 0);
+                while (!showWeekends && isWeekend(segCurrent)) {
+                    segCurrent = addDays(segCurrent, 1);
+                }
+            }
+
+            // --- APPLY TO LOCAL EVENTS ---
+            const currentSeriesId = state.seriesId || state.tempSeriesId;
+            const otherEvents = localEvents.filter(e => {
+                if (state.seriesId) return e.meta?.seriesId !== state.seriesId;
+                return e.id !== state.initialSeries[0].id;
+            });
+
+            const newTemps = finalSegments.map(seg => ({
+                id: uid(),
+                resourceId: state.resourceId,
+                title: state.title,
+                type: state.type,
+                date: seg.date,
+                meta: {
+                    ...state.meta,
+                    start: seg.start.toISOString(),
+                    end: seg.end.toISOString(),
+                    seriesId: currentSeriesId,
+                    status: state.meta.status
+                }
+            }));
+
+            setLocalEvents([...otherEvents, ...newTemps]);
         };
 
         const handleResizeUp = (e) => {
+            // PERSIST CHANGES
+            // The localEvents are already updated visually.
+            // We just need to trigger onUpdateEvent / onDeleteEvent for the server.
+
+            // We need to know the Final Series derived in handleResizeMove.
+            // But handleResizeMove doesn't persist.
+            // Simplest: Just call onUpdateEvent for all events in the current series found in localEvents.
+
+            const currentSeriesId = resizeRef.current.seriesId || resizeRef.current.tempSeriesId;
+
+            // 1. Delete Old Series on Server? 
+            // Best practice: The persistence in 'handleSaveEvent' deletes old if ID matches.
+            // Here 'onUpdateEvent' usually updates/creates.
+            // For resizing, we might have added/removed days.
+            // Strategy: Delete original series, then Create new events.
+
+            if (onDeleteEventProp && resizeRef.current.seriesId) {
+                // Delete all events of original series using meta logic
+                // But wait, we don't have batch delete.
+                // We can just rely on updating 'localEvents' and assume parent handles sync?
+                // No, PlanningScreen is responsible for calling onUpdateEvent.
+
+                // A bit complex to sync differential changes.
+                // BRUTE FORCE:
+                // 1. Find the new events in localEvents (they have IDs generated in Move).
+                // 2. Identify which matched old events (none, IDs regenerated).
+                // 3. Delete *Original* IDs.
+                // 4. Create *New* Events.
+
+                const originalIds = resizeRef.current.initialSeries.map(e => e.id);
+                originalIds.forEach(id => onDeleteEventProp({ id }));
+
+                // Find new ones (by seriesId)
+                const newEvents = localEvents.filter(e => e.meta?.seriesId === currentSeriesId);
+                newEvents.forEach(evt => onUpdateEvent(evt));
+
+            } else {
+                // Single event resized into series?
+                if (onDeleteEventProp) onDeleteEventProp({ id: resizeRef.current.initialSeries[0].id });
+                const newEvents = localEvents.filter(e => e.meta?.seriesId === currentSeriesId);
+                newEvents.forEach(evt => onUpdateEvent(evt));
+            }
+
             setResizingEvent(null);
         };
 
@@ -91,7 +365,7 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
             window.removeEventListener('mousemove', handleResizeMove);
             window.removeEventListener('mouseup', handleResizeUp);
         };
-    }, [resizingEvent]);
+    }, [resizingEvent, localEvents, showWeekends]);
 
     // --- NAVIGATION TIME ---
     const navPrev = () => { if (view === 'month') setCurrentDate(d => subMonths(d, 1)); else if (view === 'quarter') setCurrentDate(d => subQuarters(d, 1)); else if (view === 'year') setCurrentDate(d => subYears(d, 1)); else setCurrentDate(d => addDays(d, view === 'day' ? -1 : -7)); };
@@ -212,7 +486,7 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                         projectId: eventData.projectId,
                         seriesId: seriesId,
                         assigned_name: assignedName,
-                        status: 'validated'
+                        status: eventData.status || 'pending'
                     }
                 };
 

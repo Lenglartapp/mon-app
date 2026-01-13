@@ -125,10 +125,15 @@ export default function LineDetailPanel({ open, onClose, row, schema, onRowChang
             onClose={onClose}
             maxWidth="xl" // Wider to accommodate sidebar
             fullWidth
-            fullScreen={fullScreen} // <--- NEW PROP
+            fullScreen={false} // Always modal, never full screen
             PaperProps={{
                 sx: fullScreen
-                    ? { height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', borderRadius: 0 }
+                    ? {
+                        // Mobile: "Almost" fullscreen but with margins and rounded corners
+                        height: 'calc(100% - 32px)',
+                        margin: 2, // 16px margin around
+                        display: 'flex', flexDirection: 'column', overflow: 'hidden', borderRadius: 3
+                    }
                     : { height: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', borderRadius: 3 },
             }}
         >
@@ -142,7 +147,10 @@ export default function LineDetailPanel({ open, onClose, row, schema, onRowChang
                 bgcolor: 'white'
             }}>
                 <Typography variant="h6" sx={{ fontWeight: 600, color: '#111827' }}>
-                    Détails de la ligne
+                    {fullScreen
+                        ? [row.zone, row.piece, row.produit].filter(Boolean).join(' ') || "Détails"
+                        : "Détails de la ligne"
+                    }
                     <Typography component="span" sx={{ ml: 1.5, fontSize: 13, color: '#6B7280', bgcolor: '#F3F4F6', px: 1, py: 0.5, borderRadius: 1 }}>
                         #{String(row.id).slice(-4)}
                     </Typography>

@@ -49,9 +49,10 @@ const PlanningGrid = ({
 
         return dayEvents.map(evt => {
             const style = PLANNING_COLORS[evt.type] || PLANNING_COLORS.default;
-            const opacity = evt.meta?.status === 'validated' ? 0.6 : 1;
             const isValidated = evt.meta?.status === 'validated';
-            const borderStyle = evt.meta?.status === 'validated' ? 'dashed' : 'solid';
+            const borderStyle = isValidated ? 'solid' : 'dashed';
+            const fontWeight = isValidated ? 700 : 500; // Bold if validated
+            const opacity = isValidated ? 1 : 0.9; // Slight transparency for pending
 
             // Heure de début et fin pour l'affichage (positionnement vertical ?)
             // Dans ce planning "Journée", on ne positionne pas verticalement (pas de grille horaire fine),
@@ -203,7 +204,7 @@ const PlanningGrid = ({
                         backgroundImage: style.pattern ? 'repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(0,0,0,0.05) 5px, rgba(0,0,0,0.05) 10px)' : 'none'
                     }}
                 >
-                    <div style={{ fontSize: 11, fontWeight: 700, color: style.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    <div style={{ fontSize: 11, fontWeight: fontWeight, color: style.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {displayTitle}
                     </div>
 
@@ -237,12 +238,13 @@ const PlanningGrid = ({
                                 cursor: 'col-resize', zIndex: 50,
                                 display: 'flex', alignItems: 'center', justifyContent: 'center'
                             }}
+                            onClick={(e) => e.stopPropagation()}
                             onMouseDown={(e) => {
                                 e.stopPropagation();
                                 e.preventDefault();
-                                const rect = e.target.parentElement.getBoundingClientRect();
-                                const currentSpan = widthMultiplier || 1;
-                                const singleCellWidth = rect.width / currentSpan;
+                                const cellNode = e.target.parentElement.parentElement;
+                                const cellRect = cellNode.getBoundingClientRect();
+                                const columnPixelWidth = cellRect.width;
 
                                 const seriesEvents = evt.meta?.seriesId
                                     ? events.filter(ev => ev.meta?.seriesId === evt.meta.seriesId)
@@ -252,7 +254,7 @@ const PlanningGrid = ({
                                 onResizeStart({
                                     startX: e.clientX,
                                     initialSeries: seriesEvents,
-                                    cellWidth: singleCellWidth,
+                                    columnPixelWidth, // Time conversion ref
                                     resourceId: evt.resourceId,
                                     seriesId: evt.meta?.seriesId,
                                     tempSeriesId: evt.meta?.seriesId ? null : uid(),
