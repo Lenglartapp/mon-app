@@ -1,6 +1,6 @@
 // src/components/MinuteEditor.jsx
 import React from "react";
-import { Grid, Box, Typography } from "@mui/material";
+import { Grid, Box, Typography, Menu, MenuItem, Button } from "@mui/material";
 
 // composants internes
 import MinuteGrid from "./MinuteGrid";
@@ -15,7 +15,7 @@ import { uid } from "../lib/utils/uid";
 // hooks app (si MinuteEditor les utilise ; sinon tu peux supprimer ces lignes)
 import { useActivity } from "../contexts/activity";
 import { useAuth } from "../auth.jsx";
-import { Library } from 'lucide-react';
+import { Library, Plus, Trash2 } from 'lucide-react';
 
 import { CHIFFRAGE_SCHEMA_DEP } from "../lib/schemas/deplacement";
 import { EXTRA_DEPENSES_SCHEMA } from "../lib/schemas/extraDepenses";
@@ -25,6 +25,10 @@ import { STORES_SCHEMA } from "../lib/schemas/stores";
 import { AUTRES_SCHEMA } from "../lib/schemas/autres";
 import { parseRideauxImport } from '../utils/importRideaux';
 
+// ... (imports remain)
+
+
+
 
 const EMPTY_CTX = {};
 
@@ -33,6 +37,9 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
 
   // --- STATE LOCAL & DEBOUNCE ---
   const [localLines, setLocalLines] = React.useState(minute?.lines || []);
+  const [moduleMenuAnchor, setModuleMenuAnchor] = React.useState(null);
+
+  const mods = minute?.modules || { rideau: true, store: true, decor: true };
 
   // Refs for Debounce & Safety
   const saveTimerRef = React.useRef(null);
@@ -119,13 +126,19 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
   const [isCatalogOpen, setIsCatalogOpen] = React.useState(false);
 
   // Sync catalog to minute
+  // Sync catalog to minute (UPDATED FROM PARENT)
   React.useEffect(() => {
+    // When parent updates minute.catalog (e.g. from CatalogManager), update local state
     if (minute?.catalog && minute.catalog !== catalog) {
-      // If minute has a catalog and it's different (e.g. loaded from DB), use it.
-      // CAUTION: This might overwrite local changes if not handled carefully.
-      // For now, we initialize from minute.catalog or default, and update minute on change.
+      console.warn("🔥 MinuteEditor SYNC: New catalog received!", minute.catalog);
+      setCatalog(minute.catalog);
+    } else {
+      console.log("MinuteEditor: No sync needed. m.cat:", !!minute?.catalog, "local:", catalog.length);
+      if (catalog.length > 0) {
+        console.log("DATA INSPECTION:", JSON.stringify(catalog.map(i => ({ name: i.name, unit: i.unit, cat: i.category })), null, 2));
+      }
     }
-  }, [minute?.id]); // Only on load
+  }, [minute?.catalog, catalog]);
 
   // Create shared context with settings
   // NOW DEPENDS on 'catalog' state to ensure recomputeRow sees the active items
@@ -180,8 +193,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
     onChangeMinute?.({ ...minute, settings: newSettings, updatedAt: Date.now() });
   };
 
-  // Modules actifs (fallback = tous cochés pour anciennes minutes)
-  const mods = minute?.modules || { rideau: true, store: true, decor: true };
+
 
   // Sous-ensembles par module
   const rowsRideaux = rows.filter((r) => /rideau|voilage/i.test(String(r.produit || "")));
@@ -363,12 +375,170 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
     triggerUpdate(newRows);
   };
 
+  // Determine Render Order (Persisted or Default)
+  const defaultOrder = ['rideau', 'decor', 'store', 'autre_confection'];
+  const renderOrder = Array.isArray(mods.order) ? mods.order : defaultOrder;
+
+  // Helper to remove a module
+  const handleRemoveModule = (key, label, rowsToDelete) => {
+    if (!confirm(`Voulez-vous vraiment supprimer le module "${label}" ?\n${rowsToDelete.length} ligne(s) seront supprimées.`)) return;
+
+    // 1. Remove rows
+    const idsToDelete = new Set(rowsToDelete.map(r => r.id));
+    const newLines = (minute?.lines || []).filter(r => !idsToDelete.has(r.id));
+
+    // 2. Update modules (active=false, remove from order)
+    const currentOrder = Array.isArray(mods.order) ? mods.order : defaultOrder;
+    const newOrder = currentOrder.filter(k => k !== key);
+
+    // 3. Trigger Update
+    onChangeMinute?.({
+      ...minute,
+      lines: newLines,
+      modules: { ...mods, [key]: false, order: newOrder },
+      updatedAt: Date.now()
+    });
+  };
+
+  // Helper to Render Specific Module
+  const renderModule = (key) => {
+    // Common Header Renderer
+    const renderHeader = (label, rowsForModule) => (
+      <div style={{ padding: '20px 24px', borderBottom: `1px solid ${COLORS.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ fontWeight: 700, fontSize: 16, color: '#374151', textTransform: 'uppercase' }}>{label}</div>
+        <Button
+          color="error"
+          size="small"
+          onClick={() => handleRemoveModule(key, label, rowsForModule)}
+          sx={{ minWidth: 0, padding: 1 }}
+        >
+          <Trash2 size={18} />
+        </Button>
+      </div>
+    );
+
+    switch (key) {
+      case 'rideau':
+        return (
+          <div key="rideau" style={{ ...S.modernCard, padding: 0, marginBottom: 24 }}>
+            {renderHeader("Rideaux", rowsRideaux)}
+            <MinuteGrid
+              title=""
+              rows={rowsRideaux}
+              onRowsChange={mergeChildRowsFor("rideaux")}
+              schema={schema}
+              enableCellFormulas={enableCellFormulas}
+              formulaCtx={extendedCtx}
+              onAdd={React.useCallback(() => handleAddRow("rideaux"), [handleAddRow])}
+              onDelete={() => handleDeleteRows(selRideaux)}
+              rowSelectionModel={selRideaux}
+              onRowSelectionModelChange={setSelRideaux}
+              catalog={catalog}
+              railOptions={railOptions}
+              initialVisibilityModel={RIDEAUX_DEFAULT_VISIBILITY}
+              onImportExcel={handleImportExcel}
+              onDuplicateRow={handleDuplicateRow}
+              hideCroquis={true}
+              minuteId={minute?.id}
+              targetRowId={targetRowId}
+              onRowClick={onRowClick}
+              readOnly={readOnly}
+              currentUser={currentUser}
+            />
+          </div>
+        );
+      case 'decor':
+        return (
+          <div key="decor" style={{ ...S.modernCard, padding: 0, marginBottom: 24 }}>
+            {renderHeader("Décors de lit", rowsDecors)}
+            <MinuteGrid
+              title=""
+              rows={rowsDecors}
+              onRowsChange={mergeChildRowsFor("decors")}
+              schema={DECORS_SCHEMA}
+              enableCellFormulas={enableCellFormulas}
+              formulaCtx={extendedCtx}
+              onAdd={React.useCallback(() => handleAddRow("decors"), [handleAddRow])}
+              onDelete={() => handleDeleteRows(selDecors)}
+              rowSelectionModel={selDecors}
+              onRowSelectionModelChange={setSelDecors}
+              catalog={catalog}
+              initialVisibilityModel={DECORS_DEFAULT_VISIBILITY}
+              onDuplicateRow={handleDuplicateRow}
+              hideCroquis={true}
+              minuteId={minute?.id}
+              targetRowId={targetRowId}
+              onRowClick={onRowClick}
+              readOnly={readOnly}
+              currentUser={currentUser}
+            />
+          </div>
+        );
+      case 'store':
+        return (
+          <div key="store" style={{ ...S.modernCard, padding: 0, marginBottom: 24 }}>
+            {renderHeader("Stores", rowsStores)}
+            <MinuteGrid
+              title=""
+              rows={rowsStores}
+              onRowsChange={mergeChildRowsFor("stores")}
+              schema={STORES_SCHEMA}
+              enableCellFormulas={enableCellFormulas}
+              formulaCtx={extendedCtx}
+              onAdd={React.useCallback(() => handleAddRow("stores"), [handleAddRow])}
+              onDelete={() => handleDeleteRows(selStores)}
+              rowSelectionModel={selStores}
+              onRowSelectionModelChange={setSelStores}
+              catalog={catalog}
+              initialVisibilityModel={STORES_DEFAULT_VISIBILITY}
+              onDuplicateRow={handleDuplicateRow}
+              hideCroquis={true}
+              minuteId={minute?.id}
+              targetRowId={targetRowId}
+              onRowClick={onRowClick}
+              readOnly={readOnly}
+              currentUser={currentUser}
+            />
+          </div>
+        );
+      case 'autre_confection':
+        return (
+          <div key="autre_confection" style={{ ...S.modernCard, padding: 0, marginBottom: 24 }}>
+            {renderHeader("AUTRE / SUR-MESURE", rowsAutreConfection)}
+            <MinuteGrid
+              title=""
+              rows={rowsAutreConfection}
+              onRowsChange={mergeChildRowsFor("autre_confection")}
+              schema={AUTRES_SCHEMA}
+              enableCellFormulas={enableCellFormulas}
+              formulaCtx={extendedCtx}
+              onAdd={React.useCallback(() => handleAddRow("autre_confection"), [handleAddRow])}
+              onDelete={() => handleDeleteRows(selAutreConfection)}
+              rowSelectionModel={selAutreConfection}
+              onRowSelectionModelChange={setSelAutreConfection}
+              catalog={catalog}
+              initialVisibilityModel={{ st_conf_pa: false, st_conf_pv: false, st_pose_pa: false, st_pose_pv: false }}
+              onDuplicateRow={handleDuplicateRow}
+              hideCroquis={true}
+              minuteId={minute?.id}
+              targetRowId={targetRowId}
+              onRowClick={onRowClick}
+              readOnly={readOnly}
+              currentUser={currentUser}
+            />
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
+
   return (
     <div style={{ paddingBottom: 40 }}>
 
       {/* 1/2/3 tableaux selon modules */}
       <>
-        {/* --- NOUVEAUX TABLEAUX : Autres Dépenses & Déplacement (EN HAUT) --- */}
+        {/* --- NOUVEAUX TABLEAUX : Autres Dépenses & Déplacement (EN HAUT, FIXES) --- */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginBottom: 24 }}>
           {/* Tableau Autres Dépenses */}
           <div style={{ ...S.modernCard, padding: 0 }}>
@@ -427,125 +597,70 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
           </div>
         </div>
 
-
-
-        {mods.rideau && (
-          <div style={{ ...S.modernCard, padding: 0, marginBottom: 24 }}>
-            <div style={{ padding: '20px 24px', borderBottom: `1px solid ${COLORS.border}` }}>
-              <div style={{ fontWeight: 700, fontSize: 16, color: '#374151', textTransform: 'uppercase' }}>Rideaux</div>
-            </div>
-            <MinuteGrid
-              title="" // Title in custom header
-              rows={rowsRideaux}
-              onRowsChange={mergeChildRowsFor("rideaux")}
-              schema={schema}
-              enableCellFormulas={enableCellFormulas}
-              formulaCtx={extendedCtx}
-              onAdd={React.useCallback(() => handleAddRow("rideaux"), [handleAddRow])}
-              onDelete={() => handleDeleteRows(selRideaux)}
-              rowSelectionModel={selRideaux}
-              onRowSelectionModelChange={setSelRideaux}
-              catalog={catalog}
-              railOptions={railOptions}
-              initialVisibilityModel={RIDEAUX_DEFAULT_VISIBILITY}
-              onImportExcel={handleImportExcel}
-              onDuplicateRow={handleDuplicateRow}
-              hideCroquis={true}
-              minuteId={minute?.id}
-              targetRowId={targetRowId}
-              onRowClick={onRowClick}
-              readOnly={readOnly}
-              currentUser={currentUser}
-            />
-          </div>
-        )}
-
-        {mods.decor && (
-          <div style={{ ...S.modernCard, padding: 0, marginBottom: 24 }}>
-            <div style={{ padding: '20px 24px', borderBottom: `1px solid ${COLORS.border}` }}>
-              <div style={{ fontWeight: 700, fontSize: 16, color: '#374151', textTransform: 'uppercase' }}>Décors de lit</div>
-            </div>
-            <MinuteGrid
-              title=""
-              rows={rowsDecors}
-              onRowsChange={mergeChildRowsFor("decors")}
-              schema={DECORS_SCHEMA}
-              enableCellFormulas={enableCellFormulas}
-              formulaCtx={extendedCtx}
-              onAdd={React.useCallback(() => handleAddRow("decors"), [handleAddRow])}
-              onDelete={() => handleDeleteRows(selDecors)}
-              rowSelectionModel={selDecors}
-              onRowSelectionModelChange={setSelDecors}
-              catalog={catalog}
-              initialVisibilityModel={DECORS_DEFAULT_VISIBILITY}
-              onDuplicateRow={handleDuplicateRow}
-              hideCroquis={true}
-              minuteId={minute?.id}
-              targetRowId={targetRowId}
-              onRowClick={onRowClick}
-              readOnly={readOnly}
-              currentUser={currentUser}
-            />
-          </div>
-        )}
-
-        {mods.store && (
-          <div style={{ ...S.modernCard, padding: 0, marginBottom: 24 }}>
-            <div style={{ padding: '20px 24px', borderBottom: `1px solid ${COLORS.border}` }}>
-              <div style={{ fontWeight: 700, fontSize: 16, color: '#374151', textTransform: 'uppercase' }}>Stores</div>
-            </div>
-            <MinuteGrid
-              title=""
-              rows={rowsStores}
-              onRowsChange={mergeChildRowsFor("stores")}
-              schema={STORES_SCHEMA}
-              enableCellFormulas={enableCellFormulas}
-              formulaCtx={extendedCtx}
-              onAdd={React.useCallback(() => handleAddRow("stores"), [handleAddRow])}
-              onDelete={() => handleDeleteRows(selStores)}
-              rowSelectionModel={selStores}
-              onRowSelectionModelChange={setSelStores}
-              catalog={catalog}
-              initialVisibilityModel={STORES_DEFAULT_VISIBILITY}
-              onDuplicateRow={handleDuplicateRow}
-              hideCroquis={true}
-              minuteId={minute?.id}
-              targetRowId={targetRowId}
-              onRowClick={onRowClick}
-              readOnly={readOnly}
-              currentUser={currentUser}
-            />
-          </div>
-        )}
-
-        {/* --- NOUVEAU MODULE AUTRE (Confection Générique) --- */}
-        <div style={{ ...S.modernCard, padding: 0, marginBottom: 24 }}>
-          <div style={{ padding: '20px 24px', borderBottom: `1px solid ${COLORS.border}` }}>
-            <div style={{ fontWeight: 700, fontSize: 16, color: '#374151', textTransform: 'uppercase' }}>AUTRE</div>
-          </div>
-          <MinuteGrid
-            title=""
-            rows={rowsAutreConfection}
-            onRowsChange={mergeChildRowsFor("autre_confection")}
-            schema={AUTRES_SCHEMA}
-            enableCellFormulas={enableCellFormulas}
-            formulaCtx={extendedCtx}
-            onAdd={React.useCallback(() => handleAddRow("autre_confection"), [handleAddRow])}
-            onDelete={() => handleDeleteRows(selAutreConfection)}
-            rowSelectionModel={selAutreConfection}
-            onRowSelectionModelChange={setSelAutreConfection}
-            catalog={catalog}
-            initialVisibilityModel={{ st_conf_pa: false, st_conf_pv: false, st_pose_pa: false, st_pose_pv: false }}
-            onDuplicateRow={handleDuplicateRow}
-            hideCroquis={true}
-            minuteId={minute?.id}
-            targetRowId={targetRowId}
-            onRowClick={onRowClick}
-            readOnly={readOnly}
-            currentUser={currentUser}
-          />
-        </div>
+        {/* --- MODULES DYNAMIQUES --- */}
+        {renderOrder.map(key => {
+          // Render only if active
+          if (!mods[key]) return null;
+          return renderModule(key);
+        })}
       </>
+
+      {/* --- ADD MODULE BUTTON --- */}
+      {(() => {
+        const availableModules = [
+          { key: 'rideau', label: 'Rideaux' },
+          { key: 'store', label: 'Stores' },
+          { key: 'decor', label: 'Décors de lit' },
+          { key: 'autre_confection', label: 'Autre / Sur-mesure' },
+        ].filter(m => !mods[m.key]);
+
+        if (availableModules.length === 0 || readOnly) return null;
+
+        return (
+          <div style={{ display: 'flex', justifyContent: 'center', marginTop: 24, marginBottom: 24 }}>
+            <Button
+              variant="outlined"
+              startIcon={<Plus size={18} />}
+              onClick={(e) => setModuleMenuAnchor(e.currentTarget)}
+              sx={{
+                borderRadius: 8,
+                textTransform: 'none',
+                fontWeight: 600,
+                borderColor: '#E5E7EB',
+                color: '#374151',
+                bgcolor: 'white',
+                '&:hover': { bgcolor: '#F9FAFB', borderColor: '#D1D5DB' }
+              }}
+            >
+              Ajouter un module
+            </Button>
+            <Menu
+              anchorEl={moduleMenuAnchor}
+              open={Boolean(moduleMenuAnchor)}
+              onClose={() => setModuleMenuAnchor(null)}
+            >
+              {availableModules.map((m) => (
+                <MenuItem key={m.key} onClick={() => {
+                  // APPEND to order
+                  const currentOrder = Array.isArray(mods.order) ? mods.order : defaultOrder;
+                  // Remove the added key if it somehow exists (just in case), then append
+                  const cleanOrder = currentOrder.filter(k => k !== m.key);
+                  const newOrder = [...cleanOrder, m.key];
+
+                  onChangeMinute?.({
+                    ...minute,
+                    modules: { ...mods, [m.key]: true, order: newOrder },
+                    updatedAt: Date.now()
+                  });
+                  setModuleMenuAnchor(null);
+                }}>
+                  {m.label}
+                </MenuItem>
+              ))}
+            </Menu>
+          </div>
+        );
+      })()}
 
       <CatalogManager
         open={isCatalogOpen}

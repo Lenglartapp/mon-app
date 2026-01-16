@@ -71,7 +71,7 @@ export const STORES_SCHEMA = [
     { key: "pv_toile_finition_1", label: "PV TF1", type: "number", width: 90, readOnly: isBlocked },
 
     // doublure (text/catalog) : Doublure -> BLOCKED
-    { key: "doublure", label: "Doublure", type: "catalog_item", category: "Doublure,Doublures,Tissu,Tissus", width: 140, readOnly: isBlocked },
+    { key: "doublure", label: "Doublure", type: "catalog_item", category: "Tissu,Tissus", width: 140, readOnly: isBlocked },
 
     // laize_doublure (number) : Laize D. -> BLOCKED
     { key: "laize_doublure", label: "Laize D.", type: "number", width: 90, readOnly: isBlocked },

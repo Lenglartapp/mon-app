@@ -141,7 +141,43 @@ export function schemaToGridCols(schema, enableCellFormulas = false, onOpenDetai
         }
       }
 
-      gridCol.valueOptions = filteredCatalog.map(a => a.name);
+      if (col.key === 'modele_mecanisme') {
+        // DYNAMIC FILTERING based on Row Type & Unit
+        gridCol.valueOptions = (params) => {
+          const row = params.row || {};
+          const typeMeca = row.type_mecanisme;
+          const debugType = typeMeca ? `"${typeMeca}"` : "UNDEFINED/NULL";
+          console.log(`DEBUG FILTER START. RowId: ${row.id}, Type: ${debugType}, CatalogSize: ${filteredCatalog.length}`);
+
+          let subFiltered = filteredCatalog;
+
+          if (typeMeca === 'Rail') {
+            subFiltered = subFiltered.filter(a => {
+              const u = a.unit?.trim();
+              const keep = !u || u === 'ml';
+              if (!keep) console.log(`   ❌ [Rail Filter] Rejecting '${a.name}' (unit: '${a.unit}')`);
+              return keep;
+            });
+          } else if (typeMeca === 'Tringle' || typeMeca === 'Rail Motorisé') {
+            subFiltered = subFiltered.filter(a => {
+              const u = a.unit?.trim();
+              const keep = u === 'pce';
+              if (!keep) console.log(`   ❌ [${typeMeca} Filter] Rejecting '${a.name}' (unit: '${a.unit}')`);
+              else console.log(`   ✅ [${typeMeca} Filter] Keeping '${a.name}' (unit: '${a.unit}')`);
+              return keep;
+            });
+          } else {
+            console.log("   ⚠️ No Type filter matched. Showing ALL.");
+          }
+
+          console.log(`   🏁 Final Result Count: ${subFiltered.length}`);
+
+          return subFiltered.map(a => a.name);
+        };
+      } else {
+        // Standard static list for other catalog columns
+        gridCol.valueOptions = filteredCatalog.map(a => a.name);
+      }
       // We rely on isCellEditable from above
     }
 

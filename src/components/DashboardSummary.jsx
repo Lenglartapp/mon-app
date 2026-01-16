@@ -1,22 +1,30 @@
 import React from 'react';
 import { Paper, Grid, Typography, Divider, Box } from '@mui/material';
 
-export default function DashboardSummary({ recap, nf }) {
+export default function DashboardSummary({ recap, nf, activeModules }) {
+    // Default modules if undefined (safeguard)
+    const mods = activeModules || { rideau: true, store: true, decor: true, autre_confection: true };
+
     // Items configuration for easier mapping
-    // Items configuration for easier mapping
-    const items = [
+    const rawItems = [
         // 1. Production
-        { label: "Rideaux", value: recap.caRideaux },
-        { label: "Décors", value: recap.caDecors },
-        { label: "Stores", value: recap.caStores },
-        { label: "Logistique", value: recap.depTotal },
+        { label: "Rideaux", value: recap.caRideaux, show: mods.rideau },
+        { label: "Décors", value: recap.caDecors, show: mods.decor },
+        { label: "Stores", value: recap.caStores, show: mods.store },
+        // Autre Confection is often lumped into 'caAutres' which isn't explicitly shown in the original list, 
+        // but if it were, we would toggle it with mods.autre_confection.
+        // For now, we only toggle the explicit categories requested.
+
+        { label: "Logistique", value: recap.depTotal, show: true },
         // 2. Heures (Suffix 'h')
-        { label: "H. Conf", value: recap.hConf, suffix: "h" },
-        { label: "H. Pose", value: recap.hPose, suffix: "h" },
-        { label: "H. Prépa", value: recap.hPrepa, suffix: "h" },
+        { label: "H. Conf", value: recap.hConf, suffix: "h", show: true },
+        { label: "H. Pose", value: recap.hPose, suffix: "h", show: true },
+        { label: "H. Prépa", value: recap.hPrepa, suffix: "h", show: true },
         // 3. Autres (Grey)
-        { label: "Autres", value: recap.extrasTotal, color: "text.disabled" },
+        { label: "Autres", value: recap.extrasTotal, color: "text.disabled", show: true },
     ];
+
+    const items = rawItems.filter(i => i.show);
 
     return (
         <Paper
