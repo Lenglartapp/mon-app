@@ -154,14 +154,52 @@ export default function MinuteGrid({
     }, [rows, onRowsChange]);
 
     const columns = useMemo(() => {
+        // DEBUG: Verify catalog before schema generation
+        const lutron = catalog.find(x => x.name.toLowerCase().includes('lutron'));
+        console.log("🧐 MinuteGrid: Generating Cols. Catalog Size:", catalog.length, "Lutron Unit:", lutron?.unit);
+
         const cols = schemaToGridCols(schema, enableCellFormulas, handleOpenDetail, catalog, railOptions, handlePhotoChange, onDuplicateRow, hideCroquis, readOnly);
+
+        // --- HOTFIX: Force Dynamic Options for modele_mecanisme in MinuteGrid ---
+        const mecaCol = cols.find(c => c.field === 'modele_mecanisme');
+        if (mecaCol) {
+            console.log("🔥 HOTFIX v2 INITIALIZED. MecaCol found. OLD Type:", mecaCol.type);
+            // FORCE TYPE TO SINGLESELECT (Fixes 'string' issue)
+            mecaCol.type = 'singleSelect';
+            mecaCol.editable = true;
+            // CLEAR ANY CUSTOM RENDERER
+            mecaCol.renderEditCell = undefined;
+            mecaCol.valueFormatter = undefined;
+
+
+            mecaCol.valueOptions = (params) => {
+                const row = params.row || {};
+                const typeMeca = row.type_mecanisme;
+                console.log("🔥 HOTFIX RUNNING. Type:", typeMeca);
+
+                // Get base catalog items for rails/mech
+                const baseItems = catalog.filter(item => ['Rail', 'Tringle', 'Mecanisme', 'Mécanisme', 'Store'].includes(item.category));
+
+                let results = [];
+                if (typeMeca === 'Rail') {
+                    results = baseItems.filter(a => !a.unit || a.unit === 'ml');
+                } else if (typeMeca === 'Tringle' || typeMeca === 'Rail Motorisé') {
+                    results = baseItems.filter(a => a.unit === 'pce');
+                } else {
+                    results = baseItems;
+                }
+
+                console.log("🔥 HOTFIX RESULTS:", results.length, results.map(r => r.name));
+                return results.map(a => a.name);
+            };
+        } else {
+            console.error("☠️ HOTFIX FAILED. 'modele_mecanisme' col not found!");
+        }
+        // -----------------------------------------------------------------------
 
         // MOBILE OPTIMIZATION
         if (isMobile) {
             // Force only specific columns: Piece, Produit, Statuts
-            // Note: 'statut' might need to cover multiple fields like 'statut_conf', 'statut_pose' etc.
-            // Or we rely on 'detail' column or specific keys.
-            // User asked for "Vitales: piece, produit, statut".
             const mobileKeys = ['piece', 'produit', 'statut_cotes', 'statut_prepa', 'statut_conf', 'statut_pose'];
             return cols.filter(c => mobileKeys.includes(c.field) || c.field === 'detail');
         }
@@ -177,14 +215,16 @@ export default function MinuteGrid({
             let hasOverride = false;
 
             // 1. Check for Catalog Auto-fill
-            // Detect which column changed and if it's a catalog-linked column
             const changedKey = Object.keys(newRow).find(k => newRow[k] !== oldRow[k]);
 
-            // List of columns that might be linked to catalog (e.g. tissu_deco_1, tissu_deco_2, doublure, produit)
+            // List of columns that might be linked to catalog
             const isCatalogColumn = changedKey && (
                 changedKey.includes('tissu') ||
                 changedKey.includes('doublure') ||
-                changedKey === 'produit'
+                changedKey.includes('passementerie') ||
+                changedKey === 'produit' ||
+                changedKey === 'modele_mecanisme' ||
+                changedKey === 'toile_finition_1'
             );
 
             if (isCatalogColumn) {
@@ -192,47 +232,73 @@ export default function MinuteGrid({
                 const article = catalog.find(a => a.name === articleName);
 
                 if (article) {
-                    // Define specific mappings for known catalog columns
                     const mapping = {};
 
                     if (changedKey === 'tissu_deco1') {
-                        mapping.laize = 'laize_tissu_deco1';
-                        mapping.motif = 'motif_deco1';
-                        mapping.rv = 'raccord_v1';
-                        mapping.rh = 'raccord_h1';
-                        mapping.pa = 'pa_tissu_deco1';
-                        mapping.pv = 'pv_tissu_deco1';
+                        mapping.laize = 'laize_tissu1';
+                        mapping.rv = 'raccord_v_tissu1';
+                        mapping.rh = 'raccord_h_tissu1';
+                        mapping.pa = 'pa_tissu1';
+                        mapping.pv = 'pv_tissu1';
                     } else if (changedKey === 'tissu_deco2') {
-                        mapping.laize = 'laize_tissu_deco2';
-                        mapping.motif = 'motif_deco2';
-                        mapping.rv = 'raccord_v2';
-                        mapping.rh = 'raccord_h2';
-                        mapping.pa = 'pa_tissu_deco2';
-                        mapping.pv = 'pv_tissu_deco2';
+                        mapping.laize = 'laize_tissu2';
+                        mapping.rv = 'raccord_v_tissu2';
+                        mapping.rh = 'raccord_h_tissu2';
+                        mapping.pa = 'pa_tissu2';
+                        mapping.pv = 'pv_tissu2';
+                    } else if (changedKey === 'tissu_1') {
+                        mapping.laize = 'laize_tissu_1';
+                        mapping.pa = 'pa_tissu_1';
+                        mapping.pv = 'pv_tissu_1';
+                    } else if (changedKey === 'tissu_2') {
+                        mapping.laize = 'laize_tissu_2';
+                        mapping.pa = 'pa_tissu_2';
+                        mapping.pv = 'pv_tissu_2';
+                    } else if (changedKey === 'toile_finition_1') {
+                        mapping.laize = 'laize_toile_finition_1';
+                        mapping.rv = 'raccord_v_toile_finition_1';
+                        mapping.rh = 'raccord_h_toile_finition_1';
+                        mapping.pa = 'pa_toile_finition_1';
+                        mapping.pv = 'pv_toile_finition_1';
                     } else if (changedKey === 'doublure') {
                         mapping.laize = 'laize_doublure';
                         mapping.pa = 'pa_doublure';
                         mapping.pv = 'pv_doublure';
-                        // Doublure usually has no motif/raccord logic in this schema context, but safe to ignore if undefined
+                    } else if (changedKey === 'interdoublure') {
+                        mapping.laize = 'laize_interdoublure';
+                        mapping.pa = 'pa_interdoublure';
+                        mapping.pv = 'pv_interdoublure';
                     } else if (changedKey === 'inter_doublure') {
                         mapping.laize = 'laize_inter';
                         mapping.pa = 'pa_inter';
                         mapping.pv = 'pv_inter';
+                    } else if (changedKey === 'passementerie1' || changedKey === 'passementerie_1') {
+                        mapping.pa = changedKey === 'passementerie1' ? 'pa_pass1' : 'pa_pass_1';
+                        mapping.pv = changedKey === 'passementerie1' ? 'pv_pass1' : 'pv_pass_1';
+                    } else if (changedKey === 'passementerie2' || changedKey === 'passementerie_2') {
+                        mapping.pa = changedKey === 'passementerie2' ? 'pa_pass2' : 'pa_pass_2';
+                        mapping.pv = changedKey === 'passementerie2' ? 'pv_pass2' : 'pv_pass_2';
                     } else if (changedKey === 'produit') {
-                        // Generic fallback for simple product selection if needed
-                        // But usually 'produit' is the category, not the fabric itself.
-                        // Keeping empty to avoid unwanted overwrites unless specific logic is requested.
+                        // Generic fallback
+                    } else if (changedKey === 'modele_mecanisme') {
+                        // Use UNIT to determine if we auto-fill PA/PV.
+                        // 'ml' (Rail) -> Auto-fill from catalog (calculated by formula then)
+                        // 'pce' (Lutron) -> Do NOT auto-fill (manual entry or reference table)
+                        if (!article.unit || article.unit === 'ml') {
+                            console.log("⚡️ Auto-filling PA/PV for ml mechanism:", article.name);
+                            mapping.pa = 'pa_mecanisme';
+                            mapping.pv = 'pv_mecanisme';
+                        } else {
+                            console.log("✋ Skipping PA/PV auto-fill for piece mechanism:", article.name);
+                        }
                     }
 
                     // Apply updates based on mapping
                     if (mapping.laize && schema.some(c => c.key === mapping.laize)) updatedRow[mapping.laize] = article.width;
-                    // Logic moved to recomputeRow.j (Calculation based on ML)
-                    // if (mapping.pa && schema.some(c => c.key === mapping.pa)) updatedRow[mapping.pa] = article.buyPrice;
-                    // if (mapping.pv && schema.some(c => c.key === mapping.pv)) updatedRow[mapping.pv] = article.sellPrice;
+                    if (mapping.pa && schema.some(c => c.key === mapping.pa)) updatedRow[mapping.pa] = article.buyPrice;
+                    if (mapping.pv && schema.some(c => c.key === mapping.pv)) updatedRow[mapping.pv] = article.sellPrice;
 
                     if (mapping.motif && schema.some(c => c.key === mapping.motif)) {
-                        // Motif is text in schema ("Motif Déco 1"), assuming boolean or text conversion
-                        // If article.motif is bool, maybe convert to "Oui"/"Non" or keep bool if schema allows
                         updatedRow[mapping.motif] = article.motif ? "Oui" : "Non";
                     }
 
@@ -285,7 +351,6 @@ export default function MinuteGrid({
             });
 
             // 4. AUTO-LOG SYSTEM (New)
-            // Use shared logic for consistency with Detail Panel
             const author = currentUser?.name || currentUser?.email || 'Utilisateur';
             const logs = generateRowLogs(oldRow, newRow, schema, author);
 
@@ -304,7 +369,7 @@ export default function MinuteGrid({
                 return oldRow;
             }
         },
-        [rows, onRowsChange, schema, formulaCtx, catalog]
+        [rows, onRowsChange, schema, formulaCtx, catalog, currentUser]
     );
 
     const handleProcessRowUpdateError = useCallback((error) => {

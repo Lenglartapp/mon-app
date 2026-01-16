@@ -167,22 +167,36 @@ export default function CatalogManager({ open, onClose, catalog, onCatalogChange
                 field: 'buyPrice',
                 headerName: 'Prix Achat (€)',
                 width: 130,
-                editable: true,
+                editable: (params) => params.row.unit !== 'pce', // Lock if Piece
                 type: 'number',
                 valueFormatter: (value) => {
                     if (value === undefined || value === null || value === '') return '';
                     return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(value);
+                },
+                renderCell: (params) => {
+                    if (params.row.unit === 'pce') {
+                        return <span style={{ color: '#9CA3AF', fontStyle: 'italic', fontSize: 11 }}>Voir tableau</span>;
+                    }
+                    if (params.value === undefined || params.value === null || params.value === '') return '';
+                    return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(params.value);
                 }
             },
             {
                 field: 'sellPrice',
                 headerName: 'Prix Vente (€)',
                 width: 130,
-                editable: true,
+                editable: (params) => params.row.unit !== 'pce', // Lock if Piece
                 type: 'number',
                 valueFormatter: (value) => {
                     if (value === undefined || value === null || value === '') return '';
                     return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(value);
+                },
+                renderCell: (params) => {
+                    if (params.row.unit === 'pce') {
+                        return <span style={{ color: '#9CA3AF', fontStyle: 'italic', fontSize: 11 }}>Voir tableau</span>;
+                    }
+                    if (params.value === undefined || params.value === null || params.value === '') return '';
+                    return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(params.value);
                 }
             },
             {

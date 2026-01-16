@@ -91,6 +91,7 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
                 endDate,
                 endTime,
                 description,
+                status: eventToEdit?.meta?.status || 'pending', // Preserves status or defaults to pending
                 type: allMembers.find(m => m.id === selectedResources[0])?.group || 'default'
             });
             onClose();

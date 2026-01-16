@@ -75,7 +75,7 @@ export const CHIFFRAGE_SCHEMA = [
   { key: "pv_tissu2", label: "PV T2", type: "number", width: 90 },
 
   // 35
-  { key: "doublure", label: "Doublure", type: "catalog_item", category: "Doublure", width: 140 },
+  { key: "doublure", label: "Doublure", type: "catalog_item", category: "Tissu", width: 140 },
   // 36
   { key: "laize_doublure", label: "Laize D.", type: "number", width: 90 },
   // 37
@@ -88,7 +88,7 @@ export const CHIFFRAGE_SCHEMA = [
   { key: "pv_doublure", label: "PV Doubl.", type: "number", width: 90 },
 
   // 41
-  { key: "interdoublure", label: "Inter-D.", type: "catalog_item", category: "Interdoublure", width: 140 },
+  { key: "interdoublure", label: "Inter-D.", type: "catalog_item", category: "Tissu", width: 140 },
   // 42
   { key: "laize_interdoublure", label: "Laize I.", type: "number", width: 90 },
   // 43
@@ -123,7 +123,7 @@ export const CHIFFRAGE_SCHEMA = [
   { key: "pv_pass2", label: "PV Pass 2", type: "number", width: 90 },
 
   // 57
-  { key: "type_mecanisme", label: "Type Méca", type: "select", options: ["Rail", "Tringle"], width: 120 },
+  { key: "type_mecanisme", label: "Type Méca", type: "select", options: ["Rail", "Tringle", "Rail Motorisé"], width: 120 },
   // 58
   { key: "modele_mecanisme", label: "Modèle Méca", type: "catalog_item", category: "Rail,Rails,Tringle,Tringles,Mecanisme,Mécanisme,Mecanismes,Mécanismes", width: 140 },
   // 59

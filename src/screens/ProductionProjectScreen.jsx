@@ -542,81 +542,88 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', width: isMobile ? '100%' : 'auto' }}>
-            {/* Stock Button (Header) */}
-            <button
-              onClick={() => setStockOpen(true)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 8,
-                background: 'white',
-                border: '1px solid #E5E7EB',
-                borderRadius: 20,
-                padding: '7px 16px',
-                boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
-                cursor: 'pointer',
-                fontSize: 13,
-                color: '#374151',
-                fontWeight: 600,
-                outline: 'none',
-                flex: isMobile ? 1 : 'initial', justifyContent: 'center'
-              }}
-            >
-              Stock
-            </button>
-
-            {/* Delivery Date */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'white', border: '1px solid #E5E7EB', borderRadius: 20, padding: '6px 12px', boxShadow: "0 1px 2px rgba(0,0,0,0.05)", flex: isMobile ? '1 1 100%' : 'initial' }}>
-              <span style={{ fontSize: 13, color: '#6B7280', fontWeight: 500 }}>Livraison :</span>
-              <input
-                type="date"
-                value={project?.delivery_date || ""}
-                onChange={(e) => onUpdateProject(project.id, { delivery_date: e.target.value })}
+            {/* Stock Button (Header) - Hidden on Mobile */}
+            {!isMobile && (
+              <button
+                onClick={() => setStockOpen(true)}
                 style={{
-                  border: 'none',
-                  background: 'transparent',
-                  color: '#374151',
-                  fontSize: 13,
-                  fontFamily: 'inherit',
-                  cursor: 'pointer',
-                  outline: 'none',
-                  width: '100%'
-                }}
-              />
-            </div>
-
-            {/* Project Status Selector */}
-            <div style={{ position: 'relative', flex: isMobile ? '1 1 100%' : 'initial' }}>
-              <select
-                value={project?.status || "TODO"}
-                onChange={(e) => onUpdateProject(project.id, { status: e.target.value })}
-                style={{
-                  appearance: 'none',
-                  padding: "8px 12px 8px 24px",
-                  borderRadius: 20,
-                  border: "1px solid #E5E7EB",
+                  display: 'flex', alignItems: 'center', gap: 8,
                   background: 'white',
-                  color: "#374151",
-                  fontWeight: 600,
-                  fontSize: 13,
+                  border: '1px solid #E5E7EB',
+                  borderRadius: 20,
+                  padding: '7px 16px',
+                  boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
                   cursor: 'pointer',
-                  textAlign: 'center',
-                  minWidth: 120,
-                  width: '100%',
+                  fontSize: 13,
+                  color: '#374151',
+                  fontWeight: 600,
                   outline: 'none',
-                  boxShadow: "0 1px 2px rgba(0,0,0,0.05)"
+                  flex: 'initial', justifyContent: 'center'
                 }}
               >
-                {Object.entries(PROJECT_STATUS_OPTIONS).map(([key, opt]) => (
-                  <option key={key} value={key}>{opt.label}</option>
-                ))}
-              </select>
-              {/* Colored Dot Overlay */}
-              <div style={{
-                position: 'absolute', top: '50%', left: 10, transform: 'translateY(-50%)',
-                width: 8, height: 8, borderRadius: '50%',
-                background: PROJECT_STATUS_OPTIONS[project?.status || "TODO"]?.color || "#9CA3AF",
-                pointerEvents: 'none'
-              }} />
-            </div>
+                Stock
+              </button>
+            )}
+
+            {/* Delivery Date - Hidden on Mobile */}
+            {!isMobile && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'white', border: '1px solid #E5E7EB', borderRadius: 20, padding: '6px 12px', boxShadow: "0 1px 2px rgba(0,0,0,0.05)", flex: 'initial', minWidth: 0 }}>
+                <span style={{ fontSize: 13, color: '#6B7280', fontWeight: 500 }}>Livraison :</span>
+                <input
+                  type="date"
+                  value={project?.delivery_date || ""}
+                  onChange={(e) => onUpdateProject(project.id, { delivery_date: e.target.value })}
+                  style={{
+                    border: 'none',
+                    background: 'transparent',
+                    color: '#374151',
+                    fontSize: 13,
+                    fontFamily: 'inherit',
+                    cursor: 'pointer',
+                    outline: 'none',
+                    width: '100%',
+                    minWidth: 0
+                  }}
+                />
+              </div>
+            )}
+
+            {/* Project Status Selector - Hidden on Mobile */}
+            {!isMobile && (
+              <div style={{ position: 'relative', flex: 'initial', minWidth: 0 }}>
+                <select
+                  value={project?.status || "TODO"}
+                  onChange={(e) => onUpdateProject(project.id, { status: e.target.value })}
+                  style={{
+                    appearance: 'none',
+                    padding: "8px 12px 8px 24px",
+                    borderRadius: 20,
+                    border: "1px solid #E5E7EB",
+                    background: 'white',
+                    color: "#374151",
+                    fontWeight: 600,
+                    fontSize: 13,
+                    cursor: 'pointer',
+                    textAlign: 'center',
+                    minWidth: 120,
+                    width: '100%',
+                    outline: 'none',
+                    boxShadow: "0 1px 2px rgba(0,0,0,0.05)"
+                  }}
+                >
+                  {Object.entries(PROJECT_STATUS_OPTIONS).map(([key, opt]) => (
+                    <option key={key} value={key}>{opt.label}</option>
+                  ))}
+                </select>
+                {/* Colored Dot Overlay */}
+                <div style={{
+                  position: 'absolute', top: '50%', left: 10, transform: 'translateY(-50%)',
+                  width: 8, height: 8, borderRadius: '50%',
+                  background: PROJECT_STATUS_OPTIONS[project?.status || "TODO"]?.color || "#9CA3AF",
+                  pointerEvents: 'none'
+                }} />
+              </div>
+            )}
           </div>
         </div>
       </div>

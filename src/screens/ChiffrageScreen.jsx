@@ -101,7 +101,14 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onBack, highlightRowId }
     setExtraRows(minute?.extraDepenses || []);
   }, [minute?.id, minute?.lines, minute?.deplacements, minute?.extraDepenses, schema, formulaCtx]);
 
-  const mods = minute?.modules || { rideau: true, store: true, decor: true };
+  // Modules State (Optimistic)
+  const [localModules, setLocalModules] = React.useState(minute?.modules || { rideau: true, store: true, decor: true });
+
+  React.useEffect(() => {
+    if (minute?.modules) setLocalModules(minute.modules);
+  }, [minute?.modules]);
+
+  const mods = localModules;
 
   // Update Wrapper
   const updateMinute = (patch) => {
@@ -351,9 +358,10 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onBack, highlightRowId }
       {/* Minutes Tab */}
       {activeTab === "minutes" && (
         <div style={{ display: "grid", gap: 12, overflow: "hidden" }}>
-          <DashboardSummary recap={recap} nf={nfEur0} />
+          <DashboardSummary recap={recap} nf={nfEur0} activeModules={mods} />
           <div style={{ minWidth: 0, overflowX: "auto" }}>
             <MinuteEditor
+              key={`${minute?.id}-${Object.keys(mods || {}).filter(k => mods[k]).sort().join('-')}`} // FORCE REMOUNT on module change
               minute={{
                 ...minute,
                 lines: [
@@ -375,6 +383,8 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onBack, highlightRowId }
                 setRows(newLines);
                 setExtraRows(newExtras);
                 setDepRows(newDeps);
+                if (m.modules) setLocalModules(m.modules);
+
                 updateMinute({
                   lines: newLines,
                   extraDepenses: newExtras,
@@ -383,7 +393,8 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onBack, highlightRowId }
                   notes: m.notes,
                   status: m.status,
                   catalog: m.catalog,
-                  settings: m.settings
+                  settings: m.settings,
+                  modules: m.modules // ADDED: Persist modules
                 });
               }}
               enableCellFormulas={true}
