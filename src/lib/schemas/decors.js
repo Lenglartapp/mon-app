@@ -115,10 +115,15 @@ export const DECORS_SCHEMA = [
     createCol('heures_confection', 'H. Conf', 80, 'number'),
     createCol('pv_confection', 'PV Conf', 80, 'number'), // Unblocked
 
+    createCol('st_conf_pa', 'ST Conf PA', 90, 'number'),
+    createCol('st_conf_pv', 'ST Conf PV', 90, 'number'), // Unblocked
+
     createCol('st_pose_pa', 'ST Pose PA', 90, 'number'),
     createCol('st_pose_pv', 'ST Pose PV', 90, 'number'), // Unblocked
 
     createCol('livraison', 'Livraison', 90, 'number'),
+
+    // 9. SOUS-TRAITANCE LOGIC
 
     // 8. TOTAUX
     // UNBLOCKED PER USER REQUEST (No ReadOnly)
@@ -127,13 +132,69 @@ export const DECORS_SCHEMA = [
     createCol('total_price', 'Total', 100, 'number'),
 ].map(c => ({ ...c, key: c.field })); // Ensure 'key' prop exists for internal logic compatibility
 
-// Schema Production (No PA/PV, Hours, Prices)
-export const DECORS_PROD_SCHEMA = DECORS_SCHEMA.filter(c => {
-    const k = c.field;
-    // Exclude PA, PV, Hours, Delivery, Prices
-    if (k.startsWith('pa_') || k.startsWith('pv_')) return false;
-    if (k.startsWith('heures_')) return false;
-    if (k.startsWith('st_')) return false; // Subcontracting costs usually hidden too? User said "PA PV", ST has PA/PV.
-    if (['livraison', 'unit_price', 'total_price'].includes(k)) return false;
-    return true;
-});
+// Helper for conditional rendering (Hide 0)
+const hideZero = (params) => {
+    // Robust handle: params might be value itself or object
+    const val = (params && typeof params === 'object' && 'value' in params) ? params.value : params;
+    if (!val || Number(val) === 0) return '';
+    return val;
+};
+
+// Helper for Substraction Logic
+const renderSubcontractor = (params, context) => {
+    // MUI v6 valueFormatter signature: (value, row, col, api)
+    // Legacy/Context might vary. We try to find row.
+
+    // 1. Try context row (2nd arg)
+    let row = context;
+    // 2. Try params.api (MUI v5 params object)
+    if (!row && params && params.api) {
+        row = params.api.getRow(params.id);
+    }
+    // 3. Try params.row (MUI v5 params object)
+    if (!row && params && params.row) {
+        row = params.row;
+    }
+
+    const stVal = Number(row?.st_conf_pa || 0);
+    const val = (params && typeof params === 'object' && 'value' in params) ? params.value : params;
+
+    if (stVal <= 0) return ''; // Hide content if not subcontracted
+    return val;
+};
+// NOTE: For DataGrid to access 'row' in valueFormatter, usage depends on version. 
+// If it fails, the field shows empty or as-is. 
+// We will assign this function properly below.
+
+// Schema Production (Explicit Mapping)
+export const DECORS_PROD_SCHEMA = [
+    'zone', 'piece', 'produit', 'type_confection',
+    'largeur', 'longueur', 'hauteur',
+    'tissu_1', 'laize_tissu_1', 'ml_tissu_1',
+    'tissu_2', 'laize_tissu_2', 'ml_tissu_2',
+    'type_interieur',
+    'passementerie_1', 'app_passementerie_1', 'ml_pass_1',
+    'passementerie_2', 'app_passementerie_2', 'ml_pass_2',
+    'mecanisme_fourniture',
+    // Prestations (Hide if 0)
+    { field: 'heures_prepa', valueFormatter: hideZero },
+    { field: 'heures_pose', valueFormatter: hideZero },
+    { field: 'heures_confection', valueFormatter: hideZero },
+    'quantite',
+    // Sous-traitance Triggered Logic
+    {
+        field: 'sous_traite_par',
+        headerName: 'Sous-traité par',
+        width: 150,
+        editable: true,
+        valueFormatter: renderSubcontractor
+    }
+].map(def => {
+    // If string, find in main schema
+    if (typeof def === 'string') {
+        return DECORS_SCHEMA.find(c => c.field === def);
+    }
+    // If object, find and merge
+    const base = DECORS_SCHEMA.find(c => c.field === def.field);
+    return { ...base, ...def }; // Merge overrides (like valueFormatter)
+}).filter(Boolean).map(c => ({ ...c, key: c.field })); // Ensure 'key' prop exists

@@ -477,8 +477,7 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
           </table>
         </div>
       </div>
-      )
-}
+
 
       {
         showCreate && (
@@ -493,7 +492,20 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
               project.id = project.id || uid();
               project.name = name || meta?.minuteName || project.name || "Nouveau Dossier";
               project.sourceMinuteId = meta?.id || null;
-              project.budget = meta?.budgetSnapshot || { prepa: 0, conf: 0, pose: 0 };
+              // Calculate budget from rows directly to ensure accuracy
+              const calculateBudgetFromRows = (rs) => {
+                let p = 0, c = 0, i = 0;
+                (rs || []).forEach(r => {
+                  const qty = Number(r.quantite) || 1;
+                  p += (Number(r.heures_prepa) || 0) * qty;
+                  c += (Number(r.heures_confection) || 0) * qty;
+                  i += (Number(r.heures_pose) || 0) * qty;
+                });
+                return { prepa: p, conf: c, pose: i };
+              };
+
+              // Force calculation from rows (Source of Truth) instead of potentially empty/outdated snapshot
+              project.budget = calculateBudgetFromRows(rows);
               project.manager = meta?.owner || project.manager;
               project.notes = meta?.notes || project.notes;
               project.due = deliveryDate || null;

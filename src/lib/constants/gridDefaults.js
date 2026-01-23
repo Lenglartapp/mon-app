@@ -50,12 +50,12 @@ export const DECORS_DEFAULT_VISIBILITY = {
     pv_prepa: false,
     heures_pose: false,
     pv_pose: false,
+    heures_confection: false, // NEW: Hide by default
+    pv_confection: false,     // NEW: Hide by default
+
     st_pose_pa: false,
     st_pose_pv: false,
-    // Note: User kept Heures Confection / PV Conf visible (didn't mention them in "SAUF" list to hide)
-    // Wait, prompt said: "SAUF Méca Fourniture, PA Méca, PV Méca, H.Prépa, PV Prépa, H.Pose, PV Pose, ST Pose PA, ST Pose PV"
-    // "la vue par défaut du tableau ça doit être TOUS les champs SAUF..." -> MEANS these MUST BE HIDDEN.
-    // So I hide them.
+    // st_conf_pa / st_conf_pv are NOT here, so they will be VISIBLE by default.
 
     // Legacy fields that might exist in grid state but irrelevant for Decors
     // We clean them up to be safe

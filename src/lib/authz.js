@@ -66,7 +66,7 @@ const PERMISSIONS = {
     "planning.view_gauges": true,
 
     "inventory.view": true,
-    "inventory.edit": false,
+    "inventory.edit": true,
   },
 
   // PREPA (Préparation)

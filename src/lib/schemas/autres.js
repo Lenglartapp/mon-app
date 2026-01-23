@@ -77,12 +77,71 @@ export const AUTRES_SCHEMA = [
 
 ].map(c => ({ ...c, key: c.field }));
 
-export const AUTRES_PROD_SCHEMA = AUTRES_SCHEMA.filter(c => {
-    const k = c.field;
-    if (k.startsWith('pa_') || k.startsWith('pv_')) return false;
-    if (['unit_price', 'total_price', 'livraison'].includes(k)) return false;
-    if (k.startsWith('st_')) return false;
-    if (k.startsWith('heures_')) return false;
-    if (k.startsWith('ml_')) return false;
-    return true;
-});
+// Helper for conditional rendering (Hide 0)
+const hideZero = (params) => {
+    const val = (params && typeof params === 'object' && 'value' in params) ? params.value : params;
+    if (!val || Number(val) === 0) return '';
+    return val;
+};
+
+// Subcontracting Logic Helpers
+const renderSubcontractorGeneric = (params, context, triggerField) => {
+    // 1. Try context row
+    let row = context;
+    // 2. Try params.api
+    if (!row && params && params.api) {
+        row = params.api.getRow(params.id);
+    }
+    // 3. Try params.row
+    if (!row && params && params.row) {
+        row = params.row;
+    }
+
+    const stVal = Number(row?.[triggerField] || 0);
+    const val = (params && typeof params === 'object' && 'value' in params) ? params.value : params;
+
+    if (stVal <= 0) return '';
+    return val;
+};
+
+export const AUTRES_PROD_SCHEMA = [
+    'zone', 'piece', 'produit',
+    'largeur', 'hauteur',
+    'tissu_1', 'ml_tissu_1',
+    'tissu_2', 'ml_tissu_2',
+    'mecanisme',
+
+    // HEURES (Hide if 0)
+    { field: 'heures_prepa', valueFormatter: hideZero },
+    { field: 'heures_pose', valueFormatter: hideZero },
+    { field: 'heures_confection', valueFormatter: hideZero },
+
+    // SOUS-TRAITANCE CONF
+    {
+        field: 'st_conf_par',
+        headerName: 'ST Conf par',
+        width: 150,
+        editable: true,
+        valueFormatter: (params, ctx) => renderSubcontractorGeneric(params, ctx, 'st_conf_pa')
+    },
+
+    // SOUS-TRAITANCE POSE
+    {
+        field: 'st_pose_par',
+        headerName: 'ST Pose par',
+        width: 150,
+        editable: true,
+        valueFormatter: (params, ctx) => renderSubcontractorGeneric(params, ctx, 'st_pose_pa')
+    },
+
+    'quantite'
+    // NO TOTAL, NO PU requested
+].map(def => {
+    if (typeof def === 'string') {
+        const found = AUTRES_SCHEMA.find(c => c.field === def);
+        return found ? found : null;
+    }
+    const base = AUTRES_SCHEMA.find(c => c.field === def.field);
+    // If base is not found (e.g. new virtual fields), use def direct
+    return base ? { ...base, ...def } : def;
+}).filter(Boolean).map(c => ({ ...c, key: c.field })); // Ensure key exists

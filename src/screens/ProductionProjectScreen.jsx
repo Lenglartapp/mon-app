@@ -242,7 +242,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
 
   // Sous-ensembles (sur rows filtrées)
   const rowsRideaux = filteredRows.filter((r) => /rideau|voilage/i.test(String(r.produit || "")));
-  const rowsDecors = filteredRows.filter((r) => /d[ée]cor/i.test(String(r.produit || "")));
+  const rowsDecors = filteredRows.filter((r) => /d[ée]cor|coussin|plaid|t[êe]te|tenture|cache/i.test(String(r.produit || "")));
   const rowsStores = filteredRows.filter((r) => /store/i.test(String(r.produit || "")));
   const rowsAutreConfection = filteredRows.filter(r => r.section === 'autre');
 
@@ -840,68 +840,76 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
 
       {stage === "bpf" && (
         <>
-          <div style={cardStyle}>
-            <div style={cardHeaderStyle}>BPF Rideaux</div>
-            <MinuteGrid
-              rows={rowsRideaux}
-              onRowsChange={mergeChildRowsFor("rideaux")}
-              schema={schema}
-              enableCellFormulas={true}
-              initialVisibilityModel={getVisibilityModel('bpf', 'rideaux', schema)}
-              onAdd={() => handleAddRow("Rideau")}
-              onDuplicateRow={handleDuplicateRow}
-              projectId={project?.id}
-              onRowClick={(id) => setOpenedRowId(id)}
-              isMobile={isMobile}
-            />
-          </div>
+          {rowsRideaux.length > 0 && (
+            <div style={cardStyle}>
+              <div style={cardHeaderStyle}>BPF Rideaux</div>
+              <MinuteGrid
+                rows={rowsRideaux}
+                onRowsChange={mergeChildRowsFor("rideaux")}
+                schema={schema}
+                enableCellFormulas={true}
+                initialVisibilityModel={getVisibilityModel('bpf', 'rideaux', schema)}
+                onAdd={() => handleAddRow("Rideau")}
+                onDuplicateRow={handleDuplicateRow}
+                projectId={project?.id}
+                onRowClick={(id) => setOpenedRowId(id)}
+                isMobile={isMobile}
+              />
+            </div>
+          )}
 
-          <div style={cardStyle}>
-            <div style={cardHeaderStyle}>BPF Décors de lit</div>
-            <MinuteGrid
-              rows={rowsDecors}
-              onRowsChange={mergeChildRowsFor("decors")}
-              schema={DECORS_PROD_SCHEMA} // <--- PROD SCHEMA
-              enableCellFormulas={true}
-              // initialVisibilityModel={...} // No visibility model needed, schema is already trimmed
-              onAdd={() => handleAddRow("Décor de lit")}
-              onDuplicateRow={handleDuplicateRow}
-              projectId={project?.id}
-              onRowClick={(id) => setOpenedRowId(id)}
-              isMobile={isMobile}
-            />
-          </div>
+          {rowsDecors.length > 0 && (
+            <div style={cardStyle}>
+              <div style={cardHeaderStyle}>BPF Décors de lit</div>
+              <MinuteGrid
+                rows={rowsDecors}
+                onRowsChange={mergeChildRowsFor("decors")}
+                schema={DECORS_PROD_SCHEMA} // <--- PROD SCHEMA
+                enableCellFormulas={true}
+                // initialVisibilityModel={...} // No visibility model needed, schema is already trimmed
+                onAdd={() => handleAddRow("Décor de lit")}
+                onDuplicateRow={handleDuplicateRow}
+                projectId={project?.id}
+                onRowClick={(id) => setOpenedRowId(id)}
+                isMobile={isMobile}
+              />
+            </div>
+          )}
 
-          <div style={cardStyle}>
-            <div style={cardHeaderStyle}>BPF Stores</div>
-            <MinuteGrid
-              rows={rowsStores}
-              onRowsChange={mergeChildRowsFor("stores")}
-              schema={STORES_PROD_SCHEMA} // <--- PROD SCHEMA
-              enableCellFormulas={true}
-              // initialVisibilityModel={...} // No visibility model needed
-              onAdd={() => handleAddRow("Store Bateau")}
-              onDuplicateRow={handleDuplicateRow}
-              projectId={project?.id}
-              onRowClick={(id) => setOpenedRowId(id)}
-              isMobile={isMobile}
-            />
-          </div>
+          {rowsStores.length > 0 && (
+            <div style={cardStyle}>
+              <div style={cardHeaderStyle}>BPF Stores</div>
+              <MinuteGrid
+                rows={rowsStores}
+                onRowsChange={mergeChildRowsFor("stores")}
+                schema={STORES_PROD_SCHEMA} // <--- PROD SCHEMA
+                enableCellFormulas={true}
+                // initialVisibilityModel={...} // No visibility model needed
+                onAdd={() => handleAddRow("Store Bateau")}
+                onDuplicateRow={handleDuplicateRow}
+                projectId={project?.id}
+                onRowClick={(id) => setOpenedRowId(id)}
+                isMobile={isMobile}
+              />
+            </div>
+          )}
 
-          <div style={cardStyle}>
-            <div style={cardHeaderStyle}>BPF Autre (Confection sur mesure)</div>
-            <MinuteGrid
-              rows={rowsAutreConfection}
-              onRowsChange={mergeChildRowsFor("autre_confection")}
-              schema={AUTRES_PROD_SCHEMA}
-              enableCellFormulas={true}
-              onAdd={() => handleAddRow("Autre")}
-              onDuplicateRow={handleDuplicateRow}
-              projectId={project?.id}
-              onRowClick={(id) => setOpenedRowId(id)}
-              isMobile={isMobile}
-            />
-          </div>
+          {rowsAutreConfection.length > 0 && (
+            <div style={cardStyle}>
+              <div style={cardHeaderStyle}>BPF Autre (Confection sur mesure)</div>
+              <MinuteGrid
+                rows={rowsAutreConfection}
+                onRowsChange={mergeChildRowsFor("autre_confection")}
+                schema={AUTRES_PROD_SCHEMA}
+                enableCellFormulas={true}
+                onAdd={() => handleAddRow("Autre")}
+                onDuplicateRow={handleDuplicateRow}
+                projectId={project?.id}
+                onRowClick={(id) => setOpenedRowId(id)}
+                isMobile={isMobile}
+              />
+            </div>
+          )}
         </>
       )}
 
@@ -997,6 +1005,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
           />
         </DialogContent>
       </Dialog>
+
     </div >
   );
 }

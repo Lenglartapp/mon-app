@@ -186,8 +186,8 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onBack, highlightRowId }
       hPrepa += (toNum(r?.heures_prepa) * qty);
 
       if (!total) continue;
-      if (prod.includes("store")) caStores += total;
-      else if (prod.includes("décor") || prod.includes("decor")) caDecors += total;
+      if (prod.includes("store") || prod.includes("canishade")) caStores += total;
+      else if (/d[ée]cor|coussin|plaid|t[êe]te|tenture|cache/i.test(prod)) caDecors += total;
       else if (prod.includes("rideau") || prod.includes("voilage")) caRideaux += total;
       else caAutres += total;
     }
