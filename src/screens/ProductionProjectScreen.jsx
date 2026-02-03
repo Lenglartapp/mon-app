@@ -567,7 +567,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
 
             {/* Delivery Date - Hidden on Mobile */}
             {!isMobile && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'white', border: '1px solid #E5E7EB', borderRadius: 20, padding: '6px 12px', boxShadow: "0 1px 2px rgba(0,0,0,0.05)", flex: 'initial', minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'white', border: '1px solid #E5E7EB', borderRadius: 20, padding: '6px 12px', boxShadow: "0 1px 2px rgba(0,0,0,0.05)", flexShrink: 0, whiteSpace: 'nowrap' }}>
                 <span style={{ fontSize: 13, color: '#6B7280', fontWeight: 500 }}>Livraison :</span>
                 <input
                   type="date"
@@ -581,8 +581,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                     fontFamily: 'inherit',
                     cursor: 'pointer',
                     outline: 'none',
-                    width: '100%',
-                    minWidth: 0
+                    minWidth: 110 // Ensure input has space
                   }}
                 />
               </div>

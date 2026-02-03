@@ -143,7 +143,10 @@ export default function StockInventoryTab({ inventory, projects = [], movements 
         // If filterProj is set, we check if item.project INCLUDES the string (safer) OR equals
         const matchProj = !filterProj || (item.project && item.project.includes(filterProj));
 
-        return matchSearch && matchLoc && matchCat && matchProj;
+        // 4. Hide 0 quantity
+        const isNonZero = item.qty !== 0;
+
+        return matchSearch && matchLoc && matchCat && matchProj && isNonZero;
     });
 
     return (

@@ -343,7 +343,7 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                 // 4. Create *New* Events.
 
                 const originalIds = resizeRef.current.initialSeries.map(e => e.id);
-                originalIds.forEach(id => onDeleteEventProp({ id }));
+                originalIds.forEach(id => onDeleteEventProp(id));
 
                 // Find new ones (by seriesId)
                 const newEvents = localEvents.filter(e => e.meta?.seriesId === currentSeriesId);
@@ -351,7 +351,7 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
 
             } else {
                 // Single event resized into series?
-                if (onDeleteEventProp) onDeleteEventProp({ id: resizeRef.current.initialSeries[0].id });
+                if (onDeleteEventProp) onDeleteEventProp(resizeRef.current.initialSeries[0].id);
                 const newEvents = localEvents.filter(e => e.meta?.seriesId === currentSeriesId);
                 newEvents.forEach(evt => onUpdateEvent(evt));
             }
@@ -461,7 +461,7 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
             newEvents = newEvents.filter(e => e.id !== eventData.id && e.meta?.seriesId !== eventData.meta?.seriesId);
         }
 
-        const days = eachDayOfInterval({ start: new Date(eventData.startDate), end: new Date(eventData.endDate) });
+        const days = eachDayOfInterval({ start: parseISO(eventData.startDate), end: parseISO(eventData.endDate) });
         const seriesId = uid();
         const createdEvents = [];
 
@@ -472,6 +472,21 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                 const assignedUser = localUsers.find(u => u.id === resId);
                 const assignedName = assignedUser ? `${assignedUser.first_name} ${assignedUser.last_name || ''}`.trim() : 'Inconnu';
 
+                // --- FIX TIMEZONE CALCULATION (FINAL) ---
+                const sTime = eventData.startTime.split(':');
+                const eTime = eventData.endTime.split(':');
+
+                // 'd' comes from eachDayOfInterval(parseISO(...)) so it is Local Midnight.
+                // We clone it and set hours (Local).
+                const startD = new Date(d);
+                startD.setHours(parseInt(sTime[0]), parseInt(sTime[1]), 0, 0);
+
+                const endD = new Date(d);
+                endD.setHours(parseInt(eTime[0]), parseInt(eTime[1]), 0, 0);
+
+                // Safety: If ends before start (overnight?), handle if needed, but for now assume same day 8h-17h logic.
+                // ------------------------------
+
                 const evt = {
                     id: uid(),
                     resourceId: resId,
@@ -480,8 +495,8 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                     type: eventData.type,
                     meta: {
                         startDate: eventData.startDate, // Legacy naming ? check usage in modal
-                        start: format(d, 'yyyy-MM-dd') + 'T' + eventData.startTime,
-                        end: format(d, 'yyyy-MM-dd') + 'T' + eventData.endTime,
+                        start: startD.toISOString(),
+                        end: endD.toISOString(),
                         description: eventData.description,
                         projectId: eventData.projectId,
                         seriesId: seriesId,
@@ -501,7 +516,7 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
 
     const handleDeleteEvent = (evt) => {
         setLocalEvents(prev => prev.filter(e => e.id !== evt.id));
-        if (onDeleteEventProp) onDeleteEventProp(evt);
+        if (onDeleteEventProp) onDeleteEventProp(evt.id);
     };
 
     const handleInlineDeleteEvent = (evt) => {
@@ -707,6 +722,7 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
 
     return (
         <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: '#FAF5EE' }}>
+            {/* DEBUG ADMIN BUTTON */}
             <PlanningTopBar
                 view={view}
                 onViewChange={(v) => { setView(v); if (v === 'custom') setCustomRange(null); }}
