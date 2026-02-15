@@ -12,6 +12,7 @@ import { frFR } from '@mui/x-data-grid/locales';
 import { schemaToGridCols } from '../lib/utils/schemaToGridCols.jsx';
 import { recomputeRow } from '../lib/formulas/recomputeRow';
 import { generateRowLogs } from '../lib/utils/logUtils';
+import { useGridColumnState } from '../lib/hooks/useGridColumnState'; // Import hook
 
 import { Plus, Trash2, FileDown, FileUp } from 'lucide-react';
 
@@ -102,13 +103,34 @@ export default function MinuteGrid({
     readOnly = false, // <--- NEW ReadOnly Mode
 
     currentUser, // <--- NEW IDENTITY
-    isMobile = false // <--- NEW Mobile Prop
+    isMobile = false, // <--- NEW Mobile Prop
+    gridKey // <--- NEW explicit key for persistence
 }) {
     const [rowSelectionModel, setRowSelectionModel] = useState([]);
     const [detailRowId, setDetailRowId] = useState(null);
-    const [columnVisibilityModel, setColumnVisibilityModel] = useState(initialVisibilityModel);
 
     const navigate = useNavigate();
+
+    // Generate unique Grid ID for persistence
+    const gridId = React.useMemo(() => {
+        // If gridKey is provided, we make it GLOBAL (User Preference) across all projects.
+        // This is better UX: you set your "Rideaux" column width once, and it applies to all projects.
+        if (gridKey) return `grid_pref_v1_${gridKey}`;
+
+        // Fallback for legacy usage (per instance)
+        if (projectId) return `prod_${projectId}_${title || 'grid'}`;
+        if (minuteId) return `minute_${minuteId}_${title || 'grid'}`;
+        return `grid_${title || 'default'}`;
+    }, [projectId, minuteId, title, gridKey]);
+
+    // Use persistence hook
+    const {
+        columnVisibilityModel,
+        onColumnVisibilityModelChange,
+        onColumnWidthChange,
+        initialState: persistedInitialState,
+        savedDimensions // <--- Extracted here for use in columns useMemo
+    } = useGridColumnState(gridId, initialVisibilityModel);
 
     // Navigate to nested route for detail
     const handleOpenDetail = useCallback((row) => {
@@ -203,8 +225,20 @@ export default function MinuteGrid({
             const mobileKeys = ['piece', 'produit', 'statut_cotes', 'statut_prepa', 'statut_conf', 'statut_pose'];
             return cols.filter(c => mobileKeys.includes(c.field) || c.field === 'detail');
         }
+
+        // --- PERSISTENCE OVERRIDE ---
+        // Manually apply saved widths to columns
+        if (savedDimensions && Object.keys(savedDimensions).length > 0) {
+            return cols.map(c => {
+                if (savedDimensions[c.field]) {
+                    return { ...c, width: savedDimensions[c.field], flex: undefined }; // Remove flex if width is forced
+                }
+                return c;
+            });
+        }
+
         return cols;
-    }, [schema, enableCellFormulas, handleOpenDetail, catalog, railOptions, handlePhotoChange, onDuplicateRow, hideCroquis, readOnly, isMobile]);
+    }, [schema, enableCellFormulas, handleOpenDetail, catalog, railOptions, handlePhotoChange, onDuplicateRow, hideCroquis, readOnly, isMobile, savedDimensions]);
 
     // detailRow is now state, no need for useMemo lookup
 
@@ -435,6 +469,7 @@ export default function MinuteGrid({
                 </div>
             ) : (
                 <DataGrid
+                    key={gridId} // Force remount when gridId changes
                     rows={rows}
                     columns={columns}
                     // Auto height to avoid vertical scrollbars
@@ -443,6 +478,10 @@ export default function MinuteGrid({
                     onProcessRowUpdateError={handleProcessRowUpdateError}
                     checkboxSelection
                     disableColumnResize={false}
+                    columnVisibilityModel={columnVisibilityModel}
+                    onColumnVisibilityModelChange={onColumnVisibilityModelChange}
+                    onColumnWidthChange={onColumnWidthChange}
+                    initialState={persistedInitialState}
                     localeText={frFR.components.MuiDataGrid.defaultProps.localeText}
                     slots={{
                         toolbar: CustomToolbar,
@@ -458,11 +497,6 @@ export default function MinuteGrid({
                     }}
                     rowSelectionModel={rowSelectionModel}
                     onRowSelectionModelChange={(newSelection) => setRowSelectionModel(newSelection)}
-                    columnVisibilityModel={columnVisibilityModel}
-                    onColumnVisibilityModelChange={(newModel) => {
-                        console.log('Visibility model changed:', newModel);
-                        setColumnVisibilityModel(newModel);
-                    }}
                     onCellClick={(params, event) => {
                         if (params.field === 'detail') {
                             event.stopPropagation(); // Prevent row selection if possible
