@@ -17,6 +17,7 @@ import ResourcePanel from '../components/planning/ResourcePanel';
 import PlanningTopBar from '../components/planning/PlanningTopBar';
 import PlanningGrid from '../components/planning/PlanningGrid';
 import AssistantView from '../components/planning/AssistantView';
+import BacklogCreationModal from '../components/planning/BacklogCreationModal';
 
 export default function PlanningScreen({ projects, events: initialEvents, onUpdateEvent, onDeleteEvent: onDeleteEventProp, onUpdateProject, onBack }) {
     const { users: authUsers, currentUser } = useAuth();
@@ -56,6 +57,10 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
     const [hiddenResources, setHiddenResources] = useState([]); // Nouveau state pour masquer
     const [showResourcePanel, setShowResourcePanel] = useState(false); // Panel gestion équipe
     const [myViewMode, setMyViewMode] = useState(false); // Mode "Ma Vue" (Agenda Perso)
+
+    const [backlogModalOpen, setBacklogModalOpen] = useState(false);
+    const [backlogDate, setBacklogDate] = useState(null);
+    const [editingBacklogEvent, setEditingBacklogEvent] = useState(null);
 
     // --- RESIZING STATE & LOGIC ---
     // Note: La logique de resize complexe est gérée globalement via listener window
@@ -380,9 +385,9 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
         if (!localUsers || localUsers.length === 0) return INITIAL_GROUPS_CONFIG;
 
         const config = {
-            prepa: { ...INITIAL_GROUPS_CONFIG.prepa, members: [] },
-            conf: { ...INITIAL_GROUPS_CONFIG.conf, members: [] },
-            pose: { ...INITIAL_GROUPS_CONFIG.pose, members: [] }
+            prepa: { ...INITIAL_GROUPS_CONFIG.prepa, members: [...INITIAL_GROUPS_CONFIG.prepa.members] },
+            conf: { ...INITIAL_GROUPS_CONFIG.conf, members: [...INITIAL_GROUPS_CONFIG.conf.members] },
+            pose: { ...INITIAL_GROUPS_CONFIG.pose, members: [...INITIAL_GROUPS_CONFIG.pose.members] }
         };
 
         localUsers.forEach(u => {
@@ -409,7 +414,8 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
 
     // Calcul dynamique des capacités
     const capacityConfig = useMemo(() => ({
-        conf: visibleGroupsConfig.conf.members.length,
+        // Exclude 'backlog_confection' virtual resource from capacity count
+        conf: visibleGroupsConfig.conf.members.filter(m => m.id !== 'backlog_confection').length,
         pose: visibleGroupsConfig.pose.members.length
     }), [visibleGroupsConfig]);
 
@@ -530,6 +536,14 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
     };
 
     const handleEventClick = (evt) => {
+        // BACKLOG CLICK
+        if (evt.resourceId === 'backlog_confection' || evt.meta?.isBacklogMaster) {
+            setBacklogDate(parseISO(evt.date));
+            setEditingBacklogEvent(evt); // Set editing event
+            setBacklogModalOpen(true);
+            return;
+        }
+
         if (evt.meta?.seriesId) {
             const seriesEvents = localEvents.filter(e => e.meta?.seriesId === evt.meta.seriesId);
             seriesEvents.sort((a, b) => new Date(a.date) - new Date(b.date));
@@ -615,6 +629,72 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
         e.preventDefault();
         if (!draggedEvent) return;
 
+        // --- BACKLOG LOGIC : COPIE (Master -> Child) ---
+        if (draggedEvent.resourceId === 'backlog_confection') {
+            // On ne déplace pas le backlog, on crée une copie (enfant)
+            const defaultDuration = 8; // Default proposition
+            const input = window.prompt("Combien d'heures voulez-vous planifier pour ce créneau ?", defaultDuration);
+
+            if (!input) return; // Cancelled
+            const hours = parseFloat(input.replace(',', '.'));
+            if (isNaN(hours) || hours <= 0) {
+                alert("Durée invalide");
+                return;
+            }
+
+            // Create Child Event
+            const newStartDate = new Date(date);
+            newStartDate.setHours(8, 0, 0, 0); // Force 08:00
+
+            // End date based on hours (simple logic for now: add hours to start)
+            // Handling breaks (12-13) or overnight is complex here, 
+            // but handleResizeMove.addWorkMinutes handles it. 
+            // For now simplified: 
+            let endHour = 8 + hours;
+            let minutes = 0;
+            if (Math.floor(endHour) !== endHour) {
+                minutes = (endHour - Math.floor(endHour)) * 60;
+                endHour = Math.floor(endHour);
+            }
+
+            // Simple break handling: if crosses 12:00, add 1h
+            if (endHour > 12 || (endHour === 12 && minutes > 0)) {
+                endHour += 1;
+            }
+
+            const newEndDate = new Date(newStartDate);
+            newEndDate.setHours(endHour, minutes, 0, 0);
+
+            const newEvent = {
+                ...draggedEvent,
+                id: uid(), // New ID
+                resourceId: resourceId, // Target resource
+                date: format(newStartDate, 'yyyy-MM-dd'),
+                type: draggedEvent.type, // Keep type
+                title: draggedEvent.title,
+                meta: {
+                    ...draggedEvent.meta,
+                    start: newStartDate.toISOString(),
+                    end: newEndDate.toISOString(),
+                    status: 'pending', // Reset status
+                    status: 'pending', // Reset status
+                    parent_backlog_id: String(draggedEvent.id), // LINK TO MASTER (Force String)
+                    seriesId: null // Break series from master if any
+                }
+            };
+
+            // Optimistic UI
+            setLocalEvents(prev => [...prev, newEvent]);
+
+            // Persist
+            if (onUpdateEvent) onUpdateEvent(newEvent);
+
+            setDraggedEvent(null);
+            return;
+        }
+
+        // --- STANDARD LOGIC : MOVE ---
+
         // Calcul décalage jour
         const oldDate = parseISO(draggedEvent.date);
         const diffDays = differenceInDays(date, oldDate);
@@ -672,9 +752,85 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
 
     const handleCellClick = (resourceId, col) => {
         if (!canEdit) return;
+
+        // --- BACKLOG CLICK ---
+        if (resourceId === 'backlog_confection') {
+            setBacklogDate(col);
+            setEditingBacklogEvent(null); // Clear editing event (Create Mode)
+            setBacklogModalOpen(true);
+            return;
+        }
+
         setInitialModalData({ resourceId, date: format(col, 'yyyy-MM-dd') });
         setIsModalOpen(true);
     };
+
+    const handleSaveBacklog = (data) => {
+        // data: { id?, projectId, title, hours, comment }
+
+        if (data.id) {
+            // UPDATE EXISTING
+            const updater = e => ({
+                ...e,
+                title: data.title,
+                meta: {
+                    ...e.meta,
+                    projectId: data.projectId,
+                    budgetHours: data.hours,
+                    description: data.comment
+                }
+            });
+
+            // Local
+            setLocalEvents(prev => prev.map(e => e.id === data.id ? updater(e) : e));
+
+            // Persist
+            const evt = localEvents.find(e => e.id === data.id);
+            if (evt && onUpdateEvent) onUpdateEvent(updater(evt));
+
+        } else {
+            // CREATE NEW
+            if (!backlogDate) return;
+
+            const startW = startOfWeek(backlogDate, { weekStartsOn: 1 });
+            const startD = new Date(startW);
+            startD.setHours(8, 0, 0, 0); // Lundi 8h
+
+            const endD = addDays(startD, 4); // Vendredi
+            endD.setHours(17, 0, 0, 0); // 17h
+
+            const newEvent = {
+                id: uid(),
+                resourceId: 'backlog_confection',
+                title: data.title,
+                type: 'default',
+                date: format(backlogDate, 'yyyy-MM-dd'),
+                meta: {
+                    projectId: data.projectId,
+                    start: startD.toISOString(),
+                    end: endD.toISOString(),
+                    budgetHours: data.hours,
+                    description: data.comment,
+                    status: 'pending',
+                    isBacklogMaster: true
+                }
+            };
+
+            const newEvents = [...localEvents, newEvent];
+            setLocalEvents(newEvents);
+            if (onUpdateEvent) onUpdateEvent(newEvent);
+        }
+
+        setBacklogModalOpen(false);
+        setEditingBacklogEvent(null);
+    };
+
+    const handleDeleteBacklog = (id) => {
+        if (onDeleteEventProp) onDeleteEventProp(id);
+        setLocalEvents(prev => prev.filter(e => e.id !== id));
+    };
+
+
 
     // --- COLUMNS GENERATION ---
     const columns = useMemo(() => {
@@ -761,6 +917,19 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                 readOnly={!canEdit}
             />
 
+            {backlogModalOpen && (
+                <BacklogCreationModal
+                    isOpen={backlogModalOpen}
+                    onClose={() => setBacklogModalOpen(false)}
+                    onSave={handleSaveBacklog}
+                    onDelete={handleDeleteBacklog}
+                    projects={projects}
+                    events={initialEvents}
+                    currentWeekStart={startOfWeek(currentDate, { weekStartsOn: 1 })}
+                    eventToEdit={editingBacklogEvent}
+                />
+            )}
+
             <ResourcePanel
                 isOpen={showResourcePanel}
                 onClose={() => setShowResourcePanel(false)}
@@ -790,6 +959,10 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                     onCellClick={handleCellClick}
                     onEventClick={handleEventClick}
                     onDeleteEvent={handleInlineDeleteEvent}
+                    onUpdateEvent={(updatedEvent) => {
+                        setLocalEvents(prev => prev.map(e => e.id === updatedEvent.id ? updatedEvent : e));
+                        if (onUpdateEvent) onUpdateEvent(updatedEvent);
+                    }}
                     onDragStart={handleDragStart}
                     onDragOver={handleDragOver}
                     onDrop={handleDrop}
