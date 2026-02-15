@@ -193,7 +193,7 @@ export default function MinuteGrid({
                 return results.map(a => a.name);
             };
         } else {
-            console.error("☠️ HOTFIX FAILED. 'modele_mecanisme' col not found!");
+            // console.warn("Hotfix skipped: 'modele_mecanisme' col not found in this schema.");
         }
         // -----------------------------------------------------------------------
 

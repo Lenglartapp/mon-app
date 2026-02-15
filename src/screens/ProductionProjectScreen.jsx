@@ -262,7 +262,8 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
       { key: 'largeur', label: 'Largeur' },
       { key: 'hauteur', label: 'Hauteur' },
       { key: 'produit', label: 'Produit' },
-      { key: 'piece', label: 'Pièce' }
+      { key: 'piece', label: 'Pièce' },
+      { key: 'largeur_mecanisme', label: 'Largeur Méca' } // Ajouté pour le dashboard
     ];
 
     watchedFields.forEach(field => {
@@ -270,6 +271,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
       const newVal = newRowRaw[field.key];
       // Comparaison simple (attention aux types string/number)
       if (oldVal != newVal && (oldVal || newVal)) {
+        console.log("History Change Detected:", { field: field.label, oldVal, newVal, authorName });
         changes.push({
           date: now,
           author: authorName,
@@ -371,6 +373,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
     if (project?.id) onUpdateProjectRows(project.id, computed);
   };
 
+  // 3. handleDetailUpdate (Mise à jour avec historique)
   // 3. handleDetailUpdate (Mise à jour avec historique)
   const handleDetailUpdate = (updatedRow) => {
     if (!canEditProd) return;
@@ -953,7 +956,9 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
             onRowChange={handleDetailUpdate}
             projectId={project?.id}
             minuteId={null}
-            fullScreen={isMobile} // Assuming it accepts this or we need to edit it
+            fullScreen={isMobile}
+            currentUser={currentUser}
+            authorName={currentUser?.name}
           />
         </Dialog>
       )}

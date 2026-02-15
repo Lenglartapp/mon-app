@@ -27,11 +27,8 @@ export default function LineDetailPanel({ open, onClose, row, schema, onRowChang
     const { currentUser: ctxUser } = useAuth(); // <--- GET CURRENT USER
     const currentUser = propUser || ctxUser;
 
-    // Prioritize explicit author name string, but prevent 'Utilisateur' if context has better data
-    // This handles race conditions where prop might be 'Utilisateur' (initial load) but context is ready
-    const nameFromProp = propAuthorName && propAuthorName !== 'Utilisateur' ? propAuthorName : null;
-    const nameFromCtx = ctxUser?.name;
-    const resolvedAuthor = nameFromProp || nameFromCtx || propAuthorName || "Utilisateur";
+    // Simple and robust author resolution
+    const resolvedAuthor = currentUser?.name || currentUser?.email || "Utilisateur";
 
     const activities = React.useMemo(() => row?.comments || [], [row?.comments]);
 

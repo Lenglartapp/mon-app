@@ -9,6 +9,7 @@ export default function BlurTextField({ value, onChange, ...props }) {
     }, [value]);
 
     const handleBlur = () => {
+        console.log("BlurTextField Debug:", { localValue, value, changed: localValue !== value });
         if (localValue !== value) {
             onChange(localValue);
         }
