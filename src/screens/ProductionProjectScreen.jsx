@@ -19,9 +19,10 @@ import { STORES_PROD_SCHEMA } from "../lib/schemas/stores";
 import { AUTRES_PROD_SCHEMA } from "../lib/schemas/autres";
 import { uid } from "../lib/utils/uid"; // Import uid
 
-import { Search, Filter, Layers3, Star, FlaskConical, Image as ImageIcon, Pin, Edit2 } from "lucide-react";
+import { Search, Filter, Layers3, Star, FlaskConical, Image as ImageIcon, Pin, Edit2, FileText } from "lucide-react"; // Added FileText
 import { Dialog, DialogTitle, DialogContent, TextField, DialogActions, Button } from "@mui/material";
 import { differenceInMinutes } from "date-fns";
+import DocumentListModal from "../components/DocumentListModal"; // Added import
 import { useAuth } from "../auth";
 import { can } from "../lib/authz";
 
@@ -83,6 +84,13 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
   const [schema, setSchema] = useState(SCHEMA_64);
   const [openedRowId, setOpenedRowId] = useState(null);
   const [stockOpen, setStockOpen] = useState(false);
+  const [showDocs, setShowDocs] = useState(false);
+
+  const handleUpdateDocs = (newDocs) => {
+    if (onUpdateProject && project) {
+      onUpdateProject(project.id, { documents: newDocs });
+    }
+  };
 
   // --- LOGIQUE MUR & PHOTOS ---
   const [wallMsg, setWallMsg] = useState("");
@@ -545,6 +553,27 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', width: isMobile ? '100%' : 'auto' }}>
+            {/* Documents Button - Visible Mobile & Desktop */}
+            <button
+              onClick={() => setShowDocs(true)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                background: 'white',
+                border: '1px solid #E5E7EB',
+                borderRadius: 20,
+                padding: '7px 16px',
+                boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+                cursor: 'pointer',
+                fontSize: 13,
+                color: '#374151',
+                fontWeight: 600,
+                outline: 'none',
+                flex: 'initial', justifyContent: 'center'
+              }}
+            >
+              <FileText size={16} color="#4B5563" />
+              Docs ({project?.documents?.length || 0})
+            </button>
             {/* Stock Button (Header) - Hidden on Mobile */}
             {!isMobile && (
               <button
@@ -1009,6 +1038,16 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
           />
         </DialogContent>
       </Dialog>
+
+      {/* MODALE DOCUMENTS */}
+      {showDocs && (
+        <DocumentListModal
+          open={showDocs}
+          onClose={() => setShowDocs(false)}
+          documents={project?.documents || []}
+          onUpdate={handleUpdateDocs}
+        />
+      )}
 
     </div >
   );
