@@ -829,6 +829,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
               onAdd={() => handleAddRow("Rideau")}
               onDuplicateRow={handleDuplicateRow}
               projectId={project?.id}
+              gridKey="pv_rideaux"
               onRowClick={(id) => setOpenedRowId(id)}
               isMobile={isMobile}
             />
@@ -845,6 +846,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
               onAdd={() => handleAddRow("Store Bateau")}
               onDuplicateRow={handleDuplicateRow}
               projectId={project?.id}
+              gridKey="pv_stores"
               onRowClick={(id) => setOpenedRowId(id)}
               isMobile={isMobile}
             />
@@ -863,6 +865,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
             initialVisibilityModel={getVisibilityModel('suivi', 'all', schema)}
             onDuplicateRow={handleDuplicateRow}
             projectId={project?.id}
+            gridKey="suivi_main"
             onRowClick={(id) => setOpenedRowId(id)}
             isMobile={isMobile}
           />
@@ -883,6 +886,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                 onAdd={() => handleAddRow("Rideau")}
                 onDuplicateRow={handleDuplicateRow}
                 projectId={project?.id}
+                gridKey="bpf_rideaux"
                 onRowClick={(id) => setOpenedRowId(id)}
                 isMobile={isMobile}
               />
@@ -901,6 +905,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                 onAdd={() => handleAddRow("Décor de lit")}
                 onDuplicateRow={handleDuplicateRow}
                 projectId={project?.id}
+                gridKey="bpf_decors"
                 onRowClick={(id) => setOpenedRowId(id)}
                 isMobile={isMobile}
               />
@@ -919,6 +924,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                 onAdd={() => handleAddRow("Store Bateau")}
                 onDuplicateRow={handleDuplicateRow}
                 projectId={project?.id}
+                gridKey="bpf_stores"
                 onRowClick={(id) => setOpenedRowId(id)}
                 isMobile={isMobile}
               />
@@ -936,6 +942,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                 onAdd={() => handleAddRow("Autre")}
                 onDuplicateRow={handleDuplicateRow}
                 projectId={project?.id}
+                gridKey="bpf_autres"
                 onRowClick={(id) => setOpenedRowId(id)}
                 isMobile={isMobile}
               />
@@ -955,6 +962,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
             initialVisibilityModel={getVisibilityModel('bpp', 'all', schema)}
             onDuplicateRow={handleDuplicateRow}
             projectId={project?.id}
+            gridKey="bpp_main"
             onRowClick={(id) => setOpenedRowId(id)}
             isMobile={isMobile}
           />
