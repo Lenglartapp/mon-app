@@ -7,6 +7,7 @@ import FilterPanel from "./FilterPanel.jsx";
 import EtiquetteCard from "./EtiquetteCard.jsx";
 import ColumnSelectorMenu from "./ui/ColumnSelectorMenu.jsx";
 import PrintableLabelsContainer from "./PrintableLabelsContainer.jsx";
+import BPFPrintPortal from "./print/BPFPrintPortal.jsx"; // NEW
 
 // CONSTANTES
 const PAGE_SIZE = 9;
@@ -29,6 +30,7 @@ export default function EtiquettesSection({
   const [anchorElPicker, setAnchorElPicker] = useState(null);
   const [page, setPage] = useState(1);
   const [showPrintPortal, setShowPrintPortal] = useState(false); // Portal State
+  const [showBPFPortal, setShowBPFPortal] = useState(false); // NEW
 
   // --- CHAMPS VISIBLES (Just default logic) ---
   const fields = React.useMemo(() => {
@@ -75,18 +77,40 @@ export default function EtiquettesSection({
 
   // --- PRINT LIFECYCLE (PORTAL) ---
   const handlePrint = () => {
-    setShowPrintPortal(true);
+    // Detect if we should use BPF Rideaux (Rideau/Voilage)
+    // Heuristic: check if the first visible row or majority are Rideaux
+    // Or check if schema/tableKey relates to Rideaux
+    // rows might be mixed if we print global, but users usually filter by tab.
+
+    const hasRideaux = filteredRows.some(r =>
+      /rideau|voilage/i.test(r.produit || "") ||
+      /rideau|voilage/i.test(r.section || "")
+    );
+
+    if (hasRideaux && !filteredRows.some(r => /store|lit/i.test(r.produit || ""))) {
+      // Only Rideaux (and maybe unidentified ones), prioritize BPF
+      setShowBPFPortal(true);
+    } else {
+      // Default
+      setShowPrintPortal(true);
+    }
   };
 
   useEffect(() => {
-    if (showPrintPortal) {
+    if (showPrintPortal || showBPFPortal) {
       const timer = setTimeout(() => {
-        window.print();
-        setShowPrintPortal(false);
+        // window.print(); // Portals handle print themselves now
+        // Actually EtiquettesSection's PrintableLabelsContainer likely relies on parent global styles 
+        // OR EtiquettesSection's effect was triggering print.
+        // Let's keep existing logic for showPrintPortal ONLY, BPF handles itself.
+        if (showPrintPortal) {
+          window.print();
+          setShowPrintPortal(false);
+        }
       }, 500);
       return () => clearTimeout(timer);
     }
-  }, [showPrintPortal]);
+  }, [showPrintPortal, showBPFPortal]);
 
 
   return (
@@ -101,7 +125,7 @@ export default function EtiquettesSection({
             margin: 0
           },
 
-          'body > *:not(#print-root)': { display: 'none !important' },
+          'body > *:not(#print-root):not(#bpf-print-root)': { display: 'none !important' },
 
           '#print-root': {
             display: 'block !important',
@@ -301,6 +325,15 @@ export default function EtiquettesSection({
           schema={schema}
           fields={fields}
           projectName={projectName}
+        />
+      )}
+
+      {/* PORTAL FOR BPF RIDEAUX */}
+      {showBPFPortal && (
+        <BPFPrintPortal
+          rows={filteredRows}
+          project={{ name: projectName }} // Adapter format
+          onClose={() => setShowBPFPortal(false)}
         />
       )}
     </Box>

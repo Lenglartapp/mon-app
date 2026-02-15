@@ -9,7 +9,9 @@ export const INITIAL_GROUPS_CONFIG = {
         id: 'conf',
         label: 'ATELIER CONFECTION',
         bg: '#F8FAFC',
-        members: []
+        members: [
+            { id: 'backlog_confection', first_name: 'BACKLOG', last_name: 'SEMAINE' } // Ressource Virtuelle
+        ]
     },
     pose: {
         id: 'pose',

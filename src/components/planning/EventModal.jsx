@@ -70,11 +70,19 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
     );
 
     const toggleResource = (resId) => {
+        // SINGLE SELECT MODE (RADIO BEHAVIOR)
+        // User reported accidental multi-creation because previous resource was kept.
+        // We switch to: Click -> Select ONLY this one. Click again -> Deselect.
+
         if (selectedResources.includes(resId)) {
-            setSelectedResources(selectedResources.filter(id => id !== resId));
+            setSelectedResources([]); // Deselect
         } else {
-            setSelectedResources([...selectedResources, resId]);
+            setSelectedResources([resId]); // Select Only This One
         }
+
+        // OLD MULTI BEHAVIOR:
+        // if (selectedResources.includes(resId)) setSelectedResources(selectedResources.filter(id => id !== resId));
+        // else setSelectedResources([...selectedResources, resId]);
     };
 
     const handleSubmit = () => {
@@ -264,7 +272,7 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
 
                 {/* Footer */}
                 <div style={{ padding: '20px 24px', background: '#F9FAFB', borderTop: '1px solid #F3F4F6', display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
-                    {eventToEdit && onDelete && eventToEdit.meta?.status !== 'validated' && !readOnly && (
+                    {eventToEdit && onDelete && (eventToEdit.meta?.status !== 'validated' || currentUser?.role === 'admin') && !readOnly && (
                         <button
                             onClick={() => { if (window.confirm('Supprimer ce créneau ?')) { onDelete(eventToEdit); onClose(); } }}
                             style={{ marginRight: 'auto', padding: '10px 16px', borderRadius: 8, border: '1px solid #fee2e2', background: '#fef2f2', color: '#ef4444', fontWeight: 600, cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}

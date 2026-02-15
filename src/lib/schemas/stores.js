@@ -146,16 +146,54 @@ export const STORES_SCHEMA = [
     { key: "total_price", label: "Total", type: "number", width: 120 },
 ];
 
-export const STORES_PROD_SCHEMA = STORES_SCHEMA.filter(c => {
-    const k = c.key;
-    // Excluded fields for Production
-    if (k === 'a_plat') return false;
-    if (k.startsWith('pa_') || k.startsWith('pv_')) return false;
-    if (['unit_price', 'total_price'].includes(k)) return false;
-    if (k.startsWith('st_')) return false; // Subcontracting
-    if (k.startsWith('heures_')) return false;
-    if (k.startsWith('nb_les_')) return false;
-    if (k.startsWith('ml_')) return false;
-    if (k === 'livraison') return false;
-    return true;
-});
+// Helper for conditional rendering (Hide 0)
+const hideZero = (params) => {
+    // Robust handle: params might be value itself or object
+    const val = (params && typeof params === 'object' && 'value' in params) ? params.value : params;
+    if (!val || Number(val) === 0) return '';
+    return val;
+};
+
+export const STORES_PROD_SCHEMA = [
+    'zone', 'piece', 'produit',
+    'a_plat', // Largeur à plat
+    'hauteur', 'hauteur_coupe', 'hauteur_coupe_motif',
+
+    // TOILE 1
+    'toile_finition_1',
+    'nb_les_toile_finition_1', // Lés 1
+    'raccord_v_toile_finition_1', // Raccord VTF1
+    'raccord_h_toile_finition_1', // Raccord HDF1
+    'laize_toile_finition_1', // Nom de LTF1 (Confirmed as Laize)
+    'ml_toile_finition_1', // MLTF1
+
+    // DOUBLURE
+    'doublure',
+    'laize_doublure', // Lest doublure (Confirmed as Laize)
+    'nb_les_doublure', // Nombre de doublures
+    'ml_doublure', // M doublure
+
+    // MECANISME
+    'mecanisme_store', // M Castor
+
+    // HEURES (Hide if 0)
+    { key: 'heures_prepa', valueFormatter: hideZero },
+    { key: 'heures_pose', valueFormatter: hideZero },
+    { key: 'heures_confection', valueFormatter: hideZero },
+
+    // SOUS-TRAITANCE
+    'st_pose_pa', // ST POSE PA
+
+    // TOTAUX
+    'quantite',
+    'total_price'
+].map(def => {
+    // If string, find in main schema
+    if (typeof def === 'string') {
+        const found = STORES_SCHEMA.find(c => c.key === def);
+        return found ? found : null;
+    }
+    // If object, find and merge
+    const base = STORES_SCHEMA.find(c => c.key === def.key);
+    return { ...base, ...def }; // Merge overrides
+}).filter(Boolean).map(c => ({ ...c, key: c.key || c.field })); // Ensure key exists (STORES uses 'key', Decors used 'field', normalizing)

@@ -478,8 +478,7 @@ export function recomputeRow(row, schema, ctx = {}) {
     NVL(next.pv_interieur) + // NEW Decors Interieur
     NVL(next.pv_toile_finition_1) + NVL(next.pv_mecanisme_store) + // NEW Stores
     NVL(next.pv_prepa) + NVL(next.pv_pose) + NVL(next.pv_confection) +
-    NVL(next.st_pose_pv) + NVL(next.st_conf_pv); // Add Subcontracting PVs explicitly
-  NVL(next.st_pose_pv) + NVL(next.st_conf_pv) +
+    NVL(next.st_pose_pv) + NVL(next.st_conf_pv) +
     NVL(next.livraison);
 
   // Logic: Override unit_price with calculation ONLY if calculation > 0 or if NOT blocked.
