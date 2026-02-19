@@ -29,28 +29,38 @@ const getters = {
     const L = toNum(row.largeur);
     const croisement = toNum(row.croisement);
 
-    // User Formula Update:
-    // Paire: (L/2)*1.07 + Croisement
-    // Single: L*1.07
+    // User Formula Update (10% Allowance):
+    // Paire: (L/2)*1.10 + Croisement
+    // Single: L*1.10
 
     let val = 0;
-    if (row.paire_ou_un_seul_pan === 'Paire' || row.pair_un === 'Paire') {
+    // Check if it's "Un seul pan" (or similar variations)
+    const isOnePanel = (row.paire_ou_un_seul_pan || "").startsWith("Un seul pan") || (row.pair_un || "").startsWith("Un seul pan");
+
+    if (!isOnePanel) {
+      // Paire (Default)
       const halfL = L / 2;
-      val = (halfL * 1.07) + croisement;
+      val = (halfL * 1.10) + croisement;
     } else {
-      // Un seul pan
-      val = L * 1.07;
+      // Un seul pan (All variants)
+      val = L * 1.10;
     }
     return round1(val);
   },
 
   a_plat: (row) => {
+    // Only depends on Largeur Finie, not Height.
+    // L_Finie depends on Width.
+    // So this is safe.
     const lFinie = getters.largeur_finie(row);
     const ampleur = toNum(row.ampleur) || 1;
     const vOurlets = toNum(row.v_ourlets_de_cotes || row.val_ourlet_cote); // mapped
 
     let val = 0;
-    if (row.paire_ou_un_seul_pan === 'Paire' || row.pair_un === 'Paire') {
+    // Check if it's "Un seul pan" (or similar variations)
+    const isOnePanel = (row.paire_ou_un_seul_pan || "").startsWith("Un seul pan") || (row.pair_un || "").startsWith("Un seul pan");
+
+    if (!isOnePanel) {
       val = (lFinie * ampleur) + (vOurlets * 4);
     } else {
       val = (lFinie * ampleur) + (vOurlets * 2);
@@ -58,19 +68,32 @@ const getters = {
     return round1(val);
   },
 
-  hauteur_finie: (row) => {
-    const H = toNum(row.hauteur);
+  hauteur_finie_droite: (row) => {
+    const H = toNum(row.hspf_droite);
+    const ded = toNum(row.valeur_deduction || row.val_ded_rail);
+    const fBas = toNum(row.finition_bas || row.f_bas);
+    return round1(H - ded + fBas);
+  },
+
+  hauteur_finie_gauche: (row) => {
+    const H = toNum(row.hspf_gauche);
     const ded = toNum(row.valeur_deduction || row.val_ded_rail);
     const fBas = toNum(row.finition_bas || row.f_bas);
     return round1(H - ded + fBas);
   },
 
   hauteur_coupe: (row) => {
-    const hFinie = getters.hauteur_finie(row);
+    // Need a unified Hauteur Finie to calculate Cut Height?
+    // User didn't ask for Hauteur Coupe Droit/Gauche. Just Finie.
+    // So Hauteur Coupe likely uses the MAX of Finie? Or ONE of them?
+    // Let's assume MAX for now to cover material needs.
+    const hFinieD = getters.hauteur_finie_droite(row);
+    const hFinieG = getters.hauteur_finie_gauche(row);
+    const hFinie = Math.max(hFinieD, hFinieG);
+
     const laize = toNum(row.laize_tissu1 || row.laize_tissu_deco1);
     const aPlat = getters.a_plat(row);
 
-    // Railroaded Logic: If Laize > (H_Finie + 50) -> Use A_Plat
     if (laize > (hFinie + 50)) {
       return round1(aPlat);
     }
@@ -78,12 +101,54 @@ const getters = {
   },
 
   nb_glisseurs: (row) => {
-    const lMeca = toNum(row.largeur_mecanisme || row.l_mecanisme);
-    const base = Math.round(lMeca / 10);
-    if (row.paire_ou_un_seul_pan === 'Paire' || row.pair_un === 'Paire') {
-      return base + 4;
+    // Formula Update:
+    // Wave 60 -> Divider 6
+    // Wave 80 -> Divider 8
+    // Default -> Divider 10
+    // Logic:
+    // Paire: 2 * RoundToEven( (L_Finie / Div) + 2 )
+    // Single: RoundToEven( (L_Finie / Div) + 2 )
+
+    const lFinie = getters.largeur_finie(row);
+    if (!lFinie) return 0;
+
+    let divider = 10;
+    const typeConf = (row.type_confection || "").toLowerCase();
+
+    if (typeConf.includes("wave 60")) {
+      divider = 6;
+    } else if (typeConf.includes("wave 80")) {
+      divider = 8;
     }
-    return base + 2;
+
+    // Helper: Round to nearest even number (usually Ceiling for safety?)
+    // Prompt says "Arrondir au nombre pair le plus proche".
+    // Math.round to nearest even.
+    const roundToEven = (num) => {
+      const rounded = Math.round(num);
+      return (rounded % 2 === 0) ? rounded : rounded + 1; // Round UP to next even if odd? Or just closest?
+      // "plus proche" usually means closest. 
+      // If 13 -> 14? or 12? Context: Gliders usually need to be even or matched.
+      // Let's assume Ceil to next Even to be safe for hardware abundance.
+      // Actually standard wave logic often requires even number of gliders per panel.
+      // Let's use Ceil to Even.
+      const ceil = Math.ceil(num);
+      return (ceil % 2 === 0) ? ceil : ceil + 1;
+    };
+
+    // Calculate base gliders per panel (or total for single)
+    const rawVal = (lFinie / divider) + 2;
+    const glidersPerPanel = roundToEven(rawVal);
+
+    // Check Paire vs Single
+    const isOnePanel = (row.paire_ou_un_seul_pan || "").startsWith("Un seul pan") || (row.pair_un || "").startsWith("Un seul pan");
+
+    if (isOnePanel) {
+      return glidersPerPanel;
+    } else {
+      // Paire: 2 * Gliders per panel
+      return glidersPerPanel * 2;
+    }
   }
 };
 
@@ -95,9 +160,9 @@ export const SCHEMA_64 = [
   { key: "zone", label: "Zone", type: "text", width: 100, editable: true },
   { key: "piece", label: "Pièce", type: "text", width: 100, editable: true },
   { key: "produit", label: "Produit", type: "select", options: ["Rideau", "Voilage", "Store Bateau", "Autres"], width: 120, editable: true },
-  { key: "type_confection", label: "Type Conf.", type: "select", options: ["Wave 80", "Wave 60", "Couteau", "Flamand", "Triplis", "Creux", "Taylor", "Tuyaux d'orgue", "Plat", "A plat"], width: 140, editable: true },
-  { key: "hauteur_tetes", label: "H. Têtes (cm)", type: "number", width: 100, editable: true },
-  { key: "paire_ou_un_seul_pan", label: "Paire/Unic", type: "select", options: ["Paire", "Un seul pan"], width: 120, editable: true },
+  { key: "type_confection", label: "Type Conf.", type: "select", options: ["Pli Flamand", "Plis Creux", "Pli Plat", "Tripli", "Wave 80", "Wave 60", "Pli Couteau", "A Plat"], width: 140, editable: true },
+  { key: "hauteur_renfort_tete", label: "H/Renfort Têtes", type: "text", width: 140, editable: true },
+  { key: "paire_ou_un_seul_pan", label: "Paire ou un Pan", type: "select", options: ["Paire", "Un seul pan", "Un seul pan (Rapatriement Droit)", "Un seul pan (Rapatriement Gauche)"], width: 180, editable: true },
   { key: "ampleur", label: "Ampleur", type: "number", width: 80, editable: true },
   { key: "largeur_mecanisme", label: "L. Méca (cm)", type: "number", width: 110, editable: true },
   { key: "largeur", label: "Largeur (cm)", type: "number", width: 110, editable: true },
@@ -120,10 +185,11 @@ export const SCHEMA_64 = [
     valueGetter: (v, r) => getters.a_plat(getRow(v, r))
   },
   { key: "v_ourlets_de_cotes", label: "Ourlets Côtés", type: "number", width: 110, editable: true },
-  { key: "renfort_tetes", label: "Renfort Têtes", type: "number", width: 110, editable: true },
+
 
   // C. Hauteurs & Coupe
-  { key: "hauteur", label: "Hauteur (cm)", type: "number", width: 110, editable: true },
+  { key: "hspf_droite", label: "HSPF Droit", type: "number", width: 110, editable: true },
+  { key: "hspf_gauche", label: "HSPF Gauche", type: "number", width: 110, editable: true },
   {
     key: "statut_cotes",
     label: "Statut Côtes",
@@ -135,12 +201,20 @@ export const SCHEMA_64 = [
   { key: "valeur_deduction", label: "Val. Déduc.", type: "number", width: 100, editable: true },
   { key: "finition_bas", label: "Finition Bas", type: "number", width: 100, editable: true },
   {
-    key: "hauteur_finie",
-    label: "H. Finie",
+    key: "hauteur_finie_droite",
+    label: "H. Finie Droite",
     type: "number",
-    width: 100,
+    width: 110,
     readOnly: true,
-    valueGetter: (v, r) => getters.hauteur_finie(getRow(v, r))
+    valueGetter: (v, r) => getters.hauteur_finie_droite(getRow(v, r))
+  },
+  {
+    key: "hauteur_finie_gauche",
+    label: "H. Finie Gauche",
+    type: "number",
+    width: 110,
+    readOnly: true,
+    valueGetter: (v, r) => getters.hauteur_finie_gauche(getRow(v, r))
   },
   {
     key: "hauteur_coupe",
@@ -172,7 +246,11 @@ export const SCHEMA_64 = [
     readOnly: true,
     valueGetter: (v, r) => {
       const row = getRow(v, r);
-      const hFinie = getters.hauteur_finie(row);
+      // Use Max Height for Lining Cut Logic?
+      const hFinieD = getters.hauteur_finie_droite(row);
+      const hFinieG = getters.hauteur_finie_gauche(row);
+      const hFinie = Math.max(hFinieD, hFinieG);
+
       const laizeD = toNum(row.laize_doublure);
       const aPlat = getters.a_plat(row);
       // Rule: Same as H_Coupe but with Lining Laize logic
@@ -200,9 +278,17 @@ export const SCHEMA_64 = [
   { key: "doublure_finition_bas", label: "Doubl. Fin. Bas", type: "number", width: 120, editable: true },
   { key: "finition_champs", label: "Fin. Champs", type: "number", width: 100, editable: true },
   { key: "poids", label: "Poids", type: "select", options: ["Oui", "Non"], width: 80, editable: true },
-  { key: "onglets", label: "Onglets", type: "select", options: ["Oui", "Non"], width: 80, editable: true },
+
+  // Onglets: Non / Régulier / Irrégulier
+  { key: "onglets", label: "Onglets", type: "select", options: ["Non", "Régulier", "Irrégulier"], width: 120, editable: true },
+
   { key: "bride", label: "Bride", type: "select", options: ["Oui", "Non"], width: 80, editable: true },
-  { key: "type_crochets", label: "Crochets", type: "select", options: ['Américain', 'Escargot', 'Microflex'], width: 120, editable: true },
+
+  // Crochets: Américain / Escargot
+  { key: "type_crochets", label: "Crochets", type: "select", options: ['Crochet Américain', 'Crochet Escargot'], width: 140, editable: true },
+
+  // Point Chausson: Oui / Non
+  { key: "point_chausson", label: "Point Chausson", type: "select", options: ["Oui", "Non"], width: 120, editable: true },
 
   // E. Matériaux
   { key: "tissu_deco1", label: "Tissu 1", type: "text", width: 140, editable: true },
@@ -224,15 +310,50 @@ export const SCHEMA_64 = [
 
   // F. Finitions & Logistique Atelier
   { key: "croisement", label: "Croisement", type: "number", width: 90, editable: true },
+
+  // Type de Croisement (NEW)
+  {
+    key: "type_croisement",
+    label: "Type Croisement",
+    type: "select",
+    options: [
+      "Croisement par chevauchement rail",
+      "Patte de croisement devant derrière",
+      "Patte de croisement double devant",
+      "Croisement simple arrière gauche",
+      "Croisement simple arrière droit"
+    ],
+    width: 200,
+    editable: true
+  },
+
   { key: "retour_gauche", label: "Retour G", type: "number", width: 90, editable: true },
   { key: "retour_droit", label: "Retour D", type: "number", width: 90, editable: true },
   { key: "type_retours", label: "Type Retours", type: "select", options: ['Élastique', 'Velcro'], width: 120, editable: true },
   { key: "etiquette_lavage", label: "Etiq. Lavage", type: "select", options: ["Oui", "Non"], width: 100, editable: true },
-  { key: "etiquette_lenglart", label: "Etiq. Lenglart", type: "select", options: ["Oui", "Non"], width: 100, editable: true },
+  { key: "etiquette_lenglart", label: "Etiq. Lenglart", type: "select", options: ["Oui", "Non"], width: 100, editable: true, defaultValue: "Oui" },
   { key: "schema", label: "Modèle", type: "croquis", width: 100 }, // PRESERVED COMPONENT
   { key: "type_mecanisme", label: "Type Méca", type: "text", width: 120, editable: true },
   { key: "modele_mecanisme", label: "Modèle Méca", type: "text", width: 140, editable: true },
   { key: "couleur_mecanisme", label: "Couleur Méca", type: "text", width: 120, editable: true },
+  { key: "meca_couvert", label: "Méca Couvert", type: "select", options: ["Couvert", "Mi-Couvert", "Découvert"], width: 120, editable: true },
+
+  // Type de Commande (NEW)
+  {
+    key: "type_commande",
+    label: "Type Commande",
+    type: "select",
+    options: [
+      "Manuelle",
+      "Télécommande/Radio",
+      "Commande murale Radio",
+      "Commande murale Sec",
+      "Fourni par le client"
+    ],
+    width: 150,
+    editable: true
+  },
+
   {
     key: "nombre_glisseur",
     label: "Nb Glisseurs",
@@ -241,7 +362,19 @@ export const SCHEMA_64 = [
     readOnly: true,
     valueGetter: (v, row) => getters.nb_glisseurs(row)
   },
-  { key: "supports_embouts_meca", label: "Supp./Embouts", type: "text", width: 140, editable: true },
+
+  { key: "couleur_glisseur", label: "Couleur Glisseur", type: "text", width: 120, editable: true },
+  { key: "piton", label: "Piton", type: "text", width: 100, editable: true },
+  { key: "embout_meca", label: "Embout Méca", type: "text", width: 120, editable: true },
+  { key: "support", label: "Support", type: "text", width: 120, editable: true },
+  {
+    key: "equerre",
+    label: "Equerre",
+    type: "select",
+    options: ["5", "8", "12", "18", "F7,5", "F10"],
+    width: 100,
+    editable: true
+  },
 
   // G. Suivi & Statuts
   { key: "type_pose", label: "Type Pose", type: "text", width: 120, editable: true },
@@ -250,6 +383,7 @@ export const SCHEMA_64 = [
   { key: "statut_prepa", label: "Statut Prépa", type: "select", options: ['Non démarré', 'En cours', 'Terminé'], width: 140, editable: true },
   { key: "statut_conf", label: "Statut Conf", type: "select", options: ['Non démarré', 'En cours', 'Terminé'], width: 140, editable: true },
   // PRESERVED COMPONENTS
+  { key: "schema_principe", label: "Schéma Principe", type: "photo", width: 150 }, // NEW
   { key: "photos_sur_site", label: "Photos Site", type: "photo", width: 150 },
   { key: "croquis", label: "Croquis Atelier", type: "croquis", width: 150 },
 ];

@@ -153,24 +153,40 @@ export function recomputeRow(row, schema, ctx = {}) {
   // =========================================================
 
   // INPUTS
+  // Pre-fill Largeur from Largeur Mecanisme if Largeur is empty
+  // Loop logic: If user sets Largeur Mecanisme, we want Largeur to update IF it hasn't been manually set differently.
+  // But we can't easily track "manually set" vs "auto set" without extra state.
+  // Standard approach: If Largeur is 0 or undefined, take Largeur Mecanisme.
+  // OR better: if they are equal or L is empty, keep them synced. If user changes L, it desyncs.
+  // Complex to do perfectly in stateless function.
+  // Simple approach requested: "Default to same value".
+  // We'll set it if it's missing.
+  if (!next.largeur && next.largeur_mecanisme) {
+    next.largeur = next.largeur_mecanisme;
+  }
+
   const L = NVL(next.largeur);
   const H = NVL(next.hauteur);
-  const Ampleur = NVL(next.ampleur, 1);
-  const FinitionBas = NVL(next.finition_bas, 0); // Can be negative
+  const Ampleur = NVL(next.ampleur, 0); // Default 0 as per schema update
+  const FinitionBas = NVL(next.finition_bas, 0);
   const Croisement = NVL(next.croisement, 0);
   const RetourG = NVL(next.retour_gauche, 0);
   const RetourD = NVL(next.retour_droit, 0);
 
   // A. CALCULS GÉOMÉTRIQUES
   let A_Plat = 0;
-  if (next.paire_ou_un_seul_pan === 'Paire') {
-    // Formule: ( ( (Largeur/2) + (Largeur/2 * 0.07) ) * Ampleur + Retour_Gauche ) * 2 + Croisement
-    // Note: User prompt says `Retour_Gauche` in the formula. We use RetourG.
+  // Check if it's "Un seul pan" (or similar variations)
+  const isOnePanel = (next.paire_ou_un_seul_pan || "").startsWith("Un seul pan");
+
+  if (!isOnePanel) {
+    // Paire (Default if not single panel)
+    // Formule: ( ( (Largeur/2) + (Largeur/2 * 0.10) ) * Ampleur + Retour_Gauche ) * 2 + Croisement
     const demiL = L / 2;
-    A_Plat = ((demiL + (demiL * 0.07)) * Ampleur + RetourG) * 2 + Croisement;
+    A_Plat = ((demiL + (demiL * 0.10)) * Ampleur + RetourG) * 2 + Croisement;
   } else {
-    // Un seul pan: ( (Largeur + (Largeur * 0.07) ) * Ampleur + Retour_Gauche + Retour_Droit )
-    A_Plat = ((L + (L * 0.07)) * Ampleur + RetourG + RetourD);
+    // Un seul pan logic (Standard, Rapatriement Droit, Rapatriement Gauche)
+    // Formule: (Largeur + (Largeur * 0.10)) * Ampleur + Retour_Gauche + Retour_Droit
+    A_Plat = ((L + (L * 0.10)) * Ampleur + RetourG + RetourD);
   }
   next.a_plat = A_Plat;
 
@@ -471,7 +487,7 @@ export function recomputeRow(row, schema, ctx = {}) {
     NVL(next.pv_tissu1) + NVL(next.pv_tissu2) +
     NVL(next.pv_doublure) + NVL(next.pv_interdoublure) +
     NVL(next.pv_pass1) + NVL(next.pv_pass2) +
-    NVL(next.pv_mecanisme) +
+    NVL(next.pv_mecanisme) + NVL(next.pv_mecanisme_bis) +
     NVL(next.pv_tissu_1) + NVL(next.pv_pass_1) + // NEW Decors
     NVL(next.pv_tissu_2) + // NEW Decors T2
     NVL(next.pv_pass_2) + // NEW Decors Pass 2
