@@ -16,9 +16,9 @@ export const CHIFFRAGE_SCHEMA = [
   // 6
   { key: "type_confection", label: "Confection", type: "select", options: ["Pli Flamand", "Plis Creux", "Pli Plat", "Tripli", "Wave 80", "Wave 60", "Pli Couteau", "A Plat"], width: 140 },
   // 7
-  { key: "paire_ou_un_seul_pan", label: "Format", type: "select", options: ["Paire", "Un seul pan"], width: 120 },
+  { key: "paire_ou_un_seul_pan", label: "Paire ou un Pan", type: "select", options: ["Paire", "Un seul pan", "Un seul pan (Rapatriement Droit)", "Un seul pan (Rapatriement Gauche)"], width: 180 },
   // 8
-  { key: "ampleur", label: "Ampleur", type: "number", precision: 2, width: 80 },
+  { key: "ampleur", label: "Ampleur", type: "number", precision: 2, width: 80, defaultValue: 0 },
   // 9
   { key: "largeur_mecanisme", label: "L. Méca", type: "number", width: 100 },
   // 10
@@ -33,8 +33,7 @@ export const CHIFFRAGE_SCHEMA = [
   { key: "a_plat", label: "À Plat", type: "number", width: 100, readOnly: true },
   // 15
   { key: "hauteur", label: "Hauteur", type: "number", width: 90 },
-  // 16
-  { key: "hauteur_finie_type", label: "Type H.", type: "select", options: ["Sol Fini", "Sol Brut"], width: 110 },
+
   // 17
   { key: "finition_bas", label: "Fin. Bas", type: "number", width: 90 },
   // 18
@@ -131,13 +130,18 @@ export const CHIFFRAGE_SCHEMA = [
   // 60
   { key: "pv_mecanisme", label: "PV Méca", type: "number", width: 90 },
 
+  // 60b (NEW) - Mécanisme Bis
+  { key: "mecanisme_bis", label: "Méca Bis", type: "catalog_item", category: "Rail,Rails,Tringle,Tringles,Mecanisme,Mécanisme,Mecanismes,Mécanismes", width: 140 }, // Same categories as main meca
+  { key: "pa_mecanisme_bis", label: "PA Méca Bis", type: "number", width: 90 },
+  { key: "pv_mecanisme_bis", label: "PV Méca Bis", type: "number", width: 90 },
+
   // 61
   { key: "heures_prepa", label: "H. Prépa", type: "number", width: 80 },
   // 62
   { key: "pv_prepa", label: "PV Prépa", type: "number", width: 90, readOnly: true },
 
   // 63
-  { key: "type_pose", label: "Pose", type: "select", options: ["Mural", "Plafond", "Tableau", "Grande hauteur"], width: 120 },
+  { key: "type_pose", label: "Pose", type: "select", options: ["Mural", "Plafond", "Grande hauteur", "Suspente"], width: 120 },
   // 64
   { key: "heures_pose", label: "H. Pose", type: "number", width: 80 },
   // 65
@@ -162,7 +166,7 @@ export const CHIFFRAGE_SCHEMA = [
   // 73
   { key: "unit_price", label: "P.U", type: "number", width: 110, readOnly: true, valueFormatter: (value) => new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(value) },
   // 74
-  { key: "quantite", label: "Qté", type: "number", width: 70 },
+  { key: "quantite", label: "Qté", type: "number", width: 70, defaultValue: 1, readOnly: true },
   // 75
   { key: "total_price", label: "Total", type: "number", width: 120, readOnly: true },
 ];
