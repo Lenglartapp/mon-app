@@ -477,6 +477,7 @@ export default function MinuteGrid({
                     processRowUpdate={processRowUpdate}
                     onProcessRowUpdateError={handleProcessRowUpdateError}
                     checkboxSelection
+                    disableRowSelectionOnClick // <--- Prevents row selection on click
                     disableColumnResize={false}
                     columnVisibilityModel={columnVisibilityModel}
                     onColumnVisibilityModelChange={onColumnVisibilityModelChange}

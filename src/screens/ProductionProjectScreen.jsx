@@ -952,21 +952,45 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
       )}
 
       {stage === "bpp" && (
-        <div style={cardStyle}>
-          <div style={cardHeaderStyle}>BPP (Préparation Mécanismes)</div>
-          <MinuteGrid
-            rows={filteredRows}
-            onRowsChange={handleRowsChangeInstallation} // reuse generic updater
-            schema={schema}
-            enableCellFormulas={true}
-            initialVisibilityModel={getVisibilityModel('bpp', 'all', schema)}
-            onDuplicateRow={handleDuplicateRow}
-            projectId={project?.id}
-            gridKey="bpp_main"
-            onRowClick={(id) => setOpenedRowId(id)}
-            isMobile={isMobile}
-          />
-        </div>
+        <>
+          {rowsRideaux.length > 0 && (
+            <div style={cardStyle}>
+              <div style={cardHeaderStyle}>BPP Rideaux (Préparation Mécanismes)</div>
+              <MinuteGrid
+                rows={rowsRideaux}
+                onRowsChange={mergeChildRowsFor("rideaux")}
+                schema={schema}
+                enableCellFormulas={true}
+                initialVisibilityModel={getVisibilityModel('bpp', 'rideaux', schema)}
+                onAdd={() => handleAddRow("Rideau")}
+                onDuplicateRow={handleDuplicateRow}
+                projectId={project?.id}
+                gridKey="bpp_rideaux"
+                onRowClick={(id) => setOpenedRowId(id)}
+                isMobile={isMobile}
+              />
+            </div>
+          )}
+
+          {rowsStores.length > 0 && (
+            <div style={cardStyle}>
+              <div style={cardHeaderStyle}>BPP Stores (Préparation Mécanismes)</div>
+              <MinuteGrid
+                rows={rowsStores}
+                onRowsChange={mergeChildRowsFor("stores")}
+                schema={STORES_PROD_SCHEMA}
+                enableCellFormulas={true}
+                initialVisibilityModel={getVisibilityModel('bpp', 'stores', STORES_PROD_SCHEMA)}
+                onAdd={() => handleAddRow("Store Bateau")}
+                onDuplicateRow={handleDuplicateRow}
+                projectId={project?.id}
+                gridKey="bpp_stores"
+                onRowClick={(id) => setOpenedRowId(id)}
+                isMobile={isMobile}
+              />
+            </div>
+          )}
+        </>
       )}
 
       {openedRow && (
