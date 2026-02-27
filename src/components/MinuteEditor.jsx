@@ -454,7 +454,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
               schema={schema}
               enableCellFormulas={enableCellFormulas}
               formulaCtx={extendedCtx}
-              onAdd={React.useCallback(() => handleAddRow("rideaux"), [handleAddRow])}
+              onAdd={() => handleAddRow("rideaux")}
               onDelete={() => handleDeleteRows(selRideaux)}
               rowSelectionModel={selRideaux}
               onRowSelectionModelChange={setSelRideaux}
@@ -474,17 +474,32 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
           </div>
         );
       case 'store':
+        const storesSchema = STORES_SCHEMA.filter(c => ![
+          'hauteur_coupe', 'hauteur_coupe_motif', 'a_plat',
+          'toile_finition_1', 'laize_toile_finition_1', 'raccord_v_toile_finition_1', 'raccord_h_toile_finition_1', 'nb_les_toile_finition_1', 'ml_toile_finition_1', 'pa_toile_finition_1', 'pv_toile_finition_1',
+          'doublure', 'laize_doublure', 'nb_les_doublure', 'ml_doublure', 'pa_doublure', 'pv_doublure',
+          'heures_confection', 'pv_confection'
+        ].includes(c.key)).map(c => {
+          if (c.key === 'produit') {
+            return {
+              ...c,
+              options: ['Store Vénitien', 'Store Californien', 'Store Canishade', 'Store Enrouleur']
+            };
+          }
+          return c;
+        });
+
         return (
           <div key="store" style={{ ...S.modernCard, padding: 0, marginBottom: 24 }}>
-            {renderHeader("Stores Enrouleurs", rowsStore)}
+            {renderHeader("Stores", rowsStore)}
             <MinuteGrid
               title=""
               rows={rowsStore}
               onRowsChange={mergeChildRowsFor("store")}
-              schema={STORES_SCHEMA}
+              schema={storesSchema}
               enableCellFormulas={enableCellFormulas}
               formulaCtx={extendedCtx}
-              onAdd={React.useCallback(() => handleAddRow("store"), [handleAddRow])}
+              onAdd={() => handleAddRow("store")}
               onDelete={() => handleDeleteRows(selStore)}
               rowSelectionModel={selStore}
               onRowSelectionModelChange={setSelStore}
@@ -502,6 +517,22 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
           </div>
         );
       case 'store_bateau':
+        const storesBateauSchema = STORES_SCHEMA.filter(c => ![
+          'hauteur_coupe', 'hauteur_coupe_motif', 'a_plat',
+          'nb_les_toile_finition_1', 'nb_les_doublure'
+        ].includes(c.key)).map(c => {
+          if (c.key === 'produit') {
+            return {
+              ...c,
+              options: ['Store Bateau', 'Store Velum']
+            };
+          }
+          if (c.key === 'toile_finition_1') {
+            return { ...c, label: 'Tissu 1' };
+          }
+          return c;
+        });
+
         return (
           <div key="store_bateau" style={{ ...S.modernCard, padding: 0, marginBottom: 24 }}>
             {renderHeader("Stores Bateaux / Velum", rowsStoresBateau)}
@@ -509,10 +540,10 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
               title=""
               rows={rowsStoresBateau}
               onRowsChange={mergeChildRowsFor("store_bateau")}
-              schema={STORES_SCHEMA}
+              schema={storesBateauSchema}
               enableCellFormulas={enableCellFormulas}
               formulaCtx={extendedCtx}
-              onAdd={React.useCallback(() => handleAddRow("store_bateau"), [handleAddRow])}
+              onAdd={() => handleAddRow("store_bateau")}
               onDelete={() => handleDeleteRows(selStoreBateau)}
               rowSelectionModel={selStoreBateau}
               onRowSelectionModelChange={setSelStoreBateau}
@@ -535,7 +566,9 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
           'mecanisme_fourniture', 'pa_mecanisme', 'pv_mecanisme',
           'heures_prepa', 'pv_prepa',
           'heures_pose', 'pv_pose',
-          'st_pose_pa', 'st_pose_pv'
+          'st_pose_pa', 'st_pose_pv',
+          'baguette_1', 'ml_baguette_1', 'pa_baguette_1', 'pv_baguette_1',
+          'baguette_2', 'ml_baguette_2', 'pa_baguette_2', 'pv_baguette_2'
         ].includes(c.field)).map(c => {
           if (c.field === 'produit') {
             return { ...c, valueOptions: ['Coussins'] };
@@ -553,7 +586,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
               schema={coussinsSchema}
               enableCellFormulas={enableCellFormulas}
               formulaCtx={extendedCtx}
-              onAdd={React.useCallback(() => handleAddRow("coussins"), [handleAddRow])}
+              onAdd={() => handleAddRow("coussins")}
               onDelete={() => handleDeleteRows(selCoussins)}
               rowSelectionModel={selCoussins}
               onRowSelectionModelChange={setSelCoussins}
@@ -576,7 +609,9 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
           'mecanisme_fourniture', 'pa_mecanisme', 'pv_mecanisme',
           'heures_prepa', 'pv_prepa',
           'heures_pose', 'pv_pose',
-          'st_pose_pa', 'st_pose_pv'
+          'st_pose_pa', 'st_pose_pv',
+          'baguette_1', 'ml_baguette_1', 'pa_baguette_1', 'pv_baguette_1',
+          'baguette_2', 'ml_baguette_2', 'pa_baguette_2', 'pv_baguette_2'
         ].includes(c.field)).map(c => {
           if (c.field === 'type_confection') {
             return {
@@ -605,7 +640,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
               schema={cacheSommierSchema}
               enableCellFormulas={enableCellFormulas}
               formulaCtx={extendedCtx}
-              onAdd={React.useCallback(() => handleAddRow("cache_sommier"), [handleAddRow])}
+              onAdd={() => handleAddRow("cache_sommier")}
               onDelete={() => handleDeleteRows(selCacheSommier)}
               rowSelectionModel={selCacheSommier}
               onRowSelectionModelChange={setSelCacheSommier}
@@ -629,7 +664,9 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
           'mecanisme_fourniture', 'pa_mecanisme', 'pv_mecanisme',
           'heures_prepa', 'pv_prepa',
           'heures_pose', 'pv_pose',
-          'st_pose_pa', 'st_pose_pv'
+          'st_pose_pa', 'st_pose_pv',
+          'baguette_1', 'ml_baguette_1', 'pa_baguette_1', 'pv_baguette_1',
+          'baguette_2', 'ml_baguette_2', 'pa_baguette_2', 'pv_baguette_2'
         ].includes(c.field)).map(c => {
           if (c.field === 'longueur') {
             return { ...c, headerName: 'Épaisseur', label: 'Épaisseur' };
@@ -661,7 +698,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
               schema={plaidSchema}
               enableCellFormulas={enableCellFormulas}
               formulaCtx={extendedCtx}
-              onAdd={React.useCallback(() => handleAddRow("plaid"), [handleAddRow])}
+              onAdd={() => handleAddRow("plaid")}
               onDelete={() => handleDeleteRows(selPlaid)}
               rowSelectionModel={selPlaid}
               onRowSelectionModelChange={setSelPlaid}
@@ -679,6 +716,32 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
           </div>
         );
       case 'tenture_murale':
+        const tentureSchema = DECORS_SCHEMA.filter(c => ![
+          'type_confection',
+          'longueur',
+          'tissu_2', 'laize_tissu_2', 'ml_tissu_2', 'pa_tissu_2', 'pv_tissu_2',
+          'type_interieur', 'pa_interieur', 'pv_interieur',
+          'passementerie_2', 'app_passementerie_2', 'ml_pass_2', 'pa_pass_2', 'pv_pass_2',
+          'st_conf_pa', 'st_conf_pv',
+          'mecanisme_fourniture', 'pa_mecanisme', 'pv_mecanisme',
+          'heures_prepa', 'pv_prepa'
+        ].includes(c.field)).map(c => {
+          if (c.field === 'produit') {
+            return {
+              ...c,
+              type: 'singleSelect',
+              valueOptions: ['Tenture Murale']
+            };
+          }
+          if (c.field === 'hauteur') {
+            return {
+              ...c,
+              readOnly: () => false
+            };
+          }
+          return c;
+        });
+
         return (
           <div key="tenture_murale" style={{ ...S.modernCard, padding: 0, marginBottom: 24 }}>
             {renderHeader("Tenture Murale", rowsTenture)}
@@ -686,10 +749,10 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
               title=""
               rows={rowsTenture}
               onRowsChange={mergeChildRowsFor("tenture_murale")}
-              schema={DECORS_SCHEMA}
+              schema={tentureSchema}
               enableCellFormulas={enableCellFormulas}
               formulaCtx={extendedCtx}
-              onAdd={React.useCallback(() => handleAddRow("tenture_murale"), [handleAddRow])}
+              onAdd={() => handleAddRow("tenture_murale")}
               onDelete={() => handleDeleteRows(selTenture)}
               rowSelectionModel={selTenture}
               onRowSelectionModelChange={setSelTenture}
@@ -707,6 +770,36 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
           </div>
         );
       case 'mobilier':
+        const mobilierSchemaRaw = DECORS_SCHEMA.filter(c => ![
+          'type_confection',
+          'type_interieur', 'pa_interieur', 'pv_interieur',
+          'mecanisme_fourniture', 'pa_mecanisme', 'pv_mecanisme',
+          'heures_prepa', 'pv_prepa',
+          'heures_pose', 'pv_pose',
+          'st_pose_pa', 'st_pose_pv',
+          'baguette_1', 'ml_baguette_1', 'pa_baguette_1', 'pv_baguette_1',
+          'baguette_2', 'ml_baguette_2', 'pa_baguette_2', 'pv_baguette_2'
+        ].includes(c.field)).map(c => {
+          if (c.field === 'longueur') {
+            return { ...c, headerName: 'Épaisseur', label: 'Épaisseur' };
+          }
+          if (c.field === 'produit') {
+            return {
+              ...c,
+              type: 'singleSelect',
+              valueOptions: ['Tête de Lit']
+            };
+          }
+          return c;
+        });
+
+        // Reorder columns for Mobilier: Largeur, then Hauteur, then Épaisseur (ex-longueur)
+        const mobilierOrder = ['detail', 'zone', 'piece', 'produit', 'largeur', 'hauteur', 'longueur'];
+        const mobilierSchema = [
+          ...mobilierOrder.map(f => mobilierSchemaRaw.find(c => c.field === f)).filter(Boolean),
+          ...mobilierSchemaRaw.filter(c => !mobilierOrder.includes(c.field))
+        ];
+
         return (
           <div key="mobilier" style={{ ...S.modernCard, padding: 0, marginBottom: 24 }}>
             {renderHeader("Mobilier / Tête de lit", rowsMobilier)}
@@ -714,17 +807,17 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
               title=""
               rows={rowsMobilier}
               onRowsChange={mergeChildRowsFor("mobilier")}
-              schema={DECORS_SCHEMA}
+              schema={mobilierSchema}
               enableCellFormulas={enableCellFormulas}
               formulaCtx={extendedCtx}
-              onAdd={React.useCallback(() => handleAddRow("mobilier"), [handleAddRow])}
+              onAdd={() => handleAddRow("mobilier")}
               onDelete={() => handleDeleteRows(selMobilier)}
               rowSelectionModel={selMobilier}
               onRowSelectionModelChange={setSelMobilier}
               catalog={catalog}
               initialVisibilityModel={DECORS_DEFAULT_VISIBILITY}
               onDuplicateRow={handleDuplicateRow}
-              hideCroquis={true}
+              hideCroquis={false}
               minuteId={minute?.id}
               gridKey="chiff_mobilier"
               targetRowId={targetRowId}
@@ -758,7 +851,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
                 schema={EXTRA_DEPENSES_SCHEMA}
                 enableCellFormulas={enableCellFormulas}
                 formulaCtx={extendedCtx}
-                onAdd={React.useCallback(() => handleAddRow("autre"), [handleAddRow])}
+                onAdd={() => handleAddRow("autre")}
                 onDelete={() => handleDeleteRows(selAutre)}
                 rowSelectionModel={selAutre}
                 onRowSelectionModelChange={setSelAutre}
@@ -787,7 +880,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
                 schema={CHIFFRAGE_SCHEMA_DEP}
                 enableCellFormulas={enableCellFormulas}
                 formulaCtx={extendedCtx}
-                onAdd={React.useCallback(() => handleAddRow("deplacement"), [handleAddRow])}
+                onAdd={() => handleAddRow("deplacement")}
                 onDelete={() => handleDeleteRows(selDeplacement)}
                 rowSelectionModel={selDeplacement}
                 onRowSelectionModelChange={setSelDeplacement}
@@ -824,7 +917,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
           { key: 'plaid', label: 'Plaids / Chemin de lit' },
           { key: 'tenture_murale', label: 'Tenture Murale' },
           { key: 'mobilier', label: 'Mobilier / Tête de lit' },
-        ].filter(m => !mods[m.key]);
+        ].filter(m => !renderOrder.includes(m.key));
 
         if (availableModules.length === 0 || readOnly) return null;
 
