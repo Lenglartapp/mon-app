@@ -707,6 +707,34 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
           </div>
         );
       case 'mobilier':
+        const mobilierSchemaRaw = DECORS_SCHEMA.filter(c => ![
+          'type_confection',
+          'type_interieur', 'pa_interieur', 'pv_interieur',
+          'mecanisme_fourniture', 'pa_mecanisme', 'pv_mecanisme',
+          'heures_prepa', 'pv_prepa',
+          'heures_pose', 'pv_pose',
+          'st_pose_pa', 'st_pose_pv'
+        ].includes(c.field)).map(c => {
+          if (c.field === 'longueur') {
+            return { ...c, headerName: 'Épaisseur', label: 'Épaisseur' };
+          }
+          if (c.field === 'produit') {
+            return {
+              ...c,
+              type: 'singleSelect',
+              valueOptions: ['Tête de Lit']
+            };
+          }
+          return c;
+        });
+
+        // Reorder columns for Mobilier: Largeur, then Hauteur, then Épaisseur (ex-longueur)
+        const mobilierOrder = ['detail', 'zone', 'piece', 'produit', 'largeur', 'hauteur', 'longueur'];
+        const mobilierSchema = [
+          ...mobilierOrder.map(f => mobilierSchemaRaw.find(c => c.field === f)).filter(Boolean),
+          ...mobilierSchemaRaw.filter(c => !mobilierOrder.includes(c.field))
+        ];
+
         return (
           <div key="mobilier" style={{ ...S.modernCard, padding: 0, marginBottom: 24 }}>
             {renderHeader("Mobilier / Tête de lit", rowsMobilier)}
@@ -714,7 +742,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
               title=""
               rows={rowsMobilier}
               onRowsChange={mergeChildRowsFor("mobilier")}
-              schema={DECORS_SCHEMA}
+              schema={mobilierSchema}
               enableCellFormulas={enableCellFormulas}
               formulaCtx={extendedCtx}
               onAdd={React.useCallback(() => handleAddRow("mobilier"), [handleAddRow])}
@@ -724,7 +752,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
               catalog={catalog}
               initialVisibilityModel={DECORS_DEFAULT_VISIBILITY}
               onDuplicateRow={handleDuplicateRow}
-              hideCroquis={true}
+              hideCroquis={false}
               minuteId={minute?.id}
               gridKey="chiff_mobilier"
               targetRowId={targetRowId}

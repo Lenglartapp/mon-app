@@ -17,10 +17,11 @@ const isRegionBlocked = (row) => {
     const isCacheSommier = p.includes('cache-sommier');
     const isCoussin = p.includes('coussin');
     const isPlaid = p.includes('plaid');
+    const isMobilier = p.includes('tête de lit') || p.includes('mobilier');
     const isAutre = p === 'autre' || p === '';
 
-    // Block if NOT Cache Sommier AND NOT "Coussin" AND NOT "Plaid" AND NOT "Autre" (or empty)
-    if (!isCacheSommier && !isCoussin && !isPlaid && !isAutre) return true; // Locked
+    // Block if NOT Cache Sommier AND NOT "Coussin" AND NOT "Plaid" AND NOT "Mobilier" AND NOT "Autre" (or empty)
+    if (!isCacheSommier && !isCoussin && !isPlaid && !isMobilier && !isAutre) return true; // Locked
     return false; // Editable
 };
 
