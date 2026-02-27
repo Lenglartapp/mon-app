@@ -474,14 +474,29 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
           </div>
         );
       case 'store':
+        const storesSchema = STORES_SCHEMA.filter(c => ![
+          'hauteur_coupe', 'hauteur_coupe_motif', 'a_plat',
+          'toile_finition_1', 'laize_toile_finition_1', 'raccord_v_toile_finition_1', 'raccord_h_toile_finition_1', 'nb_les_toile_finition_1', 'ml_toile_finition_1', 'pa_toile_finition_1', 'pv_toile_finition_1',
+          'doublure', 'laize_doublure', 'nb_les_doublure', 'ml_doublure', 'pa_doublure', 'pv_doublure',
+          'heures_confection', 'pv_confection'
+        ].includes(c.key)).map(c => {
+          if (c.key === 'produit') {
+            return {
+              ...c,
+              options: ['Store Vénitien', 'Store Californien', 'Store Canishade', 'Store Enrouleur']
+            };
+          }
+          return c;
+        });
+
         return (
           <div key="store" style={{ ...S.modernCard, padding: 0, marginBottom: 24 }}>
-            {renderHeader("Stores Enrouleurs", rowsStore)}
+            {renderHeader("Stores", rowsStore)}
             <MinuteGrid
               title=""
               rows={rowsStore}
               onRowsChange={mergeChildRowsFor("store")}
-              schema={STORES_SCHEMA}
+              schema={storesSchema}
               enableCellFormulas={enableCellFormulas}
               formulaCtx={extendedCtx}
               onAdd={() => handleAddRow("store")}
@@ -503,7 +518,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
         );
       case 'store_bateau':
         const storesBateauSchema = STORES_SCHEMA.filter(c => ![
-          'hauteur_coupe', 'hauteur_coupe_motif',
+          'hauteur_coupe', 'hauteur_coupe_motif', 'a_plat',
           'nb_les_toile_finition_1', 'nb_les_doublure'
         ].includes(c.key)).map(c => {
           if (c.key === 'produit') {
@@ -551,7 +566,9 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
           'mecanisme_fourniture', 'pa_mecanisme', 'pv_mecanisme',
           'heures_prepa', 'pv_prepa',
           'heures_pose', 'pv_pose',
-          'st_pose_pa', 'st_pose_pv'
+          'st_pose_pa', 'st_pose_pv',
+          'baguette_1', 'ml_baguette_1', 'pa_baguette_1', 'pv_baguette_1',
+          'baguette_2', 'ml_baguette_2', 'pa_baguette_2', 'pv_baguette_2'
         ].includes(c.field)).map(c => {
           if (c.field === 'produit') {
             return { ...c, valueOptions: ['Coussins'] };
@@ -592,7 +609,9 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
           'mecanisme_fourniture', 'pa_mecanisme', 'pv_mecanisme',
           'heures_prepa', 'pv_prepa',
           'heures_pose', 'pv_pose',
-          'st_pose_pa', 'st_pose_pv'
+          'st_pose_pa', 'st_pose_pv',
+          'baguette_1', 'ml_baguette_1', 'pa_baguette_1', 'pv_baguette_1',
+          'baguette_2', 'ml_baguette_2', 'pa_baguette_2', 'pv_baguette_2'
         ].includes(c.field)).map(c => {
           if (c.field === 'type_confection') {
             return {
@@ -645,7 +664,9 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
           'mecanisme_fourniture', 'pa_mecanisme', 'pv_mecanisme',
           'heures_prepa', 'pv_prepa',
           'heures_pose', 'pv_pose',
-          'st_pose_pa', 'st_pose_pv'
+          'st_pose_pa', 'st_pose_pv',
+          'baguette_1', 'ml_baguette_1', 'pa_baguette_1', 'pv_baguette_1',
+          'baguette_2', 'ml_baguette_2', 'pa_baguette_2', 'pv_baguette_2'
         ].includes(c.field)).map(c => {
           if (c.field === 'longueur') {
             return { ...c, headerName: 'Épaisseur', label: 'Épaisseur' };
@@ -755,7 +776,9 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
           'mecanisme_fourniture', 'pa_mecanisme', 'pv_mecanisme',
           'heures_prepa', 'pv_prepa',
           'heures_pose', 'pv_pose',
-          'st_pose_pa', 'st_pose_pv'
+          'st_pose_pa', 'st_pose_pv',
+          'baguette_1', 'ml_baguette_1', 'pa_baguette_1', 'pv_baguette_1',
+          'baguette_2', 'ml_baguette_2', 'pa_baguette_2', 'pv_baguette_2'
         ].includes(c.field)).map(c => {
           if (c.field === 'longueur') {
             return { ...c, headerName: 'Épaisseur', label: 'Épaisseur' };

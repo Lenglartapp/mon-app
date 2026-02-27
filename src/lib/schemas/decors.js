@@ -71,6 +71,12 @@ export const DECORS_SCHEMA = [
     createCol('pa_tissu_1', 'PA T1', 70, 'number'), // Unblocked
     createCol('pv_tissu_1', 'PV T1', 70, 'number'), // Unblocked
 
+    // 3d. Molleton (NEW for Tenture)
+    createCol('molleton', 'Molleton', 180, 'catalog_item', { category: 'Tissu' }),
+    createCol('ml_molleton', 'ML Mol.', 70, 'number'),
+    createCol('pa_molleton', 'PA Mol.', 70, 'number'),
+    createCol('pv_molleton', 'PV Mol.', 70, 'number'),
+
     // 3b. Tissu 2 (NEW)
     createCol('tissu_2', 'Tissu 2', 180, 'catalog_item', { category: 'Tissu' }),
     createCol('laize_tissu_2', 'Laize 2', 70, 'number'),
@@ -92,6 +98,18 @@ export const DECORS_SCHEMA = [
 
     createCol('pa_pass_1', 'PA P1', 70, 'number'), // Unblocked
     createCol('pv_pass_1', 'PV P1', 70, 'number'), // Unblocked
+
+    // 4b. Baguette 1 (NEW for Tenture)
+    createCol('baguette_1', 'Baguette 1', 180, 'catalog_item', { category: 'Rail' }),
+    createCol('ml_baguette_1', 'ML B1', 70, 'number'),
+    createCol('pa_baguette_1', 'PA B1', 70, 'number'),
+    createCol('pv_baguette_1', 'PV B1', 70, 'number'),
+
+    // 4c. Baguette 2 (NEW for Tenture)
+    createCol('baguette_2', 'Baguette 2', 180, 'catalog_item', { category: 'Rail' }),
+    createCol('ml_baguette_2', 'ML B2', 70, 'number'),
+    createCol('pa_baguette_2', 'PA B2', 70, 'number'),
+    createCol('pv_baguette_2', 'PV B2', 70, 'number'),
 
     // 5. Passementerie 2 (Kept per Excel)
     createCol('passementerie_2', 'Passementerie 2', 180, 'catalog_item', { category: 'Passementerie' }),

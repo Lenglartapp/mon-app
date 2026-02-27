@@ -272,6 +272,28 @@ export function recomputeRow(row, schema, ctx = {}) {
       next.pa_mecanisme = NVL(next.quantite) * (pMF.pa || 0);
       next.pv_mecanisme = NVL(next.quantite) * (pMF.pv || 0);
     }
+
+    // Molleton (NEW for Tenture)
+    fillFromCatalog('molleton', {});
+    if (next.molleton) {
+      const pMoll = getPrice(next.molleton);
+      next.pa_molleton = NVL(next.ml_molleton) * (pMoll.pa || 0);
+      next.pv_molleton = NVL(next.ml_molleton) * (pMoll.pv || 0);
+    }
+
+    // D. Baguettes (NEW for Tenture)
+    fillFromCatalog('baguette_1', {});
+    if (next.baguette_1) {
+      const pB1 = getPrice(next.baguette_1);
+      next.pa_baguette_1 = NVL(next.ml_baguette_1) * (pB1.pa || 0);
+      next.pv_baguette_1 = NVL(next.ml_baguette_1) * (pB1.pv || 0);
+    }
+    fillFromCatalog('baguette_2', {});
+    if (next.baguette_2) {
+      const pB2 = getPrice(next.baguette_2);
+      next.pa_baguette_2 = NVL(next.ml_baguette_2) * (pB2.pa || 0);
+      next.pv_baguette_2 = NVL(next.ml_baguette_2) * (pB2.pv || 0);
+    }
   } else if (!isRideau && !isStore) {
     // --- 11. GENERIC OTHERS ---
     // Minimal logic for products not specifically handled
@@ -301,6 +323,7 @@ export function recomputeRow(row, schema, ctx = {}) {
     NVL(next.pv_tissu_1) + NVL(next.pv_pass_1) +
     NVL(next.pv_tissu_2) + NVL(next.pv_pass_2) +
     NVL(next.pv_interieur) + NVL(next.pv_toile_finition_1) + NVL(next.pv_mecanisme_store) +
+    NVL(next.pv_baguette_1) + NVL(next.pv_baguette_2) + NVL(next.pv_molleton) +
     NVL(next.pv_prepa) + NVL(next.pv_pose) + NVL(next.pv_confection) +
     NVL(next.st_pose_pv) + NVL(next.st_conf_pv) +
     NVL(next.livraison);
