@@ -454,7 +454,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
               schema={schema}
               enableCellFormulas={enableCellFormulas}
               formulaCtx={extendedCtx}
-              onAdd={React.useCallback(() => handleAddRow("rideaux"), [handleAddRow])}
+              onAdd={() => handleAddRow("rideaux")}
               onDelete={() => handleDeleteRows(selRideaux)}
               rowSelectionModel={selRideaux}
               onRowSelectionModelChange={setSelRideaux}
@@ -484,7 +484,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
               schema={STORES_SCHEMA}
               enableCellFormulas={enableCellFormulas}
               formulaCtx={extendedCtx}
-              onAdd={React.useCallback(() => handleAddRow("store"), [handleAddRow])}
+              onAdd={() => handleAddRow("store")}
               onDelete={() => handleDeleteRows(selStore)}
               rowSelectionModel={selStore}
               onRowSelectionModelChange={setSelStore}
@@ -502,6 +502,22 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
           </div>
         );
       case 'store_bateau':
+        const storesBateauSchema = STORES_SCHEMA.filter(c => ![
+          'hauteur_coupe', 'hauteur_coupe_motif',
+          'nb_les_toile_finition_1', 'nb_les_doublure'
+        ].includes(c.key)).map(c => {
+          if (c.key === 'produit') {
+            return {
+              ...c,
+              options: ['Store Bateau', 'Store Velum']
+            };
+          }
+          if (c.key === 'toile_finition_1') {
+            return { ...c, label: 'Tissu 1' };
+          }
+          return c;
+        });
+
         return (
           <div key="store_bateau" style={{ ...S.modernCard, padding: 0, marginBottom: 24 }}>
             {renderHeader("Stores Bateaux / Velum", rowsStoresBateau)}
@@ -509,10 +525,10 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
               title=""
               rows={rowsStoresBateau}
               onRowsChange={mergeChildRowsFor("store_bateau")}
-              schema={STORES_SCHEMA}
+              schema={storesBateauSchema}
               enableCellFormulas={enableCellFormulas}
               formulaCtx={extendedCtx}
-              onAdd={React.useCallback(() => handleAddRow("store_bateau"), [handleAddRow])}
+              onAdd={() => handleAddRow("store_bateau")}
               onDelete={() => handleDeleteRows(selStoreBateau)}
               rowSelectionModel={selStoreBateau}
               onRowSelectionModelChange={setSelStoreBateau}
@@ -553,7 +569,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
               schema={coussinsSchema}
               enableCellFormulas={enableCellFormulas}
               formulaCtx={extendedCtx}
-              onAdd={React.useCallback(() => handleAddRow("coussins"), [handleAddRow])}
+              onAdd={() => handleAddRow("coussins")}
               onDelete={() => handleDeleteRows(selCoussins)}
               rowSelectionModel={selCoussins}
               onRowSelectionModelChange={setSelCoussins}
@@ -605,7 +621,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
               schema={cacheSommierSchema}
               enableCellFormulas={enableCellFormulas}
               formulaCtx={extendedCtx}
-              onAdd={React.useCallback(() => handleAddRow("cache_sommier"), [handleAddRow])}
+              onAdd={() => handleAddRow("cache_sommier")}
               onDelete={() => handleDeleteRows(selCacheSommier)}
               rowSelectionModel={selCacheSommier}
               onRowSelectionModelChange={setSelCacheSommier}
@@ -661,7 +677,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
               schema={plaidSchema}
               enableCellFormulas={enableCellFormulas}
               formulaCtx={extendedCtx}
-              onAdd={React.useCallback(() => handleAddRow("plaid"), [handleAddRow])}
+              onAdd={() => handleAddRow("plaid")}
               onDelete={() => handleDeleteRows(selPlaid)}
               rowSelectionModel={selPlaid}
               onRowSelectionModelChange={setSelPlaid}
@@ -679,6 +695,32 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
           </div>
         );
       case 'tenture_murale':
+        const tentureSchema = DECORS_SCHEMA.filter(c => ![
+          'type_confection',
+          'longueur',
+          'tissu_2', 'laize_tissu_2', 'ml_tissu_2', 'pa_tissu_2', 'pv_tissu_2',
+          'type_interieur', 'pa_interieur', 'pv_interieur',
+          'passementerie_2', 'app_passementerie_2', 'ml_pass_2', 'pa_pass_2', 'pv_pass_2',
+          'st_conf_pa', 'st_conf_pv',
+          'mecanisme_fourniture', 'pa_mecanisme', 'pv_mecanisme',
+          'heures_prepa', 'pv_prepa'
+        ].includes(c.field)).map(c => {
+          if (c.field === 'produit') {
+            return {
+              ...c,
+              type: 'singleSelect',
+              valueOptions: ['Tenture Murale']
+            };
+          }
+          if (c.field === 'hauteur') {
+            return {
+              ...c,
+              readOnly: () => false
+            };
+          }
+          return c;
+        });
+
         return (
           <div key="tenture_murale" style={{ ...S.modernCard, padding: 0, marginBottom: 24 }}>
             {renderHeader("Tenture Murale", rowsTenture)}
@@ -686,10 +728,10 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
               title=""
               rows={rowsTenture}
               onRowsChange={mergeChildRowsFor("tenture_murale")}
-              schema={DECORS_SCHEMA}
+              schema={tentureSchema}
               enableCellFormulas={enableCellFormulas}
               formulaCtx={extendedCtx}
-              onAdd={React.useCallback(() => handleAddRow("tenture_murale"), [handleAddRow])}
+              onAdd={() => handleAddRow("tenture_murale")}
               onDelete={() => handleDeleteRows(selTenture)}
               rowSelectionModel={selTenture}
               onRowSelectionModelChange={setSelTenture}
@@ -745,7 +787,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
               schema={mobilierSchema}
               enableCellFormulas={enableCellFormulas}
               formulaCtx={extendedCtx}
-              onAdd={React.useCallback(() => handleAddRow("mobilier"), [handleAddRow])}
+              onAdd={() => handleAddRow("mobilier")}
               onDelete={() => handleDeleteRows(selMobilier)}
               rowSelectionModel={selMobilier}
               onRowSelectionModelChange={setSelMobilier}
@@ -786,7 +828,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
                 schema={EXTRA_DEPENSES_SCHEMA}
                 enableCellFormulas={enableCellFormulas}
                 formulaCtx={extendedCtx}
-                onAdd={React.useCallback(() => handleAddRow("autre"), [handleAddRow])}
+                onAdd={() => handleAddRow("autre")}
                 onDelete={() => handleDeleteRows(selAutre)}
                 rowSelectionModel={selAutre}
                 onRowSelectionModelChange={setSelAutre}
@@ -815,7 +857,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
                 schema={CHIFFRAGE_SCHEMA_DEP}
                 enableCellFormulas={enableCellFormulas}
                 formulaCtx={extendedCtx}
-                onAdd={React.useCallback(() => handleAddRow("deplacement"), [handleAddRow])}
+                onAdd={() => handleAddRow("deplacement")}
                 onDelete={() => handleDeleteRows(selDeplacement)}
                 rowSelectionModel={selDeplacement}
                 onRowSelectionModelChange={setSelDeplacement}
