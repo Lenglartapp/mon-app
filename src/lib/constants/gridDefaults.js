@@ -190,3 +190,21 @@ export const STORES_DEFAULT_VISIBILITY = {
     // ✅ À ACTIVER (Commentaire pour mémoire)
     // Tissu 1, Passementerie 1, Mécanisme, Prépa, Pose, Confection, Synthèse
 };
+
+export const COUSSINS_DEFAULT_VISIBILITY = {
+    // Masquage par défaut (Blocs Tissu 2, Intérieur, Passementerie 2)
+    tissu_2: false,
+    laize_tissu_2: false,
+    ml_tissu_2: false,
+    pa_tissu_2: false,
+    pv_tissu_2: false,
+    type_interieur: false,
+    pa_interieur: false,
+    pv_interieur: false,
+    passementerie_2: false,
+    app_passementerie_2: false,
+    ml_pass_2: false,
+    pa_pass_2: false,
+    pv_pass_2: false,
+};
+

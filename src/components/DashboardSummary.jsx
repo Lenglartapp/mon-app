@@ -7,24 +7,29 @@ export default function DashboardSummary({ recap, nf, activeModules }) {
 
     // Items configuration for easier mapping
     const rawItems = [
-        // 1. Production
-        { label: "Rideaux", value: recap.caRideaux, show: mods.rideau },
-        { label: "Décors", value: recap.caDecors, show: mods.decor },
-        { label: "Stores", value: recap.caStores, show: mods.store },
-        // Autre Confection is often lumped into 'caAutres' which isn't explicitly shown in the original list, 
-        // but if it were, we would toggle it with mods.autre_confection.
-        // For now, we only toggle the explicit categories requested.
+        // 1. Production Categories (Dynamic)
+        { label: "Rideaux", value: recap.caRideaux },
+        { label: "Stores", value: recap.caStores },
+        { label: "Stores Bateau", value: recap.caStoresBateau },
+        { label: "Coussins", value: recap.caCoussins },
+        { label: "Cache-Sommier", value: recap.caCacheSommier },
+        { label: "Plaids", value: recap.caPlaid },
+        { label: "Tenture", value: recap.caTenture },
+        { label: "Mobilier", value: recap.caMobilier },
+        { label: "Divers", value: recap.caDivers },
 
-        { label: "Logistique", value: recap.depTotal, show: true },
-        // 2. Heures (Suffix 'h')
-        { label: "H. Conf", value: recap.hConf, suffix: "h", show: true },
-        { label: "H. Pose", value: recap.hPose, suffix: "h", show: true },
-        { label: "H. Prépa", value: recap.hPrepa, suffix: "h", show: true },
-        // 3. Autres (Grey)
-        { label: "Autres", value: recap.extrasTotal, color: "text.disabled", show: true },
+        // 2. Logistics & Extras
+        { label: "Logistique", value: recap.depTotal, forceShow: true },
+        { label: "Frais", value: recap.extrasTotal, color: "text.disabled", forceShow: true },
+
+        // 3. Heures (Suffix 'h')
+        { label: "H. Prépa", value: recap.hPrepa, suffix: "h", forceShow: true },
+        { label: "H. Pose", value: recap.hPose, suffix: "h", forceShow: true },
+        { label: "H. Conf", value: recap.hConf, suffix: "h", forceShow: true },
     ];
 
-    const items = rawItems.filter(i => i.show);
+    // Show item if it has a value > 0 OR if it's explicitly forced (Logistics, Hours, etc.)
+    const items = rawItems.filter(i => i.forceShow || (i.value && i.value > 0));
 
     return (
         <Paper
