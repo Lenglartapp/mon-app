@@ -264,19 +264,26 @@ export function schemaToGridCols(schema, enableCellFormulas = false, onOpenDetai
       );
     }
 
-    // Handle Select Options & Chips
-    if (col.type === 'select' && Array.isArray(col.options)) {
-      gridCol.valueOptions = col.options;
-      gridCol.renderCell = (params) => {
-        if (!params.value) return '';
-        return (
-          <Chip
-            label={params.value}
-            size="small"
-            style={{ backgroundColor: stringToColor(params.value), color: '#000000' }}
-          />
-        );
-      };
+    // Handle Select Options & Chips (Labels)
+    const chipFields = ['produit', 'type_confection'];
+    if (((col.type === 'select' || col.type === 'singleSelect') && Array.isArray(col.options || col.valueOptions)) || chipFields.includes(col.key)) {
+      if (!gridCol.renderCell) { // Don't overwrite buttons or custom cells
+        gridCol.renderCell = (params) => {
+          if (!params.value) return '';
+          return (
+            <Chip
+              label={params.value}
+              size="small"
+              style={{
+                backgroundColor: stringToColor(params.value),
+                color: '#000000',
+                fontWeight: 500,
+                fontSize: '0.75rem'
+              }}
+            />
+          );
+        };
+      }
     }
 
 

@@ -15,12 +15,12 @@ const createCol = (key, label, width, type = 'text', options = {}) => ({
 const isRegionBlocked = (row) => {
     const p = (row.produit || '').toLowerCase();
     const isCacheSommier = p.includes('cache-sommier');
+    const isCoussin = p.includes('coussin');
+    const isPlaid = p.includes('plaid');
     const isAutre = p === 'autre' || p === '';
 
-    // Block if NOT Cache Sommier AND NOT "Autre" (or empty)
-    // Strictly: Only Cache Sommier has Height editable.
-    // User phrase: "sauf pour le Cache-Sommier".
-    if (!isCacheSommier && !isAutre) return true; // Locked
+    // Block if NOT Cache Sommier AND NOT "Coussin" AND NOT "Plaid" AND NOT "Autre" (or empty)
+    if (!isCacheSommier && !isCoussin && !isPlaid && !isAutre) return true; // Locked
     return false; // Editable
 };
 

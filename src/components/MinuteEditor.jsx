@@ -19,10 +19,9 @@ import { Library, Plus, Trash2 } from 'lucide-react';
 
 import { CHIFFRAGE_SCHEMA_DEP } from "../lib/schemas/deplacement";
 import { EXTRA_DEPENSES_SCHEMA } from "../lib/schemas/extraDepenses";
-import { RIDEAUX_DEFAULT_VISIBILITY, DECORS_DEFAULT_VISIBILITY, STORES_DEFAULT_VISIBILITY } from "../lib/constants/gridDefaults";
+import { RIDEAUX_DEFAULT_VISIBILITY, DECORS_DEFAULT_VISIBILITY, STORES_DEFAULT_VISIBILITY, COUSSINS_DEFAULT_VISIBILITY } from "../lib/constants/gridDefaults";
 import { DECORS_SCHEMA } from "../lib/schemas/decors";
 import { STORES_SCHEMA } from "../lib/schemas/stores";
-import { AUTRES_SCHEMA } from "../lib/schemas/autres";
 import { parseRideauxImport } from '../utils/importRideaux';
 
 // ... (imports remain)
@@ -161,14 +160,12 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
     return rawSource.map(row => {
       // Determine schema for recompute
       let targetSchema = schema;
-      const p = row.produit;
-      if (row.section === 'autre') targetSchema = AUTRES_SCHEMA;
-      else if (p === 'Autre Dépense') targetSchema = EXTRA_DEPENSES_SCHEMA;
-      else if (p === 'Déplacement') targetSchema = CHIFFRAGE_SCHEMA_DEP;
-      // Handle Decors specific schema
-      else if (/d[ée]cor|coussin|plaid|t[êe]te|tenture|cache/i.test(p)) targetSchema = DECORS_SCHEMA;
-      // Handle Stores specific schema
+      const p = String(row.produit || "").toLowerCase();
+      if (p === 'autre dépense') targetSchema = EXTRA_DEPENSES_SCHEMA;
+      else if (p === 'déplacement') targetSchema = CHIFFRAGE_SCHEMA_DEP;
       else if (/store|canishade/i.test(p)) targetSchema = STORES_SCHEMA;
+      else if (/rideau|voilage/i.test(p)) targetSchema = schema;
+      else targetSchema = DECORS_SCHEMA; // Default for all decors-like items (Coussins, Plaid, etc.)
 
       // Ensure valid ID & Deduplicate
       let safeId = row.id;
@@ -197,15 +194,13 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
 
   // Sous-ensembles par module
   const rowsRideaux = rows.filter((r) => /rideau|voilage/i.test(String(r.produit || "")));
-  // Updated Decors filter to include new types
-  const rowsDecors = rows.filter((r) => /d[ée]cor|coussin|plaid|t[êe]te|tenture|cache/i.test(String(r.produit || "")));
-  const rowsStores = rows.filter((r) => /store/i.test(String(r.produit || "")));
-
-  // Nouveaux sous-ensembles
-  // "Autre Confection" -> use 'section' property primarily to avoid confusion with "Autre Dépense"
-  // If section is missing (legacy), we rely on nothing? No, legacy rows won't be here.
-  const rowsAutreConfection = rows.filter(r => r.section === 'autre');
-
+  const rowsStore = rows.filter((r) => /store|canishade/i.test(String(r.produit || "")) && !/bateau|velum|vélum/i.test(String(r.produit || "")));
+  const rowsStoresBateau = rows.filter((r) => /bateau|velum|vélum/i.test(String(r.produit || "")));
+  const rowsCoussins = rows.filter((r) => /coussin/i.test(String(r.produit || "")));
+  const rowsCacheSommier = rows.filter((r) => /cache-sommier/i.test(String(r.produit || "")));
+  const rowsPlaid = rows.filter((r) => /plaid|chemin de lit/i.test(String(r.produit || "")));
+  const rowsTenture = rows.filter((r) => /tenture/i.test(String(r.produit || "")));
+  const rowsMobilier = rows.filter((r) => /t[êe]te|mobilier/i.test(String(r.produit || "")));
   const rowsDeplacement = rows.filter((r) => String(r.produit || "") === "Déplacement");
   const rowsAutre = rows.filter((r) => String(r.produit || "") === "Autre Dépense");
 
@@ -216,9 +211,13 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
   const ensureProduitFor = (key, r) => {
     if (r?.produit) return r;
     if (key === "rideaux") return { ...r, produit: "Rideau" };
-    if (key === "decors") return { ...r, produit: "Coussins" }; // Default to Coussins
-    if (key === "stores") return { ...r, produit: "Store Enrouleur" };
-    if (key === "autre_confection") return { ...r, produit: "", section: 'autre' };
+    if (key === "store") return { ...r, produit: "Store Enrouleur" };
+    if (key === "store_bateau") return { ...r, produit: "Store Bateau" };
+    if (key === "coussins") return { ...r, produit: "Coussins" };
+    if (key === "cache_sommier") return { ...r, produit: "Cache-Sommier" };
+    if (key === "plaid") return { ...r, produit: "Plaid" };
+    if (key === "tenture_murale") return { ...r, produit: "Tenture Murale" };
+    if (key === "mobilier") return { ...r, produit: "Tête de Lit" };
     if (key === "deplacement") return { ...r, produit: "Déplacement" };
     if (key === "autre") return { ...r, produit: "Autre Dépense" };
     return r;
@@ -235,17 +234,19 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
 
     // Garder uniquement les lignes des AUTRES sous-ensembles
     const isInSubset = (r) => {
-      // Priority check for Section='autre' (new module)
-      if (key === 'autre_confection') return r.section === 'autre';
-
       const p = String(r.produit || "");
 
       // Existing checks... avoid capturing 'section=autre' rows here!
       if (r.section === 'autre') return false;
 
       if (key === "rideaux") return /rideau|voilage/i.test(p);
-      if (key === "decors") return /d[ée]cor|coussin|plaid|t[êe]te|tenture|cache/i.test(p);
-      if (key === "stores") return /store/i.test(p);
+      if (key === "store") return /store|canishade/i.test(p) && !/bateau|velum|vélum/i.test(p);
+      if (key === "store_bateau") return /bateau|velum|vélum/i.test(p);
+      if (key === "coussins") return /coussin/i.test(p);
+      if (key === "cache_sommier") return /cache-sommier/i.test(p);
+      if (key === "plaid") return /plaid|chemin de lit/i.test(p);
+      if (key === "tenture_murale") return /tenture/i.test(p);
+      if (key === "mobilier") return /t[êe]te|mobilier/i.test(p);
       if (key === "deplacement") return p === "Déplacement";
       if (key === "autre") return p === "Autre Dépense";
       return false;
@@ -275,11 +276,14 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
     const newRow = {
       id: genId(),
       produit: key === "rideaux" ? "Rideau" :
-        key === "decors" ? "Coussins" : // Default to Coussins
-          key === "stores" ? "Store Enrouleur" :
-            key === "deplacement" ? "Déplacement" :
-              key === "autre_confection" ? "" : "Autre Dépense",
-      section: key === "autre_confection" ? 'autre' : undefined, // TAG SECTION
+        key === "coussins" ? "Coussins" :
+          key === "store" ? "Store Enrouleur" :
+            key === "store_bateau" ? "Store Bateau" :
+              key === "cache_sommier" ? "Cache-Sommier" :
+                key === "plaid" ? "Plaid" :
+                  key === "tenture_murale" ? "Tenture Murale" :
+                    key === "mobilier" ? "Tête de Lit" :
+                      key === "deplacement" ? "Déplacement" : "Autre Dépense",
       // Valeurs par défaut pour éviter les vides
       quantite: 1,
       largeur: 0,
@@ -291,9 +295,9 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
     let targetSchema = schema;
     if (key === 'autre') targetSchema = EXTRA_DEPENSES_SCHEMA;
     else if (key === 'deplacement') targetSchema = CHIFFRAGE_SCHEMA_DEP;
-    else if (key === 'decors') targetSchema = DECORS_SCHEMA;
-    else if (key === 'stores') targetSchema = STORES_SCHEMA;
-    else if (key === 'autre_confection') targetSchema = AUTRES_SCHEMA;
+    else if (key === 'store' || key === 'store_bateau') targetSchema = STORES_SCHEMA;
+    else if (key === 'rideaux') targetSchema = schema;
+    else targetSchema = DECORS_SCHEMA; // Default for all decors modules (Coussins, Cache-Sommier, etc.)
 
     // 2. Recompute the new row immediately
     const computedRow = recomputeRow(newRow, targetSchema, extendedCtx);
@@ -306,11 +310,15 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
 
   // États de sélection pour chaque grille
   const [selRideaux, setSelRideaux] = React.useState([]);
-  const [selDecors, setSelDecors] = React.useState([]);
-  const [selStores, setSelStores] = React.useState([]);
+  const [selStore, setSelStore] = React.useState([]);
+  const [selStoreBateau, setSelStoreBateau] = React.useState([]);
+  const [selCoussins, setSelCoussins] = React.useState([]);
+  const [selCacheSommier, setSelCacheSommier] = React.useState([]);
+  const [selPlaid, setSelPlaid] = React.useState([]);
+  const [selTenture, setSelTenture] = React.useState([]);
+  const [selMobilier, setSelMobilier] = React.useState([]);
   const [selDeplacement, setSelDeplacement] = React.useState([]);
   const [selAutre, setSelAutre] = React.useState([]);
-  const [selAutreConfection, setSelAutreConfection] = React.useState([]);
 
   // Suppression de lignes
   const handleDeleteRows = (idsToDelete) => {
@@ -325,8 +333,13 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
 
     // Clear selections
     setSelRideaux([]);
-    setSelDecors([]);
-    setSelStores([]);
+    setSelStore([]);
+    setSelStoreBateau([]);
+    setSelCoussins([]);
+    setSelCacheSommier([]);
+    setSelPlaid([]);
+    setSelTenture([]);
+    setSelMobilier([]);
     setSelDeplacement([]);
     setSelAutre([]);
   };
@@ -376,7 +389,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
   };
 
   // Determine Render Order (Persisted or Default)
-  const defaultOrder = ['rideau', 'decor', 'store', 'autre_confection'];
+  const defaultOrder = ['rideau', 'store', 'store_bateau', 'coussins', 'cache_sommier', 'plaid', 'tenture_murale', 'mobilier'];
   const renderOrder = Array.isArray(mods.order) ? mods.order : defaultOrder;
 
   // Helper to remove a module
@@ -398,6 +411,18 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
       modules: { ...mods, [key]: false, order: newOrder },
       updatedAt: Date.now()
     });
+
+    // Reset correct selection state
+    if (key === 'rideau') setSelRideaux([]);
+    if (key === 'store') setSelStore([]);
+    if (key === 'store_bateau') setSelStoreBateau([]);
+    if (key === 'coussins') setSelCoussins([]);
+    if (key === 'cache_sommier') setSelCacheSommier([]);
+    if (key === 'plaid') setSelPlaid([]);
+    if (key === 'tenture_murale') setSelTenture([]);
+    if (key === 'mobilier') setSelMobilier([]);
+    if (key === 'decor') setSelDecors([]);
+    if (key === 'stores') setSelStores([]);
   };
 
   // Helper to Render Specific Module
@@ -440,35 +465,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
               onDuplicateRow={handleDuplicateRow}
               hideCroquis={true}
               minuteId={minute?.id}
-              gridKey="chiff_rideaux" // <--- NEW KEY
-              targetRowId={targetRowId}
-              onRowClick={onRowClick}
-              readOnly={readOnly}
-              currentUser={currentUser}
-            />
-          </div>
-        );
-      case 'decor':
-        return (
-          <div key="decor" style={{ ...S.modernCard, padding: 0, marginBottom: 24 }}>
-            {renderHeader("Décors de lit", rowsDecors)}
-            <MinuteGrid
-              title=""
-              rows={rowsDecors}
-              onRowsChange={mergeChildRowsFor("decors")}
-              schema={DECORS_SCHEMA}
-              enableCellFormulas={enableCellFormulas}
-              formulaCtx={extendedCtx}
-              onAdd={React.useCallback(() => handleAddRow("decors"), [handleAddRow])}
-              onDelete={() => handleDeleteRows(selDecors)}
-              rowSelectionModel={selDecors}
-              onRowSelectionModelChange={setSelDecors}
-              catalog={catalog}
-              initialVisibilityModel={DECORS_DEFAULT_VISIBILITY}
-              onDuplicateRow={handleDuplicateRow}
-              hideCroquis={true}
-              minuteId={minute?.id}
-              gridKey="chiff_decors" // <--- NEW KEY
+              gridKey="chiff_rideaux"
               targetRowId={targetRowId}
               onRowClick={onRowClick}
               readOnly={readOnly}
@@ -479,24 +476,24 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
       case 'store':
         return (
           <div key="store" style={{ ...S.modernCard, padding: 0, marginBottom: 24 }}>
-            {renderHeader("Stores", rowsStores)}
+            {renderHeader("Stores Enrouleurs", rowsStore)}
             <MinuteGrid
               title=""
-              rows={rowsStores}
-              onRowsChange={mergeChildRowsFor("stores")}
+              rows={rowsStore}
+              onRowsChange={mergeChildRowsFor("store")}
               schema={STORES_SCHEMA}
               enableCellFormulas={enableCellFormulas}
               formulaCtx={extendedCtx}
-              onAdd={React.useCallback(() => handleAddRow("stores"), [handleAddRow])}
-              onDelete={() => handleDeleteRows(selStores)}
-              rowSelectionModel={selStores}
-              onRowSelectionModelChange={setSelStores}
+              onAdd={React.useCallback(() => handleAddRow("store"), [handleAddRow])}
+              onDelete={() => handleDeleteRows(selStore)}
+              rowSelectionModel={selStore}
+              onRowSelectionModelChange={setSelStore}
               catalog={catalog}
               initialVisibilityModel={STORES_DEFAULT_VISIBILITY}
               onDuplicateRow={handleDuplicateRow}
               hideCroquis={true}
               minuteId={minute?.id}
-              gridKey="chiff_stores" // <--- NEW KEY
+              gridKey="chiff_stores"
               targetRowId={targetRowId}
               onRowClick={onRowClick}
               readOnly={readOnly}
@@ -504,27 +501,232 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
             />
           </div>
         );
-      case 'autre_confection':
+      case 'store_bateau':
         return (
-          <div key="autre_confection" style={{ ...S.modernCard, padding: 0, marginBottom: 24 }}>
-            {renderHeader("AUTRE / SUR-MESURE", rowsAutreConfection)}
+          <div key="store_bateau" style={{ ...S.modernCard, padding: 0, marginBottom: 24 }}>
+            {renderHeader("Stores Bateaux / Velum", rowsStoresBateau)}
             <MinuteGrid
               title=""
-              rows={rowsAutreConfection}
-              onRowsChange={mergeChildRowsFor("autre_confection")}
-              schema={AUTRES_SCHEMA}
+              rows={rowsStoresBateau}
+              onRowsChange={mergeChildRowsFor("store_bateau")}
+              schema={STORES_SCHEMA}
               enableCellFormulas={enableCellFormulas}
               formulaCtx={extendedCtx}
-              onAdd={React.useCallback(() => handleAddRow("autre_confection"), [handleAddRow])}
-              onDelete={() => handleDeleteRows(selAutreConfection)}
-              rowSelectionModel={selAutreConfection}
-              onRowSelectionModelChange={setSelAutreConfection}
+              onAdd={React.useCallback(() => handleAddRow("store_bateau"), [handleAddRow])}
+              onDelete={() => handleDeleteRows(selStoreBateau)}
+              rowSelectionModel={selStoreBateau}
+              onRowSelectionModelChange={setSelStoreBateau}
               catalog={catalog}
-              initialVisibilityModel={{ st_conf_pa: false, st_conf_pv: false, st_pose_pa: false, st_pose_pv: false }}
+              initialVisibilityModel={STORES_DEFAULT_VISIBILITY}
               onDuplicateRow={handleDuplicateRow}
               hideCroquis={true}
               minuteId={minute?.id}
-              gridKey="chiff_autre_confection" // <--- NEW KEY
+              gridKey="chiff_stores_bateau"
+              targetRowId={targetRowId}
+              onRowClick={onRowClick}
+              readOnly={readOnly}
+              currentUser={currentUser}
+            />
+          </div>
+        );
+      case 'coussins':
+        const coussinsSchema = DECORS_SCHEMA.filter(c => ![
+          'longueur', 'type_confection',
+          'mecanisme_fourniture', 'pa_mecanisme', 'pv_mecanisme',
+          'heures_prepa', 'pv_prepa',
+          'heures_pose', 'pv_pose',
+          'st_pose_pa', 'st_pose_pv'
+        ].includes(c.field)).map(c => {
+          if (c.field === 'produit') {
+            return { ...c, valueOptions: ['Coussins'] };
+          }
+          return c;
+        });
+
+        return (
+          <div key="coussins" style={{ ...S.modernCard, padding: 0, marginBottom: 24 }}>
+            {renderHeader("Coussins", rowsCoussins)}
+            <MinuteGrid
+              title=""
+              rows={rowsCoussins}
+              onRowsChange={mergeChildRowsFor("coussins")}
+              schema={coussinsSchema}
+              enableCellFormulas={enableCellFormulas}
+              formulaCtx={extendedCtx}
+              onAdd={React.useCallback(() => handleAddRow("coussins"), [handleAddRow])}
+              onDelete={() => handleDeleteRows(selCoussins)}
+              rowSelectionModel={selCoussins}
+              onRowSelectionModelChange={setSelCoussins}
+              catalog={catalog}
+              initialVisibilityModel={COUSSINS_DEFAULT_VISIBILITY}
+              onDuplicateRow={handleDuplicateRow}
+              hideCroquis={true}
+              minuteId={minute?.id}
+              gridKey="chiff_coussins"
+              targetRowId={targetRowId}
+              onRowClick={onRowClick}
+              readOnly={readOnly}
+              currentUser={currentUser}
+            />
+          </div>
+        );
+      case 'cache_sommier':
+        const cacheSommierSchema = DECORS_SCHEMA.filter(c => ![
+          'type_interieur', 'pa_interieur', 'pv_interieur',
+          'mecanisme_fourniture', 'pa_mecanisme', 'pv_mecanisme',
+          'heures_prepa', 'pv_prepa',
+          'heures_pose', 'pv_pose',
+          'st_pose_pa', 'st_pose_pv'
+        ].includes(c.field)).map(c => {
+          if (c.field === 'type_confection') {
+            return {
+              ...c,
+              type: 'singleSelect',
+              valueOptions: ['Confection boîte', 'Plissé Dior 2 plis', 'Plissé Dior 4 plis']
+            };
+          }
+          if (c.field === 'produit') {
+            return {
+              ...c,
+              type: 'singleSelect',
+              valueOptions: ['Cache-Sommier']
+            };
+          }
+          return c;
+        });
+
+        return (
+          <div key="cache_sommier" style={{ ...S.modernCard, padding: 0, marginBottom: 24 }}>
+            {renderHeader("Cache Sommier", rowsCacheSommier)}
+            <MinuteGrid
+              title=""
+              rows={rowsCacheSommier}
+              onRowsChange={mergeChildRowsFor("cache_sommier")}
+              schema={cacheSommierSchema}
+              enableCellFormulas={enableCellFormulas}
+              formulaCtx={extendedCtx}
+              onAdd={React.useCallback(() => handleAddRow("cache_sommier"), [handleAddRow])}
+              onDelete={() => handleDeleteRows(selCacheSommier)}
+              rowSelectionModel={selCacheSommier}
+              onRowSelectionModelChange={setSelCacheSommier}
+              catalog={catalog}
+              initialVisibilityModel={DECORS_DEFAULT_VISIBILITY}
+              onDuplicateRow={handleDuplicateRow}
+              hideCroquis={true}
+              minuteId={minute?.id}
+              gridKey="chiff_cache_sommier"
+              targetRowId={targetRowId}
+              onRowClick={onRowClick}
+              readOnly={readOnly}
+              currentUser={currentUser}
+            />
+          </div>
+        );
+      case 'plaid':
+        const plaidSchemaRaw = DECORS_SCHEMA.filter(c => ![
+          'type_confection',
+          'type_interieur', 'pa_interieur', 'pv_interieur',
+          'mecanisme_fourniture', 'pa_mecanisme', 'pv_mecanisme',
+          'heures_prepa', 'pv_prepa',
+          'heures_pose', 'pv_pose',
+          'st_pose_pa', 'st_pose_pv'
+        ].includes(c.field)).map(c => {
+          if (c.field === 'longueur') {
+            return { ...c, headerName: 'Épaisseur', label: 'Épaisseur' };
+          }
+          if (c.field === 'produit') {
+            return {
+              ...c,
+              type: 'singleSelect',
+              valueOptions: ['Plaid']
+            };
+          }
+          return c;
+        });
+
+        // Reorder columns for Plaid: Largeur, then Hauteur, then Épaisseur (ex-longueur)
+        const plaidOrder = ['detail', 'zone', 'piece', 'produit', 'largeur', 'hauteur', 'longueur'];
+        const plaidSchema = [
+          ...plaidOrder.map(f => plaidSchemaRaw.find(c => c.field === f)).filter(Boolean),
+          ...plaidSchemaRaw.filter(c => !plaidOrder.includes(c.field))
+        ];
+
+        return (
+          <div key="plaid" style={{ ...S.modernCard, padding: 0, marginBottom: 24 }}>
+            {renderHeader("Plaid / Chemin de lit", rowsPlaid)}
+            <MinuteGrid
+              title=""
+              rows={rowsPlaid}
+              onRowsChange={mergeChildRowsFor("plaid")}
+              schema={plaidSchema}
+              enableCellFormulas={enableCellFormulas}
+              formulaCtx={extendedCtx}
+              onAdd={React.useCallback(() => handleAddRow("plaid"), [handleAddRow])}
+              onDelete={() => handleDeleteRows(selPlaid)}
+              rowSelectionModel={selPlaid}
+              onRowSelectionModelChange={setSelPlaid}
+              catalog={catalog}
+              initialVisibilityModel={DECORS_DEFAULT_VISIBILITY}
+              onDuplicateRow={handleDuplicateRow}
+              hideCroquis={true}
+              minuteId={minute?.id}
+              gridKey="chiff_plaid"
+              targetRowId={targetRowId}
+              onRowClick={onRowClick}
+              readOnly={readOnly}
+              currentUser={currentUser}
+            />
+          </div>
+        );
+      case 'tenture_murale':
+        return (
+          <div key="tenture_murale" style={{ ...S.modernCard, padding: 0, marginBottom: 24 }}>
+            {renderHeader("Tenture Murale", rowsTenture)}
+            <MinuteGrid
+              title=""
+              rows={rowsTenture}
+              onRowsChange={mergeChildRowsFor("tenture_murale")}
+              schema={DECORS_SCHEMA}
+              enableCellFormulas={enableCellFormulas}
+              formulaCtx={extendedCtx}
+              onAdd={React.useCallback(() => handleAddRow("tenture_murale"), [handleAddRow])}
+              onDelete={() => handleDeleteRows(selTenture)}
+              rowSelectionModel={selTenture}
+              onRowSelectionModelChange={setSelTenture}
+              catalog={catalog}
+              initialVisibilityModel={DECORS_DEFAULT_VISIBILITY}
+              onDuplicateRow={handleDuplicateRow}
+              hideCroquis={true}
+              minuteId={minute?.id}
+              gridKey="chiff_tenture"
+              targetRowId={targetRowId}
+              onRowClick={onRowClick}
+              readOnly={readOnly}
+              currentUser={currentUser}
+            />
+          </div>
+        );
+      case 'mobilier':
+        return (
+          <div key="mobilier" style={{ ...S.modernCard, padding: 0, marginBottom: 24 }}>
+            {renderHeader("Mobilier / Tête de lit", rowsMobilier)}
+            <MinuteGrid
+              title=""
+              rows={rowsMobilier}
+              onRowsChange={mergeChildRowsFor("mobilier")}
+              schema={DECORS_SCHEMA}
+              enableCellFormulas={enableCellFormulas}
+              formulaCtx={extendedCtx}
+              onAdd={React.useCallback(() => handleAddRow("mobilier"), [handleAddRow])}
+              onDelete={() => handleDeleteRows(selMobilier)}
+              rowSelectionModel={selMobilier}
+              onRowSelectionModelChange={setSelMobilier}
+              catalog={catalog}
+              initialVisibilityModel={DECORS_DEFAULT_VISIBILITY}
+              onDuplicateRow={handleDuplicateRow}
+              hideCroquis={true}
+              minuteId={minute?.id}
+              gridKey="chiff_mobilier"
               targetRowId={targetRowId}
               onRowClick={onRowClick}
               readOnly={readOnly}
@@ -615,9 +817,13 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
       {(() => {
         const availableModules = [
           { key: 'rideau', label: 'Rideaux' },
-          { key: 'store', label: 'Stores' },
-          { key: 'decor', label: 'Décors de lit' },
-          { key: 'autre_confection', label: 'Autre / Sur-mesure' },
+          { key: 'store', label: 'Stores Enrouleurs' },
+          { key: 'store_bateau', label: 'Stores Bateaux/Velum' },
+          { key: 'coussins', label: 'Coussins' },
+          { key: 'cache_sommier', label: 'Cache-Sommier' },
+          { key: 'plaid', label: 'Plaids / Chemin de lit' },
+          { key: 'tenture_murale', label: 'Tenture Murale' },
+          { key: 'mobilier', label: 'Mobilier / Tête de lit' },
         ].filter(m => !mods[m.key]);
 
         if (availableModules.length === 0 || readOnly) return null;

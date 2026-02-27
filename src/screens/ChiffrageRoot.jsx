@@ -127,7 +127,16 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
     client: "", // New Client Field
     note: "",
     status: "DRAFT",
-    modules: { rideau: true, store: true, decor: true, autre_confection: true },
+    modules: {
+      rideau: true,
+      store: false,
+      store_bateau: false,
+      coussins: false,
+      cache_sommier: false,
+      mobilier: false,
+      tenture_murale: false,
+      plaid: false
+    },
   });
 
   const [isCreating, setIsCreating] = useState(false);
@@ -242,7 +251,7 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
   const handleCreateMinute = async () => {
     const { charge, projet, client, note, status, modules } = newMin;
     if (!projet.trim() || !charge.trim()) return;
-    if (!modules.rideau && !modules.store && !modules.decor && !modules.autre_confection) return;
+    if (!Object.values(modules).some(v => v === true)) return;
 
     setIsCreating(true);
     try {
@@ -529,11 +538,15 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
                 {/* Modules */}
                 <div>
                   <div style={{ fontSize: 13, fontWeight: 500, color: "#374151", marginBottom: 8 }}>Modules à inclure</div>
-                  <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px 16px' }}>
                     <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}><input type="checkbox" checked={newMin.modules.rideau} onChange={(e) => setNewMin(m => ({ ...m, modules: { ...m.modules, rideau: e.target.checked } }))} /> Rideaux</label>
                     <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}><input type="checkbox" checked={newMin.modules.store} onChange={(e) => setNewMin(m => ({ ...m, modules: { ...m.modules, store: e.target.checked } }))} /> Stores</label>
-                    <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}><input type="checkbox" checked={newMin.modules.decor} onChange={(e) => setNewMin(m => ({ ...m, modules: { ...m.modules, decor: e.target.checked } }))} /> Décors</label>
-                    <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}><input type="checkbox" checked={newMin.modules.autre_confection} onChange={(e) => setNewMin(m => ({ ...m, modules: { ...m.modules, autre_confection: e.target.checked } }))} /> Autre / Sur-mesure</label>
+                    <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}><input type="checkbox" checked={newMin.modules.store_bateau} onChange={(e) => setNewMin(m => ({ ...m, modules: { ...m.modules, store_bateau: e.target.checked } }))} /> Stores Bateaux/Velum</label>
+                    <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}><input type="checkbox" checked={newMin.modules.coussins} onChange={(e) => setNewMin(m => ({ ...m, modules: { ...m.modules, coussins: e.target.checked } }))} /> Coussins</label>
+                    <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}><input type="checkbox" checked={newMin.modules.cache_sommier} onChange={(e) => setNewMin(m => ({ ...m, modules: { ...m.modules, cache_sommier: e.target.checked } }))} /> Cache Sommier</label>
+                    <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}><input type="checkbox" checked={newMin.modules.mobilier} onChange={(e) => setNewMin(m => ({ ...m, modules: { ...m.modules, mobilier: e.target.checked } }))} /> Mobilier</label>
+                    <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}><input type="checkbox" checked={newMin.modules.tenture_murale} onChange={(e) => setNewMin(m => ({ ...m, modules: { ...m.modules, tenture_murale: e.target.checked } }))} /> Tenture Murale</label>
+                    <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}><input type="checkbox" checked={newMin.modules.plaid} onChange={(e) => setNewMin(m => ({ ...m, modules: { ...m.modules, plaid: e.target.checked } }))} /> Plaids Chemin de lit</label>
                   </div>
                 </div>
 
@@ -546,7 +559,7 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
                 {/* Actions */}
                 <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, marginTop: 8 }}>
                   <button onClick={() => setNewMinOpen(false)} style={{ background: 'white', border: '1px solid #D1D5DB', padding: '8px 16px', borderRadius: 6, cursor: 'pointer' }}>Annuler</button>
-                  <button onClick={handleCreateMinute} disabled={isCreating || !newMin.charge.trim() || !newMin.projet.trim() || !newMin.client.trim() || !(newMin.modules.rideau || newMin.modules.store || newMin.modules.decor || newMin.modules.autre_confection)} style={{ background: '#1F2937', color: 'white', border: 'none', padding: '8px 16px', borderRadius: 6, cursor: 'pointer', opacity: (isCreating || !newMin.projet.trim() || !newMin.client.trim()) ? 0.5 : 1 }}>{isCreating ? "Création..." : "Créer"}</button>
+                  <button onClick={handleCreateMinute} disabled={isCreating || !newMin.charge.trim() || !newMin.projet.trim() || !newMin.client.trim() || !Object.values(newMin.modules).some(v => v === true)} style={{ background: '#1F2937', color: 'white', border: 'none', padding: '8px 16px', borderRadius: 6, cursor: 'pointer', opacity: (isCreating || !newMin.projet.trim() || !newMin.client.trim()) ? 0.5 : 1 }}>{isCreating ? "Création..." : "Créer"}</button>
                 </div>
               </div>
             </div>
