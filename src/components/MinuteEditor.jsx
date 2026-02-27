@@ -852,7 +852,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
           { key: 'plaid', label: 'Plaids / Chemin de lit' },
           { key: 'tenture_murale', label: 'Tenture Murale' },
           { key: 'mobilier', label: 'Mobilier / Tête de lit' },
-        ].filter(m => !mods[m.key]);
+        ].filter(m => !renderOrder.includes(m.key));
 
         if (availableModules.length === 0 || readOnly) return null;
 
