@@ -910,14 +910,21 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
       {(() => {
         const availableModules = [
           { key: 'rideau', label: 'Rideaux' },
-          { key: 'store', label: 'Stores Enrouleurs' },
+          { key: 'store', label: 'Stores' },
           { key: 'store_bateau', label: 'Stores Bateaux/Velum' },
           { key: 'coussins', label: 'Coussins' },
           { key: 'cache_sommier', label: 'Cache-Sommier' },
           { key: 'plaid', label: 'Plaids / Chemin de lit' },
           { key: 'tenture_murale', label: 'Tenture Murale' },
           { key: 'mobilier', label: 'Mobilier / Tête de lit' },
-        ].filter(m => !renderOrder.includes(m.key));
+        ].filter(m => {
+          // A module is available if:
+          // 1. It is NOT in the renderOrder
+          // 2. OR it is in renderOrder but marked as inactive (mods[key] is false)
+          const inOrder = renderOrder.includes(m.key);
+          const isActive = !!mods[m.key];
+          return !inOrder || !isActive;
+        });
 
         if (availableModules.length === 0 || readOnly) return null;
 
