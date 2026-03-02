@@ -8,8 +8,8 @@ const nfEur0 = new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EU
 const nf0 = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 });
 const pct = (val) => `${Math.round(val || 0)} %`;
 
-export default function MoulinetteView({ rows, depRows, extraRows }) {
-    const data = useMemo(() => calculateProfitability(rows, depRows, extraRows), [rows, depRows, extraRows]);
+export default function MoulinetteView({ rows, depRows, extraRows, commissionRate = 3.5, onUpdateCommission }) {
+    const data = useMemo(() => calculateProfitability(rows, depRows, extraRows, commissionRate), [rows, depRows, extraRows, commissionRate]);
     const [showSimulator, setShowSimulator] = useState(false);
 
     return (
@@ -37,6 +37,7 @@ export default function MoulinetteView({ rows, depRows, extraRows }) {
                 >
                     <DetailGroup title="Tissus & Doublures" items={data.achats_fixes_details.tissus} />
                     <DetailGroup title="Rails & Mécanismes" items={data.achats_fixes_details.rails} />
+                    <DetailGroup title="STORES" items={data.achats_fixes_details.stores} />
                 </ExpandableCard>
 
                 {/* SECTION 2: CHARGES VARIABLES */}
@@ -45,7 +46,7 @@ export default function MoulinetteView({ rows, depRows, extraRows }) {
                     amount={data.charges_details.total}
                     defaultOpen={true}
                 >
-                    <ChargesTable details={data.charges_details} />
+                    <ChargesTable details={data.charges_details} commissionRate={commissionRate} onUpdateCommission={onUpdateCommission} />
                 </ExpandableCard>
 
                 {/* SECTION 3: HEURES DE PRODUCTION */}
@@ -256,32 +257,114 @@ function DetailGroup({ title, items }) {
     );
 }
 
-function ChargesTable({ details }) {
+function ChargesTable({ details, commissionRate, onUpdateCommission }) {
     const raw = details._details; // Access the detailed object with sources
     const items = [
         { label: 'Déplacements', ...raw.deplacements },
         { label: 'Sous-traitance Pose', ...raw.st_pose },
         { label: 'Sous-traitance Confection', ...raw.st_conf },
-        { label: 'Commissions', ...raw.commissions },
+        { label: 'Commission Commerciale', isCommission: true, ...raw.commissions },
         { label: 'Autres Extras', ...raw.autres },
-    ].filter(r => r.total > 0);
+    ].filter(r => r.total > 0 || r.isCommission);
 
     if (items.length === 0) return <div style={{ color: '#9ca3af', fontStyle: 'italic' }}>Aucune charge variable.</div>;
 
     return (
         <div>
-            {items.map((item, idx) => (
-                <DrillDownRow
-                    key={idx}
-                    label={item.label}
-                    mainValue={nfEur0.format(item.total)}
-                    sources={item.sources}
-                />
-            ))}
+            {items.map((item, idx) => {
+                if (item.isCommission) {
+                    return (
+                        <CommissionDrillDownRow
+                            key="commission"
+                            label={item.label}
+                            mainValue={nfEur0.format(item.total)}
+                            rate={commissionRate}
+                            onUpdate={onUpdateCommission}
+                        />
+                    );
+                }
+                return (
+                    <DrillDownRow
+                        key={idx}
+                        label={item.label}
+                        mainValue={nfEur0.format(item.total)}
+                        sources={item.sources}
+                    />
+                );
+            })}
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderTop: '2px solid #e5e7eb', marginTop: 8 }}>
                 <div style={{ fontWeight: 700 }}>TOTAL</div>
                 <div style={{ fontWeight: 800 }}>{nfEur0.format(details.total)}</div>
             </div>
+        </div>
+    );
+}
+
+function CommissionDrillDownRow({ label, mainValue, rate, onUpdate }) {
+    const [open, setOpen] = useState(false);
+    const [localRate, setLocalRate] = useState(rate);
+
+    // Sync if parent updates
+    React.useEffect(() => {
+        setLocalRate(rate);
+    }, [rate]);
+
+    const handleBlur = () => {
+        const num = Number(String(localRate).replace(',', '.'));
+        if (!isNaN(num) && num >= 0 && onUpdate) {
+            onUpdate(num);
+        } else {
+            setLocalRate(rate); // Revert on bad input
+        }
+    };
+
+    const handleKeyDown = (e) => {
+        if (e.key === 'Enter') {
+            e.target.blur();
+        }
+    };
+
+    return (
+        <div style={{ borderBottom: '1px solid #f3f4f6' }}>
+            <div
+                style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', cursor: 'pointer', alignItems: 'center' }}
+                onClick={() => setOpen(!open)}
+            >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 10, color: '#9ca3af' }}>{open ? '▼' : '▶'}</span>
+                    <span style={{ fontWeight: 500 }}>{label}</span>
+                </div>
+                <div style={{ textAlign: 'right', fontWeight: 600 }}>
+                    {mainValue}
+                </div>
+            </div>
+
+            {open && (
+                <div style={{ background: '#f9fafb', padding: '12px 16px', borderRadius: 8, marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ fontSize: 13, color: '#4b5563', fontWeight: 500 }}>Taux de Commission</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <input
+                            type="number"
+                            step="0.1"
+                            value={localRate}
+                            onChange={(e) => setLocalRate(e.target.value)}
+                            onBlur={handleBlur}
+                            onKeyDown={handleKeyDown}
+                            onClick={(e) => e.stopPropagation()}
+                            style={{
+                                width: 70,
+                                textAlign: 'right',
+                                padding: '6px 8px',
+                                borderRadius: 6,
+                                border: '1px solid #d1d5db',
+                                fontSize: 14,
+                                fontWeight: 600
+                            }}
+                        />
+                        <span style={{ color: '#6b7280', fontSize: 14, fontWeight: 600 }}>%</span>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

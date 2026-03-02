@@ -53,6 +53,16 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onBack, highlightRowId }
 
   const [schema, setSchema] = React.useState(CHIFFRAGE_SCHEMA);
 
+  // Modules State (Optimistic)
+  const [localModules, setLocalModules] = React.useState(minute?.modules || { rideau: true, store: true, decor: true });
+  // Settings State (Optimistic)
+  const [localSettings, setLocalSettings] = React.useState(minute?.settings || {});
+
+  React.useEffect(() => {
+    if (minute?.modules) setLocalModules(minute.modules);
+    if (minute?.settings) setLocalSettings(minute.settings);
+  }, [minute?.modules, minute?.settings]);
+
   // Params
   const paramsMap = React.useMemo(() => {
     const out = {};
@@ -77,7 +87,7 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onBack, highlightRowId }
       ...globalSettings,
       taux_horaire: globalSettings.hourlyRate ?? globalSettings.taux_horaire
     } : {};
-    const local = minute?.settings || {};
+    const local = localSettings || {};
     const effectiveSettings = { ...defaults, ...global, ...local };
 
     return {
@@ -86,7 +96,7 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onBack, highlightRowId }
       settings: effectiveSettings,
       catalog: catalog || []
     };
-  }, [paramsMap, baseCA, globalSettings, catalog, minute?.settings]);
+  }, [paramsMap, baseCA, globalSettings, catalog, localSettings]);
 
   // Rows State
   const [rows, setRows] = React.useState(() => computeFormulas(minute?.lines || [], schema, formulaCtx));
@@ -100,13 +110,6 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onBack, highlightRowId }
     setDepRows(minute?.deplacements || []);
     setExtraRows(minute?.extraDepenses || []);
   }, [minute?.id, minute?.lines, minute?.deplacements, minute?.extraDepenses, schema, formulaCtx]);
-
-  // Modules State (Optimistic)
-  const [localModules, setLocalModules] = React.useState(minute?.modules || { rideau: true, store: true, decor: true });
-
-  React.useEffect(() => {
-    if (minute?.modules) setLocalModules(minute.modules);
-  }, [minute?.modules]);
 
   const mods = localModules;
 
@@ -207,8 +210,12 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onBack, highlightRowId }
     (depRows || []).forEach(r => {
       const q = toNum(r?.quantite) || 1;
       const h = toNum(r?.heures_facturees) * q;
-      if (r.type_deplacement === "Prise de cotes") hPrepa += h;
-      else hPose += h;
+      const typeDep = String(r?.type_deplacement || "").toLowerCase();
+      if (typeDep.includes("prise de cote")) {
+        hPrepa += h;
+      } else {
+        hPose += h;
+      }
     });
 
     // 3. Process Autres Dépenses (extraRows)
@@ -435,7 +442,19 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onBack, highlightRowId }
       )}
 
       {activeTab === "achats" && <ShoppingListScreen minutes={[minute]} />}
-      {activeTab === "moulinette" && can(currentUser, "chiffrage.moulinette") && <MoulinetteView rows={rows} extraRows={extraRows} depRows={depRows} />}
+      {activeTab === "moulinette" && can(currentUser, "chiffrage.moulinette") && (
+        <MoulinetteView
+          rows={rows}
+          extraRows={extraRows}
+          depRows={depRows}
+          commissionRate={formulaCtx.settings.commission_rate ?? 3.5}
+          onUpdateCommission={(rate) => {
+            const newSettings = { ...formulaCtx.settings, commission_rate: rate };
+            setLocalSettings(newSettings); // Optimistic UI
+            updateMinute({ settings: newSettings });
+          }}
+        />
+      )}
 
       <CatalogManager
         open={showCatalog}
@@ -443,7 +462,10 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onBack, highlightRowId }
         catalog={minute?.catalog || []}
         onCatalogChange={(newCatalog) => updateMinute({ catalog: newCatalog })}
         settings={formulaCtx.settings}
-        onSettingsChange={(newSettings) => updateMinute({ settings: newSettings })}
+        onSettingsChange={(newSettings) => {
+          setLocalSettings({ ...localSettings, ...newSettings }); // Optimistic UI
+          updateMinute({ settings: { ...formulaCtx.settings, ...newSettings } });
+        }}
       />
 
       {openedRow && (
