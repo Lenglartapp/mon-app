@@ -124,14 +124,14 @@ export const CHIFFRAGE_SCHEMA = [
   // 57
   { key: "type_mecanisme", label: "Type Méca", type: "select", options: ["Rail", "Tringle", "Rail Motorisé"], width: 120 },
   // 58
-  { key: "modele_mecanisme", label: "Modèle Méca", type: "catalog_item", category: "Rail,Rails,Tringle,Tringles,Mecanisme,Mécanisme,Mecanismes,Mécanismes", width: 140 },
+  { key: "modele_mecanisme", label: "Modèle Méca", type: "catalog_item", category: "Rail", width: 140 },
   // 59
   { key: "pa_mecanisme", label: "PA Méca", type: "number", width: 90 },
   // 60
   { key: "pv_mecanisme", label: "PV Méca", type: "number", width: 90 },
 
   // 60b (NEW) - Mécanisme Bis
-  { key: "mecanisme_bis", label: "Méca Bis", type: "catalog_item", category: "Rail,Rails,Tringle,Tringles,Mecanisme,Mécanisme,Mecanismes,Mécanismes", width: 140 }, // Same categories as main meca
+  { key: "mecanisme_bis", label: "Méca Bis", type: "catalog_item", category: "Rail", width: 140 }, // Same categories as main meca
   { key: "pa_mecanisme_bis", label: "PA Méca Bis", type: "number", width: 90 },
   { key: "pv_mecanisme_bis", label: "PV Méca Bis", type: "number", width: 90 },
 

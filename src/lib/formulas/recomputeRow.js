@@ -17,9 +17,9 @@ export function recomputeRow(row, schema, ctx = {}) {
   const catalog = ctx.catalog || [];
   const settings = ctx.settings || {};
   const getPrice = ctx.getPrice || ((name) => {
-    if (!name) return { pa: 0, pv: 0 };
+    if (!name) return { pa: 0, pv: 0, found: false };
     const item = catalog.find(i => i.name === name);
-    return item ? { pa: item.buyPrice || 0, pv: item.sellPrice || 0 } : { pa: 0, pv: 0 };
+    return item ? { pa: item.buyPrice || 0, pv: item.sellPrice || 0, found: true } : { pa: 0, pv: 0, found: false };
   });
 
   // --- 0. DATA ENRICHMENT (AUTO-FILL FROM CATALOG) ---
@@ -144,25 +144,37 @@ export function recomputeRow(row, schema, ctx = {}) {
     const res1 = calcML(NVL(next.laize_tissu1), H_Coupe, next.hauteur_coupe_motif);
     next.nb_les_tissu1 = res1.nbLes; next.ml_tissu1 = res1.ml;
     const p1 = getPrice(next.tissu_deco1);
-    next.pa_tissu1 = next.ml_tissu1 * (p1.pa || 0); next.pv_tissu1 = next.ml_tissu1 * (p1.pv || 0);
+    if (p1.found) {
+      next.pa_tissu1 = next.ml_tissu1 * (p1.pa || 0);
+      next.pv_tissu1 = next.ml_tissu1 * (p1.pv || 0);
+    }
 
     // Tissu 2
     const res2 = calcML(NVL(next.laize_tissu2), H_Coupe, H_Coupe); // Tissu 2 is considered unie
     next.nb_les_tissu2 = res2.nbLes; next.ml_tissu2 = res2.ml;
     const p2 = getPrice(next.tissu_deco2);
-    next.pa_tissu2 = next.ml_tissu2 * (p2.pa || 0); next.pv_tissu2 = next.ml_tissu2 * (p2.pv || 0);
+    if (p2.found) {
+      next.pa_tissu2 = next.ml_tissu2 * (p2.pa || 0);
+      next.pv_tissu2 = next.ml_tissu2 * (p2.pv || 0);
+    }
 
     // Doublure
     const resD = calcML(NVL(next.laize_doublure), H_Coupe, H_Coupe);
     next.nb_les_doublure = resD.nbLes; next.ml_doublure = resD.ml;
     const pD = getPrice(next.doublure);
-    next.pa_doublure = next.ml_doublure * (pD.pa || 0); next.pv_doublure = next.ml_doublure * (pD.pv || 0);
+    if (pD.found) {
+      next.pa_doublure = next.ml_doublure * (pD.pa || 0);
+      next.pv_doublure = next.ml_doublure * (pD.pv || 0);
+    }
 
     // Interdoublure
     const resI = calcML(NVL(next.laize_interdoublure), H_Coupe, H_Coupe);
     next.nb_les_interdoublure = resI.nbLes; next.ml_interdoublure = resI.ml;
     const pI = getPrice(next.interdoublure);
-    next.pa_interdoublure = next.ml_interdoublure * (pI.pa || 0); next.pv_interdoublure = next.ml_interdoublure * (pI.pv || 0);
+    if (pI.found) {
+      next.pa_interdoublure = next.ml_interdoublure * (pI.pa || 0);
+      next.pv_interdoublure = next.ml_interdoublure * (pI.pv || 0);
+    }
 
     // Passementerie
     const calcPassML = (app) => {
@@ -174,17 +186,27 @@ export function recomputeRow(row, schema, ctx = {}) {
     };
     next.ml_pass1 = roundStep05(calcPassML(next.application_passementerie1) / 100);
     const pP1 = getPrice(next.passementerie1);
-    next.pa_pass1 = next.ml_pass1 * (pP1.pa || 0); next.pv_pass1 = next.ml_pass1 * (pP1.pv || 0);
+    if (pP1.found) {
+      next.pa_pass1 = next.ml_pass1 * (pP1.pa || 0);
+      next.pv_pass1 = next.ml_pass1 * (pP1.pv || 0);
+    }
 
     next.ml_pass2 = roundStep05(calcPassML(next.application_passementerie2) / 100);
     const pP2 = getPrice(next.passementerie2);
-    next.pa_pass2 = next.ml_pass2 * (pP2.pa || 0); next.pv_pass2 = next.ml_pass2 * (pP2.pv || 0);
+    if (pP2.found) {
+      next.pa_pass2 = next.ml_pass2 * (pP2.pa || 0);
+      next.pv_pass2 = next.ml_pass2 * (pP2.pv || 0);
+    }
 
     // Mecanisme
+    // Only calculation if it's a 'Rail' (Multiplied by width)
     if (next.type_mecanisme === 'Rail') {
       const pM = getPrice(next.modele_mecanisme);
       const wM = NVL(next.largeur_mecanisme) / 100;
-      next.pa_mecanisme = wM * (pM.pa || 0); next.pv_mecanisme = wM * (pM.pv || 0);
+      if (pM.found) {
+        next.pa_mecanisme = wM * (pM.pa || 0);
+        next.pv_mecanisme = wM * (pM.pv || 0);
+      }
     }
   }
 
@@ -209,21 +231,27 @@ export function recomputeRow(row, schema, ctx = {}) {
 
     // Toile Finition 1 (ML is manual, but prices are calculated)
     const pTF1 = getPrice(next.toile_finition_1);
-    next.pa_toile_finition_1 = NVL(next.ml_toile_finition_1) * (pTF1.pa || 0);
-    next.pv_toile_finition_1 = NVL(next.ml_toile_finition_1) * (pTF1.pv || 0);
+    if (pTF1.found) {
+      next.pa_toile_finition_1 = NVL(next.ml_toile_finition_1) * (pTF1.pa || 0);
+      next.pv_toile_finition_1 = NVL(next.ml_toile_finition_1) * (pTF1.pv || 0);
+    }
 
     // Doublure (ML is manual for stores)
     const pD = getPrice(next.doublure);
-    next.pa_doublure = NVL(next.ml_doublure) * (pD.pa || 0);
-    next.pv_doublure = NVL(next.ml_doublure) * (pD.pv || 0);
+    if (pD.found) {
+      next.pa_doublure = NVL(next.ml_doublure) * (pD.pa || 0);
+      next.pv_doublure = NVL(next.ml_doublure) * (pD.pv || 0);
+    }
 
     const isBateau = /bateau|velum|vélum/i.test(next.produit || "");
     if (isBateau) {
       // For Store Bateau/Velum, mecanisme_fourniture is used for the mechanism
       fillFromCatalog('mecanisme_fourniture', {});
       const pM = getPrice(next.mecanisme_fourniture);
-      next.pa_mecanisme = NVL(next.quantite) * (pM.pa || 0);
-      next.pv_mecanisme = NVL(next.quantite) * (pM.pv || 0);
+      if (pM.found) {
+        next.pa_mecanisme = NVL(next.quantite) * (pM.pa || 0);
+        next.pv_mecanisme = NVL(next.quantite) * (pM.pv || 0);
+      }
     }
     // Generic Store logic for manually entered P.U. handled later
   }
@@ -237,70 +265,90 @@ export function recomputeRow(row, schema, ctx = {}) {
     if (next.tissu_1) {
       const pT1 = getPrice(next.tissu_1);
       // ml_tissu_1 is MANUALLY entered for Decors (no auto-calc)
-      next.pa_tissu_1 = NVL(next.ml_tissu_1) * (pT1.pa || 0);
-      next.pv_tissu_1 = NVL(next.ml_tissu_1) * (pT1.pv || 0);
+      if (pT1.found) {
+        next.pa_tissu_1 = NVL(next.ml_tissu_1) * (pT1.pa || 0);
+        next.pv_tissu_1 = NVL(next.ml_tissu_1) * (pT1.pv || 0);
+      }
     }
     fillFromCatalog('tissu_2', { laize_tissu_2: 'laize' });
     if (next.tissu_2) {
       const pT2 = getPrice(next.tissu_2);
-      next.pa_tissu_2 = NVL(next.ml_tissu_2) * (pT2.pa || 0);
-      next.pv_tissu_2 = NVL(next.ml_tissu_2) * (pT2.pv || 0);
+      if (pT2.found) {
+        next.pa_tissu_2 = NVL(next.ml_tissu_2) * (pT2.pa || 0);
+        next.pv_tissu_2 = NVL(next.ml_tissu_2) * (pT2.pv || 0);
+      }
     }
 
     // B. Passementerie
     fillFromCatalog('passementerie_1', {});
     if (next.passementerie_1) {
       const pP1D = getPrice(next.passementerie_1);
-      next.pa_pass_1 = NVL(next.ml_pass_1) * (pP1D.pa || 0);
-      next.pv_pass_1 = NVL(next.ml_pass_1) * (pP1D.pv || 0);
+      if (pP1D.found) {
+        next.pa_pass_1 = NVL(next.ml_pass_1) * (pP1D.pa || 0);
+        next.pv_pass_1 = NVL(next.ml_pass_1) * (pP1D.pv || 0);
+      }
     }
     fillFromCatalog('passementerie_2', {});
     if (next.passementerie_2) {
       const pP2D = getPrice(next.passementerie_2);
-      next.pa_pass_2 = NVL(next.ml_pass_2) * (pP2D.pa || 0);
-      next.pv_pass_2 = NVL(next.ml_pass_2) * (pP2D.pv || 0);
+      if (pP2D.found) {
+        next.pa_pass_2 = NVL(next.ml_pass_2) * (pP2D.pa || 0);
+        next.pv_pass_2 = NVL(next.ml_pass_2) * (pP2D.pv || 0);
+      }
     }
 
     // C. Interior / Mechanism (Shared)
     if (next.type_interieur) {
       const pInt = getPrice(next.type_interieur);
-      next.pa_interieur = NVL(next.quantite) * (pInt.pa || 0);
-      next.pv_interieur = NVL(next.quantite) * (pInt.pv || 0);
+      if (pInt.found) {
+        next.pa_interieur = NVL(next.quantite) * (pInt.pa || 0);
+        next.pv_interieur = NVL(next.quantite) * (pInt.pv || 0);
+      }
     }
     if (next.mecanisme_fourniture && NVL(next.pa_mecanisme) === 0) {
       const pMF = getPrice(next.mecanisme_fourniture);
-      next.pa_mecanisme = NVL(next.quantite) * (pMF.pa || 0);
-      next.pv_mecanisme = NVL(next.quantite) * (pMF.pv || 0);
+      if (pMF.found) {
+        next.pa_mecanisme = NVL(next.quantite) * (pMF.pa || 0);
+        next.pv_mecanisme = NVL(next.quantite) * (pMF.pv || 0);
+      }
     }
 
     // Molleton (NEW for Tenture)
     fillFromCatalog('molleton', {});
     if (next.molleton) {
       const pMoll = getPrice(next.molleton);
-      next.pa_molleton = NVL(next.ml_molleton) * (pMoll.pa || 0);
-      next.pv_molleton = NVL(next.ml_molleton) * (pMoll.pv || 0);
+      if (pMoll.found) {
+        next.pa_molleton = NVL(next.ml_molleton) * (pMoll.pa || 0);
+        next.pv_molleton = NVL(next.ml_molleton) * (pMoll.pv || 0);
+      }
     }
 
     // D. Baguettes (NEW for Tenture)
     fillFromCatalog('baguette_1', {});
     if (next.baguette_1) {
       const pB1 = getPrice(next.baguette_1);
-      next.pa_baguette_1 = NVL(next.ml_baguette_1) * (pB1.pa || 0);
-      next.pv_baguette_1 = NVL(next.ml_baguette_1) * (pB1.pv || 0);
+      if (pB1.found) {
+        next.pa_baguette_1 = NVL(next.ml_baguette_1) * (pB1.pa || 0);
+        next.pv_baguette_1 = NVL(next.ml_baguette_1) * (pB1.pv || 0);
+      }
     }
     fillFromCatalog('baguette_2', {});
     if (next.baguette_2) {
       const pB2 = getPrice(next.baguette_2);
-      next.pa_baguette_2 = NVL(next.ml_baguette_2) * (pB2.pa || 0);
-      next.pv_baguette_2 = NVL(next.ml_baguette_2) * (pB2.pv || 0);
+      if (pB2.found) {
+        next.pa_baguette_2 = NVL(next.ml_baguette_2) * (pB2.pa || 0);
+        next.pv_baguette_2 = NVL(next.ml_baguette_2) * (pB2.pv || 0);
+      }
     }
   } else if (!isRideau && !isStore) {
     // --- 11. GENERIC OTHERS ---
     // Minimal logic for products not specifically handled
     if (next.tissu_1) {
       const pT1 = getPrice(next.tissu_1);
-      next.pa_tissu_1 = NVL(next.ml_tissu_1) * (pT1.pa || 0);
-      next.pv_tissu_1 = NVL(next.ml_tissu_1) * (pT1.pv || 0);
+      if (pT1.found) {
+        next.pa_tissu_1 = NVL(next.ml_tissu_1) * (pT1.pa || 0);
+        next.pv_tissu_1 = NVL(next.ml_tissu_1) * (pT1.pv || 0);
+      }
     }
   }
 

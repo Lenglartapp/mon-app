@@ -182,42 +182,6 @@ export default function MinuteGrid({
 
         const cols = schemaToGridCols(schema, enableCellFormulas, handleOpenDetail, catalog, railOptions, handlePhotoChange, onDuplicateRow, hideCroquis, readOnly);
 
-        // --- HOTFIX: Force Dynamic Options for modele_mecanisme in MinuteGrid ---
-        const mecaCol = cols.find(c => c.field === 'modele_mecanisme');
-        if (mecaCol) {
-            console.log("🔥 HOTFIX v2 INITIALIZED. MecaCol found. OLD Type:", mecaCol.type);
-            // FORCE TYPE TO SINGLESELECT (Fixes 'string' issue)
-            mecaCol.type = 'singleSelect';
-            mecaCol.editable = true;
-            // CLEAR ANY CUSTOM RENDERER
-            mecaCol.renderEditCell = undefined;
-            mecaCol.valueFormatter = undefined;
-
-
-            mecaCol.valueOptions = (params) => {
-                const row = params.row || {};
-                const typeMeca = row.type_mecanisme;
-                console.log("🔥 HOTFIX RUNNING. Type:", typeMeca);
-
-                // Get base catalog items for rails/mech
-                const baseItems = catalog.filter(item => ['Rail', 'Tringle', 'Mecanisme', 'Mécanisme', 'Store'].includes(item.category));
-
-                let results = [];
-                if (typeMeca === 'Rail') {
-                    results = baseItems.filter(a => !a.unit || a.unit === 'ml');
-                } else if (typeMeca === 'Tringle' || typeMeca === 'Rail Motorisé') {
-                    results = baseItems.filter(a => a.unit === 'pce');
-                } else {
-                    results = baseItems;
-                }
-
-                console.log("🔥 HOTFIX RESULTS:", results.length, results.map(r => r.name));
-                return results.map(a => a.name);
-            };
-        } else {
-            // console.warn("Hotfix skipped: 'modele_mecanisme' col not found in this schema.");
-        }
-        // -----------------------------------------------------------------------
 
         // MOBILE OPTIMIZATION
         if (isMobile) {
@@ -314,16 +278,15 @@ export default function MinuteGrid({
                         mapping.pv = changedKey === 'passementerie2' ? 'pv_pass2' : 'pv_pass_2';
                     } else if (changedKey === 'produit') {
                         // Generic fallback
-                    } else if (changedKey === 'modele_mecanisme') {
-                        // Use UNIT to determine if we auto-fill PA/PV.
-                        // 'ml' (Rail) -> Auto-fill from catalog (calculated by formula then)
-                        // 'pce' (Lutron) -> Do NOT auto-fill (manual entry or reference table)
-                        if (!article.unit || article.unit === 'ml') {
-                            console.log("⚡️ Auto-filling PA/PV for ml mechanism:", article.name);
-                            mapping.pa = 'pa_mecanisme';
-                            mapping.pv = 'pv_mecanisme';
+                    } else if (changedKey === 'modele_mecanisme' || changedKey === 'mecanisme_bis') {
+                        // Only auto-fill PA/PV from catalog if it's a Rail (Calculated)
+                        // Tringle and Rail Motorisé are manual (Free entry)
+                        if (newRow.type_mecanisme === 'Rail') {
+                            console.log(`⚡️ Auto-filling PA/PV for Rail mechanism (${changedKey}):`, article.name);
+                            mapping.pa = changedKey === 'modele_mecanisme' ? 'pa_mecanisme' : 'pa_mecanisme_bis';
+                            mapping.pv = changedKey === 'modele_mecanisme' ? 'pv_mecanisme' : 'pv_mecanisme_bis';
                         } else {
-                            console.log("✋ Skipping PA/PV auto-fill for piece mechanism:", article.name);
+                            console.log(`✋ Skipping PA/PV auto-fill for manual mechanism type (${changedKey}):`, newRow.type_mecanisme);
                         }
                     }
 

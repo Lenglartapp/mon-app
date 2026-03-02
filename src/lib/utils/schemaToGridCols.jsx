@@ -114,7 +114,7 @@ export function schemaToGridCols(schema, enableCellFormulas = false, onOpenDetai
     // Legacy check for other schemas that don't use 'catalog_item' yet?
     // Keep legacy support for chiffrage.js unless upgraded.
     const isLegacyCatalogCol = col.key.includes('tissu') || col.key.includes('doublure') || col.key.includes('passementerie') || (col.key === 'produit' && !col.hidden && col.type !== 'text');
-    const isMechColumn = ['modele_mecanisme', 'nom_tringle', 'rail'].includes(col.key);
+    const isMechColumn = ['modele_mecanisme', 'nom_tringle', 'rail', 'mecanisme_bis'].includes(col.key);
 
     if ((isCatalogType || isLegacyCatalogCol || isMechColumn) && catalog.length > 0) {
       gridCol.type = 'singleSelect';
@@ -137,43 +137,24 @@ export function schemaToGridCols(schema, enableCellFormulas = false, onOpenDetai
         } else if (col.key.includes('passementerie')) {
           filteredCatalog = catalog.filter(item => ['Passementerie'].includes(item.category));
         } else if (isMechColumn) {
-          filteredCatalog = catalog.filter(item => ['Rail', 'Tringle', 'Mecanisme', 'Mécanisme', 'Store'].includes(item.category));
+          filteredCatalog = catalog.filter(item => item.category === 'Rail');
         }
       }
 
-      if (col.key === 'modele_mecanisme') {
-        // DYNAMIC FILTERING based on Row Type & Unit
+      if (col.key === 'modele_mecanisme' || col.key === 'mecanisme_bis') {
+        // Restore singleSelect so double-click opens the editor automatically
+        gridCol.type = 'singleSelect';
         gridCol.valueOptions = (params) => {
           const row = params.row || {};
           const typeMeca = row.type_mecanisme;
-          const debugType = typeMeca ? `"${typeMeca}"` : "UNDEFINED/NULL";
-          console.log(`DEBUG FILTER START. RowId: ${row.id}, Type: ${debugType}, CatalogSize: ${filteredCatalog.length}`);
-
           let subFiltered = filteredCatalog;
-
           if (typeMeca === 'Rail') {
-            subFiltered = subFiltered.filter(a => {
-              const u = a.unit?.trim();
-              const keep = !u || u === 'ml';
-              if (!keep) console.log(`   ❌ [Rail Filter] Rejecting '${a.name}' (unit: '${a.unit}')`);
-              return keep;
-            });
-          } else if (typeMeca === 'Tringle' || typeMeca === 'Rail Motorisé') {
-            subFiltered = subFiltered.filter(a => {
-              const u = a.unit?.trim();
-              const keep = u === 'pce';
-              if (!keep) console.log(`   ❌ [${typeMeca} Filter] Rejecting '${a.name}' (unit: '${a.unit}')`);
-              else console.log(`   ✅ [${typeMeca} Filter] Keeping '${a.name}' (unit: '${a.unit}')`);
-              return keep;
-            });
-          } else {
-            console.log("   ⚠️ No Type filter matched. Showing ALL.");
+            subFiltered = subFiltered.filter(a => !a.unit || a.unit === 'ml');
           }
-
-          console.log(`   🏁 Final Result Count: ${subFiltered.length}`);
-
           return subFiltered.map(a => a.name);
         };
+        // Force plain text in view mode (removes the permanent arrow/border)
+        gridCol.renderCell = (params) => params.value;
       } else {
         // Standard static list for other catalog columns
         gridCol.valueOptions = filteredCatalog.map(a => a.name);
@@ -287,40 +268,6 @@ export function schemaToGridCols(schema, enableCellFormulas = false, onOpenDetai
     }
 
 
-    // Configure modele_mecanisme as Dropdown if it matches
-    if (col.key === 'modele_mecanisme') {
-      gridCol.type = 'string'; // Default to string for free text
-      gridCol.editable = true;
-      gridCol.renderEditCell = (params) => {
-        const type = params.row.type_mecanisme || '';
-        const isRail = type === 'Rail';
-
-        if (isRail) {
-          // Use native HTML select to avoid MUI internals crash on 'string' column type
-          const handleChange = (e) => {
-            params.api.setEditCellValue({ id: params.id, field: params.field, value: e.target.value });
-          };
-
-          return (
-            <select
-              value={params.value || ''}
-              onChange={handleChange}
-              style={{ width: '100%', height: '100%', border: 'none', outline: 'none', padding: '0 8px', backgroundColor: 'transparent' }}
-              autoFocus
-            >
-              <option value="" disabled>Choisir un rail...</option>
-              {railOptions && railOptions.map((opt) => (
-                <option key={opt} value={opt}>
-                  {opt}
-                </option>
-              ))}
-            </select>
-          );
-        }
-        // Free text for others
-        return <GridEditInputCell {...params} />;
-      };
-    }
 
     // Handle specific types that might need custom rendering or logic
     if (col.key === 'detail' || col.type === 'button') {
