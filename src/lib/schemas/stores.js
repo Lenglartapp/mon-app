@@ -497,9 +497,6 @@ export const STORES_BATEAUX_PROD_SCHEMA = mapSchema([
     { key: 'heures_pose', valueFormatter: hideZero },
     { key: 'heures_confection', valueFormatter: hideZero },
 
-    // SOUS-TRAITANCE
-    'st_pose_pa', // ST POSE PA
-
     // STATUTS
     'statut_prepa',
     'statut_conf',

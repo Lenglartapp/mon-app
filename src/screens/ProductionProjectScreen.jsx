@@ -16,6 +16,11 @@ import { STAGES, DEFAULT_VIEWS } from "../lib/constants/views.js"; // Import DEF
 import { recomputeRow } from "../lib/formulas/recomputeRow";
 import { DECORS_PROD_SCHEMA } from "../lib/schemas/decors"; // Import Prod Schema
 import { STORES_PROD_SCHEMA, STORES_BATEAUX_PROD_SCHEMA } from "../lib/schemas/stores";
+import { COUSSINS_PROD_SCHEMA } from "../lib/schemas/coussins";
+import { CACHE_SOMMIER_PROD_SCHEMA } from "../lib/schemas/cache_sommier";
+import { PLAID_PROD_SCHEMA } from "../lib/schemas/plaid";
+import { TENTURE_MURALE_PROD_SCHEMA } from "../lib/schemas/tenture_murale";
+import { MOBILIER_PROD_SCHEMA } from "../lib/schemas/mobilier";
 import { AUTRES_PROD_SCHEMA } from "../lib/schemas/autres";
 import { uid } from "../lib/utils/uid"; // Import uid
 
@@ -969,7 +974,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                 <MinuteGrid
                   rows={rowsCoussins}
                   onRowsChange={(nr) => handleSubsetChange(nr, /coussin/i)}
-                  schema={DECORS_PROD_SCHEMA.filter(c => !['longueur', 'type_confection', 'mecanisme_fourniture', 'pa_mecanisme', 'pv_mecanisme', 'heures_prepa', 'pv_prepa', 'heures_pose', 'pv_pose', 'st_pose_pa', 'st_pose_pv'].includes(c.key))}
+                  schema={COUSSINS_PROD_SCHEMA}
                   enableCellFormulas={true}
                   onAdd={() => handleAddRow("Coussins")}
                   onDuplicateRow={handleDuplicateRow}
@@ -994,7 +999,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                 <MinuteGrid
                   rows={rowsCacheSommier}
                   onRowsChange={(nr) => handleSubsetChange(nr, /cache-sommier/i)}
-                  schema={DECORS_PROD_SCHEMA.filter(c => !['type_interieur', 'pa_interieur', 'pv_interieur', 'mecanisme_fourniture', 'pa_mecanisme', 'pv_mecanisme', 'heures_prepa', 'pv_prepa', 'heures_pose', 'pv_pose', 'st_pose_pa', 'st_pose_pv'].includes(c.key))}
+                  schema={CACHE_SOMMIER_PROD_SCHEMA}
                   enableCellFormulas={true}
                   onAdd={() => handleAddRow("Cache-Sommier")}
                   onDuplicateRow={handleDuplicateRow}
@@ -1019,7 +1024,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                 <MinuteGrid
                   rows={rowsPlaid}
                   onRowsChange={(nr) => handleSubsetChange(nr, /plaid/i)}
-                  schema={DECORS_PROD_SCHEMA.filter(c => !['type_confection', 'type_interieur', 'pa_interieur', 'pv_interieur', 'mecanisme_fourniture', 'pa_mecanisme', 'pv_mecanisme', 'heures_prepa', 'pv_prepa', 'heures_pose', 'pv_pose', 'st_pose_pa', 'st_pose_pv'].includes(c.key))}
+                  schema={PLAID_PROD_SCHEMA}
                   enableCellFormulas={true}
                   onAdd={() => handleAddRow("Plaid")}
                   onDuplicateRow={handleDuplicateRow}
@@ -1044,7 +1049,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                 <MinuteGrid
                   rows={rowsMobilier}
                   onRowsChange={(nr) => handleSubsetChange(nr, /tête de lit|mobilier/i)}
-                  schema={DECORS_PROD_SCHEMA.filter(c => !['type_confection', 'type_interieur'].includes(c.key))}
+                  schema={MOBILIER_PROD_SCHEMA}
                   enableCellFormulas={true}
                   onAdd={() => handleAddRow("Tête de Lit")}
                   onDuplicateRow={handleDuplicateRow}
@@ -1069,7 +1074,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                 <MinuteGrid
                   rows={rowsTentureMurale}
                   onRowsChange={(nr) => handleSubsetChange(nr, /tenture murale/i)}
-                  schema={DECORS_PROD_SCHEMA.filter(c => !['type_confection', 'longueur', 'tissu_2', 'laize_tissu_2', 'ml_tissu_2', 'pa_tissu_2', 'pv_tissu_2', 'type_interieur', 'pa_interieur', 'pv_interieur', 'passementerie_2', 'app_passementerie_2', 'ml_pass_2', 'pa_pass_2', 'pv_pass_2', 'st_conf_pa', 'st_conf_pv', 'mecanisme_fourniture', 'pa_mecanisme', 'pv_mecanisme', 'heures_prepa', 'pv_prepa'].includes(c.key))}
+                  schema={TENTURE_MURALE_PROD_SCHEMA}
                   enableCellFormulas={true}
                   onAdd={() => handleAddRow("Tenture Murale")}
                   onDuplicateRow={handleDuplicateRow}

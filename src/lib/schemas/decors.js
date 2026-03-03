@@ -54,6 +54,10 @@ export const DECORS_SCHEMA = [
         valueOptions: ['Cache-Sommier', 'Coussins', 'Plaid', 'Tête de Lit', 'Tenture Murale', 'Autre']
     }),
 
+    createCol('realise_par', 'Réalisé par', 120, 'singleSelect', {
+        valueOptions: ['Lenglart', 'Sous-Traitant']
+    }),
+
     createCol('type_confection', 'Confection', 150, 'text', autoCap),
 
     // 2. Dimensions
@@ -62,6 +66,37 @@ export const DECORS_SCHEMA = [
     // HAUTEUR: Use direct readOnly function for InputCell styling
     createCol('hauteur', 'Hauteur', 80, 'number', {
         readOnly: (row) => isRegionBlocked(row)
+    }),
+
+    createCol('epaisseur', 'Épaisseur', 80, 'number'),
+
+    createCol('largeur_coupe', 'Larg. Coupe', 100, 'number', {
+        editable: false,
+        readOnly: true,
+        valueGetter: (value, row) => {
+            const actualRow = row || value?.row || {};
+            // Optional: Only apply for Coussins, or default for all if requested. We apply primarily structure
+            if (!(actualRow.produit || '').toLowerCase().includes('coussin')) return actualRow.largeur_coupe;
+            const l = Number(actualRow.largeur) || 0;
+            const ep = Number(actualRow.epaisseur) || 0;
+            if (ep <= 10) return l + 5;
+            if (ep <= 15) return l + 6;
+            return l + 8;
+        }
+    }),
+
+    createCol('hauteur_coupe', 'Haut. Coupe', 100, 'number', {
+        editable: false,
+        readOnly: true,
+        valueGetter: (value, row) => {
+            const actualRow = row || value?.row || {};
+            if (!(actualRow.produit || '').toLowerCase().includes('coussin')) return actualRow.hauteur_coupe;
+            const h = Number(actualRow.hauteur) || 0;
+            const ep = Number(actualRow.epaisseur) || 0;
+            if (ep <= 10) return h + 5;
+            if (ep <= 15) return h + 6;
+            return h + 8;
+        }
     }),
 
     // 3. MATIÈRES - Tissu 1 (Renamed from tissu_deco1)
@@ -86,7 +121,7 @@ export const DECORS_SCHEMA = [
 
     // 3c. Intérieur (Garniture) - NEW
     createCol('type_interieur', 'Intérieur', 150, 'singleSelect', {
-        valueOptions: ['Ouate', 'Mousse', 'Intérieur Plume', 'Intérieur Polyester']
+        valueOptions: ['Mousse', 'Intérieur Plume', 'Intérieur Polyester']
     }),
     createCol('pa_interieur', 'PA Int.', 70, 'number'),
     createCol('pv_interieur', 'PV Int.', 70, 'number'),
@@ -149,6 +184,9 @@ export const DECORS_SCHEMA = [
     createCol('unit_price', 'P.U.', 100, 'number'),
     createCol('quantite', 'Qté', 70, 'number'),
     createCol('total_price', 'Total', 100, 'number'),
+
+    // 9. SCHÉMA / PHOTOS
+    createCol('schema_photo', 'Schéma', 120, 'photo'),
 ].map(c => ({ ...c, key: c.field })); // Ensure 'key' prop exists for internal logic compatibility
 
 // Helper for conditional rendering (Hide 0)
@@ -188,8 +226,8 @@ const renderSubcontractor = (params, context) => {
 // Schema Production (Explicit Mapping)
 export const DECORS_PROD_SCHEMA = [
     'detail',
-    'zone', 'piece', 'produit', 'type_confection',
-    'largeur', 'longueur', 'hauteur',
+    'zone', 'piece', 'produit', 'realise_par', 'type_confection',
+    'largeur', 'longueur', 'hauteur', 'epaisseur', 'largeur_coupe', 'hauteur_coupe',
     'tissu_1', 'laize_tissu_1', 'ml_tissu_1',
     'tissu_2', 'laize_tissu_2', 'ml_tissu_2',
     'type_interieur',
@@ -201,6 +239,7 @@ export const DECORS_PROD_SCHEMA = [
     { field: 'heures_pose', valueFormatter: hideZero },
     { field: 'heures_confection', valueFormatter: hideZero },
     'quantite',
+    'schema_photo',
     // Sous-traitance Triggered Logic
     {
         field: 'sous_traite_par',
