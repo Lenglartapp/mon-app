@@ -26,6 +26,11 @@ import { EXTRA_DEPENSES_SCHEMA } from "../lib/schemas/extraDepenses";
 import { RIDEAUX_DEFAULT_VISIBILITY, DECORS_DEFAULT_VISIBILITY, STORES_DEFAULT_VISIBILITY, COUSSINS_DEFAULT_VISIBILITY } from "../lib/constants/gridDefaults";
 import { DECORS_SCHEMA } from "../lib/schemas/decors";
 import { STORES_SCHEMA } from "../lib/schemas/stores";
+import { COUSSINS_SCHEMA } from "../lib/schemas/coussins";
+import { CACHE_SOMMIER_SCHEMA } from "../lib/schemas/cache_sommier";
+import { PLAID_SCHEMA } from "../lib/schemas/plaid";
+import { TENTURE_MURALE_SCHEMA } from "../lib/schemas/tenture_murale";
+import { MOBILIER_SCHEMA } from "../lib/schemas/mobilier";
 import { parseRideauxImport } from '../utils/importRideaux';
 
 // ... (imports remain)
@@ -169,7 +174,12 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
       else if (p === 'déplacement') targetSchema = CHIFFRAGE_SCHEMA_DEP;
       else if (/store|canishade/i.test(p)) targetSchema = STORES_SCHEMA;
       else if (/rideau|voilage/i.test(p)) targetSchema = schema;
-      else targetSchema = DECORS_SCHEMA; // Default for all decors-like items (Coussins, Plaid, etc.)
+      else if (/coussin/i.test(p)) targetSchema = COUSSINS_SCHEMA;
+      else if (/cache-sommier/i.test(p)) targetSchema = CACHE_SOMMIER_SCHEMA;
+      else if (/plaid|chemin de lit/i.test(p)) targetSchema = PLAID_SCHEMA;
+      else if (/tenture/i.test(p)) targetSchema = TENTURE_MURALE_SCHEMA;
+      else if (/t[êe]te|mobilier/i.test(p)) targetSchema = MOBILIER_SCHEMA;
+      else targetSchema = DECORS_SCHEMA; // Default for all decors-like items
 
       // Ensure valid ID & Deduplicate
       let safeId = row.id;
@@ -262,8 +272,13 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
     let targetSchema = schema;
     if (key === 'autre') targetSchema = EXTRA_DEPENSES_SCHEMA;
     else if (key === 'deplacement') targetSchema = CHIFFRAGE_SCHEMA_DEP;
+    else if (key === 'stores' || key === 'store' || key === 'store_bateau') targetSchema = STORES_SCHEMA;
+    else if (key === 'coussins') targetSchema = COUSSINS_SCHEMA;
+    else if (key === 'cache_sommier') targetSchema = CACHE_SOMMIER_SCHEMA;
+    else if (key === 'plaid') targetSchema = PLAID_SCHEMA;
+    else if (key === 'tenture_murale') targetSchema = TENTURE_MURALE_SCHEMA;
+    else if (key === 'mobilier') targetSchema = MOBILIER_SCHEMA;
     else if (key === 'decors') targetSchema = DECORS_SCHEMA;
-    else if (key === 'stores') targetSchema = STORES_SCHEMA;
     else if (key === 'autre_confection') targetSchema = AUTRES_SCHEMA;
 
     // Fusion + recalcul des formules
@@ -301,7 +316,12 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
     else if (key === 'deplacement') targetSchema = CHIFFRAGE_SCHEMA_DEP;
     else if (key === 'store' || key === 'store_bateau') targetSchema = STORES_SCHEMA;
     else if (key === 'rideaux') targetSchema = schema;
-    else targetSchema = DECORS_SCHEMA; // Default for all decors modules (Coussins, Cache-Sommier, etc.)
+    else if (key === 'coussins') targetSchema = COUSSINS_SCHEMA;
+    else if (key === 'cache_sommier') targetSchema = CACHE_SOMMIER_SCHEMA;
+    else if (key === 'plaid') targetSchema = PLAID_SCHEMA;
+    else if (key === 'tenture_murale') targetSchema = TENTURE_MURALE_SCHEMA;
+    else if (key === 'mobilier') targetSchema = MOBILIER_SCHEMA;
+    else targetSchema = DECORS_SCHEMA;
 
     // 2. Recompute the new row immediately
     const computedRow = recomputeRow(newRow, targetSchema, extendedCtx);
@@ -598,21 +618,6 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
           </Accordion>
         );
       case 'coussins':
-        const coussinsSchema = DECORS_SCHEMA.filter(c => ![
-          'longueur', 'type_confection',
-          'mecanisme_fourniture', 'pa_mecanisme', 'pv_mecanisme',
-          'heures_prepa', 'pv_prepa',
-          'heures_pose', 'pv_pose',
-          'st_pose_pa', 'st_pose_pv',
-          'baguette_1', 'ml_baguette_1', 'pa_baguette_1', 'pv_baguette_1',
-          'baguette_2', 'ml_baguette_2', 'pa_baguette_2', 'pv_baguette_2'
-        ].includes(c.field)).map(c => {
-          if (c.field === 'produit') {
-            return { ...c, valueOptions: ['Coussins'] };
-          }
-          return c;
-        });
-
         return (
           <Accordion key="coussins" defaultExpanded disableGutters sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03)', border: '1px solid #f3f4f6' }}>
             <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ borderBottom: '1px solid #f3f4f6', backgroundColor: '#fff', borderTopLeftRadius: 12, borderTopRightRadius: 12, px: 3 }}>
@@ -625,7 +630,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
                 title=""
                 rows={rowsCoussins}
                 onRowsChange={mergeChildRowsFor("coussins")}
-                schema={coussinsSchema}
+                schema={COUSSINS_SCHEMA}
                 enableCellFormulas={enableCellFormulas}
                 formulaCtx={extendedCtx}
                 onAdd={() => handleAddRow("coussins")}
@@ -648,32 +653,6 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
           </Accordion>
         );
       case 'cache_sommier':
-        const cacheSommierSchema = DECORS_SCHEMA.filter(c => ![
-          'type_interieur', 'pa_interieur', 'pv_interieur',
-          'mecanisme_fourniture', 'pa_mecanisme', 'pv_mecanisme',
-          'heures_prepa', 'pv_prepa',
-          'heures_pose', 'pv_pose',
-          'st_pose_pa', 'st_pose_pv',
-          'baguette_1', 'ml_baguette_1', 'pa_baguette_1', 'pv_baguette_1',
-          'baguette_2', 'ml_baguette_2', 'pa_baguette_2', 'pv_baguette_2'
-        ].includes(c.field)).map(c => {
-          if (c.field === 'type_confection') {
-            return {
-              ...c,
-              type: 'singleSelect',
-              valueOptions: ['Confection boîte', 'Plissé Dior 2 plis', 'Plissé Dior 4 plis']
-            };
-          }
-          if (c.field === 'produit') {
-            return {
-              ...c,
-              type: 'singleSelect',
-              valueOptions: ['Cache-Sommier']
-            };
-          }
-          return c;
-        });
-
         return (
           <Accordion key="cache_sommier" defaultExpanded disableGutters sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03)', border: '1px solid #f3f4f6' }}>
             <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ borderBottom: '1px solid #f3f4f6', backgroundColor: '#fff', borderTopLeftRadius: 12, borderTopRightRadius: 12, px: 3 }}>
@@ -686,7 +665,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
                 title=""
                 rows={rowsCacheSommier}
                 onRowsChange={mergeChildRowsFor("cache_sommier")}
-                schema={cacheSommierSchema}
+                schema={CACHE_SOMMIER_SCHEMA}
                 enableCellFormulas={enableCellFormulas}
                 formulaCtx={extendedCtx}
                 onAdd={() => handleAddRow("cache_sommier")}
@@ -709,36 +688,6 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
           </Accordion>
         );
       case 'plaid':
-        const plaidSchemaRaw = DECORS_SCHEMA.filter(c => ![
-          'type_confection',
-          'type_interieur', 'pa_interieur', 'pv_interieur',
-          'mecanisme_fourniture', 'pa_mecanisme', 'pv_mecanisme',
-          'heures_prepa', 'pv_prepa',
-          'heures_pose', 'pv_pose',
-          'st_pose_pa', 'st_pose_pv',
-          'baguette_1', 'ml_baguette_1', 'pa_baguette_1', 'pv_baguette_1',
-          'baguette_2', 'ml_baguette_2', 'pa_baguette_2', 'pv_baguette_2'
-        ].includes(c.field)).map(c => {
-          if (c.field === 'longueur') {
-            return { ...c, headerName: 'Épaisseur', label: 'Épaisseur' };
-          }
-          if (c.field === 'produit') {
-            return {
-              ...c,
-              type: 'singleSelect',
-              valueOptions: ['Plaid']
-            };
-          }
-          return c;
-        });
-
-        // Reorder columns for Plaid: Largeur, then Hauteur, then Épaisseur (ex-longueur)
-        const plaidOrder = ['detail', 'zone', 'piece', 'produit', 'largeur', 'hauteur', 'longueur'];
-        const plaidSchema = [
-          ...plaidOrder.map(f => plaidSchemaRaw.find(c => c.field === f)).filter(Boolean),
-          ...plaidSchemaRaw.filter(c => !plaidOrder.includes(c.field))
-        ];
-
         return (
           <Accordion key="plaid" defaultExpanded disableGutters sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03)', border: '1px solid #f3f4f6' }}>
             <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ borderBottom: '1px solid #f3f4f6', backgroundColor: '#fff', borderTopLeftRadius: 12, borderTopRightRadius: 12, px: 3 }}>
@@ -751,7 +700,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
                 title=""
                 rows={rowsPlaid}
                 onRowsChange={mergeChildRowsFor("plaid")}
-                schema={plaidSchema}
+                schema={PLAID_SCHEMA}
                 enableCellFormulas={enableCellFormulas}
                 formulaCtx={extendedCtx}
                 onAdd={() => handleAddRow("plaid")}
@@ -774,32 +723,6 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
           </Accordion>
         );
       case 'tenture_murale':
-        const tentureSchema = DECORS_SCHEMA.filter(c => ![
-          'type_confection',
-          'longueur',
-          'tissu_2', 'laize_tissu_2', 'ml_tissu_2', 'pa_tissu_2', 'pv_tissu_2',
-          'type_interieur', 'pa_interieur', 'pv_interieur',
-          'passementerie_2', 'app_passementerie_2', 'ml_pass_2', 'pa_pass_2', 'pv_pass_2',
-          'st_conf_pa', 'st_conf_pv',
-          'mecanisme_fourniture', 'pa_mecanisme', 'pv_mecanisme',
-          'heures_prepa', 'pv_prepa'
-        ].includes(c.field)).map(c => {
-          if (c.field === 'produit') {
-            return {
-              ...c,
-              type: 'singleSelect',
-              valueOptions: ['Tenture Murale']
-            };
-          }
-          if (c.field === 'hauteur') {
-            return {
-              ...c,
-              readOnly: () => false
-            };
-          }
-          return c;
-        });
-
         return (
           <Accordion key="tenture_murale" defaultExpanded disableGutters sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03)', border: '1px solid #f3f4f6' }}>
             <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ borderBottom: '1px solid #f3f4f6', backgroundColor: '#fff', borderTopLeftRadius: 12, borderTopRightRadius: 12, px: 3 }}>
@@ -812,7 +735,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
                 title=""
                 rows={rowsTenture}
                 onRowsChange={mergeChildRowsFor("tenture_murale")}
-                schema={tentureSchema}
+                schema={TENTURE_MURALE_SCHEMA}
                 enableCellFormulas={enableCellFormulas}
                 formulaCtx={extendedCtx}
                 onAdd={() => handleAddRow("tenture_murale")}
@@ -835,40 +758,10 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
           </Accordion>
         );
       case 'mobilier':
-        const mobilierSchemaRaw = DECORS_SCHEMA.filter(c => ![
-          'type_confection',
-          'type_interieur', 'pa_interieur', 'pv_interieur',
-          'mecanisme_fourniture', 'pa_mecanisme', 'pv_mecanisme',
-          'heures_prepa', 'pv_prepa',
-          'heures_pose', 'pv_pose',
-          'st_pose_pa', 'st_pose_pv',
-          'baguette_1', 'ml_baguette_1', 'pa_baguette_1', 'pv_baguette_1',
-          'baguette_2', 'ml_baguette_2', 'pa_baguette_2', 'pv_baguette_2'
-        ].includes(c.field)).map(c => {
-          if (c.field === 'longueur') {
-            return { ...c, headerName: 'Épaisseur', label: 'Épaisseur' };
-          }
-          if (c.field === 'produit') {
-            return {
-              ...c,
-              type: 'singleSelect',
-              valueOptions: ['Tête de Lit']
-            };
-          }
-          return c;
-        });
-
-        // Reorder columns for Mobilier: Largeur, then Hauteur, then Épaisseur (ex-longueur)
-        const mobilierOrder = ['detail', 'zone', 'piece', 'produit', 'largeur', 'hauteur', 'longueur'];
-        const mobilierSchema = [
-          ...mobilierOrder.map(f => mobilierSchemaRaw.find(c => c.field === f)).filter(Boolean),
-          ...mobilierSchemaRaw.filter(c => !mobilierOrder.includes(c.field))
-        ];
-
         return (
           <Accordion key="mobilier" defaultExpanded disableGutters sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03)', border: '1px solid #f3f4f6' }}>
             <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ borderBottom: '1px solid #f3f4f6', backgroundColor: '#fff', borderTopLeftRadius: 12, borderTopRightRadius: 12, px: 3 }}>
-              {renderHeaderContent("Mobilier / Tête de lit", rowsMobilier)}
+              {renderHeaderContent("Mobilier / Tête de Lit", rowsMobilier)}
             </AccordionSummary>
             <AccordionDetails sx={{ p: 0 }}>
 
@@ -877,7 +770,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
                 title=""
                 rows={rowsMobilier}
                 onRowsChange={mergeChildRowsFor("mobilier")}
-                schema={mobilierSchema}
+                schema={MOBILIER_SCHEMA}
                 enableCellFormulas={enableCellFormulas}
                 formulaCtx={extendedCtx}
                 onAdd={() => handleAddRow("mobilier")}
