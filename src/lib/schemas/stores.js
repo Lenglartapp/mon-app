@@ -155,6 +155,7 @@ const hideZero = (params) => {
 };
 
 export const STORES_PROD_SCHEMA = [
+    'detail',
     'zone', 'piece', 'produit',
     'a_plat', // Largeur à plat
     'hauteur', 'hauteur_coupe', 'hauteur_coupe_motif',
@@ -190,10 +191,11 @@ export const STORES_PROD_SCHEMA = [
 ].map(def => {
     // If string, find in main schema
     if (typeof def === 'string') {
-        const found = STORES_SCHEMA.find(c => c.key === def);
+        const found = STORES_SCHEMA.find(c => c.key === def || c.field === def);
         return found ? found : null;
     }
     // If object, find and merge
+    if (!def.key && def.field) def.key = def.field; // Normalize before search
     const base = STORES_SCHEMA.find(c => c.key === def.key);
-    return { ...base, ...def }; // Merge overrides
+    return base ? { ...base, ...def } : def; // Merge overrides or return as is
 }).filter(Boolean).map(c => ({ ...c, key: c.key || c.field })); // Ensure key exists (STORES uses 'key', Decors used 'field', normalizing)

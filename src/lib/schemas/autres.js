@@ -105,6 +105,7 @@ const renderSubcontractorGeneric = (params, context, triggerField) => {
 };
 
 export const AUTRES_PROD_SCHEMA = [
+    'detail',
     'zone', 'piece', 'produit',
     'largeur', 'hauteur',
     'tissu_1', 'ml_tissu_1',
@@ -138,10 +139,11 @@ export const AUTRES_PROD_SCHEMA = [
     // NO TOTAL, NO PU requested
 ].map(def => {
     if (typeof def === 'string') {
-        const found = AUTRES_SCHEMA.find(c => c.field === def);
+        const found = AUTRES_SCHEMA.find(c => c.field === def || c.key === def);
         return found ? found : null;
     }
+    if (!def.field && def.key) def.field = def.key; // Normalize
     const base = AUTRES_SCHEMA.find(c => c.field === def.field);
     // If base is not found (e.g. new virtual fields), use def direct
     return base ? { ...base, ...def } : def;
-}).filter(Boolean).map(c => ({ ...c, key: c.field })); // Ensure key exists
+}).filter(Boolean).map(c => ({ ...c, key: c.field || c.key })); // Ensure key exists

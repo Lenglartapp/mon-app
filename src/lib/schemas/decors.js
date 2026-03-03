@@ -187,6 +187,7 @@ const renderSubcontractor = (params, context) => {
 
 // Schema Production (Explicit Mapping)
 export const DECORS_PROD_SCHEMA = [
+    'detail',
     'zone', 'piece', 'produit', 'type_confection',
     'largeur', 'longueur', 'hauteur',
     'tissu_1', 'laize_tissu_1', 'ml_tissu_1',
@@ -211,9 +212,10 @@ export const DECORS_PROD_SCHEMA = [
 ].map(def => {
     // If string, find in main schema
     if (typeof def === 'string') {
-        return DECORS_SCHEMA.find(c => c.field === def);
+        return DECORS_SCHEMA.find(c => c.field === def || c.key === def);
     }
     // If object, find and merge
+    if (!def.field && def.key) def.field = def.key; // Normalize
     const base = DECORS_SCHEMA.find(c => c.field === def.field);
-    return { ...base, ...def }; // Merge overrides (like valueFormatter)
-}).filter(Boolean).map(c => ({ ...c, key: c.field })); // Ensure 'key' prop exists
+    return base ? { ...base, ...def } : def; // Merge overrides (like valueFormatter)
+}).filter(Boolean).map(c => ({ ...c, key: c.field || c.key })); // Ensure 'key' prop exists

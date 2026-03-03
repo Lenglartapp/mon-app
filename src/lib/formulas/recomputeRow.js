@@ -55,6 +55,8 @@ export function recomputeRow(row, schema, ctx = {}) {
 
   // 1b. DEPLACEMENTS (Specific Logistics)
   if (next.produit === "Déplacement") {
+    const isSimpleCotes = next.type_deplacement === "Prise de cotes";
+
     const nbTech = Math.max(1, NVL(next.nb_tech));
     const nbAR = Math.max(1, NVL(next.nb_allers_retours, 1));
     const tempsTrajetAR = NVL(next.temps_trajet, 0);
@@ -63,24 +65,38 @@ export function recomputeRow(row, schema, ctx = {}) {
     const isDecouchage = next.decouchage === "Oui";
 
     let heuresFactureesUnit = 0;
-    if (tempsTrajetAR > 0) {
-      const tranche4h = Math.ceil((tempsTrajetAR / 2) / 4) * 4;
-      heuresFactureesUnit = tranche4h * 2;
+    if (!isSimpleCotes) {
+      if (tempsTrajetAR > 0) {
+        const tranche4h = Math.ceil((tempsTrajetAR / 2) / 4) * 4;
+        heuresFactureesUnit = tranche4h * 2;
+      }
+      const heuresFactureesTotal = heuresFactureesUnit * nbAR * nbTech;
+      next.heures_facturees = heuresFactureesTotal;
     }
-    const heuresFactureesTotal = heuresFactureesUnit * nbAR * nbTech;
-    next.heures_facturees = heuresFactureesTotal;
-    const tauxHoraire = NVL(settings.taux_horaire, 35);
-    next.cout_mo = heuresFactureesTotal * tauxHoraire;
 
-    if (isDecouchage && joursInter > 0) {
-      next.nb_nuits = Math.max(0, (joursInter - 1) * nbTech);
-      next.nb_repas = joursInter * 2 * nbTech;
+    const tauxHoraire = NVL(settings.taux_horaire, 35);
+
+    if (!isSimpleCotes) {
+      next.cout_mo = Number(next.heures_facturees) * tauxHoraire;
+
+      if (isDecouchage && joursInter > 0) {
+        next.nb_nuits = Math.max(0, (joursInter - 1) * nbTech);
+        next.nb_repas = joursInter * 2 * nbTech;
+      } else {
+        next.nb_nuits = 0; next.nb_repas = 0;
+      }
+      next.cout_nuits = next.nb_nuits * NVL(settings.prix_nuit, 180);
+      next.cout_repas = next.nb_repas * NVL(settings.prix_repas, 25);
+      next.cout_billet_total = prixBillet * nbTech * nbAR;
     } else {
-      next.nb_nuits = 0; next.nb_repas = 0;
+      next.cout_mo = Number(next.heures_facturees) * tauxHoraire;
+      next.nb_nuits = 0;
+      next.nb_repas = 0;
+      next.cout_nuits = 0;
+      next.cout_repas = 0;
+      next.cout_billet_total = 0;
     }
-    next.cout_nuits = next.nb_nuits * NVL(settings.prix_nuit, 180);
-    next.cout_repas = next.nb_repas * NVL(settings.prix_repas, 25);
-    next.cout_billet_total = prixBillet * nbTech * nbAR;
+
     next.total_price = next.cout_mo + next.cout_nuits + next.cout_repas + next.cout_billet_total;
     next.prix_total = next.total_price;
     return next;

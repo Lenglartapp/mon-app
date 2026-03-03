@@ -10,6 +10,24 @@ import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import Chip from '@mui/material/Chip';
+import { Type, Hash, Calendar, CheckSquare, List, Calculator, Image as ImageIcon, PenTool, ChevronDown } from 'lucide-react';
+
+const getColumnIcon = (col) => {
+  // Determine icon based on schema type and characteristics
+  if (col.type === 'formula' || (col.readOnly && col.type === 'number'))
+    return <span className="text-gray-400 font-serif italic text-[14px] leading-none pr-0.5" style={{ transform: 'translateY(1px)' }}>ƒx</span>;
+
+  if (col.type === 'photo') return <ImageIcon size={14} className="text-gray-400" />;
+  if (col.type === 'croquis') return <PenTool size={14} className="text-gray-400" />;
+  if (col.type === 'date' || col.type === 'datetime') return <Calendar size={14} className="text-gray-400" />;
+  if (col.type === 'checkbox') return <CheckSquare size={14} className="text-gray-400" />;
+  if (col.type === 'select' || col.type === 'catalog_item' || col.options || col.key?.includes('tissu') || col.key?.includes('doublure') || col.key?.includes('passementerie') || col.key?.includes('mecanisme')) {
+    return <ChevronDown size={14} className="text-gray-400" strokeWidth={2.5} />;
+  }
+  if (col.type === 'number') return <Hash size={14} className="text-gray-400" />;
+
+  return <Type size={14} className="text-gray-400" />;
+};
 
 /**
  * Maps a custom schema type to MUI Data Grid column type.
@@ -96,7 +114,17 @@ export function schemaToGridCols(schema, enableCellFormulas = false, onOpenDetai
         }
 
         return '';
-      }
+      },
+      renderHeader: (params) => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', outline: 'none', width: '100%', overflow: 'hidden' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, height: '14px' }}>
+            {getColumnIcon(col)}
+          </div>
+          <span style={{ fontWeight: 600, color: '#374151', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', paddingTop: '2px', fontSize: '13px' }}>
+            {col.headerName || col.label || col.key}
+          </span>
+        </div>
+      )
     };
 
     if (col.valueFormatter) {

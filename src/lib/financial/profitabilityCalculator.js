@@ -1,4 +1,4 @@
-export const calculateProfitability = (rows = [], depRows = [], extraRows = []) => {
+export const calculateProfitability = (rows = [], depRows = [], extraRows = [], commissionRate = 3.5) => {
     // Helper to safely convert to number
     const toNum = (v) => {
         const n = Number(String(v ?? "").replace(",", "."));
@@ -22,12 +22,13 @@ export const calculateProfitability = (rows = [], depRows = [], extraRows = []) 
     const achatsFixesDetails = {
         tissus: [],
         rails: [],
-        fournitures: [],
+        stores: [], // NEW
         total: 0
     };
 
     const mapTissus = new Map();
     const mapRails = new Map();
+    const mapStores = new Map(); // NEW
 
     // Helper to generate source info
     const getSource = (r, qty, price) => ({
@@ -38,126 +39,90 @@ export const calculateProfitability = (rows = [], depRows = [], extraRows = []) 
         price: price
     });
 
-    const pushMap = (map, key, label, ml, pa, source) => {
-        if (!map.has(key)) map.set(key, { label, ml: 0, pa: 0, sources: [] });
+    const pushMap = (map, label, ml, pa, source) => {
+        // Group precisely by the visible label text
+        const key = String(label).trim();
+        if (!key || key === "undefined") return; // Skip empty
+
+        if (!map.has(key)) map.set(key, { label: key, ml: 0, pa: 0, sources: [] });
         const item = map.get(key);
         item.ml += ml;
         item.pa += pa;
-        item.sources.push(source);
+        if (source) item.sources.push(source);
     };
 
     rows.forEach(r => {
         const q = qty(r);
 
-        // STRICT KEYS MAPPING
-        // Decors: Tissu 1 (tissu_1)
+        // --- TISSUS (Shared) ---
         if (r.tissu_1) {
-            const val = toNum(r.pa_tissu_1) * q;
-            const ml = toNum(r.ml_tissu_1) * q;
-            pushMap(mapTissus, `D_T1_${r.tissu_1}`, `Décor T1 ${r.tissu_1}`, ml, val, getSource(r, q, val));
+            pushMap(mapTissus, r.tissu_1, toNum(r.ml_tissu_1) * q, toNum(r.pa_tissu_1) * q, getSource(r, q, toNum(r.pa_tissu_1) * q));
         }
-        // Decors: Tissu 2 (tissu_2)
         if (r.tissu_2) {
-            const val = toNum(r.pa_tissu_2) * q;
-            const ml = toNum(r.ml_tissu_2) * q;
-            pushMap(mapTissus, `D_T2_${r.tissu_2}`, `Décor T2 ${r.tissu_2}`, ml, val, getSource(r, q, val));
+            pushMap(mapTissus, r.tissu_2, toNum(r.ml_tissu_2) * q, toNum(r.pa_tissu_2) * q, getSource(r, q, toNum(r.pa_tissu_2) * q));
         }
-        // Decors: Passementerie 1 (passementerie_1)
         if (r.passementerie_1) {
-            const val = toNum(r.pa_pass_1) * q;
-            const ml = toNum(r.ml_pass_1) * q;
-            pushMap(mapTissus, `D_P1_${r.passementerie_1}`, `Décor Pass ${r.passementerie_1}`, ml, val, getSource(r, q, val));
+            pushMap(mapTissus, r.passementerie_1, toNum(r.ml_pass_1) * q, toNum(r.pa_pass_1) * q, getSource(r, q, toNum(r.pa_pass_1) * q));
         }
-
-        // Tissu 1 (Rideaux)
         if (r.tissu_deco1) {
-            const val = toNum(r.pa_tissu1) * q; // PA Tissu is unit price usually, but we need total line cost here?
-            // Wait, in recomputeRow: next.pa_tissu1 = next.ml_tissu1 * (p1.pa || 0); <- This is TOTAL price for 1 unit.
-            // So we multiply by Q.
-            const ml = toNum(r.ml_tissu1) * q;
-            pushMap(mapTissus, `T1_${r.tissu_deco1}`, r.tissu_deco1, ml, val, getSource(r, q, val));
+            pushMap(mapTissus, r.tissu_deco1, toNum(r.ml_tissu1) * q, toNum(r.pa_tissu1) * q, getSource(r, q, toNum(r.pa_tissu1) * q));
         }
-        // STORES: Toile Finition 1
         if (r.toile_finition_1) {
-            // Logic similar to Tissu 1
-            const val = toNum(r.pa_toile_finition_1) * q;
-            const ml = toNum(r.ml_toile_finition_1) * q;
-            pushMap(mapTissus, `TF1_${r.toile_finition_1}`, `Toile ${r.toile_finition_1}`, ml, val, getSource(r, q, val));
+            pushMap(mapTissus, r.toile_finition_1, toNum(r.ml_toile_finition_1) * q, toNum(r.pa_toile_finition_1) * q, getSource(r, q, toNum(r.pa_toile_finition_1) * q));
         }
-
-        // Tissu 2
         if (r.tissu_deco2) {
-            const val = toNum(r.pa_tissu2) * q;
-            const ml = toNum(r.ml_tissu2) * q;
-            pushMap(mapTissus, `T2_${r.tissu_deco2}`, r.tissu_deco2, ml, val, getSource(r, q, val));
+            pushMap(mapTissus, r.tissu_deco2, toNum(r.ml_tissu2) * q, toNum(r.pa_tissu2) * q, getSource(r, q, toNum(r.pa_tissu2) * q));
         }
-        // Doublure
         if (r.doublure) {
-            const val = toNum(r.pa_doublure) * q;
-            const ml = toNum(r.ml_doublure) * q;
-            pushMap(mapTissus, `D_${r.doublure}`, `Doublure ${r.doublure}`, ml, val, getSource(r, q, val));
+            pushMap(mapTissus, r.doublure, toNum(r.ml_doublure) * q, toNum(r.pa_doublure) * q, getSource(r, q, toNum(r.pa_doublure) * q));
         }
-        // Interdoublure
-        if (r.interdoublure) { // Was inter_doublure
-            const val = toNum(r.pa_interdoublure) * q;
-            const ml = toNum(r.ml_interdoublure) * q;
-            pushMap(mapTissus, `I_${r.interdoublure}`, `Inter ${r.interdoublure}`, ml, val, getSource(r, q, val));
+        if (r.interdoublure) {
+            pushMap(mapTissus, r.interdoublure, toNum(r.ml_interdoublure) * q, toNum(r.pa_interdoublure) * q, getSource(r, q, toNum(r.pa_interdoublure) * q));
         }
-        // Passementerie 1
         if (r.passementerie1) {
-            const val = toNum(r.pa_pass1) * q;
-            const ml = toNum(r.ml_pass1) * q;
-            pushMap(mapTissus, `P1_${r.passementerie1}`, r.passementerie1, ml, val, getSource(r, q, val));
+            pushMap(mapTissus, r.passementerie1, toNum(r.ml_pass1) * q, toNum(r.pa_pass1) * q, getSource(r, q, toNum(r.pa_pass1) * q));
         }
-        // Passementerie 2
         if (r.passementerie2) {
-            const val = toNum(r.pa_pass2) * q;
-            const ml = toNum(r.ml_pass2) * q;
-            pushMap(mapTissus, `P2_${r.passementerie2}`, r.passementerie2, ml, val, getSource(r, q, val));
+            pushMap(mapTissus, r.passementerie2, toNum(r.ml_pass2) * q, toNum(r.pa_pass2) * q, getSource(r, q, toNum(r.pa_pass2) * q));
         }
 
-        // RAILS / MECANISMES (OLD)
-        const mecaName = r.modele_mecanisme || r.type_mecanisme;
-        if (mecaName) {
-            const type = r.type_mecanisme;
-            const val = toNum(r.pa_mecanisme) * q;
-            let len = 0;
-            if (type === 'Rail') {
-                len = (toNum(r.largeur_mecanisme) / 100) * q;
-            } else {
-                len = q; // For Stores/Tringles, it's units
+        // --- RAILS & STORES ---
+        const prodStr = String(r.produit || "");
+        const isBateau = /bateau|vélum|velum/i.test(prodStr);
+        const isStore = /store|canishade/i.test(prodStr) && !isBateau;
+
+        if (isStore) {
+            // STORES (Enrouleurs, Californiens, etc.)
+            const storeName = r.mecanisme_store || r.modele_mecanisme || r.nom_tringle;
+            const paStoreNum = toNum(r.pa_mecanisme_store) > 0 ? toNum(r.pa_mecanisme_store) : (toNum(r.pa_meca) + toNum(r.pa_mecanisme) + toNum(r.pa_mecanisme_bis));
+            const val = paStoreNum * q;
+            if (storeName && val > 0) {
+                pushMap(mapStores, storeName, q, val, getSource(r, q, val));
             }
-            // Use specific key to separate Rails from Stores in aggregation if needed, or group by model
-            pushMap(mapRails, `M_${mecaName}`, mecaName, len, val, getSource(r, q, val));
-        }
+        } else {
+            // RAILS, BATEAUX, TRINGLES, DECOR MECANISMES
+            const mecaName = r.nom_tringle || r.modele_mecanisme || r.type_mecanisme || r.mecanisme_fourniture;
+            const val = (toNum(r.pa_meca) + toNum(r.pa_mecanisme) + toNum(r.pa_mecanisme_bis)) * q;
 
-        // STORES: Mecanisme Store (NEW)
-        if (r.mecanisme_store) {
-            const mecaStore = r.mecanisme_store;
-            const val = toNum(r.pa_mecanisme_store) * q;
-            const len = q; // Assume unit count for Stores mechanisms
-            pushMap(mapRails, `MS_${mecaStore}`, mecaStore, len, val, getSource(r, q, val));
-        }
-
-        // DECORS: Mecanisme/Fourniture (mecanisme_fourniture)
-        if (r.mecanisme_fourniture) {
-            const mecaFourn = r.mecanisme_fourniture;
-            const val = toNum(r.pa_mecanisme) * q; // Note: pa_mecanisme reused for both Rideau Rail & Decor Meca?
-            // Wait, in recomputeRow I used next.pa_mecanisme for both (if r.type_mecanisme==Rail OR if r.mecanisme_fourniture).
-            // This collision is risky if one row has BOTH?
-            // But Valid Row typically has either Rideau fields OR Decor fields.
-            // Assuming no overlap.
-            const len = q;
-            pushMap(mapRails, `MF_${mecaFourn}`, mecaFourn, len, val, getSource(r, q, val));
+            if (mecaName && val > 0) {
+                let len = 0;
+                if (r.type_mecanisme === 'Rail' || r.nom_tringle) {
+                    len = (toNum(r.largeur_mecanisme || r.l_mecanisme) / 100) * q;
+                } else {
+                    len = q;
+                }
+                pushMap(mapRails, mecaName, len, val, getSource(r, q, val));
+            }
         }
     });
 
     // Convert Maps
-    achatsFixesDetails.tissus = Array.from(mapTissus.values());
-    achatsFixesDetails.rails = Array.from(mapRails.values());
+    achatsFixesDetails.tissus = Array.from(mapTissus.values()).sort((a, b) => a.label.localeCompare(b.label, "fr", { numeric: true }));
+    achatsFixesDetails.rails = Array.from(mapRails.values()).sort((a, b) => a.label.localeCompare(b.label, "fr", { numeric: true }));
+    achatsFixesDetails.stores = Array.from(mapStores.values()).sort((a, b) => a.label.localeCompare(b.label, "fr", { numeric: true }));
 
     const sumPA = (arr) => arr.reduce((acc, item) => acc + item.pa, 0);
-    const totalAchatsFixes = sumPA(achatsFixesDetails.tissus) + sumPA(achatsFixesDetails.rails);
+    const totalAchatsFixes = sumPA(achatsFixesDetails.tissus) + sumPA(achatsFixesDetails.rails) + sumPA(achatsFixesDetails.stores);
     achatsFixesDetails.total = totalAchatsFixes;
 
     // —————————————————————————————————————————————————————————
@@ -240,14 +205,16 @@ export const calculateProfitability = (rows = [], depRows = [], extraRows = []) 
         const catLower = cat.toLowerCase();
         const labelLower = labelRaw.toLowerCase();
 
-        if (catLower.includes('commission') || labelLower.includes('commission')) {
-            chargesAgg.commissions.total += val;
-            chargesAgg.commissions.sources.push({ minute: displayLabel, price: val });
-        } else {
-            chargesAgg.autres.total += val;
-            chargesAgg.autres.sources.push({ minute: displayLabel, price: val });
-        }
+        chargesAgg.autres.total += val;
+        chargesAgg.autres.sources.push({ minute: displayLabel, price: val });
     });
+
+    // 3.4 Commission Dynamique
+    const commissionValue = CA_Total * (commissionRate / 100);
+    if (commissionValue > 0) {
+        chargesAgg.commissions.total += commissionValue;
+        chargesAgg.commissions.sources.push({ minute: `Commission (${commissionRate}%)`, price: commissionValue });
+    }
 
     const Charges_Variables_Total =
         chargesAgg.st_pose.total +
