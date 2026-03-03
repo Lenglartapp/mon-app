@@ -15,7 +15,7 @@ import { SCHEMA_64 } from "../lib/schemas/production.js";
 import { STAGES, DEFAULT_VIEWS } from "../lib/constants/views.js"; // Import DEFAULT_VIEWS
 import { recomputeRow } from "../lib/formulas/recomputeRow";
 import { DECORS_PROD_SCHEMA } from "../lib/schemas/decors"; // Import Prod Schema
-import { STORES_PROD_SCHEMA } from "../lib/schemas/stores";
+import { STORES_PROD_SCHEMA, STORES_BATEAUX_PROD_SCHEMA } from "../lib/schemas/stores";
 import { AUTRES_PROD_SCHEMA } from "../lib/schemas/autres";
 import { uid } from "../lib/utils/uid"; // Import uid
 
@@ -944,7 +944,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                 <MinuteGrid
                   rows={rowsStoresBateaux}
                   onRowsChange={(nr) => handleSubsetChange(nr, /store (bateau|velum)/i)} // Temporary regex workaround for mergeChildRowsFor
-                  schema={STORES_PROD_SCHEMA}
+                  schema={STORES_BATEAUX_PROD_SCHEMA}
                   enableCellFormulas={true}
                   onAdd={() => handleAddRow("Store Bateau")}
                   onDuplicateRow={handleDuplicateRow}
@@ -1161,9 +1161,9 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                 <MinuteGrid
                   rows={rowsStoresBateaux}
                   onRowsChange={(nr) => handleSubsetChange(nr, /store (bateau|velum)/i)}
-                  schema={STORES_PROD_SCHEMA}
+                  schema={STORES_BATEAUX_PROD_SCHEMA}
                   enableCellFormulas={true}
-                  initialVisibilityModel={getVisibilityModel('bpp', 'stores', STORES_PROD_SCHEMA)}
+                  initialVisibilityModel={getVisibilityModel('bpp', 'stores', STORES_BATEAUX_PROD_SCHEMA)}
                   onAdd={() => handleAddRow("Store Bateau")}
                   onDuplicateRow={handleDuplicateRow}
                   projectId={project?.id}

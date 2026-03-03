@@ -35,7 +35,7 @@ export function mapMinuteLinesToProductionRows(lines) {
     produit: m.produit ?? "", zone: m.zone ?? "", piece: m.piece ?? "",
     type_confection: m.type_confection ?? "", pair_un: m.pair_un ?? "",
     statut_cotes: m.statut_cotes ?? "", l_mecanisme: m.l_mecanisme ?? "",
-    largeur: m.largeur ?? "", hauteur: m.hauteur ?? "",
+    largeur: m.largeur ?? "", hauteur: m.hauteur ?? "", hauteur_finie: m.hauteur ?? "",
     retour_g: m.retour_g ?? "", retour_d: m.retour_d ?? "", type_pose: m.type_pose ?? "",
     commentaire_confection: m.commentaire_minute ?? "", // Map specific comment
 
