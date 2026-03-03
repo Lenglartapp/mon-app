@@ -20,7 +20,8 @@ import { AUTRES_PROD_SCHEMA } from "../lib/schemas/autres";
 import { uid } from "../lib/utils/uid"; // Import uid
 
 import { Search, Filter, Layers3, Star, FlaskConical, Image as ImageIcon, Pin, Edit2, FileText } from "lucide-react"; // Added FileText
-import { Dialog, DialogTitle, DialogContent, TextField, DialogActions, Button } from "@mui/material";
+import { Dialog, DialogTitle, DialogContent, TextField, DialogActions, Button, Accordion, AccordionSummary, AccordionDetails } from "@mui/material";
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { differenceInMinutes } from "date-fns";
 import DocumentListModal from "../components/DocumentListModal"; // Added import
 import { useAuth } from "../auth";
@@ -249,10 +250,23 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
   }, [rows, search]);
 
   // Sous-ensembles (sur rows filtrées)
+  // --- NOUVELLE NOMENCLATURE EXACTE DU CHIFFRAGE ---
   const rowsRideaux = filteredRows.filter((r) => /rideau|voilage/i.test(String(r.produit || "")));
-  const rowsDecors = filteredRows.filter((r) => /d[ée]cor|coussin|plaid|t[êe]te|tenture|cache/i.test(String(r.produit || "")));
-  const rowsStores = filteredRows.filter((r) => /store/i.test(String(r.produit || "")));
+
+  // Separation Stores
+  const rowsStores = filteredRows.filter((r) => r.produit && /store/i.test(String(r.produit)) && !/bateau|velum/i.test(String(r.produit)));
+  const rowsStoresBateaux = filteredRows.filter((r) => r.produit && /store (bateau|velum)/i.test(String(r.produit)));
+
+  // Separation Anciens "Décors"
+  const rowsCoussins = filteredRows.filter((r) => /coussin/i.test(String(r.produit || "")));
+  const rowsPlaid = filteredRows.filter((r) => /plaid/i.test(String(r.produit || "")));
+  const rowsMobilier = filteredRows.filter((r) => /tête de lit|mobilier/i.test(String(r.produit || "")));
+  const rowsCacheSommier = filteredRows.filter((r) => /cache-sommier/i.test(String(r.produit || "")));
+  const rowsTentureMurale = filteredRows.filter((r) => /tenture murale/i.test(String(r.produit || "")));
+
   const rowsAutreConfection = filteredRows.filter(r => r.section === 'autre');
+
+  // --- FIN ---
 
   const recomputeAll = (arr) => (arr || []).map(r => recomputeRow(r, schema));
 
@@ -893,42 +907,179 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
             </div>
           )}
 
-          {rowsDecors.length > 0 && (
-            <div style={cardStyle}>
-              <div style={cardHeaderStyle}>BPF Décors de lit</div>
-              <MinuteGrid
-                rows={rowsDecors}
-                onRowsChange={mergeChildRowsFor("decors")}
-                schema={DECORS_PROD_SCHEMA} // <--- PROD SCHEMA
-                enableCellFormulas={true}
-                // initialVisibilityModel={...} // No visibility model needed, schema is already trimmed
-                onAdd={() => handleAddRow("Décor de lit")}
-                onDuplicateRow={handleDuplicateRow}
-                projectId={project?.id}
-                gridKey="bpf_decors"
-                onRowClick={(id) => setOpenedRowId(id)}
-                isMobile={isMobile}
-              />
-            </div>
+          {rowsStores.length > 0 && (
+            <Accordion key="bpf_stores" defaultExpanded disableGutters sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), border: 1px solid #f3f4f6' }}>
+              <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ borderBottom: '1px solid #f3f4f6', backgroundColor: '#fff', borderTopLeftRadius: 12, borderTopRightRadius: 12, px: 3 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <h3 style={{ margin: 0, fontSize: 18, color: '#111827', fontWeight: 700 }}>BPF Stores</h3>
+                  <span style={{ background: '#f3f4f6', color: '#4b5563', padding: '2px 8px', borderRadius: 12, fontSize: 12, fontWeight: 600 }}>{rowsStores.length} articles</span>
+                </div>
+              </AccordionSummary>
+              <AccordionDetails sx={{ p: 0 }}>
+                <MinuteGrid
+                  rows={rowsStores}
+                  onRowsChange={mergeChildRowsFor("stores")}
+                  schema={STORES_PROD_SCHEMA}
+                  enableCellFormulas={true}
+                  onAdd={() => handleAddRow("Store Enrouleur")}
+                  onDuplicateRow={handleDuplicateRow}
+                  projectId={project?.id}
+                  gridKey="bpf_stores"
+                  onRowClick={(id) => setOpenedRowId(id)}
+                  isMobile={isMobile}
+                />
+              </AccordionDetails>
+            </Accordion>
           )}
 
-          {rowsStores.length > 0 && (
-            <div style={cardStyle}>
-              <div style={cardHeaderStyle}>BPF Stores</div>
-              <MinuteGrid
-                rows={rowsStores}
-                onRowsChange={mergeChildRowsFor("stores")}
-                schema={STORES_PROD_SCHEMA} // <--- PROD SCHEMA
-                enableCellFormulas={true}
-                // initialVisibilityModel={...} // No visibility model needed
-                onAdd={() => handleAddRow("Store Bateau")}
-                onDuplicateRow={handleDuplicateRow}
-                projectId={project?.id}
-                gridKey="bpf_stores"
-                onRowClick={(id) => setOpenedRowId(id)}
-                isMobile={isMobile}
-              />
-            </div>
+          {rowsStoresBateaux.length > 0 && (
+            <Accordion key="bpf_stores_bateaux" defaultExpanded disableGutters sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), border: 1px solid #f3f4f6' }}>
+              <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ borderBottom: '1px solid #f3f4f6', backgroundColor: '#fff', borderTopLeftRadius: 12, borderTopRightRadius: 12, px: 3 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <h3 style={{ margin: 0, fontSize: 18, color: '#111827', fontWeight: 700 }}>BPF Stores Bateaux / Velum</h3>
+                  <span style={{ background: '#f3f4f6', color: '#4b5563', padding: '2px 8px', borderRadius: 12, fontSize: 12, fontWeight: 600 }}>{rowsStoresBateaux.length} articles</span>
+                </div>
+              </AccordionSummary>
+              <AccordionDetails sx={{ p: 0 }}>
+                <MinuteGrid
+                  rows={rowsStoresBateaux}
+                  onRowsChange={(nr) => handleSubsetChange(nr, /store (bateau|velum)/i)} // Temporary regex workaround for mergeChildRowsFor
+                  schema={STORES_PROD_SCHEMA}
+                  enableCellFormulas={true}
+                  onAdd={() => handleAddRow("Store Bateau")}
+                  onDuplicateRow={handleDuplicateRow}
+                  projectId={project?.id}
+                  gridKey="bpf_stores_bateaux"
+                  onRowClick={(id) => setOpenedRowId(id)}
+                  isMobile={isMobile}
+                />
+              </AccordionDetails>
+            </Accordion>
+          )}
+
+          {rowsCoussins.length > 0 && (
+            <Accordion key="bpf_coussins" defaultExpanded disableGutters sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), border: 1px solid #f3f4f6' }}>
+              <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ borderBottom: '1px solid #f3f4f6', backgroundColor: '#fff', borderTopLeftRadius: 12, borderTopRightRadius: 12, px: 3 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <h3 style={{ margin: 0, fontSize: 18, color: '#111827', fontWeight: 700 }}>BPF Coussins</h3>
+                  <span style={{ background: '#f3f4f6', color: '#4b5563', padding: '2px 8px', borderRadius: 12, fontSize: 12, fontWeight: 600 }}>{rowsCoussins.length} articles</span>
+                </div>
+              </AccordionSummary>
+              <AccordionDetails sx={{ p: 0 }}>
+                <MinuteGrid
+                  rows={rowsCoussins}
+                  onRowsChange={(nr) => handleSubsetChange(nr, /coussin/i)}
+                  schema={DECORS_PROD_SCHEMA.filter(c => !['longueur', 'type_confection', 'mecanisme_fourniture', 'pa_mecanisme', 'pv_mecanisme', 'heures_prepa', 'pv_prepa', 'heures_pose', 'pv_pose', 'st_pose_pa', 'st_pose_pv'].includes(c.key))}
+                  enableCellFormulas={true}
+                  onAdd={() => handleAddRow("Coussins")}
+                  onDuplicateRow={handleDuplicateRow}
+                  projectId={project?.id}
+                  gridKey="bpf_coussins"
+                  onRowClick={(id) => setOpenedRowId(id)}
+                  isMobile={isMobile}
+                />
+              </AccordionDetails>
+            </Accordion>
+          )}
+
+          {rowsCacheSommier.length > 0 && (
+            <Accordion key="bpf_cache_sommier" defaultExpanded disableGutters sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), border: 1px solid #f3f4f6' }}>
+              <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ borderBottom: '1px solid #f3f4f6', backgroundColor: '#fff', borderTopLeftRadius: 12, borderTopRightRadius: 12, px: 3 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <h3 style={{ margin: 0, fontSize: 18, color: '#111827', fontWeight: 700 }}>BPF Cache-Sommier</h3>
+                  <span style={{ background: '#f3f4f6', color: '#4b5563', padding: '2px 8px', borderRadius: 12, fontSize: 12, fontWeight: 600 }}>{rowsCacheSommier.length} articles</span>
+                </div>
+              </AccordionSummary>
+              <AccordionDetails sx={{ p: 0 }}>
+                <MinuteGrid
+                  rows={rowsCacheSommier}
+                  onRowsChange={(nr) => handleSubsetChange(nr, /cache-sommier/i)}
+                  schema={DECORS_PROD_SCHEMA.filter(c => !['type_interieur', 'pa_interieur', 'pv_interieur', 'mecanisme_fourniture', 'pa_mecanisme', 'pv_mecanisme', 'heures_prepa', 'pv_prepa', 'heures_pose', 'pv_pose', 'st_pose_pa', 'st_pose_pv'].includes(c.key))}
+                  enableCellFormulas={true}
+                  onAdd={() => handleAddRow("Cache-Sommier")}
+                  onDuplicateRow={handleDuplicateRow}
+                  projectId={project?.id}
+                  gridKey="bpf_cache_sommier"
+                  onRowClick={(id) => setOpenedRowId(id)}
+                  isMobile={isMobile}
+                />
+              </AccordionDetails>
+            </Accordion>
+          )}
+
+          {rowsPlaid.length > 0 && (
+            <Accordion key="bpf_plaid" defaultExpanded disableGutters sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), border: 1px solid #f3f4f6' }}>
+              <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ borderBottom: '1px solid #f3f4f6', backgroundColor: '#fff', borderTopLeftRadius: 12, borderTopRightRadius: 12, px: 3 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <h3 style={{ margin: 0, fontSize: 18, color: '#111827', fontWeight: 700 }}>BPF Plaids / Chemin de lit</h3>
+                  <span style={{ background: '#f3f4f6', color: '#4b5563', padding: '2px 8px', borderRadius: 12, fontSize: 12, fontWeight: 600 }}>{rowsPlaid.length} articles</span>
+                </div>
+              </AccordionSummary>
+              <AccordionDetails sx={{ p: 0 }}>
+                <MinuteGrid
+                  rows={rowsPlaid}
+                  onRowsChange={(nr) => handleSubsetChange(nr, /plaid/i)}
+                  schema={DECORS_PROD_SCHEMA.filter(c => !['type_confection', 'type_interieur', 'pa_interieur', 'pv_interieur', 'mecanisme_fourniture', 'pa_mecanisme', 'pv_mecanisme', 'heures_prepa', 'pv_prepa', 'heures_pose', 'pv_pose', 'st_pose_pa', 'st_pose_pv'].includes(c.key))}
+                  enableCellFormulas={true}
+                  onAdd={() => handleAddRow("Plaid")}
+                  onDuplicateRow={handleDuplicateRow}
+                  projectId={project?.id}
+                  gridKey="bpf_plaid"
+                  onRowClick={(id) => setOpenedRowId(id)}
+                  isMobile={isMobile}
+                />
+              </AccordionDetails>
+            </Accordion>
+          )}
+
+          {rowsMobilier.length > 0 && (
+            <Accordion key="bpf_mobilier" defaultExpanded disableGutters sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), border: 1px solid #f3f4f6' }}>
+              <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ borderBottom: '1px solid #f3f4f6', backgroundColor: '#fff', borderTopLeftRadius: 12, borderTopRightRadius: 12, px: 3 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <h3 style={{ margin: 0, fontSize: 18, color: '#111827', fontWeight: 700 }}>BPF Mobilier / Tête de Lit</h3>
+                  <span style={{ background: '#f3f4f6', color: '#4b5563', padding: '2px 8px', borderRadius: 12, fontSize: 12, fontWeight: 600 }}>{rowsMobilier.length} articles</span>
+                </div>
+              </AccordionSummary>
+              <AccordionDetails sx={{ p: 0 }}>
+                <MinuteGrid
+                  rows={rowsMobilier}
+                  onRowsChange={(nr) => handleSubsetChange(nr, /tête de lit|mobilier/i)}
+                  schema={DECORS_PROD_SCHEMA.filter(c => !['type_confection', 'type_interieur'].includes(c.key))}
+                  enableCellFormulas={true}
+                  onAdd={() => handleAddRow("Tête de Lit")}
+                  onDuplicateRow={handleDuplicateRow}
+                  projectId={project?.id}
+                  gridKey="bpf_mobilier"
+                  onRowClick={(id) => setOpenedRowId(id)}
+                  isMobile={isMobile}
+                />
+              </AccordionDetails>
+            </Accordion>
+          )}
+
+          {rowsTentureMurale.length > 0 && (
+            <Accordion key="bpf_tenture_murale" defaultExpanded disableGutters sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), border: 1px solid #f3f4f6' }}>
+              <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ borderBottom: '1px solid #f3f4f6', backgroundColor: '#fff', borderTopLeftRadius: 12, borderTopRightRadius: 12, px: 3 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <h3 style={{ margin: 0, fontSize: 18, color: '#111827', fontWeight: 700 }}>BPF Tenture Murale</h3>
+                  <span style={{ background: '#f3f4f6', color: '#4b5563', padding: '2px 8px', borderRadius: 12, fontSize: 12, fontWeight: 600 }}>{rowsTentureMurale.length} articles</span>
+                </div>
+              </AccordionSummary>
+              <AccordionDetails sx={{ p: 0 }}>
+                <MinuteGrid
+                  rows={rowsTentureMurale}
+                  onRowsChange={(nr) => handleSubsetChange(nr, /tenture murale/i)}
+                  schema={DECORS_PROD_SCHEMA.filter(c => !['type_confection', 'longueur', 'tissu_2', 'laize_tissu_2', 'ml_tissu_2', 'pa_tissu_2', 'pv_tissu_2', 'type_interieur', 'pa_interieur', 'pv_interieur', 'passementerie_2', 'app_passementerie_2', 'ml_pass_2', 'pa_pass_2', 'pv_pass_2', 'st_conf_pa', 'st_conf_pv', 'mecanisme_fourniture', 'pa_mecanisme', 'pv_mecanisme', 'heures_prepa', 'pv_prepa'].includes(c.key))}
+                  enableCellFormulas={true}
+                  onAdd={() => handleAddRow("Tenture Murale")}
+                  onDuplicateRow={handleDuplicateRow}
+                  projectId={project?.id}
+                  gridKey="bpf_tenture_murale"
+                  onRowClick={(id) => setOpenedRowId(id)}
+                  isMobile={isMobile}
+                />
+              </AccordionDetails>
+            </Accordion>
           )}
 
           {rowsAutreConfection.length > 0 && (
@@ -973,22 +1124,55 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
           )}
 
           {rowsStores.length > 0 && (
-            <div style={cardStyle}>
-              <div style={cardHeaderStyle}>BPP Stores (Préparation Mécanismes)</div>
-              <MinuteGrid
-                rows={rowsStores}
-                onRowsChange={mergeChildRowsFor("stores")}
-                schema={STORES_PROD_SCHEMA}
-                enableCellFormulas={true}
-                initialVisibilityModel={getVisibilityModel('bpp', 'stores', STORES_PROD_SCHEMA)}
-                onAdd={() => handleAddRow("Store Bateau")}
-                onDuplicateRow={handleDuplicateRow}
-                projectId={project?.id}
-                gridKey="bpp_stores"
-                onRowClick={(id) => setOpenedRowId(id)}
-                isMobile={isMobile}
-              />
-            </div>
+            <Accordion key="bpp_stores" defaultExpanded disableGutters sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), border: 1px solid #f3f4f6' }}>
+              <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ borderBottom: '1px solid #f3f4f6', backgroundColor: '#fff', borderTopLeftRadius: 12, borderTopRightRadius: 12, px: 3 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <h3 style={{ margin: 0, fontSize: 18, color: '#111827', fontWeight: 700 }}>BPP Stores (Préparation Mécanismes)</h3>
+                  <span style={{ background: '#f3f4f6', color: '#4b5563', padding: '2px 8px', borderRadius: 12, fontSize: 12, fontWeight: 600 }}>{rowsStores.length} articles</span>
+                </div>
+              </AccordionSummary>
+              <AccordionDetails sx={{ p: 0 }}>
+                <MinuteGrid
+                  rows={rowsStores}
+                  onRowsChange={mergeChildRowsFor("stores")}
+                  schema={STORES_PROD_SCHEMA}
+                  enableCellFormulas={true}
+                  initialVisibilityModel={getVisibilityModel('bpp', 'stores', STORES_PROD_SCHEMA)}
+                  onAdd={() => handleAddRow("Store Enrouleur")}
+                  onDuplicateRow={handleDuplicateRow}
+                  projectId={project?.id}
+                  gridKey="bpp_stores"
+                  onRowClick={(id) => setOpenedRowId(id)}
+                  isMobile={isMobile}
+                />
+              </AccordionDetails>
+            </Accordion>
+          )}
+
+          {rowsStoresBateaux.length > 0 && (
+            <Accordion key="bpp_stores_bateaux" defaultExpanded disableGutters sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), border: 1px solid #f3f4f6' }}>
+              <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ borderBottom: '1px solid #f3f4f6', backgroundColor: '#fff', borderTopLeftRadius: 12, borderTopRightRadius: 12, px: 3 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <h3 style={{ margin: 0, fontSize: 18, color: '#111827', fontWeight: 700 }}>BPP Stores Bateaux / Velum (Préparation Mécanismes)</h3>
+                  <span style={{ background: '#f3f4f6', color: '#4b5563', padding: '2px 8px', borderRadius: 12, fontSize: 12, fontWeight: 600 }}>{rowsStoresBateaux.length} articles</span>
+                </div>
+              </AccordionSummary>
+              <AccordionDetails sx={{ p: 0 }}>
+                <MinuteGrid
+                  rows={rowsStoresBateaux}
+                  onRowsChange={(nr) => handleSubsetChange(nr, /store (bateau|velum)/i)}
+                  schema={STORES_PROD_SCHEMA}
+                  enableCellFormulas={true}
+                  initialVisibilityModel={getVisibilityModel('bpp', 'stores', STORES_PROD_SCHEMA)}
+                  onAdd={() => handleAddRow("Store Bateau")}
+                  onDuplicateRow={handleDuplicateRow}
+                  projectId={project?.id}
+                  gridKey="bpp_stores_bateaux"
+                  onRowClick={(id) => setOpenedRowId(id)}
+                  isMobile={isMobile}
+                />
+              </AccordionDetails>
+            </Accordion>
           )}
         </>
       )}

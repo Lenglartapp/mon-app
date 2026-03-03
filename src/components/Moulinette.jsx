@@ -3,7 +3,7 @@ import React from "react";
 import { COLORS, S } from "../lib/constants/ui";
 
 const nfEur0 = new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
-const nf0    = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 });
+const nf0 = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 });
 
 export default function Moulinette({ rows = [], extraRows = [], depRows = [] }) {
   // ——— utils ———
@@ -15,91 +15,88 @@ export default function Moulinette({ rows = [], extraRows = [], depRows = [] }) 
 
   // ——— 1) Agrégations “Achats fixes” ———
   const aggr = React.useMemo(() => {
-    const mapTissus = new Map();   // key -> { label, total_ml, total_pa }
-    const mapRails  = new Map();   // key -> { label, total_ml, total_pa }
+    const mapTissus = new Map();
+    const mapRails = new Map();
+    const mapStores = new Map();
 
     const push = (m, key, label) => {
-      if (!m.has(key)) m.set(key, { label, total_ml: 0, total_pa: 0 });
+      if (!m.has(key)) m.set(key, { label, total_ml: 0, total_pa: 0, total_qty: 0 });
       return m.get(key);
+    };
+
+    const processTissu = (ref, motif, ml, paTotal, typeStr = "") => {
+      if (!ref) return;
+      const mlNum = toNum(ml);
+      const paNum = toNum(paTotal);
+      if (mlNum > 0 || paNum > 0) {
+        // Just use the name, no prefix, to group the same item
+        const labelStr = String(ref).trim();
+        const fullLabel = motif ? `${labelStr} — ${motif}` : labelStr;
+        const g = push(mapTissus, fullLabel, fullLabel);
+        g.total_ml += mlNum;
+        g.total_pa += paNum;
+      }
     };
 
     for (const r of rows) {
       const q = qty(r);
 
-      // ---- TISSUS (les PA sont déjà des totaux ligne → on les somme tels quels) ----
-      // Déco 1
-      if (r.tissu_deco1) {
-        const ml = toNum(r.ml_tissu_deco1) * q;     // juste informatif
-        const pa = toNum(r.pa_tissu_deco1);         // déjà un TOTAL ligne
-        if (ml > 0 || pa > 0) {
-          const label = r.motif_deco1 ? `${r.tissu_deco1} — ${r.motif_deco1}` : String(r.tissu_deco1);
-          const g = push(mapTissus, `T1|${label}`, label);
-          g.total_ml += ml;
-          g.total_pa += pa;                          // ✅ somme directe
-        }
-      }
+      // ---- TISSUS ----
+      processTissu(r.tissu_deco1, r.motif_deco1, toNum(r.ml_tissu_deco1) * q, r.pa_tissu_deco1);
+      processTissu(r.tissu_deco2, r.motif_deco2, toNum(r.ml_tissu_deco2) * q, r.pa_tissu_deco2);
+      processTissu(r.doublure, null, toNum(r.ml_doublure) * q, r.pa_doublure);
+      processTissu(r.inter_doublure, null, toNum(r.ml_inter) * q, r.pa_inter);
+      // Other schema variations (decors, etc.)
+      processTissu(r.tissu_1, null, toNum(r.ml_tissu_1) * q, r.pa_tissu_1);
+      processTissu(r.tissu_2, null, toNum(r.ml_tissu_2) * q, r.pa_tissu_2);
+      processTissu(r.molleton, null, toNum(r.ml_molleton) * q, r.pa_molleton);
+      processTissu(r.toile_finition_1, null, toNum(r.ml_toile_finition_1) * q, r.pa_toile_finition_1);
 
-      // Déco 2
-      if (r.tissu_deco2) {
-        const ml = toNum(r.ml_tissu_deco2) * q;
-        const pa = toNum(r.pa_tissu_deco2);
-        if (ml > 0 || pa > 0) {
-          const label = r.motif_deco2 ? `${r.tissu_deco2} — ${r.motif_deco2}` : String(r.tissu_deco2);
-          const g = push(mapTissus, `T2|${label}`, label);
-          g.total_ml += ml;
-          g.total_pa += pa;                          // ✅ somme directe
-        }
-      }
+      // ---- RAILS / STORE MÉCANISMES ----
+      const prodStr = String(r.produit || "");
+      const isBateau = /bateau|vélum|velum/i.test(prodStr);
+      const isStore = /store|canishade/i.test(prodStr) && !isBateau;
 
-      // Doublure
-      if (r.doublure) {
-        const ml = toNum(r.ml_doublure) * q;
-        const pa = toNum(r.pa_doublure);
-        if (ml > 0 || pa > 0) {
-          const label = `Doublure — ${String(r.doublure)}`;
-          const g = push(mapTissus, `D|${label}`, label);
-          g.total_ml += ml;
-          g.total_pa += pa;                          // ✅ somme directe
+      if (isStore) {
+        // ---- STORES ----
+        const storeName = String(r.mecanisme_store || r.modele_mecanisme || r.nom_tringle || "").trim();
+        // PA could be either in pa_mecanisme_store or pa_mecanisme
+        const paStoreNum = toNum(r.pa_mecanisme_store) > 0 ? toNum(r.pa_mecanisme_store) : (toNum(r.pa_meca) + toNum(r.pa_mecanisme));
+        if (storeName && paStoreNum > 0) {
+          const g = push(mapStores, storeName, storeName);
+          g.total_qty += q;
+          g.total_pa += paStoreNum;
         }
-      }
+      } else {
+        // ---- RAILS / TRINGLES ----
+        const railName = String(r.nom_tringle || r.modele_mecanisme || r.mecanisme_fourniture || "").trim();
+        const lMecaCm = toNum(r.l_mecanisme || r.largeur_mecanisme);
+        const paMecaTotalLigne = toNum(r.pa_meca) + toNum(r.pa_mecanisme) + toNum(r.pa_mecanisme_bis);
 
-      // Inter-doublure
-      if (r.inter_doublure) {
-        const ml = toNum(r.ml_inter) * q;
-        const pa = toNum(r.pa_inter);
-        if (ml > 0 || pa > 0) {
-          const label = `Inter-doublure — ${String(r.inter_doublure)}`;
-          const g = push(mapTissus, `I|${label}`, label);
-          g.total_ml += ml;
-          g.total_pa += pa;                          // ✅ somme directe
+        if (railName && (lMecaCm > 0 || paMecaTotalLigne > 0)) {
+          const mlMeters = (lMecaCm * q) / 100;
+          const g = push(mapRails, railName, railName);
+          g.total_ml += mlMeters;
+          g.total_pa += paMecaTotalLigne;
         }
-      }
-
-      // ---- RAILS / MÉCANISMES (groupé par nom_tringle) ----
-      const name = String(r.nom_tringle || "").trim();
-      const lmCm = toNum(r.l_mecanisme);            // en CM dans tes minutes
-      const paMecaTotalLigne = toNum(r.pa_meca);    // ✅ déjà un TOTAL ligne (pas au mètre)
-      if (name && (lmCm > 0 || paMecaTotalLigne > 0)) {
-        const mlMeters = (lmCm * q) / 100;          // ✅ conversion cm→m et × quantite
-        const g = push(mapRails, name, name);
-        g.total_ml += mlMeters;                      // ✅ somme ML en mètres
-        g.total_pa += paMecaTotalLigne;              // ✅ somme directe des PA lignes
       }
     }
 
-    const tissus = Array.from(mapTissus.values()).sort((a,b) => a.label.localeCompare(b.label, "fr", { numeric:true }));
-    const rails  = Array.from(mapRails.values()).sort((a,b) => a.label.localeCompare(b.label, "fr", { numeric:true }));
+    const tissus = Array.from(mapTissus.values()).sort((a, b) => a.label.localeCompare(b.label, "fr", { numeric: true }));
+    const rails = Array.from(mapRails.values()).sort((a, b) => a.label.localeCompare(b.label, "fr", { numeric: true }));
+    const stores = Array.from(mapStores.values()).sort((a, b) => a.label.localeCompare(b.label, "fr", { numeric: true }));
 
-    const totalTissus = tissus.reduce((s,g)=> s + g.total_pa, 0);
-    const totalRails  = rails.reduce((s,g)=> s + g.total_pa, 0);
+    const totalTissus = tissus.reduce((s, g) => s + g.total_pa, 0);
+    const totalRails = rails.reduce((s, g) => s + g.total_pa, 0);
+    const totalStores = stores.reduce((s, g) => s + g.total_pa, 0);
 
-    return { tissus, rails, totalTissus, totalRails, achatsFixes: totalTissus + totalRails };
+    return { tissus, rails, stores, totalTissus, totalRails, totalStores, achatsFixes: totalTissus + totalRails + totalStores };
   }, [rows, toNum]);
 
   // ——— 2) Achats variables ———
   const achatsVariables = React.useMemo(() => {
-    const extras   = (extraRows || []).reduce((s, r) => s + toNum(r?.montant_eur), 0);
-    const depTotal = (depRows   || []).reduce((s, r) => s + toNum(r?.total_eur), 0);
+    const extras = (extraRows || []).reduce((s, r) => s + toNum(r?.montant_eur), 0);
+    const depTotal = (depRows || []).reduce((s, r) => s + toNum(r?.total_eur), 0);
     return { extras, depTotal, total: extras + depTotal };
   }, [extraRows, depRows, toNum]);
 
@@ -109,7 +106,7 @@ export default function Moulinette({ rows = [], extraRows = [], depRows = [] }) 
     [rows, toNum]
   );
   const caTotal = caMinutes + achatsVariables.extras + achatsVariables.depTotal;
-  const margeBrute   = caTotal - aggr.achatsFixes;
+  const margeBrute = caTotal - aggr.achatsFixes;
   const contribution = margeBrute - achatsVariables.total;
 
   // ——— 4) Heures & contrib horaire ———
@@ -154,9 +151,9 @@ export default function Moulinette({ rows = [], extraRows = [], depRows = [] }) 
         <GroupsTable
           groups={aggr.tissus}
           columns={[
-            { key: "label",    header: "Référence" },
-            { key: "total_ml", header: "Somme ML", fmt: (v)=> `${nf0.format(v)} ml` },
-            { key: "total_pa", header: "Somme PA", fmt: (v)=> nfEur0.format(v) },
+            { key: "label", header: "Référence" },
+            { key: "total_ml", header: "Somme ML", fmt: (v) => `${nf0.format(v)} ml` },
+            { key: "total_pa", header: "Somme PA", fmt: (v) => nfEur0.format(v) },
           ]}
           emptyMsg="Aucun tissu détecté."
         />
@@ -166,11 +163,23 @@ export default function Moulinette({ rows = [], extraRows = [], depRows = [] }) 
         <GroupsTable
           groups={aggr.rails}
           columns={[
-            { key: "label",    header: "Nom mécanisme" },
-            { key: "total_ml", header: "Somme ML", fmt: (v)=> `${nf0.format(v)} ml` },
-            { key: "total_pa", header: "Somme PA", fmt: (v)=> nfEur0.format(v) },
+            { key: "label", header: "Modèle mécanisme" },
+            { key: "total_ml", header: "Somme ML", fmt: (v) => `${nf0.format(v)} ml` },
+            { key: "total_pa", header: "Somme PA", fmt: (v) => nfEur0.format(v) },
           ]}
-          emptyMsg="Aucun rail/mécanisme détecté."
+          emptyMsg="Aucun rail/mécanisme détecté (ou stores bateaux)."
+        />
+
+        <div style={{ height: 10 }} />
+        <SubTitle>Stores Confectionnés</SubTitle>
+        <GroupsTable
+          groups={aggr.stores}
+          columns={[
+            { key: "label", header: "Modèle Store" },
+            { key: "total_qty", header: "Quantité", fmt: (v) => `${nf0.format(v)} u` },
+            { key: "total_pa", header: "Somme PA", fmt: (v) => nfEur0.format(v) },
+          ]}
+          emptyMsg="Aucun store détecté (Enrouleur, Vénitien, Californien, etc)."
         />
       </ExpandableSection>
 
@@ -180,9 +189,9 @@ export default function Moulinette({ rows = [], extraRows = [], depRows = [] }) 
         <ListTable
           rows={extraRows}
           columns={[
-            { key: "categorie",   header: "Catégorie" },
-            { key: "libelle",     header: "Libellé" },
-            { key: "montant_eur", header: "Montant (€)", fmt: (v)=> nfEur0.format(toNum(v)) },
+            { key: "categorie", header: "Catégorie" },
+            { key: "libelle", header: "Libellé" },
+            { key: "montant_eur", header: "Montant (€)", fmt: (v) => nfEur0.format(toNum(v)) },
           ]}
           emptyMsg="Aucune dépense saisie."
         />
@@ -193,7 +202,7 @@ export default function Moulinette({ rows = [], extraRows = [], depRows = [] }) 
           rows={depRows}
           columns={[
             { key: "type_deplacement", header: "Type" },
-            { key: "total_eur",        header: "Total (€)", fmt: (v)=> nfEur0.format(toNum(v)) },
+            { key: "total_eur", header: "Total (€)", fmt: (v) => nfEur0.format(toNum(v)) },
           ]}
           emptyMsg="Aucun déplacement."
         />

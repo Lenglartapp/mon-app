@@ -89,3 +89,9 @@ button{ background:none; border:0; padding:0; margin:0; font:inherit; color:inhe
   color: #9ca3af !important;
   cursor: not-allowed !important;
 }
+
+/* MUI DataGrid Hacks */
+/* Hide the sort arrow to free up space in headers, user can still sort via the 3-dots menu */
+.MuiDataGrid-iconButtonContainer {
+  display: none !important;
+}

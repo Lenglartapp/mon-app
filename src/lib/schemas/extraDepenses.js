@@ -7,7 +7,6 @@ export const EXTRA_DEPENSES_SCHEMA = [
       'Transport Vente',
       'Transport Sous-Traitance',
       'Commission Partenaire',
-      'Commission Commerciale Interne',
       'Intérim',
       'Aide ST Pose',
       'Aide ST Conf'
