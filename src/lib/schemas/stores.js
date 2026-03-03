@@ -33,17 +33,164 @@ export const STORES_SCHEMA = [
     // largeur (number) : Largeur
     { key: "largeur", label: "Largeur", type: "number", width: 90 },
 
-    // a_plat (number, readOnly) : À Plat  -> BLOCKED if Enrouleur etc
-    { key: "a_plat", label: "À Plat", type: "number", width: 100, readOnly: (row) => true }, // Prompt says readOnly. AND Blocked implies readOnly.
+    // largeur_finie (number) : Largeur Finie -> For Stores Bateaux, it's (Largeur + 1)
+    {
+        key: "largeur_finie",
+        label: "L. Finie",
+        type: "number",
+        width: 100,
+        readOnly: true,
+        valueGetter: (value, row) => {
+            const actualRow = row || value?.row || {}; // MUI V5/V6 fallback
+            const l = Number(actualRow.largeur) || 0;
+            return Math.round((l + 1) * 10) / 10;
+        }
+    },
 
-    // hauteur (number) : Hauteur
+    // ourlet_de_cote (number) : Ourlet de côté
+    { key: "ourlet_de_cote", label: "Ourlet Côté", type: "number", width: 100 },
+
+    // a_plat (number, readOnly) : À Plat  -> BLOCKED if Enrouleur etc. For Bateaux: Largeur Finie + (Ourlet * 2)
+    {
+        key: "a_plat",
+        label: "À Plat",
+        type: "number",
+        width: 100,
+        readOnly: (row) => true,
+        valueGetter: (value, row) => {
+            const actualRow = row || value?.row || {};
+            if (!/bateau|velum/i.test(actualRow.produit || '')) return actualRow.a_plat;
+            const L = Number(actualRow.largeur) || 0;
+            const lFinie = L + 1; // Formula applies
+            const ourlet = Number(actualRow.ourlet_de_cote) || 0;
+            return Math.round((lFinie + (ourlet * 2)) * 10) / 10;
+        }
+    },
+
+    // hauteur (number) : Hauteur (Pour Stores classiques)
     { key: "hauteur", label: "Hauteur", type: "number", width: 90 },
 
-    // hauteur_coupe (number, readOnly) : H. Coupe -> BLOCKED
-    { key: "hauteur_coupe", label: "H. Coupe", type: "number", width: 100, readOnly: (row) => true },
+    // hauteur_finie (number) : Hauteur Finie
+    { key: "hauteur_finie", label: "H. Finie", type: "number", width: 90 },
 
-    // hauteur_coupe_motif (number, readOnly) : H. Motif -> BLOCKED
-    { key: "hauteur_coupe_motif", label: "H. Motif", type: "number", width: 100, readOnly: (row) => true },
+    // statut_cotes (select) : Statut Côtes
+    {
+        key: "statut_cotes",
+        label: "Statut Côtes",
+        type: "select",
+        options: ["Définitive", "Déduction restante à faire", "Non exploitable"],
+        width: 150
+    },
+
+    // hauteur_coupe (number, readOnly) : H. Coupe
+    {
+        key: "hauteur_coupe",
+        label: "H. Coupe",
+        type: "number",
+        width: 100,
+        readOnly: (row) => true,
+        valueGetter: (value, row) => {
+            const actualRow = row || value?.row || {};
+            if (!/bateau|velum/i.test(actualRow.produit || '')) return actualRow.hauteur_coupe;
+            const hFinie = Number(actualRow.hauteur_finie) || 0;
+            const laize = Number(actualRow.laize_toile_finition_1) || 0; // Using TF1 Laize as reference
+            // Also need "a_plat" value. We must re-calculate it to stand independently from the Grid's dependency tree
+            const L = Number(actualRow.largeur) || 0;
+            const lFinie = L + 1;
+            const ourlet = Number(actualRow.ourlet_de_cote) || 0;
+            const aPlat = (lFinie + (ourlet * 2));
+
+            let val = 0;
+            if (hFinie < 400) {
+                if (laize > (hFinie + 50)) {
+                    val = aPlat;
+                } else {
+                    val = hFinie + 50;
+                }
+            } else {
+                if (laize > (hFinie + 80)) {
+                    val = aPlat;
+                } else {
+                    val = hFinie + 80;
+                }
+            }
+            return Math.round(val * 10) / 10;
+        }
+    },
+
+    // hauteur_coupe_motif (number, readOnly) : H. Coupe Motif
+    {
+        key: "hauteur_coupe_motif",
+        label: "H. Coupe Motif",
+        type: "number",
+        width: 130,
+        readOnly: (row) => true,
+        valueGetter: (value, row) => {
+            const actualRow = row || value?.row || {};
+            if (!/bateau|velum/i.test(actualRow.produit || '')) return actualRow.hauteur_coupe_motif;
+            // Re-calculate H. Coupe for scope
+            const hFinie = Number(actualRow.hauteur_finie) || 0;
+            const laize = Number(actualRow.laize_toile_finition_1) || 0;
+            const L = Number(actualRow.largeur) || 0;
+            const lFinie = L + 1;
+            const ourlet = Number(actualRow.ourlet_de_cote) || 0;
+            const aPlat = (lFinie + (ourlet * 2));
+
+            let hCoupe = 0;
+            if (hFinie < 400) {
+                hCoupe = (laize > (hFinie + 50)) ? aPlat : (hFinie + 50);
+            } else {
+                hCoupe = (laize > (hFinie + 80)) ? aPlat : (hFinie + 80);
+            }
+
+            const raccordV = Number(actualRow.raccord_v_toile_finition_1) || 0;
+            if (raccordV === 0) return 0; // Prevent division by zero if not set
+
+            const val = (Math.ceil(hCoupe / raccordV) * raccordV) + raccordV;
+            return Math.round(val * 10) / 10;
+        }
+    },
+
+    // hauteur_coupe_doublure (number, readOnly) : H. Coupe Doublure
+    {
+        key: "hauteur_coupe_doublure",
+        label: "H. Coupe Doublure",
+        type: "number",
+        width: 140,
+        readOnly: (row) => true,
+        valueGetter: (value, row) => {
+            const actualRow = row || value?.row || {};
+            if (!/bateau|velum/i.test(actualRow.produit || '')) return actualRow.hauteur_coupe_doublure;
+            const hFinie = Number(actualRow.hauteur_finie) || 0;
+            const laizeDouble = Number(actualRow.laize_doublure) || 0;
+            const L = Number(actualRow.largeur) || 0;
+            const lFinie = L + 1;
+            const ourlet = Number(actualRow.ourlet_de_cote) || 0;
+            const aPlat = (lFinie + (ourlet * 2));
+
+            let val = 0;
+            if (hFinie < 400) {
+                if (laizeDouble > (hFinie + 50)) {
+                    val = aPlat;
+                } else {
+                    val = hFinie + 50;
+                }
+            } else {
+                if (laizeDouble > (hFinie + 80)) {
+                    val = aPlat;
+                } else {
+                    val = hFinie + 80;
+                }
+            }
+            return Math.round(val * 10) / 10;
+        }
+    },
+
+    // picage_bas (text)
+    { key: "picage_bas", label: "Picage bas", type: "text", width: 150 },
+
+    // finition_chant_et_retour (text)
+    { key: "finition_chant_et_retour", label: "Finition Chant et Retour", type: "text", width: 180 },
 
     // toil_finition_1 (text/catalog) : toile finition 1 -> BLOCKED
     // Using catalog_item as agreed
@@ -90,12 +237,101 @@ export const STORES_SCHEMA = [
 
     // mecanisme_store (text/catalog) : Meca store -> NOT BLOCKED (No mention specifically? Prompt says "BLOQUER... st_pose_pv" ending list. Meca not in list.)
     // Prompt list of blocked: ... pv_doublure, st_pose_pa, st_pose_pv.
-    // Wait, prompt says: "BLOQUER... pa_toile..., doublure..., pv_doublure, st_pose_pa, st_pose_pv".
-    // It does NOT mention `mecanisme_store` in the BLOCK list.
-    // So Meca remains editable even for Enrouleur?
-    // "Store Enrouleur" IS a mechanism basically. So user likely wants to select the Mechanism.
-    // So I will Keep it Editable.
+    // etiquette_lavage (select)
+    { key: "etiquette_lavage", label: "Étiq. Lavage", type: "select", options: ["Oui", "Non"], width: 100 },
+
+    // mecanisme_store (text/catalog) : Meca store
     { key: "mecanisme_store", label: "Méca Store", type: "catalog_item", category: "Store,Stores,Mecanisme Store", width: 140 },
+
+    // couleur_mecanisme (text)
+    { key: "couleur_mecanisme", label: "Couleur Méca", type: "text", width: 140 },
+
+    // type_commande (select)
+    { key: "type_commande", label: "Type Commande", type: "select", options: ["Télécommande", "Commande murale", "Fourni par le client"], width: 150 },
+
+    // type_moteur (text)
+    { key: "type_moteur", label: "Type Moteur", type: "text", width: 120 },
+
+    // cote_manoeuvre (select)
+    { key: "cote_manoeuvre", label: "Côté Manœuvre", type: "select", options: ["Droite", "Gauche"], width: 120 },
+
+    // methode_manoeuvre (select)
+    { key: "methode_manoeuvre", label: "Méthode Manœuvre", type: "select", options: ["Cabestan", "Freel", "Cordon", "Chaînette"], width: 140 },
+
+    // equerre_support (text)
+    { key: "equerre_support", label: "Équerre Support", type: "text", width: 130 },
+
+    // nombre_anneaux_largeur (number)
+    {
+        key: "nombre_anneaux_largeur",
+        label: "Nb Anneaux Larg.",
+        type: "number",
+        width: 140,
+        readOnly: true,
+        valueGetter: (v, row) => {
+            const actualRow = row || v?.row || {};
+            if (!/bateau|velum/i.test(actualRow.produit || '')) return actualRow.nombre_anneaux_largeur;
+            const L = Number(actualRow.largeur) || 0;
+            const lFinie = L + 1;
+            return Math.round(lFinie / 50) + 1;
+        }
+    },
+
+    // deportation_premier_anneau (text)
+    { key: "deportation_premier_anneau", label: "Déport 1er Anneau", type: "text", width: 150 },
+
+    // valeur_velcro (select)
+    { key: "valeur_velcro", label: "Valeur Velcro", type: "select", options: ["2", "2.5", "5"], width: 120 },
+
+    // nombre_intervalles (number)
+    {
+        key: "nombre_intervalles",
+        label: "Nb Intervalles",
+        type: "number",
+        width: 120,
+        readOnly: true,
+        valueGetter: (v, row) => {
+            const actualRow = row || v?.row || {};
+            if (!/bateau|velum/i.test(actualRow.produit || '')) return actualRow.nombre_intervalles;
+            const hFinie = Number(actualRow.hauteur_finie) || 0;
+            const vIntervalle = Number(actualRow.valeur_intervalle) || 0;
+            if (vIntervalle <= 0) return 0;
+            return Math.max(0, Math.round(hFinie / vIntervalle));
+        }
+    },
+
+    // valeur_intervalle (number)
+    { key: "valeur_intervalle", label: "Val. Intervalle", type: "number", width: 120 },
+
+    // croquis_intervalle (photo)
+    { key: "croquis_intervalle", label: "Croquis Int.", type: "photo", width: 120 },
+
+    // barre_de_charge (text)
+    { key: "barre_de_charge", label: "Barre Charge", type: "text", width: 120 },
+
+    // longueur_barre_de_charge (number)
+    { key: "longueur_barre_de_charge", label: "Long. Barre Ch.", type: "number", width: 130 },
+
+    // longueur_tigette (number)
+    { key: "longueur_tigette", label: "Long. Tigette", type: "number", width: 120 },
+
+    // nombre_de_tigettes (number)
+    {
+        key: "nombre_de_tigettes",
+        label: "Nb Tigettes",
+        type: "number",
+        width: 110,
+        readOnly: true,
+        valueGetter: (v, row) => {
+            const actualRow = row || v?.row || {};
+            if (!/bateau|velum/i.test(actualRow.produit || '')) return actualRow.nombre_de_tigettes;
+            const hFinie = Number(actualRow.hauteur_finie) || 0;
+            const vIntervalle = Number(actualRow.valeur_intervalle) || 0;
+            if (vIntervalle <= 0) return 0;
+            const nbInt = Math.max(0, Math.round(hFinie / vIntervalle));
+            return Math.max(0, nbInt - 1);
+        }
+    },
 
     // pa_mecanisme_store (number) : PA Méca
     { key: "pa_mecanisme_store", label: "PA Méca", type: "number", width: 90 },
@@ -136,11 +372,23 @@ export const STORES_SCHEMA = [
     // livraison (number) : Livraison
     { key: "livraison", label: "Livraison", type: "number", width: 90 },
 
+    // statut_pose (select)
+    { key: "statut_pose", label: "Statut Pose", type: "select", options: ['Non démarré', 'Méca posé', 'Accroché', 'Terminé', 'Reprise'], width: 140 },
+
+    // statut_prepa (select)
+    { key: "statut_prepa", label: "Statut Prépa", type: "select", options: ['Non démarré', 'En cours', 'Terminé'], width: 140 },
+
+    // statut_conf (select)
+    { key: "statut_conf", label: "Statut Conf", type: "select", options: ['Non démarré', 'En cours', 'Terminé'], width: 140 },
+
     // unit_price (number, readOnly) : P.U -> UNLOCKED
     { key: "unit_price", label: "P.U", type: "number", width: 110, valueFormatter: (value) => new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(value) },
 
     // quantite (number) : Qté
     { key: "quantite", label: "Qté", type: "number", width: 70 },
+
+    // photo (photo/file)
+    { key: "photo", label: "Photo sur site", type: "photo", width: 150 },
 
     // total_price (number, readOnly) : Total -> UNLOCKED (Should be calc usually but request says no grey)
     { key: "total_price", label: "Total", type: "number", width: 120 },
@@ -154,11 +402,24 @@ const hideZero = (params) => {
     return val;
 };
 
-export const STORES_PROD_SCHEMA = [
+const mapSchema = (list) => list.map(def => {
+    if (typeof def === 'string') {
+        const found = STORES_SCHEMA.find(c => c.key === def || c.field === def);
+        return found ? found : null;
+    }
+    if (!def.key && def.field) def.key = def.field;
+    const base = STORES_SCHEMA.find(c => c.key === def.key);
+    return base ? { ...base, ...def } : def;
+}).filter(Boolean).map(c => ({ ...c, key: c.key || c.field }));
+
+// Classic Stores Schema
+export const STORES_PROD_SCHEMA = mapSchema([
     'detail',
     'zone', 'piece', 'produit',
+    { key: "largeur", width: 100 }, // Ensure it appears, but without the special width overrides if any
     'a_plat', // Largeur à plat
-    'hauteur', 'hauteur_coupe', 'hauteur_coupe_motif',
+    'hauteur', 'hauteur_coupe',
+    { key: "hauteur_coupe_motif", label: "H. Motif", width: 100 }, // Classic label
 
     // TOILE 1
     'toile_finition_1',
@@ -186,16 +447,65 @@ export const STORES_PROD_SCHEMA = [
     'st_pose_pa', // ST POSE PA
 
     // TOTAUX
-    'quantite',
-    'total_price'
-].map(def => {
-    // If string, find in main schema
-    if (typeof def === 'string') {
-        const found = STORES_SCHEMA.find(c => c.key === def || c.field === def);
-        return found ? found : null;
-    }
-    // If object, find and merge
-    if (!def.key && def.field) def.key = def.field; // Normalize before search
-    const base = STORES_SCHEMA.find(c => c.key === def.key);
-    return base ? { ...base, ...def } : def; // Merge overrides or return as is
-}).filter(Boolean).map(c => ({ ...c, key: c.key || c.field })); // Ensure key exists (STORES uses 'key', Decors used 'field', normalizing)
+    'quantite'
+]);
+
+// Stores Bateaux Schema
+export const STORES_BATEAUX_PROD_SCHEMA = mapSchema([
+    'detail',
+    'zone', 'piece', 'produit',
+    'largeur', 'largeur_finie', 'ourlet_de_cote',
+    'a_plat', // Largeur à plat
+    'hauteur_finie', 'statut_cotes', 'hauteur_coupe', 'hauteur_coupe_motif', 'hauteur_coupe_doublure',
+    'picage_bas', 'finition_chant_et_retour',
+
+    // TOILE 1
+    { key: 'toile_finition_1', label: 'Tissu 1' },
+    'raccord_v_toile_finition_1', // Raccord VTF1
+    'raccord_h_toile_finition_1', // Raccord HDF1
+    'laize_toile_finition_1', // Nom de LTF1 (Confirmed as Laize)
+
+    // DOUBLURE
+    'doublure',
+    'laize_doublure', // Lest doublure (Confirmed as Laize)
+
+    // MECANISME
+    'etiquette_lavage',
+    'mecanisme_store', // M Castor
+    'couleur_mecanisme',
+    'type_commande',
+    'type_moteur',
+    'cote_manoeuvre',
+    'methode_manoeuvre',
+    'equerre_support',
+    'nombre_anneaux_largeur',
+    'deportation_premier_anneau',
+    'valeur_velcro',
+    'nombre_intervalles',
+    'valeur_intervalle',
+    'croquis_intervalle',
+    'barre_de_charge',
+    'longueur_barre_de_charge',
+    'longueur_tigette',
+    'nombre_de_tigettes',
+
+    // POSE
+    'type_pose',
+
+    // HEURES (Hide if 0)
+    { key: 'heures_prepa', valueFormatter: hideZero },
+    { key: 'heures_pose', valueFormatter: hideZero },
+    { key: 'heures_confection', valueFormatter: hideZero },
+
+    // SOUS-TRAITANCE
+    'st_pose_pa', // ST POSE PA
+
+    // STATUTS
+    'statut_prepa',
+    'statut_conf',
+    'statut_pose',
+
+    // TOTAUX
+    'photo',
+    'quantite'
+]);
