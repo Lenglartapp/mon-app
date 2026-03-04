@@ -37,8 +37,26 @@ export const PLAID_SCHEMA = [
 
     createCol('largeur', 'Largeur', 80, 'number'),
     createCol('hauteur', 'Hauteur', 80, 'number'),
-    // IMPORTANT: In plaid, historical data uses 'longueur' but it is displayed as 'Épaisseur'.
-    createCol('longueur', 'Épaisseur', 80, 'number'),
+
+    createCol('largeur_coupe', 'Larg. Coupe', 100, 'number', {
+        editable: false,
+        readOnly: true,
+        valueGetter: (value, row) => {
+            const r = row || value?.row || {};
+            const l = Number(r.largeur) || 0;
+            return l + 5;
+        }
+    }),
+
+    createCol('hauteur_coupe', 'Haut. Coupe', 100, 'number', {
+        editable: false,
+        readOnly: true,
+        valueGetter: (value, row) => {
+            const r = row || value?.row || {};
+            const h = Number(r.hauteur) || 0;
+            return h + 5;
+        }
+    }),
 
     createCol('tissu_1', 'Tissu 1', 180, 'catalog_item', { category: 'Tissu' }),
     createCol('laize_tissu_1', 'Laize 1', 70, 'number'),
@@ -65,6 +83,7 @@ export const PLAID_SCHEMA = [
     createCol('pv_pass_2', 'PV P2', 70, 'number'),
 
     createCol('molleton', 'Molleton', 180, 'catalog_item', { category: 'Tissu' }),
+    createCol('laize_molleton', 'Laize Mol.', 70, 'number'),
     createCol('ml_molleton', 'ML Mol.', 70, 'number'),
     createCol('pa_molleton', 'PA Mol.', 70, 'number'),
     createCol('pv_molleton', 'PV Mol.', 70, 'number'),
@@ -88,35 +107,26 @@ const hideZero = (params) => {
     return val;
 };
 
-const renderSubcontractor = (params, context) => {
-    let row = context;
-    if (!row && params && params.api) row = params.api.getRow(params.id);
-    if (!row && params && params.row) row = params.row;
-    const stVal = Number(row?.st_conf_pa || 0);
-    const val = (params && typeof params === 'object' && 'value' in params) ? params.value : params;
-    if (stVal <= 0) return '';
-    return val;
-};
-
 export const PLAID_PROD_SCHEMA = [
     'detail',
     'zone', 'piece', 'produit', 'realise_par',
-    'largeur', 'hauteur', 'longueur', // longueur is labeled as Épaisseur
+    {
+        field: 'nom_sous_traitant',
+        headerName: 'Nom Sous-Traitant',
+        width: 150,
+        type: 'text',
+        editable: true,
+        readOnly: (row) => row?.realise_par !== 'Sous-Traitant'
+    },
+    'largeur', 'hauteur', 'largeur_coupe', 'hauteur_coupe',
     'tissu_1', 'laize_tissu_1', 'ml_tissu_1',
     'tissu_2', 'laize_tissu_2', 'ml_tissu_2',
+    'molleton', 'laize_molleton', 'ml_molleton',
     'passementerie_1', 'app_passementerie_1', 'ml_pass_1',
     'passementerie_2', 'app_passementerie_2', 'ml_pass_2',
     { field: 'heures_confection', valueFormatter: hideZero },
-    'quantite',
-    // We add schema_photo only for Prod
     createCol('schema_photo', 'Schéma', 120, 'photo'),
-    {
-        field: 'sous_traite_par',
-        headerName: 'Sous-traité par',
-        width: 150,
-        editable: true,
-        valueFormatter: renderSubcontractor
-    }
+    'quantite',
 ].map(def => {
     if (typeof def === 'string') return PLAID_SCHEMA.find(c => c.field === def || c.key === def) || { field: def, headerName: def };
     if (!def.field && def.key) def.field = def.key;
