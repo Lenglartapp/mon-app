@@ -36,13 +36,48 @@ export const CACHE_SOMMIER_SCHEMA = [
     }),
 
     createCol('type_confection', 'Confection', 150, 'singleSelect', {
-        valueOptions: ['Confection boîte', 'Plissé Dior 2 plis', 'Plissé Dior 4 plis']
+        valueOptions: ['Confection boîte', 'Plis Dior']
     }),
 
     createCol('largeur', 'Largeur', 80, 'number'),
     createCol('longueur', 'Longueur', 80, 'number'),
+
+    createCol('longueur_coupe', 'Long. Coupe', 110, 'number', {
+        editable: false,
+        readOnly: true,
+        valueGetter: (value, row) => {
+            const r = row || value?.row || {};
+            const laize = Number(r.laize_tissu_1) || 0;
+            const long = Number(r.longueur) || 0;
+            const larg = Number(r.largeur) || 0;
+            const conf = r.type_confection || '';
+            const nbPlis = Number(r.nb_plis_dior) || 0;
+
+            if (laize >= 125 && laize <= 155) {
+                if (conf.toLowerCase().includes('boîte') || conf.toLowerCase().includes('boite')) {
+                    return (2 * long) + larg + 14;
+                } else if (conf.toLowerCase().includes('dior')) {
+                    return (2 * long) + larg + (nbPlis * 40) + 14;
+                }
+            }
+            return r.longueur_coupe || '';
+        }
+    }),
+
     createCol('hauteur', 'Hauteur', 80, 'number'),
-    createCol('epaisseur', 'Épaisseur', 80, 'number'),
+
+    createCol('ourlet_bas', 'Ourlet bas', 80, 'number'),
+
+    createCol('a_plat', 'À plat', 80, 'number', {
+        editable: false,
+        readOnly: true,
+        valueGetter: (value, row) => {
+            const r = row || value?.row || {};
+            const h = Number(r.hauteur) || 0;
+            const ob = Number(r.ourlet_bas) || 0;
+            return h + ob + 6.5;
+        }
+    }),
 
     createCol('tissu_1', 'Tissu 1', 180, 'catalog_item', { category: 'Tissu' }),
     createCol('laize_tissu_1', 'Laize 1', 70, 'number'),
@@ -67,11 +102,31 @@ export const CACHE_SOMMIER_SCHEMA = [
     createCol('pa_pass_1', 'PA P1', 70, 'number'),
     createCol('pv_pass_1', 'PV P1', 70, 'number'),
 
-    createCol('passementerie_2', 'Passementerie 2', 180, 'catalog_item', { category: 'Passementerie' }),
-    createCol('app_passementerie_2', 'Application Passementerie 2', 180, 'text'),
-    createCol('ml_pass_2', 'ML P2', 70, 'number'),
-    createCol('pa_pass_2', 'PA P2', 70, 'number'),
-    createCol('pv_pass_2', 'PV P2', 70, 'number'),
+    createCol('largeur_satinette', 'Larg. Satinette', 110, 'number', {
+        editable: false,
+        readOnly: true,
+        valueGetter: (value, row) => {
+            const r = row || value?.row || {};
+            const l = Number(r.largeur) || 0;
+            return l - 7;
+        }
+    }),
+
+    createCol('longueur_satinette', 'Long. Satinette', 110, 'number', {
+        editable: false,
+        readOnly: true,
+        valueGetter: (value, row) => {
+            const r = row || value?.row || {};
+            const long = Number(r.longueur) || 0;
+            return long + 16.5;
+        }
+    }),
+
+    createCol('nb_plis_dior', 'Nb plis Dior', 80, 'number'),
+    createCol('finition_plis_dior', 'Finition plis Dior', 150, 'text'),
+    createCol('doublure', 'Doublure', 100, 'singleSelect', {
+        valueOptions: ['Oui', 'Non']
+    }),
 
     createCol('heures_confection', 'H. Conf', 80, 'number'),
     createCol('pv_confection', 'PV Conf', 80, 'number'),
@@ -92,35 +147,26 @@ const hideZero = (params) => {
     return val;
 };
 
-const renderSubcontractor = (params, context) => {
-    let row = context;
-    if (!row && params && params.api) row = params.api.getRow(params.id);
-    if (!row && params && params.row) row = params.row;
-    const stVal = Number(row?.st_conf_pa || 0);
-    const val = (params && typeof params === 'object' && 'value' in params) ? params.value : params;
-    if (stVal <= 0) return '';
-    return val;
-};
-
 export const CACHE_SOMMIER_PROD_SCHEMA = [
     'detail',
-    'zone', 'piece', 'produit', 'realise_par', 'type_confection',
-    'largeur', 'longueur', 'hauteur', 'epaisseur',
+    'zone', 'piece', 'produit', 'realise_par',
+    {
+        field: 'nom_sous_traitant',
+        headerName: 'Nom Sous-Traitant',
+        width: 150,
+        type: 'text',
+        editable: true,
+        readOnly: (row) => row?.realise_par !== 'Sous-Traitant'
+    },
+    'type_confection',
+    'largeur', 'longueur', 'longueur_coupe', 'hauteur', 'ourlet_bas', 'a_plat',
     'tissu_1', 'laize_tissu_1', 'ml_tissu_1',
     'tissu_2', 'laize_tissu_2', 'ml_tissu_2',
     'passementerie_1', 'app_passementerie_1', 'ml_pass_1',
-    'passementerie_2', 'app_passementerie_2', 'ml_pass_2',
+    'largeur_satinette', 'longueur_satinette', 'nb_plis_dior', 'finition_plis_dior', 'doublure',
     { field: 'heures_confection', valueFormatter: hideZero },
-    'quantite',
-    // We add schema_photo only for Prod
     createCol('schema_photo', 'Schéma', 120, 'photo'),
-    {
-        field: 'sous_traite_par',
-        headerName: 'Sous-traité par',
-        width: 150,
-        editable: true,
-        valueFormatter: renderSubcontractor
-    }
+    'quantite',
 ].map(def => {
     if (typeof def === 'string') return CACHE_SOMMIER_SCHEMA.find(c => c.field === def || c.key === def) || { field: def, headerName: def };
     if (!def.field && def.key) def.field = def.key;

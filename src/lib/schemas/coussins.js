@@ -125,19 +125,17 @@ const hideZero = (params) => {
     return val;
 };
 
-const renderSubcontractor = (params, context) => {
-    let row = context;
-    if (!row && params && params.api) row = params.api.getRow(params.id);
-    if (!row && params && params.row) row = params.row;
-    const stVal = Number(row?.st_conf_pa || 0);
-    const val = (params && typeof params === 'object' && 'value' in params) ? params.value : params;
-    if (stVal <= 0) return '';
-    return val;
-};
-
 export const COUSSINS_PROD_SCHEMA = [
     'detail',
     'zone', 'piece', 'produit', 'realise_par',
+    {
+        field: 'nom_sous_traitant',
+        headerName: 'Nom Sous-Traitant',
+        width: 150,
+        type: 'text',
+        editable: true,
+        readOnly: (row) => row?.realise_par !== 'Sous-Traitant'
+    },
     'largeur', 'hauteur', 'epaisseur', 'largeur_coupe', 'hauteur_coupe',
     'tissu_1', 'laize_tissu_1', 'ml_tissu_1',
     'tissu_2', 'laize_tissu_2', 'ml_tissu_2',
@@ -145,16 +143,8 @@ export const COUSSINS_PROD_SCHEMA = [
     'passementerie_1', 'app_passementerie_1', 'ml_pass_1',
     'passementerie_2', 'app_passementerie_2', 'ml_pass_2',
     { field: 'heures_confection', valueFormatter: hideZero },
-    'quantite',
-    // We ADD schema_photo ONLY to the PROD schema explicitly! 
     createCol('schema_photo', 'Schéma', 120, 'photo'),
-    {
-        field: 'sous_traite_par',
-        headerName: 'Sous-traité par',
-        width: 150,
-        editable: true,
-        valueFormatter: renderSubcontractor
-    }
+    'quantite',
 ].map(def => {
     if (typeof def === 'string') return COUSSINS_SCHEMA.find(c => c.field === def || c.key === def) || { field: def, headerName: def };
     if (!def.field && def.key) def.field = def.key;
