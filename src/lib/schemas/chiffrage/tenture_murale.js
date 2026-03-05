@@ -1,4 +1,5 @@
-// src/lib/schemas/tenture_murale.js
+// src/lib/schemas/chiffrage/tenture_murale.js
+// Schéma commercial pour le module "Tenture Murale"
 
 const createCol = (key, label, width, type = 'text', options = {}) => ({
     field: key,
@@ -67,37 +68,12 @@ export const TENTURE_MURALE_SCHEMA = [
     createCol('heures_confection', 'H. Conf', 80, 'number'),
     createCol('pv_confection', 'PV Conf', 80, 'number'),
 
+    createCol('st_pose_pa', 'ST Pose PA', 90, 'number'),
+    createCol('st_pose_pv', 'ST Pose PV', 90, 'number'),
+
     createCol('livraison', 'Livraison', 90, 'number'),
 
     createCol('unit_price', 'P.U.', 100, 'number'),
     createCol('quantite', 'Qté', 70, 'number'),
     createCol('total_price', 'Total', 100, 'number'),
 ].map(c => ({ ...c, key: c.field }));
-
-const hideZero = (params) => {
-    const val = (params && typeof params === 'object' && 'value' in params) ? params.value : params;
-    if (!val || Number(val) === 0) return '';
-    return val;
-};
-
-export const TENTURE_MURALE_PROD_SCHEMA = [
-    'detail',
-    'zone', 'piece', 'produit',
-    'largeur', 'hauteur',
-    createCol('largeur_coupe', 'Larg. Coupe', 100, 'number'),
-    createCol('hauteur_coupe', 'Haut. Coupe', 100, 'number'),
-    'tissu_1', 'laize_tissu_1', 'ml_tissu_1',
-    'molleton', 'ml_molleton',
-    'passementerie_1', 'app_passementerie_1', 'ml_pass_1',
-    'baguette_1', 'ml_baguette_1',
-    'baguette_2', 'ml_baguette_2',
-    { field: 'heures_pose', valueFormatter: hideZero },
-    { field: 'heures_confection', valueFormatter: hideZero },
-    createCol('schema_photo', 'Schéma', 120, 'photo'),
-    'quantite',
-].map(def => {
-    if (typeof def === 'string') return TENTURE_MURALE_SCHEMA.find(c => c.field === def || c.key === def) || { field: def, headerName: def };
-    if (!def.field && def.key) def.field = def.key;
-    const base = TENTURE_MURALE_SCHEMA.find(c => c.field === def.field);
-    return base ? { ...base, ...def } : def;
-}).filter(Boolean).map(c => ({ ...c, key: c.field || c.key }));

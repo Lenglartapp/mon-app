@@ -1,5 +1,5 @@
-// src/lib/schemas/coussins.js
-// Schéma spécifique pour le module "Coussins"
+// src/lib/schemas/chiffrage/coussins.js
+// Schéma commercial pour le module "Coussins"
 
 const createCol = (key, label, width, type = 'text', options = {}) => ({
     field: key,
@@ -29,13 +29,8 @@ export const COUSSINS_SCHEMA = [
     createCol('zone', 'Zone', 80, 'text', autoCap),
     createCol('piece', 'Pièce', 100, 'text', autoCap),
 
-    // 1. Produit
     createCol('produit', 'Produit', 150, 'singleSelect', {
         valueOptions: ['Coussins']
-    }),
-
-    createCol('realise_par', 'Réalisé par', 120, 'singleSelect', {
-        valueOptions: ['Lenglart', 'Sous-Traitant']
     }),
 
     // 2. Dimensions
@@ -92,62 +87,3 @@ export const COUSSINS_SCHEMA = [
     createCol('quantite', 'Qté', 70, 'number'),
     createCol('total_price', 'Total', 100, 'number'),
 ].map(c => ({ ...c, key: c.field }));
-
-const hideZero = (params) => {
-    const val = (params && typeof params === 'object' && 'value' in params) ? params.value : params;
-    if (!val || Number(val) === 0) return '';
-    return val;
-};
-
-export const COUSSINS_PROD_SCHEMA = [
-    'detail',
-    'zone', 'piece', 'produit', 'realise_par',
-    {
-        field: 'nom_sous_traitant',
-        headerName: 'Nom Sous-Traitant',
-        width: 150,
-        type: 'text',
-        editable: true,
-        readOnly: (row) => row?.realise_par !== 'Sous-Traitant'
-    },
-    'largeur', 'hauteur', 'epaisseur',
-    createCol('largeur_coupe', 'Larg. Coupe', 100, 'number', {
-        editable: false,
-        readOnly: true,
-        valueGetter: (value, row) => {
-            const r = row || value?.row || {};
-            const epaisseur = Number(r.epaisseur) || 0;
-            const l = Number(r.largeur) || 0;
-            if (epaisseur >= 7 && epaisseur <= 10) return l + 5;
-            if (epaisseur >= 11 && epaisseur <= 15) return l + 6;
-            if (epaisseur >= 16 && epaisseur <= 20) return l + 8;
-            return l;
-        }
-    }),
-    createCol('hauteur_coupe', 'Haut. Coupe', 100, 'number', {
-        editable: false,
-        readOnly: true,
-        valueGetter: (value, row) => {
-            const r = row || value?.row || {};
-            const epaisseur = Number(r.epaisseur) || 0;
-            const h = Number(r.hauteur) || 0;
-            if (epaisseur >= 7 && epaisseur <= 10) return h + 5;
-            if (epaisseur >= 11 && epaisseur <= 15) return h + 6;
-            if (epaisseur >= 16 && epaisseur <= 20) return h + 8;
-            return h;
-        }
-    }),
-    'tissu_1', 'laize_tissu_1', 'ml_tissu_1',
-    'tissu_2', 'laize_tissu_2', 'ml_tissu_2',
-    'type_interieur',
-    'passementerie_1', 'app_passementerie_1', 'ml_pass_1',
-    'passementerie_2', 'app_passementerie_2', 'ml_pass_2',
-    { field: 'heures_confection', valueFormatter: hideZero },
-    createCol('schema_photo', 'Schéma', 120, 'photo'),
-    'quantite',
-].map(def => {
-    if (typeof def === 'string') return COUSSINS_SCHEMA.find(c => c.field === def || c.key === def) || { field: def, headerName: def };
-    if (!def.field && def.key) def.field = def.key;
-    const base = COUSSINS_SCHEMA.find(c => c.field === def.field);
-    return base ? { ...base, ...def } : def;
-}).filter(Boolean).map(c => ({ ...c, key: c.field || c.key }));

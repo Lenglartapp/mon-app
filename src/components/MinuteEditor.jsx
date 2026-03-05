@@ -23,14 +23,15 @@ import { Library, Plus, Trash2 } from 'lucide-react';
 
 import { CHIFFRAGE_SCHEMA_DEP } from "../lib/schemas/deplacement";
 import { EXTRA_DEPENSES_SCHEMA } from "../lib/schemas/extraDepenses";
-import { RIDEAUX_DEFAULT_VISIBILITY, DECORS_DEFAULT_VISIBILITY, STORES_DEFAULT_VISIBILITY, COUSSINS_DEFAULT_VISIBILITY } from "../lib/constants/gridDefaults";
+import { RIDEAUX_DEFAULT_VISIBILITY, DECORS_DEFAULT_VISIBILITY, STORES_DEFAULT_VISIBILITY, COUSSINS_DEFAULT_VISIBILITY, CACHE_SOMMIER_DEFAULT_VISIBILITY, PLAID_DEFAULT_VISIBILITY, TENTURE_DEFAULT_VISIBILITY, MOBILIER_DEFAULT_VISIBILITY } from "../lib/constants/gridDefaults";
 import { DECORS_SCHEMA } from "../lib/schemas/decors";
-import { STORES_SCHEMA } from "../lib/schemas/stores";
-import { COUSSINS_SCHEMA } from "../lib/schemas/coussins";
-import { CACHE_SOMMIER_SCHEMA } from "../lib/schemas/cache_sommier";
-import { PLAID_SCHEMA } from "../lib/schemas/plaid";
-import { TENTURE_MURALE_SCHEMA } from "../lib/schemas/tenture_murale";
-import { MOBILIER_SCHEMA } from "../lib/schemas/mobilier";
+import { STORES_CLASSIQUES_SCHEMA } from "../lib/schemas/chiffrage/stores_classiques";
+import { STORES_BATEAUX_SCHEMA } from "../lib/schemas/chiffrage/stores_bateaux";
+import { COUSSINS_SCHEMA } from "../lib/schemas/chiffrage/coussins";
+import { CACHE_SOMMIER_SCHEMA } from "../lib/schemas/chiffrage/cache_sommier";
+import { PLAID_SCHEMA } from "../lib/schemas/chiffrage/plaid";
+import { TENTURE_MURALE_SCHEMA } from "../lib/schemas/chiffrage/tenture_murale";
+import { MOBILIER_SCHEMA } from "../lib/schemas/chiffrage/mobilier";
 import { parseRideauxImport } from '../utils/importRideaux';
 
 // ... (imports remain)
@@ -172,7 +173,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
       const p = String(row.produit || "").toLowerCase();
       if (p === 'autre dépense') targetSchema = EXTRA_DEPENSES_SCHEMA;
       else if (p === 'déplacement') targetSchema = CHIFFRAGE_SCHEMA_DEP;
-      else if (/store|canishade/i.test(p)) targetSchema = STORES_SCHEMA;
+      else if (/store|canishade/i.test(p)) targetSchema = STORES_CLASSIQUES_SCHEMA;
       else if (/rideau|voilage/i.test(p)) targetSchema = schema;
       else if (/coussin/i.test(p)) targetSchema = COUSSINS_SCHEMA;
       else if (/cache-sommier/i.test(p)) targetSchema = CACHE_SOMMIER_SCHEMA;
@@ -272,7 +273,8 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
     let targetSchema = schema;
     if (key === 'autre') targetSchema = EXTRA_DEPENSES_SCHEMA;
     else if (key === 'deplacement') targetSchema = CHIFFRAGE_SCHEMA_DEP;
-    else if (key === 'stores' || key === 'store' || key === 'store_bateau') targetSchema = STORES_SCHEMA;
+    else if (key === 'stores' || key === 'store') targetSchema = STORES_CLASSIQUES_SCHEMA;
+    else if (key === 'store_bateau') targetSchema = STORES_BATEAUX_SCHEMA;
     else if (key === 'coussins') targetSchema = COUSSINS_SCHEMA;
     else if (key === 'cache_sommier') targetSchema = CACHE_SOMMIER_SCHEMA;
     else if (key === 'plaid') targetSchema = PLAID_SCHEMA;
@@ -314,7 +316,8 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
     let targetSchema = schema;
     if (key === 'autre') targetSchema = EXTRA_DEPENSES_SCHEMA;
     else if (key === 'deplacement') targetSchema = CHIFFRAGE_SCHEMA_DEP;
-    else if (key === 'store' || key === 'store_bateau') targetSchema = STORES_SCHEMA;
+    else if (key === 'store') targetSchema = STORES_CLASSIQUES_SCHEMA;
+    else if (key === 'store_bateau') targetSchema = STORES_BATEAUX_SCHEMA;
     else if (key === 'rideaux') targetSchema = schema;
     else if (key === 'coussins') targetSchema = COUSSINS_SCHEMA;
     else if (key === 'cache_sommier') targetSchema = CACHE_SOMMIER_SCHEMA;
@@ -517,21 +520,6 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
           </Accordion>
         );
       case 'store':
-        const storesSchema = STORES_SCHEMA.filter(c => ![
-          'hauteur_coupe', 'hauteur_coupe_motif', 'a_plat',
-          'toile_finition_1', 'laize_toile_finition_1', 'raccord_v_toile_finition_1', 'raccord_h_toile_finition_1', 'nb_les_toile_finition_1', 'ml_toile_finition_1', 'pa_toile_finition_1', 'pv_toile_finition_1',
-          'doublure', 'laize_doublure', 'nb_les_doublure', 'ml_doublure', 'pa_doublure', 'pv_doublure',
-          'heures_confection', 'pv_confection'
-        ].includes(c.key)).map(c => {
-          if (c.key === 'produit') {
-            return {
-              ...c,
-              options: ['Store Vénitien', 'Store Californien', 'Store Canishade', 'Store Enrouleur']
-            };
-          }
-          return c;
-        });
-
         return (
           <Accordion key="store" defaultExpanded disableGutters sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03)', border: '1px solid #f3f4f6' }}>
             <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ borderBottom: '1px solid #f3f4f6', backgroundColor: '#fff', borderTopLeftRadius: 12, borderTopRightRadius: 12, px: 3 }}>
@@ -544,7 +532,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
                 title=""
                 rows={rowsStore}
                 onRowsChange={mergeChildRowsFor("store")}
-                schema={storesSchema}
+                schema={STORES_CLASSIQUES_SCHEMA}
                 enableCellFormulas={enableCellFormulas}
                 formulaCtx={extendedCtx}
                 onAdd={() => handleAddRow("store")}
@@ -567,22 +555,6 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
           </Accordion>
         );
       case 'store_bateau':
-        const storesBateauSchema = STORES_SCHEMA.filter(c => ![
-          'hauteur_coupe', 'hauteur_coupe_motif', 'a_plat',
-          'nb_les_toile_finition_1', 'nb_les_doublure'
-        ].includes(c.key)).map(c => {
-          if (c.key === 'produit') {
-            return {
-              ...c,
-              options: ['Store Bateau', 'Store Velum']
-            };
-          }
-          if (c.key === 'toile_finition_1') {
-            return { ...c, label: 'Tissu 1' };
-          }
-          return c;
-        });
-
         return (
           <Accordion key="store_bateau" defaultExpanded disableGutters sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03)', border: '1px solid #f3f4f6' }}>
             <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ borderBottom: '1px solid #f3f4f6', backgroundColor: '#fff', borderTopLeftRadius: 12, borderTopRightRadius: 12, px: 3 }}>
@@ -595,7 +567,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
                 title=""
                 rows={rowsStoresBateau}
                 onRowsChange={mergeChildRowsFor("store_bateau")}
-                schema={storesBateauSchema}
+                schema={STORES_BATEAUX_SCHEMA}
                 enableCellFormulas={enableCellFormulas}
                 formulaCtx={extendedCtx}
                 onAdd={() => handleAddRow("store_bateau")}
@@ -673,11 +645,11 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
                 rowSelectionModel={selCacheSommier}
                 onRowSelectionModelChange={setSelCacheSommier}
                 catalog={catalog}
-                initialVisibilityModel={DECORS_DEFAULT_VISIBILITY}
+                initialVisibilityModel={CACHE_SOMMIER_DEFAULT_VISIBILITY}
                 onDuplicateRow={handleDuplicateRow}
                 hideCroquis={true}
                 minuteId={minute?.id}
-                gridKey="chiff_cache_sommier"
+                gridKey="chiff_cache_sommier_v2"
                 targetRowId={targetRowId}
                 onRowClick={onRowClick}
                 readOnly={readOnly}
@@ -708,11 +680,11 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
                 rowSelectionModel={selPlaid}
                 onRowSelectionModelChange={setSelPlaid}
                 catalog={catalog}
-                initialVisibilityModel={DECORS_DEFAULT_VISIBILITY}
+                initialVisibilityModel={PLAID_DEFAULT_VISIBILITY}
                 onDuplicateRow={handleDuplicateRow}
                 hideCroquis={true}
                 minuteId={minute?.id}
-                gridKey="chiff_plaid"
+                gridKey="chiff_plaid_v2"
                 targetRowId={targetRowId}
                 onRowClick={onRowClick}
                 readOnly={readOnly}
@@ -743,11 +715,11 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
                 rowSelectionModel={selTenture}
                 onRowSelectionModelChange={setSelTenture}
                 catalog={catalog}
-                initialVisibilityModel={DECORS_DEFAULT_VISIBILITY}
+                initialVisibilityModel={TENTURE_DEFAULT_VISIBILITY}
                 onDuplicateRow={handleDuplicateRow}
                 hideCroquis={true}
                 minuteId={minute?.id}
-                gridKey="chiff_tenture"
+                gridKey="chiff_tenture_v2"
                 targetRowId={targetRowId}
                 onRowClick={onRowClick}
                 readOnly={readOnly}
@@ -778,11 +750,11 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
                 rowSelectionModel={selMobilier}
                 onRowSelectionModelChange={setSelMobilier}
                 catalog={catalog}
-                initialVisibilityModel={DECORS_DEFAULT_VISIBILITY}
+                initialVisibilityModel={MOBILIER_DEFAULT_VISIBILITY}
                 onDuplicateRow={handleDuplicateRow}
                 hideCroquis={false}
                 minuteId={minute?.id}
-                gridKey="chiff_mobilier"
+                gridKey="chiff_mobilier_v2"
                 targetRowId={targetRowId}
                 onRowClick={onRowClick}
                 readOnly={readOnly}

@@ -1,4 +1,5 @@
-// src/lib/schemas/mobilier.js
+// src/lib/schemas/production/coussins.js
+// Schéma atelier pour le module "Coussins"
 
 const createCol = (key, label, width, type = 'text', options = {}) => ({
     field: key,
@@ -16,7 +17,8 @@ const autoCap = {
     }
 };
 
-export const MOBILIER_SCHEMA = [
+const BASE_COUSSINS_SCHEMA = [
+    // 0. Actions / Context
     {
         field: 'detail',
         headerName: 'Détail',
@@ -27,50 +29,65 @@ export const MOBILIER_SCHEMA = [
     createCol('zone', 'Zone', 80, 'text', autoCap),
     createCol('piece', 'Pièce', 100, 'text', autoCap),
 
+    // 1. Produit
     createCol('produit', 'Produit', 150, 'singleSelect', {
-        valueOptions: ['Tête de Lit']
+        valueOptions: ['Coussins']
     }),
 
     createCol('realise_par', 'Réalisé par', 120, 'singleSelect', {
         valueOptions: ['Lenglart', 'Sous-Traitant']
     }),
 
+    // 2. Dimensions
     createCol('largeur', 'Largeur', 80, 'number'),
     createCol('hauteur', 'Hauteur', 80, 'number'),
     createCol('epaisseur', 'Épaisseur', 80, 'number'),
 
+    // 3. MATIÈRES - Tissu 1
     createCol('tissu_1', 'Tissu 1', 180, 'catalog_item', { category: 'Tissu' }),
     createCol('laize_tissu_1', 'Laize 1', 70, 'number'),
     createCol('ml_tissu_1', 'ML T1', 70, 'number'),
     createCol('pa_tissu_1', 'PA T1', 70, 'number'),
     createCol('pv_tissu_1', 'PV T1', 70, 'number'),
 
+    // 3b. Tissu 2
     createCol('tissu_2', 'Tissu 2', 180, 'catalog_item', { category: 'Tissu' }),
     createCol('laize_tissu_2', 'Laize 2', 70, 'number'),
     createCol('ml_tissu_2', 'ML T2', 70, 'number'),
     createCol('pa_tissu_2', 'PA T2', 70, 'number'),
     createCol('pv_tissu_2', 'PV T2', 70, 'number'),
 
+    // 3c. Intérieur (Garniture)
+    createCol('type_interieur', 'Intérieur', 150, 'singleSelect', {
+        valueOptions: ['Mousse', 'Intérieur Plume', 'Intérieur Polyester']
+    }),
+    createCol('pa_interieur', 'PA Int.', 70, 'number'),
+    createCol('pv_interieur', 'PV Int.', 70, 'number'),
+
+    // 4. Passementerie 1
     createCol('passementerie_1', 'Passementerie 1', 180, 'catalog_item', { category: 'Passementerie' }),
     createCol('app_passementerie_1', 'Application Passementerie 1', 180, 'text'),
     createCol('ml_pass_1', 'ML P1', 70, 'number'),
     createCol('pa_pass_1', 'PA P1', 70, 'number'),
     createCol('pv_pass_1', 'PV P1', 70, 'number'),
 
-    createCol('heures_pose', 'H. Pose', 80, 'number'),
-    createCol('pv_pose', 'PV Pose', 80, 'number'),
+    // 5. Passementerie 2
+    createCol('passementerie_2', 'Passementerie 2', 180, 'catalog_item', { category: 'Passementerie' }),
+    createCol('app_passementerie_2', 'Application Passementerie 2', 180, 'text'),
+    createCol('ml_pass_2', 'ML P2', 70, 'number'),
+    createCol('pa_pass_2', 'PA P2', 70, 'number'),
+    createCol('pv_pass_2', 'PV P2', 70, 'number'),
 
+    // 7. PRESTATIONS
     createCol('heures_confection', 'H. Conf', 80, 'number'),
     createCol('pv_confection', 'PV Conf', 80, 'number'),
-
-    createCol('st_pose_pa', 'ST Pose PA', 90, 'number'),
-    createCol('st_pose_pv', 'ST Pose PV', 90, 'number'),
 
     createCol('st_conf_pa', 'ST Conf PA', 90, 'number'),
     createCol('st_conf_pv', 'ST Conf PV', 90, 'number'),
 
     createCol('livraison', 'Livraison', 90, 'number'),
 
+    // 8. TOTAUX
     createCol('unit_price', 'P.U.', 100, 'number'),
     createCol('quantite', 'Qté', 70, 'number'),
     createCol('total_price', 'Total', 100, 'number'),
@@ -82,7 +99,7 @@ const hideZero = (params) => {
     return val;
 };
 
-export const MOBILIER_PROD_SCHEMA = [
+export const COUSSINS_PROD_SCHEMA = [
     'detail',
     'zone', 'piece', 'produit', 'realise_par',
     {
@@ -94,24 +111,43 @@ export const MOBILIER_PROD_SCHEMA = [
         readOnly: (row) => row?.realise_par !== 'Sous-Traitant'
     },
     'largeur', 'hauteur', 'epaisseur',
+    createCol('largeur_coupe', 'Larg. Coupe', 100, 'number', {
+        editable: false,
+        readOnly: true,
+        valueGetter: (value, row) => {
+            const r = row || value?.row || {};
+            const epaisseur = Number(r.epaisseur) || 0;
+            const l = Number(r.largeur) || 0;
+            if (epaisseur >= 7 && epaisseur <= 10) return l + 5;
+            if (epaisseur >= 11 && epaisseur <= 15) return l + 6;
+            if (epaisseur >= 16 && epaisseur <= 20) return l + 8;
+            return l;
+        }
+    }),
+    createCol('hauteur_coupe', 'Haut. Coupe', 100, 'number', {
+        editable: false,
+        readOnly: true,
+        valueGetter: (value, row) => {
+            const r = row || value?.row || {};
+            const epaisseur = Number(r.epaisseur) || 0;
+            const h = Number(r.hauteur) || 0;
+            if (epaisseur >= 7 && epaisseur <= 10) return h + 5;
+            if (epaisseur >= 11 && epaisseur <= 15) return h + 6;
+            if (epaisseur >= 16 && epaisseur <= 20) return h + 8;
+            return h;
+        }
+    }),
     'tissu_1', 'laize_tissu_1', 'ml_tissu_1',
     'tissu_2', 'laize_tissu_2', 'ml_tissu_2',
+    'type_interieur',
     'passementerie_1', 'app_passementerie_1', 'ml_pass_1',
-    createCol('passementerie_2', 'Passementerie 2', 180, 'catalog_item', { category: 'Passementerie' }),
-    createCol('app_passementerie_2', 'Application Passementerie 2', 180, 'text'),
-    createCol('ml_pass_2', 'ML P2', 70, 'number'),
-    createCol('molleton_mousse', 'Molleton/Mousse', 180, 'catalog_item', { category: 'Tissu' }),
-    createCol('laize_molleton_mousse', 'Laize Moll/Mous.', 70, 'number'),
-    createCol('ml_molleton_mousse', 'ML Moll/Mous.', 70, 'number'),
-    createCol('mecanisme', 'Mécanisme', 180, 'text'),
-    createCol('schema_photo', 'Schéma', 120, 'photo'),
-    createCol('heures_prepa', 'H. Prépa', 80, 'number'),
-    { field: 'heures_pose', valueFormatter: hideZero },
+    'passementerie_2', 'app_passementerie_2', 'ml_pass_2',
     { field: 'heures_confection', valueFormatter: hideZero },
+    createCol('schema_photo', 'Schéma', 120, 'photo'),
     'quantite',
 ].map(def => {
-    if (typeof def === 'string') return MOBILIER_SCHEMA.find(c => c.field === def || c.key === def) || { field: def, headerName: def };
+    if (typeof def === 'string') return BASE_COUSSINS_SCHEMA.find(c => c.field === def || c.key === def) || { field: def, headerName: def };
     if (!def.field && def.key) def.field = def.key;
-    const base = MOBILIER_SCHEMA.find(c => c.field === def.field);
+    const base = BASE_COUSSINS_SCHEMA.find(c => c.field === def.field);
     return base ? { ...base, ...def } : def;
 }).filter(Boolean).map(c => ({ ...c, key: c.field || c.key }));
