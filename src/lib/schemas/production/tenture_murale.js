@@ -1,4 +1,5 @@
-// src/lib/schemas/mobilier.js
+// src/lib/schemas/production/tenture_murale.js
+// Schéma atelier pour le module "Tenture Murale"
 
 const createCol = (key, label, width, type = 'text', options = {}) => ({
     field: key,
@@ -16,7 +17,7 @@ const autoCap = {
     }
 };
 
-export const MOBILIER_SCHEMA = [
+const BASE_TENTURE_MURALE_SCHEMA = [
     {
         field: 'detail',
         headerName: 'Détail',
@@ -28,16 +29,11 @@ export const MOBILIER_SCHEMA = [
     createCol('piece', 'Pièce', 100, 'text', autoCap),
 
     createCol('produit', 'Produit', 150, 'singleSelect', {
-        valueOptions: ['Tête de Lit']
-    }),
-
-    createCol('realise_par', 'Réalisé par', 120, 'singleSelect', {
-        valueOptions: ['Lenglart', 'Sous-Traitant']
+        valueOptions: ['Tenture Murale']
     }),
 
     createCol('largeur', 'Largeur', 80, 'number'),
     createCol('hauteur', 'Hauteur', 80, 'number'),
-    createCol('epaisseur', 'Épaisseur', 80, 'number'),
 
     createCol('tissu_1', 'Tissu 1', 180, 'catalog_item', { category: 'Tissu' }),
     createCol('laize_tissu_1', 'Laize 1', 70, 'number'),
@@ -45,11 +41,10 @@ export const MOBILIER_SCHEMA = [
     createCol('pa_tissu_1', 'PA T1', 70, 'number'),
     createCol('pv_tissu_1', 'PV T1', 70, 'number'),
 
-    createCol('tissu_2', 'Tissu 2', 180, 'catalog_item', { category: 'Tissu' }),
-    createCol('laize_tissu_2', 'Laize 2', 70, 'number'),
-    createCol('ml_tissu_2', 'ML T2', 70, 'number'),
-    createCol('pa_tissu_2', 'PA T2', 70, 'number'),
-    createCol('pv_tissu_2', 'PV T2', 70, 'number'),
+    createCol('molleton', 'Molleton', 180, 'catalog_item', { category: 'Tissu' }),
+    createCol('ml_molleton', 'ML Mol.', 70, 'number'),
+    createCol('pa_molleton', 'PA Mol.', 70, 'number'),
+    createCol('pv_molleton', 'PV Mol.', 70, 'number'),
 
     createCol('passementerie_1', 'Passementerie 1', 180, 'catalog_item', { category: 'Passementerie' }),
     createCol('app_passementerie_1', 'Application Passementerie 1', 180, 'text'),
@@ -57,17 +52,21 @@ export const MOBILIER_SCHEMA = [
     createCol('pa_pass_1', 'PA P1', 70, 'number'),
     createCol('pv_pass_1', 'PV P1', 70, 'number'),
 
+    createCol('baguette_1', 'Baguette 1', 180, 'catalog_item', { category: 'Rail' }),
+    createCol('ml_baguette_1', 'ML B1', 70, 'number'),
+    createCol('pa_baguette_1', 'PA B1', 70, 'number'),
+    createCol('pv_baguette_1', 'PV B1', 70, 'number'),
+
+    createCol('baguette_2', 'Baguette 2', 180, 'catalog_item', { category: 'Rail' }),
+    createCol('ml_baguette_2', 'ML B2', 70, 'number'),
+    createCol('pa_baguette_2', 'PA B2', 70, 'number'),
+    createCol('pv_baguette_2', 'PV B2', 70, 'number'),
+
     createCol('heures_pose', 'H. Pose', 80, 'number'),
     createCol('pv_pose', 'PV Pose', 80, 'number'),
 
     createCol('heures_confection', 'H. Conf', 80, 'number'),
     createCol('pv_confection', 'PV Conf', 80, 'number'),
-
-    createCol('st_pose_pa', 'ST Pose PA', 90, 'number'),
-    createCol('st_pose_pv', 'ST Pose PV', 90, 'number'),
-
-    createCol('st_conf_pa', 'ST Conf PA', 90, 'number'),
-    createCol('st_conf_pv', 'ST Conf PV', 90, 'number'),
 
     createCol('livraison', 'Livraison', 90, 'number'),
 
@@ -82,36 +81,24 @@ const hideZero = (params) => {
     return val;
 };
 
-export const MOBILIER_PROD_SCHEMA = [
+export const TENTURE_MURALE_PROD_SCHEMA = [
     'detail',
-    'zone', 'piece', 'produit', 'realise_par',
-    {
-        field: 'nom_sous_traitant',
-        headerName: 'Nom Sous-Traitant',
-        width: 150,
-        type: 'text',
-        editable: true,
-        readOnly: (row) => row?.realise_par !== 'Sous-Traitant'
-    },
-    'largeur', 'hauteur', 'epaisseur',
+    'zone', 'piece', 'produit',
+    'largeur', 'hauteur',
+    createCol('largeur_coupe', 'Larg. Coupe', 100, 'number'),
+    createCol('hauteur_coupe', 'Haut. Coupe', 100, 'number'),
     'tissu_1', 'laize_tissu_1', 'ml_tissu_1',
-    'tissu_2', 'laize_tissu_2', 'ml_tissu_2',
+    'molleton', 'ml_molleton',
     'passementerie_1', 'app_passementerie_1', 'ml_pass_1',
-    createCol('passementerie_2', 'Passementerie 2', 180, 'catalog_item', { category: 'Passementerie' }),
-    createCol('app_passementerie_2', 'Application Passementerie 2', 180, 'text'),
-    createCol('ml_pass_2', 'ML P2', 70, 'number'),
-    createCol('molleton_mousse', 'Molleton/Mousse', 180, 'catalog_item', { category: 'Tissu' }),
-    createCol('laize_molleton_mousse', 'Laize Moll/Mous.', 70, 'number'),
-    createCol('ml_molleton_mousse', 'ML Moll/Mous.', 70, 'number'),
-    createCol('mecanisme', 'Mécanisme', 180, 'text'),
-    createCol('schema_photo', 'Schéma', 120, 'photo'),
-    createCol('heures_prepa', 'H. Prépa', 80, 'number'),
+    'baguette_1', 'ml_baguette_1',
+    'baguette_2', 'ml_baguette_2',
     { field: 'heures_pose', valueFormatter: hideZero },
     { field: 'heures_confection', valueFormatter: hideZero },
+    createCol('schema_photo', 'Schéma', 120, 'photo'),
     'quantite',
 ].map(def => {
-    if (typeof def === 'string') return MOBILIER_SCHEMA.find(c => c.field === def || c.key === def) || { field: def, headerName: def };
+    if (typeof def === 'string') return BASE_TENTURE_MURALE_SCHEMA.find(c => c.field === def || c.key === def) || { field: def, headerName: def };
     if (!def.field && def.key) def.field = def.key;
-    const base = MOBILIER_SCHEMA.find(c => c.field === def.field);
+    const base = BASE_TENTURE_MURALE_SCHEMA.find(c => c.field === def.field);
     return base ? { ...base, ...def } : def;
 }).filter(Boolean).map(c => ({ ...c, key: c.field || c.key }));

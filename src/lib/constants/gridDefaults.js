@@ -208,3 +208,35 @@ export const COUSSINS_DEFAULT_VISIBILITY = {
     pv_pass_2: false,
 };
 
+export const CACHE_SOMMIER_DEFAULT_VISIBILITY = {
+    tissu_2: false,
+    laize_tissu_2: false,
+    ml_tissu_2: false,
+    pa_tissu_2: false,
+    pv_tissu_2: false,
+};
+
+export const PLAID_DEFAULT_VISIBILITY = {
+    tissu_2: false,
+    laize_tissu_2: false,
+    ml_tissu_2: false,
+    pa_tissu_2: false,
+    pv_tissu_2: false,
+};
+
+export const TENTURE_DEFAULT_VISIBILITY = {
+    tissu_2: false,
+    laize_tissu_2: false,
+    ml_tissu_2: false,
+    pa_tissu_2: false,
+    pv_tissu_2: false,
+};
+
+export const MOBILIER_DEFAULT_VISIBILITY = {
+    tissu_2: false,
+    laize_tissu_2: false,
+    ml_tissu_2: false,
+    pa_tissu_2: false,
+    pv_tissu_2: false,
+};
+

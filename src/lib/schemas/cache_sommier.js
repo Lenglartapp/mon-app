@@ -42,42 +42,7 @@ export const CACHE_SOMMIER_SCHEMA = [
     createCol('largeur', 'Largeur', 80, 'number'),
     createCol('longueur', 'Longueur', 80, 'number'),
 
-    createCol('longueur_coupe', 'Long. Coupe', 110, 'number', {
-        editable: false,
-        readOnly: true,
-        valueGetter: (value, row) => {
-            const r = row || value?.row || {};
-            const laize = Number(r.laize_tissu_1) || 0;
-            const long = Number(r.longueur) || 0;
-            const larg = Number(r.largeur) || 0;
-            const conf = r.type_confection || '';
-            const nbPlis = Number(r.nb_plis_dior) || 0;
-
-            if (laize >= 125 && laize <= 155) {
-                if (conf.toLowerCase().includes('boîte') || conf.toLowerCase().includes('boite')) {
-                    return (2 * long) + larg + 14;
-                } else if (conf.toLowerCase().includes('dior')) {
-                    return (2 * long) + larg + (nbPlis * 40) + 14;
-                }
-            }
-            return r.longueur_coupe || '';
-        }
-    }),
-
     createCol('hauteur', 'Hauteur', 80, 'number'),
-
-    createCol('ourlet_bas', 'Ourlet bas', 80, 'number'),
-
-    createCol('a_plat', 'À plat', 80, 'number', {
-        editable: false,
-        readOnly: true,
-        valueGetter: (value, row) => {
-            const r = row || value?.row || {};
-            const h = Number(r.hauteur) || 0;
-            const ob = Number(r.ourlet_bas) || 0;
-            return h + ob + 6.5;
-        }
-    }),
 
     createCol('tissu_1', 'Tissu 1', 180, 'catalog_item', { category: 'Tissu' }),
     createCol('laize_tissu_1', 'Laize 1', 70, 'number'),
@@ -101,32 +66,6 @@ export const CACHE_SOMMIER_SCHEMA = [
     createCol('ml_pass_1', 'ML P1', 70, 'number'),
     createCol('pa_pass_1', 'PA P1', 70, 'number'),
     createCol('pv_pass_1', 'PV P1', 70, 'number'),
-
-    createCol('largeur_satinette', 'Larg. Satinette', 110, 'number', {
-        editable: false,
-        readOnly: true,
-        valueGetter: (value, row) => {
-            const r = row || value?.row || {};
-            const l = Number(r.largeur) || 0;
-            return l - 7;
-        }
-    }),
-
-    createCol('longueur_satinette', 'Long. Satinette', 110, 'number', {
-        editable: false,
-        readOnly: true,
-        valueGetter: (value, row) => {
-            const r = row || value?.row || {};
-            const long = Number(r.longueur) || 0;
-            return long + 16.5;
-        }
-    }),
-
-    createCol('nb_plis_dior', 'Nb plis Dior', 80, 'number'),
-    createCol('finition_plis_dior', 'Finition plis Dior', 150, 'text'),
-    createCol('doublure', 'Doublure', 100, 'singleSelect', {
-        valueOptions: ['Oui', 'Non']
-    }),
 
     createCol('heures_confection', 'H. Conf', 80, 'number'),
     createCol('pv_confection', 'PV Conf', 80, 'number'),
@@ -159,11 +98,66 @@ export const CACHE_SOMMIER_PROD_SCHEMA = [
         readOnly: (row) => row?.realise_par !== 'Sous-Traitant'
     },
     'type_confection',
-    'largeur', 'longueur', 'longueur_coupe', 'hauteur', 'ourlet_bas', 'a_plat',
+    'largeur', 'longueur',
+    createCol('longueur_coupe', 'Long. Coupe', 110, 'number', {
+        editable: false,
+        readOnly: true,
+        valueGetter: (value, row) => {
+            const r = row || value?.row || {};
+            const laize = Number(r.laize_tissu_1) || 0;
+            const long = Number(r.longueur) || 0;
+            const larg = Number(r.largeur) || 0;
+            const conf = r.type_confection || '';
+            const nbPlis = Number(r.nb_plis_dior) || 0;
+
+            if (laize >= 125 && laize <= 155) {
+                if (conf.toLowerCase().includes('boîte') || conf.toLowerCase().includes('boite')) {
+                    return (2 * long) + larg + 14;
+                } else if (conf.toLowerCase().includes('dior')) {
+                    return (2 * long) + larg + (nbPlis * 40) + 14;
+                }
+            }
+            return r.longueur_coupe || '';
+        }
+    }),
+    'hauteur',
+    createCol('ourlet_bas', 'Ourlet bas', 80, 'number'),
+    createCol('a_plat', 'À plat', 80, 'number', {
+        editable: false,
+        readOnly: true,
+        valueGetter: (value, row) => {
+            const r = row || value?.row || {};
+            const h = Number(r.hauteur) || 0;
+            const ob = Number(r.ourlet_bas) || 0;
+            return h + ob + 6.5;
+        }
+    }),
     'tissu_1', 'laize_tissu_1', 'ml_tissu_1',
     'tissu_2', 'laize_tissu_2', 'ml_tissu_2',
     'passementerie_1', 'app_passementerie_1', 'ml_pass_1',
-    'largeur_satinette', 'longueur_satinette', 'nb_plis_dior', 'finition_plis_dior', 'doublure',
+    createCol('largeur_satinette', 'Larg. Satinette', 110, 'number', {
+        editable: false,
+        readOnly: true,
+        valueGetter: (value, row) => {
+            const r = row || value?.row || {};
+            const l = Number(r.largeur) || 0;
+            return l - 7;
+        }
+    }),
+    createCol('longueur_satinette', 'Long. Satinette', 110, 'number', {
+        editable: false,
+        readOnly: true,
+        valueGetter: (value, row) => {
+            const r = row || value?.row || {};
+            const long = Number(r.longueur) || 0;
+            return long + 16.5;
+        }
+    }),
+    createCol('nb_plis_dior', 'Nb plis Dior', 80, 'number'),
+    createCol('finition_plis_dior', 'Finition plis Dior', 150, 'text'),
+    createCol('doublure', 'Doublure', 100, 'singleSelect', {
+        valueOptions: ['Oui', 'Non']
+    }),
     { field: 'heures_confection', valueFormatter: hideZero },
     createCol('schema_photo', 'Schéma', 120, 'photo'),
     'quantite',

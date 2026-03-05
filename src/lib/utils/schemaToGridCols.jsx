@@ -21,7 +21,7 @@ const getColumnIcon = (col) => {
   if (col.type === 'croquis') return <PenTool size={14} className="text-gray-400" />;
   if (col.type === 'date' || col.type === 'datetime') return <Calendar size={14} className="text-gray-400" />;
   if (col.type === 'checkbox') return <CheckSquare size={14} className="text-gray-400" />;
-  if (col.type === 'select' || col.type === 'catalog_item' || col.options || col.key?.includes('tissu') || col.key?.includes('doublure') || col.key?.includes('passementerie') || col.key?.includes('mecanisme')) {
+  if (col.type === 'select' || col.type === 'catalog_item' || col.options || col.key?.includes('tissu') || col.key?.includes('doublure') || (col.key?.includes('passementerie') && !col.key?.includes('app_')) || col.key?.includes('mecanisme')) {
     return <ChevronDown size={14} className="text-gray-400" strokeWidth={2.5} />;
   }
   if (col.type === 'number') return <Hash size={14} className="text-gray-400" />;
@@ -141,7 +141,7 @@ export function schemaToGridCols(schema, enableCellFormulas = false, onOpenDetai
 
     // Legacy check for other schemas that don't use 'catalog_item' yet?
     // Keep legacy support for chiffrage.js unless upgraded.
-    const isLegacyCatalogCol = col.key.includes('tissu') || col.key.includes('doublure') || col.key.includes('passementerie') || (col.key === 'produit' && !col.hidden && col.type !== 'text');
+    const isLegacyCatalogCol = col.key.includes('tissu') || col.key.includes('doublure') || (col.key.includes('passementerie') && !col.key.includes('app_')) || (col.key === 'produit' && !col.hidden && col.type !== 'text');
     const isMechColumn = ['modele_mecanisme', 'nom_tringle', 'rail', 'mecanisme_bis'].includes(col.key);
 
     if ((isCatalogType || isLegacyCatalogCol || isMechColumn) && catalog.length > 0) {

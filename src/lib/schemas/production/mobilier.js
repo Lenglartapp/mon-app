@@ -1,4 +1,5 @@
-// src/lib/schemas/mobilier.js
+// src/lib/schemas/production/mobilier.js
+// Schéma atelier pour le module "Tête de Lit" (Mobilier)
 
 const createCol = (key, label, width, type = 'text', options = {}) => ({
     field: key,
@@ -16,7 +17,7 @@ const autoCap = {
     }
 };
 
-export const MOBILIER_SCHEMA = [
+const BASE_MOBILIER_SCHEMA = [
     {
         field: 'detail',
         headerName: 'Détail',
@@ -110,8 +111,8 @@ export const MOBILIER_PROD_SCHEMA = [
     { field: 'heures_confection', valueFormatter: hideZero },
     'quantite',
 ].map(def => {
-    if (typeof def === 'string') return MOBILIER_SCHEMA.find(c => c.field === def || c.key === def) || { field: def, headerName: def };
+    if (typeof def === 'string') return BASE_MOBILIER_SCHEMA.find(c => c.field === def || c.key === def) || { field: def, headerName: def };
     if (!def.field && def.key) def.field = def.key;
-    const base = MOBILIER_SCHEMA.find(c => c.field === def.field);
+    const base = BASE_MOBILIER_SCHEMA.find(c => c.field === def.field);
     return base ? { ...base, ...def } : def;
 }).filter(Boolean).map(c => ({ ...c, key: c.field || c.key }));

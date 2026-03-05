@@ -15,12 +15,13 @@ import { SCHEMA_64 } from "../lib/schemas/production.js";
 import { STAGES, DEFAULT_VIEWS } from "../lib/constants/views.js"; // Import DEFAULT_VIEWS
 import { recomputeRow } from "../lib/formulas/recomputeRow";
 import { DECORS_PROD_SCHEMA } from "../lib/schemas/decors"; // Import Prod Schema
-import { STORES_PROD_SCHEMA, STORES_BATEAUX_PROD_SCHEMA } from "../lib/schemas/stores";
-import { COUSSINS_PROD_SCHEMA } from "../lib/schemas/coussins";
-import { CACHE_SOMMIER_PROD_SCHEMA } from "../lib/schemas/cache_sommier";
-import { PLAID_PROD_SCHEMA } from "../lib/schemas/plaid";
-import { TENTURE_MURALE_PROD_SCHEMA } from "../lib/schemas/tenture_murale";
-import { MOBILIER_PROD_SCHEMA } from "../lib/schemas/mobilier";
+import { STORES_PROD_SCHEMA } from "../lib/schemas/production/stores_classiques";
+import { STORES_BATEAUX_PROD_SCHEMA } from "../lib/schemas/production/stores_bateaux";
+import { COUSSINS_PROD_SCHEMA } from "../lib/schemas/production/coussins";
+import { CACHE_SOMMIER_PROD_SCHEMA } from "../lib/schemas/production/cache_sommier";
+import { PLAID_PROD_SCHEMA } from "../lib/schemas/production/plaid";
+import { TENTURE_MURALE_PROD_SCHEMA } from "../lib/schemas/production/tenture_murale";
+import { MOBILIER_PROD_SCHEMA } from "../lib/schemas/production/mobilier";
 import { AUTRES_PROD_SCHEMA } from "../lib/schemas/autres";
 import { uid } from "../lib/utils/uid"; // Import uid
 

@@ -273,7 +273,7 @@ export function recomputeRow(row, schema, ctx = {}) {
   }
 
   // --- 10. DECOR PRODUCTS (Coussins, Plaids, etc.) ---
-  const isDecor = /coussin|plaid|cache-sommier|mobilier|tenture/i.test(String(next.produit || ""));
+  const isDecor = /coussin|plaid|cache-sommier|mobilier|tenture|t[êe]te/i.test(String(next.produit || ""));
 
   if (isDecor) {
     // A. Fabrics (Underscored keys for Decors)
