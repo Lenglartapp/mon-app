@@ -15,6 +15,7 @@ import { SCHEMA_64 } from "../lib/schemas/production.js";
 import { STAGES, DEFAULT_VIEWS } from "../lib/constants/views.js"; // Import DEFAULT_VIEWS
 import { recomputeRow } from "../lib/formulas/recomputeRow";
 import { DECORS_PROD_SCHEMA } from "../lib/schemas/decors"; // Import Prod Schema
+import { RIDEAUX_PROD_SCHEMA } from "../lib/schemas/production/rideaux";
 import { STORES_PROD_SCHEMA } from "../lib/schemas/production/stores_classiques";
 import { STORES_BATEAUX_PROD_SCHEMA } from "../lib/schemas/production/stores_bateaux";
 import { COUSSINS_PROD_SCHEMA } from "../lib/schemas/production/coussins";
@@ -822,7 +823,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
             tableKey="rideaux"
             rows={rowsRideaux}
             onRowsChange={mergeChildRowsFor("rideaux")}
-            schema={schema}
+            schema={RIDEAUX_PROD_SCHEMA}
             projectName={projectName}
           />
           <EtiquettesSection
@@ -843,7 +844,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
             <MinuteGrid
               rows={rowsRideaux}
               onRowsChange={mergeChildRowsFor("rideaux")}
-              schema={schema}
+              schema={RIDEAUX_PROD_SCHEMA}
               enableCellFormulas={true}
               initialVisibilityModel={getVisibilityModel('prise', 'rideaux', schema)}
               onAdd={() => handleAddRow("Rideau")}
@@ -900,7 +901,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
               <MinuteGrid
                 rows={rowsRideaux}
                 onRowsChange={mergeChildRowsFor("rideaux")}
-                schema={schema}
+                schema={RIDEAUX_PROD_SCHEMA}
                 enableCellFormulas={true}
                 initialVisibilityModel={getVisibilityModel('bpf', 'rideaux', schema)}
                 onAdd={() => handleAddRow("Rideau")}
