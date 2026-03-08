@@ -29,20 +29,42 @@ export const DEMO_MINUTES = [
 ];
 
 export function mapMinuteLinesToProductionRows(lines) {
-  return (lines || []).map((m) => ({
-    ...m, // Safely carry over ALL properties (preserves new fields automatically)
-    id: uid(), // Assign a new ID for production row
-    produit: m.produit ?? "", zone: m.zone ?? "", piece: m.piece ?? "",
-    type_confection: m.type_confection ?? "", pair_un: m.pair_un ?? "",
-    statut_cotes: m.statut_cotes ?? "", l_mecanisme: m.l_mecanisme ?? "",
-    largeur: m.largeur ?? "", hauteur: m.hauteur ?? "", hauteur_finie: m.hauteur ?? "",
-    retour_g: m.retour_g ?? "", retour_d: m.retour_d ?? "", type_pose: m.type_pose ?? "",
-    commentaire_confection: m.commentaire_minute ?? "", // Map specific comment
+  return (lines || []).map((m) => {
+    const isRideau = (m.produit || "").toLowerCase().includes("rideau") || (m.produit || "").toLowerCase().includes("voilage");
 
-    // Explicit initializations for old/default fields if missing from source:
-    envers_visible: m.envers_visible ?? "", ampleur: m.ampleur ?? "", f_bas: m.f_bas ?? "", croisement: m.croisement ?? "",
-    type_rail: m.type_rail ?? "", couleur_rail: m.couleur_rail ?? "", nom_tringle: m.nom_tringle ?? "", diametre_tringle: m.diametre_tringle ?? "",
-    couv_mecanisme: m.couv_mecanisme ?? "", supp_mecanisme: m.supp_mecanisme ?? "", val_ded_rail: m.val_ded_rail ?? "", val_ourlet_cote: m.val_ourlet_cote ?? "", val_ourlet_haut: m.val_ourlet_haut ?? "",
-    photo: m.photo ?? [], sel: false,
-  }));
+    const row = {
+      ...m, // Safely carry over ALL properties (preserves new fields automatically)
+      id: uid(), // Assign a new ID for production row
+      produit: m.produit ?? "", zone: m.zone ?? "", piece: m.piece ?? "",
+      type_confection: m.type_confection ?? "", pair_un: m.pair_un ?? "",
+      statut_cotes: m.statut_cotes ?? "", l_mecanisme: m.l_mecanisme ?? "",
+      largeur: m.largeur ?? "", hauteur: m.hauteur ?? "", hauteur_finie: m.hauteur ?? "",
+      retour_g: m.retour_g ?? "", retour_d: m.retour_d ?? "", type_pose: m.type_pose ?? "",
+      commentaire_confection: m.commentaire_minute ?? "", // Map specific comment
+
+      // Explicit initializations for old/default fields if missing from source:
+      envers_visible: m.envers_visible ?? "", ampleur: m.ampleur ?? "", f_bas: m.f_bas ?? "", croisement: m.croisement ?? "",
+      type_rail: m.type_rail ?? "", couleur_rail: m.couleur_rail ?? "", nom_tringle: m.nom_tringle ?? "", diametre_tringle: m.diametre_tringle ?? "",
+      couv_mecanisme: m.couv_mecanisme ?? "", supp_mecanisme: m.supp_mecanisme ?? "", val_ded_rail: m.val_ded_rail ?? "", val_ourlet_cote: m.val_ourlet_cote ?? "", val_ourlet_haut: m.val_ourlet_haut ?? "",
+      photo: m.photo ?? [], sel: false,
+    };
+
+    if (isRideau) {
+      row.hspf_droite = m.hauteur ?? "";
+      row.hspf_gauche = m.hauteur ?? "";
+
+      // Clear out computed fields that might have accidentally carried over from a namesake in chiffrage
+      delete row.a_plat;
+      delete row.hauteur_coupe;
+      delete row.hauteur_coupe_motif;
+      delete row.hauteur_coupe_doublure;
+      delete row.largeur_finie;
+      delete row.nombre_les;
+      delete row.hauteur_finie_droite;
+      delete row.hauteur_finie_gauche;
+      delete row.nombre_glisseur;
+    }
+
+    return row;
+  });
 }

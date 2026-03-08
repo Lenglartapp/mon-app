@@ -25,6 +25,7 @@ import { CHIFFRAGE_SCHEMA_DEP } from "../lib/schemas/deplacement";
 import { EXTRA_DEPENSES_SCHEMA } from "../lib/schemas/extraDepenses";
 import { RIDEAUX_DEFAULT_VISIBILITY, DECORS_DEFAULT_VISIBILITY, STORES_DEFAULT_VISIBILITY, COUSSINS_DEFAULT_VISIBILITY, CACHE_SOMMIER_DEFAULT_VISIBILITY, PLAID_DEFAULT_VISIBILITY, TENTURE_DEFAULT_VISIBILITY, MOBILIER_DEFAULT_VISIBILITY } from "../lib/constants/gridDefaults";
 import { DECORS_SCHEMA } from "../lib/schemas/decors";
+import { RIDEAUX_SCHEMA } from "../lib/schemas/chiffrage/rideaux";
 import { STORES_CLASSIQUES_SCHEMA } from "../lib/schemas/chiffrage/stores_classiques";
 import { STORES_BATEAUX_SCHEMA } from "../lib/schemas/chiffrage/stores_bateaux";
 import { COUSSINS_SCHEMA } from "../lib/schemas/chiffrage/coussins";
@@ -174,7 +175,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
       if (p === 'autre dépense') targetSchema = EXTRA_DEPENSES_SCHEMA;
       else if (p === 'déplacement') targetSchema = CHIFFRAGE_SCHEMA_DEP;
       else if (/store|canishade/i.test(p)) targetSchema = STORES_CLASSIQUES_SCHEMA;
-      else if (/rideau|voilage/i.test(p)) targetSchema = schema;
+      else if (/rideau|voilage/i.test(p)) targetSchema = RIDEAUX_SCHEMA;
       else if (/coussin/i.test(p)) targetSchema = COUSSINS_SCHEMA;
       else if (/cache-sommier/i.test(p)) targetSchema = CACHE_SOMMIER_SCHEMA;
       else if (/plaid|chemin de lit/i.test(p)) targetSchema = PLAID_SCHEMA;
@@ -275,6 +276,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
     else if (key === 'deplacement') targetSchema = CHIFFRAGE_SCHEMA_DEP;
     else if (key === 'stores' || key === 'store') targetSchema = STORES_CLASSIQUES_SCHEMA;
     else if (key === 'store_bateau') targetSchema = STORES_BATEAUX_SCHEMA;
+    else if (key === 'rideaux') targetSchema = RIDEAUX_SCHEMA;
     else if (key === 'coussins') targetSchema = COUSSINS_SCHEMA;
     else if (key === 'cache_sommier') targetSchema = CACHE_SOMMIER_SCHEMA;
     else if (key === 'plaid') targetSchema = PLAID_SCHEMA;
@@ -318,7 +320,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
     else if (key === 'deplacement') targetSchema = CHIFFRAGE_SCHEMA_DEP;
     else if (key === 'store') targetSchema = STORES_CLASSIQUES_SCHEMA;
     else if (key === 'store_bateau') targetSchema = STORES_BATEAUX_SCHEMA;
-    else if (key === 'rideaux') targetSchema = schema;
+    else if (key === 'rideaux') targetSchema = RIDEAUX_SCHEMA;
     else if (key === 'coussins') targetSchema = COUSSINS_SCHEMA;
     else if (key === 'cache_sommier') targetSchema = CACHE_SOMMIER_SCHEMA;
     else if (key === 'plaid') targetSchema = PLAID_SCHEMA;
@@ -495,7 +497,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
                 title=""
                 rows={rowsRideaux}
                 onRowsChange={mergeChildRowsFor("rideaux")}
-                schema={schema}
+                schema={RIDEAUX_SCHEMA}
                 enableCellFormulas={enableCellFormulas}
                 formulaCtx={extendedCtx}
                 onAdd={() => handleAddRow("rideaux")}
