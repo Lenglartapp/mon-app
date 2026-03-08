@@ -54,6 +54,13 @@ export const MOBILIER_SCHEMA = [
     createCol('pa_pass_1', 'PA P1', 70, 'number'),
     createCol('pv_pass_1', 'PV P1', 70, 'number'),
 
+    createCol('passementerie_2', 'Passementerie 2', 180, 'catalog_item', { category: 'Passementerie' }),
+    createCol('app_passementerie_2', 'Application Passementerie 2', 180, 'text'),
+    createCol('ml_pass_2', 'ML P2', 70, 'number'),
+    createCol('pa_pass_2', 'PA P2', 70, 'number'),
+    createCol('pv_pass_2', 'PV P2', 70, 'number'),
+
+
     createCol('molleton', 'Molleton', 180, 'catalog_item', { category: 'Tissu' }),
     createCol('laize_molleton', 'Laize Mol.', 70, 'number'),
     createCol('ml_molleton', 'ML Mol.', 70, 'number'),

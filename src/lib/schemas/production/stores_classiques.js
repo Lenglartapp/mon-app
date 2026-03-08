@@ -133,30 +133,24 @@ export const STORES_PROD_SCHEMA = [
         'zone', 'piece', 'produit',
         { key: "largeur", width: 100 },
         'hauteur',
-
-        // TOILE 1
-        'toile_finition_1',
-        'laize_toile_finition_1',
-        'ml_toile_finition_1',
-
-        // DOUBLURE
-        'doublure',
-        'laize_doublure',
-        'ml_doublure',
     ]),
 
     // EXCLUSIVE PROD FIELDS
     { key: "mecanisme_store", label: "Méca Store", type: "catalog_item", category: "Store,Stores,Mecanisme Store", width: 140 },
 
+    // STATUTS
+    {
+        key: "statut_cotes",
+        label: "Statut Côtes",
+        type: "select",
+        options: ['Définitive', 'Déduction restante à faire', 'Non exploitable'],
+        width: 160,
+        editable: true
+    },
+    { key: "statut_prepa", label: "Statut Prépa", type: "select", options: ['Non démarré', 'En cours', 'Terminé'], width: 140, editable: true },
+    { key: "statut_pose", label: "Statut Pose", type: "select", options: ['Non démarré', 'Méca posé', 'Accroché', 'Terminé', 'Reprise'], width: 140, editable: true },
+
     ...mapSchema([
-        // HEURES (Hide if 0)
-        { key: 'heures_prepa', valueFormatter: hideZero },
-        { key: 'heures_pose', valueFormatter: hideZero },
-        { key: 'heures_confection', valueFormatter: hideZero },
-
-        // SOUS-TRAITANCE
-        'st_pose_pa', // ST POSE PA
-
         // TOTAUX
         'quantite'
     ])
