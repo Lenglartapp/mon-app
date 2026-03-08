@@ -525,7 +525,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
         return (
           <Accordion key="store" defaultExpanded disableGutters sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03)', border: '1px solid #f3f4f6' }}>
             <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ borderBottom: '1px solid #f3f4f6', backgroundColor: '#fff', borderTopLeftRadius: 12, borderTopRightRadius: 12, px: 3 }}>
-              {renderHeaderContent("Stores", rowsStore)}
+              {renderHeaderContent("Stores Négoce", rowsStore)}
             </AccordionSummary>
             <AccordionDetails sx={{ p: 0 }}>
 

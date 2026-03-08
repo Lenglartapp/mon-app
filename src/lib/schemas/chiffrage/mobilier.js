@@ -67,7 +67,7 @@ export const MOBILIER_SCHEMA = [
     createCol('pa_molleton', 'PA Mol.', 70, 'number'),
     createCol('pv_molleton', 'PV Mol.', 70, 'number'),
 
-    createCol('mecanisme', 'Mécanisme', 180, 'catalog_item', { category: 'Mecanisme' }),
+    createCol('mecanisme_fourniture', 'Mécanisme', 180, 'catalog_item', { category: 'Rail' }),
     createCol('pa_mecanisme', 'PA Méca.', 70, 'number'),
     createCol('pv_mecanisme', 'PV Méca.', 70, 'number'),
 
@@ -88,7 +88,7 @@ export const MOBILIER_SCHEMA = [
 
     createCol('livraison', 'Livraison', 90, 'number'),
 
-    createCol('unit_price', 'P.U.', 100, 'number'),
-    createCol('quantite', 'Qté', 70, 'number'),
+    createCol('unit_price', 'P.U.', 100, 'number', { valueFormatter: (value) => new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(value) }),
+    createCol('quantite', 'Qté', 70, 'number', { editable: false, defaultValue: 1 }),
     createCol('total_price', 'Total', 100, 'number'),
 ].map(c => ({ ...c, key: c.field }));

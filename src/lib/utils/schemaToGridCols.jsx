@@ -228,13 +228,21 @@ export function schemaToGridCols(schema, enableCellFormulas = false, onOpenDetai
     }
 
     // Currency Formatting (Force override)
-    const isPriceTerm = ['prix', 'montant', 'total', 'cout', 'pa', 'pv', 'transport', 'livraison'].some(term => col.key.toLowerCase().includes(term));
+    const isPriceTerm = ['prix', 'montant', 'total', 'cout', 'pa', 'pv', 'transport', 'livraison'].some(term => {
+      const lowerKey = col.key.toLowerCase();
+      if (term === 'pa' || term === 'pv') {
+        // Strict check for pa/pv: must be exactly that, or start/end with it followed/preceded by underscore
+        return lowerKey === term || lowerKey.startsWith(term + '_') || lowerKey.endsWith('_' + term) || lowerKey.includes('_' + term + '_');
+      }
+      return lowerKey.includes(term);
+    });
     const isRepas = col.key === 'nb_repas';
     const isHeuresPrepa = col.key === 'heures_prepa'; // "prepa" contains "pa"
     const isML = col.key.startsWith('ml_'); // Exclude ML columns
     const isNb = col.key.startsWith('nb_');
+    const isPaire = col.key.includes('paire');
 
-    const isPrice = isPriceTerm && !isRepas && !isHeuresPrepa && !isML && !isNb;
+    const isPrice = isPriceTerm && !isRepas && !isHeuresPrepa && !isML && !isNb && !isPaire;
 
     // Remove type check to ensure coverage
     // Priority: Explicit formatter > Auto Formatting
@@ -274,17 +282,21 @@ export function schemaToGridCols(schema, enableCellFormulas = false, onOpenDetai
     }
 
     // Handle Select Options & Chips (Labels)
-    const chipFields = ['produit', 'type_confection'];
+    const chipFields = ['produit', 'type_confection', 'paire_ou_un_seul_pan'];
     if (((col.type === 'select' || col.type === 'singleSelect') && Array.isArray(col.options || col.valueOptions)) || chipFields.includes(col.key)) {
       if (!gridCol.renderCell) { // Don't overwrite buttons or custom cells
         gridCol.renderCell = (params) => {
           if (!params.value) return '';
+
+          // Generate color with a different seed for 'paire_ou_un_seul_pan' to fulfill "different color" request
+          const colorSeed = col.key === 'paire_ou_un_seul_pan' ? 120 : 0;
+
           return (
             <Chip
               label={params.value}
               size="small"
               style={{
-                backgroundColor: stringToColor(params.value),
+                backgroundColor: stringToColor(params.value, colorSeed),
                 color: '#000000',
                 fontWeight: 500,
                 fontSize: '0.75rem'
@@ -369,8 +381,8 @@ export function schemaToGridCols(schema, enableCellFormulas = false, onOpenDetai
 }
 
 // Helper to generate pastel color from string
-function stringToColor(string) {
-  let hash = 0;
+function stringToColor(string, seed = 0) {
+  let hash = seed;
   for (let i = 0; i < string.length; i++) {
     hash = string.charCodeAt(i) + ((hash << 5) - hash);
   }

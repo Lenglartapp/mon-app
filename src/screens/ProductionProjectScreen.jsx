@@ -918,7 +918,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
             <Accordion key="bpf_stores" defaultExpanded disableGutters sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), border: 1px solid #f3f4f6' }}>
               <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ borderBottom: '1px solid #f3f4f6', backgroundColor: '#fff', borderTopLeftRadius: 12, borderTopRightRadius: 12, px: 3 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <h3 style={{ margin: 0, fontSize: 18, color: '#111827', fontWeight: 700 }}>BPF Stores</h3>
+                  <h3 style={{ margin: 0, fontSize: 18, color: '#111827', fontWeight: 700 }}>BPF Stores Négoce</h3>
                   <span style={{ background: '#f3f4f6', color: '#4b5563', padding: '2px 8px', borderRadius: 12, fontSize: 12, fontWeight: 600 }}>{rowsStores.length} articles</span>
                 </div>
               </AccordionSummary>
@@ -1134,7 +1134,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
             <Accordion key="bpp_stores" defaultExpanded disableGutters sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), border: 1px solid #f3f4f6' }}>
               <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ borderBottom: '1px solid #f3f4f6', backgroundColor: '#fff', borderTopLeftRadius: 12, borderTopRightRadius: 12, px: 3 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <h3 style={{ margin: 0, fontSize: 18, color: '#111827', fontWeight: 700 }}>BPP Stores (Préparation Mécanismes)</h3>
+                  <h3 style={{ margin: 0, fontSize: 18, color: '#111827', fontWeight: 700 }}>BPP Stores Négoce (Préparation Mécanismes)</h3>
                   <span style={{ background: '#f3f4f6', color: '#4b5563', padding: '2px 8px', borderRadius: 12, fontSize: 12, fontWeight: 600 }}>{rowsStores.length} articles</span>
                 </div>
               </AccordionSummary>
