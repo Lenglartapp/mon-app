@@ -73,7 +73,7 @@ export const TENTURE_MURALE_SCHEMA = [
 
     createCol('livraison', 'Livraison', 90, 'number'),
 
-    createCol('unit_price', 'P.U.', 100, 'number'),
-    createCol('quantite', 'Qté', 70, 'number'),
+    createCol('unit_price', 'P.U.', 100, 'number', { valueFormatter: (value) => new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(value) }),
+    createCol('quantite', 'Qté', 70, 'number', { editable: false, defaultValue: 1 }),
     createCol('total_price', 'Total', 100, 'number'),
 ].map(c => ({ ...c, key: c.field }));

@@ -9,7 +9,7 @@ export default function DashboardSummary({ recap, nf, activeModules }) {
     const rawItems = [
         // 1. Production Categories (Dynamic)
         { label: "Rideaux", value: recap.caRideaux },
-        { label: "Stores", value: recap.caStores },
+        { label: "Stores Négoce", value: recap.caStores },
         { label: "Stores Bateau", value: recap.caStoresBateau },
         { label: "Coussins", value: recap.caCoussins },
         { label: "Cache-Sommier", value: recap.caCacheSommier },

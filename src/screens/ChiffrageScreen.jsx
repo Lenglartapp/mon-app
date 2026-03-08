@@ -228,7 +228,7 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onBack, highlightRowId }
     });
 
     const caTotal = caRideaux + caCoussins + caCacheSommier + caPlaid + caTenture + caMobilier + caStores + caStoresBateau + caDivers;
-    const offreTotale = caTotal + depTotal + extrasTotal;
+    const offreTotale = caTotal + depTotal; // Excludes extrasTotal (Frais) as requested
 
     return {
       caRideaux, caCoussins, caCacheSommier, caPlaid, caTenture, caMobilier, caStores, caStoresBateau, caDivers,

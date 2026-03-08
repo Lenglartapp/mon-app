@@ -70,6 +70,9 @@ const BASE_MOBILIER_SCHEMA = [
     createCol('st_conf_pa', 'ST Conf PA', 90, 'number'),
     createCol('st_conf_pv', 'ST Conf PV', 90, 'number'),
 
+    createCol('mecanisme_fourniture', 'Mécanisme', 180, 'catalog_item', { category: 'Rail' }),
+    createCol('pa_mecanisme', 'PA Méca.', 70, 'number'),
+    createCol('pv_mecanisme', 'PV Méca.', 70, 'number'),
     createCol('livraison', 'Livraison', 90, 'number'),
 
     createCol('unit_price', 'P.U.', 100, 'number'),
@@ -104,7 +107,7 @@ export const MOBILIER_PROD_SCHEMA = [
     createCol('molleton', 'Molleton/Mousse', 180, 'catalog_item', { category: 'Tissu' }),
     createCol('laize_molleton', 'Laize Moll/Mous.', 70, 'number'),
     createCol('ml_molleton', 'ML Moll/Mous.', 70, 'number'),
-    createCol('mecanisme', 'Mécanisme', 180, 'text'),
+    createCol('mecanisme_fourniture', 'Mécanisme', 180, 'catalog_item', { category: 'Rail' }),
     createCol('schema_photo', 'Schéma', 120, 'photo'),
     createCol('heures_prepa', 'H. Prépa', 80, 'number'),
     { field: 'heures_pose', valueFormatter: hideZero },

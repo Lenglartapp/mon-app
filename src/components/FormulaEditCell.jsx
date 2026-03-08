@@ -107,7 +107,7 @@ export default function FormulaEditCell(props) {
 
     // Autocomplete logic
     useEffect(() => {
-        if (!inputValue || !schema) {
+        if (!inputValue || !schema || !inputValue.toString().startsWith('=')) {
             setSuggestions([]);
             return;
         }

@@ -47,17 +47,17 @@ export const PLAID_SCHEMA = [
     createCol('pa_tissu_2', 'PA T2', 70, 'number'),
     createCol('pv_tissu_2', 'PV T2', 70, 'number'),
 
-    createCol('passementerie_1', 'Passementerie 1', 180, 'catalog_item', { category: 'Passementerie' }),
-    createCol('app_passementerie_1', 'Application Passementerie 1', 180, 'text'),
-    createCol('ml_pass_1', 'ML P1', 70, 'number'),
-    createCol('pa_pass_1', 'PA P1', 70, 'number'),
-    createCol('pv_pass_1', 'PV P1', 70, 'number'),
+    createCol('passementerie_1', 'Passement. 1', 180, 'catalog_item', { category: 'Passementerie', hide: true }),
+    createCol('app_passementerie_1', 'App. P1', 100, 'text', { hide: true }),
+    createCol('ml_pass_1', 'ML Pass 1', 70, 'number', { hide: true }),
+    createCol('pa_pass_1', 'PA Pass 1', 70, 'number', { hide: true }),
+    createCol('pv_pass_1', 'PV Pass 1', 70, 'number', { hide: true }),
 
-    createCol('passementerie_2', 'Passementerie 2', 180, 'catalog_item', { category: 'Passementerie' }),
-    createCol('app_passementerie_2', 'Application Passementerie 2', 180, 'text'),
-    createCol('ml_pass_2', 'ML P2', 70, 'number'),
-    createCol('pa_pass_2', 'PA P2', 70, 'number'),
-    createCol('pv_pass_2', 'PV P2', 70, 'number'),
+    createCol('passementerie_2', 'Passement. 2', 180, 'catalog_item', { category: 'Passementerie', hide: true }),
+    createCol('app_passementerie_2', 'App. P2', 100, 'text', { hide: true }),
+    createCol('ml_pass_2', 'ML Pass 2', 70, 'number', { hide: true }),
+    createCol('pa_pass_2', 'PA Pass 2', 70, 'number', { hide: true }),
+    createCol('pv_pass_2', 'PV Pass 2', 70, 'number', { hide: true }),
 
     createCol('molleton', 'Molleton', 180, 'catalog_item', { category: 'Tissu' }),
     createCol('laize_molleton', 'Laize Mol.', 70, 'number'),
@@ -73,7 +73,7 @@ export const PLAID_SCHEMA = [
 
     createCol('livraison', 'Livraison', 90, 'number'),
 
-    createCol('unit_price', 'P.U.', 100, 'number'),
-    createCol('quantite', 'Qté', 70, 'number'),
+    createCol('unit_price', 'P.U.', 100, 'number', { valueFormatter: (value) => new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(value) }),
+    createCol('quantite', 'Qté', 70, 'number', { editable: false, defaultValue: 1 }),
     createCol('total_price', 'Total', 100, 'number'),
 ].map(c => ({ ...c, key: c.field }));

@@ -56,12 +56,6 @@ export const STORES_CLASSIQUES_SCHEMA = [
     // pv_pose (number, readOnly) : PV Pose 
     { key: "pv_pose", label: "PV Pose", type: "number", width: 90 },
 
-    // heures_confection (number) : H. Conf
-    { key: "heures_confection", label: "H. Conf", type: "number", width: 80 },
-
-    // pv_confection (number, readOnly) : PV Conf 
-    { key: "pv_confection", label: "PV Conf", type: "number", width: 90 },
-
     { key: "st_pose_pa", label: "ST Pose PA", type: "number", width: 90 },
 
     // st_pose_pv (number, readOnly) : ST Pose PV 
@@ -73,8 +67,7 @@ export const STORES_CLASSIQUES_SCHEMA = [
     // unit_price (number, readOnly) : P.U
     { key: "unit_price", label: "P.U", type: "number", width: 110, valueFormatter: (value) => new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(value) },
 
-    // quantite (number) : Qté
-    { key: "quantite", label: "Qté", type: "number", width: 70 },
+    { key: "quantite", label: "Qté", type: "number", width: 70, readOnly: true, defaultValue: 1 },
 
     // total_price (number, readOnly) : Total
     { key: "total_price", label: "Total", type: "number", width: 120 },

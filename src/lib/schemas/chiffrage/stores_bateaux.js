@@ -103,8 +103,7 @@ export const STORES_BATEAUX_SCHEMA = [
     // unit_price (number, readOnly) : P.U
     { key: "unit_price", label: "P.U", type: "number", width: 110, valueFormatter: (value) => new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(value) },
 
-    // quantite (number) : Qté
-    { key: "quantite", label: "Qté", type: "number", width: 70 },
+    { key: "quantite", label: "Qté", type: "number", width: 70, readOnly: true, defaultValue: 1 },
 
     // total_price (number, readOnly) : Total
     { key: "total_price", label: "Total", type: "number", width: 120 },
