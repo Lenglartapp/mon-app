@@ -9,16 +9,10 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 // composants internes
 import MinuteGrid from "./MinuteGrid";
 import CatalogManager from "./CatalogManager";
-
-// constantes / helpers
-import { computeFormulas } from "../lib/formulas/compute";
 import { recomputeRow } from "../lib/formulas/recomputeRow";
-import { COLORS, S } from "../lib/constants/ui";
+import { COLORS } from "../lib/constants/ui";
 import { uid } from "../lib/utils/uid";
 
-// hooks app (si MinuteEditor les utilise ; sinon tu peux supprimer ces lignes)
-import { useActivity } from "../contexts/activity";
-import { useAuth } from "../auth.jsx";
 import { Library, Plus, Trash2 } from 'lucide-react';
 
 import { CHIFFRAGE_SCHEMA_DEP } from "../lib/schemas/deplacement";
@@ -33,7 +27,6 @@ import { CACHE_SOMMIER_SCHEMA } from "../lib/schemas/chiffrage/cache_sommier";
 import { PLAID_SCHEMA } from "../lib/schemas/chiffrage/plaid";
 import { TENTURE_MURALE_SCHEMA } from "../lib/schemas/chiffrage/tenture_murale";
 import { MOBILIER_SCHEMA } from "../lib/schemas/chiffrage/mobilier";
-import { parseRideauxImport } from '../utils/importRideaux';
 
 // ... (imports remain)
 
@@ -43,7 +36,7 @@ import { parseRideauxImport } from '../utils/importRideaux';
 const EMPTY_CTX = {};
 
 // ================ MinuteEditor (tableau des lignes d'une minute) =================
-function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formulaCtx = EMPTY_CTX, schema = [], setSchema, targetRowId, onRowClick, readOnly = false, currentUser }) {
+function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formulaCtx = EMPTY_CTX, schema = [], targetRowId, onRowClick, readOnly = false, currentUser }) {
 
   // --- STATE LOCAL & DEBOUNCE ---
   const [localLines, setLocalLines] = React.useState(minute?.lines || []);
@@ -64,7 +57,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
         lastSavedCountRef.current = minute.lines.length;
       }
     }
-  }, [minute?.lines]);
+  }, [minute?.lines, localLines]);
 
   // FONCTION DE SAUVEGARDE SÉCURISÉE
   const performSave = React.useCallback((newLines) => {
@@ -283,7 +276,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
     else if (key === 'tenture_murale') targetSchema = TENTURE_MURALE_SCHEMA;
     else if (key === 'mobilier') targetSchema = MOBILIER_SCHEMA;
     else if (key === 'decors') targetSchema = DECORS_SCHEMA;
-    else if (key === 'autre_confection') targetSchema = AUTRES_SCHEMA;
+    else if (key === 'autre_confection') targetSchema = EXTRA_DEPENSES_SCHEMA;
 
     // Fusion + recalcul des formules
     const next = [...others, ...normalizedChild];
@@ -335,7 +328,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
     // DEBOUNCED UPDATE
     triggerUpdate(nextRows);
     // onChangeMinute?.({ ...minute, lines: nextRows, updatedAt: Date.now() });
-  }, [rows, schema, extendedCtx, minute, triggerUpdate]);
+  }, [rows, schema, extendedCtx, triggerUpdate]);
 
   // États de sélection pour chaque grille
   const [selRideaux, setSelRideaux] = React.useState([]);
@@ -378,26 +371,6 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
     return catalog.filter(item => item.category === 'Rail').map(item => item.name);
   }, [catalog]);
 
-  // Import Excel Handler
-  const handleImportExcel = async (file) => {
-    try {
-      const importedRows = await parseRideauxImport(file, schema, extendedCtx, catalog);
-      if (!importedRows || importedRows.length === 0) {
-        alert("Aucune donnée valide trouvée dans le fichier.");
-        return;
-      }
-
-      const newRideauxRows = [...rowsRideaux, ...importedRows];
-      mergeChildRowsFor("rideaux")(newRideauxRows);
-
-      alert(`${importedRows.length} ligne(s) importée(s) avec succès !`);
-
-    } catch (e) {
-      console.error("Erreur import Excel", e);
-      alert("Erreur lors de l'import Excel: " + e.message);
-    }
-  };
-
   const handleDuplicateRow = (id) => {
     const index = rows.findIndex(r => r.id === id);
     if (index === -1) return;
@@ -421,38 +394,6 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
   const defaultOrder = ['rideau', 'store', 'store_bateau', 'coussins', 'cache_sommier', 'plaid', 'tenture_murale', 'mobilier'];
   const renderOrder = Array.isArray(mods.order) ? mods.order : defaultOrder;
 
-  // Helper to remove a module
-  const handleRemoveModule = (key, label, rowsToDelete) => {
-    if (!confirm(`Voulez-vous vraiment supprimer le module "${label}" ?\n${rowsToDelete.length} ligne(s) seront supprimées.`)) return;
-
-    // 1. Remove rows
-    const idsToDelete = new Set(rowsToDelete.map(r => r.id));
-    const newLines = (minute?.lines || []).filter(r => !idsToDelete.has(r.id));
-
-    // 2. Update modules (active=false, remove from order)
-    const currentOrder = Array.isArray(mods.order) ? mods.order : defaultOrder;
-    const newOrder = currentOrder.filter(k => k !== key);
-
-    // 3. Trigger Update
-    onChangeMinute?.({
-      ...minute,
-      lines: newLines,
-      modules: { ...mods, [key]: false, order: newOrder },
-      updatedAt: Date.now()
-    });
-
-    // Reset correct selection state
-    if (key === 'rideau') setSelRideaux([]);
-    if (key === 'store') setSelStore([]);
-    if (key === 'store_bateau') setSelStoreBateau([]);
-    if (key === 'coussins') setSelCoussins([]);
-    if (key === 'cache_sommier') setSelCacheSommier([]);
-    if (key === 'plaid') setSelPlaid([]);
-    if (key === 'tenture_murale') setSelTenture([]);
-    if (key === 'mobilier') setSelMobilier([]);
-    if (key === 'decor') setSelDecors([]);
-    if (key === 'stores') setSelStores([]);
-  };
 
   // Helper to Render Specific Module
   const renderHeaderContent = (title, rowArray) => (
@@ -468,21 +409,6 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
   );
 
   const renderModule = (key) => {
-    // Common Header Renderer
-    const renderHeader = (label, rowsForModule) => (
-      <div style={{ padding: '20px 24px', borderBottom: `1px solid ${COLORS.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ fontWeight: 700, fontSize: 16, color: '#374151', textTransform: 'uppercase' }}>{label}</div>
-        <Button
-          color="error"
-          size="small"
-          onClick={() => handleRemoveModule(key, label, rowsForModule)}
-          sx={{ minWidth: 0, padding: 1 }}
-        >
-          <Trash2 size={18} />
-        </Button>
-      </div>
-    );
-
     switch (key) {
       case 'rideau':
         return (
@@ -507,7 +433,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
                 catalog={catalog}
                 railOptions={railOptions}
                 initialVisibilityModel={RIDEAUX_DEFAULT_VISIBILITY}
-                onImportExcel={handleImportExcel}
+
                 onDuplicateRow={handleDuplicateRow}
                 hideCroquis={true}
                 minuteId={minute?.id}

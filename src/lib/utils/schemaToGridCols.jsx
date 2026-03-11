@@ -56,7 +56,7 @@ const mapType = (type) => {
  * @param {boolean} enableCellFormulas - Whether cell formulas are enabled.
  * @returns {Array} - Array of GridColDef.
  */
-export function schemaToGridCols(schema, enableCellFormulas = false, onOpenDetail, catalog = [], railOptions = [], onPhotoChange, onDuplicate, hideCroquis = false, readOnly = false) {
+export function schemaToGridCols(schema, enableCellFormulas = false, onOpenDetail, catalog = [], railOptions = [], onPhotoChange, onDuplicate, hideCroquis = false, readOnly = false, gridTitle = '') {
   if (!Array.isArray(schema)) return [];
 
   // Filter out 'sel' column and explicitly hidden columns
@@ -282,24 +282,23 @@ export function schemaToGridCols(schema, enableCellFormulas = false, onOpenDetai
     }
 
     // Handle Select Options & Chips (Labels)
-    const chipFields = ['produit', 'type_confection', 'paire_ou_un_seul_pan'];
+    const chipFields = ['produit', 'type_confection', 'paire_ou_un_seul_pan', 'application_passementerie1', 'application_passementerie2', 'type_mecanisme', 'type_pose', 'type_interieur', 'style_confection'];
+
     if (((col.type === 'select' || col.type === 'singleSelect') && Array.isArray(col.options || col.valueOptions)) || chipFields.includes(col.key)) {
       if (!gridCol.renderCell) { // Don't overwrite buttons or custom cells
         gridCol.renderCell = (params) => {
           if (!params.value) return '';
-
-          // Generate color with a different seed for 'paire_ou_un_seul_pan' to fulfill "different color" request
-          const colorSeed = col.key === 'paire_ou_un_seul_pan' ? 120 : 0;
 
           return (
             <Chip
               label={params.value}
               size="small"
               style={{
-                backgroundColor: stringToColor(params.value, colorSeed),
-                color: '#000000',
-                fontWeight: 500,
-                fontSize: '0.75rem'
+                backgroundColor: getThemedColor(params.value, col.key, gridTitle),
+                color: '#1F2937', // Darker text for better contrast on pastels
+                fontWeight: 600,  // Slightly thicker font
+                fontSize: '0.75rem',
+                border: '1px solid rgba(0,0,0,0.05)' // Subtle border to frame it
               }}
             />
           );
@@ -380,21 +379,58 @@ export function schemaToGridCols(schema, enableCellFormulas = false, onOpenDetai
   });
 }
 
-// Helper to generate pastel color from string
-function stringToColor(string, seed = 0) {
-  let hash = seed;
-  for (let i = 0; i < string.length; i++) {
-    hash = string.charCodeAt(i) + ((hash << 5) - hash);
+/**
+ * Generates a themed HSL pastel color based on the table, column, and text value.
+ * @param {string} value The display text of the chip
+ * @param {string} colKey The technical key of the column (e.g. 'produit', 'type_confection')
+ * @param {string} gridTitle The human-readable title of the grid (e.g. 'Rideaux', 'Stores Négoce')
+ */
+function getThemedColor(value, colKey, gridTitle) {
+  const strValue = String(value || '');
+  const title = String(gridTitle || '').toLowerCase();
+
+  // 1. Determine Base Hue according to Family
+  let baseHue = 0;
+  if (title.includes('rideau') || title.includes('voilage')) {
+    baseHue = 150; // Green/Teal range (Mint, Sage)
+  } else if (title.includes('store')) {
+    baseHue = 210; // Blue range (Sky, Azure)
+  } else if (title.includes('coussin') || title.includes('plaid')) {
+    baseHue = 35; // Orange/Yellow range (Peach, Sand)
+  } else if (title.includes('tête de lit') || title.includes('mobilier') || title.includes('tenture')) {
+    baseHue = 270; // Purple range (Lilac, Lavender)
+  } else if (title.includes('déplacement') || title.includes('dépense') || title.includes('autre')) {
+    baseHue = 0; // Grayscale or subtle neutral (handled by low saturation)
+  } else {
+    // Fallback: hash the title
+    baseHue = Array.from(title).reduce((acc, char) => acc + char.charCodeAt(0), 0) % 360;
   }
-  const c = (hash & 0x00ffffff).toString(16).toUpperCase();
-  const hex = "00000".substring(0, 6 - c.length) + c;
 
-  // Convert to RGB and mix with white for pastel
-  const r = parseInt(hex.substring(0, 2), 16);
-  const g = parseInt(hex.substring(2, 4), 16);
-  const b = parseInt(hex.substring(4, 6), 16);
+  // Avoid pure red (0 or 360) and harsh greens (120) by shifting if needed
+  if (baseHue < 20 || baseHue > 340) baseHue = 220; // Default to nice blue if it lands in red
 
-  const mix = (val) => Math.round((val + 255) / 2);
+  // 2. Determine Hue Variation based on Column Key
+  // This ensures 'Confection' and 'Produit' in the same table have different nuances
+  const colHash = Array.from(colKey).reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  const hueVariation = (colHash % 60) - 30; // Shift by +/- 30 degrees max
 
-  return `rgb(${mix(r)}, ${mix(g)}, ${mix(b)})`;
+  let finalHue = (baseHue + hueVariation) % 360;
+  if (finalHue < 0) finalHue += 360;
+
+  // 3. Determine Saturation/Lightness based on the actual Text Value
+  // This ensures 'Pli Flamand' and 'Oeillets' within the same column are distinct
+  const valHash = Array.from(strValue).reduce((acc, char) => acc + char.charCodeAt(0), 0);
+
+  // Saturation between 40% and 80% (pleasant pastels)
+  const saturation = 40 + (valHash % 40);
+
+  // Lightness between 85% and 95% (very light background)
+  const lightness = 85 + (valHash % 10);
+
+  // Special cases for universally neutral terms
+  if (strValue === '-' || strValue.toLowerCase() === 'aucun' || strValue.toLowerCase() === 'non') {
+    return `hsl(0, 0%, 95%)`; // Light gray
+  }
+
+  return `hsl(${finalHue}, ${saturation}%, ${lightness}%)`;
 }

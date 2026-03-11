@@ -1,6 +1,5 @@
 // src/components/MinuteGrid.jsx
 import React, { useState, useCallback, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
     DataGrid,
     GridToolbarContainer,
@@ -16,22 +15,7 @@ import { useGridColumnState } from '../lib/hooks/useGridColumnState'; // Import 
 
 import { Plus, Trash2, FileDown, FileUp } from 'lucide-react';
 
-function CustomToolbar({ onAdd, onDelete, selectedCount, onImportExcel, readOnly }) {
-    const fileInputRef = React.useRef(null);
-
-    const handleImportClick = () => {
-        fileInputRef.current?.click();
-    };
-
-    const handleFileChange = (e) => {
-        const file = e.target.files?.[0];
-        if (file && onImportExcel) {
-            onImportExcel(file);
-        }
-        // Reset input
-        e.target.value = '';
-    };
-
+function CustomToolbar({ onAdd, onDelete, selectedCount, readOnly }) {
     return (
         <GridToolbarContainer style={{ padding: 10, borderBottom: '1px solid #e5e7eb' }}>
             <div style={{ display: 'flex', gap: 10, marginRight: 'auto' }}>
@@ -52,25 +36,6 @@ function CustomToolbar({ onAdd, onDelete, selectedCount, onImportExcel, readOnly
                     </button>
                 )}
 
-                {/* Excel Actions */}
-                {onImportExcel && !readOnly && (
-                    <>
-                        <button
-                            onClick={handleImportClick}
-                            style={{ cursor: 'pointer', padding: '6px 12px', background: '#fff', border: '1px solid #d1d5db', borderRadius: 4, display: 'flex', alignItems: 'center', gap: 6, color: '#374151' }}
-                            title="Importer un fichier Excel rempli"
-                        >
-                            <FileUp size={16} /> Importer
-                        </button>
-                        <input
-                            type="file"
-                            ref={fileInputRef}
-                            style={{ display: 'none' }}
-                            accept=".xlsx, .xls"
-                            onChange={handleFileChange}
-                        />
-                    </>
-                )}
             </div>
             <GridToolbarColumnsButton />
             <GridToolbarFilterButton />
@@ -94,7 +59,6 @@ export default function MinuteGrid({
     railOptions = [],
     onAdd,
     initialVisibilityModel = {},
-    onImportExcel,
     onDuplicateRow,
     hideCroquis = false,
     minuteId,    // <--- NEW
@@ -107,9 +71,8 @@ export default function MinuteGrid({
     gridKey // <--- NEW explicit key for persistence
 }) {
     const [rowSelectionModel, setRowSelectionModel] = useState([]);
-    const [detailRowId, setDetailRowId] = useState(null);
 
-    const navigate = useNavigate();
+
 
     // Generate unique Grid ID for persistence
     const gridId = React.useMemo(() => {
@@ -140,11 +103,6 @@ export default function MinuteGrid({
         }
     }, [onRowClick]);
 
-    const handleDetailRowChange = useCallback((updatedRow) => {
-        // Update the row in the main rows array
-        const newRows = rows.map(r => r.id === updatedRow.id ? updatedRow : r);
-        onRowsChange(newRows);
-    }, [rows, onRowsChange]);
 
     const handleAddRow = useCallback(() => {
         if (onAdd) {
@@ -180,7 +138,7 @@ export default function MinuteGrid({
         const lutron = catalog.find(x => x.name.toLowerCase().includes('lutron'));
         console.log("🧐 MinuteGrid: Generating Cols. Catalog Size:", catalog.length, "Lutron Unit:", lutron?.unit);
 
-        const cols = schemaToGridCols(schema, enableCellFormulas, handleOpenDetail, catalog, railOptions, handlePhotoChange, onDuplicateRow, hideCroquis, readOnly);
+        const cols = schemaToGridCols(schema, enableCellFormulas, handleOpenDetail, catalog, railOptions, handlePhotoChange, onDuplicateRow, hideCroquis, readOnly, title);
 
 
         // MOBILE OPTIMIZATION
@@ -374,7 +332,6 @@ export default function MinuteGrid({
     }, []);
 
     const MobileCard = ({ row }) => {
-        const statusOpt = row.statut_pose ? { label: row.statut_pose, color: '#065F46', bg: '#ECFDF5' } : { label: 'À faire', color: '#6B7280', bg: '#F3F4F6' };
         // Simple logic for status display - adjusting as per schema
         // Taking 'statut_conf' or 'statut_pose' as primary status or 'statut_cotes'
         // Priority: Pose > Conf > Prepa > Cotes
@@ -455,7 +412,6 @@ export default function MinuteGrid({
                             onAdd: handleAddRow,
                             onDelete: handleDeleteRows,
                             selectedCount: rowSelectionModel?.length || 0,
-                            onImportExcel,
                             readOnly
                         },
                     }}
