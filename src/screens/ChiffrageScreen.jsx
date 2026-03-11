@@ -18,7 +18,8 @@ import { useNotifications } from "../contexts/NotificationContext";
 import { useAppSettings, useCatalog } from "../hooks/useSupabase";
 
 import MinuteHistoryDialog from "../components/MinuteHistoryDialog";
-import { BookOpen, History } from 'lucide-react';
+import { BookOpen, History, FileUp } from 'lucide-react';
+import { importGlobalExcel } from "../lib/utils/importGlobalExcel";
 
 const toNum = (v) => {
   const n = Number(String(v ?? "").replace(",", "."));
@@ -172,6 +173,34 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onBack, highlightRowId }
     } else {
       performUpdate();
     }
+  };
+
+  const fileInputRef = React.useRef(null);
+  const handleGlobalImport = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    try {
+      const importedRows = await importGlobalExcel(file, formulaCtx, catalog);
+      
+      if (!importedRows || importedRows.length === 0) {
+        if (addNotification) addNotification("Aucune ligne valide à importer.", "warning");
+        e.target.value = null;
+        return;
+      }
+      
+      const newLines = [...(rows || []), ...importedRows];
+      setRows(newLines);
+      
+      // Update Minute state (propagates to MinuteEditor)
+      updateMinute({ lines: newLines });
+      
+      if (addNotification) addNotification(`${importedRows.length} ligne(s) importée(s) avec succès !`, "success");
+    } catch (err) {
+      if (addNotification) addNotification(`Erreur d'import : ${err.message}`, "error");
+    }
+    
+    e.target.value = null; // reset input
   };
 
   // Recap Logic
@@ -332,6 +361,17 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onBack, highlightRowId }
 
         {/* Actions */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, paddingTop: 32 }}>
+          <input
+            type="file"
+            ref={fileInputRef}
+            style={{ display: "none" }}
+            accept=".xlsx, .xls"
+            onChange={handleGlobalImport}
+          />
+          <button onClick={() => fileInputRef.current?.click()} style={{ display: 'flex', gap: 8, padding: '8px 16px', borderRadius: 8, background: '#10B981', color: 'white', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+            <FileUp size={16} /> Importer Excel
+          </button>
+
           <button onClick={() => setShowHistory(true)} style={{ display: 'flex', gap: 8, padding: '8px 12px', borderRadius: 8, background: 'white', border: '1px solid #E5E7EB', cursor: 'pointer', color: '#374151' }} title="Historique">
             <History size={16} />
           </button>
