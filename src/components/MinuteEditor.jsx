@@ -121,27 +121,36 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
 
 
   // Catalog State
-  const [catalog, setCatalog] = React.useState(minute?.catalog || [
-    { id: 1, name: 'Velours Royal', category: 'Tissu', buyPrice: 50, sellPrice: 120, width: 280, unit: 'ml' },
-    { id: 2, name: 'Lin Naturel', category: 'Tissu', buyPrice: 30, sellPrice: 80, width: 140, unit: 'ml' },
-    { id: 3, name: 'Rail DS', category: 'Tringle', buyPrice: 15, sellPrice: 45, width: 0, unit: 'ml' },
-  ]);
+  // L'hybride parfait: On prend en priorité le catalogue sauvegardé DU DEVIS (minute.catalog)
+  // S'il n'y en a pas (nouveau devis), on initialise le devis avec la copie exacte du modèle global + rails globaux (formulaCtx.catalog)
+  const [catalog, setCatalog] = React.useState(() => {
+    if (minute?.catalog && Array.isArray(minute.catalog) && minute.catalog.length > 0) {
+      return minute.catalog; // On protège le tissu/rail spécifique créé dans CE devis
+    }
+    return formulaCtx?.catalog && Array.isArray(formulaCtx.catalog) && formulaCtx.catalog.length > 0
+        ? formulaCtx.catalog // On copie les vrais rails/tissus de Supabase
+        : [ // Fallback de dernier recours
+            { id: 1, name: 'Velours Royal', category: 'Tissu', buyPrice: 50, sellPrice: 120, width: 280, unit: 'ml' },
+            { id: 2, name: 'Lin Naturel', category: 'Tissu', buyPrice: 30, sellPrice: 80, width: 140, unit: 'ml' },
+            { id: 3, name: 'Rail DS', category: 'Tringle', buyPrice: 15, sellPrice: 45, width: 0, unit: 'ml' },
+          ];
+  });
   const [isCatalogOpen, setIsCatalogOpen] = React.useState(false);
 
-  // Sync catalog to minute
-  // Sync catalog to minute (UPDATED FROM PARENT)
+  // Sync catalog to minute (UPDATED)
   React.useEffect(() => {
-    // When parent updates minute.catalog (e.g. from CatalogManager), update local state
-    if (minute?.catalog && minute.catalog !== catalog) {
-      console.warn("🔥 MinuteEditor SYNC: New catalog received!", minute.catalog);
+    // Si Parent (ex: Import) écrase le catalogue de la minute
+    if (minute?.catalog && JSON.stringify(minute.catalog) !== JSON.stringify(catalog)) {
       setCatalog(minute.catalog);
-    } else {
-      console.log("MinuteEditor: No sync needed. m.cat:", !!minute?.catalog, "local:", catalog.length);
-      if (catalog.length > 0) {
-        console.log("DATA INSPECTION:", JSON.stringify(catalog.map(i => ({ name: i.name, unit: i.unit, cat: i.category })), null, 2));
-      }
+    } 
+    // Si c'est un nouveau devis sans catalogue et que les hooks Supabase viennent d'arriver (Fetch asynchrone réussi)
+    else if ((!minute?.catalog || minute.catalog.length === 0) && formulaCtx?.catalog?.length > 0 && catalog.length <= 3) {
+      // On initialise le catalogue local du devis avec les données fraîches de Supabase
+      setCatalog(formulaCtx.catalog);
+      // Et on le sauvegarde explicitement dans CE devis pour le détacher du global
+      onChangeMinute?.({ ...minute, catalog: formulaCtx.catalog, updatedAt: Date.now() });
     }
-  }, [minute?.catalog, catalog]);
+  }, [minute?.catalog, catalog, formulaCtx?.catalog, onChangeMinute]);
 
   // Create shared context with settings
   // NOW DEPENDS on 'catalog' state to ensure recomputeRow sees the active items

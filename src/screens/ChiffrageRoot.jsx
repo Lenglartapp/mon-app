@@ -125,6 +125,7 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
     charge: (currentUser?.name || "").trim(),
     projet: "",
     client: "", // New Client Field
+    deliveryDate: "", // Nouveau champ pour la date de livraison estimée
     note: "",
     status: "DRAFT",
     modules: {
@@ -182,6 +183,7 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
       id: m.id,
       name: m.name || "Minute sans nom",
       client: m.client || "",
+      delivery_date: m.delivery_date || m.deliveryDate || "", // Ajout au mapping norm avec fallback
       notes: m.notes || "",
       version: m.version ?? 1,
       lines: m.lines || [],
@@ -249,8 +251,8 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
   }, [list, searchQuery, activeFilters, currentUser, sortConfig, showArchived]);
 
   const handleCreateMinute = async () => {
-    const { charge, projet, client, note, status, modules } = newMin;
-    if (!projet.trim() || !charge.trim()) return;
+    const { charge, projet, client, deliveryDate, note, status, modules } = newMin;
+    if (!projet.trim() || !charge.trim() || !deliveryDate) return;
     if (!Object.values(modules).some(v => v === true)) return;
 
     setIsCreating(true);
@@ -262,6 +264,7 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
         id: localId,
         name: projet.trim(),
         client: (client || "").trim() || "Client inconnu", // Client added
+        delivery_date: deliveryDate, // Enregistrement de la date (format PostgreSQL classique)
         notes: (note || "").trim(),
         version: 1,
         lines: [],
@@ -521,6 +524,12 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
                   <input style={{ width: "100%", padding: "8px 12px", borderRadius: 6, border: "1px solid #D1D5DB" }} value={newMin.client} onChange={(e) => setNewMin(m => ({ ...m, client: e.target.value }))} placeholder="Ex: M. Dupont" />
                 </label>
 
+                {/* Date de livraison estimée */}
+                <label>
+                  <div style={{ fontSize: 13, fontWeight: 500, color: "#374151", marginBottom: 4 }}>Date de livraison estimée *</div>
+                  <input type="date" style={{ width: "100%", padding: "8px 12px", borderRadius: 6, border: "1px solid #D1D5DB" }} value={newMin.deliveryDate} onChange={(e) => setNewMin(m => ({ ...m, deliveryDate: e.target.value }))} />
+                </label>
+
                 {/* Status */}
                 <label>
                   <div style={{ fontSize: 13, fontWeight: 500, color: "#374151", marginBottom: 4 }}>Statut</div>
@@ -559,7 +568,7 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
                 {/* Actions */}
                 <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, marginTop: 8 }}>
                   <button onClick={() => setNewMinOpen(false)} style={{ background: 'white', border: '1px solid #D1D5DB', padding: '8px 16px', borderRadius: 6, cursor: 'pointer' }}>Annuler</button>
-                  <button onClick={handleCreateMinute} disabled={isCreating || !newMin.charge.trim() || !newMin.projet.trim() || !newMin.client.trim() || !Object.values(newMin.modules).some(v => v === true)} style={{ background: '#1F2937', color: 'white', border: 'none', padding: '8px 16px', borderRadius: 6, cursor: 'pointer', opacity: (isCreating || !newMin.projet.trim() || !newMin.client.trim()) ? 0.5 : 1 }}>{isCreating ? "Création..." : "Créer"}</button>
+                  <button onClick={handleCreateMinute} disabled={isCreating || !newMin.charge.trim() || !newMin.projet.trim() || !newMin.client.trim() || !newMin.deliveryDate || !Object.values(newMin.modules).some(v => v === true)} style={{ background: '#1F2937', color: 'white', border: 'none', padding: '8px 16px', borderRadius: 6, cursor: 'pointer', opacity: (isCreating || !newMin.projet.trim() || !newMin.client.trim() || !newMin.deliveryDate) ? 0.5 : 1 }}>{isCreating ? "Création..." : "Créer"}</button>
                 </div>
               </div>
             </div>
