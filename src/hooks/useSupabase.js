@@ -266,6 +266,94 @@ export const useCatalog = () => {
     return { catalog, loading, addItem, updateItem, deleteItem, refreshCatalog: fetchCatalog };
 };
 
+// --- CATALOG RAIL (GLOBAL LECTURE/ECRITURE POUR LES ADMINS) ---
+export const useCatalogRail = () => {
+    const [catalogRails, setCatalogRails] = useState([]);
+    const [loadingRails, setLoadingRails] = useState(true);
+
+    const fetchCatalogRails = async () => {
+        setLoadingRails(true);
+        const { data, error } = await supabase.from('catalog_rail').select('*').order('name');
+        
+        if (!error) {
+            const formatted = (data || []).map(item => ({
+                ...item,
+                // Postgres renvoie les noms de colonnes non quotés en minuscules (buyprice, sellprice)
+                buyPrice: Number(item.buyprice ?? item.buyPrice ?? 0),
+                sellPrice: Number(item.sellprice ?? item.sellPrice ?? 0),
+                coef: Number(item.coef ?? 2),
+            }));
+            setCatalogRails(formatted);
+        } else {
+            console.error("Erreur fetch catalog_rail:", error);
+        }
+        setLoadingRails(false);
+    };
+
+    useEffect(() => { fetchCatalogRails(); }, []);
+
+    const addRail = async (item) => {
+        const dbItem = { ...item };
+        // Prepare payload for Postgres mapping (lowercase)
+        const payload = {
+            name: dbItem.name,
+            provider: dbItem.provider,
+            reference: dbItem.reference,
+            color: dbItem.color,
+            category: dbItem.category,
+            buyprice: Number(dbItem.buyPrice || 0),
+            sellprice: Number(dbItem.sellPrice || 0),
+            coef: Number(dbItem.coef || 2),
+            unit: dbItem.unit || 'ml'
+        };
+
+        const { data, error } = await supabase.from('catalog_rail').insert([payload]).select();
+
+        if (data && data[0]) {
+            const returnedItem = data[0];
+            const formattedItem = {
+                ...returnedItem,
+                buyPrice: Number(returnedItem.buyprice ?? returnedItem.buyPrice ?? 0),
+                sellPrice: Number(returnedItem.sellprice ?? returnedItem.sellPrice ?? 0),
+            };
+            setCatalogRails(prev => [...prev, formattedItem]);
+            return formattedItem;
+        }
+        if (error) console.error("Erreur add rail:", error);
+        return null;
+    };
+
+    const updateRail = async (id, updates) => {
+        const payload = { ...updates };
+        if ('buyPrice' in payload) {
+            payload.buyprice = payload.buyPrice;
+            delete payload.buyPrice;
+        }
+        if ('sellPrice' in payload) {
+            payload.sellprice = payload.sellPrice;
+            delete payload.sellPrice;
+        }
+
+        const { error } = await supabase.from('catalog_rail').update(payload).eq('id', id);
+        if (!error) {
+            setCatalogRails(prev => prev.map(i => i.id === id ? { ...i, ...updates } : i));
+        } else {
+            console.error("Erreur update rail:", error);
+        }
+    };
+
+    const deleteRail = async (id) => {
+        const { error } = await supabase.from('catalog_rail').delete().eq('id', id);
+        if (!error) {
+            setCatalogRails(prev => prev.filter(i => i.id !== id));
+        } else {
+            console.error("Erreur delete rail:", error);
+        }
+    };
+
+    return { catalogRails, loadingRails, addRail, updateRail, deleteRail, refreshCatalogRails: fetchCatalogRails };
+};
+
 // --- APP SETTINGS (GLOBAL CONFIG) ---
 export const useAppSettings = () => {
     const [settings, setSettings] = useState({ hourlyRate: 135, vatRate: 20, prix_nuit: 180, prix_repas: 25, coef_sous_traitance: 2 });

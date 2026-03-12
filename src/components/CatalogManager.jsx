@@ -100,7 +100,14 @@ export default function CatalogManager({ open, onClose, catalog, onCatalogChange
         // Auto-concat logic: Fournisseur + Référence + Coloris
         const nameParts = [newRow.provider, newRow.reference, newRow.color].filter(Boolean);
         const name = nameParts.length > 0 ? nameParts.join(' ') : 'Article Sans Nom';
-        const updatedRow = { ...newRow, name };
+        
+        // Auto-compute sellPrice if buyPrice or coef changed (except for stores)
+        let sellPrice = newRow.sellPrice;
+        if (activeCategoryTab !== 'stores' && newRow.buyPrice !== undefined && newRow.coef !== undefined) {
+            sellPrice = Math.round((newRow.buyPrice * newRow.coef) * 100) / 100;
+        }
+
+        const updatedRow = { ...newRow, name, sellPrice };
 
         const updatedCatalog = catalog.map(r => r.id === newRow.id ? updatedRow : r);
         onCatalogChange(updatedCatalog);
@@ -142,6 +149,7 @@ export default function CatalogManager({ open, onClose, catalog, onCatalogChange
             color: '',
             category: defaultCategory, // Pre-fill based on tab
             buyPrice: undefined,
+            coef: activeCategoryTab === 'stores' ? undefined : 2, // Default coef 2 for non-stores
             sellPrice: undefined,
             width: undefined,
             motif: false,
@@ -180,6 +188,14 @@ export default function CatalogManager({ open, onClose, catalog, onCatalogChange
                     if (params.value === undefined || params.value === null || params.value === '') return '';
                     return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(params.value);
                 }
+            },
+            {
+                field: 'coef',
+                headerName: 'Coef',
+                width: 100,
+                editable: activeCategoryTab !== 'stores', // Only editable if not stores
+                type: 'number',
+                description: 'Coefficient multiplicateur pour le calcul du PV (PV = PA * Coef)'
             },
             {
                 field: 'sellPrice',

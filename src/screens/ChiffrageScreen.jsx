@@ -15,7 +15,7 @@ import { uid } from "../lib/utils/uid";
 import { useAuth } from "../auth";
 import { can } from "../lib/authz";
 import { useNotifications } from "../contexts/NotificationContext";
-import { useAppSettings, useCatalog } from "../hooks/useSupabase";
+import { useAppSettings, useCatalog, useCatalogRail } from "../hooks/useSupabase";
 
 import MinuteHistoryDialog from "../components/MinuteHistoryDialog";
 import { BookOpen, History, FileUp } from 'lucide-react';
@@ -33,7 +33,8 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onBack, highlightRowId }
 
   // Data Hooks
   const { settings: globalSettings } = useAppSettings();
-  const { catalog } = useCatalog();
+  const { catalog } = useCatalog(); // Tissus globaux
+  const { catalogRails } = useCatalogRail(); // NOUVEAU: Rails globaux
   const { currentUser } = useAuth();
   const { addNotification } = useNotifications();
 
@@ -95,9 +96,10 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onBack, highlightRowId }
       paramsMap,
       totalCA: baseCA,
       settings: effectiveSettings,
-      catalog: catalog || []
+      // On passe le catalogue combiné aux formules au cas où !
+      catalog: [...(catalog || []), ...(catalogRails || [])]
     };
-  }, [paramsMap, baseCA, globalSettings, catalog, localSettings]);
+  }, [paramsMap, baseCA, globalSettings, catalog, catalogRails, localSettings]);
 
   // Rows State
   const [rows, setRows] = React.useState(() => computeFormulas(minute?.lines || [], schema, formulaCtx));
@@ -356,6 +358,22 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onBack, highlightRowId }
               style={{ width: '100%', border: 'none', background: 'transparent', borderBottom: '1px dashed #E5E7EB', outline: 'none', resize: 'none', fontSize: 14, overflow: 'hidden', fontFamily: 'Roboto, sans-serif' }}
               readOnly={!canEdit}
             />
+            {/* DATE DE LIVRAISON ESTIMÉE */}
+            <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 13, fontWeight: 500, color: '#6B7280' }}>Date de livraison estimée :</span>
+              {canEdit ? (
+                <input 
+                  type="date"
+                  value={minute?.delivery_date || minute?.deliveryDate || ""}
+                  onChange={(e) => updateMinute({ delivery_date: e.target.value })}
+                  style={{ border: '1px solid #E5E7EB', borderRadius: 4, padding: '4px 8px', fontSize: 13, color: '#374151', background: 'white', outline: 'none' }}
+                />
+              ) : (
+                <span style={{ fontSize: 13, fontWeight: 600, color: '#1F2937' }}>
+                  {(minute?.delivery_date || minute?.deliveryDate) ? new Date(minute.delivery_date || minute.deliveryDate).toLocaleDateString("fr-FR") : "Non renseignée"}
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
