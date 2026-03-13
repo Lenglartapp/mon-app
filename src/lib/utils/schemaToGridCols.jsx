@@ -96,8 +96,11 @@ export function schemaToGridCols(schema, enableCellFormulas = false, onOpenDetai
         if (readOnly) return false; // Global readOnly override
         return isCellEditableFn(params);
       },
-      // Ensure 'editable' is mostly true so isCellEditable triggers (MUI quirks)
-      editable: true,
+      // MUI Community version depends on the 'editable' boolean to prevent entering edit mode.
+      // If the schema defines editability as a function, we must keep it true but the cell 
+      // styling and results will be handled by processRowUpdate/isCellEditable.
+      // For static non-editable fields (like 'quantite' now), we set it to false.
+      editable: !readOnly && (typeof col.readOnly === 'function' || typeof col.editable === 'function' || isCellEditableFn({ row: {} })),
 
       cellClassName: (params) => {
         // Handle readOnly styling

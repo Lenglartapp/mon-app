@@ -70,19 +70,11 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
     );
 
     const toggleResource = (resId) => {
-        // SINGLE SELECT MODE (RADIO BEHAVIOR)
-        // User reported accidental multi-creation because previous resource was kept.
-        // We switch to: Click -> Select ONLY this one. Click again -> Deselect.
-
         if (selectedResources.includes(resId)) {
-            setSelectedResources([]); // Deselect
+            setSelectedResources(selectedResources.filter(id => id !== resId));
         } else {
-            setSelectedResources([resId]); // Select Only This One
+            setSelectedResources([...selectedResources, resId]);
         }
-
-        // OLD MULTI BEHAVIOR:
-        // if (selectedResources.includes(resId)) setSelectedResources(selectedResources.filter(id => id !== resId));
-        // else setSelectedResources([...selectedResources, resId]);
     };
 
     const handleSubmit = () => {
@@ -241,7 +233,7 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
                                                 <div
                                                     key={member.id}
                                                     onClick={() => toggleResource(member.id)}
-                                                    style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', cursor: 'pointer', margin: '0 4px', borderRadius: 6, background: selectedResources.includes(member) ? '#EFF6FF' : 'transparent' }}
+                                                    style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', cursor: 'pointer', margin: '0 4px', borderRadius: 6, background: selectedResources.includes(member.id) ? '#EFF6FF' : 'transparent' }}
                                                 >
                                                     <div style={{ width: 18, height: 18, border: selectedResources.includes(member.id) ? '1px solid #2563EB' : '1px solid #D1D5DB', borderRadius: 4, marginRight: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', background: selectedResources.includes(member.id) ? '#2563EB' : 'white', transition: 'all 0.2s' }}>
                                                         {selectedResources.includes(member.id) && <Check size={12} color="white" />}

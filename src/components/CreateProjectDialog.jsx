@@ -34,8 +34,13 @@ export default function CreateProjectDialog({
     // -- BLANK STATE --
     const [projectName, setProjectName] = useState("");
     const [useRideaux, setUseRideaux] = useState(true);
-    const [useStores, setUseStores] = useState(false);
-    const [useDecors, setUseDecors] = useState(false);
+    const [useStoresClassiques, setUseStoresClassiques] = useState(false);
+    const [useStoresBateau, setUseStoresBateau] = useState(false);
+    const [useTentures, setUseTentures] = useState(false);
+    const [useCacheSommier, setUseCacheSommier] = useState(false);
+    const [usePlaid, setUsePlaid] = useState(false);
+    const [useCoussins, setUseCoussins] = useState(false);
+    const [useMobilier, setUseMobilier] = useState(false);
 
     // -- IMPORT STATE --
     const [selectedMinute, setSelectedMinute] = useState(null);
@@ -49,24 +54,34 @@ export default function CreateProjectDialog({
             setSelectedMinute(null);
             setDeliveryDate("");
             setUseRideaux(true);
-            setUseStores(false);
-            setUseDecors(false);
+            setUseStoresClassiques(false);
+            setUseStoresBateau(false);
+            setUseTentures(false);
+            setUseCacheSommier(false);
+            setUsePlaid(false);
+            setUseCoussins(false);
+            setUseMobilier(false);
         }
     }, [open, minutes.length]);
 
     const handleCreateBlank = () => {
         if (!projectName.trim()) return;
-        // Logic to pre-fill rows based on checkboxes could be added here
-        // For now, just pass empty rows and let parent/lib handle it
-        // Or we pass a 'config' object?
-        // User asked: "stocke juste l'info"
-        onCreateBlank(projectName, [], { useRideaux, useStores, useDecors, deliveryDate });
+        onCreateBlank(projectName, [], { 
+            useRideaux, 
+            useStoresClassiques, 
+            useStoresBateau, 
+            useTentures, 
+            useCacheSommier, 
+            usePlaid, 
+            useCoussins, 
+            useMobilier, 
+            deliveryDate 
+        });
     };
 
     const handleImport = () => {
         if (!selectedMinute) return;
         onCreateFromMinute({
-            name: selectedMinute.name || "Dossier Importé",
             name: selectedMinute.name || "Dossier Importé",
             rows: selectedMinute.lines || [],
             meta: selectedMinute,
@@ -164,21 +179,42 @@ export default function CreateProjectDialog({
                     <Typography variant="subtitle2" fontWeight={700} gutterBottom>
                         Types de produits prévus :
                     </Typography>
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
                         <FormControlLabel
                             control={<Checkbox checked={useRideaux} onChange={e => setUseRideaux(e.target.checked)} />}
-                            label="Rideaux / Voilages"
+                            label="Rideaux"
                         />
                         <FormControlLabel
-                            control={<Checkbox checked={useStores} onChange={e => setUseStores(e.target.checked)} />}
-                            label="Stores"
+                            control={<Checkbox checked={useStoresClassiques} onChange={e => setUseStoresClassiques(e.target.checked)} />}
+                            label="Stores Classiques"
                         />
                         <FormControlLabel
-                            control={<Checkbox checked={useDecors} onChange={e => setUseDecors(e.target.checked)} />}
-                            label="Décors de lit (Plaids, Coussins...)"
+                            control={<Checkbox checked={useStoresBateau} onChange={e => setUseStoresBateau(e.target.checked)} />}
+                            label="Stores Bateau"
+                        />
+                         <FormControlLabel
+                            control={<Checkbox checked={useTentures} onChange={e => setUseTentures(e.target.checked)} />}
+                            label="Tentures"
+                        />
+                        <FormControlLabel
+                            control={<Checkbox checked={useCacheSommier} onChange={e => setUseCacheSommier(e.target.checked)} />}
+                            label="Cache Sommier"
+                        />
+                        <FormControlLabel
+                            control={<Checkbox checked={usePlaid} onChange={e => setUsePlaid(e.target.checked)} />}
+                            label="Plaid"
+                        />
+                        <FormControlLabel
+                            control={<Checkbox checked={useCoussins} onChange={e => setUseCoussins(e.target.checked)} />}
+                            label="Coussins"
+                        />
+                        <FormControlLabel
+                            control={<Checkbox checked={useMobilier} onChange={e => setUseMobilier(e.target.checked)} />}
+                            label="Mobilier"
                         />
                     </Box>
                 </TabPanel>
+
             </DialogContent>
 
             <DialogActions sx={{ p: 3, pt: 0, justifyContent: 'space-between' }}>

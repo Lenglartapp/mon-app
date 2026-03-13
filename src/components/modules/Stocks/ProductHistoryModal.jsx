@@ -1,4 +1,5 @@
 import React from 'react';
+import { Layers } from 'lucide-react';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
@@ -87,6 +88,22 @@ const COLUMNS = [
         ) : <span style={{ color: '#9CA3AF', fontStyle: 'italic' }}>-</span>
     },
     {
+        field: 'reason',
+        headerName: 'Motif / Détail',
+        width: 250,
+        renderCell: (params) => (
+            <span style={{ fontSize: 13, color: '#4B5563' }}>{params.value || '-'}</span>
+        )
+    },
+    {
+        field: 'pieces_names',
+        headerName: 'Pièce / Rouleau',
+        width: 150,
+        renderCell: (params) => (
+            <span style={{ fontSize: 12, fontWeight: 700, color: '#4338CA' }}>{params.value || '-'}</span>
+        )
+    },
+    {
         field: 'user',
         headerName: 'Opérateur',
         width: 150,
@@ -127,15 +144,49 @@ export default function ProductHistoryModal({ open, onClose, product, movements 
                 />
             </DialogTitle>
 
-            <DialogContent sx={{ p: 0, height: 500 }}>
-                <DataGrid
-                    rows={productMovements}
-                    columns={COLUMNS}
-                    density="comfortable"
-                    disableSelectionOnClick
-                    localeText={frFR.components.MuiDataGrid.defaultProps.localeText}
-                    sx={{ border: 'none' }}
-                />
+            <DialogContent sx={{ p: 0, height: 700, display: 'flex', flexDirection: 'column' }}>
+                {/* ÉTAT ACTUEL DES PIÈCES */}
+                {Array.isArray(product.pieces) && product.pieces.length > 0 && (
+                    <Box sx={{ p: 2, bgcolor: '#EEF2FF', borderBottom: '1px solid #E0E7FF' }}>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#4338CA', mb: 1, textTransform: 'uppercase', fontSize: 11 }}>
+                            Pièces en stock actuellement ({product.pieces.length})
+                        </Typography>
+                        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                            {product.pieces.map((p, idx) => (
+                                <Box 
+                                    key={p.id || idx} 
+                                    sx={{ 
+                                        bgcolor: 'white', 
+                                        p: 1, 
+                                        borderRadius: 2, 
+                                        border: '1px solid #C7D2FE',
+                                        minWidth: 120,
+                                        boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                                    }}
+                                >
+                                    <Typography sx={{ fontWeight: 700, fontSize: 13, color: '#111827' }}>
+                                        {p.name || `Pièce ${idx + 1}`}
+                                    </Typography>
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.5 }}>
+                                        <Typography sx={{ fontSize: 12, fontWeight: 600, color: '#059669' }}>{p.qty} {product.unit}</Typography>
+                                        <Typography sx={{ fontSize: 11, color: '#6B7280' }}>({p.location || '?'})</Typography>
+                                    </Box>
+                                </Box>
+                            ))}
+                        </Box>
+                    </Box>
+                )}
+
+                <Box sx={{ flex: 1 }}>
+                    <DataGrid
+                        rows={productMovements}
+                        columns={COLUMNS}
+                        density="comfortable"
+                        disableSelectionOnClick
+                        localeText={frFR.components.MuiDataGrid.defaultProps.localeText}
+                        sx={{ border: 'none' }}
+                    />
+                </Box>
             </DialogContent>
 
             <DialogActions sx={{ p: 2, borderTop: '1px solid #E5E7EB' }}>
