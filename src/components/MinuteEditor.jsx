@@ -128,12 +128,12 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
       return minute.catalog; // On protège le tissu/rail spécifique créé dans CE devis
     }
     return formulaCtx?.catalog && Array.isArray(formulaCtx.catalog) && formulaCtx.catalog.length > 0
-        ? formulaCtx.catalog // On copie les vrais rails/tissus de Supabase
-        : [ // Fallback de dernier recours
-            { id: 1, name: 'Velours Royal', category: 'Tissu', buyPrice: 50, sellPrice: 120, width: 280, unit: 'ml' },
-            { id: 2, name: 'Lin Naturel', category: 'Tissu', buyPrice: 30, sellPrice: 80, width: 140, unit: 'ml' },
-            { id: 3, name: 'Rail DS', category: 'Tringle', buyPrice: 15, sellPrice: 45, width: 0, unit: 'ml' },
-          ];
+      ? formulaCtx.catalog // On copie les vrais rails/tissus de Supabase
+      : [ // Fallback de dernier recours
+        { id: 1, name: 'Velours Royal', category: 'Tissu', buyPrice: 50, sellPrice: 120, width: 280, unit: 'ml' },
+        { id: 2, name: 'Lin Naturel', category: 'Tissu', buyPrice: 30, sellPrice: 80, width: 140, unit: 'ml' },
+        { id: 3, name: 'Rail DS', category: 'Tringle', buyPrice: 15, sellPrice: 45, width: 0, unit: 'ml' },
+      ];
   });
   const [isCatalogOpen, setIsCatalogOpen] = React.useState(false);
 
@@ -142,7 +142,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
     // Si Parent (ex: Import) écrase le catalogue de la minute
     if (minute?.catalog && JSON.stringify(minute.catalog) !== JSON.stringify(catalog)) {
       setCatalog(minute.catalog);
-    } 
+    }
     // Si c'est un nouveau devis sans catalogue et que les hooks Supabase viennent d'arriver (Fetch asynchrone réussi)
     else if ((!minute?.catalog || minute.catalog.length === 0) && formulaCtx?.catalog?.length > 0 && catalog.length <= 3) {
       // On initialise le catalogue local du devis avec les données fraîches de Supabase

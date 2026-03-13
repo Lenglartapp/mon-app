@@ -8,6 +8,7 @@ import { S } from '../../../lib/constants/ui';
 import StockMovementsTab from './StockMovementsTab';
 
 import StockInventoryTab from './StockInventoryTab';
+import StockDashboardTab from './StockDashboardTab';
 import { useAuth } from '../../../auth';
 import { can } from '../../../lib/authz';
 import MovementModal from './MovementModal'; // Imported Modal
@@ -47,8 +48,9 @@ export default function StocksModule({
 
     // Define Tabs
     const TABS = [
-        { key: 0, label: "Journal des Mouvements" },
-        { key: 1, label: "État du Stock" }
+        { key: 0, label: "Dashboard" },
+        { key: 1, label: "Journal des Mouvements" },
+        { key: 2, label: "État du Stock" }
     ];
 
     return (
@@ -75,7 +77,7 @@ export default function StocksModule({
 
                     {/* Actions (Aligned with Title) */}
                     <div style={{ display: 'flex', gap: 12, paddingTop: 32 }}>
-                        {canEdit && tabIndex === 0 && (
+                        {canEdit && tabIndex === 1 && (
                             <>
                                 <Button
                                     variant="contained"
@@ -147,6 +149,13 @@ export default function StocksModule({
                 {/* 3. Content */}
                 <div style={{ flex: 1 }}>
                     {tabIndex === 0 && (
+                        <StockDashboardTab 
+                            inventory={inventory} 
+                            projects={projects} 
+                            movements={movements} 
+                        />
+                    )}
+                    {tabIndex === 1 && (
                         <StockMovementsTab
                             movements={movements}
                             onAddMovement={onAddMovement}
@@ -156,7 +165,7 @@ export default function StocksModule({
                             canEdit={canEdit}
                         />
                     )}
-                    {tabIndex === 1 && (
+                    {tabIndex === 2 && (
                         <StockInventoryTab 
                             inventory={inventory} 
                             projects={projects} 
