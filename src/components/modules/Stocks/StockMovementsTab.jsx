@@ -7,6 +7,10 @@ import { DataGrid } from '@mui/x-data-grid';
 import { frFR } from '@mui/x-data-grid/locales';
 import Chip from '@mui/material/Chip';
 import Avatar from '@mui/material/Avatar';
+import TextField from '@mui/material/TextField';
+import InputAdornment from '@mui/material/InputAdornment';
+import SearchIcon from '@mui/icons-material/Search';
+import InputBase from '@mui/material/InputBase';
 // Helper for avatar color
 function stringToColor(string) {
     if (!string) return '#ccc';
@@ -95,7 +99,23 @@ const COLUMNS = [
         ) : <span style={{ color: '#9CA3AF', fontStyle: 'italic' }}>Stock Libre</span>
     },
     {
-        field: 'user',
+        field: 'reason',
+        headerName: 'Motif / Détail',
+        width: 250,
+        renderCell: (params) => (
+            <span style={{ fontSize: 13, color: '#4B5563' }}>{params.value || '-'}</span>
+        )
+    },
+    {
+        field: 'pieces_names',
+        headerName: 'Pièce / Rouleau',
+        width: 150,
+        renderCell: (params) => (
+            <span style={{ fontSize: 12, fontWeight: 700, color: '#4338CA' }}>{params.value || '-'}</span>
+        )
+    },
+    {
+        field: 'user_name',
         headerName: 'Opérateur',
         width: 180,
         renderCell: (params) => (
@@ -110,13 +130,47 @@ const COLUMNS = [
 ];
 
 export default function StockMovementsTab({ movements, onAddMovement, projects = [], inventory = [], canEdit = false }) {
-    // Buttons/Modal Lifted to Parent
+    const [search, setSearch] = useState('');
+
+    const filteredMovements = movements.filter(m => {
+        if (!search) return true;
+        const s = search.toLowerCase();
+        return (
+            (m.product || '').toLowerCase().includes(s) ||
+            (m.ref || '').toLowerCase().includes(s) ||
+            (m.project || '').toLowerCase().includes(s) ||
+            (m.location || '').toLowerCase().includes(s) ||
+            (m.user_name || '').toLowerCase().includes(s) ||
+            (m.reason || '').toLowerCase().includes(s) ||
+            (m.pieces_names || '').toLowerCase().includes(s)
+        );
+    });
+
     return (
         <Box>
+            {/* TOOLBAR */}
+            <Card sx={{ mb: 3, p: 2, display: 'flex', gap: 2, alignItems: 'center' }}>
+                <TextField
+                    placeholder="Filtrer le journal (Produit, Projet, Opérateur...)"
+                    size="small"
+                    fullWidth
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    InputProps={{
+                        startAdornment: (
+                            <InputAdornment position="start">
+                                <SearchIcon color="action" />
+                            </InputAdornment>
+                        ),
+                    }}
+                    sx={{ maxWidth: 500 }}
+                />
+            </Card>
+
             {/* HISTORY GRID */}
             <Card sx={{ height: 600, width: '100%', borderRadius: 3, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
                 <DataGrid
-                    rows={movements}
+                    rows={filteredMovements}
                     columns={COLUMNS}
                     density="comfortable"
                     disableSelectionOnClick
@@ -130,7 +184,6 @@ export default function StockMovementsTab({ movements, onAddMovement, projects =
                     sx={{ border: 'none' }}
                 />
             </Card>
-
         </Box>
     );
 }

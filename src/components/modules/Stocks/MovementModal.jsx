@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { Plus, Minus, Layers } from 'lucide-react';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
@@ -13,6 +14,7 @@ import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
 import Divider from '@mui/material/Divider';
 import Chip from '@mui/material/Chip';
+import IconButton from '@mui/material/IconButton';
 
 const USERS = [
     'Elisa Laprune', 'Guillaume Mailly', 'David Vergel', 'Lucie Jaulin', 'Maelane Poulaud',
@@ -21,6 +23,7 @@ const USERS = [
     'Emilie David', 'Emmanuel Peltier', 'Malcolm Jeantal', 'Florence Gobbe'
 ].sort();
 const EXIT_REASONS = ['Production', 'Solde / Déstockage', 'Perte / Inventaire', 'Autre'];
+const TYPOLOGIES = ['Tissu', 'Rail', 'Consommable', 'Mécanisme'];
 
 export default function MovementModal({ open, onClose, type, onSave, projects = [], inventory = [] }) {
     const isIN = type === 'IN';
@@ -31,88 +34,103 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
     const [user, setUser] = useState('');
     const [selectedItem, setSelectedItem] = useState(null);
     const [exitReason, setExitReason] = useState('Production'); // Pour OUT
+    const [typology, setTypology] = useState('Tissu'); // Par défaut Tissu
 
     // Etat Formulaire
     const [formData, setFormData] = useState({
         product: '', ref: '', qty: '', unit: 'ml', project: '', location: '',
-        notes: '', laize: '', category: ''
+        notes: '', laize: '', category: '', customReason: ''
     });
+
+    const [pieces, setPieces] = useState([]); // Array of {id, qty}
 
     // Reset à l'ouverture
     useEffect(() => {
         if (open) {
             setSelectedItem(null);
             setExitReason('Production');
+            setTypology('Tissu');
             setFormData({ product: '', ref: '', qty: '', unit: 'ml', project: '', location: '', notes: '', laize: '', category: '' });
+            // Pour Tissu en Entrée, on démarre avec une pièce
+            setPieces(isIN ? [{ id: 1, qty: '', location: '', name: '' }] : []);
         }
-    }, [open, type]);
+    }, [open, type, isIN]);
 
-    // --- LOGIQUE ENTREE (Source = Projets Production) ---
+    // Changement de typologie
+    const handleTypologyChange = (t) => {
+        setTypology(t);
+        setSelectedItem(null);
+        setFormData(prev => ({
+            ...prev,
+            product: '',
+            category: t,
+            unit: t === 'Tissu' ? 'ml' : 'u',
+            project: '',
+            location: ''
+        }));
+        if (isIN) {
+            setPieces(t === 'Tissu' ? [{ id: Date.now(), qty: '', location: '', name: '' }] : []);
+        } else {
+            setPieces([]);
+        }
+    };
+
+    // --- LOGIQUE ENTREE (Source = Projets ou Stock Gros) ---
     const sourceOptionsIN = useMemo(() => {
         if (!isIN || !projects) return [];
 
         const optsMap = new Map();
 
-        // 1. On ne parcourt que les projets NON ARCHIVÉS
-        const activeProjects = projects.filter(p => p.status !== 'ARCHIVED');
-
-        activeProjects.forEach(proj => {
-            const pName = proj.name || proj.nom_dossier || 'Projet Inconnu';
-
-            (proj.rows || []).forEach(row => {
-
-                const addFabric = (name, width) => {
-                    if (!name) return;
-                    const label = `${name} (${pName})`;
-                    if (!optsMap.has(label)) {
-                        optsMap.set(label, {
-                            label: label,
-                            productName: name,
-                            type: 'Tissu',
-                            dim: width,
-                            project: pName
-                        });
-                    } else {
-                        const existing = optsMap.get(label);
-                        if (!existing.dim && width) existing.dim = width;
-                    }
-                };
-
-                // Tissu 1 (Priorité à laize_tissu1, fallback legacy)
-                addFabric(row.tissu_deco1, row.laize_tissu1 || row.laize_tissu_deco1);
-                // Tissu 2
-                addFabric(row.tissu_deco2, row.laize_tissu2);
-                // Doublure
-                addFabric(row.doublure, row.laize_doublure);
-
-                // Rail
-                if (row.type_rail && row.type_rail !== 'Free') {
-                    const label = `${row.type_rail} (${pName})`;
-                    if (!optsMap.has(label)) {
-                        optsMap.set(label, {
-                            label: label,
-                            productName: row.type_rail,
-                            type: 'Rail',
-                            project: pName
-                        });
-                    }
-                }
+        if (typology === 'Tissu') {
+            // Logique par Projet (Tissus uniquement)
+            const activeProjects = projects.filter(p => p.status !== 'ARCHIVED');
+            activeProjects.forEach(proj => {
+                const pName = proj.name || proj.nom_dossier || 'Projet Inconnu';
+                (proj.rows || []).forEach(row => {
+                    const addFabric = (name, width) => {
+                        if (!name) return;
+                        const label = `${name} (${pName})`;
+                        if (!optsMap.has(label)) {
+                            optsMap.set(label, { label, productName: name, type: 'Tissu', dim: width, project: pName });
+                        }
+                    };
+                    addFabric(row.tissu_deco1, row.laize_tissu1 || row.laize_tissu_deco1);
+                    addFabric(row.tissu_deco2, row.laize_tissu2);
+                    addFabric(row.doublure, row.laize_doublure);
+                });
             });
-        });
+        } else {
+            // Logique Gros (Rails, Consommables, Mécanismes)
+            // On propose les items déjà présents dans l'inventaire pour cette catégorie
+            inventory
+                .filter(item => item.category === typology)
+                .forEach(item => {
+                    if (!optsMap.has(item.product)) {
+                        optsMap.set(item.product, {
+                            label: item.product,
+                            productName: item.product,
+                            type: typology,
+                            ref: item.ref,
+                            project: ''
+                        });
+                    }
+                });
+        }
 
-        // Conversion Map -> Array
         return Array.from(optsMap.values()).sort((a, b) => a.label.localeCompare(b.label));
-    }, [projects, isIN]);
+    }, [projects, inventory, isIN, typology]);
 
     // --- LOGIQUE SORTIE / MOVE (Source = Inventaire Réel) ---
     const sourceOptionsOUT = useMemo(() => {
         if (isIN || !inventory) return [];
-        // On ne propose que ce qui est en stock positif
-        return inventory.filter(i => i.qty > 0).map(item => ({
-            ...item,
-            label: `${item.product} | ${item.location} (Stock: ${item.qty} ${item.unit})${item.project ? ` [${item.project}]` : ''}`
-        }));
-    }, [inventory, isIN]);
+        return inventory
+            .filter(item => item.category === typology) // FILTRE PAR TYPOLOGIE
+            .map(item => ({
+                label: `${item.product} (${item.location}) - ${item.qty} ${item.unit}`,
+                ...item
+            }))
+            .sort((a, b) => a.product.localeCompare(b.product));
+    }, [inventory, isIN, typology]);
 
     // --- HANDLERS ---
     const handleSourceChange = (event, newValue) => {
@@ -123,12 +141,18 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
             // Remplissage auto pour ENTRÉE
             setFormData(prev => ({
                 ...prev,
-                product: newValue.productName,
-                project: newValue.project,
-                unit: newValue.type === 'Tissu' ? 'ml' : 'u',
-                category: newValue.type || 'Divers',
+                product: newValue.productName || newValue.product || '',
+                project: newValue.project || '',
+                unit: typology === 'Tissu' ? 'ml' : (newValue.unit || 'u'),
+                category: typology,
                 laize: newValue.dim || ''
             }));
+            // Pour le tissu, on garde au moins une pièce prête à remplir
+            if (typology === 'Tissu') {
+                setPieces([{ id: Date.now(), qty: '', location: '', name: '' }]);
+            } else {
+                setPieces([]);
+            }
         } else {
             // Remplissage auto pour SORTIE / MOVE (depuis Stock)
             setFormData(prev => ({
@@ -136,14 +160,54 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
                 product: newValue.product,
                 ref: newValue.ref,
                 unit: newValue.unit,
-                location: isMOVE ? '' : newValue.location, // MOVE: Location vide (à saisir) ou newValue.location? Vaut mieux vide pour forcer saisie
-                // Mais wait, si on veut juste déplacer on a besoin de l'origine. SelectedItem A L'ORIGINE.
-                // FormData.location est la DESTINATION.
+                location: isMOVE ? '' : newValue.location,
                 category: newValue.category,
                 project: exitReason === 'Production' ? (newValue.project || '') : ''
             }));
+            // Charger les pièces existantes pour la sortie
+            setPieces(Array.isArray(newValue.pieces) ? newValue.pieces.map(p => ({ ...p, selected: false, consumption: 0 })) : []);
         }
     };
+
+    const addPiece = () => {
+        setPieces(prev => [...prev, { id: Date.now(), qty: '', location: '', name: '' }]);
+    };
+
+    const removePiece = (id) => {
+        setPieces(prev => prev.filter(p => p.id !== id));
+    };
+
+    const updatePieceQty = (id, val) => {
+        setPieces(prev => prev.map(p => p.id === id ? { ...p, qty: val } : p));
+    };
+
+    const updatePieceLocation = (id, val) => {
+        setPieces(prev => prev.map(p => p.id === id ? { ...p, location: val } : p));
+    };
+
+    const updatePieceName = (id, val) => {
+        setPieces(prev => prev.map(p => p.id === id ? { ...p, name: val } : p));
+    };
+
+    const updatePieceRemaining = (id, val) => {
+        setPieces(prev => prev.map(p => p.id === id ? { ...p, p_qty: val } : p));
+    };
+
+    // Auto-sum qty
+    useEffect(() => {
+        if (isIN && pieces.length > 0) {
+            const total = pieces.reduce((sum, p) => sum + Number(p.qty || 0), 0);
+            setFormData(prev => ({ ...prev, qty: total || '' }));
+        } else if (isOUT && pieces.length > 0) {
+            // Consommation totale = Somme(Initiale - Reste)
+            const totalConsumed = pieces.reduce((sum, p) => {
+                const initial = Number(p.qty || 0);
+                const remaining = Number(p.p_qty ?? p.qty);
+                return sum + Math.max(0, initial - remaining);
+            }, 0);
+            setFormData(prev => ({ ...prev, qty: totalConsumed || '' }));
+        }
+    }, [pieces, isIN, isOUT]);
 
     const handleSubmit = () => {
         // Validation basique
@@ -172,10 +236,15 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
             qty: Number(formData.qty),
             type: type,
             date: new Date().toISOString(),
-            // Si c'est une sortie, on ajoute le motif en note ou champ spécifique
-            reason: isOUT ? exitReason : null,
+            reason: formData.customReason || (isOUT ? exitReason : null),
             // MOVE: Capture Origin
-            from_location: isMOVE && selectedItem ? selectedItem.location : null
+            from_location: isMOVE && selectedItem ? selectedItem.location : null,
+            pieces: isIN ? pieces.filter(p => Number(p.qty) > 0).map(({ id, qty, location, name }) => ({ 
+                id, 
+                qty: Number(qty), 
+                location: location || formData.location,
+                name: name || ''
+            })) : pieces
         });
         onClose();
     };
@@ -209,7 +278,33 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
             <DialogContent sx={{ p: 4 }}>
                 <Stack spacing={4}>
 
-                    {/* 1. SELECTION DU PRODUIT */}
+                    {/* 1. TYPOLOGIE (POUR TOUS LES MOUVEMENTS) */}
+                    <Box sx={{ p: 2, border: '1px solid #E5E7EB', borderRadius: 2, bgcolor: '#F9FAFB' }}>
+                        <Typography variant="caption" sx={{ fontWeight: 700, color: '#9CA3AF', mb: 1, display: 'block' }}>
+                            FILTRER PAR CATÉGORIE
+                        </Typography>
+                        <Stack direction="row" spacing={1}>
+                            {TYPOLOGIES.map(t => (
+                                <Button
+                                    key={t}
+                                    size="small"
+                                    variant={typology === t ? 'contained' : 'outlined'}
+                                    onClick={() => handleTypologyChange(t)}
+                                    sx={{
+                                        borderRadius: 2,
+                                        fontWeight: 700,
+                                        textTransform: 'none',
+                                        bgcolor: typology === t ? getHeaderColor() : 'transparent',
+                                        '&:hover': { bgcolor: typology === t ? getHeaderColor() : '#F3F4F6' }
+                                    }}
+                                >
+                                    {t}
+                                </Button>
+                            ))}
+                        </Stack>
+                    </Box>
+
+                    {/* 2. SELECTION DU PRODUIT */}
                     <Box>
                         <Autocomplete
                             fullWidth
@@ -217,14 +312,20 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
                             getOptionLabel={(option) => option.label || ""}
                             value={selectedItem}
                             onChange={handleSourceChange}
+                            freeSolo={isIN} // Permet toujours la saisie libre en entrée
+                            onInputChange={(e, val) => {
+                                if (isIN) {
+                                    setFormData(prev => ({ ...prev, product: val }));
+                                }
+                            }}
                             renderInput={(params) => (
                                 <TextField
                                     {...params}
-                                    label={isIN ? "🔍 Rechercher un produit, tissu, rail..." : "🔍 Rechercher dans le stock..."}
+                                    label={isIN ? `🔍 Rechercher un(e) ${typology}...` : "🔍 Rechercher dans le stock..."}
                                     sx={{ bgcolor: '#F9FAFB' }}
                                 />
                             )}
-                            noOptionsText="Aucun résultat."
+                            noOptionsText="Aucun résultat. Tapez pour créer."
                         />
                         {!isIN && selectedItem && (
                             <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
@@ -234,51 +335,144 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
                         )}
                     </Box>
 
-                    {/* 2. INFOS TRANSACTION */}
-                    <Box sx={{ p: 2, border: '1px solid #E5E7EB', borderRadius: 2 }}>
-                        <Typography variant="caption" sx={{ fontWeight: 700, color: '#9CA3AF', mb: 2, display: 'block' }}>
-                            DÉTAILS
-                        </Typography>
-                        <Grid container spacing={2}>
-                            {/* QTY & UNIT */}
-                            <Grid item xs={8}>
-                                <TextField
-                                    fullWidth label="Quantité" type="number"
-                                    value={formData.qty}
-                                    onChange={(e) => setFormData({ ...formData, qty: e.target.value })}
-                                    InputProps={{ sx: { fontSize: 18, fontWeight: 700 } }}
-                                />
-                            </Grid>
-                            <Grid item xs={4}>
-                                <TextField select fullWidth label="Unité" value={formData.unit} onChange={(e) => setFormData({ ...formData, unit: e.target.value })} disabled={!isIN}>
-                                    {['ml', 'm2', 'u', 'kg'].map(u => <MenuItem key={u} value={u}>{u}</MenuItem>)}
-                                </TextField>
-                            </Grid>
+                    {/* 3. COMPOSITION PAR PIECE (Pour TISSUS en ENTRÉE - Priorité Haute) */}
+                    {isIN && typology === 'Tissu' && (
+                        <Box sx={{ p: 2, border: '1px dashed #D1D5DB', borderRadius: 2, bgcolor: '#F9FAFB' }}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                                <Typography variant="caption" sx={{ fontWeight: 800, color: '#374151', textTransform: 'uppercase' }}>Composition par pièce</Typography>
+                                <Button size="small" startIcon={<Plus size={14} />} onClick={addPiece} sx={{ textTransform: 'none', fontWeight: 700 }}>Ajouter une pièce</Button>
+                            </Box>
+                            <Stack spacing={1}>
+                                {pieces.map((p, idx) => (
+                                    <Box key={p.id} sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                                        <Typography variant="body2" sx={{ color: '#9CA3AF', minWidth: 60 }}>P. {idx + 1}</Typography>
+                                        <TextField
+                                            size="small"
+                                            value={p.name || ''}
+                                            onChange={(e) => updatePieceName(p.id, e.target.value)}
+                                            placeholder="Nom"
+                                            sx={{ flex: 1, bgcolor: 'white' }}
+                                        />
+                                        <TextField
+                                            size="small"
+                                            type="number"
+                                            value={p.qty}
+                                            onChange={(e) => updatePieceQty(p.id, e.target.value)}
+                                            placeholder="ml"
+                                            sx={{ width: 80, bgcolor: 'white' }}
+                                        />
+                                        <TextField
+                                            size="small"
+                                            value={p.location}
+                                            onChange={(e) => updatePieceLocation(p.id, e.target.value)}
+                                            placeholder="Empl."
+                                            sx={{ flex: 1, bgcolor: 'white' }}
+                                        />
+                                        <IconButton size="small" color="error" onClick={() => removePiece(p.id)} disabled={pieces.length <= 1}><Minus size={16} /></IconButton>
+                                    </Box>
+                                ))}
+                            </Stack>
+                        </Box>
+                    )}
 
-                            {/* READONLY INFO */}
+                    {/* 4. INFOS TRANSACTION (Quantité globale pour HORS-Tissu) */}
+                    {(typology !== 'Tissu' || !isIN) && (
+                        <Box sx={{ p: 2, border: '1px solid #E5E7EB', borderRadius: 2 }}>
+                            <Typography variant="caption" sx={{ fontWeight: 700, color: '#9CA3AF', mb: 2, display: 'block' }}>
+                                DÉTAILS
+                            </Typography>
+                            <Grid container spacing={2}>
+                                {/* QTY & UNIT */}
+                                <Grid item xs={8}>
+                                    <TextField
+                                        fullWidth label="Quantité" type="number"
+                                        value={formData.qty}
+                                        onChange={(e) => setFormData({ ...formData, qty: e.target.value })}
+                                        InputProps={{ sx: { fontSize: 18, fontWeight: 700 } }}
+                                    />
+                                </Grid>
+                                <Grid item xs={4}>
+                                    <TextField select fullWidth label="Unité" value={formData.unit} onChange={(e) => setFormData({ ...formData, unit: e.target.value })}>
+                                        {['ml', 'm2', 'u', 'kg'].map(u => <MenuItem key={u} value={u}>{u}</MenuItem>)}
+                                    </TextField>
+                                </Grid>
+                            </Grid>
+                        </Box>
+                    )}
+
+                    {/* 5. SAISIE DU RESTE PAR PIECE (SORTIE / AJUSTEMENT) */}
+                    {isOUT && pieces.length > 0 && (
+                        <Box sx={{ mt: 1, p: 2, border: '1px dashed #D1D5DB', borderRadius: 2, bgcolor: '#F9FAFB' }}>
+                            <Typography variant="caption" sx={{ fontWeight: 800, color: '#374151', textTransform: 'uppercase', mb: 2, display: 'block' }}>Mise à jour des pièces (Reste en stock)</Typography>
+                            <Stack spacing={1.5}>
+                                {pieces.map((p, idx) => (
+                                    <Box key={p.id} sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 1, bgcolor: 'white', borderRadius: 2, border: '1px solid #E5E7EB' }}>
+                                        <Box sx={{ flex: 1 }}>
+                                            <Typography sx={{ fontSize: 13, fontWeight: 700, color: '#4B5563' }}>
+                                                {p.name ? `${p.name}` : `Pièce ${idx + 1}`}
+                                            </Typography>
+                                            <TextField
+                                                size="small"
+                                                label="Loc."
+                                                value={p.location || ''}
+                                                onChange={(e) => updatePieceLocation(p.id, e.target.value)}
+                                                sx={{ mt: 0.5, bgcolor: '#F9FAFB' }}
+                                                InputProps={{ sx: { fontSize: 11 } }}
+                                            />
+                                        </Box>
+                                        <Box sx={{ textAlign: 'right', minWidth: 80 }}>
+                                            <Typography sx={{ fontSize: 11, color: '#9CA3AF' }}>Initial</Typography>
+                                            <Typography sx={{ fontSize: 13, fontWeight: 600 }}>{p.qty} ml</Typography>
+                                        </Box>
+                                        <Box sx={{ minWidth: 100 }}>
+                                            <TextField
+                                                size="small"
+                                                label="Reste"
+                                                type="number"
+                                                value={p.p_qty ?? p.qty}
+                                                onChange={(e) => updatePieceRemaining(p.id, e.target.value)}
+                                                InputProps={{ sx: { fontSize: 14, fontWeight: 700, bgcolor: (p.p_qty !== undefined && p.p_qty !== p.qty) ? '#FFFBEB' : 'white' } }}
+                                            />
+                                        </Box>
+                                    </Box>
+                                ))}
+                            </Stack>
+                            <Typography variant="caption" sx={{ color: '#6B7280', display: 'block', mt: 2, textAlign: 'center' }}>Saisissez ce qu'il reste sur chaque pièce et son emplacement actuel.</Typography>
+                        </Box>
+                    )}
+
+                    {/* 6. CHAMPS FINAUX (Affectation, Laize, Opérateur) */}
+                    <Box sx={{ p: 2, border: '1px solid #E5E7EB', borderRadius: 2 }}>
+                        <Grid container spacing={2}>
+                            {/* PRODUIT */}
                             <Grid item xs={12}>
                                 <TextField
                                     fullWidth label="Produit sélectionné"
                                     value={formData.product}
-                                    InputProps={{ readOnly: true }}
                                     variant="outlined"
                                     size="small"
+                                    disabled={!isIN}
+                                    onChange={(e) => setFormData({ ...formData, product: e.target.value })}
                                 />
                             </Grid>
 
-                            {/* LOCATION & LAIZE */}
-                            <Grid item xs={6}>
-                                <TextField
-                                    fullWidth label={isMOVE ? "Nouvel Emplacement" : "Emplacement"}
-                                    value={formData.location}
-                                    onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                                    disabled={!isIN && !isMOVE}
-                                    required={isMOVE}
-                                    size="small"
-                                />
-                            </Grid>
-                            {isIN && (
+                            {/* LOCATION (Visible uniquement si pas de pièces gérées et pas un tissu en entrée) */}
+                            {(!pieces.length || (!isIN && !isOUT)) && !(isIN && typology === 'Tissu') && (
                                 <Grid item xs={6}>
+                                    <TextField
+                                        fullWidth label={isMOVE ? "Nouvel Emplacement" : "Emplacement"}
+                                        value={formData.location}
+                                        onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                                        disabled={!isIN && !isMOVE}
+                                        required={isMOVE}
+                                        size="small"
+                                    />
+                                </Grid>
+                            )}
+
+                            {/* LAIZE (Tissu uniquement) */}
+                            {typology === 'Tissu' && (
+                                <Grid item xs={pieces.length > 0 ? 12 : 6}>
                                     <TextField
                                         fullWidth label="Laize / Info"
                                         value={formData.laize}
@@ -290,22 +484,21 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
                         </Grid>
                     </Box>
 
-                    {/* 3. PROJET (Si applicable) */}
-                    {(isIN || exitReason === 'Production') && (
+                    {/* 4. PROJET (TISSUS UNIQUEMENT) */}
+                    {isIN && typology === 'Tissu' && (
                         <Box>
                             <Typography variant="caption" sx={{ fontWeight: 700, color: '#6B7280', mb: 1, display: 'block' }}>
-                                AFFECTATION DOSSIER (Optionnel)
+                                AFFECTATION DOSSIER (Requis pour Tissu)
                             </Typography>
                             <Autocomplete
                                 fullWidth
-                                freeSolo
                                 options={projects.map(p => p.name || `Projet #${p.id}`)}
                                 value={formData.project}
                                 onChange={(e, val) => setFormData({ ...formData, project: val })}
                                 renderInput={(params) => (
                                     <TextField
                                         {...params}
-                                        placeholder="Tapez pour lier à un projet..."
+                                        placeholder="Lie au projet..."
                                         sx={{ bgcolor: '#F9FAFB' }}
                                     />
                                 )}
@@ -313,16 +506,24 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
                         </Box>
                     )}
 
-                    {/* 4. CONTEXTE */}
+                    {/* 5. CONTEXTE */}
                     <Stack direction="row" spacing={2}>
                         <TextField select fullWidth label="Opérateur" value={user} onChange={(e) => setUser(e.target.value)} size="small">
                             {USERS.map(u => <MenuItem key={u} value={u}>{u}</MenuItem>)}
                         </TextField>
                         {!isIN && !isMOVE && (
-                            <TextField select fullWidth label="Motif" value={exitReason} onChange={(e) => setExitReason(e.target.value)} size="small">
+                            <TextField select fullWidth label="Motif prédéfini" value={exitReason} onChange={(e) => setExitReason(e.target.value)} size="small">
                                 {EXIT_REASONS.map(r => <MenuItem key={r} value={r}>{r}</MenuItem>)}
                             </TextField>
                         )}
+                        <TextField
+                            fullWidth
+                            label="Détail personnalisé"
+                            value={formData.customReason}
+                            onChange={(e) => setFormData(prev => ({ ...prev, customReason: e.target.value }))}
+                            placeholder="Optionnel..."
+                            size="small"
+                        />
                     </Stack>
 
                 </Stack>

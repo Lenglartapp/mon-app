@@ -1,6 +1,6 @@
 // src/screens/ChiffrageRoot.jsx
 import React, { useState, useMemo, useEffect } from "react";
-import { Plus, Copy, Trash2, FileText, ArrowUpDown, ArrowUp, ArrowDown, Archive } from "lucide-react";
+import { Plus, Copy, Trash2, FileText, ArrowUpDown, ArrowUp, ArrowDown, Archive, Filter } from "lucide-react";
 import Chip from '@mui/material/Chip';
 import Avatar from '@mui/material/Avatar';
 import IconButton from '@mui/material/IconButton';
@@ -75,6 +75,10 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
   // Owner Menu State
   const [ownerMenu, setOwnerMenu] = useState({ anchor: null, minuteId: null });
 
+  // Filtering Menus
+  const [statusFilterAnchor, setStatusFilterAnchor] = useState(null);
+  const [ownerFilterAnchor, setOwnerFilterAnchor] = useState(null);
+
   const showKPIs = currentUser?.role === ROLES.ADMIN;
 
   const handleStatusClick = (event, id) => {
@@ -103,6 +107,16 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
       onUpdate(ownerMenu.minuteId, { owner: ownerName });
     }
     handleOwnerClose();
+  };
+
+  const toggleFilter = (field, value, label) => {
+    const filterId = `${field}_${value}`;
+    setActiveFilters(prev => {
+      if (prev.find(f => f.id === filterId)) {
+        return prev.filter(f => f.id !== filterId);
+      }
+      return [...prev, { id: filterId, label: `${label}`, field, value }];
+    });
   };
 
   // Filter Sales/Admin users
@@ -221,6 +235,20 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
           return owner.includes(user) || user.includes(owner) || !m.owner;
         });
       }
+    }
+
+    // Generic Field Filters (OR within same field, AND across different fields)
+    const fieldFilters = activeFilters.filter(f => f.field && f.id !== 'my_minutes');
+    if (fieldFilters.length > 0) {
+      const grouped = fieldFilters.reduce((acc, f) => {
+        if (!acc[f.field]) acc[f.field] = [];
+        acc[f.field].push(f.value);
+        return acc;
+      }, {});
+
+      Object.keys(grouped).forEach(field => {
+        res = res.filter(m => grouped[field].includes(m[field]));
+      });
     }
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
@@ -375,7 +403,14 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
               <tr>
                 <th style={{ padding: '12px 16px', fontSize: 13, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Nom Chiffrage</th>
                 <th style={{ padding: '12px 16px', fontSize: 13, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Client</th>
-                <th style={{ padding: '12px 16px', fontSize: 13, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Statut</th>
+                <th style={{ padding: '12px 16px', fontSize: 13, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    Statut
+                    <IconButton size="small" onClick={(e) => setStatusFilterAnchor(e.currentTarget)} sx={{ p: 0.5, color: activeFilters.some(f => f.field === 'status') ? '#1E2447' : '#9CA3AF' }}>
+                      <Filter size={14} />
+                    </IconButton>
+                  </div>
+                </th>
 
                 {/* Sortable Columns Helper */}
                 {[
@@ -401,7 +436,14 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
                 ))}
 
                 <th style={{ padding: '12px 16px', fontSize: 13, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Mise à jour</th>
-                <th style={{ padding: '12px 16px', fontSize: 13, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Chargé d'Affaires</th>
+                <th style={{ padding: '12px 16px', fontSize: 13, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    Chargé d'Affaires
+                    <IconButton size="small" onClick={(e) => setOwnerFilterAnchor(e.currentTarget)} sx={{ p: 0.5, color: activeFilters.some(f => f.field === 'owner') ? '#1E2447' : '#9CA3AF' }}>
+                      <Filter size={14} />
+                    </IconButton>
+                  </div>
+                </th>
                 <th style={{ padding: '12px 16px', fontSize: 13, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Modules</th>
                 <th style={{ padding: '12px 16px', width: 100 }}></th>
               </tr>
@@ -605,6 +647,40 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
         )) : (
           <MenuItem disabled><span style={{ fontSize: 12, color: '#9CA3AF' }}>Aucun utilisateur éligible (Admin/Sales)</span></MenuItem>
         )}
+      </Menu>
+
+      {/* FILTER MENUS */}
+      <Menu
+        anchorEl={statusFilterAnchor}
+        open={Boolean(statusFilterAnchor)}
+        onClose={() => setStatusFilterAnchor(null)}
+      >
+        <div style={{ padding: '8px 16px', fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase' }}>Filtrer par statut</div>
+        {Object.entries(STATUS_OPTIONS).map(([key, opt]) => (
+          <MenuItem key={key} onClick={() => toggleFilter('status', key, `Statut: ${opt.label}`)}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%' }}>
+              <input type="checkbox" checked={activeFilters.some(f => f.id === `status_${key}`)} readOnly />
+              <Chip label={opt.label} size="small" sx={{ bgcolor: opt.bg, color: opt.text, fontWeight: 700, fontSize: 11, height: 24 }} />
+            </div>
+          </MenuItem>
+        ))}
+      </Menu>
+
+      <Menu
+        anchorEl={ownerFilterAnchor}
+        open={Boolean(ownerFilterAnchor)}
+        onClose={() => setOwnerFilterAnchor(null)}
+      >
+        <div style={{ padding: '8px 16px', fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase' }}>Filtrer par chargé d'affaires</div>
+        {users.filter(u => u.role === ROLES.ADMIN || u.role === ROLES.ADV || u.role === 'sales').map((u) => (
+          <MenuItem key={u.id} onClick={() => toggleFilter('owner', u.name, `CA: ${u.name}`)}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%' }}>
+              <input type="checkbox" checked={activeFilters.some(f => f.id === `owner_${u.name}`)} readOnly />
+              <Avatar sx={{ width: 24, height: 24, fontSize: 10, bgcolor: stringToColor(u.name) }}>{u.initials}</Avatar>
+              <span style={{ fontSize: 13, fontWeight: 500 }}>{u.name}</span>
+            </div>
+          </MenuItem>
+        ))}
       </Menu>
     </div >
   );

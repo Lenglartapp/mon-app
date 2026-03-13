@@ -540,13 +540,15 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
               }
             }}
             onCreateBlank={async (projectName, _dummyRows, config) => {
-              const project = createBlankProject({ name: projectName });
-              project.id = project.id || uid();
-              project.name = projectName || "Nouveau Dossier";
-              project.budget = { prepa: 0, conf: 0, pose: 0 };
-              project.config = config;
-              project.due = config?.deliveryDate || null;
-              project.rows = [];
+              const project = {
+                id: uid(),
+                name: projectName || "Nouveau Dossier",
+                budget: { prepa: 0, conf: 0, pose: 0 },
+                config: config,
+                due: config?.deliveryDate || null,
+                rows: createBlankProject(config, SCHEMA_64),
+                created_at: new Date().toISOString()
+              };
 
               if (onCreate) {
                 try {

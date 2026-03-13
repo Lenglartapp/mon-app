@@ -48,7 +48,7 @@ function AppShell() {
   const { projects, addProject, updateProject, deleteProject } = useProjects();
   const { minutes, addMinute, updateMinute, deleteMinute } = useMinutes();
   const { events: planningEvents, updateEvent, deleteEvent } = useEvents();
-  const { inventory, movements, addMovement } = useStocks();
+  const { inventory, movements, addMovement, bulkUpdateInventory } = useStocks();
 
   // Alias pour compatibilité
   const cleanProjects = projects;
@@ -228,6 +228,7 @@ function AppShell() {
           inventory={inventory}
           movements={movements}
           onAddMovement={addMovement}
+          onBulkMovement={bulkUpdateInventory}
           onBack={() => setScreen("home")}
         />
       )}

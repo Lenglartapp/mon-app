@@ -540,126 +540,223 @@ export const useStocks = () => {
     useEffect(() => { fetchStocks(); }, []);
 
     const addMovement = async (movement) => {
-        console.log("TENTATIVE AJOUT MOUVEMENT:", movement); // Debug Console
-
-        // A. Enregistrer dans l'historique (LOGS)
-        const logEntry = {
-            date: new Date().toISOString(),
-            type: movement.type,
-            product: movement.product,
-            qty: Number(movement.qty),
-            unit: movement.unit,
-            user_name: movement.user,
-            location: movement.location, // Destination
-            project: movement.project,
-            // Pour MOVE, on indique l'origine dans le motif si pas déjà fait
-            reason: movement.type === 'MOVE'
-                ? `Déplacement depuis ${movement.from_location || '?'}`
-                : (movement.reason || null)
-        };
-
-        const { error: logError } = await supabase.from('inventory_logs').insert([logEntry]);
-
-        if (logError) {
-            console.error("Erreur SQL Logs:", logError);
-            alert(`Erreur lors de l'historique : ${logError.message}`);
-            return;
-        }
-
-        // B. Mettre à jour le Stock (ITEMS)
-        let itemError = null;
-
-        if (movement.type === 'MOVE') {
-            // --- LOGIQUE TRANSFERT (2 opérations) ---
-
-            // 1. Décrémenter Source
-            const sourceItem = inventory.find(i =>
-                i.product === movement.product &&
-                i.location === movement.from_location
-            );
-
-            if (sourceItem) {
-                const newSourceQty = Number(sourceItem.qty) - Number(movement.qty);
-                // Si < 0 ? On laisse faire (ou delete si 0? Supabase ne delete pas auto)
-                const { error: srcErr } = await supabase.from('inventory_items')
-                    .update({ qty: newSourceQty, updated_at: new Date() })
-                    .eq('id', sourceItem.id);
-                if (srcErr) itemError = srcErr;
-            } else {
-                console.warn("Source item not found for MOVE (Sync issue?)");
-            }
-
-            // 2. Incrémenter Destination
-            const destItem = inventory.find(i =>
-                i.product === movement.product &&
-                i.location === movement.location
-            );
-
-            if (!itemError) {
-                if (destItem) {
-                    const newDestQty = Number(destItem.qty) + Number(movement.qty);
-                    const { error: dstErr } = await supabase.from('inventory_items')
-                        .update({ qty: newDestQty, updated_at: new Date() })
-                        .eq('id', destItem.id);
-                    if (dstErr) itemError = dstErr;
-                } else {
-                    // Création destination
-                    // On copie les infos du produit (Category, Ref...) depuis la source si possible
-                    const baseInfo = sourceItem || {};
-                    const { error: dstErr } = await supabase.from('inventory_items').insert([{
-                        product: movement.product,
-                        ref: movement.ref || baseInfo.ref,
-                        location: movement.location,
-                        qty: Number(movement.qty),
-                        unit: movement.unit,
-                        project: movement.project, // ? keep project link? usually yes
-                        category: movement.category || baseInfo.category
-                    }]);
-                    if (dstErr) itemError = dstErr;
-                }
-            }
-
-        } else {
-            // --- LOGIQUE STANDARD (IN/OUT) ---
+        try {
+            // A. Identifier l'item cible dans le stock
             const existingItem = inventory.find(i =>
                 i.product === movement.product &&
                 i.location === movement.location &&
                 (i.project === movement.project || (!i.project && !movement.project))
             );
 
-            if (existingItem) {
-                // UPDATE
-                const newQty = movement.type === 'IN'
-                    ? Number(existingItem.qty) + Number(movement.qty)
-                    : Number(existingItem.qty) - Number(movement.qty);
+            // B. Préparation des LOGS à créer (Unitaire si pièces présentes à l'entrée)
+            const logsToCreate = [];
+            const hasDetailedPieces = Array.isArray(movement.pieces) && movement.pieces.length > 0;
 
-                const res = await supabase.from('inventory_items')
-                    .update({ qty: newQty, updated_at: new Date() })
-                    .eq('id', existingItem.id);
-                itemError = res.error;
-            } else if (movement.type === 'IN') {
-                // INSERT
-                const res = await supabase.from('inventory_items').insert([{
+            if (movement.type === 'IN' && hasDetailedPieces) {
+                // Création d'une ligne d'historique par pièce reçue
+                movement.pieces.forEach((p, idx) => {
+                    logsToCreate.push({
+                        type: 'IN',
+                        product: movement.product,
+                        qty: Number(p.qty),
+                        unit: movement.unit,
+                        user_name: movement.user,
+                        location: p.location || movement.location,
+                        project: movement.project,
+                        reason: `Réception Pièce ${idx + 1}`,
+                        pieces_names: p.name || `P${idx + 1}`, // Nouveau champ
+                        date: new Date().toISOString()
+                    });
+                });
+            } else if (movement.type === 'OUT' && hasDetailedPieces) {
+                // Cas d'une sortie avec détail par pièces (Reste)
+                // On s'attend à ce que movement.pieces contienne les pièces avec leur NOUVELLE quantité (le reste)
+                // On doit calculer la consommation réelle pour faire les logs
+                movement.pieces.forEach((p, idx) => {
+                    const initialPiece = existingItem?.pieces?.find(ip => ip.id === p.id);
+                    if (initialPiece) {
+                        const consumed = Number(initialPiece.qty) - Number(p.p_qty || p.qty);
+                        const locChanged = p.location && initialPiece.location !== p.location;
+                        
+                        if (consumed > 0 || locChanged) {
+                            let reason = `Consommation Pièce ${idx + 1}`;
+                            if (locChanged) reason += ` | Déplacé de ${initialPiece.location || 'N/A'} vers ${p.location}`;
+                            
+                            logsToCreate.push({
+                                type: 'OUT',
+                                product: movement.product,
+                                qty: Math.max(0, consumed),
+                                unit: movement.unit,
+                                user_name: movement.user,
+                                location: p.location || initialPiece.location || movement.location,
+                                project: movement.project,
+                                reason: reason,
+                                pieces_names: p.name || initialPiece.name || `P${idx + 1}`, // Nouveau champ
+                                date: new Date().toISOString()
+                            });
+                        }
+                    }
+                });
+            } else {
+                // Log standard pour les autres types de mouvements
+                let pieceInfo = '';
+                if (movement.type === 'OUT' && hasDetailedPieces) {
+                    const selected = movement.pieces.find(p => p.selected);
+                    if (selected) {
+                        const idx = movement.pieces.findIndex(p => p.id === selected.id);
+                        pieceInfo = ` (Sur Pièce ${idx + 1})`;
+                    }
+                }
+
+                logsToCreate.push({
+                    type: movement.type,
                     product: movement.product,
-                    ref: movement.ref,
-                    location: movement.location,
                     qty: Number(movement.qty),
                     unit: movement.unit,
+                    user_name: movement.user,
+                    location: movement.location,
                     project: movement.project,
-                    category: movement.category
-                }]);
-                itemError = res.error;
+                    reason: (movement.reason || (movement.type === 'MOVE' ? `Déplacement depuis ${movement.from_location}` : 'Mouvement manuel')) + pieceInfo,
+                    pieces_names: movement.piece_name || null, // Champ pour mouvement simple
+                    date: new Date().toISOString()
+                });
             }
-        }
 
-        if (itemError) {
-            console.error("Erreur SQL Items:", itemError);
-            alert(`Erreur lors de la mise à jour du stock : ${itemError.message}\n(Code: ${itemError.code})`);
-        } else {
-            // Succès total
+            // C. Mise à jour de l'INVENTAIRE (Stock groupé)
+            let itemError = null;
+
+            if (movement.type === 'MOVE') {
+                // Transfert : décrémenter source, incrémenter destination
+                const sourceItem = inventory.find(i => i.product === movement.product && i.location === movement.from_location);
+                if (sourceItem) {
+                    await supabase.from('inventory_items').update({ qty: Number(sourceItem.qty) - Number(movement.qty) }).eq('id', sourceItem.id);
+                }
+                const destItem = inventory.find(i => i.product === movement.product && i.location === movement.location);
+                if (destItem) {
+                    const { error } = await supabase.from('inventory_items').update({ qty: Number(destItem.qty) + Number(movement.qty) }).eq('id', destItem.id);
+                    itemError = error;
+                } else {
+                    const { error } = await supabase.from('inventory_items').insert([{
+                        product: movement.product, location: movement.location, qty: Number(movement.qty),
+                        unit: movement.unit, project: movement.project, category: movement.category, pieces: movement.pieces || []
+                    }]);
+                    itemError = error;
+                }
+            } else {
+                // IN or OUT
+                if (existingItem) {
+                    let newQty = movement.type === 'IN' ? Number(existingItem.qty) + Number(movement.qty) : Number(existingItem.qty) - Number(movement.qty);
+                    let newPieces = Array.isArray(existingItem.pieces) ? [...existingItem.pieces] : [];
+
+                    if (movement.type === 'IN' && hasDetailedPieces) {
+                        newPieces = [...newPieces, ...movement.pieces];
+                    } else if (movement.type === 'OUT' && hasDetailedPieces) {
+                        // Si on a le détail des pièces (le reste), on remplace tout
+                        newPieces = movement.pieces.map(p => ({ ...p, qty: Number(p.p_qty || p.qty) })).filter(p => p.qty > 0);
+                        newQty = newPieces.reduce((sum, p) => sum + p.qty, 0);
+                    }
+
+                    const { error } = await supabase.from('inventory_items').update({ qty: Math.max(0, newQty), pieces: newPieces }).eq('id', existingItem.id);
+                    itemError = error;
+                } else if (movement.type === 'IN') {
+                    const { error } = await supabase.from('inventory_items').insert([{
+                        product: movement.product, location: movement.location, qty: Number(movement.qty),
+                        unit: movement.unit, project: movement.project, category: movement.category, pieces: movement.pieces || []
+                    }]);
+                    itemError = error;
+                }
+            }
+
+            if (itemError) throw itemError;
+
+            // D. Finir par l'insertion des LOGS
+            const { error: logError } = await supabase.from('inventory_logs').insert(logsToCreate);
+            if (logError) throw logError;
+
             fetchStocks();
+            return { success: true };
+        } catch (error) {
+            console.error('Erreur addMovement:', error);
+            alert(`Erreur : ${error.message}`);
+            return { success: false, error };
         }
     };
 
-    return { inventory, movements, loading, addMovement, refreshStocks: fetchStocks };
+    const bulkUpdateInventory = async (updates, user) => {
+        setLoading(true);
+        try {
+            const logsToCreate = [];
+            
+            for (const update of updates) {
+                // 1. Mise à jour de l'item (Qty et/ou Location)
+                const itemUpdates = {};
+                if (update.hasQtyChange) itemUpdates.qty = Math.max(0, update.newTotalQty);
+                if (update.hasLocChange) itemUpdates.location = update.newLocation;
+
+                if (Object.keys(itemUpdates).length > 0) {
+                    const { error: itemError } = await supabase
+                        .from('inventory_items')
+                        .update(itemUpdates)
+                        .eq('id', update.id);
+                    
+                    if (itemError) throw itemError;
+                }
+
+                // 2. Préparation des logs
+                // Log de Sortie si Qty a baissé
+                if (update.hasQtyChange) {
+                    logsToCreate.push({
+                        type: 'OUT',
+                        product: update.product,
+                        qty: Number(update.qtyToRemove),
+                        unit: update.unit,
+                        user_name: user,
+                        location: update.newLocation || update.location,
+                        project: update.project,
+                        reason: update.reason || 'SOLDE / DÉSTOCKAGE EXCEL',
+                        date: new Date().toISOString()
+                    });
+                }
+
+                // Log de Déplacement si Location a changé
+                if (update.hasLocChange) {
+                    logsToCreate.push({
+                        type: 'MOVE',
+                        product: update.product,
+                        qty: Number(update.newTotalQty),
+                        unit: update.unit,
+                        user_name: user,
+                        location: update.newLocation,
+                        project: update.project,
+                        reason: `DÉPLACEMENT EXCEL (De ${update.oldLocation || 'N/A'} vers ${update.newLocation})`,
+                        date: new Date().toISOString()
+                    });
+                }
+            }
+
+            // 3. Insertion des logs en une seule fois
+            if (logsToCreate.length > 0) {
+                const { error: logError } = await supabase.from('inventory_logs').insert(logsToCreate);
+                if (logError) throw logError;
+            }
+
+            fetchStocks();
+            return { success: true, count: updates.length };
+        } catch (error) {
+            console.error('Erreur bulkUpdateInventory:', error);
+            alert(`Erreur lors de la mise à jour groupée : ${error.message}`);
+            return { success: false, error };
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return { 
+        inventory, 
+        movements, 
+        loading, 
+        addMovement,
+        refreshStocks: fetchStocks,
+        bulkUpdateInventory
+    };
 };

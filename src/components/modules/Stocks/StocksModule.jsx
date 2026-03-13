@@ -21,7 +21,8 @@ export default function StocksModule({
     // On récupère les props injectées par App.jsx
     inventory = [],
     movements = [],
-    onAddMovement
+    onAddMovement,
+    onBulkMovement
 }) {
     const { currentUser } = useAuth();
     const canEdit = can(currentUser, 'inventory.edit');
@@ -156,7 +157,12 @@ export default function StocksModule({
                         />
                     )}
                     {tabIndex === 1 && (
-                        <StockInventoryTab inventory={inventory} projects={projects} movements={movements} />
+                        <StockInventoryTab 
+                            inventory={inventory} 
+                            projects={projects} 
+                            movements={movements} 
+                            onBulkMovement={onBulkMovement}
+                        />
                     )}
                 </div>
             </div>

@@ -9,14 +9,20 @@ function seedRowsFor(type) {
 }
 
 /**
- * @param {{rideaux:boolean, stores:boolean, decors:boolean}} opts
+ * @param {Object} opts
  * @param {Array} prodSchema
  * @returns {Array} rowsProduction
  */
 export function createBlankProject(opts, prodSchema) {
   const rows = [];
-  if (opts?.rideaux) rows.push(...seedRowsFor("Rideau"));
-  if (opts?.stores)  rows.push(...seedRowsFor("Store Enrouleur"));
-  if (opts?.decors)  rows.push(...seedRowsFor("Décor de lit"));
+  if (opts?.useRideaux)        rows.push(...seedRowsFor("Rideau"));
+  if (opts?.useStoresClassiques) rows.push(...seedRowsFor("Store Enrouleur"));
+  if (opts?.useStoresBateau)   rows.push(...seedRowsFor("Store Bateau"));
+  if (opts?.useTentures)       rows.push(...seedRowsFor("Tenture murale"));
+  if (opts?.useCacheSommier)   rows.push(...seedRowsFor("Cache-sommier"));
+  if (opts?.usePlaid)          rows.push(...seedRowsFor("Plaid"));
+  if (opts?.useCoussins)       rows.push(...seedRowsFor("Coussin"));
+  if (opts?.useMobilier)       rows.push(...seedRowsFor("Mobilier"));
+  
   return computeFormulas(rows, prodSchema);
 }
