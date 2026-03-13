@@ -12,6 +12,7 @@ import { DataGrid, GridToolbarContainer, GridToolbarFilterButton } from '@mui/x-
 import { frFR } from '@mui/x-data-grid/locales';
 import { Plus, Trash2 } from 'lucide-react';
 import { COLORS } from '../lib/constants/ui';
+import { uid } from '../lib/utils/uid';
 
 // Helper Style Island Nav (Copied from ChiffrageScreen)
 const getNavStyle = (isActive) => ({
@@ -70,6 +71,16 @@ export default function CatalogManager({ open, onClose, catalog, onCatalogChange
         }
     }, [props.settings]);
 
+    // Sécurité : Si le catalogue arrive avec des IDs manquants (ex: import ou bug historique)
+    // on les génère et on notifie le parent immédiatement.
+    useEffect(() => {
+        if (catalog && Array.isArray(catalog) && catalog.some(r => !r.id)) {
+            console.log("🛠️ Lib : Nettoyage automatique des IDs manquants dans la bibliothèque");
+            const clean = catalog.map(r => r.id ? r : { ...r, id: uid() });
+            onCatalogChange(clean);
+        }
+    }, [catalog, onCatalogChange]);
+
     const onSettingsChange = props.onSettingsChange;
     // Debounce ref
     const debounceRef = useRef(null);
@@ -117,23 +128,27 @@ export default function CatalogManager({ open, onClose, catalog, onCatalogChange
     // Filtered Rows for DataGrid
     const filteredRows = useMemo(() => {
         if (!catalog) return [];
+        
+        // Sécurité : Assurer que chaque ligne a un ID pour éviter le crash DataGrid
+        const sanitized = catalog.map(r => r.id ? r : { ...r, id: uid() });
+
         if (activeCategoryTab === 'tissus') {
-            return catalog.filter(r => ['Tissu', 'Tissus', 'Doublure', 'Doublures', 'Inter', 'Confection'].includes(r.category));
+            return sanitized.filter(r => ['Tissu', 'Tissus', 'Doublure', 'Doublures', 'Inter', 'Confection'].includes(r.category));
         }
         if (activeCategoryTab === 'rails') {
-            return catalog.filter(r => ['Rail', 'Rails', 'Tringle', 'Mecanisme', 'Mécanisme'].includes(r.category));
+            return sanitized.filter(r => ['Rail', 'Rails', 'Tringle', 'Mecanisme', 'Mécanisme'].includes(r.category));
         }
         if (activeCategoryTab === 'stores') {
-            return catalog.filter(r => ['Store', 'Stores', 'Mecanisme Store'].includes(r.category));
+            return sanitized.filter(r => ['Store', 'Stores', 'Mecanisme Store'].includes(r.category));
         }
         if (activeCategoryTab === 'passementerie') {
-            return catalog.filter(r => ['Passementerie'].includes(r.category));
+            return sanitized.filter(r => ['Passementerie'].includes(r.category));
         }
-        return catalog;
+        return sanitized;
     }, [catalog, activeCategoryTab]);
 
     const handleAddRow = () => {
-        const newId = catalog.length > 0 ? Math.max(...catalog.map(r => r.id)) + 1 : 1;
+        const newId = uid();
 
         // Determine category based on active tab
         let defaultCategory = 'Tissu';

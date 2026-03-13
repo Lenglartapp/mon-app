@@ -166,6 +166,70 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onBack, highlightRowId }
 
   const mods = localModules;
 
+  // Recap Logic
+  const recap = React.useMemo(() => {
+    let caRideaux = 0, caStores = 0, caStoresBateau = 0, caDivers = 0;
+    let caCoussins = 0, caCacheSommier = 0, caPlaid = 0, caTenture = 0, caMobilier = 0;
+    let hConf = 0, hPose = 0, hPrepa = 0;
+
+    // 1. Process Main Production Grid (rows)
+    for (const r of rows || []) {
+      const prod = String(r?.produit || "").toLowerCase();
+      const total = toNum(r?.prix_total);
+      const q = toNum(r?.quantite) || 1;
+
+      // Sum all production hours
+      hConf += (toNum(r?.heures_confection) * q);
+      hPose += (toNum(r?.heures_pose) * q);
+      hPrepa += (toNum(r?.heures_prepa) * q);
+
+      if (!total) continue;
+
+      // Categorize Revenue
+      if (/bateau|velum|vélum/i.test(prod)) caStoresBateau += total;
+      else if (/store|canishade/i.test(prod)) caStores += total;
+      else if (/coussin/i.test(prod)) caCoussins += total;
+      else if (/cache-sommier/i.test(prod)) caCacheSommier += total;
+      else if (/plaid|chemin de lit/i.test(prod)) caPlaid += total;
+      else if (/tenture/i.test(prod)) caTenture += total;
+      else if (/t[êe]te|mobilier/i.test(prod)) caMobilier += total;
+      else if (prod.includes("rideau") || prod.includes("voilage")) caRideaux += total;
+      else caDivers += total;
+    }
+
+    // 2. Process Logistics / Déplacements (depRows)
+    const depTotal = (depRows || []).reduce((s, r) => s + toNum(r?.prix_total), 0);
+    (depRows || []).forEach(r => {
+      const q = toNum(r?.quantite) || 1;
+      const h = toNum(r?.heures_facturees) * q;
+      const typeDep = String(r?.type_deplacement || "").toLowerCase();
+      if (typeDep.includes("prise de cote")) {
+        hPrepa += h;
+      } else {
+        hPose += h;
+      }
+    });
+
+    // 3. Process Autres Dépenses (extraRows)
+    const extrasTotal = (extraRows || []).reduce((s, r) => s + toNum(r?.prix_total), 0);
+    (extraRows || []).forEach(r => {
+      const q = toNum(r?.quantite) || 1;
+      hConf += (toNum(r?.heures_confection) * q);
+      hPose += (toNum(r?.heures_pose) * q);
+      hPrepa += (toNum(r?.heures_prepa) * q);
+    });
+
+    const caTotal = caRideaux + caCoussins + caCacheSommier + caPlaid + caTenture + caMobilier + caStores + caStoresBateau + caDivers;
+    const offreTotale = caTotal + depTotal; // Excludes extrasTotal (Frais) as requested
+
+    return {
+      caRideaux, caCoussins, caCacheSommier, caPlaid, caTenture, caMobilier, caStores, caStoresBateau, caDivers,
+      caTotal, extrasTotal, depTotal, offreTotale, hConf, hPose, hPrepa
+    };
+  }, [rows, extraRows, depRows]);
+
+  const nfEur0 = React.useMemo(() => new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }), []);
+
   // Update Wrapper (Memoized)
   const updateMinute = React.useCallback((patch) => {
     if (!canEdit) return;
@@ -252,70 +316,6 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onBack, highlightRowId }
     
     e.target.value = null; // reset input
   };
-
-  // Recap Logic
-  const recap = React.useMemo(() => {
-    let caRideaux = 0, caStores = 0, caStoresBateau = 0, caDivers = 0;
-    let caCoussins = 0, caCacheSommier = 0, caPlaid = 0, caTenture = 0, caMobilier = 0;
-    let hConf = 0, hPose = 0, hPrepa = 0;
-
-    // 1. Process Main Production Grid (rows)
-    for (const r of rows || []) {
-      const prod = String(r?.produit || "").toLowerCase();
-      const total = toNum(r?.prix_total);
-      const q = toNum(r?.quantite) || 1;
-
-      // Sum all production hours
-      hConf += (toNum(r?.heures_confection) * q);
-      hPose += (toNum(r?.heures_pose) * q);
-      hPrepa += (toNum(r?.heures_prepa) * q);
-
-      if (!total) continue;
-
-      // Categorize Revenue
-      if (/bateau|velum|vélum/i.test(prod)) caStoresBateau += total;
-      else if (/store|canishade/i.test(prod)) caStores += total;
-      else if (/coussin/i.test(prod)) caCoussins += total;
-      else if (/cache-sommier/i.test(prod)) caCacheSommier += total;
-      else if (/plaid|chemin de lit/i.test(prod)) caPlaid += total;
-      else if (/tenture/i.test(prod)) caTenture += total;
-      else if (/t[êe]te|mobilier/i.test(prod)) caMobilier += total;
-      else if (prod.includes("rideau") || prod.includes("voilage")) caRideaux += total;
-      else caDivers += total;
-    }
-
-    // 2. Process Logistics / Déplacements (depRows)
-    const depTotal = (depRows || []).reduce((s, r) => s + toNum(r?.prix_total), 0);
-    (depRows || []).forEach(r => {
-      const q = toNum(r?.quantite) || 1;
-      const h = toNum(r?.heures_facturees) * q;
-      const typeDep = String(r?.type_deplacement || "").toLowerCase();
-      if (typeDep.includes("prise de cote")) {
-        hPrepa += h;
-      } else {
-        hPose += h;
-      }
-    });
-
-    // 3. Process Autres Dépenses (extraRows)
-    const extrasTotal = (extraRows || []).reduce((s, r) => s + toNum(r?.prix_total), 0);
-    (extraRows || []).forEach(r => {
-      const q = toNum(r?.quantite) || 1;
-      hConf += (toNum(r?.heures_confection) * q);
-      hPose += (toNum(r?.heures_pose) * q);
-      hPrepa += (toNum(r?.heures_prepa) * q);
-    });
-
-    const caTotal = caRideaux + caCoussins + caCacheSommier + caPlaid + caTenture + caMobilier + caStores + caStoresBateau + caDivers;
-    const offreTotale = caTotal + depTotal; // Excludes extrasTotal (Frais) as requested
-
-    return {
-      caRideaux, caCoussins, caCacheSommier, caPlaid, caTenture, caMobilier, caStores, caStoresBateau, caDivers,
-      caTotal, extrasTotal, depTotal, offreTotale, hConf, hPose, hPrepa
-    };
-  }, [rows, extraRows, depRows]);
-
-  const nfEur0 = React.useMemo(() => new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }), []);
 
   // Header State
   const [name, setName] = React.useState(minute?.name || "Minute sans nom");
