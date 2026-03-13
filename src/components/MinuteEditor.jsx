@@ -862,4 +862,4 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
   );
 }
 
-export default MinuteEditor;
+export default React.memo(MinuteEditor);

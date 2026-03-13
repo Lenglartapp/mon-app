@@ -1,7 +1,7 @@
 import React from 'react';
 import { Paper, Grid, Typography, Divider, Box } from '@mui/material';
 
-export default function DashboardSummary({ recap, nf, activeModules }) {
+export default React.memo(function DashboardSummary({ recap, nf, activeModules }) {
     // Default modules if undefined (safeguard)
     const mods = activeModules || { rideau: true, store: true, decor: true, autre_confection: true };
 
@@ -92,4 +92,4 @@ export default function DashboardSummary({ recap, nf, activeModules }) {
             </Grid>
         </Paper>
     );
-}
+});

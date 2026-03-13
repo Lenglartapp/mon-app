@@ -26,6 +26,56 @@ const toNum = (v) => {
   return Number.isFinite(n) ? n : 0;
 };
 
+// Optimisation: Composant Isolé pour les Notes afin d'éviter le re-render global à chaque frappe
+const NotesField = React.memo(({ initialValue, onSave, readOnly, canEdit }) => {
+  const [localNotes, setLocalNotes] = React.useState(initialValue);
+  const notesRef = React.useRef(null);
+
+  React.useEffect(() => {
+    setLocalNotes(initialValue);
+  }, [initialValue]);
+
+  React.useEffect(() => {
+    if (notesRef.current) {
+      notesRef.current.style.height = "auto";
+      notesRef.current.style.height = notesRef.current.scrollHeight + "px";
+    }
+  }, [localNotes]);
+
+  return (
+    <textarea
+      ref={notesRef}
+      value={localNotes}
+      onChange={(e) => setLocalNotes(e.target.value)}
+      onBlur={() => {
+        if (localNotes !== initialValue) {
+          onSave(localNotes);
+        }
+      }}
+      placeholder="Ajouter une note de contexte..."
+      rows={1}
+      style={{ 
+        width: '100%', 
+        border: 'none', 
+        background: 'transparent', 
+        borderBottom: '1px dashed #E5E7EB', 
+        outline: 'none', 
+        resize: 'none', 
+        fontSize: 14, 
+        overflow: 'hidden', 
+        fontFamily: 'Roboto, sans-serif' 
+      }}
+      readOnly={!canEdit || readOnly}
+    />
+  );
+});
+
+// Memoize External Components for better performance
+const MemoizedMinuteEditor = React.memo(MinuteEditor);
+const MemoizedDashboardSummary = React.memo(DashboardSummary);
+const MemoizedShoppingListScreen = React.memo(ShoppingListScreen);
+const MemoizedMoulinetteView = React.memo(MoulinetteView);
+
 function ChiffrageScreen({ minuteId, minutes, onUpdate, onBack, highlightRowId }) {
   const [localRowId, setLocalRowId] = React.useState(null);
   const [showHistory, setShowHistory] = React.useState(false);
@@ -116,11 +166,11 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onBack, highlightRowId }
 
   const mods = localModules;
 
-  // Update Wrapper
-  const updateMinute = (patch) => {
+  // Update Wrapper (Memoized)
+  const updateMinute = React.useCallback((patch) => {
     if (!canEdit) return;
-    if (onUpdate) onUpdate(minute.id, patch);
-  };
+    if (onUpdate) onUpdate(minuteId, patch);
+  }, [canEdit, onUpdate, minuteId]);
 
   // Local status for optimistic UI
   const [localStatus, setLocalStatus] = React.useState(minute?.status || "DRAFT");
@@ -129,8 +179,8 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onBack, highlightRowId }
     setLocalStatus(minute?.status || "DRAFT");
   }, [minute?.status]);
 
-  // Status Change with Logging
-  const handleStatusChange = (newStatus) => {
+  // Status Change with Logging (Memoized)
+  const handleStatusChange = React.useCallback((newStatus) => {
     if (!canEdit) return;
     const oldStatus = minute?.status || "DRAFT";
     if (newStatus === oldStatus) return;
@@ -172,10 +222,8 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onBack, highlightRowId }
     if (newStatus === "VALIDATED") {
       if (confirm("Valider ce devis ?")) performUpdate();
       else setLocalStatus(oldStatus); // Revert
-    } else {
-      performUpdate();
     }
-  };
+  }, [canEdit, minute, currentUser, recap, updateMinute]);
 
   const fileInputRef = React.useRef(null);
   const handleGlobalImport = async (e) => {
@@ -274,18 +322,13 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onBack, highlightRowId }
   const [notes, setNotes] = React.useState(minute?.notes || "");
   const notesRef = React.useRef(null);
 
-  // Auto-resize notes
-  React.useEffect(() => {
-    if (notesRef.current) {
-      notesRef.current.style.height = "auto";
-      notesRef.current.style.height = notesRef.current.scrollHeight + "px";
-    }
-  }, [notes]);
-
   React.useEffect(() => {
     setName(minute?.name || "Minute sans nom");
-    setNotes(minute?.notes || "");
-  }, [minuteId, minute?.name, minute?.notes]);
+  }, [minuteId, minute?.name]);
+
+  const handleNotesSave = React.useCallback((newNotes) => {
+    updateMinute({ notes: newNotes });
+  }, [updateMinute]);
 
   // Tabs
   const [activeTab, setActiveTab] = React.useState("minutes");
@@ -312,19 +355,22 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onBack, highlightRowId }
     return all.find(r => r.id === localRowId);
   }, [localRowId, rows, depRows, extraRows]);
 
-  const handleDetailUpdate = (updatedRow) => {
+  const handleDetailUpdate = React.useCallback((updatedRow) => {
     if (!canEdit) return;
     if ((rows || []).some(r => r.id === updatedRow.id)) {
-      setRows(prev => prev.map(r => r.id === updatedRow.id ? updatedRow : r));
-      updateMinute({ lines: rows.map(r => r.id === updatedRow.id ? updatedRow : r) }); // optimistic
+      const newLines = rows.map(r => r.id === updatedRow.id ? updatedRow : r);
+      setRows(newLines);
+      updateMinute({ lines: newLines }); // optimistic
     } else if ((depRows || []).some(r => r.id === updatedRow.id)) {
-      setDepRows(prev => prev.map(r => r.id === updatedRow.id ? updatedRow : r));
-      updateMinute({ deplacements: depRows.map(r => r.id === updatedRow.id ? updatedRow : r) });
+      const newDeps = depRows.map(r => r.id === updatedRow.id ? updatedRow : r);
+      setDepRows(newDeps);
+      updateMinute({ deplacements: newDeps });
     } else if ((extraRows || []).some(r => r.id === updatedRow.id)) {
-      setExtraRows(prev => prev.map(r => r.id === updatedRow.id ? updatedRow : r));
-      updateMinute({ extraDepenses: extraRows.map(r => r.id === updatedRow.id ? updatedRow : r) });
+      const newExtras = extraRows.map(r => r.id === updatedRow.id ? updatedRow : r);
+      setExtraRows(newExtras);
+      updateMinute({ extraDepenses: newExtras });
     }
-  };
+  }, [canEdit, rows, depRows, extraRows, updateMinute]);
 
   if (!canView) return <div style={S.contentWrap}>Accès refusé</div>;
   if (!minute) return <div style={S.contentWrap}>Minute introuvable</div>;
@@ -348,15 +394,11 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onBack, highlightRowId }
             <div style={{ fontSize: 16, color: '#6B7280', fontWeight: 300 }}>{minute?.client || "Client non spécifié"}</div>
           </div>
           <div style={{ marginTop: 16, width: '50vw', maxWidth: '800px' }}>
-            <textarea
-              ref={notesRef}
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              onBlur={() => updateMinute({ notes })}
-              placeholder="Ajouter une note de contexte..."
-              rows={1}
-              style={{ width: '100%', border: 'none', background: 'transparent', borderBottom: '1px dashed #E5E7EB', outline: 'none', resize: 'none', fontSize: 14, overflow: 'hidden', fontFamily: 'Roboto, sans-serif' }}
-              readOnly={!canEdit}
+            <NotesField 
+              initialValue={minute?.notes || ""} 
+              onSave={handleNotesSave} 
+              canEdit={canEdit} 
+              readOnly={minute?.status === "VALIDATED"}
             />
             {/* DATE DE LIVRAISON ESTIMÉE */}
             <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -449,9 +491,9 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onBack, highlightRowId }
       {/* Minutes Tab */}
       {activeTab === "minutes" && (
         <div style={{ display: "grid", gap: 12, overflow: "hidden" }}>
-          <DashboardSummary recap={recap} nf={nfEur0} activeModules={mods} />
+          <MemoizedDashboardSummary recap={recap} nf={nfEur0} activeModules={mods} />
           <div style={{ minWidth: 0, overflowX: "auto" }}>
-            <MinuteEditor
+            <MemoizedMinuteEditor
               key={`${minute?.id}-${Object.keys(mods || {}).filter(k => mods[k]).sort().join('-')}`} // FORCE REMOUNT on module change
               minute={{
                 ...minute,
@@ -499,9 +541,9 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onBack, highlightRowId }
         </div>
       )}
 
-      {activeTab === "achats" && <ShoppingListScreen minutes={[minute]} />}
+      {activeTab === "achats" && <MemoizedShoppingListScreen minutes={[minute]} />}
       {activeTab === "moulinette" && can(currentUser, "chiffrage.moulinette") && (
-        <MoulinetteView
+        <MemoizedMoulinetteView
           rows={rows}
           extraRows={extraRows}
           depRows={depRows}
