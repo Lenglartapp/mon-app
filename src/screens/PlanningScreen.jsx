@@ -377,7 +377,6 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
     const navNext = () => { if (view === 'month') setCurrentDate(d => addMonths(d, 1)); else if (view === 'quarter') setCurrentDate(d => addQuarters(d, 1)); else if (view === 'year') setCurrentDate(d => addYears(d, 1)); else setCurrentDate(d => addDays(d, view === 'day' ? 1 : 7)); };
 
     // --- RECHERCHE MULTI-CRITÈRES ---
-    const [searchQuery, setSearchQuery] = useState('');
     const [activeFilters, setActiveFilters] = useState([]);
 
     // --- CONSTRUCTION DYNAMIQUE DES GROUPES ---
@@ -430,11 +429,74 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
             return config;
         }
 
-        if (activeFilters.length === 0 && !searchQuery) return visibleGroupsConfig;
+        if (activeFilters.length === 0) return visibleGroupsConfig;
 
-        // TODO: Implémenter logique de filtrage avancée si nécessaire
-        return visibleGroupsConfig;
-    }, [visibleGroupsConfig, activeFilters, searchQuery, myViewMode, currentUser]);
+        let config = JSON.parse(JSON.stringify(visibleGroupsConfig));
+
+        activeFilters.forEach(filter => {
+            const q = (filter.value || '').toLowerCase();
+
+            if (filter.field === 'service') {
+                // Garder seulement les groupes dont le label ou la clé contient le terme
+                Object.keys(config).forEach(key => {
+                    const group = config[key];
+                    const matches = group.label.toLowerCase().includes(q) || key.toLowerCase().includes(q);
+                    if (!matches) config[key].members = [];
+                });
+            }
+
+            if (filter.field === 'person') {
+                // Garder seulement les membres dont le nom contient le terme
+                Object.keys(config).forEach(key => {
+                    config[key].members = config[key].members.filter(m => {
+                        const fullName = `${m.first_name || ''} ${m.last_name || ''}`.toLowerCase();
+                        return fullName.includes(q);
+                    });
+                });
+            }
+
+            if (filter.field === 'project') {
+                // Trouver les events matchant le dossier, ne garder que leurs ressources
+                const matchingResourceIds = new Set(
+                    localEvents
+                        .filter(e => {
+                            const titleMatch = (e.title || '').toLowerCase().includes(q);
+                            const projectMatch = (projects || []).some(p =>
+                                (p.name || '').toLowerCase().includes(q) && p.id === e.meta?.projectId
+                            );
+                            return titleMatch || projectMatch;
+                        })
+                        .map(e => e.resourceId)
+                );
+                Object.keys(config).forEach(key => {
+                    config[key].members = config[key].members.filter(m => matchingResourceIds.has(m.id));
+                });
+            }
+        });
+
+        // Supprimer les groupes sans membres après filtrage
+        Object.keys(config).forEach(key => {
+            if (config[key].members.length === 0) delete config[key];
+        });
+
+        return config;
+    }, [visibleGroupsConfig, activeFilters, myViewMode, currentUser, localEvents, projects]);
+
+    // Events filtrés pour le filtre dossier (masque les events qui ne correspondent pas)
+    const filteredEvents = useMemo(() => {
+        const projectFilters = activeFilters.filter(f => f.field === 'project');
+        if (projectFilters.length === 0) return localEvents;
+        return localEvents.filter(e =>
+            projectFilters.every(filter => {
+                const q = (filter.value || '').toLowerCase();
+                const titleMatch = (e.title || '').toLowerCase().includes(q);
+                const projectMatch = (projects || []).some(p =>
+                    (p.name || '').toLowerCase().includes(q) && p.id === e.meta?.projectId
+                );
+                return titleMatch || projectMatch;
+            })
+        );
+    }, [localEvents, activeFilters, projects]);
 
     const handleToggleMyView = () => {
         if (!myViewMode) {
@@ -892,11 +954,9 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                 onCustomRangeChange={(r) => { setCustomRange(r); setView('custom'); }}
                 onNew={() => { if (canEdit) { setEditingEvent(null); setIsModalOpen(true); } }}
                 onManageTeam={() => setShowResourcePanel(true)}
-                searchQuery={searchQuery}
-                setSearchQuery={setSearchQuery}
                 activeFilters={activeFilters}
-                onAddFilter={(f) => setActiveFilters([...activeFilters, f])}
-                onRemoveFilter={(f) => setActiveFilters(activeFilters.filter(x => x !== f))}
+                onAddFilter={(f) => setActiveFilters(prev => prev.find(x => x.id === f.id) ? prev : [...prev, f])}
+                onRemoveFilter={(id) => setActiveFilters(prev => prev.filter(x => x.id !== id))}
                 assistantMode={assistantMode}
                 onToggleAssistant={() => setAssistantMode(!assistantMode)}
                 myViewMode={myViewMode}
@@ -954,7 +1014,7 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                     filteredGroups={filteredGroups}
                     expandedGroups={expandedGroups}
                     onToggleGroup={(key) => setExpandedGroups(prev => ({ ...prev, [key]: !prev[key] }))}
-                    events={localEvents}
+                    events={filteredEvents}
                     hiddenResources={hiddenResources}
                     onCellClick={handleCellClick}
                     onEventClick={handleEventClick}

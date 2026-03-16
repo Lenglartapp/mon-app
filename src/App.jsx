@@ -201,7 +201,9 @@ function AppShell() {
           minuteId={openMinuteId}
           minutes={cleanMinutes}
           onUpdate={updateMinute}
+          onCreate={addMinute}
           onBack={() => setScreen("chiffrageRoot")}
+          onOpenMinute={(id) => setOpenMinuteId(id)}
           highlightRowId={pendingRowId}
         />
       )}

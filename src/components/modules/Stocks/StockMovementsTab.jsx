@@ -144,7 +144,7 @@ export default function StockMovementsTab({ movements, onAddMovement, projects =
             (m.reason || '').toLowerCase().includes(s) ||
             (m.pieces_names || '').toLowerCase().includes(s)
         );
-    });
+    }).map(m => m.id ? m : { ...m, id: `log_${m.date}_${Math.random()}` });
 
     return (
         <Box>

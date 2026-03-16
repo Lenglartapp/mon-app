@@ -220,8 +220,8 @@ function DrillDownRow({ label, mainValue, subValue, sources, type = 'price' }) {
                                         {src.minute} <span style={{ opacity: 0.5 }}>({src.piece || '-'}/{src.zone || '-'})</span>
                                     </td>
                                     <td style={{ textAlign: 'right', padding: '2px 0', color: '#6b7280' }}>
-                                        {/* Qty or Hours */}
-                                        {src.quantite && `${src.quantite}u`}
+                                        {/* ML, Qty or Hours */}
+                                        {src.ml != null ? `${nf0.format(src.ml)} m` : src.quantite ? `${src.quantite}u` : null}
                                         {src.hours && `${src.hours}h`}
                                     </td>
                                     <td style={{ textAlign: 'right', padding: '2px 0', fontWeight: 500 }}>

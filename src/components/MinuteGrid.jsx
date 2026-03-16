@@ -14,6 +14,7 @@ import { generateRowLogs } from '../lib/utils/logUtils';
 import { useGridColumnState } from '../lib/hooks/useGridColumnState'; // Import hook
 
 import { Plus, Trash2, FileDown, FileUp } from 'lucide-react';
+import { uid } from '../lib/utils/uid';
 
 function CustomToolbar({ onAdd, onDelete, selectedCount, readOnly }) {
     return (
@@ -111,7 +112,7 @@ export default function MinuteGrid({
         }
         // Placeholder for adding a new row
         // You'll need to define the structure of a new row based on your schema
-        const newId = Math.max(...rows.map(r => r.id), 0) + 1;
+        const newId = uid();
         const newRow = { id: newId, ...Object.fromEntries(schema.map(col => [col.key, ''])) }; // Basic new row
         onRowsChange([...rows, newRow]);
     }, [rows, onRowsChange, schema, onAdd]);
@@ -390,7 +391,7 @@ export default function MinuteGrid({
             ) : (
                 <DataGrid
                     key={gridId} // Force remount when gridId changes
-                    rows={rows}
+                    rows={rows.map(r => r.id ? r : { ...r, id: uid() })}
                     columns={columns}
                     // Auto height to avoid vertical scrollbars
                     autoHeight

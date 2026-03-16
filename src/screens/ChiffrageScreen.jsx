@@ -18,7 +18,8 @@ import { useNotifications } from "../contexts/NotificationContext";
 import { useAppSettings, useCatalog, useCatalogRail } from "../hooks/useSupabase";
 
 import MinuteHistoryDialog from "../components/MinuteHistoryDialog";
-import { BookOpen, History, FileUp } from 'lucide-react';
+import RecalibrationModal from "../components/RecalibrationModal";
+import { BookOpen, History, FileUp, SlidersHorizontal, GitBranch } from 'lucide-react';
 import { importGlobalExcel } from "../lib/utils/importGlobalExcel";
 
 const toNum = (v) => {
@@ -26,10 +27,61 @@ const toNum = (v) => {
   return Number.isFinite(n) ? n : 0;
 };
 
-function ChiffrageScreen({ minuteId, minutes, onUpdate, onBack, highlightRowId }) {
+// Optimisation: Composant Isolé pour les Notes afin d'éviter le re-render global à chaque frappe
+const NotesField = React.memo(({ initialValue, onSave, readOnly, canEdit }) => {
+  const [localNotes, setLocalNotes] = React.useState(initialValue);
+  const notesRef = React.useRef(null);
+
+  React.useEffect(() => {
+    setLocalNotes(initialValue);
+  }, [initialValue]);
+
+  React.useEffect(() => {
+    if (notesRef.current) {
+      notesRef.current.style.height = "auto";
+      notesRef.current.style.height = notesRef.current.scrollHeight + "px";
+    }
+  }, [localNotes]);
+
+  return (
+    <textarea
+      ref={notesRef}
+      value={localNotes}
+      onChange={(e) => setLocalNotes(e.target.value)}
+      onBlur={() => {
+        if (localNotes !== initialValue) {
+          onSave(localNotes);
+        }
+      }}
+      placeholder="Ajouter une note de contexte..."
+      rows={1}
+      style={{
+        width: '100%',
+        border: 'none',
+        background: 'transparent',
+        borderBottom: '1px dashed #E5E7EB',
+        outline: 'none',
+        resize: 'none',
+        fontSize: 14,
+        overflow: 'hidden',
+        fontFamily: 'Roboto, sans-serif'
+      }}
+      readOnly={!canEdit || readOnly}
+    />
+  );
+});
+
+// Memoize External Components for better performance
+const MemoizedMinuteEditor = React.memo(MinuteEditor);
+const MemoizedDashboardSummary = React.memo(DashboardSummary);
+const MemoizedShoppingListScreen = React.memo(ShoppingListScreen);
+const MemoizedMoulinetteView = React.memo(MoulinetteView);
+
+function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onBack, onOpenMinute, highlightRowId }) {
   const [localRowId, setLocalRowId] = React.useState(null);
   const [showHistory, setShowHistory] = React.useState(false);
   const [showCatalog, setShowCatalog] = React.useState(false);
+  const [showRecalibration, setShowRecalibration] = React.useState(false);
 
   // Data Hooks
   const { settings: globalSettings } = useAppSettings();
@@ -116,95 +168,6 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onBack, highlightRowId }
 
   const mods = localModules;
 
-  // Update Wrapper
-  const updateMinute = (patch) => {
-    if (!canEdit) return;
-    if (onUpdate) onUpdate(minute.id, patch);
-  };
-
-  // Local status for optimistic UI
-  const [localStatus, setLocalStatus] = React.useState(minute?.status || "DRAFT");
-
-  React.useEffect(() => {
-    setLocalStatus(minute?.status || "DRAFT");
-  }, [minute?.status]);
-
-  // Status Change with Logging
-  const handleStatusChange = (newStatus) => {
-    if (!canEdit) return;
-    const oldStatus = minute?.status || "DRAFT";
-    if (newStatus === oldStatus) return;
-
-    // Optimistic Update
-    setLocalStatus(newStatus);
-
-    const performUpdate = () => {
-      // Ensure Author Name is valid
-      const safeAuthor = currentUser?.name || currentUser?.email || 'Utilisateur';
-
-      const logEntry = {
-        id: Date.now(),
-        type: 'status',
-        from: oldStatus,
-        to: newStatus,
-        date: Date.now(),
-        createdAt: new Date().toISOString(),
-        author: safeAuthor,
-        context: 'Minute'
-      };
-
-      // Use modules.history for storage (Safer fallback)
-      const currentModules = minute?.modules || { rideau: true, store: true, decor: true };
-      const oldLogs = Array.isArray(currentModules.history) ? currentModules.history : [];
-      const newLogs = [...oldLogs, logEntry];
-
-      const payload = {
-        status: newStatus,
-        modules: { ...currentModules, history: newLogs }
-      };
-
-      if (newStatus === "VALIDATED") {
-        payload.budgetSnapshot = { prepa: recap?.hPrepa || 0, conf: recap?.hConf || 0, pose: recap?.hPose || 0 };
-      }
-      updateMinute(payload);
-    };
-
-    if (newStatus === "VALIDATED") {
-      if (confirm("Valider ce devis ?")) performUpdate();
-      else setLocalStatus(oldStatus); // Revert
-    } else {
-      performUpdate();
-    }
-  };
-
-  const fileInputRef = React.useRef(null);
-  const handleGlobalImport = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    
-    try {
-      const importedRows = await importGlobalExcel(file, formulaCtx, catalog);
-      
-      if (!importedRows || importedRows.length === 0) {
-        if (addNotification) addNotification("Aucune ligne valide à importer.", "warning");
-        e.target.value = null;
-        return;
-      }
-      
-      const newLines = [...(rows || []), ...importedRows];
-      setRows(newLines);
-      
-      // Update Minute state (propagates to MinuteEditor)
-      updateMinute({ lines: newLines });
-      
-      if (addNotification) addNotification(`${importedRows.length} ligne(s) importée(s) avec succès !`, "success");
-    } catch (err) {
-      if (addNotification) addNotification(`Erreur d'import : ${err.message}`, "error");
-    }
-    
-    e.target.value = null; // reset input
-  };
-
   // Recap Logic
   const recap = React.useMemo(() => {
     let caRideaux = 0, caStores = 0, caStoresBateau = 0, caDivers = 0;
@@ -269,23 +232,136 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onBack, highlightRowId }
 
   const nfEur0 = React.useMemo(() => new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }), []);
 
+  // Update Wrapper (Memoized)
+  const updateMinute = React.useCallback((patch) => {
+    if (!canEdit) return;
+    if (onUpdate) onUpdate(minuteId, patch);
+  }, [canEdit, onUpdate, minuteId]);
+
+  // Local status for optimistic UI
+  const [localStatus, setLocalStatus] = React.useState(minute?.status || "DRAFT");
+
+  React.useEffect(() => {
+    setLocalStatus(minute?.status || "DRAFT");
+  }, [minute?.status]);
+
+  // Status Change with Logging (Memoized)
+  const handleStatusChange = React.useCallback((newStatus) => {
+    if (!canEdit) return;
+    const oldStatus = minute?.status || "DRAFT";
+    if (newStatus === oldStatus) return;
+
+    // Optimistic Update
+    setLocalStatus(newStatus);
+
+    const performUpdate = () => {
+      // Ensure Author Name is valid
+      const safeAuthor = currentUser?.name || currentUser?.email || 'Utilisateur';
+
+      const logEntry = {
+        id: Date.now(),
+        type: 'status',
+        from: oldStatus,
+        to: newStatus,
+        date: Date.now(),
+        createdAt: new Date().toISOString(),
+        author: safeAuthor,
+        context: 'Minute'
+      };
+
+      // Use modules.history for storage (Safer fallback)
+      const currentModules = minute?.modules || { rideau: true, store: true, decor: true };
+      const oldLogs = Array.isArray(currentModules.history) ? currentModules.history : [];
+      const newLogs = [...oldLogs, logEntry];
+
+      const payload = {
+        status: newStatus,
+        modules: { ...currentModules, history: newLogs }
+      };
+
+      if (newStatus === "VALIDATED") {
+        payload.budgetSnapshot = { prepa: recap?.hPrepa || 0, conf: recap?.hConf || 0, pose: recap?.hPose || 0 };
+      }
+      updateMinute(payload);
+    };
+
+    if (newStatus === "VALIDATED") {
+      if (confirm("Valider ce devis ?")) performUpdate();
+      else setLocalStatus(oldStatus); // Revert
+    }
+  }, [canEdit, minute, currentUser, recap, updateMinute]);
+
+  // Créer une variante simple (copie sans recalibrage)
+  const handleCreateVariant = React.useCallback(async () => {
+    if (!minute || !onCreate) return;
+    const rootId = minute.parentId || minute.id;
+    const siblings = (minutes || []).filter(m => (m.parentId || m.id) === rootId && m.id !== rootId);
+    const newVersion = siblings.length + 2;
+    const baseName = minute.name
+      .replace(/ Recalibrage \d+$/i, '')
+      .replace(/ Variante \d+$/i, '')
+      .replace(/ Variante$/i, '')
+      .replace(/ — v\d+.*$/, '');
+    const varianteCount = siblings.filter(m => / Variante/i.test(m.name)).length;
+    const newName = varianteCount === 0 ? `${baseName} Variante` : `${baseName} Variante ${varianteCount + 1}`;
+    const copy = {
+      ...minute,
+      id: uid(),
+      lines: minute.lines || [],
+      tables: minute.lines || [],
+      version: newVersion,
+      parentId: rootId,
+      name: newName,
+      status: 'DRAFT',
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+    const result = await onCreate(copy);
+    const newId = result?.data?.[0]?.id || copy.id;
+    if (onOpenMinute) onOpenMinute(newId);
+    else onBack();
+  }, [minute, minutes, onCreate, onBack, onOpenMinute]);
+
+  const fileInputRef = React.useRef(null);
+  const handleGlobalImport = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const importedRows = await importGlobalExcel(file, formulaCtx, catalog);
+
+      if (!importedRows || importedRows.length === 0) {
+        if (addNotification) addNotification("Aucune ligne valide à importer.", "warning");
+        e.target.value = null;
+        return;
+      }
+
+      const newLines = [...(rows || []), ...importedRows];
+      setRows(newLines);
+
+      // Update Minute state (propagates to MinuteEditor)
+      updateMinute({ lines: newLines });
+
+      if (addNotification) addNotification(`${importedRows.length} ligne(s) importée(s) avec succès !`, "success");
+    } catch (err) {
+      if (addNotification) addNotification(`Erreur d'import : ${err.message}`, "error");
+    }
+
+    e.target.value = null; // reset input
+  };
+
   // Header State
   const [name, setName] = React.useState(minute?.name || "Minute sans nom");
   const [notes, setNotes] = React.useState(minute?.notes || "");
   const notesRef = React.useRef(null);
 
-  // Auto-resize notes
-  React.useEffect(() => {
-    if (notesRef.current) {
-      notesRef.current.style.height = "auto";
-      notesRef.current.style.height = notesRef.current.scrollHeight + "px";
-    }
-  }, [notes]);
-
   React.useEffect(() => {
     setName(minute?.name || "Minute sans nom");
-    setNotes(minute?.notes || "");
-  }, [minuteId, minute?.name, minute?.notes]);
+  }, [minuteId, minute?.name]);
+
+  const handleNotesSave = React.useCallback((newNotes) => {
+    updateMinute({ notes: newNotes });
+  }, [updateMinute]);
 
   // Tabs
   const [activeTab, setActiveTab] = React.useState("minutes");
@@ -312,19 +388,22 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onBack, highlightRowId }
     return all.find(r => r.id === localRowId);
   }, [localRowId, rows, depRows, extraRows]);
 
-  const handleDetailUpdate = (updatedRow) => {
+  const handleDetailUpdate = React.useCallback((updatedRow) => {
     if (!canEdit) return;
     if ((rows || []).some(r => r.id === updatedRow.id)) {
-      setRows(prev => prev.map(r => r.id === updatedRow.id ? updatedRow : r));
-      updateMinute({ lines: rows.map(r => r.id === updatedRow.id ? updatedRow : r) }); // optimistic
+      const newLines = rows.map(r => r.id === updatedRow.id ? updatedRow : r);
+      setRows(newLines);
+      updateMinute({ lines: newLines }); // optimistic
     } else if ((depRows || []).some(r => r.id === updatedRow.id)) {
-      setDepRows(prev => prev.map(r => r.id === updatedRow.id ? updatedRow : r));
-      updateMinute({ deplacements: depRows.map(r => r.id === updatedRow.id ? updatedRow : r) });
+      const newDeps = depRows.map(r => r.id === updatedRow.id ? updatedRow : r);
+      setDepRows(newDeps);
+      updateMinute({ deplacements: newDeps });
     } else if ((extraRows || []).some(r => r.id === updatedRow.id)) {
-      setExtraRows(prev => prev.map(r => r.id === updatedRow.id ? updatedRow : r));
-      updateMinute({ extraDepenses: extraRows.map(r => r.id === updatedRow.id ? updatedRow : r) });
+      const newExtras = extraRows.map(r => r.id === updatedRow.id ? updatedRow : r);
+      setExtraRows(newExtras);
+      updateMinute({ extraDepenses: newExtras });
     }
-  };
+  }, [canEdit, rows, depRows, extraRows, updateMinute]);
 
   if (!canView) return <div style={S.contentWrap}>Accès refusé</div>;
   if (!minute) return <div style={S.contentWrap}>Minute introuvable</div>;
@@ -348,21 +427,17 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onBack, highlightRowId }
             <div style={{ fontSize: 16, color: '#6B7280', fontWeight: 300 }}>{minute?.client || "Client non spécifié"}</div>
           </div>
           <div style={{ marginTop: 16, width: '50vw', maxWidth: '800px' }}>
-            <textarea
-              ref={notesRef}
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              onBlur={() => updateMinute({ notes })}
-              placeholder="Ajouter une note de contexte..."
-              rows={1}
-              style={{ width: '100%', border: 'none', background: 'transparent', borderBottom: '1px dashed #E5E7EB', outline: 'none', resize: 'none', fontSize: 14, overflow: 'hidden', fontFamily: 'Roboto, sans-serif' }}
-              readOnly={!canEdit}
+            <NotesField
+              initialValue={minute?.notes || ""}
+              onSave={handleNotesSave}
+              canEdit={canEdit}
+              readOnly={minute?.status === "VALIDATED"}
             />
             {/* DATE DE LIVRAISON ESTIMÉE */}
             <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ fontSize: 13, fontWeight: 500, color: '#6B7280' }}>Date de livraison estimée :</span>
               {canEdit ? (
-                <input 
+                <input
                   type="date"
                   value={minute?.delivery_date || minute?.deliveryDate || ""}
                   onChange={(e) => updateMinute({ delivery_date: e.target.value })}
@@ -390,6 +465,24 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onBack, highlightRowId }
             <FileUp size={16} /> Importer Excel
           </button>
 
+          {canEdit && (
+            <button
+              onClick={handleCreateVariant}
+              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px', borderRadius: 8, background: 'white', color: '#1E2447', border: '1px solid #D1D5DB', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}
+              title="Dupliquer ce chiffrage comme nouvelle variante"
+            >
+              <GitBranch size={16} /> Créer une variante
+            </button>
+          )}
+          {canEdit && (
+            <button
+              onClick={() => setShowRecalibration(true)}
+              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px', borderRadius: 8, background: '#1E2447', color: 'white', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, boxShadow: '0 1px 2px rgba(0,0,0,0.1)' }}
+              title="Recalibrer le devis vers un montant cible"
+            >
+              <SlidersHorizontal size={16} /> Recalibrer
+            </button>
+          )}
           <button onClick={() => setShowHistory(true)} style={{ display: 'flex', gap: 8, padding: '8px 12px', borderRadius: 8, background: 'white', border: '1px solid #E5E7EB', cursor: 'pointer', color: '#374151' }} title="Historique">
             <History size={16} />
           </button>
@@ -427,6 +520,23 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onBack, highlightRowId }
 
       <MinuteHistoryDialog open={showHistory} onClose={() => setShowHistory(false)} minute={minute} />
 
+      {showRecalibration && (
+        <RecalibrationModal
+          minute={minute}
+          minutes={minutes}
+          onClose={() => setShowRecalibration(false)}
+          onCreateVariant={async (variant) => {
+            if (onCreate) {
+              const result = await onCreate(variant);
+              const newId = result?.data?.[0]?.id || variant.id;
+              setShowRecalibration(false);
+              if (onOpenMinute) onOpenMinute(newId);
+              else onBack();
+            }
+          }}
+        />
+      )}
+
       {/* Tabs */}
       {/* Tabs */}
       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 24 }}>
@@ -449,9 +559,9 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onBack, highlightRowId }
       {/* Minutes Tab */}
       {activeTab === "minutes" && (
         <div style={{ display: "grid", gap: 12, overflow: "hidden" }}>
-          <DashboardSummary recap={recap} nf={nfEur0} activeModules={mods} />
+          <MemoizedDashboardSummary recap={recap} nf={nfEur0} activeModules={mods} />
           <div style={{ minWidth: 0, overflowX: "auto" }}>
-            <MinuteEditor
+            <MemoizedMinuteEditor
               key={`${minute?.id}-${Object.keys(mods || {}).filter(k => mods[k]).sort().join('-')}`} // FORCE REMOUNT on module change
               minute={{
                 ...minute,
@@ -499,9 +609,9 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onBack, highlightRowId }
         </div>
       )}
 
-      {activeTab === "achats" && <ShoppingListScreen minutes={[minute]} />}
+      {activeTab === "achats" && <MemoizedShoppingListScreen minutes={[minute]} />}
       {activeTab === "moulinette" && can(currentUser, "chiffrage.moulinette") && (
-        <MoulinetteView
+        <MemoizedMoulinetteView
           rows={rows}
           extraRows={extraRows}
           depRows={depRows}

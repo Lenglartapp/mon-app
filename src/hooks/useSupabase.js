@@ -109,6 +109,7 @@ export const useMinutes = () => {
                 ...m,
                 tables: m.lines || [],
                 budgetSnapshot: m.budget_snapshot || { prepa: 0, conf: 0, pose: 0 },
+                parentId: m.parent_id || null,
                 createdAt: m.created_at ? new Date(m.created_at).getTime() : Date.now(),
                 updatedAt: m.updated_at ? new Date(m.updated_at).getTime() : Date.now(),
             }));
@@ -135,6 +136,12 @@ export const useMinutes = () => {
         if (updates.updatedAt) {
             dbUpdates.updated_at = new Date(updates.updatedAt).toISOString();
             delete dbUpdates.updatedAt;
+        }
+
+        // Mapping parentId -> parent_id
+        if ('parentId' in updates) {
+            dbUpdates.parent_id = updates.parentId || null;
+            delete dbUpdates.parentId;
         }
 
         // --- RELIABILITY FIX: Wait for DB first ---
@@ -166,13 +173,15 @@ export const useMinutes = () => {
             lines: linesData,
             created_at: toIsoString(minute.createdAt),
             updated_at: toIsoString(minute.updatedAt),
-            budget_snapshot: minute.budgetSnapshot || {}
+            budget_snapshot: minute.budgetSnapshot || {},
+            parent_id: minute.parentId || null,
         };
 
         delete dbMinute.tables;
         delete dbMinute.createdAt;
         delete dbMinute.updatedAt;
         delete dbMinute.budgetSnapshot;
+        delete dbMinute.parentId;
 
         const { data, error } = await supabase.from('minutes').insert([dbMinute]).select();
 
@@ -183,7 +192,8 @@ export const useMinutes = () => {
                 tables: newMinute.lines,
                 createdAt: newMinute.created_at,
                 updatedAt: newMinute.updated_at,
-                budgetSnapshot: newMinute.budget_snapshot
+                budgetSnapshot: newMinute.budget_snapshot,
+                parentId: newMinute.parent_id || null,
             };
             setMinutes([frontendMinute, ...minutes]);
         } else {
@@ -216,9 +226,12 @@ export const useCatalog = () => {
         const { data, error } = await supabase.from('catalog').select('*').order('name');
         if (!error) {
             // Ensure numeric values are numbers
+            // Postgres lowercases column names (buyprice/sellprice) → remap to camelCase
             const formatted = (data || []).map(item => ({
                 ...item,
-                price: Number(item.price || 0)
+                price: Number(item.price || 0),
+                buyPrice: Number(item.buyprice ?? item.buyPrice ?? item.buy_price ?? 0),
+                sellPrice: Number(item.sellprice ?? item.sellPrice ?? item.sell_price ?? 0),
             }));
             setCatalog(formatted);
         } else {
@@ -274,7 +287,7 @@ export const useCatalogRail = () => {
     const fetchCatalogRails = async () => {
         setLoadingRails(true);
         const { data, error } = await supabase.from('catalog_rail').select('*').order('name');
-        
+
         if (!error) {
             const formatted = (data || []).map(item => ({
                 ...item,
@@ -577,11 +590,11 @@ export const useStocks = () => {
                     if (initialPiece) {
                         const consumed = Number(initialPiece.qty) - Number(p.p_qty || p.qty);
                         const locChanged = p.location && initialPiece.location !== p.location;
-                        
+
                         if (consumed > 0 || locChanged) {
                             let reason = `Consommation Pièce ${idx + 1}`;
                             if (locChanged) reason += ` | Déplacé de ${initialPiece.location || 'N/A'} vers ${p.location}`;
-                            
+
                             logsToCreate.push({
                                 type: 'OUT',
                                 product: movement.product,
@@ -686,7 +699,7 @@ export const useStocks = () => {
         setLoading(true);
         try {
             const logsToCreate = [];
-            
+
             for (const update of updates) {
                 // 1. Mise à jour de l'item (Qty et/ou Location)
                 const itemUpdates = {};
@@ -698,7 +711,7 @@ export const useStocks = () => {
                         .from('inventory_items')
                         .update(itemUpdates)
                         .eq('id', update.id);
-                    
+
                     if (itemError) throw itemError;
                 }
 
@@ -751,10 +764,10 @@ export const useStocks = () => {
         }
     };
 
-    return { 
-        inventory, 
-        movements, 
-        loading, 
+    return {
+        inventory,
+        movements,
+        loading,
         addMovement,
         refreshStocks: fetchStocks,
         bulkUpdateInventory

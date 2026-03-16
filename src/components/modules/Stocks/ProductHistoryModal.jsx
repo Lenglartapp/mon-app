@@ -124,6 +124,7 @@ export default function ProductHistoryModal({ open, onClose, product, movements 
     // Filter movements for this product and sort descending
     const productMovements = movements
         .filter(m => m.product === product.product)
+        .map(m => m.id ? m : { ...m, id: `log_${m.date}_${Math.random()}` })
         .sort((a, b) => new Date(b.date) - new Date(a.date));
 
     return (

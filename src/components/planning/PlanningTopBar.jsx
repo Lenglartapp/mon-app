@@ -1,6 +1,13 @@
 import React, { useState } from 'react';
-import { ChevronLeft, ChevronRight, Search, ChevronDown, Check, User, Briefcase, Calendar as CalendarIcon, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronDown, Check, User, Briefcase, Calendar as CalendarIcon } from 'lucide-react';
 import { S } from '../../lib/constants/ui';
+import { SmartFilterBar } from '../ui/SmartFilterBar';
+
+const PLANNING_SEARCH_FIELDS = [
+    { id: 'project', label: 'Dossier' },
+    { id: 'person',  label: 'Personne' },
+    { id: 'service', label: 'Service' },
+];
 
 const ViewSelector = ({ view, onViewChange, customRange, onCustomRangeChange, showWeekends, onToggleWeekends }) => {
     const [isOpen, setIsOpen] = useState(false);
@@ -38,7 +45,7 @@ const ViewSelector = ({ view, onViewChange, customRange, onCustomRangeChange, sh
 const PlanningTopBar = ({
     view, onViewChange, currentDate, onPrev, onNext, onToday,
     customRange, onCustomRangeChange, onNew, onManageTeam,
-    searchQuery, setSearchQuery, activeFilters, onAddFilter, onRemoveFilter,
+    activeFilters, onAddFilter, onRemoveFilter,
     assistantMode, onToggleAssistant, showWeekends, onToggleWeekends,
     myViewMode, onToggleMyView
 }) => {
@@ -71,57 +78,14 @@ const PlanningTopBar = ({
                 </button>
             </div>
 
-            <div style={{ flex: 1, maxWidth: 600, margin: '0 24px', position: 'relative' }}>
-                <div style={{
-                    display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6,
-                    background: 'white', border: '1px solid #E5E7EB', borderRadius: 6, padding: '6px 10px',
-                    boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
-                }}>
-                    <Search size={16} color="#9CA3AF" />
-
-                    {activeFilters.map((filter, idx) => (
-                        <div key={idx} style={{
-                            background: '#1F2937', color: 'white', borderRadius: 4,
-                            padding: '2px 8px', fontSize: 12, fontWeight: 500,
-                            display: 'flex', alignItems: 'center', gap: 6, animation: 'fadeIn 0.2s'
-                        }}>
-                            <span>{filter.label}</span>
-                            <div onClick={() => onRemoveFilter(filter)} style={{ cursor: 'pointer', display: 'flex' }}><X size={12} /></div>
-                        </div>
-                    ))}
-
-                    <input
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder={activeFilters.length === 0 ? "Rechercher..." : ""}
-                        style={{ border: 'none', outline: 'none', flex: 1, minWidth: 80, fontSize: 14, background: 'transparent', color: '#111827' }}
-                    />
-                </div>
-
-                {searchQuery.length > 0 && (
-                    <div style={{
-                        position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4,
-                        background: 'white', borderRadius: 6, border: '1px solid #E5E7EB',
-                        boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', zIndex: 100, overflow: 'hidden'
-                    }}>
-                        <div
-                            onClick={() => { onAddFilter({ type: 'project', value: searchQuery, label: `Projet : ${searchQuery}` }); setSearchQuery(''); }}
-                            style={{ padding: '10px 14px', fontSize: 13, color: '#374151', cursor: 'pointer', borderBottom: '1px solid #F3F4F6' }}
-                            onMouseEnter={(e) => e.target.style.background = '#F9FAFB'}
-                            onMouseLeave={(e) => e.target.style.background = 'white'}
-                        >
-                            Rechercher <strong>{searchQuery}</strong> dans <strong>Projets</strong>
-                        </div>
-                        <div
-                            onClick={() => { onAddFilter({ type: 'resource', value: searchQuery, label: `Ressource : ${searchQuery}` }); setSearchQuery(''); }}
-                            style={{ padding: '10px 14px', fontSize: 13, color: '#374151', cursor: 'pointer' }}
-                            onMouseEnter={(e) => e.target.style.background = '#F9FAFB'}
-                            onMouseLeave={(e) => e.target.style.background = 'white'}
-                        >
-                            Rechercher <strong>{searchQuery}</strong> dans <strong>Ressources</strong>
-                        </div>
-                    </div>
-                )}
+            <div style={{ flex: 1, maxWidth: 600, margin: '0 24px' }}>
+                <SmartFilterBar
+                    fields={PLANNING_SEARCH_FIELDS}
+                    activeFilters={activeFilters}
+                    onAddFilter={onAddFilter}
+                    onRemoveFilter={onRemoveFilter}
+                    placeholder="Projets, ressources, services..."
+                />
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
