@@ -18,6 +18,7 @@ import PlanningTopBar from '../components/planning/PlanningTopBar';
 import PlanningGrid from '../components/planning/PlanningGrid';
 import AssistantView from '../components/planning/AssistantView';
 import BacklogCreationModal from '../components/planning/BacklogCreationModal';
+import { generatePlanningTemplate, processPlanningImport } from '../lib/utils/planningExcelUtils';
 
 export default function PlanningScreen({ projects, events: initialEvents, onUpdateEvent, onDeleteEvent: onDeleteEventProp, onUpdateProject, onBack }) {
     const { users: authUsers, currentUser } = useAuth();
@@ -61,6 +62,10 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
     const [backlogModalOpen, setBacklogModalOpen] = useState(false);
     const [backlogDate, setBacklogDate] = useState(null);
     const [editingBacklogEvent, setEditingBacklogEvent] = useState(null);
+
+    // --- IMPORT EXCEL ---
+    const [importResult, setImportResult] = useState(null);
+    const [importResultOpen, setImportResultOpen] = useState(false);
 
     // --- RESIZING STATE & LOGIC ---
     // Note: La logique de resize complexe est gérée globalement via listener window
@@ -373,11 +378,16 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
     }, [resizingEvent, localEvents, showWeekends]);
 
     // --- NAVIGATION TIME ---
-    const navPrev = () => { if (view === 'month') setCurrentDate(d => subMonths(d, 1)); else if (view === 'quarter') setCurrentDate(d => subQuarters(d, 1)); else if (view === 'year') setCurrentDate(d => subYears(d, 1)); else setCurrentDate(d => addDays(d, view === 'day' ? -1 : -7)); };
-    const navNext = () => { if (view === 'month') setCurrentDate(d => addMonths(d, 1)); else if (view === 'quarter') setCurrentDate(d => addQuarters(d, 1)); else if (view === 'year') setCurrentDate(d => addYears(d, 1)); else setCurrentDate(d => addDays(d, view === 'day' ? 1 : 7)); };
+    const navPrev = () => { if (view === 'month') setCurrentDate(d => subMonths(d, 1)); else if (view === 'quarter') setCurrentDate(d => subQuarters(d, 1)); else if (view === 'year') setCurrentDate(d => subYears(d, 1)); else if (view === 'twoweeks') setCurrentDate(d => addDays(d, -14)); else setCurrentDate(d => addDays(d, view === 'day' ? -1 : -7)); };
+    const navNext = () => { if (view === 'month') setCurrentDate(d => addMonths(d, 1)); else if (view === 'quarter') setCurrentDate(d => addQuarters(d, 1)); else if (view === 'year') setCurrentDate(d => addYears(d, 1)); else if (view === 'twoweeks') setCurrentDate(d => addDays(d, 14)); else setCurrentDate(d => addDays(d, view === 'day' ? 1 : 7)); };
 
     // --- RECHERCHE MULTI-CRITÈRES ---
     const [activeFilters, setActiveFilters] = useState([]);
+
+    // --- MISSIONS / FERMETURES (must be before groupsConfig) ---
+    const missions = useMemo(() => localEvents.filter(e => e.type === 'mission'), [localEvents]);
+    const closures = useMemo(() => localEvents.filter(e => e.type === 'closure'), [localEvents]);
+    const planningEvents = useMemo(() => localEvents.filter(e => e.type !== 'mission' && e.type !== 'closure'), [localEvents]);
 
     // --- CONSTRUCTION DYNAMIQUE DES GROUPES ---
     const groupsConfig = useMemo(() => {
@@ -389,20 +399,43 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
             pose: { ...INITIAL_GROUPS_CONFIG.pose, members: [...INITIAL_GROUPS_CONFIG.pose.members] }
         };
 
+        const todayStr = format(new Date(), 'yyyy-MM-dd');
+
         localUsers.forEach(u => {
             if (u.role && config[u.role]) {
-                config[u.role].members.push(u);
+                const isInterim = u.first_name?.startsWith('Interim') || u.is_interim;
+                if (isInterim) {
+                    const activeMission = missions.find(m => {
+                        if (m.resourceId !== u.id || m.type !== 'mission' || m.meta?.status === 'ended') return false;
+                        const mStart = m.meta?.start ? format(new Date(m.meta.start), 'yyyy-MM-dd') : null;
+                        const mEnd   = m.meta?.end   ? format(new Date(m.meta.end),   'yyyy-MM-dd') : null;
+                        if (!mStart) return false;
+                        return mStart <= todayStr && (!mEnd || mEnd >= '2099' || mEnd >= todayStr);
+                    });
+                    config[u.role].members.push({
+                        ...u,
+                        _isInterim: true,
+                        _hasActiveMission: !!activeMission,
+                        first_name: activeMission ? activeMission.title : u.first_name,
+                        last_name: activeMission ? '' : (u.last_name || ''),
+                    });
+                } else {
+                    config[u.role].members.push(u);
+                }
             }
         });
 
         return config;
-    }, [localUsers]);
+    }, [localUsers, missions]);
 
     // --- FILTRAGE DES RESSOURCES MASQUÉES ---
     const visibleGroupsConfig = useMemo(() => {
         const config = JSON.parse(JSON.stringify(groupsConfig));
         Object.keys(config).forEach(key => {
-            config[key].members = config[key].members.filter(m => !hiddenResources.includes(m.id));
+            config[key].members = config[key].members.filter(m =>
+                !hiddenResources.includes(m.id) &&
+                !(m._isInterim && !m._hasActiveMission)
+            );
         });
         return config;
     }, [groupsConfig, hiddenResources]);
@@ -482,11 +515,10 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
         return config;
     }, [visibleGroupsConfig, activeFilters, myViewMode, currentUser, localEvents, projects]);
 
-    // Events filtrés pour le filtre dossier (masque les events qui ne correspondent pas)
     const filteredEvents = useMemo(() => {
         const projectFilters = activeFilters.filter(f => f.field === 'project');
-        if (projectFilters.length === 0) return localEvents;
-        return localEvents.filter(e =>
+        if (projectFilters.length === 0) return planningEvents;
+        return planningEvents.filter(e =>
             projectFilters.every(filter => {
                 const q = (filter.value || '').toLowerCase();
                 const titleMatch = (e.title || '').toLowerCase().includes(q);
@@ -680,6 +712,68 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
         } catch (e) {
             console.error("Erreur création absence", e);
         }
+    };
+
+    // --- MISSIONS (INTÉRIM) ---
+    const handleCreateMission = (userId, realName, startDate, endDate) => {
+        const evt = {
+            id: uid(),
+            resourceId: userId,
+            date: startDate,
+            title: realName,
+            type: 'mission',
+            meta: {
+                start: new Date(startDate).toISOString(),
+                end: endDate ? new Date(endDate).toISOString() : new Date('2099-12-31').toISOString(),
+                status: 'active',
+                seriesId: uid(),
+            },
+        };
+        setLocalEvents(prev => [...prev, evt]);
+        if (onUpdateEvent) onUpdateEvent(evt);
+    };
+
+    const handleUpdateMissionEnd = (missionId, newEndDate) => {
+        const newEnd = newEndDate ? new Date(newEndDate).toISOString() : new Date('2099-12-31').toISOString();
+        setLocalEvents(prev => prev.map(e => e.id === missionId
+            ? { ...e, meta: { ...e.meta, end: newEnd } }
+            : e
+        ));
+        const mission = localEvents.find(e => e.id === missionId);
+        if (mission && onUpdateEvent) onUpdateEvent({ ...mission, meta: { ...mission.meta, end: newEnd } });
+    };
+
+    const handleEndMission = (missionId) => {
+        const today = format(new Date(), 'yyyy-MM-dd');
+        setLocalEvents(prev => prev.map(e => e.id === missionId
+            ? { ...e, meta: { ...e.meta, end: new Date(today).toISOString(), status: 'ended' } }
+            : e
+        ));
+        const mission = localEvents.find(e => e.id === missionId);
+        if (mission && onUpdateEvent) onUpdateEvent({ ...mission, meta: { ...mission.meta, end: new Date(today).toISOString(), status: 'ended' } });
+    };
+
+    // --- FERMETURES ANNUELLES ---
+    const handleAddClosure = (label, startDate, endDate) => {
+        const evt = {
+            id: uid(),
+            resourceId: 'ALL',
+            date: startDate,
+            title: label,
+            type: 'closure',
+            meta: {
+                start: new Date(startDate).toISOString(),
+                end: new Date(endDate).toISOString(),
+                seriesId: uid(),
+            },
+        };
+        setLocalEvents(prev => [...prev, evt]);
+        if (onUpdateEvent) onUpdateEvent(evt);
+    };
+
+    const handleDeleteClosure = (closureId) => {
+        setLocalEvents(prev => prev.filter(e => e.id !== closureId));
+        if (onDeleteEventProp) onDeleteEventProp(closureId);
     };
 
     // --- DRAG AND DROP HANDLERS ---
@@ -892,6 +986,44 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
         setLocalEvents(prev => prev.filter(e => e.id !== id));
     };
 
+    const handleDownloadTemplate = async () => {
+        const allMembers = [
+            ...groupsConfig.conf.members.filter(m => m.id !== 'backlog_confection'),
+            ...groupsConfig.pose.members,
+            ...groupsConfig.prepa.members,
+        ];
+        await generatePlanningTemplate(columns, allMembers, projects);
+    };
+
+    const handleImport = async (file) => {
+        if (!file) return;
+        try {
+            const allMembers = [
+                ...groupsConfig.conf.members.filter(m => m.id !== 'backlog_confection'),
+                ...groupsConfig.pose.members,
+                ...groupsConfig.prepa.members,
+            ];
+            const result = await processPlanningImport(file, allMembers, projects, localEvents);
+            setImportResult(result);
+            setImportResultOpen(true);
+        } catch (err) {
+            alert(`Erreur lors de l'import : ${err.message}`);
+        }
+    };
+
+    const handleConfirmImport = () => {
+        const allToProcess = [...(importResult.toCreate || []), ...(importResult.toOverwrite || [])];
+        allToProcess.forEach(evt => {
+            setLocalEvents(prev => {
+                const exists = prev.find(e => e.id === evt.id);
+                return exists ? prev.map(e => e.id === evt.id ? evt : e) : [...prev, evt];
+            });
+            if (onUpdateEvent) onUpdateEvent(evt);
+        });
+        setImportResultOpen(false);
+        setImportResult(null);
+    };
+
 
 
     // --- COLUMNS GENERATION ---
@@ -899,6 +1031,7 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
         let cols = [];
         if (view === 'day') cols = [currentDate];
         else if (view === 'week') cols = Array.from({ length: 7 }).map((_, i) => addDays(startOfWeek(currentDate, { weekStartsOn: 1 }), i));
+        else if (view === 'twoweeks') cols = Array.from({ length: 14 }).map((_, i) => addDays(startOfWeek(currentDate, { weekStartsOn: 1 }), i));
         else if (view === 'month') cols = eachDayOfInterval({ start: startOfMonth(currentDate), end: endOfMonth(currentDate) });
         else if (view === 'quarter') cols = eachDayOfInterval({ start: startOfQuarter(currentDate), end: endOfQuarter(currentDate) });
         else if (view === 'year') cols = eachMonthOfInterval({ start: startOfYear(currentDate), end: endOfYear(currentDate) });
@@ -917,7 +1050,7 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
         let spanCount = 0;
         columns.forEach((col, index) => {
             let label = '';
-            if (view === 'week') label = `Semaine ${format(col, 'w')}`;
+            if (view === 'week' || view === 'twoweeks') label = `Semaine ${format(col, 'w')}`;
             else if (view === 'year') label = format(col, 'yyyy');
             else label = format(col, 'MMMM yyyy', { locale: fr });
             if (label === currentLabel) { spanCount++; }
@@ -930,6 +1063,7 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
     const getCellContent = (col) => {
         if (view === 'year') return format(col, 'MMM', { locale: fr });
         if (view === 'quarter' || view === 'month') return format(col, 'd');
+        if (view === 'twoweeks') return format(col, 'EE d', { locale: fr });
         return format(col, 'EE d', { locale: fr });
     };
 
@@ -961,6 +1095,8 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                 onToggleAssistant={() => setAssistantMode(!assistantMode)}
                 myViewMode={myViewMode}
                 onToggleMyView={handleToggleMyView}
+                onDownloadTemplate={canEdit ? handleDownloadTemplate : undefined}
+                onImport={canEdit ? handleImport : undefined}
             />
 
             <EventModal
@@ -990,6 +1126,73 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                 />
             )}
 
+            {importResultOpen && importResult && (
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ background: 'white', borderRadius: 12, padding: 28, width: 520, maxHeight: '80vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
+                        <h2 style={{ margin: '0 0 16px', fontSize: 18, fontWeight: 700 }}>Résultat de l'import</h2>
+
+                        <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
+                            <span style={{ background: '#DCFCE7', color: '#166534', borderRadius: 6, padding: '6px 12px', fontSize: 13, fontWeight: 600 }}>
+                                {importResult.toCreate.length} à créer
+                            </span>
+                            <span style={{ background: '#DBEAFE', color: '#1E40AF', borderRadius: 6, padding: '6px 12px', fontSize: 13, fontWeight: 600 }}>
+                                {importResult.toOverwrite.length} à écraser
+                            </span>
+                            {importResult.skipped?.length > 0 && (
+                                <span style={{ background: '#F3F4F6', color: '#374151', borderRadius: 6, padding: '6px 12px', fontSize: 13, fontWeight: 600 }}>
+                                    {importResult.skipped.length} ignorée(s) — projet non indiqué
+                                </span>
+                            )}
+                            {importResult.blocked.length > 0 && (
+                                <span style={{ background: '#FEE2E2', color: '#991B1B', borderRadius: 6, padding: '6px 12px', fontSize: 13, fontWeight: 600 }}>
+                                    {importResult.blocked.length} bloqué(s) — déjà validés
+                                </span>
+                            )}
+                            {importResult.errors.length > 0 && (
+                                <span style={{ background: '#FEF9C3', color: '#854D0E', borderRadius: 6, padding: '6px 12px', fontSize: 13, fontWeight: 600 }}>
+                                    {importResult.errors.length} erreur(s)
+                                </span>
+                            )}
+                        </div>
+
+                        {importResult.blocked.length > 0 && (
+                            <details style={{ marginBottom: 12 }}>
+                                <summary style={{ cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#991B1B', marginBottom: 6 }}>Créneaux bloqués (déjà validés)</summary>
+                                {importResult.blocked.map((b, i) => (
+                                    <div key={i} style={{ fontSize: 12, color: '#374151', padding: '4px 0', borderBottom: '1px solid #F3F4F6' }}>
+                                        Ligne {b.row} — {b.personne} · {b.date} {b.debut}–{b.fin}
+                                    </div>
+                                ))}
+                            </details>
+                        )}
+
+                        {importResult.errors.length > 0 && (
+                            <details style={{ marginBottom: 16 }}>
+                                <summary style={{ cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#854D0E', marginBottom: 6 }}>Erreurs de saisie</summary>
+                                {importResult.errors.map((e, i) => (
+                                    <div key={i} style={{ fontSize: 12, color: '#374151', padding: '4px 0', borderBottom: '1px solid #F3F4F6' }}>
+                                        Ligne {e.row} — {e.message}
+                                    </div>
+                                ))}
+                            </details>
+                        )}
+
+                        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 8 }}>
+                            <button onClick={() => { setImportResultOpen(false); setImportResult(null); }} style={{ background: 'white', color: '#374151', border: '1px solid #D1D5DB', borderRadius: 6, padding: '8px 20px', fontWeight: 600, fontSize: 14, cursor: 'pointer' }}>
+                                Annuler
+                            </button>
+                            <button
+                                onClick={handleConfirmImport}
+                                disabled={importResult.toCreate.length + importResult.toOverwrite.length === 0}
+                                style={{ background: importResult.toCreate.length + importResult.toOverwrite.length > 0 ? '#111827' : '#9CA3AF', color: 'white', border: 'none', borderRadius: 6, padding: '8px 20px', fontWeight: 600, fontSize: 14, cursor: importResult.toCreate.length + importResult.toOverwrite.length > 0 ? 'pointer' : 'not-allowed' }}
+                            >
+                                Confirmer l'import ({importResult.toCreate.length + importResult.toOverwrite.length} séances)
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <ResourcePanel
                 isOpen={showResourcePanel}
                 onClose={() => setShowResourcePanel(false)}
@@ -1000,7 +1203,13 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                     else setHiddenResources([...hiddenResources, id]);
                 }}
                 onAddAbsence={handleAddAbsence}
-                onUpdateUser={handleUpdateUser}
+                missions={missions}
+                closures={closures}
+                onCreateMission={handleCreateMission}
+                onEndMission={handleEndMission}
+                onUpdateMissionEnd={handleUpdateMissionEnd}
+                onAddClosure={handleAddClosure}
+                onDeleteClosure={handleDeleteClosure}
             />
 
             {assistantMode ? (

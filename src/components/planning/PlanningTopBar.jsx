@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { ChevronLeft, ChevronRight, ChevronDown, Check, User, Briefcase, Calendar as CalendarIcon } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { ChevronLeft, ChevronRight, ChevronDown, Check, User, Briefcase, Calendar as CalendarIcon, Download, Upload } from 'lucide-react';
 import { S } from '../../lib/constants/ui';
 import { SmartFilterBar } from '../ui/SmartFilterBar';
 
@@ -14,7 +14,7 @@ const ViewSelector = ({ view, onViewChange, customRange, onCustomRangeChange, sh
     const [tempStart, setTempStart] = useState('');
     const [tempEnd, setTempEnd] = useState('');
     const handleApply = () => { if (tempStart && tempEnd) { onCustomRangeChange({ start: new Date(tempStart), end: new Date(tempEnd) }); setIsOpen(false); } };
-    const options = [{ id: 'day', label: 'Jour' }, { id: 'week', label: 'Semaine' }, { id: 'month', label: 'Mois' }, { id: 'quarter', label: 'Trimestre' }, { id: 'year', label: 'Année' }];
+    const options = [{ id: 'day', label: 'Jour' }, { id: 'week', label: 'Semaine' }, { id: 'twoweeks', label: '2 Semaines' }, { id: 'month', label: 'Mois' }, { id: 'quarter', label: 'Trimestre' }, { id: 'year', label: 'Année' }];
     return (
         <div style={{ position: 'relative' }}>
             <button onClick={() => setIsOpen(!isOpen)} style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: 6, padding: '8px 12px', fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -47,8 +47,15 @@ const PlanningTopBar = ({
     customRange, onCustomRangeChange, onNew, onManageTeam,
     activeFilters, onAddFilter, onRemoveFilter,
     assistantMode, onToggleAssistant, showWeekends, onToggleWeekends,
-    myViewMode, onToggleMyView
+    myViewMode, onToggleMyView,
+    onDownloadTemplate, onImport
 }) => {
+    const fileInputRef = useRef(null);
+    const handleFileChange = (e) => {
+        const file = e.target.files[0];
+        if (file && onImport) onImport(file);
+        e.target.value = '';
+    };
     return (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 24px', background: '#FAF5EE' }}>
             <div style={{ display: 'flex', gap: 12 }}>
@@ -56,6 +63,19 @@ const PlanningTopBar = ({
                 <button onClick={onManageTeam} style={{ background: 'white', color: '#374151', border: '1px solid #D1D5DB', borderRadius: 6, padding: '8px 16px', fontWeight: 600, fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
                     <User size={16} /> Gérer l'équipe
                 </button>
+                {onDownloadTemplate && (
+                    <button onClick={onDownloadTemplate} title="Télécharger le template Excel pour la période affichée" style={{ background: 'white', color: '#374151', border: '1px solid #D1D5DB', borderRadius: 6, padding: '8px 16px', fontWeight: 600, fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <Download size={16} /> Modèle Excel
+                    </button>
+                )}
+                {onImport && (
+                    <>
+                        <input ref={fileInputRef} type="file" accept=".xlsx" style={{ display: 'none' }} onChange={handleFileChange} />
+                        <button onClick={() => fileInputRef.current?.click()} title="Importer un fichier de déclaration de temps" style={{ background: 'white', color: '#374151', border: '1px solid #D1D5DB', borderRadius: 6, padding: '8px 16px', fontWeight: 600, fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <Upload size={16} /> Importer
+                        </button>
+                    </>
+                )}
                 <button
                     onClick={onToggleAssistant}
                     style={{

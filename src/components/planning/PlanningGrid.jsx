@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { ChevronDown, ChevronRight as ChevronRightIcon, CheckCircle, X, Plus as PlusIcon } from 'lucide-react';
 import { format, isSameDay, startOfMonth, startOfDay, endOfMonth, eachDayOfInterval, isWeekend, differenceInMinutes, addDays, parseISO, getHours, getMinutes, getISOWeek, addWeeks, startOfWeek, endOfWeek } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { PLANNING_COLORS, ROW_HEIGHT, HEADER_HEIGHT_1, HEADER_HEIGHT_2, TOTAL_WORK_MINUTES, WORK_START_HOUR, WORK_END_HOUR } from './constants';
+import { PLANNING_COLORS, getProjectColor, ROW_HEIGHT, HEADER_HEIGHT_1, HEADER_HEIGHT_2, TOTAL_WORK_MINUTES, WORK_START_HOUR, WORK_END_HOUR } from './constants';
 import { uid } from '../../lib/utils/uid';
 
 // --- STICKY CELLS ---
@@ -51,7 +51,9 @@ const PlanningGrid = ({
 
         return dayEvents.map(evt => {
             const isBacklog = memberId === 'backlog_confection';
-            const style = PLANNING_COLORS[evt.type] || PLANNING_COLORS.default;
+            const style = evt.type === 'absence'
+                ? PLANNING_COLORS.absence
+                : (getProjectColor(evt.meta?.projectId) || PLANNING_COLORS[evt.type] || PLANNING_COLORS.default);
             const isValidated = evt.meta?.status === 'validated';
             const borderStyle = isValidated ? 'solid' : 'dashed';
             const fontWeight = isBacklog ? 800 : (isValidated ? 700 : 500);
@@ -297,7 +299,9 @@ const PlanningGrid = ({
                                 const dayEvents = events.filter(e => e.resourceId === member.id && isSameDay(parseISO(e.date), col));
 
                                 return dayEvents.map(evt => {
-                                    const style = PLANNING_COLORS[evt.type] || PLANNING_COLORS.default;
+                                    const style = evt.type === 'absence'
+                                        ? PLANNING_COLORS.absence
+                                        : (getProjectColor(evt.meta?.projectId) || PLANNING_COLORS[evt.type] || PLANNING_COLORS.default);
                                     const start = new Date(evt.meta?.start || evt.date);
                                     const end = new Date(evt.meta?.end || evt.date);
 
