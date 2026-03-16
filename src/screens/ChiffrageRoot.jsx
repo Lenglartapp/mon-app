@@ -1,6 +1,6 @@
 // src/screens/ChiffrageRoot.jsx
-import React, { useState, useMemo, useEffect } from "react";
-import { Plus, Copy, Trash2, FileText, ArrowUpDown, ArrowUp, ArrowDown, Archive, Filter } from "lucide-react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
+import { Plus, Copy, Trash2, FileText, ArrowUpDown, ArrowUp, ArrowDown, Archive, Filter, ChevronDown, ChevronRight, GitBranch, SlidersHorizontal } from "lucide-react";
 import Chip from '@mui/material/Chip';
 import Avatar from '@mui/material/Avatar';
 import IconButton from '@mui/material/IconButton';
@@ -20,6 +20,30 @@ import { computeFormulas } from "../lib/formulas/compute";
 import { CHIFFRAGE_SCHEMA } from "../lib/schemas/chiffrage";
 
 // CONSTANTES & HELPERS
+const SEARCH_FIELDS = [
+  { id: 'name',   label: 'Nom du chiffrage' },
+  { id: 'client', label: 'Client' },
+  { id: 'owner',  label: "Chargé d'affaires" },
+  { id: 'status', label: 'Statut' },
+];
+
+const FILTER_FIELDS = [
+  { id: 'ca_ht',    label: 'Montant HT',           unit: '€',   adminOnly: false },
+  { id: 'marge_pct', label: 'Contribution %',       unit: '%',   adminOnly: true },
+  { id: 'renta_hh',  label: 'Contribution Horaire', unit: '€/h', adminOnly: true },
+];
+
+const OPERATORS = [
+  { id: 'gt',      label: 'est supérieur à' },
+  { id: 'gte',     label: 'est supérieur ou égal à' },
+  { id: 'lt',      label: 'est inférieur à' },
+  { id: 'lte',     label: 'est inférieur ou égal à' },
+  { id: 'eq',      label: 'est égal à' },
+  { id: 'between', label: 'est compris entre' },
+];
+
+const newCondition = () => ({ id: `c${Date.now()}${Math.random()}`, field: 'ca_ht', operator: 'gt', value: '', value2: '' });
+
 const STATUS_OPTIONS = {
   DRAFT: { label: "À faire", color: "#9CA3AF", bg: "#F3F4F6", text: "#374151" }, // Gray
   IN_PROGRESS: { label: "En cours", color: "#3B82F6", bg: "#EFF6FF", text: "#1E3A8A" }, // Blue
@@ -156,14 +180,35 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
 
   const [isCreating, setIsCreating] = useState(false);
 
-  const [searchQuery, setSearchQuery] = useState("");
   const [activeFilters, setActiveFilters] = useState([]);
+  const [conditions, setConditions] = useState([newCondition()]);
+  const [showAdvancedPanel, setShowAdvancedPanel] = useState(false);
+  const advancedPanelRef = useRef(null);
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (advancedPanelRef.current && !advancedPanelRef.current.contains(e.target)) {
+        setShowAdvancedPanel(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   useEffect(() => {
     setActiveFilters([{ id: 'my_minutes', label: '👤 Mes chiffrages', field: 'owner' }]);
   }, []);
 
   const [showArchived, setShowArchived] = useState(false);
+  const [expandedGroups, setExpandedGroups] = useState(new Set());
+
+  const toggleGroup = (parentId) => {
+    setExpandedGroups(prev => {
+      const next = new Set(prev);
+      next.has(parentId) ? next.delete(parentId) : next.add(parentId);
+      return next;
+    });
+  };
 
   const norm = (m) => {
     // 1. Recompute Lines (Logic duplicated from ChiffrageScreen for consistency)
@@ -197,9 +242,10 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
       id: m.id,
       name: m.name || "Minute sans nom",
       client: m.client || "",
-      delivery_date: m.delivery_date || m.deliveryDate || "", // Ajout au mapping norm avec fallback
+      delivery_date: m.delivery_date || m.deliveryDate || "",
       notes: m.notes || "",
       version: m.version ?? 1,
+      parentId: m.parentId || null,
       lines: m.lines || [],
       params: m.params || [],
       deplacements: m.deplacements || [],
@@ -223,6 +269,42 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
   }, [minutes, globalSettings, catalog]); // Dependency on Settings
 
   const removeFilter = (id) => setActiveFilters(prev => prev.filter(f => f.id !== id));
+  const addFilter = (filter) => setActiveFilters(prev => {
+    if (prev.find(f => f.id === filter.id)) return prev;
+    return [...prev, filter];
+  });
+
+  const updateCondition = (id, key, val) =>
+    setConditions(prev => prev.map(c =>
+      c.id === id ? { ...c, [key]: val, ...(key === 'operator' && val !== 'between' ? { value2: '' } : {}) } : c
+    ));
+  const removeCondition = (id) =>
+    setConditions(prev => prev.length > 1 ? prev.filter(c => c.id !== id) : prev);
+
+  const applyConditions = () => {
+    const valid = conditions.filter(c => c.value !== '' && !isNaN(Number(c.value)));
+    if (valid.length === 0) return;
+    valid.forEach(cond => {
+      const fieldDef = FILTER_FIELDS.find(f => f.id === cond.field);
+      const opDef = OPERATORS.find(o => o.id === cond.operator);
+      const v1 = Number(cond.value).toLocaleString('fr-FR');
+      const label = cond.operator === 'between'
+        ? `${fieldDef.label} entre ${v1} et ${Number(cond.value2 || 0).toLocaleString('fr-FR')} ${fieldDef.unit}`
+        : `${fieldDef.label} ${opDef.label} ${v1} ${fieldDef.unit}`;
+      addFilter({
+        id: `adv_${cond.id}`,
+        label,
+        field: 'advanced',
+        matchType: 'advanced',
+        filterField: cond.field,
+        operator: cond.operator,
+        value: cond.value,
+        value2: cond.value2 || '',
+      });
+    });
+    setConditions([newCondition()]);
+    setShowAdvancedPanel(false);
+  };
 
   const filteredList = useMemo(() => {
     let res = list;
@@ -237,22 +319,49 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
       }
     }
 
-    // Generic Field Filters (OR within same field, AND across different fields)
-    const fieldFilters = activeFilters.filter(f => f.field && f.id !== 'my_minutes');
+    // Field filters — OR within same field, AND across fields
+    // matchType 'contains' = substring (from search bar), else = exact match (from filter menus)
+    const fieldFilters = activeFilters.filter(f => f.field && f.id !== 'my_minutes' && f.matchType !== 'advanced');
     if (fieldFilters.length > 0) {
       const grouped = fieldFilters.reduce((acc, f) => {
         if (!acc[f.field]) acc[f.field] = [];
-        acc[f.field].push(f.value);
+        acc[f.field].push(f);
         return acc;
       }, {});
 
       Object.keys(grouped).forEach(field => {
-        res = res.filter(m => grouped[field].includes(m[field]));
+        res = res.filter(m => grouped[field].some(f => {
+          if (f.matchType === 'contains') {
+            if (f.field === 'all') {
+              return [m.name, m.client, m.owner, m.notes].some(x => String(x || '').toLowerCase().includes(f.value.toLowerCase()));
+            }
+            if (f.field === 'status') {
+              return (STATUS_OPTIONS[m.status]?.label || '').toLowerCase().includes(f.value.toLowerCase());
+            }
+            return String(m[f.field] || '').toLowerCase().includes(f.value.toLowerCase());
+          }
+          return String(m[field] || '') === String(f.value);
+        }));
       });
     }
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      res = res.filter(m => [m.name, m.client, m.owner, m.notes].some(x => String(x || "").toLowerCase().includes(q)));
+
+    // Conditions avancées (chips créés depuis le constructeur) — toutes AND
+    const advancedConds = activeFilters.filter(f => f.matchType === 'advanced');
+    if (advancedConds.length > 0) {
+      res = res.filter(m => advancedConds.every(f => {
+        const mVal = m[f.filterField];
+        const v1 = Number(f.value);
+        const v2 = Number(f.value2 || 0);
+        switch (f.operator) {
+          case 'gt':      return mVal > v1;
+          case 'gte':     return mVal >= v1;
+          case 'lt':      return mVal < v1;
+          case 'lte':     return mVal <= v1;
+          case 'eq':      return Math.abs(mVal - v1) < 0.5;
+          case 'between': return mVal >= Math.min(v1, v2) && mVal <= Math.max(v1, v2);
+          default:        return true;
+        }
+      }));
     }
 
     if (showArchived) {
@@ -276,7 +385,7 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
     }
 
     return res;
-  }, [list, searchQuery, activeFilters, currentUser, sortConfig, showArchived]);
+  }, [list, activeFilters, currentUser, sortConfig, showArchived]);
 
   const handleCreateMinute = async () => {
     const { charge, projet, client, deliveryDate, note, status, modules } = newMin;
@@ -340,7 +449,21 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
   const duplicate = (id) => {
     const src = minutes.find(x => x.id === id);
     if (!src) return;
-    const copy = { ...src, id: uid(), name: `${src.name} (copie)`, version: (src.version ?? 1) + 1, createdAt: Date.now(), updatedAt: Date.now(), status: "DRAFT" };
+    // Le parent est toujours la racine : si src est déjà une variante, on pointe vers son parent
+    const rootParentId = src.parentId || src.id;
+    // Compter les variantes existantes pour nommer la copie
+    const siblingCount = minutes.filter(m => (m.parentId || m.id) === rootParentId && m.id !== rootParentId).length;
+    const newVersion = siblingCount + 2; // v2, v3, etc.
+    const copy = {
+      ...src,
+      id: uid(),
+      name: src.name.replace(/ — v\d+.*$/, ''), // Retire un suffixe de version précédent
+      version: newVersion,
+      parentId: rootParentId,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      status: "DRAFT",
+    };
     if (onCreate) onCreate(copy);
   };
 
@@ -375,8 +498,144 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
         </div>
 
         {/* Search & Filter Row */}
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-          <SmartFilterBar searchQuery={searchQuery} onSearchChange={setSearchQuery} activeFilters={activeFilters} onRemoveFilter={removeFilter} />
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <SmartFilterBar
+            fields={SEARCH_FIELDS}
+            activeFilters={activeFilters}
+            onAddFilter={addFilter}
+            onRemoveFilter={removeFilter}
+          />
+
+          {/* Constructeur de conditions */}
+          <div ref={advancedPanelRef} style={{ position: 'relative' }}>
+            {(() => {
+              const activeCount = activeFilters.filter(f => f.matchType === 'advanced').length;
+              return (
+                <Tooltip title="Filtres avancés">
+                  <IconButton
+                    onClick={() => setShowAdvancedPanel(p => !p)}
+                    sx={{
+                      position: 'relative',
+                      bgcolor: showAdvancedPanel || activeCount > 0 ? '#EEF2FF' : 'white',
+                      color: showAdvancedPanel || activeCount > 0 ? '#4338CA' : '#6B7280',
+                      border: `1px solid ${showAdvancedPanel || activeCount > 0 ? '#C7D2FE' : '#E5E7EB'}`,
+                      borderRadius: 2, height: 38, width: 38,
+                      '&:hover': { bgcolor: '#EEF2FF' },
+                    }}
+                  >
+                    <SlidersHorizontal size={18} />
+                    {activeCount > 0 && (
+                      <span style={{
+                        position: 'absolute', top: 4, right: 4,
+                        width: 8, height: 8, borderRadius: '50%',
+                        background: '#6366F1', border: '1px solid white',
+                      }} />
+                    )}
+                  </IconButton>
+                </Tooltip>
+              );
+            })()}
+
+            {showAdvancedPanel && (
+              <div style={{
+                position: 'absolute', top: 'calc(100% + 6px)', right: 0,
+                background: 'white', borderRadius: 10, width: 340,
+                boxShadow: '0 10px 25px -5px rgba(0,0,0,0.15)', border: '1px solid #E5E7EB', zIndex: 200,
+                padding: 16,
+              }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 14 }}>
+                  Filtres avancés
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {conditions.map((cond, i) => {
+                    const availableFields = FILTER_FIELDS.filter(f => !f.adminOnly || showKPIs);
+                    const selStyle = {
+                      width: '100%', padding: '7px 10px', borderRadius: 6,
+                      border: '1px solid #E5E7EB', fontSize: 13, background: 'white',
+                      outline: 'none', cursor: 'pointer', color: '#111827',
+                    };
+                    return (
+                      <div key={cond.id}>
+                        {i > 0 && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                            <div style={{ flex: 1, height: 1, background: '#F3F4F6' }} />
+                            <span style={{ fontSize: 11, color: '#9CA3AF', fontWeight: 600 }}>ET</span>
+                            <div style={{ flex: 1, height: 1, background: '#F3F4F6' }} />
+                          </div>
+                        )}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                            <select value={cond.field} onChange={e => updateCondition(cond.id, 'field', e.target.value)} style={{ ...selStyle, flex: 1 }}>
+                              {availableFields.map(f => <option key={f.id} value={f.id}>{f.label}</option>)}
+                            </select>
+                            {conditions.length > 1 && (
+                              <button
+                                onClick={() => removeCondition(cond.id)}
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', padding: 4, fontSize: 16, lineHeight: 1, flexShrink: 0 }}
+                              >×</button>
+                            )}
+                          </div>
+                          <select value={cond.operator} onChange={e => updateCondition(cond.id, 'operator', e.target.value)} style={selStyle}>
+                            {OPERATORS.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
+                          </select>
+                          {cond.operator === 'between' ? (
+                            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                              <input
+                                type="number" placeholder="Min" value={cond.value}
+                                onChange={e => updateCondition(cond.id, 'value', e.target.value)}
+                                style={{ flex: 1, padding: '7px 10px', borderRadius: 6, border: '1px solid #E5E7EB', fontSize: 13, outline: 'none' }}
+                              />
+                              <span style={{ color: '#9CA3AF', fontSize: 12, flexShrink: 0 }}>et</span>
+                              <input
+                                type="number" placeholder="Max" value={cond.value2}
+                                onChange={e => updateCondition(cond.id, 'value2', e.target.value)}
+                                style={{ flex: 1, padding: '7px 10px', borderRadius: 6, border: '1px solid #E5E7EB', fontSize: 13, outline: 'none' }}
+                              />
+                            </div>
+                          ) : (
+                            <input
+                              type="number" placeholder="Valeur" value={cond.value}
+                              onChange={e => updateCondition(cond.id, 'value', e.target.value)}
+                              style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid #E5E7EB', fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
+                            />
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
+                  <button
+                    onClick={applyConditions}
+                    disabled={conditions.every(c => c.value === '')}
+                    style={{
+                      flex: 1, padding: '8px 0', borderRadius: 6, border: 'none',
+                      background: conditions.every(c => c.value === '') ? '#E5E7EB' : '#1E2447',
+                      color: conditions.every(c => c.value === '') ? '#9CA3AF' : 'white',
+                      cursor: conditions.every(c => c.value === '') ? 'not-allowed' : 'pointer',
+                      fontSize: 13, fontWeight: 700, letterSpacing: '0.03em',
+                    }}
+                  >
+                    APPLIQUER
+                  </button>
+                  <button
+                    onClick={() => setConditions(prev => [...prev, newCondition()])}
+                    style={{
+                      flex: 1, padding: '8px 0', borderRadius: 6,
+                      border: '1px solid #1E2447', background: 'white',
+                      color: '#1E2447', cursor: 'pointer',
+                      fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
+                    }}
+                  >
+                    <span style={{ fontSize: 16, lineHeight: 1 }}>+</span> Ajouter une condition
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
           <Tooltip title={showArchived ? "Retour aux dossiers actifs" : "Voir archives (Terminés/Perdus)"}>
             <IconButton
               onClick={() => setShowArchived(!showArchived)}
@@ -384,10 +643,8 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
                 bgcolor: showArchived ? '#DBEAFE' : 'white',
                 color: showArchived ? '#1E40AF' : '#6B7280',
                 border: '1px solid #E5E7EB',
-                borderRadius: 2,
-                height: 38, // Match FilterBar height roughly (smaller)
-                width: 38,
-                '&:hover': { bgcolor: showArchived ? '#BFDBFE' : '#F9FAFB' }
+                borderRadius: 2, height: 38, width: 38,
+                '&:hover': { bgcolor: showArchived ? '#BFDBFE' : '#F9FAFB' },
               }}
             >
               <Archive size={20} />
@@ -449,92 +706,157 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
               </tr>
             </thead>
             <tbody>
-              {filteredList.map((m) => {
-                const statusInfo = STATUS_OPTIONS[m.status] || STATUS_OPTIONS.DRAFT;
+              {(() => {
+                // Séparation parents / enfants
+                const parents = filteredList.filter(m => !m.parentId);
+                const childrenMap = filteredList.reduce((acc, m) => {
+                  if (m.parentId) {
+                    if (!acc[m.parentId]) acc[m.parentId] = [];
+                    acc[m.parentId].push(m);
+                  }
+                  return acc;
+                }, {});
 
-                // Color Logic for Marge %
-                const mpct = m.marge_pct || 0;
-                let mColor = '#F59E0B'; // Orange default
-                if (mpct > 60) mColor = '#10B981'; // Green
-                else if (mpct < 45) mColor = '#EF4444'; // Red
+                // Orphelins : variantes dont le parent n'est pas dans filteredList (ex: parent archivé)
+                const visibleParentIds = new Set(parents.map(p => p.id));
+                const orphans = filteredList.filter(m => m.parentId && !visibleParentIds.has(m.parentId));
 
-                return (
-                  <tr key={m.id} className="minute-row" style={{ borderBottom: '1px solid #F3F4F6', cursor: 'pointer', transition: 'background 0.1s' }} onClick={() => onOpenMinute?.(m.id)} onMouseEnter={(e) => e.currentTarget.style.background = '#F9FAFB'} onMouseLeave={(e) => e.currentTarget.style.background = 'white'}>
-                    <td style={{ padding: '12px 16px' }}>
-                      <div style={{ fontWeight: 600, color: '#111827', fontSize: 15 }}>
-                        {m.name || "Minute sans nom"}
-                      </div>
-                      <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2 }}>
-                        v{m.version} • #{String(m.id || "").slice(-4)}
-                      </div>
-                    </td>
-                    <td style={{ padding: '12px 16px', fontSize: 14, color: '#374151', fontWeight: 500 }}>
-                      {m.client || "Client inconnu"}
-                    </td>
-                    <td style={{ padding: '12px 16px' }}>
-                      <Chip
-                        label={statusInfo.label}
-                        size="small"
-                        onClick={(e) => handleStatusClick(e, m.id)}
-                        sx={{
-                          bgcolor: statusInfo.bg,
-                          color: statusInfo.text,
-                          fontWeight: 700,
-                          fontSize: 11,
-                          height: 24,
+                const renderRow = (m, isChild = false) => {
+                  const statusInfo = STATUS_OPTIONS[m.status] || STATUS_OPTIONS.DRAFT;
+                  const mpct = m.marge_pct || 0;
+                  let mColor = '#F59E0B';
+                  if (mpct > 60) mColor = '#10B981';
+                  else if (mpct < 45) mColor = '#EF4444';
+                  const children = childrenMap[m.id] || [];
+                  const hasChildren = children.length > 0;
+                  const isExpanded = expandedGroups.has(m.id);
+
+                  return (
+                    <React.Fragment key={m.id}>
+                      <tr
+                        className="minute-row"
+                        style={{
+                          borderBottom: '1px solid #F3F4F6',
                           cursor: 'pointer',
-                          '&:hover': { opacity: 0.8 }
+                          transition: 'background 0.1s',
+                          background: isChild ? '#FAFAFA' : 'white',
                         }}
-                      />
-                    </td>
-                    <td style={{ padding: '12px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                      <div style={{ fontWeight: 700, color: '#111827', fontSize: 14 }}>
-                        {Math.round(m.ca_ht).toLocaleString("fr-FR")} €
-                      </div>
-                    </td>
-                    {showKPIs && (
-                      <>
-                        <td style={{ padding: '12px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                          <div style={{ fontWeight: 700, color: mColor, fontSize: 14 }}>
-                            {Math.round(m.marge_pct)} %
+                        onClick={() => onOpenMinute?.(m.id)}
+                        onMouseEnter={(e) => e.currentTarget.style.background = isChild ? '#F3F4F6' : '#F9FAFB'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = isChild ? '#FAFAFA' : 'white'}
+                      >
+                        <td style={{ padding: '12px 16px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            {/* Indentation enfant */}
+                            {isChild && <div style={{ width: 20, height: 1, borderLeft: '2px solid #E5E7EB', borderBottom: '2px solid #E5E7EB', marginLeft: 8, marginBottom: -8 }} />}
+                            {/* Toggle groupe */}
+                            {hasChildren && !isChild && (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); toggleGroup(m.id); }}
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, color: '#6B7280', display: 'flex', alignItems: 'center' }}
+                              >
+                                {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                              </button>
+                            )}
+                            {!hasChildren && !isChild && <div style={{ width: 20 }} />}
+                            <div>
+                              <div style={{ fontWeight: 600, color: '#111827', fontSize: 15, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                {m.name || "Minute sans nom"}
+                                {isChild && (
+                                  <span style={{ fontSize: 10, background: '#EFF6FF', color: '#1D4ED8', padding: '1px 6px', borderRadius: 4, fontWeight: 600 }}>
+                                    Variante
+                                  </span>
+                                )}
+                                {hasChildren && (
+                                  <span style={{ fontSize: 10, background: '#F3F4F6', color: '#6B7280', padding: '1px 6px', borderRadius: 4, fontWeight: 600 }}>
+                                    {children.length} variante{children.length > 1 ? 's' : ''}
+                                  </span>
+                                )}
+                              </div>
+                              <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2 }}>
+                                v{m.version} • #{String(m.id || "").slice(-4)}
+                              </div>
+                            </div>
                           </div>
                         </td>
-                        <td style={{ padding: '12px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                          <div style={{ fontSize: 14, color: '#4B5563' }}>
-                            {Math.round(m.marge_eur).toLocaleString("fr-FR")} €
-                          </div>
+                        <td style={{ padding: '12px 16px', fontSize: 14, color: '#374151', fontWeight: 500 }}>
+                          {m.client || "Client inconnu"}
+                        </td>
+                        <td style={{ padding: '12px 16px' }}>
+                          <Chip
+                            label={statusInfo.label}
+                            size="small"
+                            onClick={(e) => handleStatusClick(e, m.id)}
+                            sx={{ bgcolor: statusInfo.bg, color: statusInfo.text, fontWeight: 700, fontSize: 11, height: 24, cursor: 'pointer', '&:hover': { opacity: 0.8 } }}
+                          />
                         </td>
                         <td style={{ padding: '12px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                          <div style={{ fontWeight: 700, color: '#1E3A8A', fontSize: 14 }}>
-                            {Math.round(m.renta_hh).toLocaleString("fr-FR")} <small style={{ fontSize: 10, color: '#9CA3AF' }}>€/h</small>
+                          <div style={{ fontWeight: 700, color: '#111827', fontSize: 14 }}>
+                            {Math.round(m.ca_ht).toLocaleString("fr-FR")} €
                           </div>
                         </td>
-                      </>
-                    )}
-                    <td style={{ padding: '12px 16px', color: '#6B7280', fontSize: 13 }}>
-                      {new Date(m.updatedAt || m.createdAt).toLocaleDateString("fr-FR")} <small>{new Date(m.updatedAt || m.createdAt).toLocaleTimeString("fr-FR", { hour: '2-digit', minute: '2-digit' })}</small>
-                    </td>
-                    <td style={{ padding: '12px 16px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }} onClick={(e) => handleOwnerClick(e, m.id)}>
-                        <Avatar sx={{ width: 26, height: 26, fontSize: 11, bgcolor: stringToColor(m.owner || "?") }}>{(m.owner?.[0] || "?").toUpperCase()}</Avatar>
-                        <span style={{ fontSize: 13, color: '#374151', fontWeight: 500 }}>{m.owner || "—"}</span>
-                      </div>
-                    </td>
-                    <td style={{ padding: '12px 16px', fontSize: 12, color: '#4B5563' }}>
-                      {(m.modules?.rideau || m.modules?.store || m.modules?.decor || m.modules?.autre_confection) ? [m.modules?.rideau && "Rideaux", m.modules?.store && "Stores", m.modules?.decor && "Décors", m.modules?.autre_confection && "Autre"].filter(Boolean).join(" · ") : "—"}
-                    </td>
-                    <td style={{ padding: '12px 16px', textAlign: 'right' }} onClick={(e) => e.stopPropagation()}>
-                      <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end', opacity: 0.6 }}>
-                        <Tooltip title="Dupliquer"><IconButton size="small" onClick={(e) => { e.stopPropagation(); duplicate(m.id); }}><Copy size={16} /></IconButton></Tooltip>
-                        <Tooltip title="Supprimer"><IconButton size="small" onClick={(e) => { e.stopPropagation(); removeOne(m.id); }}><Trash2 size={16} /></IconButton></Tooltip>
-                      </div>
+                        {showKPIs && (
+                          <>
+                            <td style={{ padding: '12px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                              <div style={{ fontWeight: 700, color: mColor, fontSize: 14 }}>{Math.round(m.marge_pct)} %</div>
+                            </td>
+                            <td style={{ padding: '12px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                              <div style={{ fontSize: 14, color: '#4B5563' }}>{Math.round(m.marge_eur).toLocaleString("fr-FR")} €</div>
+                            </td>
+                            <td style={{ padding: '12px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                              <div style={{ fontWeight: 700, color: '#1E3A8A', fontSize: 14 }}>
+                                {Math.round(m.renta_hh).toLocaleString("fr-FR")} <small style={{ fontSize: 10, color: '#9CA3AF' }}>€/h</small>
+                              </div>
+                            </td>
+                          </>
+                        )}
+                        <td style={{ padding: '12px 16px', color: '#6B7280', fontSize: 13 }}>
+                          {new Date(m.updatedAt || m.createdAt).toLocaleDateString("fr-FR")} <small>{new Date(m.updatedAt || m.createdAt).toLocaleTimeString("fr-FR", { hour: '2-digit', minute: '2-digit' })}</small>
+                        </td>
+                        <td style={{ padding: '12px 16px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }} onClick={(e) => handleOwnerClick(e, m.id)}>
+                            <Avatar sx={{ width: 26, height: 26, fontSize: 11, bgcolor: stringToColor(m.owner || "?") }}>{(m.owner?.[0] || "?").toUpperCase()}</Avatar>
+                            <span style={{ fontSize: 13, color: '#374151', fontWeight: 500 }}>{m.owner || "—"}</span>
+                          </div>
+                        </td>
+                        <td style={{ padding: '12px 16px', fontSize: 12, color: '#4B5563' }}>
+                          {(m.modules?.rideau || m.modules?.store || m.modules?.decor || m.modules?.autre_confection) ? [m.modules?.rideau && "Rideaux", m.modules?.store && "Stores", m.modules?.decor && "Décors", m.modules?.autre_confection && "Autre"].filter(Boolean).join(" · ") : "—"}
+                        </td>
+                        <td style={{ padding: '12px 16px', textAlign: 'right' }} onClick={(e) => e.stopPropagation()}>
+                          <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end', opacity: 0.6 }}>
+                            <Tooltip title="Créer une variante">
+                              <IconButton size="small" onClick={(e) => { e.stopPropagation(); duplicate(m.id); }}>
+                                <GitBranch size={16} />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title="Supprimer">
+                              <IconButton size="small" onClick={(e) => { e.stopPropagation(); removeOne(m.id); }}>
+                                <Trash2 size={16} />
+                              </IconButton>
+                            </Tooltip>
+                          </div>
+                        </td>
+                      </tr>
+                      {/* Variantes dépliées */}
+                      {hasChildren && isExpanded && children
+                        .sort((a, b) => a.version - b.version)
+                        .map(child => renderRow(child, true))
+                      }
+                    </React.Fragment>
+                  );
+                };
+
+                const rows = [...parents.map(p => renderRow(p, false)), ...orphans.map(o => renderRow(o, true))];
+
+                return rows.length > 0 ? rows : (
+                  <tr>
+                    <td colSpan={showKPIs ? 11 : 8} style={{ padding: 40, textAlign: 'center', color: '#9CA3AF' }}>
+                      <FileText size={48} style={{ opacity: 0.2, marginBottom: 16 }} />
+                      <div>Aucun chiffrage trouvé.</div>
                     </td>
                   </tr>
                 );
-              })}
-              {filteredList.length === 0 && (
-                <tr><td colSpan={showKPIs ? 11 : 8} style={{ padding: 40, textAlign: 'center', color: '#9CA3AF' }}><FileText size={48} style={{ opacity: 0.2, marginBottom: 16 }} /><div>Aucun chiffrage trouvé.</div></td></tr>
-              )}
+              })()}
             </tbody>
           </table>
         </div>

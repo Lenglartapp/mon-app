@@ -31,12 +31,13 @@ export const calculateProfitability = (rows = [], depRows = [], extraRows = [], 
     const mapStores = new Map(); // NEW
 
     // Helper to generate source info
-    const getSource = (r, qty, price) => ({
+    const getSource = (r, qty, price, ml) => ({
         minute: r.produit || "Inconnu",
         zone: r.zone || "-",
         piece: r.piece || "-",
         quantite: qty,
-        price: price
+        price: price,
+        ...(ml !== undefined && { ml })
     });
 
     const pushMap = (map, label, ml, pa, source) => {
@@ -56,34 +57,34 @@ export const calculateProfitability = (rows = [], depRows = [], extraRows = [], 
 
         // --- TISSUS (Shared) ---
         if (r.tissu_1) {
-            pushMap(mapTissus, r.tissu_1, toNum(r.ml_tissu_1) * q, toNum(r.pa_tissu_1) * q, getSource(r, q, toNum(r.pa_tissu_1) * q));
+            pushMap(mapTissus, r.tissu_1, toNum(r.ml_tissu_1) * q, toNum(r.pa_tissu_1) * q, getSource(r, q, toNum(r.pa_tissu_1) * q, toNum(r.ml_tissu_1) * q));
         }
         if (r.tissu_2) {
-            pushMap(mapTissus, r.tissu_2, toNum(r.ml_tissu_2) * q, toNum(r.pa_tissu_2) * q, getSource(r, q, toNum(r.pa_tissu_2) * q));
+            pushMap(mapTissus, r.tissu_2, toNum(r.ml_tissu_2) * q, toNum(r.pa_tissu_2) * q, getSource(r, q, toNum(r.pa_tissu_2) * q, toNum(r.ml_tissu_2) * q));
         }
         if (r.passementerie_1) {
-            pushMap(mapTissus, r.passementerie_1, toNum(r.ml_pass_1) * q, toNum(r.pa_pass_1) * q, getSource(r, q, toNum(r.pa_pass_1) * q));
+            pushMap(mapTissus, r.passementerie_1, toNum(r.ml_pass_1) * q, toNum(r.pa_pass_1) * q, getSource(r, q, toNum(r.pa_pass_1) * q, toNum(r.ml_pass_1) * q));
         }
         if (r.tissu_deco1) {
-            pushMap(mapTissus, r.tissu_deco1, toNum(r.ml_tissu1) * q, toNum(r.pa_tissu1) * q, getSource(r, q, toNum(r.pa_tissu1) * q));
+            pushMap(mapTissus, r.tissu_deco1, toNum(r.ml_tissu1) * q, toNum(r.pa_tissu1) * q, getSource(r, q, toNum(r.pa_tissu1) * q, toNum(r.ml_tissu1) * q));
         }
         if (r.toile_finition_1) {
-            pushMap(mapTissus, r.toile_finition_1, toNum(r.ml_toile_finition_1) * q, toNum(r.pa_toile_finition_1) * q, getSource(r, q, toNum(r.pa_toile_finition_1) * q));
+            pushMap(mapTissus, r.toile_finition_1, toNum(r.ml_toile_finition_1) * q, toNum(r.pa_toile_finition_1) * q, getSource(r, q, toNum(r.pa_toile_finition_1) * q, toNum(r.ml_toile_finition_1) * q));
         }
         if (r.tissu_deco2) {
-            pushMap(mapTissus, r.tissu_deco2, toNum(r.ml_tissu2) * q, toNum(r.pa_tissu2) * q, getSource(r, q, toNum(r.pa_tissu2) * q));
+            pushMap(mapTissus, r.tissu_deco2, toNum(r.ml_tissu2) * q, toNum(r.pa_tissu2) * q, getSource(r, q, toNum(r.pa_tissu2) * q, toNum(r.ml_tissu2) * q));
         }
         if (r.doublure) {
-            pushMap(mapTissus, r.doublure, toNum(r.ml_doublure) * q, toNum(r.pa_doublure) * q, getSource(r, q, toNum(r.pa_doublure) * q));
+            pushMap(mapTissus, r.doublure, toNum(r.ml_doublure) * q, toNum(r.pa_doublure) * q, getSource(r, q, toNum(r.pa_doublure) * q, toNum(r.ml_doublure) * q));
         }
         if (r.interdoublure) {
-            pushMap(mapTissus, r.interdoublure, toNum(r.ml_interdoublure) * q, toNum(r.pa_interdoublure) * q, getSource(r, q, toNum(r.pa_interdoublure) * q));
+            pushMap(mapTissus, r.interdoublure, toNum(r.ml_interdoublure) * q, toNum(r.pa_interdoublure) * q, getSource(r, q, toNum(r.pa_interdoublure) * q, toNum(r.ml_interdoublure) * q));
         }
         if (r.passementerie1) {
-            pushMap(mapTissus, r.passementerie1, toNum(r.ml_pass1) * q, toNum(r.pa_pass1) * q, getSource(r, q, toNum(r.pa_pass1) * q));
+            pushMap(mapTissus, r.passementerie1, toNum(r.ml_pass1) * q, toNum(r.pa_pass1) * q, getSource(r, q, toNum(r.pa_pass1) * q, toNum(r.ml_pass1) * q));
         }
         if (r.passementerie2) {
-            pushMap(mapTissus, r.passementerie2, toNum(r.ml_pass2) * q, toNum(r.pa_pass2) * q, getSource(r, q, toNum(r.pa_pass2) * q));
+            pushMap(mapTissus, r.passementerie2, toNum(r.ml_pass2) * q, toNum(r.pa_pass2) * q, getSource(r, q, toNum(r.pa_pass2) * q, toNum(r.ml_pass2) * q));
         }
 
         // --- RAILS & STORES ---
@@ -111,7 +112,7 @@ export const calculateProfitability = (rows = [], depRows = [], extraRows = [], 
                 } else {
                     len = q;
                 }
-                pushMap(mapRails, mecaName, len, val, getSource(r, q, val));
+                pushMap(mapRails, mecaName, len, val, getSource(r, q, val, len));
             }
         }
     });

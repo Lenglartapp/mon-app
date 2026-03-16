@@ -11,6 +11,16 @@ const roundStep05 = (val) => {
   return Math.ceil(val * 2) / 2;
 };
 
+// Applique le coefficient de recalibrage commercial (stocké sur la ligne) APRÈS les formules
+function applyRecalCoef(next) {
+  const rc = Number(next.recal_coef);
+  if (Number.isFinite(rc) && rc > 0 && Math.abs(rc - 1) > 0.00001) {
+    next.prix_total = Math.round(next.prix_total * rc * 100) / 100;
+    next.total_price = next.prix_total;
+  }
+  return next;
+}
+
 // --- CORE RECOMPUTE FUNCTION ---
 export function recomputeRow(row, schema, ctx = {}) {
   const next = { ...row };
@@ -99,7 +109,7 @@ export function recomputeRow(row, schema, ctx = {}) {
 
     next.total_price = next.cout_mo + next.cout_nuits + next.cout_repas + next.cout_billet_total;
     next.prix_total = next.total_price;
-    return next;
+    return applyRecalCoef(next);
   }
 
   // =========================================================
@@ -383,6 +393,15 @@ export function recomputeRow(row, schema, ctx = {}) {
   const coeffST = Number(settings.coef_sous_traitance) || 2;
   next.st_pose_pv = NVL(next.st_pose_pa) * coeffST;
   next.st_conf_pv = NVL(next.st_conf_pa) * coeffST;
+
+  // --- 11b. OVERRIDES DE RECALIBRAGE COMMERCIAL ---
+  // Si la ligne a été recalibrée (prorata ou leviers), on écrase les PV calculés
+  // par les valeurs overridées, AVANT le calcul du total.
+  if (next.__pv_overrides && typeof next.__pv_overrides === 'object') {
+    Object.entries(next.__pv_overrides).forEach(([key, val]) => {
+      if (typeof val === 'number') next[key] = val;
+    });
+  }
 
   // --- 12. TOTAUX ---
   const totalPriceComponents =
