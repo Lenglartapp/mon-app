@@ -2,12 +2,12 @@ import React, { useState, useMemo } from 'react';
 import { ChevronDown, ChevronRight as ChevronRightIcon, CheckCircle, X, Plus as PlusIcon } from 'lucide-react';
 import { format, isSameDay, startOfMonth, startOfDay, endOfMonth, eachDayOfInterval, isWeekend, differenceInMinutes, addDays, parseISO, getHours, getMinutes, getISOWeek, addWeeks, startOfWeek, endOfWeek } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { PLANNING_COLORS, getProjectColor, ROW_HEIGHT, HEADER_HEIGHT_1, HEADER_HEIGHT_2, TOTAL_WORK_MINUTES, WORK_START_HOUR, WORK_END_HOUR } from './constants';
+import { PLANNING_COLORS, getProjectColor, ROW_HEIGHT, PROGRAMME_ROW_HEIGHT, HEADER_HEIGHT_1, HEADER_HEIGHT_2, TOTAL_WORK_MINUTES, WORK_START_HOUR, WORK_END_HOUR } from './constants';
 import { uid } from '../../lib/utils/uid';
 
 // --- STICKY CELLS ---
 const StickyLeftCell = ({ children, bg = 'white', borderBottom = true, onClick, style }) => (
-    <div onClick={onClick} style={{ position: 'sticky', left: 0, zIndex: 50, background: bg, borderRight: '2px solid #E5E7EB', borderBottom: borderBottom ? '1px solid #E5E7EB' : 'none', display: 'flex', alignItems: 'center', padding: '0 16px', fontSize: 13, fontWeight: 600, color: '#374151', cursor: onClick ? 'pointer' : 'default', height: ROW_HEIGHT, minWidth: 260, maxWidth: 260, ...style }}>
+    <div onClick={onClick} style={{ position: 'sticky', left: 0, zIndex: 50, background: bg, borderRight: '2px solid #E5E7EB', borderBottom: borderBottom ? '1px solid #E5E7EB' : 'none', display: 'flex', alignItems: 'center', padding: '0 16px', fontSize: 13, fontWeight: 600, color: '#374151', cursor: onClick ? 'pointer' : 'default', height: style?.height ?? ROW_HEIGHT, minWidth: 260, maxWidth: 260, ...style }}>
         {children}
     </div>
 );
@@ -478,8 +478,13 @@ const PlanningGrid = ({
                             <React.Fragment key={key}>
                                 <StickyLeftCell onClick={() => onToggleGroup(key)} bg={group.bg} style={{ fontWeight: 800, color: '#111827' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
-                                        {expandedGroups[key] ? <ChevronDown size={14} style={{ marginRight: 8 }} /> : <ChevronRightIcon size={14} style={{ marginRight: 8 }} />}
+                                        {expandedGroups[key] > 0 ? <ChevronDown size={14} style={{ marginRight: 8 }} /> : <ChevronRightIcon size={14} style={{ marginRight: 8 }} />}
                                         {group.label}
+                                        {key === 'conf' && expandedGroups[key] === 1 && (
+                                            <span style={{ marginLeft: 8, fontSize: 9, fontWeight: 700, padding: '1px 6px', borderRadius: 4, background: '#FEF3C7', color: '#92400E', border: '1px solid #FCD34D' }}>
+                                                PROGRAMME
+                                            </span>
+                                        )}
                                     </div>
                                     {showGauges && (
                                         <div style={{ fontSize: 11, fontWeight: 600, color: groupStats.percent > 100 ? '#EF4444' : '#6B7280', background: 'rgba(255,255,255,0.5)', padding: '2px 6px', borderRadius: 4 }}>
@@ -509,10 +514,12 @@ const PlanningGrid = ({
                                     )
                                 })}
 
-                                {expandedGroups[key] && group.members.map(member => (
+                                {expandedGroups[key] > 0 && group.members
+                                .filter(member => expandedGroups[key] >= 2 || member.id === 'backlog_confection')
+                                .map(member => (
                                     <React.Fragment key={member.id}>
-                                        <StickyLeftCell style={{ paddingLeft: 42, color: member.id === 'backlog_confection' ? '#BE123C' : '#4B5563', fontWeight: member.id === 'backlog_confection' ? 700 : 500, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                            <span>{member.first_name} {member.last_name?.charAt(0)}.</span>
+                                        <StickyLeftCell style={{ paddingLeft: 42, color: member.id === 'backlog_confection' ? '#BE123C' : '#4B5563', fontWeight: member.id === 'backlog_confection' ? 700 : 500, display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: member.id === 'backlog_confection' ? PROGRAMME_ROW_HEIGHT : ROW_HEIGHT }}>
+                                            <span>{member.id === 'backlog_confection' ? 'Programme semaine' : `${member.first_name} ${member.last_name?.charAt(0)}.`}</span>
 
                                             {member.id === 'backlog_confection' && (() => {
                                                 // Calculate Total Backlog Hours for this view
@@ -623,7 +630,7 @@ const PlanningGrid = ({
                                                                 key={`bin-${binIndex}`}
                                                                 style={{
                                                                     gridColumn: `span ${weekDays.length}`,
-                                                                    height: ROW_HEIGHT,
+                                                                    height: PROGRAMME_ROW_HEIGHT,
                                                                     display: 'flex',
                                                                     flexDirection: 'column',
                                                                     background: binIndex % 2 === 0 ? '#FFF1F2' : '#FDF2F8',

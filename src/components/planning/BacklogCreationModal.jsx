@@ -146,7 +146,7 @@ const BacklogCreationModal = ({ isOpen, onClose, onSave, onDelete, projects, eve
                 <div style={S.header}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <Briefcase size={20} color="#BE123C" />
-                        <span style={S.title}>{eventToEdit ? 'Modifier Backlog' : 'Ajouter au Backlog'}</span>
+                        <span style={S.title}>{eventToEdit ? 'Modifier le programme' : 'Ajouter au programme semaine'}</span>
                     </div>
                     <button style={S.closeBtn} onClick={onClose}><X size={20} /></button>
                 </div>
@@ -270,7 +270,7 @@ const BacklogCreationModal = ({ isOpen, onClose, onSave, onDelete, projects, eve
                             onClick={handleSubmit}
                             disabled={!selectedProject || !hours}
                         >
-                            {eventToEdit ? 'Mettre à jour' : 'Créer le Backlog'}
+                            {eventToEdit ? 'Mettre à jour' : 'Ajouter au programme'}
                         </button>
                     </div>
                 </div>

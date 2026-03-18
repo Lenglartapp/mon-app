@@ -66,6 +66,7 @@ export const PLANNING_COLORS = {
 
 // CONSTANTES DIMENSION
 export const ROW_HEIGHT = 70;
+export const PROGRAMME_ROW_HEIGHT = 130;
 export const HEADER_HEIGHT_1 = 36;
 export const HEADER_HEIGHT_2 = 40;
 export const WORK_START_HOUR = 8; // 8h00

@@ -17,6 +17,7 @@ import ResourcePanel from '../components/planning/ResourcePanel';
 import PlanningTopBar from '../components/planning/PlanningTopBar';
 import PlanningGrid from '../components/planning/PlanningGrid';
 import AssistantView from '../components/planning/AssistantView';
+import CapaciteView from '../components/planning/CapaciteView';
 import BacklogCreationModal from '../components/planning/BacklogCreationModal';
 import { generatePlanningTemplate, processPlanningImport } from '../lib/utils/planningExcelUtils';
 
@@ -44,7 +45,8 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
     const [view, setView] = useState('week');
     const [showWeekends, setShowWeekends] = useState(false);
     const [customRange, setCustomRange] = useState(null);
-    const [expandedGroups, setExpandedGroups] = useState({ pose: true, conf: true, prepa: true });
+    // 0 = replié, 1 = programme seulement (conf uniquement), 2 = déplié complet
+    const [expandedGroups, setExpandedGroups] = useState({ pose: 2, conf: 2, prepa: 2 });
 
     // MODALE & EVENTS
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -442,7 +444,8 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
 
 
     // --- MODE ASSISTANT ---
-    const [assistantMode, setAssistantMode] = useState(false);
+    // null | 'programmation' | 'capacite'
+    const [assistantMode, setAssistantMode] = useState(null);
 
     // Calcul dynamique des capacités
     const capacityConfig = useMemo(() => ({
@@ -1092,7 +1095,7 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                 onAddFilter={(f) => setActiveFilters(prev => prev.find(x => x.id === f.id) ? prev : [...prev, f])}
                 onRemoveFilter={(id) => setActiveFilters(prev => prev.filter(x => x.id !== id))}
                 assistantMode={assistantMode}
-                onToggleAssistant={() => setAssistantMode(!assistantMode)}
+                onSetAssistantMode={setAssistantMode}
                 myViewMode={myViewMode}
                 onToggleMyView={handleToggleMyView}
                 onDownloadTemplate={canEdit ? handleDownloadTemplate : undefined}
@@ -1212,8 +1215,10 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                 onDeleteClosure={handleDeleteClosure}
             />
 
-            {assistantMode ? (
+            {assistantMode === 'programmation' ? (
                 <AssistantView stats={stats} onUpdateProject={onUpdateProject} />
+            ) : assistantMode === 'capacite' ? (
+                <CapaciteView localUsers={localUsers} localEvents={localEvents} />
             ) : (
                 <PlanningGrid
                     days={columns}
@@ -1222,7 +1227,14 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                     view={view}
                     filteredGroups={filteredGroups}
                     expandedGroups={expandedGroups}
-                    onToggleGroup={(key) => setExpandedGroups(prev => ({ ...prev, [key]: !prev[key] }))}
+                    onToggleGroup={(key) => setExpandedGroups(prev => {
+                        if (key === 'conf') {
+                            // 0 → 1 → 2 → 0 : replié → programme → équipe complète → replié
+                            const next = prev[key] === 0 ? 1 : prev[key] === 1 ? 2 : 0;
+                            return { ...prev, [key]: next };
+                        }
+                        return { ...prev, [key]: prev[key] === 0 ? 2 : 0 };
+                    })}
                     events={filteredEvents}
                     hiddenResources={hiddenResources}
                     onCellClick={handleCellClick}

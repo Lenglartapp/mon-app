@@ -46,11 +46,12 @@ const PlanningTopBar = ({
     view, onViewChange, currentDate, onPrev, onNext, onToday,
     customRange, onCustomRangeChange, onNew, onManageTeam,
     activeFilters, onAddFilter, onRemoveFilter,
-    assistantMode, onToggleAssistant, showWeekends, onToggleWeekends,
+    assistantMode, onSetAssistantMode, showWeekends, onToggleWeekends,
     myViewMode, onToggleMyView,
     onDownloadTemplate, onImport
 }) => {
     const fileInputRef = useRef(null);
+    const [showAssistantMenu, setShowAssistantMenu] = useState(false);
     const handleFileChange = (e) => {
         const file = e.target.files[0];
         if (file && onImport) onImport(file);
@@ -76,26 +77,55 @@ const PlanningTopBar = ({
                         </button>
                     </>
                 )}
-                <button
-                    onClick={onToggleAssistant}
-                    style={{
-                        background: assistantMode ? '#2563EB' : 'white',
-                        color: assistantMode ? 'white' : '#374151',
-                        border: '1px solid #E5E7EB',
-                        borderRadius: 6,
-                        padding: '8px 16px',
-                        fontWeight: 600,
-                        fontSize: 14,
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 8,
-                        transition: 'all 0.2s'
-                    }}
-                >
-                    {assistantMode ? <CalendarIcon size={16} /> : <Briefcase size={16} />}
-                    {assistantMode ? "Vue Calendrier" : "Vue Assistant"}
-                </button>
+                {/* Vue Assistant dropdown */}
+                <div style={{ position: 'relative' }}>
+                    {assistantMode ? (
+                        /* En mode assistant : tabs + bouton retour */
+                        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                            <button onClick={() => onSetAssistantMode('programmation')} style={{
+                                padding: '8px 14px', borderRadius: 6, border: 'none', fontWeight: 600, fontSize: 13, cursor: 'pointer', transition: 'all 0.15s',
+                                background: assistantMode === 'programmation' ? '#111827' : '#F3F4F6',
+                                color:      assistantMode === 'programmation' ? 'white'   : '#6B7280',
+                            }}>Programmation</button>
+                            <button onClick={() => onSetAssistantMode('capacite')} style={{
+                                padding: '8px 14px', borderRadius: 6, border: 'none', fontWeight: 600, fontSize: 13, cursor: 'pointer', transition: 'all 0.15s',
+                                background: assistantMode === 'capacite' ? '#111827' : '#F3F4F6',
+                                color:      assistantMode === 'capacite' ? 'white'   : '#6B7280',
+                            }}>Capacité</button>
+                            <button onClick={() => onSetAssistantMode(null)} style={{
+                                padding: '8px 12px', borderRadius: 6, border: '1px solid #E5E7EB', background: 'white', color: '#374151', fontWeight: 600, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
+                            }}>
+                                <CalendarIcon size={14} /> Calendrier
+                            </button>
+                        </div>
+                    ) : (
+                        /* Bouton Vue Assistant avec dropdown */
+                        <>
+                            <button
+                                onClick={() => setShowAssistantMenu(v => !v)}
+                                style={{ background: 'white', color: '#374151', border: '1px solid #E5E7EB', borderRadius: 6, padding: '8px 14px', fontWeight: 600, fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}
+                            >
+                                <Briefcase size={16} /> Vue Assistant <ChevronDown size={13} />
+                            </button>
+                            {showAssistantMenu && (
+                                <>
+                                    <div onClick={() => setShowAssistantMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 99 }} />
+                                    <div style={{ position: 'absolute', top: '110%', left: 0, zIndex: 100, background: 'white', border: '1px solid #E5E7EB', borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,0.1)', minWidth: 170, overflow: 'hidden' }}>
+                                        {[['programmation', 'Programmation'], ['capacite', 'Capacité']].map(([mode, label]) => (
+                                            <button key={mode} onClick={() => { onSetAssistantMode(mode); setShowAssistantMenu(false); }} style={{
+                                                display: 'block', width: '100%', padding: '11px 16px', textAlign: 'left', border: 'none', background: 'white', fontSize: 13, fontWeight: 600, color: '#374151', cursor: 'pointer',
+                                            }}
+                                            onMouseEnter={e => e.currentTarget.style.background = '#F9FAFB'}
+                                            onMouseLeave={e => e.currentTarget.style.background = 'white'}>
+                                                {label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </>
+                            )}
+                        </>
+                    )}
+                </div>
             </div>
 
             <div style={{ flex: 1, maxWidth: 600, margin: '0 24px' }}>
