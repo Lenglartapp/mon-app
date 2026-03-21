@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { COLORS, S } from "../lib/constants/ui.js";
 
@@ -225,6 +225,9 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
     [project?.id] // Re-compute ONLY if project ID changes
   );
   const [rows, setRows] = useState(initialRows);
+  // Ref toujours à jour — permet des callbacks stables sans dépendance sur `rows`
+  const rowsRef = useRef(rows);
+  rowsRef.current = rows;
 
   // Calculate opened row
   const openedRow = useMemo(() => (rows || []).find(r => r.id === openedRowId), [rows, openedRowId]);
@@ -256,24 +259,21 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
     );
   }, [rows, search]);
 
-  // Sous-ensembles (sur rows filtrées)
-  // --- NOUVELLE NOMENCLATURE EXACTE DU CHIFFRAGE ---
-  const rowsRideaux = filteredRows.filter((r) => /rideau|voilage/i.test(String(r.produit || "")));
-
-  // Separation Stores
-  const rowsStores = filteredRows.filter((r) => r.produit && /store/i.test(String(r.produit)) && !/bateau|velum/i.test(String(r.produit)));
-  const rowsStoresBateaux = filteredRows.filter((r) => r.produit && /store (bateau|velum)/i.test(String(r.produit)));
-
-  // Separation Anciens "Décors"
-  const rowsCoussins = filteredRows.filter((r) => /coussin/i.test(String(r.produit || "")));
-  const rowsPlaid = filteredRows.filter((r) => /plaid/i.test(String(r.produit || "")));
-  const rowsMobilier = filteredRows.filter((r) => /tête de lit|mobilier/i.test(String(r.produit || "")));
-  const rowsCacheSommier = filteredRows.filter((r) => /cache-sommier/i.test(String(r.produit || "")));
-  const rowsTentureMurale = filteredRows.filter((r) => /tenture murale/i.test(String(r.produit || "")));
-
-  const rowsAutreConfection = filteredRows.filter(r => r.section === 'autre');
-
-  // --- FIN ---
+  // Sous-ensembles memoïsés — recalculés uniquement quand filteredRows change
+  const {
+    rowsRideaux, rowsStores, rowsStoresBateaux, rowsCoussins,
+    rowsPlaid, rowsMobilier, rowsCacheSommier, rowsTentureMurale, rowsAutreConfection
+  } = useMemo(() => ({
+    rowsRideaux:        filteredRows.filter((r) => /rideau|voilage/i.test(String(r.produit || ""))),
+    rowsStores:         filteredRows.filter((r) => r.produit && /store/i.test(String(r.produit)) && !/bateau|velum/i.test(String(r.produit))),
+    rowsStoresBateaux:  filteredRows.filter((r) => r.produit && /store (bateau|velum)/i.test(String(r.produit))),
+    rowsCoussins:       filteredRows.filter((r) => /coussin/i.test(String(r.produit || ""))),
+    rowsPlaid:          filteredRows.filter((r) => /plaid/i.test(String(r.produit || ""))),
+    rowsMobilier:       filteredRows.filter((r) => /tête de lit|mobilier/i.test(String(r.produit || ""))),
+    rowsCacheSommier:   filteredRows.filter((r) => /cache-sommier/i.test(String(r.produit || ""))),
+    rowsTentureMurale:  filteredRows.filter((r) => /tenture murale/i.test(String(r.produit || ""))),
+    rowsAutreConfection: filteredRows.filter(r => r.section === 'autre'),
+  }), [filteredRows]);
 
   const recomputeAll = (arr) => (arr || []).map(r => recomputeRow(r, schema));
 
@@ -321,12 +321,23 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
     return newRowRaw;
   };
 
-  // --- HANDLERS (AVEC SAUVEGARDE IMMÉDIATE) ---
+  // Debounce du save Supabase — l'état local se met à jour immédiatement,
+  // la persistance attend 800ms pour éviter un re-render parent à chaque frappe.
+  const saveTimerRef = useRef(null);
+  const debouncedSave = useCallback((projectId, updatedRows) => {
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      if (onUpdateProjectRows) onUpdateProjectRows(projectId, updatedRows);
+      saveTimerRef.current = null;
+    }, 800);
+  }, [onUpdateProjectRows]);
 
-  // 1. handleSubsetChange (Mise à jour avec historique)
-  const handleSubsetChange = (newSubsetRows, filterRegex, filterPredicate) => {
+  // --- HANDLERS ---
+
+  // 1. handleSubsetChange — useCallback + rowsRef pour référence stable
+  const handleSubsetChange = useCallback((newSubsetRows, filterRegex, filterPredicate) => {
     if (!canEditProd) return;
-    const allRows = rows;
+    const allRows = rowsRef.current;
 
     let oldSubset;
     if (filterPredicate) {
@@ -343,16 +354,18 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
       .map(r => {
         if (updatedMap.has(r.id)) {
           const newRaw = updatedMap.get(r.id);
-          // On compare pour l'historique
-          const rowWithHistory = updateRowWithHistory(r, newRaw, currentUser?.name);
-          return recomputeRow(rowWithHistory, schema);
+          if (newRaw === r) return r; // Ligne inchangée — préserve la référence
+          // MinuteGrid a déjà appelé recomputeRow(section_schema) dans onCellValueChanged.
+          // On appelle uniquement updateRowWithHistory pour l'audit, sans re-calculer les formules
+          // (qui ont déjà été calculées avec le bon schema de section).
+          return updateRowWithHistory(r, newRaw, currentUser?.name);
         }
         return r;
       });
 
     setRows(updatedAllRows);
-    if (project?.id) onUpdateProjectRows(project.id, updatedAllRows);
-  };
+    if (project?.id) debouncedSave(project.id, updatedAllRows);
+  }, [canEditProd, schema, currentUser?.name, debouncedSave, project?.id]);
 
   const mergeChildRowsFor = (tableKey) => {
     let regex = /./; // Default
@@ -383,11 +396,10 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
     return (nr) => handleSubsetChange(nr, regex);
   };
 
-  // 2. handleRowsChangeInstallation (Mise à jour avec historique)
-  const handleRowsChangeInstallation = (nr) => {
+  // 2. handleRowsChangeInstallation — stable via rowsRef
+  const handleRowsChangeInstallation = useCallback((nr) => {
     if (!canEditProd) return;
-    // Difficile de comparer en masse sans map, mais on tente une map par ID
-    const oldMap = new Map(rows.map(r => [r.id, r]));
+    const oldMap = new Map(rowsRef.current.map(r => [r.id, r]));
 
     const computed = nr.map(newR => {
       const oldR = oldMap.get(newR.id);
@@ -399,14 +411,13 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
     });
 
     setRows(computed);
-    if (project?.id) onUpdateProjectRows(project.id, computed);
-  };
+    if (project?.id) debouncedSave(project.id, computed);
+  }, [canEditProd, schema, currentUser?.name, debouncedSave, project?.id]);
 
-  // 3. handleDetailUpdate (Mise à jour avec historique)
-  // 3. handleDetailUpdate (Mise à jour avec historique)
-  const handleDetailUpdate = (updatedRow) => {
+  // 3. handleDetailUpdate — stable via rowsRef
+  const handleDetailUpdate = useCallback((updatedRow) => {
     if (!canEditProd) return;
-    const newRows = rows.map(r => {
+    const newRows = rowsRef.current.map(r => {
       if (r.id === updatedRow.id) {
         const rowWithHistory = updateRowWithHistory(r, updatedRow, currentUser?.name);
         return recomputeRow(rowWithHistory, schema);
@@ -414,8 +425,8 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
       return r;
     });
     setRows(newRows);
-    if (project?.id) onUpdateProjectRows(project.id, newRows);
-  };
+    if (project?.id) debouncedSave(project.id, newRows);
+  }, [canEditProd, schema, currentUser?.name, debouncedSave, project?.id]);
 
 
   const handleAddRow = (produitType = "Rideau") => {
@@ -818,60 +829,106 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
 
       {stage === "etiquettes" && (
         <div style={isMobile ? { padding: 0 } : S.contentWide}>
-          <EtiquettesSection
-            title="Etiquettes Rideaux"
-            tableKey="rideaux"
-            rows={rowsRideaux}
-            onRowsChange={mergeChildRowsFor("rideaux")}
-            schema={RIDEAUX_PROD_SCHEMA}
-            projectName={projectName}
-          />
-          <EtiquettesSection
-            title="Etiquettes Stores"
-            tableKey="stores"
-            rows={rowsStores}
-            onRowsChange={mergeChildRowsFor("stores")}
-            schema={schema}
-            projectName={projectName}
-          />
+          {rowsRideaux.length > 0 && (
+            <EtiquettesSection
+              title="Etiquettes Rideaux"
+              tableKey="rideaux"
+              rows={rowsRideaux}
+              onRowsChange={mergeChildRowsFor("rideaux")}
+              schema={RIDEAUX_PROD_SCHEMA}
+              projectName={projectName}
+            />
+          )}
+          {rowsStoresBateaux.length > 0 && (
+            <EtiquettesSection
+              title="Etiquettes Stores Bateaux / Velum"
+              tableKey="stores_bateaux"
+              rows={rowsStoresBateaux}
+              onRowsChange={(nr) => handleSubsetChange(nr, /store (bateau|velum)/i)}
+              schema={STORES_BATEAUX_PROD_SCHEMA}
+              projectName={projectName}
+            />
+          )}
         </div>
       )}
 
       {stage === "prise" && (
         <>
-          <div style={cardStyle}>
-            <div style={cardHeaderStyle}>Prise de Cote Rideau</div>
-            <MinuteGrid
-              rows={rowsRideaux}
-              onRowsChange={mergeChildRowsFor("rideaux")}
-              schema={RIDEAUX_PROD_SCHEMA}
-              enableCellFormulas={true}
-              initialVisibilityModel={getVisibilityModel('prise', 'rideaux', schema)}
-              onAdd={() => handleAddRow("Rideau")}
-              onDuplicateRow={handleDuplicateRow}
-              projectId={project?.id}
-              gridKey="pv_rideaux"
-              onRowClick={(id) => setOpenedRowId(id)}
-              isMobile={isMobile}
-            />
-          </div>
+          {rowsRideaux.length > 0 && (
+            <div style={cardStyle}>
+              <div style={cardHeaderStyle}>Prise de Cote Rideaux / Voilages</div>
+              <MinuteGrid
+                rows={rowsRideaux}
+                onRowsChange={mergeChildRowsFor("rideaux")}
+                schema={RIDEAUX_PROD_SCHEMA}
+                enableCellFormulas={true}
+                initialVisibilityModel={getVisibilityModel('prise', 'rideaux', RIDEAUX_PROD_SCHEMA)}
+                onAdd={() => handleAddRow("Rideau")}
+                onDuplicateRow={handleDuplicateRow}
+                projectId={project?.id}
+                gridKey="pv_rideaux"
+                onRowClick={(id) => setOpenedRowId(id)}
+                isMobile={isMobile}
+              />
+            </div>
+          )}
 
-          <div style={cardStyle}>
-            <div style={cardHeaderStyle}>Prise de Cote Store</div>
-            <MinuteGrid
-              rows={rowsStores}
-              onRowsChange={mergeChildRowsFor("stores")}
-              schema={schema}
-              enableCellFormulas={true}
-              initialVisibilityModel={getVisibilityModel('prise', 'stores', schema)}
-              onAdd={() => handleAddRow("Store Bateau")}
-              onDuplicateRow={handleDuplicateRow}
-              projectId={project?.id}
-              gridKey="pv_stores"
-              onRowClick={(id) => setOpenedRowId(id)}
-              isMobile={isMobile}
-            />
-          </div>
+          {rowsStores.length > 0 && (
+            <div style={cardStyle}>
+              <div style={cardHeaderStyle}>Prise de Cote Stores Négoce</div>
+              <MinuteGrid
+                rows={rowsStores}
+                onRowsChange={mergeChildRowsFor("stores")}
+                schema={STORES_PROD_SCHEMA}
+                enableCellFormulas={true}
+                initialVisibilityModel={getVisibilityModel('prise', 'stores', STORES_PROD_SCHEMA)}
+                onAdd={() => handleAddRow("Store Enrouleur")}
+                onDuplicateRow={handleDuplicateRow}
+                projectId={project?.id}
+                gridKey="pv_stores"
+                onRowClick={(id) => setOpenedRowId(id)}
+                isMobile={isMobile}
+              />
+            </div>
+          )}
+
+          {rowsStoresBateaux.length > 0 && (
+            <div style={cardStyle}>
+              <div style={cardHeaderStyle}>Prise de Cote Stores Bateaux / Velum</div>
+              <MinuteGrid
+                rows={rowsStoresBateaux}
+                onRowsChange={(nr) => handleSubsetChange(nr, /store (bateau|velum)/i)}
+                schema={STORES_BATEAUX_PROD_SCHEMA}
+                enableCellFormulas={true}
+                initialVisibilityModel={getVisibilityModel('prise', 'stores_bateaux', STORES_BATEAUX_PROD_SCHEMA)}
+                onAdd={() => handleAddRow("Store Bateau")}
+                onDuplicateRow={handleDuplicateRow}
+                projectId={project?.id}
+                gridKey="pv_stores_bateaux"
+                onRowClick={(id) => setOpenedRowId(id)}
+                isMobile={isMobile}
+              />
+            </div>
+          )}
+
+          {rowsTentureMurale.length > 0 && (
+            <div style={cardStyle}>
+              <div style={cardHeaderStyle}>Prise de Cote Tenture Murale</div>
+              <MinuteGrid
+                rows={rowsTentureMurale}
+                onRowsChange={(nr) => handleSubsetChange(nr, /tenture murale/i)}
+                schema={TENTURE_MURALE_PROD_SCHEMA}
+                enableCellFormulas={true}
+                initialVisibilityModel={getVisibilityModel('prise', 'tenture_murale', TENTURE_MURALE_PROD_SCHEMA)}
+                onAdd={() => handleAddRow("Tenture Murale")}
+                onDuplicateRow={handleDuplicateRow}
+                projectId={project?.id}
+                gridKey="pv_tenture_murale"
+                onRowClick={(id) => setOpenedRowId(id)}
+                isMobile={isMobile}
+              />
+            </div>
+          )}
         </>
       )}
 
@@ -903,7 +960,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                 onRowsChange={mergeChildRowsFor("rideaux")}
                 schema={RIDEAUX_PROD_SCHEMA}
                 enableCellFormulas={true}
-                initialVisibilityModel={getVisibilityModel('bpf', 'rideaux', schema)}
+                initialVisibilityModel={getVisibilityModel('bpf', 'rideaux', RIDEAUX_PROD_SCHEMA)}
                 onAdd={() => handleAddRow("Rideau")}
                 onDuplicateRow={handleDuplicateRow}
                 projectId={project?.id}
@@ -914,33 +971,8 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
             </div>
           )}
 
-          {rowsStores.length > 0 && (
-            <Accordion key="bpf_stores" defaultExpanded disableGutters sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), border: 1px solid #f3f4f6' }}>
-              <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ borderBottom: '1px solid #f3f4f6', backgroundColor: '#fff', borderTopLeftRadius: 12, borderTopRightRadius: 12, px: 3 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <h3 style={{ margin: 0, fontSize: 18, color: '#111827', fontWeight: 700 }}>BPF Stores Négoce</h3>
-                  <span style={{ background: '#f3f4f6', color: '#4b5563', padding: '2px 8px', borderRadius: 12, fontSize: 12, fontWeight: 600 }}>{rowsStores.length} articles</span>
-                </div>
-              </AccordionSummary>
-              <AccordionDetails sx={{ p: 0 }}>
-                <MinuteGrid
-                  rows={rowsStores}
-                  onRowsChange={mergeChildRowsFor("stores")}
-                  schema={STORES_PROD_SCHEMA}
-                  enableCellFormulas={true}
-                  onAdd={() => handleAddRow("Store Enrouleur")}
-                  onDuplicateRow={handleDuplicateRow}
-                  projectId={project?.id}
-                  gridKey="bpf_stores"
-                  onRowClick={(id) => setOpenedRowId(id)}
-                  isMobile={isMobile}
-                />
-              </AccordionDetails>
-            </Accordion>
-          )}
-
           {rowsStoresBateaux.length > 0 && (
-            <Accordion key="bpf_stores_bateaux" defaultExpanded disableGutters sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), border: 1px solid #f3f4f6' }}>
+            <Accordion key="bpf_stores_bateaux" defaultExpanded disableGutters TransitionProps={{ unmountOnExit: true }} sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), border: 1px solid #f3f4f6' }}>
               <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ borderBottom: '1px solid #f3f4f6', backgroundColor: '#fff', borderTopLeftRadius: 12, borderTopRightRadius: 12, px: 3 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <h3 style={{ margin: 0, fontSize: 18, color: '#111827', fontWeight: 700 }}>BPF Stores Bateaux / Velum</h3>
@@ -965,7 +997,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
           )}
 
           {rowsCoussins.length > 0 && (
-            <Accordion key="bpf_coussins" defaultExpanded disableGutters sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), border: 1px solid #f3f4f6' }}>
+            <Accordion key="bpf_coussins" defaultExpanded disableGutters TransitionProps={{ unmountOnExit: true }} sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), border: 1px solid #f3f4f6' }}>
               <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ borderBottom: '1px solid #f3f4f6', backgroundColor: '#fff', borderTopLeftRadius: 12, borderTopRightRadius: 12, px: 3 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <h3 style={{ margin: 0, fontSize: 18, color: '#111827', fontWeight: 700 }}>BPF Coussins</h3>
@@ -977,6 +1009,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                   rows={rowsCoussins}
                   onRowsChange={(nr) => handleSubsetChange(nr, /coussin/i)}
                   schema={COUSSINS_PROD_SCHEMA}
+                  initialVisibilityModel={getVisibilityModel('bpf', 'coussins', COUSSINS_PROD_SCHEMA)}
                   enableCellFormulas={true}
                   onAdd={() => handleAddRow("Coussins")}
                   onDuplicateRow={handleDuplicateRow}
@@ -990,7 +1023,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
           )}
 
           {rowsCacheSommier.length > 0 && (
-            <Accordion key="bpf_cache_sommier" defaultExpanded disableGutters sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), border: 1px solid #f3f4f6' }}>
+            <Accordion key="bpf_cache_sommier" defaultExpanded disableGutters TransitionProps={{ unmountOnExit: true }} sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), border: 1px solid #f3f4f6' }}>
               <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ borderBottom: '1px solid #f3f4f6', backgroundColor: '#fff', borderTopLeftRadius: 12, borderTopRightRadius: 12, px: 3 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <h3 style={{ margin: 0, fontSize: 18, color: '#111827', fontWeight: 700 }}>BPF Cache-Sommier</h3>
@@ -1002,6 +1035,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                   rows={rowsCacheSommier}
                   onRowsChange={(nr) => handleSubsetChange(nr, /cache-sommier/i)}
                   schema={CACHE_SOMMIER_PROD_SCHEMA}
+                  initialVisibilityModel={getVisibilityModel('bpf', 'cache_sommier', CACHE_SOMMIER_PROD_SCHEMA)}
                   enableCellFormulas={true}
                   onAdd={() => handleAddRow("Cache-Sommier")}
                   onDuplicateRow={handleDuplicateRow}
@@ -1015,7 +1049,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
           )}
 
           {rowsPlaid.length > 0 && (
-            <Accordion key="bpf_plaid" defaultExpanded disableGutters sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), border: 1px solid #f3f4f6' }}>
+            <Accordion key="bpf_plaid" defaultExpanded disableGutters TransitionProps={{ unmountOnExit: true }} sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), border: 1px solid #f3f4f6' }}>
               <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ borderBottom: '1px solid #f3f4f6', backgroundColor: '#fff', borderTopLeftRadius: 12, borderTopRightRadius: 12, px: 3 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <h3 style={{ margin: 0, fontSize: 18, color: '#111827', fontWeight: 700 }}>BPF Plaids / Chemin de lit</h3>
@@ -1027,6 +1061,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                   rows={rowsPlaid}
                   onRowsChange={(nr) => handleSubsetChange(nr, /plaid/i)}
                   schema={PLAID_PROD_SCHEMA}
+                  initialVisibilityModel={getVisibilityModel('bpf', 'plaid', PLAID_PROD_SCHEMA)}
                   enableCellFormulas={true}
                   onAdd={() => handleAddRow("Plaid")}
                   onDuplicateRow={handleDuplicateRow}
@@ -1040,7 +1075,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
           )}
 
           {rowsMobilier.length > 0 && (
-            <Accordion key="bpf_mobilier" defaultExpanded disableGutters sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), border: 1px solid #f3f4f6' }}>
+            <Accordion key="bpf_mobilier" defaultExpanded disableGutters TransitionProps={{ unmountOnExit: true }} sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), border: 1px solid #f3f4f6' }}>
               <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ borderBottom: '1px solid #f3f4f6', backgroundColor: '#fff', borderTopLeftRadius: 12, borderTopRightRadius: 12, px: 3 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <h3 style={{ margin: 0, fontSize: 18, color: '#111827', fontWeight: 700 }}>BPF Mobilier / Tête de Lit</h3>
@@ -1052,6 +1087,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                   rows={rowsMobilier}
                   onRowsChange={(nr) => handleSubsetChange(nr, /tête de lit|mobilier/i)}
                   schema={MOBILIER_PROD_SCHEMA}
+                  initialVisibilityModel={getVisibilityModel('bpf', 'mobilier', MOBILIER_PROD_SCHEMA)}
                   enableCellFormulas={true}
                   onAdd={() => handleAddRow("Tête de Lit")}
                   onDuplicateRow={handleDuplicateRow}
@@ -1065,7 +1101,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
           )}
 
           {rowsTentureMurale.length > 0 && (
-            <Accordion key="bpf_tenture_murale" defaultExpanded disableGutters sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), border: 1px solid #f3f4f6' }}>
+            <Accordion key="bpf_tenture_murale" defaultExpanded disableGutters TransitionProps={{ unmountOnExit: true }} sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), border: 1px solid #f3f4f6' }}>
               <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ borderBottom: '1px solid #f3f4f6', backgroundColor: '#fff', borderTopLeftRadius: 12, borderTopRightRadius: 12, px: 3 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <h3 style={{ margin: 0, fontSize: 18, color: '#111827', fontWeight: 700 }}>BPF Tenture Murale</h3>
@@ -1077,6 +1113,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                   rows={rowsTentureMurale}
                   onRowsChange={(nr) => handleSubsetChange(nr, /tenture murale/i)}
                   schema={TENTURE_MURALE_PROD_SCHEMA}
+                  initialVisibilityModel={getVisibilityModel('bpf', 'tenture_murale', TENTURE_MURALE_PROD_SCHEMA)}
                   enableCellFormulas={true}
                   onAdd={() => handleAddRow("Tenture Murale")}
                   onDuplicateRow={handleDuplicateRow}
@@ -1117,9 +1154,9 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
               <MinuteGrid
                 rows={rowsRideaux}
                 onRowsChange={mergeChildRowsFor("rideaux")}
-                schema={schema}
+                schema={RIDEAUX_PROD_SCHEMA}
                 enableCellFormulas={true}
-                initialVisibilityModel={getVisibilityModel('bpp', 'rideaux', schema)}
+                initialVisibilityModel={getVisibilityModel('bpp', 'rideaux', RIDEAUX_PROD_SCHEMA)}
                 onAdd={() => handleAddRow("Rideau")}
                 onDuplicateRow={handleDuplicateRow}
                 projectId={project?.id}
@@ -1170,11 +1207,63 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                   onRowsChange={(nr) => handleSubsetChange(nr, /store (bateau|velum)/i)}
                   schema={STORES_BATEAUX_PROD_SCHEMA}
                   enableCellFormulas={true}
-                  initialVisibilityModel={getVisibilityModel('bpp', 'stores', STORES_BATEAUX_PROD_SCHEMA)}
+                  initialVisibilityModel={getVisibilityModel('bpp', 'stores_bateaux', STORES_BATEAUX_PROD_SCHEMA)}
                   onAdd={() => handleAddRow("Store Bateau")}
                   onDuplicateRow={handleDuplicateRow}
                   projectId={project?.id}
                   gridKey="bpp_stores_bateaux"
+                  onRowClick={(id) => setOpenedRowId(id)}
+                  isMobile={isMobile}
+                />
+              </AccordionDetails>
+            </Accordion>
+          )}
+
+          {rowsTentureMurale.length > 0 && (
+            <Accordion key="bpp_tenture_murale" defaultExpanded disableGutters sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), border: 1px solid #f3f4f6' }}>
+              <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ borderBottom: '1px solid #f3f4f6', backgroundColor: '#fff', borderTopLeftRadius: 12, borderTopRightRadius: 12, px: 3 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <h3 style={{ margin: 0, fontSize: 18, color: '#111827', fontWeight: 700 }}>BPP Tenture Murale</h3>
+                  <span style={{ background: '#f3f4f6', color: '#4b5563', padding: '2px 8px', borderRadius: 12, fontSize: 12, fontWeight: 600 }}>{rowsTentureMurale.length} articles</span>
+                </div>
+              </AccordionSummary>
+              <AccordionDetails sx={{ p: 0 }}>
+                <MinuteGrid
+                  rows={rowsTentureMurale}
+                  onRowsChange={(nr) => handleSubsetChange(nr, /tenture murale/i)}
+                  schema={TENTURE_MURALE_PROD_SCHEMA}
+                  enableCellFormulas={true}
+                  initialVisibilityModel={getVisibilityModel('bpp', 'tenture_murale', TENTURE_MURALE_PROD_SCHEMA)}
+                  onAdd={() => handleAddRow("Tenture Murale")}
+                  onDuplicateRow={handleDuplicateRow}
+                  projectId={project?.id}
+                  gridKey="bpp_tenture_murale"
+                  onRowClick={(id) => setOpenedRowId(id)}
+                  isMobile={isMobile}
+                />
+              </AccordionDetails>
+            </Accordion>
+          )}
+
+          {rowsMobilier.length > 0 && (
+            <Accordion key="bpp_mobilier" defaultExpanded disableGutters sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), border: 1px solid #f3f4f6' }}>
+              <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ borderBottom: '1px solid #f3f4f6', backgroundColor: '#fff', borderTopLeftRadius: 12, borderTopRightRadius: 12, px: 3 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <h3 style={{ margin: 0, fontSize: 18, color: '#111827', fontWeight: 700 }}>BPP Mobilier / Tête de Lit</h3>
+                  <span style={{ background: '#f3f4f6', color: '#4b5563', padding: '2px 8px', borderRadius: 12, fontSize: 12, fontWeight: 600 }}>{rowsMobilier.length} articles</span>
+                </div>
+              </AccordionSummary>
+              <AccordionDetails sx={{ p: 0 }}>
+                <MinuteGrid
+                  rows={rowsMobilier}
+                  onRowsChange={(nr) => handleSubsetChange(nr, /tête de lit|mobilier/i)}
+                  schema={MOBILIER_PROD_SCHEMA}
+                  enableCellFormulas={true}
+                  initialVisibilityModel={getVisibilityModel('bpp', 'mobilier', MOBILIER_PROD_SCHEMA)}
+                  onAdd={() => handleAddRow("Tête de Lit")}
+                  onDuplicateRow={handleDuplicateRow}
+                  projectId={project?.id}
+                  gridKey="bpp_mobilier"
                   onRowClick={(id) => setOpenedRowId(id)}
                   isMobile={isMobile}
                 />

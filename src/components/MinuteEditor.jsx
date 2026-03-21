@@ -210,17 +210,23 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
 
 
 
-  // Sous-ensembles par module
-  const rowsRideaux = rows.filter((r) => /rideau|voilage/i.test(String(r.produit || "")));
-  const rowsStore = rows.filter((r) => /store|canishade/i.test(String(r.produit || "")) && !/bateau|velum|vélum/i.test(String(r.produit || "")));
-  const rowsStoresBateau = rows.filter((r) => /bateau|velum|vélum/i.test(String(r.produit || "")));
-  const rowsCoussins = rows.filter((r) => /coussin/i.test(String(r.produit || "")));
-  const rowsCacheSommier = rows.filter((r) => /cache-sommier/i.test(String(r.produit || "")));
-  const rowsPlaid = rows.filter((r) => /plaid|chemin de lit/i.test(String(r.produit || "")));
-  const rowsTenture = rows.filter((r) => /tenture/i.test(String(r.produit || "")));
-  const rowsMobilier = rows.filter((r) => /t[êe]te|mobilier/i.test(String(r.produit || "")));
-  const rowsDeplacement = rows.filter((r) => String(r.produit || "") === "Déplacement");
-  const rowsAutre = rows.filter((r) => String(r.produit || "") === "Autre Dépense");
+  // Sous-ensembles par module (memoïsés pour éviter les recalculs à chaque render)
+  const {
+    rowsRideaux, rowsStore, rowsStoresBateau, rowsCoussins,
+    rowsCacheSommier, rowsPlaid, rowsTenture, rowsMobilier,
+    rowsDeplacement, rowsAutre
+  } = React.useMemo(() => ({
+    rowsRideaux:      rows.filter((r) => /rideau|voilage/i.test(String(r.produit || ""))),
+    rowsStore:        rows.filter((r) => /store|canishade/i.test(String(r.produit || "")) && !/bateau|velum|vélum/i.test(String(r.produit || ""))),
+    rowsStoresBateau: rows.filter((r) => /bateau|velum|vélum/i.test(String(r.produit || ""))),
+    rowsCoussins:     rows.filter((r) => /coussin/i.test(String(r.produit || ""))),
+    rowsCacheSommier: rows.filter((r) => /cache-sommier/i.test(String(r.produit || ""))),
+    rowsPlaid:        rows.filter((r) => /plaid|chemin de lit/i.test(String(r.produit || ""))),
+    rowsTenture:      rows.filter((r) => /tenture/i.test(String(r.produit || ""))),
+    rowsMobilier:     rows.filter((r) => /t[êe]te|mobilier/i.test(String(r.produit || ""))),
+    rowsDeplacement:  rows.filter((r) => String(r.produit || "") === "Déplacement"),
+    rowsAutre:        rows.filter((r) => String(r.produit || "") === "Autre Dépense"),
+  }), [rows]);
 
   // Id unique via l'utilitaire importé
   const genId = () => uid();
@@ -421,7 +427,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
     switch (key) {
       case 'rideau':
         return (
-          <Accordion key="rideau" defaultExpanded disableGutters sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03)', border: '1px solid #f3f4f6' }}>
+          <Accordion key="rideau" defaultExpanded disableGutters TransitionProps={{ unmountOnExit: true }} sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03)', border: '1px solid #f3f4f6' }}>
             <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ borderBottom: '1px solid #f3f4f6', backgroundColor: '#fff', borderTopLeftRadius: 12, borderTopRightRadius: 12, px: 3 }}>
               {renderHeaderContent("Rideaux", rowsRideaux)}
             </AccordionSummary>
@@ -458,7 +464,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
         );
       case 'store':
         return (
-          <Accordion key="store" defaultExpanded disableGutters sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03)', border: '1px solid #f3f4f6' }}>
+          <Accordion key="store" defaultExpanded disableGutters TransitionProps={{ unmountOnExit: true }} sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03)', border: '1px solid #f3f4f6' }}>
             <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ borderBottom: '1px solid #f3f4f6', backgroundColor: '#fff', borderTopLeftRadius: 12, borderTopRightRadius: 12, px: 3 }}>
               {renderHeaderContent("Stores Négoce", rowsStore)}
             </AccordionSummary>
@@ -493,7 +499,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
         );
       case 'store_bateau':
         return (
-          <Accordion key="store_bateau" defaultExpanded disableGutters sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03)', border: '1px solid #f3f4f6' }}>
+          <Accordion key="store_bateau" defaultExpanded disableGutters TransitionProps={{ unmountOnExit: true }} sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03)', border: '1px solid #f3f4f6' }}>
             <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ borderBottom: '1px solid #f3f4f6', backgroundColor: '#fff', borderTopLeftRadius: 12, borderTopRightRadius: 12, px: 3 }}>
               {renderHeaderContent("Stores Bateaux / Velum", rowsStoresBateau)}
             </AccordionSummary>
@@ -528,7 +534,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
         );
       case 'coussins':
         return (
-          <Accordion key="coussins" defaultExpanded disableGutters sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03)', border: '1px solid #f3f4f6' }}>
+          <Accordion key="coussins" defaultExpanded disableGutters TransitionProps={{ unmountOnExit: true }} sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03)', border: '1px solid #f3f4f6' }}>
             <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ borderBottom: '1px solid #f3f4f6', backgroundColor: '#fff', borderTopLeftRadius: 12, borderTopRightRadius: 12, px: 3 }}>
               {renderHeaderContent("Coussins", rowsCoussins)}
             </AccordionSummary>
@@ -563,7 +569,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
         );
       case 'cache_sommier':
         return (
-          <Accordion key="cache_sommier" defaultExpanded disableGutters sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03)', border: '1px solid #f3f4f6' }}>
+          <Accordion key="cache_sommier" defaultExpanded disableGutters TransitionProps={{ unmountOnExit: true }} sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03)', border: '1px solid #f3f4f6' }}>
             <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ borderBottom: '1px solid #f3f4f6', backgroundColor: '#fff', borderTopLeftRadius: 12, borderTopRightRadius: 12, px: 3 }}>
               {renderHeaderContent("Cache Sommier", rowsCacheSommier)}
             </AccordionSummary>
@@ -598,7 +604,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
         );
       case 'plaid':
         return (
-          <Accordion key="plaid" defaultExpanded disableGutters sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03)', border: '1px solid #f3f4f6' }}>
+          <Accordion key="plaid" defaultExpanded disableGutters TransitionProps={{ unmountOnExit: true }} sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03)', border: '1px solid #f3f4f6' }}>
             <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ borderBottom: '1px solid #f3f4f6', backgroundColor: '#fff', borderTopLeftRadius: 12, borderTopRightRadius: 12, px: 3 }}>
               {renderHeaderContent("Plaid / Chemin de lit", rowsPlaid)}
             </AccordionSummary>
@@ -633,7 +639,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
         );
       case 'tenture_murale':
         return (
-          <Accordion key="tenture_murale" defaultExpanded disableGutters sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03)', border: '1px solid #f3f4f6' }}>
+          <Accordion key="tenture_murale" defaultExpanded disableGutters TransitionProps={{ unmountOnExit: true }} sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03)', border: '1px solid #f3f4f6' }}>
             <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ borderBottom: '1px solid #f3f4f6', backgroundColor: '#fff', borderTopLeftRadius: 12, borderTopRightRadius: 12, px: 3 }}>
               {renderHeaderContent("Tenture Murale", rowsTenture)}
             </AccordionSummary>
@@ -668,7 +674,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
         );
       case 'mobilier':
         return (
-          <Accordion key="mobilier" defaultExpanded disableGutters sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03)', border: '1px solid #f3f4f6' }}>
+          <Accordion key="mobilier" defaultExpanded disableGutters TransitionProps={{ unmountOnExit: true }} sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03)', border: '1px solid #f3f4f6' }}>
             <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ borderBottom: '1px solid #f3f4f6', backgroundColor: '#fff', borderTopLeftRadius: 12, borderTopRightRadius: 12, px: 3 }}>
               {renderHeaderContent("Mobilier / Tête de Lit", rowsMobilier)}
             </AccordionSummary>
@@ -714,7 +720,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
         {/* --- NOUVEAUX TABLEAUX : Autres Dépenses & Déplacement (EN HAUT, FIXES) --- */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24, marginBottom: 24 }}>
           {/* Tableau Autres Dépenses */}
-          <Accordion key="autre" defaultExpanded disableGutters sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03)', border: '1px solid #f3f4f6' }}>
+          <Accordion key="autre" defaultExpanded disableGutters TransitionProps={{ unmountOnExit: true }} sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03)', border: '1px solid #f3f4f6' }}>
             <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ borderBottom: '1px solid #f3f4f6', backgroundColor: '#fff', borderTopLeftRadius: 12, borderTopRightRadius: 12, px: 3 }}>
               {renderHeaderContent("Autres Dépenses", rowsAutre)}
             </AccordionSummary>
@@ -744,7 +750,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
           </Accordion>
 
           {/* Tableau Déplacement */}
-          <Accordion key="deplacement" defaultExpanded disableGutters sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03)', border: '1px solid #f3f4f6' }}>
+          <Accordion key="deplacement" defaultExpanded disableGutters TransitionProps={{ unmountOnExit: true }} sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03)', border: '1px solid #f3f4f6' }}>
             <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ borderBottom: '1px solid #f3f4f6', backgroundColor: '#fff', borderTopLeftRadius: 12, borderTopRightRadius: 12, px: 3 }}>
               {renderHeaderContent("Déplacements & Logistique", rowsDeplacement)}
             </AccordionSummary>
