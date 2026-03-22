@@ -25,7 +25,8 @@ import { MOBILIER_PROD_SCHEMA } from "../lib/schemas/production/mobilier";
 import { AUTRES_PROD_SCHEMA } from "../lib/schemas/autres";
 import { uid } from "../lib/utils/uid"; // Import uid
 
-import { Search, Filter, Layers3, Star, FlaskConical, Image as ImageIcon, Pin, Edit2, FileText } from "lucide-react"; // Added FileText
+import { Search, Filter, Layers3, Star, FlaskConical, Image as ImageIcon, Pin, Edit2, FileText } from "lucide-react";
+import AddressAutocomplete from "../components/AddressAutocomplete"; // Added FileText
 import { Dialog, DialogTitle, DialogContent, TextField, DialogActions, Button, Accordion, AccordionSummary, AccordionDetails } from "@mui/material";
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { differenceInMinutes } from "date-fns";
@@ -622,6 +623,42 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
             <div style={{ fontSize: 16, color: '#6B7280', marginTop: 4, fontWeight: 300 }}>
               Chargé·e d'affaires : <span style={{ color: '#374151', fontWeight: 500 }}>{project?.manager || "—"}</span>
             </div>
+            {/* Emplacement & logistique */}
+            <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#6B7280' }}>
+                <Pin size={13} style={{ flexShrink: 0 }} />
+                <AddressAutocomplete
+                  value={project?.location || ""}
+                  onChange={v => onUpdateProject(project.id, { location: v })}
+                  placeholder="Emplacement du projet…"
+                  style={{ width: 300 }}
+                />
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#6B7280' }}>
+                <span>Type :</span>
+                <select
+                  value={project?.intervention_type || "livraison"}
+                  onChange={e => onUpdateProject(project.id, { intervention_type: e.target.value, expedition_type: e.target.value === 'livraison' ? null : project?.expedition_type })}
+                  style={{ border: 'none', background: 'transparent', color: '#374151', fontSize: 13, fontFamily: 'inherit', outline: 'none', cursor: 'pointer' }}
+                >
+                  <option value="livraison">Livraison</option>
+                  <option value="installation">Installation</option>
+                </select>
+                {project?.intervention_type === 'installation' && (
+                  <>
+                    <span style={{ color: '#d1d5db' }}>·</span>
+                    <select
+                      value={project?.expedition_type || "depart_nantes"}
+                      onChange={e => onUpdateProject(project.id, { expedition_type: e.target.value })}
+                      style={{ border: 'none', background: 'transparent', color: '#374151', fontSize: 13, fontFamily: 'inherit', outline: 'none', cursor: 'pointer' }}
+                    >
+                      <option value="depart_nantes">Départ depuis Nantes</option>
+                      <option value="expedition">Expédition transporteur</option>
+                    </select>
+                  </>
+                )}
+              </div>
+            </div>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', width: isMobile ? '100%' : 'auto' }}>
@@ -768,88 +805,95 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
 
 
       {stage === "dashboard" && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+        <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 24, alignItems: 'flex-start' }}>
 
-          {/* BUDGET SECTION */}
-          <div style={{ background: 'white', borderRadius: 12, border: `1px solid ${COLORS.border}`, padding: 20 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-              <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0, color: '#111827', display: 'flex', alignItems: 'center', gap: 8 }}>
-                ⏱️ Suivi Budgétaire
-              </h3>
-              {canEditProd && (
-                <button onClick={handleOpenBudget} style={{ ...S.smallBtn, padding: 4 }} title="Ajuster le budget">
-                  <Edit2 size={14} />
-                </button>
-              )}
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
-              {['prepa', 'conf', 'pose'].map(key => {
-                const budgetVal = Number(project.budget?.[key] || 0);
-                const realVal = realized[key] || 0;
-                const percent = budgetVal > 0 ? (realVal / budgetVal) * 100 : 0;
-                const color = percent > 100 ? '#ef4444' : percent > 80 ? '#f59e0b' : '#10b981';
-                const labels = { prepa: "Préparation & Métrage", conf: "Atelier / Confection", pose: "Pose & Logistique" };
+          {/* ── COLONNE GAUCHE : stats ── */}
+          <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-                return (
-                  <div key={key} style={{ background: '#F9FAFB', borderRadius: 8, padding: 12, border: '1px solid #F3F4F6' }}>
-                    <div style={{ fontSize: 12, color: '#6B7280', fontWeight: 600, marginBottom: 4 }}>{labels[key]}</div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
-                      <span style={{ fontSize: 20, fontWeight: 800, color: '#1F2937' }}>{realVal.toFixed(1)}h</span>
-                      <span style={{ fontSize: 13, color: '#9CA3AF' }}>/ {budgetVal}h</span>
-                    </div>
-                    <div style={{ height: 6, background: '#E5E7EB', borderRadius: 3, overflow: 'hidden' }}>
-                      <div style={{ width: `${Math.min(percent, 100)}%`, height: '100%', background: color, transition: 'width 0.3s' }} />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          <DashboardTiles rows={rows} projectHours={{ conf: 0, pose: 0 }} isMobile={isMobile} />
-
-          {/* MUR DU PROJET (NOUVEAU) */}
-          <div style={{ background: 'white', padding: 16, borderRadius: 12, border: `1px solid ${COLORS.border}` }}>
-            <textarea
-              placeholder="Écrire un message global..."
-              value={wallMsg}
-              onChange={(e) => setWallMsg(e.target.value)}
-              style={{ width: '100%', border: '1px solid #E5E7EB', borderRadius: 8, padding: 12, minHeight: 60, marginBottom: 12, fontFamily: 'inherit' }}
-            />
-            {wallImg && (
-              <div style={{ marginBottom: 12, position: 'relative', display: 'inline-block' }}>
-                <img src={wallImg} alt="Preview" style={{ height: 80, borderRadius: 6, border: '1px solid #ddd' }} />
-                <button onClick={() => setWallImg(null)} style={{ position: 'absolute', top: -5, right: -5, background: 'red', color: 'white', borderRadius: '50%', width: 20, height: 20, border: 'none', cursor: 'pointer', fontSize: 12 }}>×</button>
+            {/* Chapitre 1 : Consommation Temps */}
+            <div style={{ background: 'white', borderRadius: 12, border: `1px solid ${COLORS.border}`, padding: 20 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+                <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0, color: '#111827', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  ⏱️ Consommation Temps
+                </h3>
+                {canEditProd && (
+                  <button onClick={handleOpenBudget} style={{ ...S.smallBtn, padding: 4 }} title="Ajuster le budget">
+                    <Edit2 size={14} />
+                  </button>
+                )}
               </div>
-            )}
-            <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', alignItems: 'center', gap: isMobile ? 12 : 0 }}>
-              <label style={{
-                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#4B5563',
-                padding: '10px 12px', borderRadius: 6, background: '#F3F4F6',
-                width: isMobile ? '100%' : 'auto', justifyContent: isMobile ? 'center' : 'flex-start'
-              }}>
-                <ImageIcon size={16} /> Ajouter photo
-                <input type="file" accept="image/*" hidden onChange={handleImageSelect} />
-              </label>
-              <button
-                onClick={handlePostMessage}
-                style={{
-                  background: '#2563EB', color: 'white', border: 'none', padding: '10px 20px', borderRadius: 6, fontWeight: 600, cursor: 'pointer',
-                  width: isMobile ? '100%' : 'auto'
-                }}
-              >
-                Publier
-              </button>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
+                {['prepa', 'conf', 'pose'].map(key => {
+                  const budgetVal = Number(project.budget?.[key] || 0);
+                  const realVal = realized[key] || 0;
+                  const percent = budgetVal > 0 ? (realVal / budgetVal) * 100 : 0;
+                  const color = percent > 100 ? '#ef4444' : percent > 80 ? '#f59e0b' : '#10b981';
+                  const labels = { prepa: "Préparation & Métrage", conf: "Atelier / Confection", pose: "Pose & Logistique" };
+
+                  return (
+                    <div key={key} style={{ background: '#F9FAFB', borderRadius: 8, padding: 12, border: '1px solid #F3F4F6' }}>
+                      <div style={{ fontSize: 12, color: '#6B7280', fontWeight: 600, marginBottom: 4 }}>{labels[key]}</div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
+                        <span style={{ fontSize: 20, fontWeight: 800, color: '#1F2937' }}>{realVal.toFixed(1)}h</span>
+                        <span style={{ fontSize: 13, color: '#9CA3AF' }}>/ {budgetVal}h</span>
+                      </div>
+                      <div style={{ height: 6, background: '#E5E7EB', borderRadius: 3, overflow: 'hidden' }}>
+                        <div style={{ width: `${Math.min(percent, 100)}%`, height: '100%', background: color, transition: 'width 0.3s' }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Chapitre 2 : Avancement */}
+            <div style={{ background: 'white', borderRadius: 12, border: `1px solid ${COLORS.border}`, padding: 20 }}>
+              <h3 style={{ fontSize: 16, fontWeight: 700, margin: '0 0 16px', color: '#111827', display: 'flex', alignItems: 'center', gap: 8 }}>
+                📊 Avancement
+              </h3>
+              <DashboardTiles rows={rows} projectHours={{ conf: 0, pose: 0 }} isMobile={isMobile} />
             </div>
           </div>
 
-          <ProjectActivityFeed
-            rows={rows}
-            wall={project?.wall}
-            pinnedIds={project?.pinnedIds || []}
-            onTogglePin={handleTogglePin}
-            isMobile={isMobile}
-          />
+          {/* ── COLONNE DROITE : mur + journal ── */}
+          <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+            {/* Mur du projet */}
+            <div style={{ background: 'white', padding: 16, borderRadius: 12, border: `1px solid ${COLORS.border}` }}>
+              <textarea
+                placeholder="Écrire un message global..."
+                value={wallMsg}
+                onChange={(e) => setWallMsg(e.target.value)}
+                style={{ width: '100%', border: '1px solid #E5E7EB', borderRadius: 8, padding: 12, minHeight: 60, marginBottom: 12, fontFamily: 'inherit', boxSizing: 'border-box' }}
+              />
+              {wallImg && (
+                <div style={{ marginBottom: 12, position: 'relative', display: 'inline-block' }}>
+                  <img src={wallImg} alt="Preview" style={{ height: 80, borderRadius: 6, border: '1px solid #ddd' }} />
+                  <button onClick={() => setWallImg(null)} style={{ position: 'absolute', top: -5, right: -5, background: 'red', color: 'white', borderRadius: '50%', width: 20, height: 20, border: 'none', cursor: 'pointer', fontSize: 12 }}>×</button>
+                </div>
+              )}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+                <label style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#4B5563', padding: '10px 12px', borderRadius: 6, background: '#F3F4F6' }}>
+                  <ImageIcon size={16} /> Ajouter photo
+                  <input type="file" accept="image/*" hidden onChange={handleImageSelect} />
+                </label>
+                <button
+                  onClick={handlePostMessage}
+                  style={{ background: '#2563EB', color: 'white', border: 'none', padding: '10px 20px', borderRadius: 6, fontWeight: 600, cursor: 'pointer' }}
+                >
+                  Publier
+                </button>
+              </div>
+            </div>
+
+            <ProjectActivityFeed
+              rows={rows}
+              wall={project?.wall}
+              pinnedIds={project?.pinnedIds || []}
+              onTogglePin={handleTogglePin}
+              isMobile={isMobile}
+            />
+          </div>
         </div>
       )}
 

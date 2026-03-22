@@ -2,11 +2,12 @@ import React, { useState, useMemo } from 'react';
 import {
     Dialog, DialogTitle, DialogContent, DialogActions,
     Button, Tabs, Tab, TextField, Autocomplete, MenuItem,
-    Typography, Box, Checkbox, FormControlLabel
+    Typography, Box, Checkbox, FormControlLabel, ToggleButton, ToggleButtonGroup
 } from '@mui/material';
 import { FolderPlus, FileJson } from 'lucide-react';
 import { createBlankProject } from "../lib/import/createBlankProject";
 import { computeFormulas } from "../lib/formulas/compute";
+import AddressAutocomplete from "./AddressAutocomplete";
 
 function TabPanel({ children, value, index, ...other }) {
     return (
@@ -46,6 +47,11 @@ export default function CreateProjectDialog({
     const [selectedMinute, setSelectedMinute] = useState(null);
     const [deliveryDate, setDeliveryDate] = useState("");
 
+    // -- EMPLACEMENT & LOGISTIQUE --
+    const [location, setLocation] = useState("");
+    const [interventionType, setInterventionType] = useState("livraison");
+    const [expeditionType, setExpeditionType] = useState("depart_nantes");
+
     // RESET ON OPEN
     React.useEffect(() => {
         if (open) {
@@ -53,6 +59,9 @@ export default function CreateProjectDialog({
             setProjectName("");
             setSelectedMinute(null);
             setDeliveryDate("");
+            setLocation("");
+            setInterventionType("livraison");
+            setExpeditionType("depart_nantes");
             setUseRideaux(true);
             setUseStoresClassiques(false);
             setUseStoresBateau(false);
@@ -64,18 +73,25 @@ export default function CreateProjectDialog({
         }
     }, [open, minutes.length]);
 
+    const logistique = {
+        location,
+        intervention_type: interventionType,
+        expedition_type: interventionType === "installation" ? expeditionType : null,
+    };
+
     const handleCreateBlank = () => {
         if (!projectName.trim()) return;
-        onCreateBlank(projectName, [], { 
-            useRideaux, 
-            useStoresClassiques, 
-            useStoresBateau, 
-            useTentures, 
-            useCacheSommier, 
-            usePlaid, 
-            useCoussins, 
-            useMobilier, 
-            deliveryDate 
+        onCreateBlank(projectName, [], {
+            useRideaux,
+            useStoresClassiques,
+            useStoresBateau,
+            useTentures,
+            useCacheSommier,
+            usePlaid,
+            useCoussins,
+            useMobilier,
+            deliveryDate,
+            ...logistique,
         });
     };
 
@@ -85,9 +101,11 @@ export default function CreateProjectDialog({
             name: selectedMinute.name || "Dossier Importé",
             rows: selectedMinute.lines || [],
             meta: selectedMinute,
-            deliveryDate // Pass separately
+            deliveryDate,
+            ...logistique,
         });
     };
+
 
     return (
         <Dialog
@@ -215,6 +233,54 @@ export default function CreateProjectDialog({
                     </Box>
                 </TabPanel>
 
+                {/* ── Emplacement & logistique (commun aux deux onglets) ── */}
+                <Box sx={{ mt: 1, pt: 2, borderTop: '1px solid #f0f0f0', display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    <Typography variant="subtitle2" fontWeight={700}>Emplacement & logistique</Typography>
+
+                    <Box>
+                        <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.5 }}>
+                            Emplacement du projet
+                        </Typography>
+                        <AddressAutocomplete
+                            value={location}
+                            onChange={setLocation}
+                            placeholder="Ex: 20 rue du Renard, Paris…"
+                            inputStyle={{ border: '1px solid #c4c4c4', borderRadius: 4, padding: '8px 10px', fontSize: 14, width: '100%', background: '#fff' }}
+                        />
+                    </Box>
+
+                    <Box>
+                        <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.5 }}>
+                            Type d'intervention
+                        </Typography>
+                        <ToggleButtonGroup
+                            value={interventionType}
+                            exclusive
+                            onChange={(e, v) => v && setInterventionType(v)}
+                            size="small"
+                        >
+                            <ToggleButton value="livraison">Livraison</ToggleButton>
+                            <ToggleButton value="installation">Installation</ToggleButton>
+                        </ToggleButtonGroup>
+                    </Box>
+
+                    {interventionType === "installation" && (
+                        <Box>
+                            <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.5 }}>
+                                Comment la marchandise arrive sur place ?
+                            </Typography>
+                            <ToggleButtonGroup
+                                value={expeditionType}
+                                exclusive
+                                onChange={(e, v) => v && setExpeditionType(v)}
+                                size="small"
+                            >
+                                <ToggleButton value="depart_nantes">Départ depuis Nantes</ToggleButton>
+                                <ToggleButton value="expedition">Expédition transporteur</ToggleButton>
+                            </ToggleButtonGroup>
+                        </Box>
+                    )}
+                </Box>
             </DialogContent>
 
             <DialogActions sx={{ p: 3, pt: 0, justifyContent: 'space-between' }}>

@@ -17,8 +17,8 @@ import { Library, Plus, Trash2 } from 'lucide-react';
 
 import { CHIFFRAGE_SCHEMA_DEP } from "../lib/schemas/deplacement";
 import { EXTRA_DEPENSES_SCHEMA } from "../lib/schemas/extraDepenses";
-import { RIDEAUX_DEFAULT_VISIBILITY, DECORS_DEFAULT_VISIBILITY, STORES_DEFAULT_VISIBILITY, COUSSINS_DEFAULT_VISIBILITY, CACHE_SOMMIER_DEFAULT_VISIBILITY, PLAID_DEFAULT_VISIBILITY, TENTURE_DEFAULT_VISIBILITY, MOBILIER_DEFAULT_VISIBILITY } from "../lib/constants/gridDefaults";
-import { DECORS_SCHEMA } from "../lib/schemas/decors";
+import { RIDEAUX_DEFAULT_VISIBILITY, STORES_DEFAULT_VISIBILITY, COUSSINS_DEFAULT_VISIBILITY, CACHE_SOMMIER_DEFAULT_VISIBILITY, PLAID_DEFAULT_VISIBILITY, TENTURE_DEFAULT_VISIBILITY, MOBILIER_DEFAULT_VISIBILITY } from "../lib/constants/gridDefaults";
+import { RIDEAUX_MATIERE_GROUPS, STORES_BATEAUX_MATIERE_GROUPS, COUSSINS_MATIERE_GROUPS, CACHE_SOMMIER_MATIERE_GROUPS, PLAID_MATIERE_GROUPS } from "../lib/constants/matiereGroups";
 import { RIDEAUX_SCHEMA } from "../lib/schemas/chiffrage/rideaux";
 import { STORES_CLASSIQUES_SCHEMA } from "../lib/schemas/chiffrage/stores_classiques";
 import { STORES_BATEAUX_SCHEMA } from "../lib/schemas/chiffrage/stores_bateaux";
@@ -183,7 +183,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
       else if (/plaid|chemin de lit/i.test(p)) targetSchema = PLAID_SCHEMA;
       else if (/tenture/i.test(p)) targetSchema = TENTURE_MURALE_SCHEMA;
       else if (/t[êe]te|mobilier/i.test(p)) targetSchema = MOBILIER_SCHEMA;
-      else targetSchema = DECORS_SCHEMA; // Default for all decors-like items
+      // else: produit inconnu → on laisse le schéma de base (schema prop)
 
       // Ensure valid ID & Deduplicate
       let safeId = row.id;
@@ -207,6 +207,15 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
   const handleSettingsChange = (newSettings) => {
     onChangeMinute?.({ ...minute, settings: newSettings, updatedAt: Date.now() });
   };
+
+  // Persistance des matières sélectionnées par grille (stocké dans minute.matieres)
+  const handleMatiereChange = React.useCallback((gridKey, newMatieres) => {
+    onChangeMinute?.({
+      ...minute,
+      matieres: { ...(minute?.matieres || {}), [gridKey]: newMatieres },
+      updatedAt: Date.now(),
+    });
+  }, [minute, onChangeMinute]);
 
 
 
@@ -290,7 +299,6 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
     else if (key === 'plaid') targetSchema = PLAID_SCHEMA;
     else if (key === 'tenture_murale') targetSchema = TENTURE_MURALE_SCHEMA;
     else if (key === 'mobilier') targetSchema = MOBILIER_SCHEMA;
-    else if (key === 'decors') targetSchema = DECORS_SCHEMA;
     else if (key === 'autre_confection') targetSchema = EXTRA_DEPENSES_SCHEMA;
 
     // Fusion + recalcul des formules
@@ -334,7 +342,6 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
     else if (key === 'plaid') targetSchema = PLAID_SCHEMA;
     else if (key === 'tenture_murale') targetSchema = TENTURE_MURALE_SCHEMA;
     else if (key === 'mobilier') targetSchema = MOBILIER_SCHEMA;
-    else targetSchema = DECORS_SCHEMA;
 
     // 2. Recompute the new row immediately
     const computedRow = recomputeRow(newRow, targetSchema, extendedCtx);
@@ -448,7 +455,9 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
                 catalog={catalog}
                 railOptions={railOptions}
                 initialVisibilityModel={RIDEAUX_DEFAULT_VISIBILITY}
-
+                matiereGroups={RIDEAUX_MATIERE_GROUPS}
+                activeMatieres={minute?.matieres?.chiff_rideaux || null}
+                onMatiereChange={(m) => handleMatiereChange('chiff_rideaux', m)}
                 onDuplicateRow={handleDuplicateRow}
                 hideCroquis={true}
                 minuteId={minute?.id}
@@ -519,6 +528,9 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
                 onRowSelectionModelChange={setSelStoreBateau}
                 catalog={catalog}
                 initialVisibilityModel={STORES_DEFAULT_VISIBILITY}
+                matiereGroups={STORES_BATEAUX_MATIERE_GROUPS}
+                activeMatieres={minute?.matieres?.chiff_stores_bateau || null}
+                onMatiereChange={(m) => handleMatiereChange('chiff_stores_bateau', m)}
                 onDuplicateRow={handleDuplicateRow}
                 hideCroquis={true}
                 minuteId={minute?.id}
@@ -554,6 +566,9 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
                 onRowSelectionModelChange={setSelCoussins}
                 catalog={catalog}
                 initialVisibilityModel={COUSSINS_DEFAULT_VISIBILITY}
+                matiereGroups={COUSSINS_MATIERE_GROUPS}
+                activeMatieres={minute?.matieres?.chiff_coussins || null}
+                onMatiereChange={(m) => handleMatiereChange('chiff_coussins', m)}
                 onDuplicateRow={handleDuplicateRow}
                 hideCroquis={true}
                 minuteId={minute?.id}
@@ -589,6 +604,9 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
                 onRowSelectionModelChange={setSelCacheSommier}
                 catalog={catalog}
                 initialVisibilityModel={CACHE_SOMMIER_DEFAULT_VISIBILITY}
+                matiereGroups={CACHE_SOMMIER_MATIERE_GROUPS}
+                activeMatieres={minute?.matieres?.chiff_cache_sommier || null}
+                onMatiereChange={(m) => handleMatiereChange('chiff_cache_sommier', m)}
                 onDuplicateRow={handleDuplicateRow}
                 hideCroquis={true}
                 minuteId={minute?.id}
@@ -624,6 +642,9 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
                 onRowSelectionModelChange={setSelPlaid}
                 catalog={catalog}
                 initialVisibilityModel={PLAID_DEFAULT_VISIBILITY}
+                matiereGroups={PLAID_MATIERE_GROUPS}
+                activeMatieres={minute?.matieres?.chiff_plaid || null}
+                onMatiereChange={(m) => handleMatiereChange('chiff_plaid', m)}
                 onDuplicateRow={handleDuplicateRow}
                 hideCroquis={true}
                 minuteId={minute?.id}

@@ -487,7 +487,7 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
             minutes={canSeeChiffrage ? (Array.isArray(minutes) ? minutes : []) : []}
             prodSchema={SCHEMA_64}
             onCreateFromMinute={async (payload) => {
-              const { name, rows, meta, deliveryDate } = payload || {};
+              const { name, rows, meta, deliveryDate, location, intervention_type, expedition_type } = payload || {};
               const project = createBlankProject({ name });
               project.id = project.id || uid();
               project.name = name || meta?.minuteName || project.name || "Nouveau Dossier";
@@ -509,6 +509,9 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
               project.manager = meta?.owner || project.manager;
               project.notes = meta?.notes || project.notes;
               project.due = deliveryDate || null;
+              project.location = location || null;
+              project.intervention_type = intervention_type || null;
+              project.expedition_type = expedition_type || null;
               project.rows = computeFormulas(rows || [], SCHEMA_64);
 
               if (onCreate) {
@@ -546,6 +549,9 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
                 budget: { prepa: 0, conf: 0, pose: 0 },
                 config: config,
                 due: config?.deliveryDate || null,
+                location: config?.location || null,
+                intervention_type: config?.intervention_type || null,
+                expedition_type: config?.expedition_type || null,
                 rows: createBlankProject(config, SCHEMA_64),
                 created_at: new Date().toISOString()
               };

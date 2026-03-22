@@ -31,21 +31,6 @@ export const DEFAULT_VIEWS = {
       "heures_confection", "pv_confection",
       "livraison", "prix_unitaire", "quantite", "prix_total"
     ],
-    decors: [
-      "sel", "detail", "zone", "piece", "produit", "type_confection",
-      "l_mecanisme", "largeur", "hauteur", "hauteur_coupe_minutes",
-      "pair_un", "ampleur", "a_plat", "croisement", "retour_g", "retour_d",
-      "envers_visible", "double",
-      "tissu_deco1", "laize_tissu_deco1", "motif_deco1", "raccord_v1", "raccord_h1",
-      "ml_tissu_deco1", "pa_tissu_deco1", "pv_tissu_deco1",
-      "doublure", "laize_doublure", "ml_doublure", "pa_doublure", "pv_doublure",
-      "type_rail", "nom_tringle", "diametre_tringle", "supp_mecanisme",
-      "pa_meca", "pv_meca",
-      "heures_prepa", "pv_prepa",
-      "type_pose", "heures_pose", "pv_pose",
-      "heures_confection", "pv_confection",
-      "livraison", "prix_unitaire", "quantite", "prix_total"
-    ],
     stores: [
       "sel", "detail", "zone", "piece", "produit", "type_confection",
       "l_mecanisme", "largeur", "hauteur", "hauteur_coupe_minutes",

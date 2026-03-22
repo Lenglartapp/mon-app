@@ -8,7 +8,7 @@ import { schemaToGridCols } from '../lib/utils/schemaToGridCols.jsx';
 import { recomputeRow } from '../lib/formulas/recomputeRow';
 import { generateRowLogs } from '../lib/utils/logUtils';
 import { uid } from '../lib/utils/uid';
-import { Plus, Trash2, Columns, Layers } from 'lucide-react';
+import { Plus, Trash2, Columns, Layers, Edit2 } from 'lucide-react';
 import { getDefaultMatieres } from '../lib/constants/matiereGroups';
 
 const STORAGE_PREFIX = 'ag_grid_state_v1_';
@@ -408,6 +408,30 @@ function MinuteGrid({
         setSelectedCount(params.api.getSelectedRows().length);
     }, []);
 
+    // ── Mise à jour en masse ──
+    const [showBulkUpdate, setShowBulkUpdate] = useState(false);
+    const [bulkField, setBulkField] = useState('');
+    const [bulkValue, setBulkValue] = useState('');
+
+    const bulkStatutCols = useMemo(() =>
+        schema.filter(c => c.key.startsWith('statut_') && Array.isArray(c.options)),
+        [schema]
+    );
+
+    const applyBulkUpdate = useCallback(() => {
+        if (!bulkField || !bulkValue) return;
+        const api = gridRef.current?.api;
+        if (!api) return;
+        const selectedIds = new Set(api.getSelectedRows().map(r => r.id));
+        const next = rowsRef.current.map(r =>
+            selectedIds.has(r.id) ? { ...r, [bulkField]: bulkValue } : r
+        );
+        onRowsChangeRef.current(next);
+        setShowBulkUpdate(false);
+        setBulkField('');
+        setBulkValue('');
+    }, [bulkField, bulkValue]);
+
     // Panneau de visibilité des colonnes
     const handleToggleColPanel = useCallback(() => {
         const api = gridRef.current?.api;
@@ -694,6 +718,65 @@ function MinuteGrid({
                     <button onClick={handleDeleteRows} style={{ cursor: 'pointer', padding: '5px 10px', background: '#ef4444', color: 'white', border: 'none', borderRadius: 4, display: 'flex', alignItems: 'center', gap: 5, fontSize: 12 }}>
                         <Trash2 size={14} /> Supprimer ({selectedCount})
                     </button>
+                )}
+                {selectedCount > 0 && !readOnly && bulkStatutCols.length > 0 && (
+                    <div style={{ position: 'relative' }}>
+                        <button
+                            onClick={() => setShowBulkUpdate(s => !s)}
+                            style={{ cursor: 'pointer', padding: '5px 10px', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, display: 'flex', alignItems: 'center', gap: 5, fontSize: 12 }}
+                        >
+                            <Edit2 size={14} /> Mettre à jour ({selectedCount})
+                        </button>
+                        {showBulkUpdate && (
+                            <div style={{
+                                position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 999,
+                                background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8,
+                                boxShadow: '0 4px 16px rgba(0,0,0,0.12)', padding: '14px 16px',
+                                minWidth: 260, display: 'flex', flexDirection: 'column', gap: 10,
+                            }}>
+                                <div style={{ fontWeight: 600, fontSize: 13, color: '#1e293b' }}>
+                                    Mettre à jour {selectedCount} ligne{selectedCount > 1 ? 's' : ''}
+                                </div>
+                                <select
+                                    style={{ padding: '5px 8px', border: '1px solid #d1d5db', borderRadius: 4, fontSize: 13, width: '100%' }}
+                                    value={bulkField}
+                                    onChange={e => { setBulkField(e.target.value); setBulkValue(''); }}
+                                >
+                                    <option value="">— Choisir un statut —</option>
+                                    {bulkStatutCols.map(c => (
+                                        <option key={c.key} value={c.key}>{c.label}</option>
+                                    ))}
+                                </select>
+                                {bulkField && (
+                                    <select
+                                        style={{ padding: '5px 8px', border: '1px solid #d1d5db', borderRadius: 4, fontSize: 13, width: '100%' }}
+                                        value={bulkValue}
+                                        onChange={e => setBulkValue(e.target.value)}
+                                    >
+                                        <option value="">— Choisir une valeur —</option>
+                                        {(bulkStatutCols.find(c => c.key === bulkField)?.options ?? []).map(opt => (
+                                            <option key={opt} value={opt}>{opt}</option>
+                                        ))}
+                                    </select>
+                                )}
+                                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                                    <button
+                                        onClick={() => setShowBulkUpdate(false)}
+                                        style={{ padding: '5px 10px', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', fontSize: 12, background: '#fff' }}
+                                    >
+                                        Annuler
+                                    </button>
+                                    <button
+                                        onClick={applyBulkUpdate}
+                                        disabled={!bulkField || !bulkValue}
+                                        style={{ padding: '5px 10px', background: !bulkField || !bulkValue ? '#93c5fd' : '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: !bulkField || !bulkValue ? 'not-allowed' : 'pointer', fontSize: 12 }}
+                                    >
+                                        Appliquer
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 )}
                 {/* Recherche rapide */}
                 <input

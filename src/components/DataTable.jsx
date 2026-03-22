@@ -877,6 +877,36 @@ const deleteSelected = () => {
   onRowsChange(next);
 };
 
+// ── Mise à jour en masse ──
+const [showBulkUpdate, setShowBulkUpdate] = useState(false);
+const [bulkField, setBulkField] = useState("");
+const [bulkValue, setBulkValue] = useState("");
+
+// Champs statut dans le schéma complet (pas seulement les colonnes visibles)
+const bulkStatutCols = useMemo(() =>
+  schema.filter(c => c.key.startsWith("statut_") && Array.isArray(c.options)),
+  [schema]
+);
+
+// Quand on change de champ, réinitialise la valeur
+const handleBulkFieldChange = (fieldKey) => {
+  setBulkField(fieldKey);
+  setBulkValue("");
+};
+
+const applyBulkUpdate = () => {
+  if (!bulkField || !bulkValue) return;
+  const next = computeFormulas(
+    rows.map(r => selectedRowIds.has(r.id) ? { ...r, [bulkField]: bulkValue } : r),
+    schema,
+    formulaCtx
+  );
+  onRowsChange(next);
+  setShowBulkUpdate(false);
+  setBulkField("");
+  setBulkValue("");
+};
+
 // index des lignes visibles (filtered) → utile pendant le drag
 const rowIndexById = useMemo(() => {
   const m = new Map();
@@ -1532,7 +1562,6 @@ const handleDoubleClickCell = (e, rowIndex, colKey) => {
   // 🔒 Produit par défaut forcé UNIQUEMENT via tableKey (pour matcher le filtre MinuteEditor)
   const defaultProduit =
     tableKey === "rideaux" ? "Rideau"
-  : tableKey === "decors"  ? "Décor de lit"
   :                          "Store Enrouleur"; // 'stores'
 
   const newRow = {
@@ -1966,7 +1995,7 @@ const insertField = (key, side = "right") => {
     <Plus size={16} />
   </button>
 
-  {/* 🗑️ Supprimer les lignes sélectionnées — À AJOUTER ICI */}
+  {/* 🗑️ Supprimer les lignes sélectionnées */}
   <button
     style={S.smallBtn}
     title="Supprimer les lignes sélectionnées"
@@ -1975,6 +2004,67 @@ const insertField = (key, side = "right") => {
   >
     <X size={16} /> Supprimer
   </button>
+
+  {/* ✏️ Mettre à jour les lignes sélectionnées */}
+  {selectedRowIds.size > 0 && bulkStatutCols.length > 0 && (
+    <div style={{ position: "relative", display: "inline-block" }}>
+      <button
+        style={{ ...S.smallBtn, background: "#2563eb", color: "#fff", borderColor: "#2563eb" }}
+        onClick={() => setShowBulkUpdate(s => !s)}
+      >
+        <Edit3 size={16} /> Mettre à jour ({selectedRowIds.size})
+      </button>
+      {showBulkUpdate && (
+        <div style={{
+          position: "absolute", top: "calc(100% + 6px)", left: 0, zIndex: 999,
+          background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10,
+          boxShadow: "0 4px 16px rgba(0,0,0,0.12)", padding: "14px 16px",
+          minWidth: 260, display: "flex", flexDirection: "column", gap: 10,
+        }}>
+          <div style={{ fontWeight: 600, fontSize: 13, color: "#1e293b" }}>
+            Mettre à jour {selectedRowIds.size} ligne{selectedRowIds.size > 1 ? "s" : ""}
+          </div>
+          <select
+            style={{ ...S.smallBtn, width: "100%" }}
+            value={bulkField}
+            onChange={e => handleBulkFieldChange(e.target.value)}
+          >
+            <option value="">— Choisir un statut —</option>
+            {bulkStatutCols.map(c => (
+              <option key={c.key} value={c.key}>{c.label}</option>
+            ))}
+          </select>
+          {bulkField && (
+            <select
+              style={{ ...S.smallBtn, width: "100%" }}
+              value={bulkValue}
+              onChange={e => setBulkValue(e.target.value)}
+            >
+              <option value="">— Choisir une valeur —</option>
+              {(bulkStatutCols.find(c => c.key === bulkField)?.options ?? []).map(opt => (
+                <option key={opt} value={opt}>{opt}</option>
+              ))}
+            </select>
+          )}
+          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+            <button
+              style={{ ...S.smallBtn, color: "#64748b" }}
+              onClick={() => setShowBulkUpdate(false)}
+            >
+              Annuler
+            </button>
+            <button
+              style={{ ...S.smallBtn, background: "#2563eb", color: "#fff", borderColor: "#2563eb" }}
+              disabled={!bulkField || !bulkValue}
+              onClick={applyBulkUpdate}
+            >
+              Appliquer
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )}
 
 {/* Filtres */}
   <div style={{ position: "relative", display: "inline-block" }}>

@@ -6,21 +6,45 @@ import { uid } from './uid';
 const SERVICE_LABEL = { conf: 'Confection', pose: 'Pose', prepa: 'Préparation' };
 const LABEL_TO_SERVICE = { confection: 'conf', pose: 'pose', 'préparation': 'prepa', preparation: 'prepa' };
 
+// Conf et Préparation utilisent la durée en heures (pas de créneau horaire)
+const IS_HOUR_MODE = (serviceKey) => serviceKey === 'conf' || serviceKey === 'prepa';
+
+// Calcule l'heure de fin à partir d'une durée (en sautant la pause déjeuner 12-13)
+function computeEndFromDuration(baseDate, durationHours) {
+    let remaining = durationHours * 60; // en minutes
+    let currentMin = 8 * 60; // 8h00
+
+    const morningMins = Math.min(remaining, 240); // 8h00–12h00
+    currentMin += morningMins;
+    remaining -= morningMins;
+
+    if (remaining > 0) {
+        currentMin = 13 * 60; // saute la pause déjeuner
+        currentMin += remaining;
+    }
+
+    const h = Math.floor(currentMin / 60);
+    const m = currentMin % 60;
+    const endDt = setSeconds(setMinutes(setHours(new Date(baseDate), h), m), 0);
+    return endDt;
+}
+
 // ─── GENERATE TEMPLATE ───────────────────────────────────────────────────────
 
 /**
  * Génère un fichier Excel template pré-formaté pour la déclaration des temps.
- * @param {Date[]} columns - Jours ouvrés de la période active (déjà filtrés week-ends)
- * @param {Object[]} allMembers - Tous les membres actifs (conf + pose + prepa), avec champ `role`
- * @param {Object[]} projects - Projets actifs
+ *
+ * Structure des colonnes :
+ *   A Date | B Personne | C Service | D Projet | E Durée (h) | F Heure début | G Heure fin | H Validé
+ *
+ *  - Confection & Préparation : colonne E remplie, F et G grisées (non pertinentes)
+ *  - Pose                     : colonne E grisée,  F et G remplies
  */
 export async function generatePlanningTemplate(columns, allMembers, projects) {
     const workbook = new ExcelJS.Workbook();
 
-    // ── Feuille principale EN PREMIER (read-excel-file lit le 1er onglet par défaut) ──
     const ws = workbook.addWorksheet('Déclaration');
 
-    // ── Feuille cachée pour les listes longues ──
     const listsSheet = workbook.addWorksheet('__lists');
     listsSheet.state = 'veryHidden';
 
@@ -42,8 +66,9 @@ export async function generatePlanningTemplate(columns, allMembers, projects) {
         { header: 'Personne',           key: 'personne', width: 24 },
         { header: 'Service',            key: 'service',  width: 16 },
         { header: 'Projet',             key: 'projet',   width: 36 },
-        { header: 'Heure début',        key: 'debut',    width: 14 },
-        { header: 'Heure fin',          key: 'fin',      width: 14 },
+        { header: 'Durée (h)',          key: 'duree',    width: 12 }, // conf & prepa
+        { header: 'Heure début',        key: 'debut',    width: 14 }, // pose seulement
+        { header: 'Heure fin',          key: 'fin',      width: 14 }, // pose seulement
         { header: 'Validé (oui/non)',   key: 'valide',   width: 18 },
     ];
 
@@ -54,36 +79,66 @@ export async function generatePlanningTemplate(columns, allMembers, projects) {
     headerRow.alignment = { vertical: 'middle' };
     headerRow.height = 20;
 
+    // Ajouter une note sur l'en-tête Durée
+    ws.getCell('E1').note = 'Confection & Préparation : indiquez le nombre d\'heures (ex: 8, 4, 2.5). Minimum 0.5, maximum 8.';
+    ws.getCell('F1').note = 'Pose uniquement : heure de début au format HH:MM (ex: 08:00).';
+    ws.getCell('G1').note = 'Pose uniquement : heure de fin au format HH:MM (ex: 17:00).';
+
+    const YELLOW  = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF3C7' } }; // cellule éditable
+    const GRAY    = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3F4F6' } }; // cellule non pertinente
+
     // ── Lignes pré-remplies : un jour × un membre ──
     const dataStartRow = 2;
     let rowIdx = dataStartRow;
 
+    const addMemberRow = (day, member) => {
+        const fullName    = `${member.first_name || ''} ${member.last_name || ''}`.trim();
+        const serviceKey  = member.role || 'conf';
+        const serviceLabel = SERVICE_LABEL[serviceKey] || 'Confection';
+        const hourMode    = IS_HOUR_MODE(serviceKey);
+
+        const row = ws.addRow({
+            date:     format(day, 'dd/MM/yyyy'),
+            personne: fullName,
+            service:  serviceLabel,
+            projet:   '',
+            duree:    hourMode ? 8 : '',
+            debut:    hourMode ? '' : '08:00',
+            fin:      hourMode ? '' : '17:00',
+            valide:   'non',
+        });
+
+        // Cellules éditables en jaune, non-pertinentes en gris
+        row.getCell('projet').fill = YELLOW;
+        row.getCell('valide').fill = YELLOW;
+
+        if (hourMode) {
+            row.getCell('duree').fill = YELLOW;
+            row.getCell('debut').fill = GRAY;
+            row.getCell('fin').fill   = GRAY;
+        } else {
+            row.getCell('duree').fill = GRAY;
+            row.getCell('debut').fill = YELLOW;
+            row.getCell('fin').fill   = YELLOW;
+        }
+
+        rowIdx++;
+    };
+
     if (allMembers.length > 0) {
         columns.forEach(day => {
-            allMembers.forEach(member => {
-                const fullName = `${member.first_name || ''} ${member.last_name || ''}`.trim();
-                const serviceLabel = SERVICE_LABEL[member.role] || 'Confection';
-                const row = ws.addRow({
-                    date:     format(day, 'dd/MM/yyyy'),
-                    personne: fullName,
-                    service:  serviceLabel,
-                    projet:   '',
-                    debut:    '08:00',
-                    fin:      '17:00',
-                    valide:   'non',
-                });
-                // Cellules éditables en jaune
-                ['projet', 'debut', 'fin', 'valide'].forEach(k => {
-                    row.getCell(k).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF3C7' } };
-                });
-                rowIdx++;
-            });
+            allMembers.forEach(member => addMemberRow(day, member));
         });
     } else {
+        // Template vide sans membres pré-remplis
         columns.forEach(day => {
-            const row = ws.addRow({ date: format(day, 'dd/MM/yyyy'), personne: '', service: '', projet: '', debut: '08:00', fin: '17:00', valide: 'non' });
-            ['personne', 'service', 'projet', 'debut', 'fin', 'valide'].forEach(k => {
-                row.getCell(k).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF3C7' } };
+            const row = ws.addRow({
+                date: format(day, 'dd/MM/yyyy'),
+                personne: '', service: '', projet: '',
+                duree: '', debut: '', fin: '', valide: 'non',
+            });
+            ['personne', 'service', 'projet', 'duree', 'debut', 'fin', 'valide'].forEach(k => {
+                row.getCell(k).fill = YELLOW;
             });
             rowIdx++;
         });
@@ -93,54 +148,42 @@ export async function generatePlanningTemplate(columns, allMembers, projects) {
 
     // ── Validation des données ──
     for (let r = dataStartRow; r <= lastDataRow; r++) {
-        // Personne → liste depuis __lists colonne A
         ws.getCell(`B${r}`).dataValidation = {
-            type: 'list',
-            allowBlank: false,
+            type: 'list', allowBlank: false,
             formulae: [`__lists!$A$1:$A${personNames.length}`],
-            showErrorMessage: true,
-            errorTitle: 'Valeur invalide',
+            showErrorMessage: true, errorTitle: 'Valeur invalide',
             error: 'Sélectionnez une personne dans la liste.',
         };
 
-        // Service → dropdown inline (liste courte)
         ws.getCell(`C${r}`).dataValidation = {
-            type: 'list',
-            allowBlank: false,
+            type: 'list', allowBlank: false,
             formulae: ['"Confection,Pose,Préparation"'],
-            showErrorMessage: true,
-            errorTitle: 'Valeur invalide',
+            showErrorMessage: true, errorTitle: 'Valeur invalide',
             error: 'Sélectionnez un service : Confection, Pose ou Préparation.',
         };
 
-        // Projet → liste depuis __lists colonne B
         ws.getCell(`D${r}`).dataValidation = {
-            type: 'list',
-            allowBlank: true,
+            type: 'list', allowBlank: true,
             formulae: [`__lists!$B$1:$B${projectNames.length}`],
-            showInputMessage: true,
-            promptTitle: 'Projet',
-            prompt: 'Laissez vide si aucun projet à déclarer pour ce créneau.',
+            showInputMessage: true, promptTitle: 'Projet',
+            prompt: 'Laissez vide si aucun projet à déclarer.',
         };
 
-        // Validé → dropdown oui/non
-        ws.getCell(`G${r}`).dataValidation = {
-            type: 'list',
-            allowBlank: false,
+        // Durée : nombre entre 0.5 et 8 (conf/prepa)
+        ws.getCell(`E${r}`).dataValidation = {
+            type: 'decimal', operator: 'between', allowBlank: true,
+            formulae: [0.5, 8],
+            showInputMessage: true, promptTitle: 'Durée',
+            prompt: 'Confection & Préparation : durée en heures (0.5 à 8). Laissez vide pour la Pose.',
+        };
+
+        ws.getCell(`H${r}`).dataValidation = {
+            type: 'list', allowBlank: false,
             formulae: ['"oui,non"'],
-            showErrorMessage: true,
-            errorTitle: 'Valeur invalide',
+            showErrorMessage: true, errorTitle: 'Valeur invalide',
             error: 'Indiquez "oui" ou "non".',
         };
     }
-
-    // Notes d'aide sur les colonnes heures
-    ws.getColumn('E').eachCell({ includeEmpty: false }, (cell, rowNumber) => {
-        if (rowNumber >= dataStartRow) cell.note = 'Format requis : HH:MM (ex: 08:00)';
-    });
-    ws.getColumn('F').eachCell({ includeEmpty: false }, (cell, rowNumber) => {
-        if (rowNumber >= dataStartRow) cell.note = 'Format requis : HH:MM (ex: 17:00)';
-    });
 
     // ── Téléchargement ──
     const startLabel = format(columns[0], 'yyyy-MM-dd');
@@ -160,37 +203,33 @@ export async function generatePlanningTemplate(columns, allMembers, projects) {
 
 /**
  * Parse et valide un fichier Excel de déclaration de temps.
- * Colonnes : 0=Date, 1=Personne, 2=Service, 3=Projet, 4=Début, 5=Fin, 6=Validé
- * @param {File} file
- * @param {Object[]} allMembers - Tous les membres (conf + pose + prepa)
- * @param {Object[]} projects
- * @param {Object[]} existingEvents
- * @returns {{ toCreate, toOverwrite, blocked, skipped, errors }}
+ *
+ * Colonnes : 0=Date, 1=Personne, 2=Service, 3=Projet,
+ *            4=Durée(h), 5=Heure début, 6=Heure fin, 7=Validé
+ *
+ * Logique :
+ *  - Confection & Préparation : lit la colonne 4 (Durée), calcule start=08h00 et end depuis durée
+ *  - Pose                     : lit les colonnes 5 (début) et 6 (fin)
  */
 export async function processPlanningImport(file, allMembers, projects, existingEvents) {
-    // Lecture explicite de l'onglet "Déclaration"
     const rows = await readXlsxFile(file, { sheet: 'Déclaration' });
     if (!rows || rows.length < 2) throw new Error('Fichier vide ou invalide');
 
-    const toCreate   = [];
+    const toCreate    = [];
     const toOverwrite = [];
-    const blocked    = [];
-    const skipped    = []; // lignes sans projet
-    const errors     = [];
+    const blocked     = [];
+    const skipped     = [];
+    const errors      = [];
 
     for (let i = 1; i < rows.length; i++) {
         const row    = rows[i];
         const rowNum = i + 1;
 
-        // ── Ignorer lignes complètement vides ──
         if (!row[0] && !row[1] && !row[2] && !row[3]) continue;
 
         // ── Projet absent → skip silencieux ──
         const rawProject = row[3] ? String(row[3]).trim() : '';
-        if (!rawProject) {
-            skipped.push({ row: rowNum });
-            continue;
-        }
+        if (!rawProject) { skipped.push({ row: rowNum }); continue; }
 
         // ── Parse Date ──
         let parsedDate;
@@ -224,9 +263,10 @@ export async function processPlanningImport(file, allMembers, projects, existing
         }
         const resourceId = member.id;
 
-        // ── Service (utilisé pour le type d'événement) ──
+        // ── Service ──
         const rawService = row[2] ? String(row[2]).trim().toLowerCase() : '';
         const eventType  = LABEL_TO_SERVICE[rawService] || member.role || 'conf';
+        const hourMode   = IS_HOUR_MODE(eventType);
 
         // ── Projet ──
         const project = projects.find(
@@ -238,51 +278,71 @@ export async function processPlanningImport(file, allMembers, projects, existing
         }
         const projectId = project.id;
 
-        // ── Heures ──
-        const parseTime = (val) => {
-            if (val == null) return null;
-            if (val instanceof Date) return { h: val.getHours(), m: val.getMinutes() };
-            const str   = String(val).trim();
-            const parts = str.split(':');
-            if (parts.length < 2) return null;
-            const h  = parseInt(parts[0], 10);
-            const mn = parseInt(parts[1], 10);
-            if (isNaN(h) || isNaN(mn) || h < 0 || h > 23 || mn < 0 || mn > 59) return null;
-            return { h, m: mn };
-        };
-
-        const startTime = parseTime(row[4]);
-        const endTime   = parseTime(row[5]);
-
-        if (!startTime) {
-            errors.push({ row: rowNum, message: `Heure début invalide : "${row[4]}" (attendu HH:MM)` });
-            continue;
-        }
-        if (!endTime) {
-            errors.push({ row: rowNum, message: `Heure fin invalide : "${row[5]}" (attendu HH:MM)` });
-            continue;
-        }
-
-        const startDt = setSeconds(setMinutes(setHours(new Date(parsedDate), startTime.h), startTime.m), 0);
-        const endDt   = setSeconds(setMinutes(setHours(new Date(parsedDate), endTime.h),   endTime.m),   0);
-
-        // ── Statut ──
-        const rawValide = row[6] ? String(row[6]).trim().toLowerCase() : 'non';
+        // ── Statut (colonne H = index 7) ──
+        const rawValide = row[7] ? String(row[7]).trim().toLowerCase() : 'non';
         const status    = rawValide === 'oui' ? 'validated' : 'pending';
 
-        // ── Détection conflit (même personne, même jour, même créneau) ──
-        const pad2    = n => String(n).padStart(2, '0');
-        const startHM = `${pad2(startTime.h)}:${pad2(startTime.m)}`;
-        const endHM   = `${pad2(endTime.h)}:${pad2(endTime.m)}`;
+        let startDt, endDt, durationHours = null;
 
-        const conflict = existingEvents.find(e =>
-            e.resourceId === resourceId &&
-            e.date       === dateStr &&
-            e.meta?.start &&
-            e.meta?.end &&
-            format(new Date(e.meta.start), 'HH:mm') === startHM &&
-            format(new Date(e.meta.end),   'HH:mm') === endHM
-        );
+        if (hourMode) {
+            // ── MODE DURÉE : Confection & Préparation ──
+            const rawDuree = row[4];
+            let dh = null;
+            if (rawDuree != null && rawDuree !== '') {
+                dh = parseFloat(String(rawDuree).trim());
+            }
+            if (dh == null || isNaN(dh) || dh <= 0 || dh > 8) {
+                // Par défaut 8h si la cellule est vide ou invalide
+                dh = 8;
+            }
+            durationHours = dh;
+            startDt = setSeconds(setMinutes(setHours(new Date(parsedDate), 8), 0), 0);
+            endDt   = computeEndFromDuration(parsedDate, dh);
+        } else {
+            // ── MODE CRÉNEAU : Pose ──
+            const parseTime = (val) => {
+                if (val == null) return null;
+                if (val instanceof Date) return { h: val.getHours(), m: val.getMinutes() };
+                const str   = String(val).trim();
+                const parts = str.split(':');
+                if (parts.length < 2) return null;
+                const h  = parseInt(parts[0], 10);
+                const mn = parseInt(parts[1], 10);
+                if (isNaN(h) || isNaN(mn) || h < 0 || h > 23 || mn < 0 || mn > 59) return null;
+                return { h, m: mn };
+            };
+
+            const startTime = parseTime(row[5]);
+            const endTime   = parseTime(row[6]);
+
+            if (!startTime) {
+                errors.push({ row: rowNum, message: `Heure début invalide : "${row[5]}" (attendu HH:MM)` });
+                continue;
+            }
+            if (!endTime) {
+                errors.push({ row: rowNum, message: `Heure fin invalide : "${row[6]}" (attendu HH:MM)` });
+                continue;
+            }
+
+            startDt = setSeconds(setMinutes(setHours(new Date(parsedDate), startTime.h), startTime.m), 0);
+            endDt   = setSeconds(setMinutes(setHours(new Date(parsedDate), endTime.h),   endTime.m),   0);
+        }
+
+        // ── Détection conflit ──
+        const conflict = hourMode
+            ? existingEvents.find(e =>
+                e.resourceId === resourceId &&
+                e.date       === dateStr &&
+                e.meta?.durationHours === durationHours
+            )
+            : existingEvents.find(e =>
+                e.resourceId === resourceId &&
+                e.date       === dateStr &&
+                e.meta?.start &&
+                e.meta?.end &&
+                format(new Date(e.meta.start), 'HH:mm') === format(startDt, 'HH:mm') &&
+                format(new Date(e.meta.end),   'HH:mm') === format(endDt,   'HH:mm')
+            );
 
         const newEvent = {
             id:         conflict ? conflict.id : uid(),
@@ -297,6 +357,7 @@ export async function processPlanningImport(file, allMembers, projects, existing
                 status,
                 assigned_name: `${member.first_name || ''} ${member.last_name || ''}`.trim(),
                 seriesId:      conflict?.meta?.seriesId || uid(),
+                ...(hourMode && { durationHours, createdAt: new Date().toISOString() }),
             },
         };
 
@@ -306,8 +367,10 @@ export async function processPlanningImport(file, allMembers, projects, existing
                     row:      rowNum,
                     personne: rawPerson,
                     date:     format(parsedDate, 'dd/MM/yyyy'),
-                    debut:    startHM,
-                    fin:      endHM,
+                    ...(hourMode
+                        ? { duree: `${durationHours}h` }
+                        : { debut: format(startDt, 'HH:mm'), fin: format(endDt, 'HH:mm') }
+                    ),
                 });
             } else {
                 toOverwrite.push(newEvent);

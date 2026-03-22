@@ -113,7 +113,7 @@ export default function DashboardTiles({ rows, isMobile = false }) {
   if (!stats) return <div style={{ padding: 20, color: '#888' }}>Ajoutez des lignes pour voir les statistiques.</div>;
 
   return (
-    <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 24 }}>
+    <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
       <div style={tileStyle("#EFF6FF", "#1E40AF")}>
         <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, display: 'flex', gap: 6 }}><Ruler size={16} /> Prise de Cotes</div>
         <div>
