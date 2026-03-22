@@ -4,6 +4,73 @@ import { importMinuteToProduction } from "../lib/import/importMinuteToProduction
 import { createBlankProject } from "../lib/import/createBlankProject";
 import { S } from "../lib/constants/ui";
 
+// ── Autocomplétion adresse via Nominatim (OpenStreetMap) ──
+function AddressAutocomplete({ value, onChange }) {
+  const [query, setQuery] = React.useState(value || "");
+  const [suggestions, setSuggestions] = React.useState([]);
+  const [open, setOpen] = React.useState(false);
+  const timerRef = React.useRef(null);
+
+  const handleInput = (e) => {
+    const q = e.target.value;
+    setQuery(q);
+    onChange(""); // reset jusqu'à sélection
+    clearTimeout(timerRef.current);
+    if (q.length < 3) { setSuggestions([]); setOpen(false); return; }
+    timerRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=6&addressdetails=0`,
+          { headers: { "Accept-Language": "fr" } }
+        );
+        const data = await res.json();
+        setSuggestions(data);
+        setOpen(true);
+      } catch { /* ignore réseau */ }
+    }, 350);
+  };
+
+  const pick = (item) => {
+    setQuery(item.display_name);
+    onChange(item.display_name);
+    setSuggestions([]);
+    setOpen(false);
+  };
+
+  return (
+    <div style={{ position: "relative" }}>
+      <input
+        style={S.input}
+        placeholder="Ex: 12 rue de la Paix, Nantes"
+        value={query}
+        onChange={handleInput}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        onFocus={() => suggestions.length > 0 && setOpen(true)}
+        autoComplete="off"
+      />
+      {open && suggestions.length > 0 && (
+        <div style={{
+          position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, zIndex: 1000,
+          background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8,
+          boxShadow: "0 4px 16px rgba(0,0,0,0.10)", maxHeight: 220, overflowY: "auto",
+        }}>
+          {suggestions.map((s) => (
+            <div
+              key={s.place_id}
+              onMouseDown={() => pick(s)}
+              style={{ padding: "8px 12px", cursor: "pointer", fontSize: 13, borderBottom: "1px solid #f1f5f9" }}
+              onMouseEnter={e => e.currentTarget.style.background = "#f8fafc"}
+              onMouseLeave={e => e.currentTarget.style.background = "#fff"}
+            >
+              {s.display_name}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Normalisation simple pour recherches accent-insensibles
 const norm = (s = "") =>
   s.normalize?.("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
@@ -29,7 +96,11 @@ export default function CreateProductionProjectDialog({
   // Cases pour projet vierge
   const [rideaux, setRideaux] = React.useState(true);
   const [stores,  setStores]  = React.useState(false);
-  const [decors,  setDecors]  = React.useState(false);
+
+  // Emplacement & logistique
+  const [location, setLocation]           = React.useState("");
+  const [interventionType, setInterventionType] = React.useState("livraison"); // "livraison" | "installation"
+  const [expeditionType, setExpeditionType]     = React.useState("depart_nantes"); // "expedition" | "depart_nantes"
 
   const selectedMinute = React.useMemo(
     () => (minutes || []).find(m => m.id === selectedMinuteId) || null,
@@ -114,13 +185,22 @@ export default function CreateProductionProjectDialog({
         notes: selectedMinute.notes,
         version: selectedMinute.version,
       },
+      location,
+      intervention_type: interventionType,
+      expedition_type: interventionType === "installation" ? expeditionType : null,
     });
   };
 
   const handleCreateBlank = () => {
     if (!projectName) return;
-    const nextRows = createBlankProject({ rideaux, stores, decors }, prodSchema);
-    onCreateBlank?.(projectName, nextRows);
+    const config = {
+      rideaux, stores,
+      location,
+      intervention_type: interventionType,
+      expedition_type: interventionType === "installation" ? expeditionType : null,
+    };
+    const nextRows = createBlankProject(config, prodSchema);
+    onCreateBlank?.(projectName, nextRows, config);
   };
 
   const canImport =
@@ -177,6 +257,76 @@ export default function CreateProductionProjectDialog({
             onChange={(e) => setProjectName(e.target.value)}
           />
         </div>
+
+        {/* Emplacement */}
+        <div style={{ marginTop: 12 }}>
+          <label style={{ display: "block", marginBottom: 6, fontWeight: 600 }}>
+            Emplacement du projet
+          </label>
+          <AddressAutocomplete value={location} onChange={setLocation} />
+          {location && (
+            <div style={{ marginTop: 6, fontSize: 12, color: "#6B7280", padding: "4px 8px", background: "#f8fafc", borderRadius: 6, border: "1px solid #e2e8f0" }}>
+              📍 {location}
+            </div>
+          )}
+        </div>
+
+        {/* Type d'intervention */}
+        <div style={{ marginTop: 12 }}>
+          <label style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>
+            Type d'intervention
+          </label>
+          <div style={{ display: "flex", gap: 8 }}>
+            {[
+              { value: "livraison", label: "Livraison" },
+              { value: "installation", label: "Installation" },
+            ].map(opt => (
+              <button
+                key={opt.value}
+                onClick={() => setInterventionType(opt.value)}
+                style={{
+                  padding: "7px 18px", borderRadius: 8, fontSize: 13, cursor: "pointer",
+                  border: `1.5px solid ${interventionType === opt.value ? "#2563eb" : "#e2e8f0"}`,
+                  background: interventionType === opt.value ? "#eff6ff" : "#fff",
+                  color: interventionType === opt.value ? "#2563eb" : "#374151",
+                  fontWeight: interventionType === opt.value ? 600 : 400,
+                }}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Mode expédition — seulement si Installation */}
+        {interventionType === "installation" && (
+          <div style={{ marginTop: 10, padding: "10px 12px", background: "#f8fafc", borderRadius: 8, border: "1px solid #e2e8f0" }}>
+            <label style={{ display: "block", marginBottom: 8, fontWeight: 600, fontSize: 13 }}>
+              Comment la marchandise arrive sur place ?
+            </label>
+            <div style={{ display: "flex", gap: 8 }}>
+              {[
+                { value: "expedition", label: "Expédition transporteur" },
+                { value: "depart_nantes", label: "Départ depuis Nantes avec l'équipe" },
+              ].map(opt => (
+                <button
+                  key={opt.value}
+                  onClick={() => setExpeditionType(opt.value)}
+                  style={{
+                    padding: "7px 14px", borderRadius: 8, fontSize: 12, cursor: "pointer",
+                    border: `1.5px solid ${expeditionType === opt.value ? "#2563eb" : "#e2e8f0"}`,
+                    background: expeditionType === opt.value ? "#eff6ff" : "#fff",
+                    color: expeditionType === opt.value ? "#2563eb" : "#374151",
+                    fontWeight: expeditionType === opt.value ? 600 : 400,
+                    textAlign: "left",
+                  }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Contenu tab */}
         {tab === "minute" && hasMinutes ? (
@@ -281,14 +431,6 @@ export default function CreateProductionProjectDialog({
                   onChange={(e) => setStores(e.target.checked)}
                 />{" "}
                 Stores
-              </label>
-              <label>
-                <input
-                  type="checkbox"
-                  checked={decors}
-                  onChange={(e) => setDecors(e.target.checked)}
-                />{" "}
-                Décors
               </label>
             </div>
           </div>

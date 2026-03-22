@@ -34,10 +34,31 @@ export default function GridPhotoCell({ value, onImageUpload, onCustomAdd }) {
     const rawArray = Array.isArray(value) ? value : (value ? [value] : []);
     const photos = rawArray.map(normalizePhoto);
 
+    // Compression client avant upload (max 1600px, JPEG q=0.82)
+    const compressImage = (file) => new Promise((resolve) => {
+        const MAX_PX = 1600;
+        const QUALITY = 0.82;
+        const img = new Image();
+        const objectUrl = URL.createObjectURL(file);
+        img.onload = () => {
+            URL.revokeObjectURL(objectUrl);
+            let { width, height } = img;
+            if (width > MAX_PX || height > MAX_PX) {
+                if (width >= height) { height = Math.round(height * MAX_PX / width); width = MAX_PX; }
+                else { width = Math.round(width * MAX_PX / height); height = MAX_PX; }
+            }
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+            canvas.toBlob(resolve, 'image/jpeg', QUALITY);
+        };
+        img.src = objectUrl;
+    });
+
     // Fonction d'upload vers Supabase
     const uploadToSupabase = async (file) => {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+        const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.jpg`;
         const filePath = `minutes/${fileName}`;
 
         const { error: uploadError } = await supabase.storage
@@ -63,7 +84,8 @@ export default function GridPhotoCell({ value, onImageUpload, onCustomAdd }) {
 
         try {
             setUploading(true);
-            const publicUrl = await uploadToSupabase(file);
+            const compressed = await compressImage(file);
+            const publicUrl = await uploadToSupabase(compressed);
 
             const newPhoto = {
                 url: publicUrl,

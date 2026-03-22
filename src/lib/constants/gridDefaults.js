@@ -37,45 +37,6 @@ export const RIDEAUX_DEFAULT_VISIBILITY = {
     st_conf_pv: false
 };
 
-export const DECORS_DEFAULT_VISIBILITY = {
-    // ❌ MASQUÉS PAR DÉFAUT (Demande utilisateur)
-
-    // Technique / Mécanisme
-    mecanisme_fourniture: false, // NEW: User requested hide default
-    pa_mecanisme: false,
-    pv_mecanisme: false,
-
-    // Prestations
-    heures_prepa: false,
-    pv_prepa: false,
-    heures_pose: false,
-    pv_pose: false,
-    heures_confection: false, // NEW: Hide by default
-    pv_confection: false,     // NEW: Hide by default
-
-    st_pose_pa: false,
-    st_pose_pv: false,
-    // st_conf_pa / st_conf_pv are NOT here, so they will be VISIBLE by default.
-
-    // Legacy fields that might exist in grid state but irrelevant for Decors
-    // We clean them up to be safe
-    croisement: false,
-    ampleur: false,
-    retour_g: false,
-    retour_d: false,
-    a_plat: false,
-    hauteur_coupe: false,
-    hauteur_coupe_motif: false,
-
-    // Legacy Doublure / Inter (Removed from schema but good to hide if lingering)
-    doublure: false,
-    ml_doublure: false,
-    pa_doublure: false,
-    pv_doublure: false,
-    interdoublure: false,
-    ml_interdoublure: false,
-    pv_interdoublure: false,
-};
 
 export const STORES_DEFAULT_VISIBILITY = {
     // ❌ À DÉSACTIVER (Visible = false)
