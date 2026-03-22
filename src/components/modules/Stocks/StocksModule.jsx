@@ -151,10 +151,11 @@ export default function StocksModule({
                 {/* 3. Content */}
                 <div style={{ flex: 1 }}>
                     {tabIndex === 0 && (
-                        <StockDashboardTab 
-                            inventory={inventory} 
-                            projects={projects} 
-                            movements={movements} 
+                        <StockDashboardTab
+                            inventory={inventory}
+                            projects={projects}
+                            movements={movements}
+                            zones={zones}
                         />
                     )}
                     {tabIndex === 1 && (
