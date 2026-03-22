@@ -74,7 +74,7 @@ export default function StocksModule({
                                 ← Retour
                             </button>
                         )}
-                        <h1 style={{ fontSize: 32, fontWeight: 800, color: '#111827', margin: 0, letterSpacing: '-0.5px' }}>Stocks & Approvisionnements</h1>
+                        <h1 style={{ fontSize: 32, fontWeight: 800, color: '#111827', margin: 0, letterSpacing: '-0.5px' }}>Inventaire</h1>
                     </div>
 
                     {/* Actions (Aligned with Title) */}

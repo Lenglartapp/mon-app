@@ -61,7 +61,7 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
   };
 
   useEffect(() => {
-    setActiveFilters([{ id: 'my_projects', label: '👤 Mes Dossiers', field: 'manager' }]);
+    setActiveFilters([{ id: 'my_projects', label: '👤 Mes Projets', field: 'manager' }]);
   }, []);
 
   const handleRemoveFilter = (id) => setActiveFilters(prev => prev.filter(f => f.id !== id));
@@ -156,7 +156,7 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
             >
               ← Retour
             </button>
-            <h1 style={{ fontSize: 28, fontWeight: 700, color: '#1F2937', margin: 0, letterSpacing: '-0.5px' }}>Dossiers</h1>
+            <h1 style={{ fontSize: 28, fontWeight: 700, color: '#1F2937', margin: 0, letterSpacing: '-0.5px' }}>Projets</h1>
           </div>
           {canCreate && (
             <button
@@ -169,7 +169,7 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
                 width: isMobile ? '100%' : 'auto', justifyContent: isMobile ? 'center' : 'flex-start'
               }}
             >
-              <Plus size={18} /> Nouveau Dossier
+              <Plus size={18} /> Nouveau Projet
             </button>
           )}
         </div>
@@ -307,7 +307,7 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
             <thead style={{ background: '#F9FAFB', borderBottom: '1px solid #E5E7EB' }}>
               <tr>
-                <th style={{ padding: '12px 16px', fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Dossier</th>
+                <th style={{ padding: '12px 16px', fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Projet</th>
                 <th style={{ padding: '12px 16px', fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Responsable</th>
                 <th style={{ padding: '12px 16px', fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: 'center' }}>Statut</th>
                 <th style={{ padding: '12px 16px', fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Livraison</th>
@@ -459,7 +459,7 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
                             sx={{ color: '#ef4444' }}
                             onClick={(e) => {
                               e.stopPropagation();
-                              if (window.confirm(`Supprimer le dossier "${p.name}" définitivement ?`)) {
+                              if (window.confirm(`Supprimer le projet "${p.name}" définitivement ?`)) {
                                 onDelete?.(p.id);
                               }
                             }}
@@ -490,7 +490,7 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
               const { name, rows, meta, deliveryDate, location, intervention_type, expedition_type } = payload || {};
               const project = createBlankProject({ name });
               project.id = project.id || uid();
-              project.name = name || meta?.minuteName || project.name || "Nouveau Dossier";
+              project.name = name || meta?.minuteName || project.name || "Nouveau Projet";
               project.sourceMinuteId = meta?.id || null;
               // Calculate budget from rows directly to ensure accuracy
               const calculateBudgetFromRows = (rs) => {
@@ -545,7 +545,7 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
             onCreateBlank={async (projectName, _dummyRows, config) => {
               const project = {
                 id: uid(),
-                name: projectName || "Nouveau Dossier",
+                name: projectName || "Nouveau Projet",
                 budget: { prepa: 0, conf: 0, pose: 0 },
                 config: config,
                 due: config?.deliveryDate || null,
