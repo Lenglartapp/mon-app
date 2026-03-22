@@ -161,7 +161,7 @@ export default function StockInventoryTab({ inventory, projects = [], movements 
                 if (!pName) return <Chip label="LIBRE" size="small" sx={{ bgcolor: '#F0FDF4', color: '#15803D', border: '1px solid #BBF7D0' }} />;
 
                 // Find project
-                const proj = projects.find(p => p.name === pName || p.nom_dossier === pName);
+                const proj = projects.find(p => p.name === pName);
                 // Si pas trouvé, on affiche un Chip neutre avec le statut ou '?'
                 if (!proj) return <Chip label="?" size="small" sx={{ bgcolor: '#F3F4F6' }} />;
 
@@ -234,7 +234,7 @@ export default function StockInventoryTab({ inventory, projects = [], movements 
             if (filterStatus === 'LIBRE') {
                 matchStatus = !item.project;
             } else {
-                const proj = projects.find(p => p.name === item.project || p.nom_dossier === item.project);
+                const proj = projects.find(p => p.name === item.project);
                 matchStatus = proj?.status === filterStatus;
             }
         }
@@ -299,7 +299,7 @@ export default function StockInventoryTab({ inventory, projects = [], movements 
 
                 {/* 2. Project Filter (Autocomplete) */}
                 <Autocomplete
-                    options={projects.map(p => p.name || p.nom_dossier)}
+                    options={projects.map(p => p.name)}
                     value={filterProj}
                     onChange={(e, val) => setFilterProj(val)}
                     renderInput={(params) => <TextField {...params} label="Filtrer par Projet" size="small" />}

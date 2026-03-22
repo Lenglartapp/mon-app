@@ -85,7 +85,7 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
             // Logique par Projet (Tissus uniquement)
             const activeProjects = projects.filter(p => p.status !== 'ARCHIVED');
             activeProjects.forEach(proj => {
-                const pName = proj.name || proj.nom_dossier || 'Projet Inconnu';
+                const pName = proj.name;
                 (proj.rows || []).forEach(row => {
                     const addFabric = (name, width) => {
                         if (!name) return;

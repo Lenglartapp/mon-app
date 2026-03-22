@@ -59,7 +59,7 @@ export default function StockDashboardTab({ inventory = [], projects = [], movem
             if (item.category !== 'Tissu') return;
             const q = Array.isArray(item.pieces) ? item.pieces.length : 1;
             const proj = item.project
-                ? projects.find(p => p.name === item.project || p.nom_dossier === item.project)
+                ? projects.find(p => p.name === item.project)
                 : null;
 
             if (proj?.status === 'ARCHIVED') deadStock += q;
@@ -77,7 +77,7 @@ export default function StockDashboardTab({ inventory = [], projects = [], movem
         // Tension imminente : projets actifs sans stock réservé + espace libre critique
         const activeWithoutStock = projects.filter(p => {
             if (['DONE', 'ARCHIVED', 'Livré'].includes(p.status)) return false;
-            return !inventory.some(i => i.project === p.name || i.project === p.nom_dossier);
+            return !inventory.some(i => i.project === p.name);
         });
 
         const tensionLevel = freeRouleaux < capacite * 0.15
