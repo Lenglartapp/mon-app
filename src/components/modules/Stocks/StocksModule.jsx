@@ -12,6 +12,7 @@ import StockDashboardTab from './StockDashboardTab';
 import { useAuth } from '../../../auth';
 import { can } from '../../../lib/authz';
 import MovementModal from './MovementModal'; // Imported Modal
+import { useWarehouseZones } from '../../../hooks/useSupabase';
 import { PackagePlus, PackageMinus, ArrowLeftRight } from 'lucide-react'; // Icons
 
 // Mock Data for initial state
@@ -27,6 +28,7 @@ export default function StocksModule({
 }) {
     const { currentUser } = useAuth();
     const canEdit = can(currentUser, 'inventory.edit');
+    const { zones } = useWarehouseZones();
     const [tabIndex, setTabIndex] = useState(0);
 
     // Modal State
@@ -185,6 +187,7 @@ export default function StocksModule({
                     onSave={handleSaveMovement}
                     projects={projects}
                     inventory={inventory}
+                    zones={zones}
                 />
             )}
         </Box>

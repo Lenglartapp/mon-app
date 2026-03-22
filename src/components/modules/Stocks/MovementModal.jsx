@@ -25,7 +25,7 @@ const USERS = [
 const EXIT_REASONS = ['Production', 'Solde / Déstockage', 'Perte / Inventaire', 'Autre'];
 const TYPOLOGIES = ['Tissu', 'Rail', 'Consommable', 'Mécanisme'];
 
-export default function MovementModal({ open, onClose, type, onSave, projects = [], inventory = [] }) {
+export default function MovementModal({ open, onClose, type, onSave, projects = [], inventory = [], zones = [] }) {
     const isIN = type === 'IN';
     const isMOVE = type === 'MOVE';
     const isOUT = type === 'OUT'; // Helper
@@ -361,12 +361,15 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
                                             placeholder="ml"
                                             sx={{ width: 80, bgcolor: 'white' }}
                                         />
-                                        <TextField
+                                        <Autocomplete
                                             size="small"
-                                            value={p.location}
-                                            onChange={(e) => updatePieceLocation(p.id, e.target.value)}
-                                            placeholder="Empl."
-                                            sx={{ flex: 1, bgcolor: 'white' }}
+                                            options={zones}
+                                            getOptionLabel={(z) => typeof z === 'string' ? z : z.code}
+                                            value={zones.find(z => z.code === p.location) || (p.location || null)}
+                                            onChange={(e, val) => updatePieceLocation(p.id, val?.code || val || '')}
+                                            freeSolo
+                                            sx={{ flex: 1 }}
+                                            renderInput={(params) => <TextField {...params} placeholder="Empl." size="small" sx={{ bgcolor: 'white' }} />}
                                         />
                                         <IconButton size="small" color="error" onClick={() => removePiece(p.id)} disabled={pieces.length <= 1}><Minus size={16} /></IconButton>
                                     </Box>
@@ -411,13 +414,15 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
                                             <Typography sx={{ fontSize: 13, fontWeight: 700, color: '#4B5563' }}>
                                                 {p.name ? `${p.name}` : `Pièce ${idx + 1}`}
                                             </Typography>
-                                            <TextField
+                                            <Autocomplete
                                                 size="small"
-                                                label="Loc."
-                                                value={p.location || ''}
-                                                onChange={(e) => updatePieceLocation(p.id, e.target.value)}
-                                                sx={{ mt: 0.5, bgcolor: '#F9FAFB' }}
-                                                InputProps={{ sx: { fontSize: 11 } }}
+                                                options={zones}
+                                                getOptionLabel={(z) => typeof z === 'string' ? z : z.code}
+                                                value={zones.find(z => z.code === p.location) || (p.location || null)}
+                                                onChange={(e, val) => updatePieceLocation(p.id, val?.code || val || '')}
+                                                freeSolo
+                                                sx={{ mt: 0.5 }}
+                                                renderInput={(params) => <TextField {...params} label="Loc." size="small" sx={{ bgcolor: '#F9FAFB' }} InputProps={{ ...params.InputProps, sx: { fontSize: 11 } }} />}
                                             />
                                         </Box>
                                         <Box sx={{ textAlign: 'right', minWidth: 80 }}>
@@ -459,13 +464,18 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
                             {/* LOCATION (Visible uniquement si pas de pièces gérées et pas un tissu en entrée) */}
                             {(!pieces.length || (!isIN && !isOUT)) && !(isIN && typology === 'Tissu') && (
                                 <Grid item xs={6}>
-                                    <TextField
-                                        fullWidth label={isMOVE ? "Nouvel Emplacement" : "Emplacement"}
-                                        value={formData.location}
-                                        onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                                        disabled={!isIN && !isMOVE}
-                                        required={isMOVE}
+                                    <Autocomplete
                                         size="small"
+                                        options={zones}
+                                        getOptionLabel={(z) => typeof z === 'string' ? z : `${z.code} – ${z.label_carte || z.description || ''}`}
+                                        groupBy={(z) => z.section === 'nord' ? 'Section Nord (D–H)' : z.section === 'sud' ? 'Section Sud (A–C)' : 'Zones Spéciales'}
+                                        value={zones.find(z => z.code === formData.location) || (formData.location ? formData.location : null)}
+                                        onChange={(e, val) => setFormData({ ...formData, location: val?.code || val || '' })}
+                                        disabled={!isIN && !isMOVE}
+                                        freeSolo
+                                        renderInput={(params) => (
+                                            <TextField {...params} label={isMOVE ? "Nouvel Emplacement" : "Emplacement"} required={isMOVE} size="small" />
+                                        )}
                                     />
                                 </Grid>
                             )}

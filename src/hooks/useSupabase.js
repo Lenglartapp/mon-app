@@ -773,3 +773,23 @@ export const useStocks = () => {
         bulkUpdateInventory
     };
 };
+
+// --- WAREHOUSE ZONES ---
+export const useWarehouseZones = () => {
+    const [zones, setZones] = useState([]);
+
+    useEffect(() => {
+        supabase
+            .from('warehouse_zones')
+            .select('code, allee, niveau, niveau_label, type, section, capacite, capacite_unite, label_carte, description')
+            .eq('is_storage', true)
+            .order('section')
+            .order('code')
+            .then(({ data, error }) => {
+                if (error) console.error("Erreur fetch warehouse_zones:", error);
+                if (data) setZones(data);
+            });
+    }, []);
+
+    return { zones };
+};
