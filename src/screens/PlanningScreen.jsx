@@ -11,6 +11,7 @@ import { fr } from 'date-fns/locale';
 import { useCapacityPlanning } from '../hooks/useCapacityPlanning';
 import { can } from '../lib/authz';
 import { uid } from '../lib/utils/uid';
+import { supabase } from '../lib/supabaseClient';
 import { INITIAL_GROUPS_CONFIG, WORK_START_HOUR, WORK_END_HOUR, TOTAL_WORK_MINUTES } from '../components/planning/constants';
 import EventModal from '../components/planning/EventModal';
 import ResourcePanel from '../components/planning/ResourcePanel';
@@ -39,6 +40,42 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
     // Handler pour update user (Renommage Interim)
     const handleUpdateUser = (updatedUser) => {
         setLocalUsers(prev => prev.map(u => u.id === updatedUser.id ? updatedUser : u));
+    };
+
+    // Handler pour ajouter un nouveau membre d'équipe
+    const handleAddMember = async (role, firstName, lastName) => {
+        const newMember = {
+            id: uid(),
+            first_name: firstName,
+            last_name: lastName || null,
+            role,
+        };
+        const { data, error } = await supabase.from('profiles').insert([newMember]).select().single();
+        if (error) {
+            console.error('Erreur ajout membre:', error);
+            alert(`Erreur lors de l'ajout : ${error.message}`);
+            return;
+        }
+        const mapped = {
+            ...data,
+            name: `${data.first_name || ''} ${data.last_name || ''}`.trim(),
+            initials: `${(data.first_name || '').charAt(0)}${(data.last_name || '').charAt(0)}`.toUpperCase(),
+        };
+        setLocalUsers(prev => [...prev, mapped]);
+    };
+
+    // Handler pour paramétrer la fin de contrat
+    const handleUpdateContractEnd = async (userId, date) => {
+        const { error } = await supabase
+            .from('profiles')
+            .update({ contract_end_date: date || null })
+            .eq('id', userId);
+        if (error) {
+            console.error('Erreur fin de contrat:', error);
+            alert(`Erreur : ${error.message}`);
+            return;
+        }
+        setLocalUsers(prev => prev.map(u => u.id === userId ? { ...u, contract_end_date: date || null } : u));
     };
 
     const [currentDate, setCurrentDate] = useState(new Date());
@@ -430,13 +467,14 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
         return config;
     }, [localUsers, missions]);
 
-    // --- FILTRAGE DES RESSOURCES MASQUÉES ---
+    // --- FILTRAGE DES RESSOURCES MASQUÉES ET FINS DE CONTRAT ---
     const visibleGroupsConfig = useMemo(() => {
         const config = JSON.parse(JSON.stringify(groupsConfig));
         Object.keys(config).forEach(key => {
             config[key].members = config[key].members.filter(m =>
                 !hiddenResources.includes(m.id) &&
-                !(m._isInterim && !m._hasActiveMission)
+                !(m._isInterim && !m._hasActiveMission) &&
+                !(m.contract_end_date && m.contract_end_date <= format(new Date(), 'yyyy-MM-dd'))
             );
         });
         return config;
@@ -568,6 +606,31 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
         const seriesId = uid();
         const createdEvents = [];
 
+        // Helper : calcule l'heure de fin à partir d'une durée en heures (en sautant la pause déjeuner 12-13)
+        const computeEndFromDuration = (dayDate, dh) => {
+            let remaining = dh * 60; // en minutes
+            let currentMin = 8 * 60; // 8h00
+
+            // Bloc matin : 8h00 – 12h00 = 240 min
+            const morningMins = Math.min(remaining, 240);
+            currentMin += morningMins;
+            remaining -= morningMins;
+
+            if (remaining > 0) {
+                // Sauter la pause déjeuner → 13h00
+                currentMin = 13 * 60;
+                currentMin += remaining;
+            }
+
+            const h = Math.floor(currentMin / 60);
+            const m = currentMin % 60;
+            const endD = new Date(dayDate);
+            endD.setHours(h, m, 0, 0);
+            return endD;
+        };
+
+        const isHourMode = eventData.durationHours != null && ['conf', 'prepa'].includes(eventData.type);
+
         days.forEach(d => {
             if (!showWeekends && isWeekend(d)) return;
 
@@ -575,20 +638,22 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                 const assignedUser = localUsers.find(u => u.id === resId);
                 const assignedName = assignedUser ? `${assignedUser.first_name} ${assignedUser.last_name || ''}`.trim() : 'Inconnu';
 
-                // --- FIX TIMEZONE CALCULATION (FINAL) ---
-                const sTime = eventData.startTime.split(':');
-                const eTime = eventData.endTime.split(':');
+                let startD, endD;
 
-                // 'd' comes from eachDayOfInterval(parseISO(...)) so it is Local Midnight.
-                // We clone it and set hours (Local).
-                const startD = new Date(d);
-                startD.setHours(parseInt(sTime[0]), parseInt(sTime[1]), 0, 0);
-
-                const endD = new Date(d);
-                endD.setHours(parseInt(eTime[0]), parseInt(eTime[1]), 0, 0);
-
-                // Safety: If ends before start (overnight?), handle if needed, but for now assume same day 8h-17h logic.
-                // ------------------------------
+                if (isHourMode) {
+                    // MODE DURÉE : start fixé à 8h, end calculé depuis durationHours
+                    startD = new Date(d);
+                    startD.setHours(8, 0, 0, 0);
+                    endD = computeEndFromDuration(d, eventData.durationHours);
+                } else {
+                    // MODE CRÉNEAU : heure début / heure fin
+                    const sTime = eventData.startTime.split(':');
+                    const eTime = eventData.endTime.split(':');
+                    startD = new Date(d);
+                    startD.setHours(parseInt(sTime[0]), parseInt(sTime[1]), 0, 0);
+                    endD = new Date(d);
+                    endD.setHours(parseInt(eTime[0]), parseInt(eTime[1]), 0, 0);
+                }
 
                 const evt = {
                     id: uid(),
@@ -597,14 +662,14 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                     title: eventData.title,
                     type: eventData.type,
                     meta: {
-                        startDate: eventData.startDate, // Legacy naming ? check usage in modal
                         start: startD.toISOString(),
                         end: endD.toISOString(),
                         description: eventData.description,
                         projectId: eventData.projectId,
                         seriesId: seriesId,
                         assigned_name: assignedName,
-                        status: eventData.status || 'pending'
+                        status: eventData.status || 'pending',
+                        ...(isHourMode && { durationHours: eventData.durationHours, createdAt: new Date().toISOString() })
                     }
                 };
 
@@ -835,7 +900,6 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                     ...draggedEvent.meta,
                     start: newStartDate.toISOString(),
                     end: newEndDate.toISOString(),
-                    status: 'pending', // Reset status
                     status: 'pending', // Reset status
                     parent_backlog_id: String(draggedEvent.id), // LINK TO MASTER (Force String)
                     seriesId: null // Break series from master if any
@@ -1163,7 +1227,7 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                                 <summary style={{ cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#991B1B', marginBottom: 6 }}>Créneaux bloqués (déjà validés)</summary>
                                 {importResult.blocked.map((b, i) => (
                                     <div key={i} style={{ fontSize: 12, color: '#374151', padding: '4px 0', borderBottom: '1px solid #F3F4F6' }}>
-                                        Ligne {b.row} — {b.personne} · {b.date} {b.debut}–{b.fin}
+                                        Ligne {b.row} — {b.personne} · {b.date} {b.duree ? `(${b.duree})` : `${b.debut}–${b.fin}`}
                                     </div>
                                 ))}
                             </details>
@@ -1200,11 +1264,6 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                 isOpen={showResourcePanel}
                 onClose={() => setShowResourcePanel(false)}
                 users={localUsers}
-                hiddenResources={hiddenResources}
-                onToggleVisibility={(id) => {
-                    if (hiddenResources.includes(id)) setHiddenResources(hiddenResources.filter(x => x !== id));
-                    else setHiddenResources([...hiddenResources, id]);
-                }}
                 onAddAbsence={handleAddAbsence}
                 missions={missions}
                 closures={closures}
@@ -1213,6 +1272,8 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                 onUpdateMissionEnd={handleUpdateMissionEnd}
                 onAddClosure={handleAddClosure}
                 onDeleteClosure={handleDeleteClosure}
+                onAddMember={handleAddMember}
+                onUpdateContractEnd={handleUpdateContractEnd}
             />
 
             {assistantMode === 'programmation' ? (

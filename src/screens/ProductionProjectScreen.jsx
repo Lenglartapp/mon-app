@@ -14,7 +14,6 @@ import { computeFormulas, preserveManualAfterCompute } from "../lib/formulas/com
 import { SCHEMA_64 } from "../lib/schemas/production.js";
 import { STAGES, DEFAULT_VIEWS } from "../lib/constants/views.js"; // Import DEFAULT_VIEWS
 import { recomputeRow } from "../lib/formulas/recomputeRow";
-import { DECORS_PROD_SCHEMA } from "../lib/schemas/decors"; // Import Prod Schema
 import { RIDEAUX_PROD_SCHEMA } from "../lib/schemas/production/rideaux";
 import { STORES_PROD_SCHEMA } from "../lib/schemas/production/stores_classiques";
 import { STORES_BATEAUX_PROD_SCHEMA } from "../lib/schemas/production/stores_bateaux";
@@ -38,6 +37,19 @@ import { can } from "../lib/authz";
  * Helper to convert DEFAULT_VIEWS array to DataGrid visibility model
  * { field: boolean }
  */
+const getSchemaForRow = (row) => {
+  const produit = String(row?.produit || '');
+  if (/rideau|voilage/i.test(produit))          return { schema: RIDEAUX_PROD_SCHEMA,        tableKey: 'rideaux' };
+  if (/store (bateau|velum)/i.test(produit))     return { schema: STORES_BATEAUX_PROD_SCHEMA, tableKey: 'stores_bateaux' };
+  if (/store/i.test(produit))                    return { schema: STORES_PROD_SCHEMA,         tableKey: 'stores' };
+  if (/coussin/i.test(produit))                  return { schema: COUSSINS_PROD_SCHEMA,       tableKey: 'coussins' };
+  if (/plaid/i.test(produit))                    return { schema: PLAID_PROD_SCHEMA,          tableKey: 'plaid' };
+  if (/tête de lit|mobilier/i.test(produit))     return { schema: MOBILIER_PROD_SCHEMA,       tableKey: 'mobilier' };
+  if (/cache-sommier/i.test(produit))            return { schema: CACHE_SOMMIER_PROD_SCHEMA,  tableKey: 'cache_sommier' };
+  if (/tenture murale/i.test(produit))           return { schema: TENTURE_MURALE_PROD_SCHEMA, tableKey: 'tenture_murale' };
+  return { schema: RIDEAUX_PROD_SCHEMA, tableKey: 'rideaux' }; // fallback
+};
+
 const getVisibilityModel = (viewKey, tableKey, schema) => {
   const defaults = DEFAULT_VIEWS?.[viewKey]?.[tableKey];
   if (!defaults) return {}; // All visible by default
@@ -232,6 +244,16 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
   // Calculate opened row
   const openedRow = useMemo(() => (rows || []).find(r => r.id === openedRowId), [rows, openedRowId]);
 
+  // Schema et visibilité du formulaire détail selon le produit de la ligne et le stage actif
+  const openedRowDetail = useMemo(() => {
+    if (!openedRow) return { schema: SCHEMA_64, columnVisibilityModel: {} };
+    const { schema: rowSchema, tableKey } = getSchemaForRow(openedRow);
+    return {
+      schema: rowSchema,
+      columnVisibilityModel: getVisibilityModel(stage, tableKey, rowSchema),
+    };
+  }, [openedRow, stage]);
+
   // Recompute local si le schéma change
   useEffect(() => {
     setRows((rs) => computeFormulas(rs, schema));
@@ -274,6 +296,25 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
     rowsTentureMurale:  filteredRows.filter((r) => /tenture murale/i.test(String(r.produit || ""))),
     rowsAutreConfection: filteredRows.filter(r => r.section === 'autre'),
   }), [filteredRows]);
+
+  // Filtre sous-traitance : exclu du BPF et des étiquettes
+  // Un ouvrage est sous-traité si realise_par = 'Sous-Traitant' OU si heures_confection est vide/zéro
+  const isSousTraite = (r) =>
+    r.realise_par === 'Sous-Traitant' || !(parseFloat(r.heures_confection) > 0);
+
+  const {
+    bpfRideaux, bpfStoresBateaux, bpfCoussins,
+    bpfPlaid, bpfMobilier, bpfCacheSommier, bpfTentureMurale, bpfAutreConfection
+  } = useMemo(() => ({
+    bpfRideaux:         rowsRideaux.filter(r => !isSousTraite(r)),
+    bpfStoresBateaux:   rowsStoresBateaux.filter(r => !isSousTraite(r)),
+    bpfCoussins:        rowsCoussins.filter(r => !isSousTraite(r)),
+    bpfPlaid:           rowsPlaid.filter(r => !isSousTraite(r)),
+    bpfMobilier:        rowsMobilier.filter(r => !isSousTraite(r)),
+    bpfCacheSommier:    rowsCacheSommier.filter(r => !isSousTraite(r)),
+    bpfTentureMurale:   rowsTentureMurale.filter(r => !isSousTraite(r)),
+    bpfAutreConfection: rowsAutreConfection.filter(r => !isSousTraite(r)),
+  }), [rowsRideaux, rowsStoresBateaux, rowsCoussins, rowsPlaid, rowsMobilier, rowsCacheSommier, rowsTentureMurale, rowsAutreConfection]);
 
   const recomputeAll = (arr) => (arr || []).map(r => recomputeRow(r, schema));
 
@@ -372,7 +413,6 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
     if (tableKey === "rideaux") regex = /rideau|voilage/i;
     else if (tableKey === "rideaux") regex = /rideau|voilage/i;
     else if (tableKey === "stores") regex = /store/i;
-    else if (tableKey === "decors") regex = /d[ée]cor/i;
 
     // For Autre Confection, we might not use regex but direct check in handleSubsetChange? 
     // Actually handleSubsetChange uses regex to IDENTIFY old rows to replace.
@@ -708,9 +748,6 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
             maxWidth: '100%',
             overflowX: isMobile ? 'auto' : 'visible',
             width: isMobile ? '100%' : 'auto',
-            maxWidth: '100%',
-            overflowX: isMobile ? 'auto' : 'visible',
-            width: isMobile ? '100%' : 'auto',
             position: 'relative', zIndex: 1
           }}>
           {visibleStages.map((p) => (
@@ -829,21 +866,21 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
 
       {stage === "etiquettes" && (
         <div style={isMobile ? { padding: 0 } : S.contentWide}>
-          {rowsRideaux.length > 0 && (
+          {bpfRideaux.length > 0 && (
             <EtiquettesSection
               title="Etiquettes Rideaux"
               tableKey="rideaux"
-              rows={rowsRideaux}
+              rows={bpfRideaux}
               onRowsChange={mergeChildRowsFor("rideaux")}
               schema={RIDEAUX_PROD_SCHEMA}
               projectName={projectName}
             />
           )}
-          {rowsStoresBateaux.length > 0 && (
+          {bpfStoresBateaux.length > 0 && (
             <EtiquettesSection
               title="Etiquettes Stores Bateaux / Velum"
               tableKey="stores_bateaux"
-              rows={rowsStoresBateaux}
+              rows={bpfStoresBateaux}
               onRowsChange={(nr) => handleSubsetChange(nr, /store (bateau|velum)/i)}
               schema={STORES_BATEAUX_PROD_SCHEMA}
               projectName={projectName}
@@ -952,11 +989,11 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
 
       {stage === "bpf" && (
         <>
-          {rowsRideaux.length > 0 && (
+          {bpfRideaux.length > 0 && (
             <div style={cardStyle}>
               <div style={cardHeaderStyle}>BPF Rideaux</div>
               <MinuteGrid
-                rows={rowsRideaux}
+                rows={bpfRideaux}
                 onRowsChange={mergeChildRowsFor("rideaux")}
                 schema={RIDEAUX_PROD_SCHEMA}
                 enableCellFormulas={true}
@@ -971,18 +1008,18 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
             </div>
           )}
 
-          {rowsStoresBateaux.length > 0 && (
+          {bpfStoresBateaux.length > 0 && (
             <Accordion key="bpf_stores_bateaux" defaultExpanded disableGutters TransitionProps={{ unmountOnExit: true }} sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), border: 1px solid #f3f4f6' }}>
               <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ borderBottom: '1px solid #f3f4f6', backgroundColor: '#fff', borderTopLeftRadius: 12, borderTopRightRadius: 12, px: 3 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <h3 style={{ margin: 0, fontSize: 18, color: '#111827', fontWeight: 700 }}>BPF Stores Bateaux / Velum</h3>
-                  <span style={{ background: '#f3f4f6', color: '#4b5563', padding: '2px 8px', borderRadius: 12, fontSize: 12, fontWeight: 600 }}>{rowsStoresBateaux.length} articles</span>
+                  <span style={{ background: '#f3f4f6', color: '#4b5563', padding: '2px 8px', borderRadius: 12, fontSize: 12, fontWeight: 600 }}>{bpfStoresBateaux.length} articles</span>
                 </div>
               </AccordionSummary>
               <AccordionDetails sx={{ p: 0 }}>
                 <MinuteGrid
-                  rows={rowsStoresBateaux}
-                  onRowsChange={(nr) => handleSubsetChange(nr, /store (bateau|velum)/i)} // Temporary regex workaround for mergeChildRowsFor
+                  rows={bpfStoresBateaux}
+                  onRowsChange={(nr) => handleSubsetChange(nr, /store (bateau|velum)/i)}
                   schema={STORES_BATEAUX_PROD_SCHEMA}
                   enableCellFormulas={true}
                   onAdd={() => handleAddRow("Store Bateau")}
@@ -996,17 +1033,17 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
             </Accordion>
           )}
 
-          {rowsCoussins.length > 0 && (
+          {bpfCoussins.length > 0 && (
             <Accordion key="bpf_coussins" defaultExpanded disableGutters TransitionProps={{ unmountOnExit: true }} sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), border: 1px solid #f3f4f6' }}>
               <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ borderBottom: '1px solid #f3f4f6', backgroundColor: '#fff', borderTopLeftRadius: 12, borderTopRightRadius: 12, px: 3 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <h3 style={{ margin: 0, fontSize: 18, color: '#111827', fontWeight: 700 }}>BPF Coussins</h3>
-                  <span style={{ background: '#f3f4f6', color: '#4b5563', padding: '2px 8px', borderRadius: 12, fontSize: 12, fontWeight: 600 }}>{rowsCoussins.length} articles</span>
+                  <span style={{ background: '#f3f4f6', color: '#4b5563', padding: '2px 8px', borderRadius: 12, fontSize: 12, fontWeight: 600 }}>{bpfCoussins.length} articles</span>
                 </div>
               </AccordionSummary>
               <AccordionDetails sx={{ p: 0 }}>
                 <MinuteGrid
-                  rows={rowsCoussins}
+                  rows={bpfCoussins}
                   onRowsChange={(nr) => handleSubsetChange(nr, /coussin/i)}
                   schema={COUSSINS_PROD_SCHEMA}
                   initialVisibilityModel={getVisibilityModel('bpf', 'coussins', COUSSINS_PROD_SCHEMA)}
@@ -1022,17 +1059,17 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
             </Accordion>
           )}
 
-          {rowsCacheSommier.length > 0 && (
+          {bpfCacheSommier.length > 0 && (
             <Accordion key="bpf_cache_sommier" defaultExpanded disableGutters TransitionProps={{ unmountOnExit: true }} sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), border: 1px solid #f3f4f6' }}>
               <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ borderBottom: '1px solid #f3f4f6', backgroundColor: '#fff', borderTopLeftRadius: 12, borderTopRightRadius: 12, px: 3 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <h3 style={{ margin: 0, fontSize: 18, color: '#111827', fontWeight: 700 }}>BPF Cache-Sommier</h3>
-                  <span style={{ background: '#f3f4f6', color: '#4b5563', padding: '2px 8px', borderRadius: 12, fontSize: 12, fontWeight: 600 }}>{rowsCacheSommier.length} articles</span>
+                  <span style={{ background: '#f3f4f6', color: '#4b5563', padding: '2px 8px', borderRadius: 12, fontSize: 12, fontWeight: 600 }}>{bpfCacheSommier.length} articles</span>
                 </div>
               </AccordionSummary>
               <AccordionDetails sx={{ p: 0 }}>
                 <MinuteGrid
-                  rows={rowsCacheSommier}
+                  rows={bpfCacheSommier}
                   onRowsChange={(nr) => handleSubsetChange(nr, /cache-sommier/i)}
                   schema={CACHE_SOMMIER_PROD_SCHEMA}
                   initialVisibilityModel={getVisibilityModel('bpf', 'cache_sommier', CACHE_SOMMIER_PROD_SCHEMA)}
@@ -1048,17 +1085,17 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
             </Accordion>
           )}
 
-          {rowsPlaid.length > 0 && (
+          {bpfPlaid.length > 0 && (
             <Accordion key="bpf_plaid" defaultExpanded disableGutters TransitionProps={{ unmountOnExit: true }} sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), border: 1px solid #f3f4f6' }}>
               <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ borderBottom: '1px solid #f3f4f6', backgroundColor: '#fff', borderTopLeftRadius: 12, borderTopRightRadius: 12, px: 3 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <h3 style={{ margin: 0, fontSize: 18, color: '#111827', fontWeight: 700 }}>BPF Plaids / Chemin de lit</h3>
-                  <span style={{ background: '#f3f4f6', color: '#4b5563', padding: '2px 8px', borderRadius: 12, fontSize: 12, fontWeight: 600 }}>{rowsPlaid.length} articles</span>
+                  <span style={{ background: '#f3f4f6', color: '#4b5563', padding: '2px 8px', borderRadius: 12, fontSize: 12, fontWeight: 600 }}>{bpfPlaid.length} articles</span>
                 </div>
               </AccordionSummary>
               <AccordionDetails sx={{ p: 0 }}>
                 <MinuteGrid
-                  rows={rowsPlaid}
+                  rows={bpfPlaid}
                   onRowsChange={(nr) => handleSubsetChange(nr, /plaid/i)}
                   schema={PLAID_PROD_SCHEMA}
                   initialVisibilityModel={getVisibilityModel('bpf', 'plaid', PLAID_PROD_SCHEMA)}
@@ -1074,17 +1111,17 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
             </Accordion>
           )}
 
-          {rowsMobilier.length > 0 && (
+          {bpfMobilier.length > 0 && (
             <Accordion key="bpf_mobilier" defaultExpanded disableGutters TransitionProps={{ unmountOnExit: true }} sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), border: 1px solid #f3f4f6' }}>
               <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ borderBottom: '1px solid #f3f4f6', backgroundColor: '#fff', borderTopLeftRadius: 12, borderTopRightRadius: 12, px: 3 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <h3 style={{ margin: 0, fontSize: 18, color: '#111827', fontWeight: 700 }}>BPF Mobilier / Tête de Lit</h3>
-                  <span style={{ background: '#f3f4f6', color: '#4b5563', padding: '2px 8px', borderRadius: 12, fontSize: 12, fontWeight: 600 }}>{rowsMobilier.length} articles</span>
+                  <span style={{ background: '#f3f4f6', color: '#4b5563', padding: '2px 8px', borderRadius: 12, fontSize: 12, fontWeight: 600 }}>{bpfMobilier.length} articles</span>
                 </div>
               </AccordionSummary>
               <AccordionDetails sx={{ p: 0 }}>
                 <MinuteGrid
-                  rows={rowsMobilier}
+                  rows={bpfMobilier}
                   onRowsChange={(nr) => handleSubsetChange(nr, /tête de lit|mobilier/i)}
                   schema={MOBILIER_PROD_SCHEMA}
                   initialVisibilityModel={getVisibilityModel('bpf', 'mobilier', MOBILIER_PROD_SCHEMA)}
@@ -1100,17 +1137,17 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
             </Accordion>
           )}
 
-          {rowsTentureMurale.length > 0 && (
+          {bpfTentureMurale.length > 0 && (
             <Accordion key="bpf_tenture_murale" defaultExpanded disableGutters TransitionProps={{ unmountOnExit: true }} sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), border: 1px solid #f3f4f6' }}>
               <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ borderBottom: '1px solid #f3f4f6', backgroundColor: '#fff', borderTopLeftRadius: 12, borderTopRightRadius: 12, px: 3 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <h3 style={{ margin: 0, fontSize: 18, color: '#111827', fontWeight: 700 }}>BPF Tenture Murale</h3>
-                  <span style={{ background: '#f3f4f6', color: '#4b5563', padding: '2px 8px', borderRadius: 12, fontSize: 12, fontWeight: 600 }}>{rowsTentureMurale.length} articles</span>
+                  <span style={{ background: '#f3f4f6', color: '#4b5563', padding: '2px 8px', borderRadius: 12, fontSize: 12, fontWeight: 600 }}>{bpfTentureMurale.length} articles</span>
                 </div>
               </AccordionSummary>
               <AccordionDetails sx={{ p: 0 }}>
                 <MinuteGrid
-                  rows={rowsTentureMurale}
+                  rows={bpfTentureMurale}
                   onRowsChange={(nr) => handleSubsetChange(nr, /tenture murale/i)}
                   schema={TENTURE_MURALE_PROD_SCHEMA}
                   initialVisibilityModel={getVisibilityModel('bpf', 'tenture_murale', TENTURE_MURALE_PROD_SCHEMA)}
@@ -1126,11 +1163,11 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
             </Accordion>
           )}
 
-          {rowsAutreConfection.length > 0 && (
+          {bpfAutreConfection.length > 0 && (
             <div style={cardStyle}>
               <div style={cardHeaderStyle}>BPF Autre (Confection sur mesure)</div>
               <MinuteGrid
-                rows={rowsAutreConfection}
+                rows={bpfAutreConfection}
                 onRowsChange={mergeChildRowsFor("autre_confection")}
                 schema={AUTRES_PROD_SCHEMA}
                 enableCellFormulas={true}
@@ -1293,7 +1330,8 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
             open={true}
             onClose={() => setOpenedRowId(null)}
             row={openedRow}
-            schema={schema}
+            schema={openedRowDetail.schema}
+            columnVisibilityModel={openedRowDetail.columnVisibilityModel}
             onRowChange={handleDetailUpdate}
             projectId={project?.id}
             minuteId={null}
