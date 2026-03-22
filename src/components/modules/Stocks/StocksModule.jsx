@@ -169,11 +169,12 @@ export default function StocksModule({
                         />
                     )}
                     {tabIndex === 2 && (
-                        <StockInventoryTab 
-                            inventory={inventory} 
-                            projects={projects} 
-                            movements={movements} 
+                        <StockInventoryTab
+                            inventory={inventory}
+                            projects={projects}
+                            movements={movements}
                             onBulkMovement={onBulkMovement}
+                            zones={zones}
                         />
                     )}
                 </div>
