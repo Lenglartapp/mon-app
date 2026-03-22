@@ -3,6 +3,10 @@ import React from 'react';
 import ReactDOM from "react-dom/client";
 import "./index.css";
 
+// AG Grid — enregistrement global des modules Community (une seule fois au démarrage)
+import { ModuleRegistry, AllCommunityModule } from 'ag-grid-community';
+ModuleRegistry.registerModules([AllCommunityModule]);
+
 import App from "./App.jsx";
 import ErrorBoundary from "./ErrorBoundary.jsx";
 // 🔁 Pour isoler : passe temporairement <App/> ⇄ <SmokeApp/> si besoin

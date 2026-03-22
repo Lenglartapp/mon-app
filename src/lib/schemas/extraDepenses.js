@@ -18,9 +18,8 @@ export const EXTRA_DEPENSES_SCHEMA = [
     key: "pourcentage",
     label: "%",
     type: "number",
-    width: 80,
+    width: 100,
     editable: (params) => {
-      // Editable only if category contains "Commission"
       const cat = params.row.categorie || "";
       return cat.includes("Commission");
     }

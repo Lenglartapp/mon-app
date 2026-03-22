@@ -49,13 +49,85 @@ const PlanningGrid = ({
 
         if (dayEvents.length === 0) return null;
 
+        const isBacklog = memberId === 'backlog_confection';
+
+        // --- MODE DURÉE : conf & prepa (hors backlog) ---
+        // Si tous les events du jour ont durationHours OU si le type est conf/prepa
+        const isHourMode = !isBacklog && dayEvents.every(e => e.type === 'conf' || e.type === 'prepa');
+
+        if (isHourMode) {
+            // Trier par ordre d'insertion (createdAt, ou start en fallback pour les anciens events)
+            const sorted = [...dayEvents].sort((a, b) => {
+                const ta = a.meta?.createdAt || a.meta?.start || '';
+                const tb = b.meta?.createdAt || b.meta?.start || '';
+                return ta < tb ? -1 : ta > tb ? 1 : 0;
+            });
+
+            const totalDh = sorted.reduce((sum, e) => sum + (e.meta?.durationHours ?? 8), 0);
+            const baseDh = Math.max(8, totalDh); // 8h = largeur de référence d'une journée
+
+            return (
+                <div key="hour-mode-wrapper" style={{
+                    position: 'absolute', inset: '4px 2px',
+                    display: 'flex', gap: 2, overflow: 'hidden'
+                }}>
+                    {sorted.map(evt => {
+                        const dh = evt.meta?.durationHours ?? 8;
+                        const widthPct = (dh / baseDh) * 100;
+                        const evtStyle = getProjectColor(evt.meta?.projectId) || PLANNING_COLORS[evt.type] || PLANNING_COLORS.default;
+                        const isValidated = evt.meta?.status === 'validated';
+
+                        return (
+                            <div
+                                key={evt.id}
+                                draggable={!readOnly}
+                                onMouseEnter={() => onHoverEvent && onHoverEvent(evt.id)}
+                                onMouseLeave={() => onHoverEvent && onHoverEvent(null)}
+                                onDragStart={(e) => onDragStart(e, evt)}
+                                onClick={(e) => { e.stopPropagation(); onEventClick(evt); }}
+                                title={`${evt.title} — ${dh}h`}
+                                style={{
+                                    width: `${widthPct}%`,
+                                    flexShrink: 0,
+                                    height: '100%',
+                                    backgroundColor: evtStyle.bg,
+                                    border: `1px ${isValidated ? 'solid' : 'dashed'} ${evtStyle.border}`,
+                                    borderLeft: `4px solid ${evtStyle.border}`,
+                                    borderRadius: 6,
+                                    padding: '2px 4px',
+                                    overflow: 'hidden',
+                                    cursor: 'grab',
+                                    opacity: isValidated ? 1 : 0.9,
+                                    boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    justifyContent: 'center',
+                                    position: 'relative',
+                                    minWidth: 0
+                                }}
+                            >
+                                <div style={{ fontSize: 11, fontWeight: isValidated ? 700 : 500, color: evtStyle.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                    {evt.title}
+                                </div>
+                                <div style={{ fontSize: 10, color: evtStyle.text, opacity: 0.7 }}>
+                                    {dh}h
+                                </div>
+                                {isValidated && (
+                                    <CheckCircle size={10} color={evtStyle.text} style={{ position: 'absolute', bottom: 2, right: 2 }} />
+                                )}
+                            </div>
+                        );
+                    })}
+                </div>
+            );
+        }
+
+        // --- MODE STANDARD : pose, absences, backlog ---
         return dayEvents.map(evt => {
-            const isBacklog = memberId === 'backlog_confection';
             const style = evt.type === 'absence'
                 ? PLANNING_COLORS.absence
                 : (getProjectColor(evt.meta?.projectId) || PLANNING_COLORS[evt.type] || PLANNING_COLORS.default);
             const isValidated = evt.meta?.status === 'validated';
-            const borderStyle = isValidated ? 'solid' : 'dashed';
             const fontWeight = isBacklog ? 800 : (isValidated ? 700 : 500);
             const opacity = isValidated || isBacklog ? 1 : 0.9;
 
@@ -63,13 +135,9 @@ const PlanningGrid = ({
             let progressPercent = 0;
             let plannedHours = 0;
             let totalHours = 0;
-            let childEvents = []; // Fix: Declare outside if block
+            let childEvents = [];
 
             if (isBacklog) {
-                // Calculate dispatched hours from children
-                // MATCHING LOGIC: Project ID or Title AND Date Range Intersection
-
-                // Pre-calc view range safely inside loop (safest scope)
                 let viewStart = new Date();
                 let viewEnd = new Date();
 
@@ -81,11 +149,8 @@ const PlanningGrid = ({
                         : new Date(lastCol.getFullYear(), lastCol.getMonth(), lastCol.getDate(), 23, 59, 59);
                 }
 
-                // Filter Loop
                 childEvents = events.filter(e => {
                     if (e.resourceId === 'backlog_confection') return false;
-
-                    // 1. Project/Title Match
                     let isMatch = false;
                     if (evt.meta?.projectId && e.meta?.projectId) {
                         isMatch = e.meta.projectId === evt.meta.projectId;
@@ -94,45 +159,35 @@ const PlanningGrid = ({
                         isMatch = normalize(e.title) === normalize(evt.title);
                     }
                     if (!isMatch) return false;
-
-                    // 2. Date Range Intersection Match
                     const eventStart = new Date(e.meta?.start || e.date);
                     const eventEnd = new Date(e.meta?.end || e.date);
                     return (eventStart < viewEnd && eventEnd > viewStart);
                 });
 
-                // Sum duration of ALL child events
                 const minutes = childEvents.reduce((acc, child) => {
+                    // Priorité : utiliser durationHours si disponible (conf/prepa)
+                    if (child.meta?.durationHours != null) {
+                        return acc + child.meta.durationHours * 60;
+                    }
                     const s = new Date(child.meta.start);
                     const e = new Date(child.meta.end);
-
                     let duration = differenceInMinutes(e, s);
-
-                    // Deduct Lunch Break (12:00-13:00) if event spans across it
                     const lunchStart = new Date(s); lunchStart.setHours(12, 0, 0, 0);
                     const lunchEnd = new Date(s); lunchEnd.setHours(13, 0, 0, 0);
-
                     if (s < lunchStart && e > lunchEnd) {
                         duration -= 60;
                     } else if (s < lunchEnd && e > lunchStart) {
-                        // Partial overlap (rare but possible)
-                        // For simplicity, we stick to the standard rule: 
-                        // If you work through lunch, you usually split the event.
-                        // But let's be robust: subtract overlap.
                         const overlapStart = s < lunchStart ? lunchStart : s;
                         const overlapEnd = e > lunchEnd ? lunchEnd : e;
                         if (overlapStart < overlapEnd) {
                             duration -= differenceInMinutes(overlapEnd, overlapStart);
                         }
                     }
-
                     return acc + Math.max(0, duration);
                 }, 0);
 
                 plannedHours = Math.round(minutes / 60);
 
-                // Total from Master Event
-                // If explicit budget is set (via Backlog Modal), use it.
                 if (evt.meta?.budgetHours) {
                     totalHours = evt.meta.budgetHours;
                 } else {
@@ -143,57 +198,26 @@ const PlanningGrid = ({
 
                 progressPercent = totalHours > 0 ? (plannedHours / totalHours) * 100 : 0;
             }
-            // ------------------------------
 
             const startStr = evt.meta?.start ? format(new Date(evt.meta.start || evt.date), 'HH:mm') : '08:00';
             const endStr = evt.meta?.end ? format(new Date(evt.meta.end || evt.date), 'HH:mm') : '17:00';
             const labelTime = `${startStr}-${endStr}`;
 
-            // Calcul Position Horizontale
+            // Calcul Position Horizontale (mode créneau)
             let leftPercent = 0;
             let widthPercent = 100;
 
             if (evt.meta?.start && evt.meta?.end) {
-                // ... (standard logic) ...
                 const s = new Date(evt.meta.start);
                 const e = new Date(evt.meta.end);
-
-                // For Backlog, we force full width if it's the start of the week? 
-                // User said "Displays on the whole week".
-                // We'll keep standard rendering for now, but maybe force color/style.
-
                 const sMinutes = getHours(s) * 60 + getMinutes(s);
                 const startWorkMinutes = 8 * 60;
                 const relativeStart = Math.max(0, sMinutes - startWorkMinutes);
                 leftPercent = (relativeStart / TOTAL_WORK_MINUTES) * 100;
-
                 const duration = Math.min(TOTAL_WORK_MINUTES, Math.max(0, differenceInMinutes(e, s)));
                 widthPercent = (duration / TOTAL_WORK_MINUTES) * 100;
             }
 
-            // ... (Fusion Logic reused) ...
-            const prevDay = addDays(dayDate, -1);
-            const prevEvt = localEventsRef(events).find(e =>
-                e.resourceId === memberId &&
-                e.meta?.seriesId === evt.meta.seriesId &&
-                isSameDay(parseISO(e.date), prevDay)
-            );
-            const columns = gridCols; // Ensure columns is available for legacy logic if needed
-            const prevVisible = true;
-
-            // RE-INSERTING FUSION LOGIC CAREFULLY
-            const hasPrev = !!prevEvt;
-            let isStartOfVisibleSeries = !hasPrev;
-            let widthMultiplier = 1;
-
-            // Simplified width for Backlog to be always visible/distinct
-            if (isBacklog) {
-                // Backlog styling override
-            }
-
-            // ... (rest of fusion logic) ...
-
-            // Custom Backlog Content
             const renderBacklogContent = () => (
                 <div style={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'center' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
@@ -209,20 +233,17 @@ const PlanningGrid = ({
             );
 
             return (
-                <div key={evt.id} draggable={!readOnly && !isBacklog} // DISABLE DRAG FOR BACKLOG
+                <div key={evt.id} draggable={!readOnly && !isBacklog}
                     onMouseEnter={() => onHoverEvent && onHoverEvent(evt.id)}
                     onMouseLeave={() => onHoverEvent && onHoverEvent(null)}
                     onDragStart={(e) => onDragStart(e, evt)}
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        onEventClick(evt);
-                    }}
+                    onClick={(e) => { e.stopPropagation(); onEventClick(evt); }}
                     title={isBacklog ? `ID:${evt.id} | Enfants:${childEvents.length} | Backlog: ${plannedHours}h / ${totalHours}h planifié` : `${evt.title} (${labelTime})`}
                     style={{
                         position: 'absolute', top: 4, bottom: 4,
                         left: `${leftPercent}%`,
-                        width: `${widthPercent}%`, // Simplified for now, real fusion logic needs full block
-                        backgroundColor: isBacklog ? '#FFF1F2' : style.bg, // Pinkish for Backlog
+                        width: `${widthPercent}%`,
+                        backgroundColor: isBacklog ? '#FFF1F2' : style.bg,
                         border: `1px solid ${isBacklog ? '#BE123C' : style.border}`,
                         borderLeft: `4px solid ${isBacklog ? '#BE123C' : style.border}`,
                         borderRadius: 8,
@@ -232,19 +253,16 @@ const PlanningGrid = ({
                         cursor: 'grab',
                         opacity: opacity,
                         boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
-                        // Hatched pattern for Backlog
                         backgroundImage: isBacklog
                             ? 'repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(190, 18, 60, 0.05) 10px, rgba(190, 18, 60, 0.05) 20px)'
                             : (style.pattern ? 'repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(0,0,0,0.05) 5px, rgba(0,0,0,0.05) 10px)' : 'none')
                     }}
                 >
                     {isBacklog ? renderBacklogContent() : (
-                        <div style={{ fontSize: 11, fontWeight: fontWeight, color: isBacklog ? '#881337' : style.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <div style={{ fontSize: 11, fontWeight: fontWeight, color: style.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                             {evt.title}
                         </div>
                     )}
-
-                    {/* ... Icons (Check, Delete, Resize) ... */}
                     {!isBacklog && isValidated && (
                         <CheckCircle size={10} color={style.text} style={{ position: 'absolute', bottom: 2, right: 2 }} />
                     )}
@@ -253,7 +271,7 @@ const PlanningGrid = ({
         });
     };
 
-    // Helpler to access latest events in loop if needed, but here we pass events prop
+    // Helper to access latest events in loop if needed, but here we pass events prop
     const localEventsRef = (evts) => evts;
 
     if (isVertical) {
@@ -480,11 +498,6 @@ const PlanningGrid = ({
                                     <div style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
                                         {expandedGroups[key] > 0 ? <ChevronDown size={14} style={{ marginRight: 8 }} /> : <ChevronRightIcon size={14} style={{ marginRight: 8 }} />}
                                         {group.label}
-                                        {key === 'conf' && expandedGroups[key] === 1 && (
-                                            <span style={{ marginLeft: 8, fontSize: 9, fontWeight: 700, padding: '1px 6px', borderRadius: 4, background: '#FEF3C7', color: '#92400E', border: '1px solid #FCD34D' }}>
-                                                PROGRAMME
-                                            </span>
-                                        )}
                                     </div>
                                     {showGauges && (
                                         <div style={{ fontSize: 11, fontWeight: 600, color: groupStats.percent > 100 ? '#EF4444' : '#6B7280', background: 'rgba(255,255,255,0.5)', padding: '2px 6px', borderRadius: 4 }}>

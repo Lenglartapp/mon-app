@@ -1,6 +1,6 @@
 // src/lib/schemas/production.js
 import React from 'react';
-// We might need to import UI components if we were defining renderCell here, 
+// We might need to import UI components if we were defining renderCell here,
 // but usually the Grid component handles the mapping based on 'type'.
 // However, the user said "Preserve existing UI interactions".
 // The existing code likely maps 'photo' and 'croquis' types to components in the Grid.
@@ -9,10 +9,12 @@ import React from 'react';
 // Helper to safely extract row from valueGetter args (MUI V5 vs V6 compat)
 const getRow = (a, b) => {
   // V6: (value, row) -> b is row
-  if (b) return b;
-  // V5: (params) -> a.row is row
+  if (b && typeof b === 'object' && !b.api) return b;
+  // AG Grid Community: (params) -> a.data is row
+  if (a && a.data) return a.data;
+  // MUI V5: (params) -> a.row is row
   if (a && a.row) return a.row;
-  return a || {}; // Fallback
+  return {}; // Fallback
 };
 
 const toNum = (v) => {
@@ -127,7 +129,7 @@ const getters = {
     const roundToEven = (num) => {
       const rounded = Math.round(num);
       return (rounded % 2 === 0) ? rounded : rounded + 1; // Round UP to next even if odd? Or just closest?
-      // "plus proche" usually means closest. 
+      // "plus proche" usually means closest.
       // If 13 -> 14? or 12? Context: Gliders usually need to be even or matched.
       // Let's assume Ceil to next Even to be safe for hardware abundance.
       // Actually standard wave logic often requires even number of gliders per panel.
@@ -156,23 +158,23 @@ const getters = {
 export const SCHEMA_64 = [
   // A. Saisies Générales & Identité
   { key: "sel", label: "Sel.", type: "checkbox", width: 50 },
-  { key: "detail", label: "Détail", type: "button", width: 90 }, // Keep existing UI trigger
-  { key: "zone", label: "Zone", type: "text", width: 100, editable: true },
-  { key: "piece", label: "Pièce", type: "text", width: 100, editable: true },
-  { key: "produit", label: "Produit", type: "select", options: ["Rideau", "Voilage", "Store Bateau", "Autres"], width: 120, editable: true },
-  { key: "type_confection", label: "Type Conf.", type: "select", options: ["Pli Flamand", "Plis Creux", "Pli Plat", "Tripli", "Wave 80", "Wave 60", "Pli Couteau", "A Plat"], width: 140, editable: true },
-  { key: "hauteur_renfort_tete", label: "H/Renfort Têtes", type: "text", width: 140, editable: true },
-  { key: "paire_ou_un_seul_pan", label: "Paire ou un Pan", type: "select", options: ["Paire", "Un seul pan", "Un seul pan (Rapatriement Droit)", "Un seul pan (Rapatriement Gauche)"], width: 180, editable: true },
-  { key: "ampleur", label: "Ampleur", type: "number", width: 80, editable: true },
-  { key: "largeur_mecanisme", label: "L. Méca (cm)", type: "number", width: 110, editable: true },
-  { key: "largeur", label: "Largeur (cm)", type: "number", width: 110, editable: true },
+  { key: "detail", label: "Détail", type: "button", width: 130 }, // Keep existing UI trigger
+  { key: "zone", label: "Zone", type: "text", width: 120, editable: true },
+  { key: "piece", label: "Pièce", type: "text", width: 120, editable: true },
+  { key: "produit", label: "Produit", type: "select", options: ["Rideau", "Voilage", "Store Bateau", "Autres"], width: 125, editable: true },
+  { key: "type_confection", label: "Type Conf.", type: "select", options: ["Pli Flamand", "Plis Creux", "Pli Plat", "Tripli", "Wave 80", "Wave 60", "Pli Couteau", "A Plat"], width: 150, editable: true },
+  { key: "hauteur_renfort_tete", label: "H/Renfort Têtes", type: "text", width: 155, editable: true },
+  { key: "paire_ou_un_seul_pan", label: "Paire ou un Pan", type: "select", options: ["Paire", "Un seul pan", "Un seul pan (Rapatriement Droit)", "Un seul pan (Rapatriement Gauche)"], width: 260, editable: true },
+  { key: "ampleur", label: "Ampleur", type: "number", width: 110, editable: true },
+  { key: "largeur_mecanisme", label: "L. Méca (cm)", type: "number", width: 130, editable: true },
+  { key: "largeur", label: "Largeur (cm)", type: "number", width: 130, editable: true },
 
   // B. Calculs de Largeur
   {
     key: "largeur_finie",
     label: "L. Finie",
     type: "number",
-    width: 100,
+    width: 110,
     readOnly: true,
     valueGetter: (v, r) => getters.largeur_finie(getRow(v, r))
   },
@@ -180,31 +182,31 @@ export const SCHEMA_64 = [
     key: "a_plat",
     label: "A Plat",
     type: "number",
-    width: 100,
+    width: 110,
     readOnly: true,
     valueGetter: (v, r) => getters.a_plat(getRow(v, r))
   },
-  { key: "v_ourlets_de_cotes", label: "Ourlets Côtés", type: "number", width: 110, editable: true },
+  { key: "v_ourlets_de_cotes", label: "Ourlets Côtés", type: "number", width: 130, editable: true },
 
 
   // C. Hauteurs & Coupe
-  { key: "hspf_droite", label: "HSPF Droit", type: "number", width: 110, editable: true },
-  { key: "hspf_gauche", label: "HSPF Gauche", type: "number", width: 110, editable: true },
+  { key: "hspf_droite", label: "HSPF Droit", type: "number", width: 120, editable: true },
+  { key: "hspf_gauche", label: "HSPF Gauche", type: "number", width: 125, editable: true },
   {
     key: "statut_cotes",
     label: "Statut Côtes",
     type: "select",
-    options: ['Définitive', 'Déduction restante à faire', 'Non exploitable'],
-    width: 160,
-    editable: true
+    options: ['Cote non prenable', 'Déduction restante à faire', 'Définitive', 'Validé par chef de projet'],
+    width: 200,
+    readOnly: (row) => !/rideau|voilage|store/i.test(String(row?.produit || '')),
   },
-  { key: "valeur_deduction", label: "Val. Déduc.", type: "number", width: 100, editable: true },
-  { key: "finition_bas", label: "Finition Bas", type: "number", width: 100, editable: true },
+  { key: "valeur_deduction", label: "Val. Déduc.", type: "number", width: 120, editable: true },
+  { key: "finition_bas", label: "Finition Bas", type: "number", width: 120, editable: true },
   {
     key: "hauteur_finie_droite",
     label: "H. Finie Droite",
     type: "number",
-    width: 110,
+    width: 135,
     readOnly: true,
     valueGetter: (v, r) => getters.hauteur_finie_droite(getRow(v, r))
   },
@@ -212,7 +214,7 @@ export const SCHEMA_64 = [
     key: "hauteur_finie_gauche",
     label: "H. Finie Gauche",
     type: "number",
-    width: 110,
+    width: 140,
     readOnly: true,
     valueGetter: (v, r) => getters.hauteur_finie_gauche(getRow(v, r))
   },
@@ -220,7 +222,7 @@ export const SCHEMA_64 = [
     key: "hauteur_coupe",
     label: "H. Coupe",
     type: "number",
-    width: 100,
+    width: 120,
     readOnly: true,
     valueGetter: (v, r) => getters.hauteur_coupe(getRow(v, r))
   },
@@ -228,7 +230,7 @@ export const SCHEMA_64 = [
     key: "hauteur_coupe_motif",
     label: "H. Coupe Motif",
     type: "number",
-    width: 120,
+    width: 140,
     readOnly: true,
     valueGetter: (v, r) => {
       const row = getRow(v, r);
@@ -242,7 +244,7 @@ export const SCHEMA_64 = [
     key: "hauteur_coupe_doublure",
     label: "H. Coupe Doubl.",
     type: "number",
-    width: 120,
+    width: 150,
     readOnly: true,
     valueGetter: (v, r) => {
       const row = getRow(v, r);
@@ -264,7 +266,7 @@ export const SCHEMA_64 = [
     key: "nombre_les",
     label: "Nb Lés",
     type: "number",
-    width: 80,
+    width: 100,
     readOnly: true,
     valueGetter: (v, r) => {
       const row = getRow(v, r);
@@ -274,42 +276,42 @@ export const SCHEMA_64 = [
       return Math.max(1, Math.ceil(aPlat / laize));
     }
   },
-  { key: "piquage_ourlets_du_bas", label: "Piq. Bas", type: "number", width: 100, editable: true },
-  { key: "doublure_finition_bas", label: "Doubl. Fin. Bas", type: "number", width: 120, editable: true },
-  { key: "finition_champs", label: "Fin. Champs", type: "number", width: 100, editable: true },
-  { key: "poids", label: "Poids", type: "select", options: ["Oui", "Non"], width: 80, editable: true },
+  { key: "piquage_ourlets_du_bas", label: "Piq. Bas", type: "number", width: 115, editable: true },
+  { key: "doublure_finition_bas", label: "Doubl. Fin. Bas", type: "number", width: 145, editable: true },
+  { key: "finition_champs", label: "Fin. Champs", type: "number", width: 120, editable: true },
+  { key: "poids", label: "Poids", type: "select", options: ["Oui", "Non"], width: 90, editable: true },
 
   // Onglets: Non / Régulier / Irrégulier
   { key: "onglets", label: "Onglets", type: "select", options: ["Non", "Régulier", "Irrégulier"], width: 120, editable: true },
 
-  { key: "bride", label: "Bride", type: "select", options: ["Oui", "Non"], width: 80, editable: true },
+  { key: "bride", label: "Bride", type: "select", options: ["Oui", "Non"], width: 90, editable: true },
 
   // Crochets: Américain / Escargot
-  { key: "type_crochets", label: "Crochets", type: "select", options: ['Crochet Américain', 'Crochet Escargot'], width: 140, editable: true },
+  { key: "type_crochets", label: "Crochets", type: "select", options: ['Crochet Américain', 'Crochet Escargot'], width: 165, editable: true },
 
   // Point Chausson: Oui / Non
-  { key: "point_chausson", label: "Point Chausson", type: "select", options: ["Oui", "Non"], width: 120, editable: true },
+  { key: "point_chausson", label: "Point Chausson", type: "select", options: ["Oui", "Non"], width: 140, editable: true },
 
   // E. Matériaux
-  { key: "tissu_deco1", label: "Tissu 1", type: "text", width: 140, editable: true },
-  { key: "laize_tissu1", label: "Laize T1", type: "number", width: 90, editable: true },
-  { key: "raccord_v_tissu1", label: "Raccord V T1", type: "number", width: 100, editable: true },
-  { key: "raccord_h_tissu1", label: "Raccord H T1", type: "number", width: 100, editable: true },
-  { key: "tissu_deco2", label: "Tissu 2", type: "text", width: 140, editable: true },
-  { key: "laize_tissu2", label: "Laize T2", type: "number", width: 90, editable: true },
-  { key: "raccord_v_tissu2", label: "Raccord V T2", type: "number", width: 100, editable: true },
-  { key: "raccord_h_tissu2", label: "Raccord H T2", type: "number", width: 100, editable: true },
-  { key: "doublure", label: "Doublure", type: "text", width: 140, editable: true },
-  { key: "laize_doublure", label: "Laize D.", type: "number", width: 90, editable: true },
-  { key: "inter_doublure", label: "Interdoublure", type: "text", width: 140 },
-  { key: "laize_inter", label: "Laize Interdoublure", type: "number", width: 160 },
-  { key: "passementerie1", label: "Pass. 1", type: "text", width: 140, editable: true },
-  { key: "application_passementerie1", label: "Appli Pass. 1", type: "text", width: 120, editable: true },
-  { key: "passementerie2", label: "Pass. 2", type: "text", width: 140, editable: true },
-  { key: "application_passementerie2", label: "Appli Pass. 2", type: "text", width: 120, editable: true },
+  { key: "tissu_deco1", label: "Tissu 1", type: "text", width: 160, editable: true },
+  { key: "laize_tissu1", label: "Laize T1", type: "number", width: 110, editable: true },
+  { key: "raccord_v_tissu1", label: "Raccord V T1", type: "number", width: 125, editable: true },
+  { key: "raccord_h_tissu1", label: "Raccord H T1", type: "number", width: 125, editable: true },
+  { key: "tissu_deco2", label: "Tissu 2", type: "text", width: 160, editable: true },
+  { key: "laize_tissu2", label: "Laize T2", type: "number", width: 110, editable: true },
+  { key: "raccord_v_tissu2", label: "Raccord V T2", type: "number", width: 125, editable: true },
+  { key: "raccord_h_tissu2", label: "Raccord H T2", type: "number", width: 125, editable: true },
+  { key: "doublure", label: "Doublure", type: "text", width: 160, editable: true },
+  { key: "laize_doublure", label: "Laize D.", type: "number", width: 110, editable: true },
+  { key: "inter_doublure", label: "Interdoublure", type: "text", width: 160 },
+  { key: "laize_inter", label: "Laize Interdoublure", type: "number", width: 175 },
+  { key: "passementerie1", label: "Pass. 1", type: "text", width: 160, editable: true },
+  { key: "application_passementerie1", label: "Appli Pass. 1", type: "text", width: 140, editable: true },
+  { key: "passementerie2", label: "Pass. 2", type: "text", width: 160, editable: true },
+  { key: "application_passementerie2", label: "Appli Pass. 2", type: "text", width: 140, editable: true },
 
   // F. Finitions & Logistique Atelier
-  { key: "croisement", label: "Croisement", type: "number", width: 90, editable: true },
+  { key: "croisement", label: "Croisement", type: "number", width: 120, editable: true },
 
   // Type de Croisement (NEW)
   {
@@ -323,20 +325,20 @@ export const SCHEMA_64 = [
       "Croisement simple arrière gauche",
       "Croisement simple arrière droit"
     ],
-    width: 200,
+    width: 230,
     editable: true
   },
 
-  { key: "retour_gauche", label: "Retour G", type: "number", width: 90, editable: true },
-  { key: "retour_droit", label: "Retour D", type: "number", width: 90, editable: true },
-  { key: "type_retours", label: "Type Retours", type: "select", options: ['Élastique', 'Velcro'], width: 120, editable: true },
-  { key: "etiquette_lavage", label: "Etiq. Lavage", type: "select", options: ["Oui", "Non"], width: 100, editable: true },
-  { key: "etiquette_lenglart", label: "Etiq. Lenglart", type: "select", options: ["Oui", "Non"], width: 100, editable: true, defaultValue: "Oui" },
-  { key: "schema", label: "Modèle", type: "croquis", width: 100 }, // PRESERVED COMPONENT
-  { key: "type_mecanisme", label: "Type Méca", type: "text", width: 120, editable: true },
-  { key: "modele_mecanisme", label: "Modèle Méca", type: "text", width: 140, editable: true },
-  { key: "couleur_mecanisme", label: "Couleur Méca", type: "text", width: 120, editable: true },
-  { key: "meca_couvert", label: "Méca Couvert", type: "select", options: ["Couvert", "Mi-Couvert", "Découvert"], width: 120, editable: true },
+  { key: "retour_gauche", label: "Retour G", type: "number", width: 110, editable: true },
+  { key: "retour_droit", label: "Retour D", type: "number", width: 110, editable: true },
+  { key: "type_retours", label: "Type Retours", type: "select", options: ['Élastique', 'Velcro'], width: 130, editable: true },
+  { key: "etiquette_lavage", label: "Etiq. Lavage", type: "select", options: ["Oui", "Non"], width: 125, editable: true },
+  { key: "etiquette_lenglart", label: "Etiq. Lenglart", type: "select", options: ["Oui", "Non"], width: 130, editable: true, defaultValue: "Oui" },
+  { key: "schema", label: "Modèle", type: "croquis", width: 110 }, // PRESERVED COMPONENT
+  { key: "type_mecanisme", label: "Type Méca", type: "text", width: 130, editable: true },
+  { key: "modele_mecanisme", label: "Modèle Méca", type: "text", width: 150, editable: true },
+  { key: "couleur_mecanisme", label: "Couleur Méca", type: "text", width: 140, editable: true },
+  { key: "meca_couvert", label: "Méca Couvert", type: "select", options: ["Couvert", "Mi-Couvert", "Découvert"], width: 135, editable: true },
 
   // Type de Commande (NEW)
   {
@@ -350,7 +352,7 @@ export const SCHEMA_64 = [
       "Commande murale Sec",
       "Fourni par le client"
     ],
-    width: 150,
+    width: 180,
     editable: true
   },
 
@@ -358,14 +360,14 @@ export const SCHEMA_64 = [
     key: "nombre_glisseur",
     label: "Nb Glisseurs",
     type: "number",
-    width: 100,
+    width: 120,
     readOnly: true,
-    valueGetter: (v, row) => getters.nb_glisseurs(row)
+    valueGetter: (v, row) => getters.nb_glisseurs(getRow(v, row))
   },
 
-  { key: "couleur_glisseur", label: "Couleur Glisseur", type: "text", width: 120, editable: true },
-  { key: "piton", label: "Piton", type: "text", width: 100, editable: true },
-  { key: "embout_meca", label: "Embout Méca", type: "text", width: 120, editable: true },
+  { key: "couleur_glisseur", label: "Couleur Glisseur", type: "text", width: 145, editable: true },
+  { key: "piton", label: "Piton", type: "text", width: 110, editable: true },
+  { key: "embout_meca", label: "Embout Méca", type: "text", width: 130, editable: true },
   { key: "support", label: "Support", type: "text", width: 120, editable: true },
   {
     key: "equerre",
@@ -377,11 +379,11 @@ export const SCHEMA_64 = [
   },
 
   // G. Suivi & Statuts
-  { key: "type_pose", label: "Type Pose", type: "text", width: 120, editable: true },
-  { key: "heures_confection", label: "H. Conf.", type: "number", width: 80, editable: true },
-  { key: "statut_pose", label: "Statut Pose", type: "select", options: ['Non démarré', 'Méca posé', 'Accroché', 'Terminé', 'Reprise'], width: 140, editable: true },
-  { key: "statut_prepa", label: "Statut Prépa", type: "select", options: ['Non démarré', 'En cours', 'Terminé'], width: 140, editable: true },
-  { key: "statut_conf", label: "Statut Conf", type: "select", options: ['Non démarré', 'En cours', 'Terminé'], width: 140, editable: true },
+  { key: "type_pose", label: "Type Pose", type: "text", width: 130, editable: true },
+  { key: "heures_confection", label: "H. Conf.", type: "number", width: 115, editable: true },
+  { key: "statut_pose", label: "Statut Pose", type: "select", options: ['Non démarré', 'Méca posé', 'Accroché', 'Terminé', 'Reprise'], width: 155, editable: true },
+  { key: "statut_prepa", label: "Statut Prépa", type: "select", options: ['Non démarré', 'En cours', 'Terminé'], width: 150, editable: true },
+  { key: "statut_conf", label: "Statut Conf", type: "select", options: ['Non démarré', 'En cours', 'Terminé'], width: 150, editable: true },
   // PRESERVED COMPONENTS
   { key: "schema_principe", label: "Schéma Principe", type: "photo", width: 150 }, // NEW
   { key: "photos_sur_site", label: "Photos Site", type: "photo", width: 150 },

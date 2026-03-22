@@ -1,8 +1,7 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import FormulaEditCell from '../../components/FormulaEditCell';
 import GridPhotoCell from '../../components/ui/GridPhotoCell';
 import GridSketchCell from '../../components/ui/GridSketchCell';
-import { GridEditInputCell, GridEditSingleSelectCell } from '@mui/x-data-grid';
 import Tooltip from '@mui/material/Tooltip';
 import Badge from '@mui/material/Badge';
 import IconButton from '@mui/material/IconButton';
@@ -10,13 +9,15 @@ import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import Chip from '@mui/material/Chip';
-import { Type, Hash, Calendar, CheckSquare, List, Calculator, Image as ImageIcon, PenTool, ChevronDown } from 'lucide-react';
+import { Type, Hash, Calendar, CheckSquare, Image as ImageIcon, PenTool, ChevronDown, Filter } from 'lucide-react';
+
+// Formateur EUR créé une seule fois au niveau module (Intl.NumberFormat est coûteux à instancier)
+const EUR_FORMATTER = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' });
+
 
 const getColumnIcon = (col) => {
-  // Determine icon based on schema type and characteristics
   if (col.type === 'formula' || (col.readOnly && col.type === 'number'))
     return <span className="text-gray-400 font-serif italic text-[14px] leading-none pr-0.5" style={{ transform: 'translateY(1px)' }}>ƒx</span>;
-
   if (col.type === 'photo') return <ImageIcon size={14} className="text-gray-400" />;
   if (col.type === 'croquis') return <PenTool size={14} className="text-gray-400" />;
   if (col.type === 'date' || col.type === 'datetime') return <Calendar size={14} className="text-gray-400" />;
@@ -25,41 +26,78 @@ const getColumnIcon = (col) => {
     return <ChevronDown size={14} className="text-gray-400" strokeWidth={2.5} />;
   }
   if (col.type === 'number') return <Hash size={14} className="text-gray-400" />;
-
   return <Type size={14} className="text-gray-400" />;
 };
 
-/**
- * Maps a custom schema type to MUI Data Grid column type.
- */
-const mapType = (type) => {
-  switch (type) {
-    case 'number':
-    case 'formula': // Formulas result in numbers usually
-      return 'number';
-    case 'checkbox':
-      return 'boolean';
-    case 'select':
-      return 'singleSelect';
-    case 'date':
-      return 'date';
-    case 'datetime':
-      return 'dateTime';
-    default:
-      return 'string';
-  }
-};
+// Composant Header AG Grid — affiche icône + label + bouton filtre
+function AgColumnHeader(props) {
+  const { displayName, column } = props;
+  const icon = column?.getColDef?.()?.context?._headerIcon;
+  const filterActive = column?.isFilterActive?.();
+
+  const handleFilterClick = (e) => {
+    e.stopPropagation();
+    if (props.showFilter) {
+      props.showFilter(e.currentTarget);
+    } else if (props.showColumnMenu) {
+      props.showColumnMenu(e.currentTarget);
+    } else if (props.api) {
+      props.api.showColumnFilter(column?.getColId?.());
+    }
+  };
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', width: '100%', overflow: 'hidden' }}>
+      {icon && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, height: '14px' }}>
+          {icon}
+        </div>
+      )}
+      <span style={{ fontWeight: 600, color: '#374151', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', paddingTop: '2px', fontSize: '13px', flex: 1 }}>
+        {displayName}
+      </span>
+      <button
+        onClick={handleFilterClick}
+        style={{
+          flexShrink: 0,
+          background: 'none',
+          border: 'none',
+          cursor: 'pointer',
+          padding: '2px 3px',
+          borderRadius: 3,
+          display: 'flex',
+          alignItems: 'center',
+          color: filterActive ? '#2563eb' : '#9ca3af',
+        }}
+        onMouseEnter={e => { e.currentTarget.style.background = '#e5e7eb'; e.currentTarget.style.color = '#374151'; }}
+        onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = filterActive ? '#2563eb' : '#9ca3af'; }}
+        title="Filtrer"
+      >
+        <Filter size={12} strokeWidth={2.5} />
+      </button>
+    </div>
+  );
+}
+
+const chipFields = ['produit', 'type_confection', 'paire_ou_un_seul_pan', 'application_passementerie1', 'application_passementerie2', 'type_mecanisme', 'type_pose', 'type_interieur', 'style_confection'];
 
 /**
- * Converts custom schema to MUI Data Grid columns.
- * @param {Array} schema - The custom schema array.
- * @param {boolean} enableCellFormulas - Whether cell formulas are enabled.
- * @returns {Array} - Array of GridColDef.
+ * Converts custom schema to AG Grid column definitions (ColDef[]).
  */
-export function schemaToGridCols(schema, enableCellFormulas = false, onOpenDetail, catalog = [], railOptions = [], onPhotoChange, onDuplicate, hideCroquis = false, readOnly = false, gridTitle = '') {
+export function schemaToGridCols(
+  schema,
+  enableCellFormulas = false,
+  onOpenDetail,
+  catalog = [],
+  railOptions = [],
+  onPhotoChange,
+  onDuplicate,
+  hideCroquis = false,
+  readOnly = false,
+  gridTitle = ''
+) {
   if (!Array.isArray(schema)) return [];
 
-  // Filter out 'sel' column and explicitly hidden columns
   const filteredSchema = schema.filter(col => {
     if (col.key === 'sel' || col.label === 'Sel.' || col.hidden) return false;
     if (hideCroquis && col.type === 'croquis') return false;
@@ -68,240 +106,202 @@ export function schemaToGridCols(schema, enableCellFormulas = false, onOpenDetai
 
   return filteredSchema.map((col) => {
     const isFormula = col.type === 'formula';
-    // --- DETERMINING EDITABILITY ---
-    let isCellEditableFn = null;
 
+    // --- Editability ---
+    let isCellEditableFn;
     if (typeof col.readOnly === 'function') {
-      // Prioritize functional readOnly
-      isCellEditableFn = (params) => !col.readOnly(params.row);
+      isCellEditableFn = (params) => !col.readOnly(params.data || {});
     } else if (col.editable !== undefined) {
       if (typeof col.editable === 'function') {
-        isCellEditableFn = col.editable;
+        isCellEditableFn = (params) => col.editable({ row: params.data || {} });
       } else {
-        isCellEditableFn = () => !!col.editable; // Boolean
+        isCellEditableFn = () => !!col.editable;
       }
     } else {
-      // Default: editable unless readOnly
       const isReadOnly = !!col.readOnly || readOnly;
       isCellEditableFn = () => !isReadOnly;
     }
 
+    const headerName = col.headerName || col.label || col.key;
     const gridCol = {
       field: col.key,
-      headerName: col.headerName || col.label || col.key,
-      width: col.width || 100,
-      type: mapType(col.type),
-      description: col.formula ? `Formula: ${col.formula}` : undefined,
-      isCellEditable: (params) => {
-        if (readOnly) return false; // Global readOnly override
-        return isCellEditableFn(params);
-      },
-      // MUI Community version depends on the 'editable' boolean to prevent entering edit mode.
-      // If the schema defines editability as a function, we must keep it true but the cell 
-      // styling and results will be handled by processRowUpdate/isCellEditable.
-      // For static non-editable fields (like 'quantite' now), we set it to false.
-      editable: !readOnly && (typeof col.readOnly === 'function' || typeof col.editable === 'function' || isCellEditableFn({ row: {} })),
-
-      cellClassName: (params) => {
-        // Handle readOnly styling
-        if (readOnly) return 'cell-read-only';
-        if (isCellEditableFn && !isCellEditableFn(params)) {
-          return 'cell-read-only';
-        }
-
-        // Special styling for dim_mecanisme when locked
+      headerName,
+      initialWidth: col.width || 120,
+      resizable: true,
+      sortable: true,
+      editable: readOnly ? false : (params) => params.node?.rowPinned ? false : isCellEditableFn(params),
+      // Header avec icône — stocké dans context (AG Grid v35 rejette les props custom directes)
+      headerComponent: AgColumnHeader,
+      context: { _headerIcon: getColumnIcon(col) },
+      // Cell class pour read-only styling (pas de grisage sur la ligne de totaux)
+      cellClass: (params) => {
+        if (params.node?.rowPinned) return '';
+        if (readOnly) return 'ag-cell-read-only';
+        if (!isCellEditableFn(params)) return 'ag-cell-read-only';
         if (col.key === 'dim_mecanisme') {
-          const type = params.row.type_mecanisme || '';
+          const type = params.data?.type_mecanisme || '';
           const isLocked = type === 'Rail' || type.includes('Store') || type === 'Canishade';
-          if (isLocked) return 'bg-gray-100 text-gray-500 cursor-not-allowed';
+          if (isLocked) return 'ag-cell-read-only';
         }
-
         return '';
       },
-      renderHeader: (params) => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', outline: 'none', width: '100%', overflow: 'hidden' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, height: '14px' }}>
-            {getColumnIcon(col)}
-          </div>
-          <span style={{ fontWeight: 600, color: '#374151', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', paddingTop: '2px', fontSize: '13px' }}>
-            {col.headerName || col.label || col.key}
-          </span>
-        </div>
-      )
     };
 
+    // valueFormatter (explicit override from schema)
     if (col.valueFormatter) {
-      gridCol.valueFormatter = col.valueFormatter;
+      gridCol.valueFormatter = (params) => col.valueFormatter(params.value);
     }
 
-    // MAP valueGetter
+    // valueGetter — ignoré sur la ligne de totaux (on utilise la valeur pré-calculée par computeAgg)
     if (col.valueGetter) {
-      gridCol.valueGetter = col.valueGetter;
+      gridCol.valueGetter = (params) => {
+        if (params.node?.rowPinned) return params.data?.[col.key];
+        return col.valueGetter({ row: params.data || {} });
+      };
     }
 
-    // Link Catalog to 'tissu', 'doublure', 'produit', OR explicit catalog_item type
-    const isCatalogType = col.type === 'catalog_item';
+    // Numbers → right-aligned
+    if (col.type === 'number' || col.type === 'formula') {
+      gridCol.type = 'numericColumn';
+    }
 
-    // Legacy check for other schemas that don't use 'catalog_item' yet?
-    // Keep legacy support for chiffrage.js unless upgraded.
-    const isLegacyCatalogCol = col.key.includes('tissu') || col.key.includes('doublure') || (col.key.includes('passementerie') && !col.key.includes('app_')) || (col.key === 'produit' && !col.hidden && col.type !== 'text');
+    // --- Catalog columns (dropdown) ---
+    const isCatalogType = col.type === 'catalog_item';
+    const isLegacyCatalogCol =
+      col.key.includes('tissu') ||
+      col.key.includes('doublure') ||
+      (col.key.includes('passementerie') && !col.key.includes('app_')) ||
+      (col.key === 'produit' && !col.hidden && col.type !== 'text');
     const isMechColumn = ['modele_mecanisme', 'nom_tringle', 'rail', 'mecanisme_bis'].includes(col.key);
 
     if ((isCatalogType || isLegacyCatalogCol || isMechColumn) && catalog.length > 0) {
-      gridCol.type = 'singleSelect';
-
-      // STRICT FILTERING LOGIC
       let filteredCatalog = catalog;
 
       if (isCatalogType && col.category) {
-        // NEW Logic: Use Schema Category
         const cats = col.category.split(',').map(c => c.trim().toLowerCase());
         filteredCatalog = catalog.filter(item => {
           if (!item.category) return false;
-          // Robust check: trim and lowercase
           return cats.includes(item.category.trim().toLowerCase());
         });
       } else {
-        // LEGACY Logic
         if (col.key.includes('tissu') || col.key.includes('doublure')) {
           filteredCatalog = catalog.filter(item => ['Tissu', 'Confection'].includes(item.category));
         } else if (col.key.includes('passementerie')) {
-          filteredCatalog = catalog.filter(item => ['Passementerie'].includes(item.category));
+          filteredCatalog = catalog.filter(item => item.category === 'Passementerie');
         } else if (isMechColumn) {
           filteredCatalog = catalog.filter(item => item.category === 'Rail');
         }
       }
 
+      gridCol.cellEditor = 'agSelectCellEditor';
+
       if (col.key === 'modele_mecanisme' || col.key === 'mecanisme_bis') {
-        // Restore singleSelect so double-click opens the editor automatically
-        gridCol.type = 'singleSelect';
-        gridCol.valueOptions = (params) => {
-          const row = params.row || {};
-          const typeMeca = row.type_mecanisme;
+        gridCol.cellEditorParams = (params) => {
+          const typeMeca = params.data?.type_mecanisme;
           let subFiltered = filteredCatalog;
           if (typeMeca === 'Rail') {
             subFiltered = subFiltered.filter(a => !a.unit || a.unit === 'ml');
           }
-          return subFiltered.map(a => a.name);
+          return { values: ['', ...subFiltered.map(a => a.name)] };
         };
-        // Force plain text in view mode (removes the permanent arrow/border)
-        gridCol.renderCell = (params) => params.value;
       } else {
-        // Standard static list for other catalog columns
-        gridCol.valueOptions = filteredCatalog.map(a => a.name);
+        gridCol.cellEditorParams = { values: ['', ...filteredCatalog.map(a => a.name)] };
       }
-      // We rely on isCellEditable from above
     }
 
-    // Handle standard singleSelect with valueOptions
+    // Standard singleSelect / select
     if ((col.type === 'singleSelect' || col.type === 'select') && Array.isArray(col.valueOptions || col.options)) {
-      gridCol.type = 'singleSelect';
-      gridCol.valueOptions = col.valueOptions || col.options;
+      gridCol.cellEditor = 'agSelectCellEditor';
+      const rawOptions = col.valueOptions || col.options;
+      gridCol.cellEditorParams = { values: ['', ...rawOptions] };
     }
 
     // PHOTO CELL
     if (col.type === 'photo') {
-      gridCol.renderCell = (params) => (
+      gridCol.cellRenderer = (params) => (
         <GridPhotoCell
           value={params.value}
-          rowId={params.id}
-          api={params.api}
-          field={params.field}
-          onImageUpload={(newVal) => onPhotoChange && onPhotoChange(params.id, params.field, newVal)}
-        />
-      );
-      gridCol.editable = false; // Interaction handles edit
-      gridCol.sortable = false;
-      gridCol.filterable = false;
-    }
-
-    // SKETCH CELL
-    if (col.type === 'croquis') {
-      gridCol.renderCell = (params) => (
-        <GridSketchCell
-          value={params.value}
-          rowId={params.id}
-          field={params.field}
-          onSketchUpdate={(newVal) => onPhotoChange && onPhotoChange(params.id, params.field, newVal)}
+          rowId={params.data?.id}
+          field={params.colDef?.field}
+          onImageUpload={(newVal) => onPhotoChange && onPhotoChange(params.data?.id, params.colDef?.field, newVal)}
         />
       );
       gridCol.editable = false;
       gridCol.sortable = false;
-      gridCol.filterable = false;
     }
 
-    // Currency Formatting (Force override)
+    // SKETCH CELL
+    if (col.type === 'croquis') {
+      gridCol.cellRenderer = (params) => (
+        <GridSketchCell
+          value={params.value}
+          rowId={params.data?.id}
+          field={params.colDef?.field}
+          onSketchUpdate={(newVal) => onPhotoChange && onPhotoChange(params.data?.id, params.colDef?.field, newVal)}
+        />
+      );
+      gridCol.editable = false;
+      gridCol.sortable = false;
+    }
+
+    // --- Currency Formatting ---
     const isPriceTerm = ['prix', 'montant', 'total', 'cout', 'pa', 'pv', 'transport', 'livraison'].some(term => {
       const lowerKey = col.key.toLowerCase();
       if (term === 'pa' || term === 'pv') {
-        // Strict check for pa/pv: must be exactly that, or start/end with it followed/preceded by underscore
         return lowerKey === term || lowerKey.startsWith(term + '_') || lowerKey.endsWith('_' + term) || lowerKey.includes('_' + term + '_');
       }
       return lowerKey.includes(term);
     });
     const isRepas = col.key === 'nb_repas';
-    const isHeuresPrepa = col.key === 'heures_prepa'; // "prepa" contains "pa"
-    const isML = col.key.startsWith('ml_'); // Exclude ML columns
+    const isHeuresPrepa = col.key === 'heures_prepa';
+    const isML = col.key.startsWith('ml_');
     const isNb = col.key.startsWith('nb_');
     const isPaire = col.key.includes('paire');
-
     const isPrice = isPriceTerm && !isRepas && !isHeuresPrepa && !isML && !isNb && !isPaire;
 
-    // Remove type check to ensure coverage
-    // Priority: Explicit formatter > Auto Formatting
     if (isPrice && !col.valueFormatter && !gridCol.valueFormatter) {
-      const formatter = (value) => {
+      gridCol.valueFormatter = (params) => {
+        const value = params.value;
         if (value === null || value === undefined || value === '') return '';
         const n = Number(value);
-        if (isNaN(n)) return value; // Return original if not NaN? Or empty? User code said params.value. Let's return value to be safe or empty. User code: return params.value if isNaN.
-        return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(n);
+        if (isNaN(n)) return String(value);
+        return EUR_FORMATTER.format(n);
       };
-
-      gridCol.valueFormatter = (params) => {
-        // Handle both MUI v5 (params.value) and v6 (value)
-        const value = (params && typeof params === 'object' && 'value' in params) ? params.value : params;
-        return formatter(value);
-      };
-
-      // Force renderCell
-      gridCol.renderCell = (params) => formatter(params.value);
     }
 
-    // Use Custom Edit Cell for formulas if enabled
+    // --- Éditeur numérique (test diagnostic : agTextCellEditor natif AG Grid) ---
+    // FormulaEditCell remplacé temporairement pour isoler le bug d'édition.
+    // getValue() de FormulaEditCell n'était jamais appelé par AG Grid v35.
     if (enableCellFormulas && (isFormula || col.type === 'number')) {
-      gridCol.type = 'string'; // Force string to allow formula editing
-      gridCol.align = 'right';
-      gridCol.headerAlign = 'right';
-      gridCol.sortComparator = (v1, v2) => {
-        const n1 = Number(v1);
-        const n2 = Number(v2);
+      gridCol.type = undefined;
+      gridCol.cellEditor = 'agTextCellEditor';
+      gridCol.comparator = (a, b) => {
+        const n1 = Number(a), n2 = Number(b);
         if (isNaN(n1)) return 1;
         if (isNaN(n2)) return -1;
         return n1 - n2;
       };
-      gridCol.renderEditCell = (params) => (
-        <FormulaEditCell {...params} defaultFormula={col.formula} schema={schema} />
-      );
     }
 
-    // Handle Select Options & Chips (Labels)
-    const chipFields = ['produit', 'type_confection', 'paire_ou_un_seul_pan', 'application_passementerie1', 'application_passementerie2', 'type_mecanisme', 'type_pose', 'type_interieur', 'style_confection'];
-
-    if (((col.type === 'select' || col.type === 'singleSelect') && Array.isArray(col.options || col.valueOptions)) || chipFields.includes(col.key)) {
-      if (!gridCol.renderCell) { // Don't overwrite buttons or custom cells
-        gridCol.renderCell = (params) => {
+    // --- Chip renderer (select fields) ---
+    if (
+      ((col.type === 'select' || col.type === 'singleSelect') && Array.isArray(col.options || col.valueOptions)) ||
+      chipFields.includes(col.key)
+    ) {
+      if (!gridCol.cellRenderer) {
+        gridCol.cellRenderer = (params) => {
+          if (params.node?.rowPinned) return null;
           if (!params.value) return '';
-
           return (
             <Chip
               label={params.value}
               size="small"
               style={{
                 backgroundColor: getThemedColor(params.value, col.key, gridTitle),
-                color: '#1F2937', // Darker text for better contrast on pastels
-                fontWeight: 600,  // Slightly thicker font
+                color: '#1F2937',
+                fontWeight: 600,
                 fontSize: '0.75rem',
-                border: '1px solid rgba(0,0,0,0.05)' // Subtle border to frame it
+                border: '1px solid rgba(0,0,0,0.05)',
               }}
             />
           );
@@ -309,72 +309,40 @@ export function schemaToGridCols(schema, enableCellFormulas = false, onOpenDetai
       }
     }
 
-
-
-    // Handle specific types that might need custom rendering or logic
+    // --- Detail / Button column ---
     if (col.key === 'detail' || col.type === 'button') {
-      gridCol.renderCell = (params) => {
-        const comments = params.row.comments || [];
-        // Filter out system logs for the badge count
+      gridCol.cellRenderer = (params) => {
+        if (params.node?.rowPinned) return null;
+        const comments = params.data?.comments || [];
         const commentCount = comments.filter(c => c.type !== 'log').length;
-
         return (
           <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              width: '100%',
-              height: '100%',
-              cursor: 'pointer',
-              // Expand to cover cell padding
-              margin: '0 -10px',
-              padding: '0 10px',
-              minWidth: '100%'
-            }}
-            onClick={(e) => {
-              e.stopPropagation();
-              console.log('Detail container clicked', params.row.id);
-              onOpenDetail && onOpenDetail(params.row);
-            }}
+            style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', height: '100%', cursor: 'pointer' }}
+            onClick={(e) => { e.stopPropagation(); onOpenDetail && onOpenDetail(params.data); }}
           >
             {onDuplicate && (
               <Tooltip title="Dupliquer">
-                <IconButton size="small" onClick={(e) => {
-                  e.stopPropagation();
-                  onDuplicate(params.id);
-                }}>
+                <IconButton size="small" onClick={(e) => { e.stopPropagation(); onDuplicate(params.data?.id); }}>
                   <ContentCopyIcon fontSize="small" />
                 </IconButton>
               </Tooltip>
             )}
-
             <Tooltip title="Ouvrir le détail">
-              <IconButton size="small" onClick={(e) => {
-                e.stopPropagation();
-                console.log('Detail icon clicked', params.row.id);
-                onOpenDetail && onOpenDetail(params.row);
-              }}>
+              <IconButton size="small" onClick={(e) => { e.stopPropagation(); onOpenDetail && onOpenDetail(params.data); }}>
                 <OpenInNewIcon fontSize="small" />
               </IconButton>
             </Tooltip>
-
             {commentCount > 0 && (
               <Tooltip title={`${commentCount} commentaire(s)`}>
-                <div
-                  style={{ display: 'flex', alignItems: 'center' }}
-                >
-                  <Badge badgeContent={commentCount} color="primary">
-                    <ChatBubbleOutlineIcon fontSize="small" color="action" />
-                  </Badge>
-                </div>
+                <Badge badgeContent={commentCount} color="primary">
+                  <ChatBubbleOutlineIcon fontSize="small" color="action" />
+                </Badge>
               </Tooltip>
             )}
           </div>
         );
       };
       gridCol.sortable = false;
-      gridCol.filterable = false;
       gridCol.editable = false;
     }
 
@@ -382,58 +350,48 @@ export function schemaToGridCols(schema, enableCellFormulas = false, onOpenDetai
   });
 }
 
-/**
- * Generates a themed HSL pastel color based on the table, column, and text value.
- * @param {string} value The display text of the chip
- * @param {string} colKey The technical key of the column (e.g. 'produit', 'type_confection')
- * @param {string} gridTitle The human-readable title of the grid (e.g. 'Rideaux', 'Stores Négoce')
- */
+// Cache pour getThemedColor — même value+colKey+gridTitle → même couleur, calculée une seule fois
+const _colorCache = new Map();
+
 function getThemedColor(value, colKey, gridTitle) {
+  const cacheKey = `${value}|${colKey}|${gridTitle}`;
+  if (_colorCache.has(cacheKey)) return _colorCache.get(cacheKey);
   const strValue = String(value || '');
   const title = String(gridTitle || '').toLowerCase();
 
-  // 1. Determine Base Hue according to Family
   let baseHue = 0;
   if (title.includes('rideau') || title.includes('voilage')) {
-    baseHue = 150; // Green/Teal range (Mint, Sage)
+    baseHue = 150;
   } else if (title.includes('store')) {
-    baseHue = 210; // Blue range (Sky, Azure)
+    baseHue = 210;
   } else if (title.includes('coussin') || title.includes('plaid')) {
-    baseHue = 35; // Orange/Yellow range (Peach, Sand)
+    baseHue = 35;
   } else if (title.includes('tête de lit') || title.includes('mobilier') || title.includes('tenture')) {
-    baseHue = 270; // Purple range (Lilac, Lavender)
+    baseHue = 270;
   } else if (title.includes('déplacement') || title.includes('dépense') || title.includes('autre')) {
-    baseHue = 0; // Grayscale or subtle neutral (handled by low saturation)
+    baseHue = 0;
   } else {
-    // Fallback: hash the title
     baseHue = Array.from(title).reduce((acc, char) => acc + char.charCodeAt(0), 0) % 360;
   }
 
-  // Avoid pure red (0 or 360) and harsh greens (120) by shifting if needed
-  if (baseHue < 20 || baseHue > 340) baseHue = 220; // Default to nice blue if it lands in red
+  if (baseHue < 20 || baseHue > 340) baseHue = 220;
 
-  // 2. Determine Hue Variation based on Column Key
-  // This ensures 'Confection' and 'Produit' in the same table have different nuances
   const colHash = Array.from(colKey).reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  const hueVariation = (colHash % 60) - 30; // Shift by +/- 30 degrees max
-
+  const hueVariation = (colHash % 60) - 30;
   let finalHue = (baseHue + hueVariation) % 360;
   if (finalHue < 0) finalHue += 360;
 
-  // 3. Determine Saturation/Lightness based on the actual Text Value
-  // This ensures 'Pli Flamand' and 'Oeillets' within the same column are distinct
   const valHash = Array.from(strValue).reduce((acc, char) => acc + char.charCodeAt(0), 0);
-
-  // Saturation between 40% and 80% (pleasant pastels)
   const saturation = 40 + (valHash % 40);
-
-  // Lightness between 85% and 95% (very light background)
   const lightness = 85 + (valHash % 10);
 
-  // Special cases for universally neutral terms
   if (strValue === '-' || strValue.toLowerCase() === 'aucun' || strValue.toLowerCase() === 'non') {
-    return `hsl(0, 0%, 95%)`; // Light gray
+    const neutral = `hsl(0, 0%, 95%)`;
+    _colorCache.set(cacheKey, neutral);
+    return neutral;
   }
 
-  return `hsl(${finalHue}, ${saturation}%, ${lightness}%)`;
+  const result = `hsl(${finalHue}, ${saturation}%, ${lightness}%)`;
+  _colorCache.set(cacheKey, result);
+  return result;
 }

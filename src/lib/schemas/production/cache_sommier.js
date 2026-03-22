@@ -21,18 +21,18 @@ const BASE_CACHE_SOMMIER_SCHEMA = [
     {
         field: 'detail',
         headerName: 'Détail',
-        width: 100,
+        width: 130,
         sortable: false,
         renderCell: (params) => '👁️',
     },
-    createCol('zone', 'Zone', 80, 'text', autoCap),
-    createCol('piece', 'Pièce', 100, 'text', autoCap),
+    createCol('zone', 'Zone', 120, 'text', autoCap),
+    createCol('piece', 'Pièce', 120, 'text', autoCap),
 
-    createCol('produit', 'Produit', 150, 'singleSelect', {
+    createCol('produit', 'Produit', 125, 'singleSelect', {
         valueOptions: ['Cache-Sommier']
     }),
 
-    createCol('realise_par', 'Réalisé par', 120, 'singleSelect', {
+    createCol('realise_par', 'Réalisé par', 130, 'singleSelect', {
         valueOptions: ['Lenglart', 'Sous-Traitant']
     }),
 
@@ -40,44 +40,44 @@ const BASE_CACHE_SOMMIER_SCHEMA = [
         valueOptions: ['Confection boîte', 'Plis Dior']
     }),
 
-    createCol('largeur', 'Largeur', 80, 'number'),
-    createCol('longueur', 'Longueur', 80, 'number'),
-    createCol('hauteur', 'Hauteur', 80, 'number'),
+    createCol('largeur', 'Largeur', 130, 'number'),
+    createCol('longueur', 'Longueur', 130, 'number'),
+    createCol('hauteur', 'Hauteur', 130, 'number'),
 
     createCol('tissu_1', 'Tissu 1', 180, 'catalog_item', { category: 'Tissu' }),
-    createCol('laize_tissu_1', 'Laize 1', 70, 'number'),
-    createCol('ml_tissu_1', 'ML T1', 70, 'number'),
-    createCol('pa_tissu_1', 'PA T1', 70, 'number'),
-    createCol('pv_tissu_1', 'PV T1', 70, 'number'),
+    createCol('laize_tissu_1', 'Laize 1', 120, 'number'),
+    createCol('ml_tissu_1', 'ML T1', 130, 'number'),
+    createCol('pa_tissu_1', 'PA T1', 100, 'number'),
+    createCol('pv_tissu_1', 'PV T1', 100, 'number'),
 
     createCol('molleton', 'Molleton', 180, 'catalog_item', { category: 'Tissu' }),
-    createCol('ml_molleton', 'ML Mol.', 70, 'number'),
-    createCol('pa_molleton', 'PA Mol.', 70, 'number'),
-    createCol('pv_molleton', 'PV Mol.', 70, 'number'),
+    createCol('ml_molleton', 'ML Mol.', 130, 'number'),
+    createCol('pa_molleton', 'PA Mol.', 100, 'number'),
+    createCol('pv_molleton', 'PV Mol.', 100, 'number'),
 
     createCol('tissu_2', 'Tissu 2', 180, 'catalog_item', { category: 'Tissu' }),
-    createCol('laize_tissu_2', 'Laize 2', 70, 'number'),
-    createCol('ml_tissu_2', 'ML T2', 70, 'number'),
-    createCol('pa_tissu_2', 'PA T2', 70, 'number'),
-    createCol('pv_tissu_2', 'PV T2', 70, 'number'),
+    createCol('laize_tissu_2', 'Laize 2', 120, 'number'),
+    createCol('ml_tissu_2', 'ML T2', 130, 'number'),
+    createCol('pa_tissu_2', 'PA T2', 100, 'number'),
+    createCol('pv_tissu_2', 'PV T2', 100, 'number'),
 
     createCol('passementerie_1', 'Passementerie 1', 180, 'catalog_item', { category: 'Passementerie' }),
     createCol('app_passementerie_1', 'Application Passementerie 1', 180, 'text'),
-    createCol('ml_pass_1', 'ML P1', 70, 'number'),
-    createCol('pa_pass_1', 'PA P1', 70, 'number'),
-    createCol('pv_pass_1', 'PV P1', 70, 'number'),
+    createCol('ml_pass_1', 'ML P1', 130, 'number'),
+    createCol('pa_pass_1', 'PA P1', 100, 'number'),
+    createCol('pv_pass_1', 'PV P1', 100, 'number'),
 
-    createCol('heures_confection', 'H. Conf', 80, 'number'),
-    createCol('pv_confection', 'PV Conf', 80, 'number'),
+    createCol('heures_confection', 'H. Conf', 120, 'number'),
+    createCol('pv_confection', 'PV Conf', 100, 'number'),
 
-    createCol('st_conf_pa', 'ST Conf PA', 90, 'number'),
-    createCol('st_conf_pv', 'ST Conf PV', 90, 'number'),
+    createCol('st_conf_pa', 'ST Conf PA', 150, 'number'),
+    createCol('st_conf_pv', 'ST Conf PV', 150, 'number'),
 
-    createCol('livraison', 'Livraison', 90, 'number'),
+    createCol('livraison', 'Livraison', 140, 'number'),
 
-    createCol('unit_price', 'P.U.', 100, 'number'),
+    createCol('unit_price', 'P.U.', 115, 'number'),
     createCol('quantite', 'Qté', 70, 'number'),
-    createCol('total_price', 'Total', 100, 'number')
+    createCol('total_price', 'Total', 125, 'number')
 ].map(c => ({ ...c, key: c.field }));
 
 const hideZero = (params) => {
@@ -92,14 +92,14 @@ export const CACHE_SOMMIER_PROD_SCHEMA = [
     {
         field: 'nom_sous_traitant',
         headerName: 'Nom Sous-Traitant',
-        width: 150,
+        width: 170,
         type: 'text',
         editable: true,
         readOnly: (row) => row?.realise_par !== 'Sous-Traitant'
     },
     'type_confection',
     'largeur', 'longueur',
-    createCol('longueur_coupe', 'Long. Coupe', 110, 'number', {
+    createCol('longueur_coupe', 'Long. Coupe', 130, 'number', {
         editable: false,
         readOnly: true,
         valueGetter: (value, row) => {
@@ -121,8 +121,8 @@ export const CACHE_SOMMIER_PROD_SCHEMA = [
         }
     }),
     'hauteur',
-    createCol('ourlet_bas', 'Ourlet bas', 80, 'number'),
-    createCol('a_plat', 'À plat', 80, 'number', {
+    createCol('ourlet_bas', 'Ourlet bas', 120, 'number'),
+    createCol('a_plat', 'À plat', 110, 'number', {
         editable: false,
         readOnly: true,
         valueGetter: (value, row) => {
@@ -135,7 +135,7 @@ export const CACHE_SOMMIER_PROD_SCHEMA = [
     'tissu_1', 'laize_tissu_1', 'ml_tissu_1',
     'tissu_2', 'laize_tissu_2', 'ml_tissu_2',
     'passementerie_1', 'app_passementerie_1', 'ml_pass_1',
-    createCol('largeur_satinette', 'Larg. Satinette', 110, 'number', {
+    createCol('largeur_satinette', 'Larg. Satinette', 140, 'number', {
         editable: false,
         readOnly: true,
         valueGetter: (value, row) => {
@@ -144,7 +144,7 @@ export const CACHE_SOMMIER_PROD_SCHEMA = [
             return l - 7;
         }
     }),
-    createCol('longueur_satinette', 'Long. Satinette', 110, 'number', {
+    createCol('longueur_satinette', 'Long. Satinette', 150, 'number', {
         editable: false,
         readOnly: true,
         valueGetter: (value, row) => {
@@ -153,13 +153,14 @@ export const CACHE_SOMMIER_PROD_SCHEMA = [
             return long + 16.5;
         }
     }),
-    createCol('nb_plis_dior', 'Nb plis Dior', 80, 'number'),
-    createCol('finition_plis_dior', 'Finition plis Dior', 150, 'text'),
-    createCol('doublure', 'Doublure', 100, 'singleSelect', {
+    createCol('nb_plis_dior', 'Nb plis Dior', 115, 'number'),
+    createCol('finition_plis_dior', 'Finition plis Dior', 165, 'text'),
+    createCol('doublure', 'Doublure', 120, 'singleSelect', {
         valueOptions: ['Oui', 'Non']
     }),
     { field: 'heures_confection', valueFormatter: hideZero },
     createCol('schema_photo', 'Schéma', 120, 'photo'),
+    createCol('photos_sur_site', 'Photo sur site', 150, 'photo'),
     'quantite',
 ].map(def => {
     if (typeof def === 'string') return BASE_CACHE_SOMMIER_SCHEMA.find(c => c.field === def || c.key === def) || { field: def, headerName: def };

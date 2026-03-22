@@ -22,75 +22,75 @@ const BASE_COUSSINS_SCHEMA = [
     {
         field: 'detail',
         headerName: 'Détail',
-        width: 100,
+        width: 130,
         sortable: false,
         renderCell: (params) => '👁️',
     },
-    createCol('zone', 'Zone', 80, 'text', autoCap),
-    createCol('piece', 'Pièce', 100, 'text', autoCap),
+    createCol('zone', 'Zone', 120, 'text', autoCap),
+    createCol('piece', 'Pièce', 120, 'text', autoCap),
 
     // 1. Produit
-    createCol('produit', 'Produit', 150, 'singleSelect', {
+    createCol('produit', 'Produit', 125, 'singleSelect', {
         valueOptions: ['Coussins']
     }),
 
-    createCol('realise_par', 'Réalisé par', 120, 'singleSelect', {
+    createCol('realise_par', 'Réalisé par', 130, 'singleSelect', {
         valueOptions: ['Lenglart', 'Sous-Traitant']
     }),
 
     // 2. Dimensions
-    createCol('largeur', 'Largeur', 80, 'number'),
-    createCol('hauteur', 'Hauteur', 80, 'number'),
-    createCol('epaisseur', 'Épaisseur', 80, 'number'),
+    createCol('largeur', 'Largeur', 130, 'number'),
+    createCol('hauteur', 'Hauteur', 130, 'number'),
+    createCol('epaisseur', 'Épaisseur', 120, 'number'),
 
     // 3. MATIÈRES - Tissu 1
     createCol('tissu_1', 'Tissu 1', 180, 'catalog_item', { category: 'Tissu' }),
-    createCol('laize_tissu_1', 'Laize 1', 70, 'number'),
-    createCol('ml_tissu_1', 'ML T1', 70, 'number'),
-    createCol('pa_tissu_1', 'PA T1', 70, 'number'),
-    createCol('pv_tissu_1', 'PV T1', 70, 'number'),
+    createCol('laize_tissu_1', 'Laize 1', 120, 'number'),
+    createCol('ml_tissu_1', 'ML T1', 130, 'number'),
+    createCol('pa_tissu_1', 'PA T1', 100, 'number'),
+    createCol('pv_tissu_1', 'PV T1', 100, 'number'),
 
     // 3b. Tissu 2
     createCol('tissu_2', 'Tissu 2', 180, 'catalog_item', { category: 'Tissu' }),
-    createCol('laize_tissu_2', 'Laize 2', 70, 'number'),
-    createCol('ml_tissu_2', 'ML T2', 70, 'number'),
-    createCol('pa_tissu_2', 'PA T2', 70, 'number'),
-    createCol('pv_tissu_2', 'PV T2', 70, 'number'),
+    createCol('laize_tissu_2', 'Laize 2', 120, 'number'),
+    createCol('ml_tissu_2', 'ML T2', 130, 'number'),
+    createCol('pa_tissu_2', 'PA T2', 100, 'number'),
+    createCol('pv_tissu_2', 'PV T2', 100, 'number'),
 
     // 3c. Intérieur (Garniture)
     createCol('type_interieur', 'Intérieur', 150, 'singleSelect', {
         valueOptions: ['Mousse', 'Intérieur Plume', 'Intérieur Polyester']
     }),
-    createCol('pa_interieur', 'PA Int.', 70, 'number'),
-    createCol('pv_interieur', 'PV Int.', 70, 'number'),
+    createCol('pa_interieur', 'PA Int.', 100, 'number'),
+    createCol('pv_interieur', 'PV Int.', 100, 'number'),
 
     // 4. Passementerie 1
     createCol('passementerie_1', 'Passementerie 1', 180, 'catalog_item', { category: 'Passementerie' }),
     createCol('app_passementerie_1', 'Application Passementerie 1', 180, 'text'),
-    createCol('ml_pass_1', 'ML P1', 70, 'number'),
-    createCol('pa_pass_1', 'PA P1', 70, 'number'),
-    createCol('pv_pass_1', 'PV P1', 70, 'number'),
+    createCol('ml_pass_1', 'ML P1', 130, 'number'),
+    createCol('pa_pass_1', 'PA P1', 100, 'number'),
+    createCol('pv_pass_1', 'PV P1', 100, 'number'),
 
     // 5. Passementerie 2
     createCol('passementerie_2', 'Passementerie 2', 180, 'catalog_item', { category: 'Passementerie' }),
     createCol('app_passementerie_2', 'Application Passementerie 2', 180, 'text'),
-    createCol('ml_pass_2', 'ML P2', 70, 'number'),
-    createCol('pa_pass_2', 'PA P2', 70, 'number'),
-    createCol('pv_pass_2', 'PV P2', 70, 'number'),
+    createCol('ml_pass_2', 'ML P2', 130, 'number'),
+    createCol('pa_pass_2', 'PA P2', 100, 'number'),
+    createCol('pv_pass_2', 'PV P2', 100, 'number'),
 
     // 7. PRESTATIONS
-    createCol('heures_confection', 'H. Conf', 80, 'number'),
-    createCol('pv_confection', 'PV Conf', 80, 'number'),
+    createCol('heures_confection', 'H. Conf', 120, 'number'),
+    createCol('pv_confection', 'PV Conf', 100, 'number'),
 
-    createCol('st_conf_pa', 'ST Conf PA', 90, 'number'),
-    createCol('st_conf_pv', 'ST Conf PV', 90, 'number'),
+    createCol('st_conf_pa', 'ST Conf PA', 150, 'number'),
+    createCol('st_conf_pv', 'ST Conf PV', 150, 'number'),
 
-    createCol('livraison', 'Livraison', 90, 'number'),
+    createCol('livraison', 'Livraison', 140, 'number'),
 
     // 8. TOTAUX
-    createCol('unit_price', 'P.U.', 100, 'number'),
+    createCol('unit_price', 'P.U.', 115, 'number'),
     createCol('quantite', 'Qté', 70, 'number'),
-    createCol('total_price', 'Total', 100, 'number'),
+    createCol('total_price', 'Total', 125, 'number'),
 ].map(c => ({ ...c, key: c.field }));
 
 const hideZero = (params) => {
@@ -105,13 +105,13 @@ export const COUSSINS_PROD_SCHEMA = [
     {
         field: 'nom_sous_traitant',
         headerName: 'Nom Sous-Traitant',
-        width: 150,
+        width: 170,
         type: 'text',
         editable: true,
         readOnly: (row) => row?.realise_par !== 'Sous-Traitant'
     },
     'largeur', 'hauteur', 'epaisseur',
-    createCol('largeur_coupe', 'Larg. Coupe', 100, 'number', {
+    createCol('largeur_coupe', 'Larg. Coupe', 120, 'number', {
         editable: false,
         readOnly: true,
         valueGetter: (value, row) => {
@@ -124,7 +124,7 @@ export const COUSSINS_PROD_SCHEMA = [
             return l;
         }
     }),
-    createCol('hauteur_coupe', 'Haut. Coupe', 100, 'number', {
+    createCol('hauteur_coupe', 'Haut. Coupe', 125, 'number', {
         editable: false,
         readOnly: true,
         valueGetter: (value, row) => {
@@ -144,6 +144,7 @@ export const COUSSINS_PROD_SCHEMA = [
     'passementerie_2', 'app_passementerie_2', 'ml_pass_2',
     { field: 'heures_confection', valueFormatter: hideZero },
     createCol('schema_photo', 'Schéma', 120, 'photo'),
+    createCol('photos_sur_site', 'Photo sur site', 150, 'photo'),
     'quantite',
 ].map(def => {
     if (typeof def === 'string') return BASE_COUSSINS_SCHEMA.find(c => c.field === def || c.key === def) || { field: def, headerName: def };

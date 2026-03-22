@@ -1,75 +1,107 @@
-import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
-import { GridEditInputCell, useGridApiContext } from '@mui/x-data-grid';
+import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 import Popper from '@mui/material/Popper';
 import Paper from '@mui/material/Paper';
 import List from '@mui/material/List';
-import ListItem from '@mui/material/ListItem';
 import ListItemButton from '@mui/material/ListItemButton';
 import ListItemText from '@mui/material/ListItemText';
 import ClickAwayListener from '@mui/material/ClickAwayListener';
 
-export default function FormulaEditCell(props) {
-    const { id, field, row, value, defaultFormula, schema } = props;
-    const apiRef = useGridApiContext();
-    // Ensure value is string
-    const [inputValue, setInputValue] = useState(String(value ?? ''));
-    const [anchorEl, setAnchorEl] = useState(null);
-    const [suggestions, setSuggestions] = useState([]);
-    const [cursorPos, setCursorPos] = useState(0);
-    const [highlightedIndex, setHighlightedIndex] = useState(0);
-    const inputRef = useRef(null);
-    const initialized = useRef(false);
+/**
+ * AG Grid custom cell editor — supporte la saisie de formules (=expr) avec autocomplétion.
+ *
+ * INPUT NON-CONTRÔLÉ (defaultValue) — critique pour AG Grid v35.
+ * Avec un input contrôlé (value=state), React ne commite pas le state update de façon
+ * synchrone. Quand AG Grid appelle getValue() dans le même cycle événement (ex: keydown Enter),
+ * inputRef.current.value retourne toujours la valeur initiale (state pas encore mis à jour).
+ * Avec defaultValue + input non-contrôlé, le DOM est immédiatement à jour à chaque frappe.
+ */
+const FormulaEditCell = forwardRef((props, ref) => {
+    const { value, data, colDef } = props;
+    const field = colDef?.field;
+    const row = data;
+    const defaultFormula = colDef?.defaultFormula ?? props.defaultFormula;
+    const schema = colDef?.schema ?? props.schema;
 
-    // Initialize value from override or default formula ONLY ONCE
-    useLayoutEffect(() => {
-        if (initialized.current) return;
-        initialized.current = true;
-
+    // Valeur initiale calculée une seule fois (ref, pas state — on ne contrôle pas l'input)
+    const initialValue = useRef(() => {
         const override = row?.__cellFormulas?.[field];
-        let initialValue = '';
+        if (override) return `=${override}`;
+        if (defaultFormula) return `=${defaultFormula}`;
+        return String(value ?? '');
+    }).current();
 
-        if (override) {
-            initialValue = `=${override}`;
-        } else if (defaultFormula) {
-            initialValue = `=${defaultFormula}`;
+    // État uniquement pour l'autocomplétion (ne contrôle PAS la valeur de l'input)
+    const [suggestions, setSuggestions] = useState([]);
+    const [highlightedIndex, setHighlightedIndex] = useState(0);
+    const [anchorEl, setAnchorEl] = useState(null);
+
+    const inputRef = useRef(null);
+
+    // Interface AG Grid — getValue() lit toujours depuis le DOM (synchrone)
+    useImperativeHandle(ref, () => ({
+        getValue() {
+            const domVal = inputRef.current ? inputRef.current.value : null;
+            console.log('[FormulaEditCell.getValue]', {
+                inputRefExists: !!inputRef.current,
+                domValue: domVal,
+                initialValue,
+                returning: domVal ?? initialValue,
+            });
+            return domVal ?? initialValue;
+        },
+        isCancelBeforeStart() {
+            return false;
+        },
+        afterGuiAttached() {
+            if (inputRef.current) {
+                inputRef.current.focus();
+                inputRef.current.select();
+            }
+        },
+    }));
+
+    const updateSuggestions = (currentValue, cursorPos) => {
+        if (!currentValue || !schema || !String(currentValue).startsWith('=')) {
+            setSuggestions([]);
+            return;
         }
-
-        if (initialValue) {
-            setInputValue(initialValue);
-            apiRef.current.setEditCellValue({ id, field, value: initialValue });
+        const textBeforeCursor = currentValue.slice(0, cursorPos);
+        const match = textBeforeCursor.match(/([a-zA-Z_][a-zA-Z0-9_]*)$/);
+        if (match) {
+            const query = match[1].toLowerCase();
+            const matches = schema
+                .filter(col => col.key.toLowerCase().includes(query) && col.key !== field)
+                .map(col => ({ key: col.key, label: col.label || col.key }));
+            setSuggestions(matches);
+        } else {
+            setSuggestions([]);
         }
-    }, []); // Empty dependency array to run only on mount
+    };
 
-    const handleChange = (event) => {
-        const newValue = event.target.value;
-        setInputValue(newValue);
-        apiRef.current.setEditCellValue({ id, field, value: newValue });
-
-        setCursorPos(event.target.selectionStart);
+    const handleInput = (event) => {
+        // Input non-contrôlé : on ne met PAS à jour un state qui contrôle value.
+        // On met seulement à jour les suggestions d'autocomplétion.
         setAnchorEl(event.currentTarget);
-        setHighlightedIndex(0); // Reset highlight on typing
+        updateSuggestions(event.target.value, event.target.selectionStart);
+        setHighlightedIndex(0);
     };
 
     const handleSelect = (suggestion) => {
-        const textBeforeCursor = inputValue.slice(0, cursorPos);
-        const textAfterCursor = inputValue.slice(cursorPos);
-
+        if (!inputRef.current) return;
+        const currentVal = inputRef.current.value;
+        const cursorPos = inputRef.current.selectionStart;
+        const textBeforeCursor = currentVal.slice(0, cursorPos);
+        const textAfterCursor = currentVal.slice(cursorPos);
         const match = textBeforeCursor.match(/([a-zA-Z_][a-zA-Z0-9_]*)$/);
         if (match) {
             const prefix = textBeforeCursor.slice(0, match.index);
             const newValue = prefix + suggestion.key + textAfterCursor;
-
-            setInputValue(newValue);
-            apiRef.current.setEditCellValue({ id, field, value: newValue });
+            // Mettre à jour le DOM directement (input non-contrôlé)
+            inputRef.current.value = newValue;
             setSuggestions([]);
-
-            setTimeout(() => {
-                if (inputRef.current) {
-                    inputRef.current.focus();
-                    const newCursorPos = prefix.length + suggestion.key.length;
-                    inputRef.current.setSelectionRange(newCursorPos, newCursorPos);
-                }
-            }, 0);
+            const newCursorPos = prefix.length + suggestion.key.length;
+            inputRef.current.setSelectionRange(newCursorPos, newCursorPos);
+            inputRef.current.focus();
         }
     };
 
@@ -84,64 +116,38 @@ export default function FormulaEditCell(props) {
             } else if (event.key === 'Enter' || event.key === 'Tab') {
                 if (suggestions[highlightedIndex]) {
                     event.preventDefault();
-                    event.stopPropagation(); // Prevent grid from saving/closing
+                    event.stopPropagation();
                     handleSelect(suggestions[highlightedIndex]);
                 }
             } else if (event.key === 'Escape') {
                 setSuggestions([]);
-                event.preventDefault(); // Prevent grid from cancelling edit
+                event.preventDefault();
                 event.stopPropagation();
             }
         }
     };
 
-    const handleClick = (event) => {
-        setCursorPos(event.target.selectionStart);
-        setAnchorEl(event.currentTarget);
-    };
-
-    const handleKeyUp = (event) => {
-        setCursorPos(event.target.selectionStart);
-        setAnchorEl(event.currentTarget);
-    };
-
-    // Autocomplete logic
-    useEffect(() => {
-        if (!inputValue || !schema || !inputValue.toString().startsWith('=')) {
-            setSuggestions([]);
-            return;
-        }
-
-        const textBeforeCursor = inputValue.slice(0, cursorPos);
-        const match = textBeforeCursor.match(/([a-zA-Z_][a-zA-Z0-9_]*)$/);
-
-        if (match) {
-            const query = match[1].toLowerCase();
-            const matches = schema
-                .filter(col => col.key.toLowerCase().includes(query) && col.key !== field)
-                .map(col => ({ key: col.key, label: col.label || col.key }));
-
-            setSuggestions(matches);
-        } else {
-            setSuggestions([]);
-        }
-    }, [inputValue, cursorPos, schema, field]);
-
     const open = suggestions.length > 0;
 
     return (
-        <div style={{ width: '100%', position: 'relative' }}>
-            <GridEditInputCell
-                {...props}
-                value={inputValue}
-                onChange={handleChange}
-                type="text"
-                inputProps={{
-                    onKeyDown: handleKeyDown,
-                    onKeyUp: handleKeyUp,
-                    onClick: handleClick,
-                    autoComplete: "off",
-                    ref: inputRef,
+        <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+            <input
+                ref={inputRef}
+                defaultValue={initialValue}
+                onInput={handleInput}
+                onKeyDown={handleKeyDown}
+                onKeyUp={(e) => { setAnchorEl(e.currentTarget); updateSuggestions(e.target.value, e.target.selectionStart); }}
+                onClick={(e) => { setAnchorEl(e.currentTarget); }}
+                autoComplete="off"
+                style={{
+                    width: '100%',
+                    height: '100%',
+                    border: 'none',
+                    outline: 'none',
+                    padding: '0 8px',
+                    fontSize: '14px',
+                    background: 'var(--ag-input-focus-border-color, #fff)',
+                    color: 'inherit',
                 }}
             />
             <Popper open={open} anchorEl={anchorEl} placement="bottom-start" style={{ zIndex: 99999 }}>
@@ -163,4 +169,7 @@ export default function FormulaEditCell(props) {
             </Popper>
         </div>
     );
-}
+});
+
+FormulaEditCell.displayName = 'FormulaEditCell';
+export default FormulaEditCell;
