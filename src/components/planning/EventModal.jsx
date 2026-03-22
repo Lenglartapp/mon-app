@@ -19,12 +19,32 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
     const [endDate, setEndDate] = useState(format(new Date(), 'yyyy-MM-dd'));
     const [endTime, setEndTime] = useState('17:00');
 
+    // Mode durée (conf/prepa)
+    const [durationHours, setDurationHours] = useState(8);
+
     // Aplatir la liste des membres pour l'affichage
     const allMembers = useMemo(() => [
         ...(groupsConfig.prepa?.members.map(m => ({ id: m.id, group: 'prepa', label: `${m.first_name} ${m.last_name || ''}` })) || []),
-        ...(groupsConfig.conf?.members.map(m => ({ id: m.id, group: 'conf', label: `${m.first_name} ${m.last_name || ''}` })) || []),
+        ...(groupsConfig.conf?.members.filter(m => m.id !== 'backlog_confection').map(m => ({ id: m.id, group: 'conf', label: `${m.first_name} ${m.last_name || ''}` })) || []),
         ...(groupsConfig.pose?.members.map(m => ({ id: m.id, group: 'pose', label: `${m.first_name} ${m.last_name || ''}` })) || [])
     ], [groupsConfig]);
+
+    // Mode durée : actif quand toutes les ressources sélectionnées sont conf ou prepa
+    const isHourMode = useMemo(() => {
+        if (selectedResources.length === 0) {
+            // Si pas encore de ressource sélectionnée, se baser sur l'event en édition ou initialData
+            if (eventToEdit) return eventToEdit.type === 'conf' || eventToEdit.type === 'prepa';
+            if (initialData?.resourceId) {
+                const m = allMembers.find(x => x.id === initialData.resourceId);
+                return m?.group === 'conf' || m?.group === 'prepa';
+            }
+            return false;
+        }
+        return selectedResources.every(id => {
+            const m = allMembers.find(x => x.id === id);
+            return m?.group === 'conf' || m?.group === 'prepa';
+        });
+    }, [selectedResources, allMembers, eventToEdit, initialData]);
 
     useEffect(() => {
         if (isOpen) {
@@ -40,6 +60,7 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
                 setEndDate(format(endDateObj, 'yyyy-MM-dd'));
                 setEndTime(format(endDateObj, 'HH:mm'));
                 setDescription(eventToEdit.meta?.description || '');
+                setDurationHours(eventToEdit.meta?.durationHours ?? 8);
             } else if (initialData) {
                 // Mode Création (Clic Cellule)
                 setProjectSearch('');
@@ -50,6 +71,7 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
                 setStartTime('08:00');
                 setEndTime('17:00');
                 setDescription('');
+                setDurationHours(8);
             } else {
                 // Mode Création (Bouton Nouveau)
                 setProjectSearch('');
@@ -60,6 +82,7 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
                 setStartTime('08:00');
                 setEndTime('17:00');
                 setDescription('');
+                setDurationHours(8);
             }
         }
     }, [isOpen, eventToEdit, initialData]);
@@ -88,8 +111,9 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
                 resourceIds: selectedResources,
                 startDate,
                 startTime,
-                endDate,
+                endDate: isHourMode ? startDate : endDate, // mode durée : pas de multi-jours
                 endTime,
+                durationHours: isHourMode ? parseFloat(durationHours) || 8 : null,
                 description,
                 status: eventToEdit?.meta?.status || 'pending', // Preserves status or defaults to pending
                 type: allMembers.find(m => m.id === selectedResources[0])?.group || 'default'
@@ -166,43 +190,72 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
                             )}
                         </div>
 
-                        {/* 2. DATES & HEURES (Clean Layout) */}
+                        {/* 2. DATES & HEURES / DURÉE */}
                         <div>
-                            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 8, color: '#374151' }}>Période d'intervention</label>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 8, color: '#374151' }}>
+                                {isHourMode ? 'Date et durée' : 'Période d\'intervention'}
+                            </label>
 
-                                {/* Début */}
-                                <div style={{ flex: 1, display: 'flex', alignItems: 'center', border: '1px solid #E5E7EB', borderRadius: 8, padding: '10px 12px', background: '#F9FAFB', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.02)' }}>
-                                    <CalendarIcon size={16} color="#6B7280" style={{ marginRight: 8, flexShrink: 0 }} />
-                                    <input
-                                        type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
-                                        style={{ ...dateTimeInputStyle, flex: 1, minWidth: 0 }}
-                                    />
-                                    <div style={{ width: 1, height: 18, background: '#D1D5DB', margin: '0 10px' }} />
-                                    <Clock size={16} color="#6B7280" style={{ marginRight: 8, flexShrink: 0 }} />
-                                    <input
-                                        type="time" value={startTime} onChange={e => setStartTime(e.target.value)}
-                                        style={{ ...dateTimeInputStyle, width: 80 }}
-                                    />
+                            {isHourMode ? (
+                                /* MODE DURÉE — conf & prepa */
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                    {/* Date */}
+                                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', border: '1px solid #E5E7EB', borderRadius: 8, padding: '10px 12px', background: '#F9FAFB' }}>
+                                        <CalendarIcon size={16} color="#6B7280" style={{ marginRight: 8, flexShrink: 0 }} />
+                                        <input
+                                            type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
+                                            style={{ ...dateTimeInputStyle, flex: 1, minWidth: 0 }}
+                                        />
+                                    </div>
+                                    {/* Durée */}
+                                    <div style={{ display: 'flex', alignItems: 'center', border: '1px solid #E5E7EB', borderRadius: 8, padding: '10px 12px', background: '#F9FAFB', gap: 8 }}>
+                                        <Clock size={16} color="#6B7280" style={{ flexShrink: 0 }} />
+                                        <input
+                                            type="number"
+                                            min="0.5" max="8" step="0.5"
+                                            value={durationHours}
+                                            onChange={e => setDurationHours(e.target.value)}
+                                            style={{ ...dateTimeInputStyle, width: 48, textAlign: 'center' }}
+                                        />
+                                        <span style={{ fontSize: 13, color: '#6B7280', fontWeight: 500 }}>h</span>
+                                    </div>
                                 </div>
+                            ) : (
+                                /* MODE CRÉNEAU — pose */
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                    {/* Début */}
+                                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', border: '1px solid #E5E7EB', borderRadius: 8, padding: '10px 12px', background: '#F9FAFB', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.02)' }}>
+                                        <CalendarIcon size={16} color="#6B7280" style={{ marginRight: 8, flexShrink: 0 }} />
+                                        <input
+                                            type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
+                                            style={{ ...dateTimeInputStyle, flex: 1, minWidth: 0 }}
+                                        />
+                                        <div style={{ width: 1, height: 18, background: '#D1D5DB', margin: '0 10px' }} />
+                                        <Clock size={16} color="#6B7280" style={{ marginRight: 8, flexShrink: 0 }} />
+                                        <input
+                                            type="time" value={startTime} onChange={e => setStartTime(e.target.value)}
+                                            style={{ ...dateTimeInputStyle, width: 80 }}
+                                        />
+                                    </div>
 
-                                <ArrowRight size={18} color="#9CA3AF" />
+                                    <ArrowRight size={18} color="#9CA3AF" />
 
-                                {/* Fin */}
-                                <div style={{ flex: 1, display: 'flex', alignItems: 'center', border: '1px solid #E5E7EB', borderRadius: 8, padding: '10px 12px', background: '#F9FAFB', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.02)' }}>
-                                    <CalendarIcon size={16} color="#6B7280" style={{ marginRight: 8, flexShrink: 0 }} />
-                                    <input
-                                        type="date" value={endDate} onChange={e => setEndDate(e.target.value)}
-                                        style={{ ...dateTimeInputStyle, flex: 1, minWidth: 0 }}
-                                    />
-                                    <div style={{ width: 1, height: 18, background: '#D1D5DB', margin: '0 10px' }} />
-                                    <Clock size={16} color="#6B7280" style={{ marginRight: 8, flexShrink: 0 }} />
-                                    <input
-                                        type="time" value={endTime} onChange={e => setEndTime(e.target.value)}
-                                        style={{ ...dateTimeInputStyle, width: 80 }}
-                                    />
+                                    {/* Fin */}
+                                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', border: '1px solid #E5E7EB', borderRadius: 8, padding: '10px 12px', background: '#F9FAFB', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.02)' }}>
+                                        <CalendarIcon size={16} color="#6B7280" style={{ marginRight: 8, flexShrink: 0 }} />
+                                        <input
+                                            type="date" value={endDate} onChange={e => setEndDate(e.target.value)}
+                                            style={{ ...dateTimeInputStyle, flex: 1, minWidth: 0 }}
+                                        />
+                                        <div style={{ width: 1, height: 18, background: '#D1D5DB', margin: '0 10px' }} />
+                                        <Clock size={16} color="#6B7280" style={{ marginRight: 8, flexShrink: 0 }} />
+                                        <input
+                                            type="time" value={endTime} onChange={e => setEndTime(e.target.value)}
+                                            style={{ ...dateTimeInputStyle, width: 80 }}
+                                        />
+                                    </div>
                                 </div>
-                            </div>
+                            )}
                         </div>
 
                         {/* 3. RESSOURCES */}

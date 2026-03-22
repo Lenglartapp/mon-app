@@ -156,7 +156,7 @@ export const RIDEAUX_PROD_SCHEMA = [
         key: "statut_cotes",
         label: "Statut Côtes",
         type: "select",
-        options: ['Définitive', 'Déduction restante à faire', 'Non exploitable'],
+        options: ['Cote non prenable', 'Déduction restante à faire', 'Définitive', 'Validé par chef de projet'],
         width: 200,
         editable: true
     },
@@ -341,7 +341,7 @@ export const RIDEAUX_PROD_SCHEMA = [
     { key: "heures_confection", label: "H. Conf.", type: "number", width: 115, editable: true },
     { key: "statut_pose", label: "Statut Pose", type: "select", options: ['Non démarré', 'Méca posé', 'Accroché', 'Terminé', 'Reprise'], width: 155, editable: true },
     { key: "statut_prepa", label: "Statut Prépa", type: "select", options: ['Non démarré', 'En cours', 'Terminé'], width: 150, editable: true },
-    { key: "statut_conf", label: "Statut Conf", type: "select", options: ['Non démarré', 'En cours', 'Terminé'], width: 150, editable: true },
+    { key: "statut_conf", label: "Statut Conf", type: "select", options: ['Non démarré', 'Coupé', 'Assemblé', 'Plis terminés', 'Emballé'], width: 170, editable: true },
     // PRESERVED COMPONENTS
     { key: "schema_principe", label: "Schéma Principe", type: "photo", width: 150 },
     { key: "photos_sur_site", label: "Photo sur site", type: "photo", width: 150 },

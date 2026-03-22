@@ -8,7 +8,8 @@ import { schemaToGridCols } from '../lib/utils/schemaToGridCols.jsx';
 import { recomputeRow } from '../lib/formulas/recomputeRow';
 import { generateRowLogs } from '../lib/utils/logUtils';
 import { uid } from '../lib/utils/uid';
-import { Plus, Trash2, Columns } from 'lucide-react';
+import { Plus, Trash2, Columns, Layers } from 'lucide-react';
+import { getDefaultMatieres } from '../lib/constants/matiereGroups';
 
 const STORAGE_PREFIX = 'ag_grid_state_v1_';
 const GRID_STATE_VERSION = 5; // à incrémenter si le calcul des largeurs change
@@ -183,15 +184,28 @@ function MinuteGrid({
     currentUser,
     isMobile = false,
     gridKey,
+    matiereGroups = [],
+    activeMatieres = null,
+    onMatiereChange,
 }) {
     const gridRef = useRef(null);
     const [selectedCount, setSelectedCount] = useState(0);
     const [colPanelOpen, setColPanelOpen] = useState(false);
+    const [matierePanelOpen, setMatierePanelOpen] = useState(false);
     const [colVisibility, setColVisibility] = useState({});
     const [quickFilter, setQuickFilter] = useState('');
     const [colAggregations, setColAggregations] = useState({});
     const [aggMenu, setAggMenu] = useState(null); // { field, x, y }
     const [resizeInfo, setResizeInfo] = useState(null); // { name, width }
+
+    // État local des matières (source de vérité pour le panneau Matières)
+    const [localMatieres, setLocalMatieres] = useState(
+        () => activeMatieres ?? getDefaultMatieres(matiereGroups, initialVisibilityModel)
+    );
+    const localMatieresRef = useRef(localMatieres);
+    localMatieresRef.current = localMatieres;
+    const isGridReadyRef = useRef(false);
+
     const rowsRef = useRef(rows);
     rowsRef.current = rows;
     // Ref pour éviter le stale closure sur onRowsChange (arePropsEqual bloque le re-render
@@ -249,7 +263,21 @@ function MinuteGrid({
             }
             setColVisibility(initialVisibilityModel);
         }
-    }, [gridId, initialVisibilityModel]);
+
+        // Appliquer les matières sauvegardées (override par-dessus initialVisibilityModel)
+        isGridReadyRef.current = true;
+        if (matiereGroups?.length > 0) {
+            const currentMatieres = localMatieresRef.current;
+            const matiereState = [];
+            matiereGroups.forEach(group => {
+                const isActive = currentMatieres[group.id] !== false;
+                group.fields.forEach(field => {
+                    matiereState.push({ colId: field, hide: !isActive });
+                });
+            });
+            params.api.applyColumnState({ state: matiereState });
+        }
+    }, [gridId, initialVisibilityModel, matiereGroups]);
 
     // Charger les agrégations sauvegardées
     useEffect(() => {
@@ -289,6 +317,39 @@ function MinuteGrid({
             localStorage.setItem(gridId, JSON.stringify({ columnState, v: GRID_STATE_VERSION }));
         } catch (_) { /* ignore */ }
     }, [gridId]);
+
+    // Sync activeMatieres prop → état local + AG Grid (chargement async Supabase)
+    useEffect(() => {
+        if (activeMatieres == null || !matiereGroups?.length) return;
+        setLocalMatieres(activeMatieres);
+        if (!isGridReadyRef.current) return;
+        const api = gridRef.current?.api;
+        if (!api) return;
+        const matiereState = [];
+        matiereGroups.forEach(group => {
+            const isActive = activeMatieres[group.id] !== false;
+            group.fields.forEach(field => {
+                matiereState.push({ colId: field, hide: !isActive });
+            });
+        });
+        api.applyColumnState({ state: matiereState });
+    }, [activeMatieres, matiereGroups]);
+
+    // Toggle d'un groupe matière
+    const handleToggleMatiere = useCallback((groupId, active) => {
+        const api = gridRef.current?.api;
+        const group = matiereGroups?.find(g => g.id === groupId);
+        if (!api || !group) return;
+
+        api.setColumnsVisible(group.fields, active);
+        saveColumnState(api);
+
+        setLocalMatieres(prev => {
+            const next = { ...prev, [groupId]: active };
+            onMatiereChange?.(next);
+            return next;
+        });
+    }, [matiereGroups, saveColumnState, onMatiereChange]);
 
     const onColumnResized = useCallback((params) => {
         if (!params.column) return;
@@ -574,7 +635,9 @@ function MinuteGrid({
             if (row.statut_pose === 'Terminé') mainStatus = { label: 'Posé', bg: '#ECFDF5', color: '#065F46' };
             else if (row.statut_conf === 'Terminé') mainStatus = { label: 'Confectionné', bg: '#FDF2F8', color: '#9D174D' };
             else if (row.statut_prepa === 'Terminé') mainStatus = { label: 'Prêt', bg: '#F5F3FF', color: '#5B21B6' };
-            else if (row.statut_cotes === 'Définitive') mainStatus = { label: 'Coté', bg: '#EFF6FF', color: '#1E40AF' };
+            else if (row.statut_cotes === 'Validé par chef de projet') mainStatus = { label: 'Côte validée', bg: '#EFF6FF', color: '#1E40AF' };
+            else if (row.statut_cotes === 'Définitive') mainStatus = { label: 'Coté', bg: '#DBEAFE', color: '#1D4ED8' };
+            else if (row.statut_cotes === 'Déduction restante à faire') mainStatus = { label: 'Déduction', bg: '#FEF3C7', color: '#92400E' };
             return (
                 <div onClick={() => handleOpenDetail(row)} style={{ background: 'white', borderRadius: 12, padding: 16, marginBottom: 12, boxShadow: '0 1px 3px rgba(0,0,0,0.05)', border: '1px solid #E5E7EB', display: 'flex', flexDirection: 'column', gap: 10 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -640,6 +703,49 @@ function MinuteGrid({
                     onChange={e => setQuickFilter(e.target.value)}
                     style={{ padding: '4px 8px', border: '1px solid #d1d5db', borderRadius: 4, fontSize: 12, width: 160, outline: 'none' }}
                 />
+                {/* Bouton Matières */}
+                {matiereGroups?.length > 0 && (
+                    <div style={{ position: 'relative' }}>
+                        <button
+                            onClick={() => { setMatierePanelOpen(prev => !prev); setColPanelOpen(false); }}
+                            style={{ cursor: 'pointer', padding: '5px 10px', background: matierePanelOpen ? '#eff6ff' : 'white', color: '#374151', border: `1px solid ${matierePanelOpen ? '#2563eb' : '#d1d5db'}`, borderRadius: 4, display: 'flex', alignItems: 'center', gap: 5, fontSize: 12 }}
+                        >
+                            <Layers size={14} /> Matières
+                        </button>
+                        {matierePanelOpen && (
+                            <div style={{
+                                position: 'absolute', left: 0, top: '100%', marginTop: 4,
+                                background: 'white', border: '1px solid #e5e7eb', borderRadius: 8,
+                                boxShadow: '0 10px 25px rgba(0,0,0,0.1)', zIndex: 1000,
+                                minWidth: 190, padding: 8,
+                            }}>
+                                <div style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', padding: '4px 8px 8px', borderBottom: '1px solid #f3f4f6', marginBottom: 4 }}>
+                                    Matières actives
+                                </div>
+                                {matiereGroups.map(group => (
+                                    <label
+                                        key={group.id}
+                                        style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderRadius: 4, cursor: 'pointer', fontSize: 13 }}
+                                        onMouseEnter={e => e.currentTarget.style.background = '#f3f4f6'}
+                                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                    >
+                                        <input
+                                            type="checkbox"
+                                            checked={localMatieres[group.id] !== false}
+                                            onChange={e => handleToggleMatiere(group.id, e.target.checked)}
+                                            style={{ accentColor: '#2563eb', width: 14, height: 14 }}
+                                        />
+                                        <span>{group.label}</span>
+                                    </label>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
+                {matierePanelOpen && (
+                    <div style={{ position: 'fixed', inset: 0, zIndex: 999 }} onClick={() => setMatierePanelOpen(false)} />
+                )}
+
                 {/* Bouton colonnes */}
                 <div style={{ position: 'relative', marginLeft: 'auto' }}>
                     <button

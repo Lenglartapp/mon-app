@@ -71,7 +71,7 @@ const BASE_STORES_BATEAUX_SCHEMA = [
         key: "statut_cotes",
         label: "Statut Côtes",
         type: "select",
-        options: ["Définitive", "Déduction restante à faire", "Non exploitable"],
+        options: ["Cote non prenable", "Déduction restante à faire", "Définitive", "Validé par chef de projet"],
         width: 200
     },
 
@@ -197,7 +197,7 @@ const BASE_STORES_BATEAUX_SCHEMA = [
 
     { key: "statut_pose", label: "Statut Pose", type: "select", options: ['Non démarré', 'Méca posé', 'Accroché', 'Terminé', 'Reprise'], width: 155 },
     { key: "statut_prepa", label: "Statut Prépa", type: "select", options: ['Non démarré', 'En cours', 'Terminé'], width: 150 },
-    { key: "statut_conf", label: "Statut Conf", type: "select", options: ['Non démarré', 'En cours', 'Terminé'], width: 150 },
+    { key: "statut_conf", label: "Statut Conf", type: "select", options: ['Non démarré', 'Ourlet fait', 'Fourreau terminé', 'Ficelle terminée', 'Emballé'], width: 175, editable: true },
 
     { key: "photos_sur_site", label: "Photo sur site", type: "photo", width: 150 },
     { key: "quantite", label: "Qté", type: "number", width: 70 },

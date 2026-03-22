@@ -143,7 +143,7 @@ export const STORES_PROD_SCHEMA = [
         key: "statut_cotes",
         label: "Statut Côtes",
         type: "select",
-        options: ['Définitive', 'Déduction restante à faire', 'Non exploitable'],
+        options: ['Cote non prenable', 'Déduction restante à faire', 'Définitive', 'Validé par chef de projet'],
         width: 200,
         editable: true
     },

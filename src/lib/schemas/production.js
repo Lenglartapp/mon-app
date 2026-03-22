@@ -196,9 +196,9 @@ export const SCHEMA_64 = [
     key: "statut_cotes",
     label: "Statut Côtes",
     type: "select",
-    options: ['Définitive', 'Déduction restante à faire', 'Non exploitable'],
+    options: ['Cote non prenable', 'Déduction restante à faire', 'Définitive', 'Validé par chef de projet'],
     width: 200,
-    editable: true
+    readOnly: (row) => !/rideau|voilage|store/i.test(String(row?.produit || '')),
   },
   { key: "valeur_deduction", label: "Val. Déduc.", type: "number", width: 120, editable: true },
   { key: "finition_bas", label: "Finition Bas", type: "number", width: 120, editable: true },
