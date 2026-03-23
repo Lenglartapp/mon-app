@@ -1425,7 +1425,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
           <StockInventoryTab
             inventory={inventory ? inventory.filter(item => {
               if (!item.project) return false;
-              const pName = project?.name || project?.nom_dossier;
+              const pName = project?.name;
               return item.project === pName;
             }) : []}
             projects={projects}

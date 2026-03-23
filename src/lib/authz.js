@@ -11,6 +11,9 @@ const PERMISSIONS = {
     "nav.production": true,
     "nav.inventory": true,
     "nav.settings": true,
+    "nav.logistique": true,
+    "nav.performance": true,
+    "performance.edit": false,
 
     "chiffrage.view": true,
     "chiffrage.edit": true,
@@ -32,6 +35,9 @@ const PERMISSIONS = {
     "nav.production": true,
     "nav.inventory": true,
     "nav.settings": true,
+    "nav.logistique": true,
+    "nav.performance": true,
+    "performance.edit": false,
     "chiffrage.view": true,
     "chiffrage.edit": true,
     "project.create": true,
@@ -45,6 +51,9 @@ const PERMISSIONS = {
     "nav.production": true,
     "nav.inventory": true,
     "nav.settings": true,
+    "nav.logistique": true,
+    "nav.performance": true,
+    "performance.edit": true,
 
     "planning.view": true,
     "planning.edit": true, // Can Drag & Drop
@@ -60,6 +69,9 @@ const PERMISSIONS = {
     "nav.production": true,
     "nav.inventory": true,
     "nav.settings": true,
+    "nav.logistique": true,
+    "nav.performance": true,
+    "performance.edit": true,
 
     "planning.view": true,
     "planning.edit": false,
@@ -75,6 +87,9 @@ const PERMISSIONS = {
     "nav.production": true,
     "nav.inventory": true,
     "nav.settings": true,
+    "nav.logistique": false,
+    "nav.performance": false,
+    "performance.edit": false,
 
     "planning.view": true,
     "planning.edit": false,
@@ -90,6 +105,7 @@ const PERMISSIONS = {
     "nav.production": true,
     "nav.inventory": false, // Hidden
     "nav.settings": true,
+    "nav.logistique": false,
 
     "planning.view": true,
     "planning.edit": false,
@@ -104,6 +120,7 @@ const PERMISSIONS = {
     "nav.production": false, // Hidden
     "nav.inventory": false, // Hidden
     "nav.settings": true,
+    "nav.logistique": false,
 
     "planning.view": true,
     "planning.edit": false,
@@ -116,6 +133,7 @@ const PERMISSIONS = {
     "nav.production": false, // Hidden
     "nav.inventory": true,
     "nav.settings": true,
+    "nav.logistique": false,
 
     "planning.view": true,
     "planning.edit": false,

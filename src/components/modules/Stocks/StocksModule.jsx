@@ -12,6 +12,7 @@ import StockDashboardTab from './StockDashboardTab';
 import { useAuth } from '../../../auth';
 import { can } from '../../../lib/authz';
 import MovementModal from './MovementModal'; // Imported Modal
+import { useWarehouseZones } from '../../../hooks/useSupabase';
 import { PackagePlus, PackageMinus, ArrowLeftRight } from 'lucide-react'; // Icons
 
 // Mock Data for initial state
@@ -27,6 +28,7 @@ export default function StocksModule({
 }) {
     const { currentUser } = useAuth();
     const canEdit = can(currentUser, 'inventory.edit');
+    const { zones } = useWarehouseZones();
     const [tabIndex, setTabIndex] = useState(0);
 
     // Modal State
@@ -72,7 +74,7 @@ export default function StocksModule({
                                 ← Retour
                             </button>
                         )}
-                        <h1 style={{ fontSize: 32, fontWeight: 800, color: '#111827', margin: 0, letterSpacing: '-0.5px' }}>Stocks & Approvisionnements</h1>
+                        <h1 style={{ fontSize: 32, fontWeight: 800, color: '#111827', margin: 0, letterSpacing: '-0.5px' }}>Inventaire</h1>
                     </div>
 
                     {/* Actions (Aligned with Title) */}
@@ -149,10 +151,11 @@ export default function StocksModule({
                 {/* 3. Content */}
                 <div style={{ flex: 1 }}>
                     {tabIndex === 0 && (
-                        <StockDashboardTab 
-                            inventory={inventory} 
-                            projects={projects} 
-                            movements={movements} 
+                        <StockDashboardTab
+                            inventory={inventory}
+                            projects={projects}
+                            movements={movements}
+                            zones={zones}
                         />
                     )}
                     {tabIndex === 1 && (
@@ -166,11 +169,12 @@ export default function StocksModule({
                         />
                     )}
                     {tabIndex === 2 && (
-                        <StockInventoryTab 
-                            inventory={inventory} 
-                            projects={projects} 
-                            movements={movements} 
+                        <StockInventoryTab
+                            inventory={inventory}
+                            projects={projects}
+                            movements={movements}
                             onBulkMovement={onBulkMovement}
+                            zones={zones}
                         />
                     )}
                 </div>
@@ -185,6 +189,7 @@ export default function StocksModule({
                     onSave={handleSaveMovement}
                     projects={projects}
                     inventory={inventory}
+                    zones={zones}
                 />
             )}
         </Box>

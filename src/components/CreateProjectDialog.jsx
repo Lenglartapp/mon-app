@@ -98,7 +98,7 @@ export default function CreateProjectDialog({
     const handleImport = () => {
         if (!selectedMinute) return;
         onCreateFromMinute({
-            name: selectedMinute.name || "Dossier Importé",
+            name: selectedMinute.name || "Projet Importé",
             rows: selectedMinute.lines || [],
             meta: selectedMinute,
             deliveryDate,
@@ -116,7 +116,7 @@ export default function CreateProjectDialog({
             TransitionProps={{ timeout: 300 }}
         >
             <DialogTitle sx={{ textAlign: 'center', pb: 0, fontWeight: 800 }}>
-                Nouveau Dossier Production
+                Nouveau Projet Production
             </DialogTitle>
 
             <DialogContent>
@@ -128,7 +128,7 @@ export default function CreateProjectDialog({
                 {/* TAB 0: IMPORT */}
                 <TabPanel value={tab} index={0}>
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 2, textAlign: 'center' }}>
-                        Créez un dossier de production directement à partir d'un devis / minute chiffrée validée.
+                        Créez un projet de production directement à partir d'un devis / minute chiffrée validée.
                     </Typography>
 
                     <Autocomplete
@@ -171,12 +171,12 @@ export default function CreateProjectDialog({
                 {/* TAB 1: BLANK */}
                 <TabPanel value={tab} index={1}>
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 2, textAlign: 'center' }}>
-                        Créez un dossier vide et ajoutez vos ouvrages manuellement.
+                        Créez un projet vide et ajoutez vos ouvrages manuellement.
                     </Typography>
 
                     <TextField
                         autoFocus
-                        label="Nom du Dossier / Client"
+                        label="Nom du Projet / Client"
                         fullWidth
                         value={projectName}
                         onChange={(e) => setProjectName(e.target.value)}
@@ -292,7 +292,7 @@ export default function CreateProjectDialog({
                         onClick={handleImport}
                         disabled={!selectedMinute || !deliveryDate}
                     >
-                        Importer le dossier
+                        Importer le projet
                     </Button>
                 ) : (
                     <Button
@@ -300,7 +300,7 @@ export default function CreateProjectDialog({
                         onClick={handleCreateBlank}
                         disabled={!projectName.trim() || !deliveryDate}
                     >
-                        Créer le dossier
+                        Créer le projet
                     </Button>
                 )}
             </DialogActions>

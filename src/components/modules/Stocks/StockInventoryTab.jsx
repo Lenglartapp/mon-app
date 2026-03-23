@@ -13,14 +13,16 @@ import Autocomplete from '@mui/material/Autocomplete';
 import ProductHistoryModal from './ProductHistoryModal';
 import { useMemo, useRef } from 'react';
 import Button from '@mui/material/Button';
-import { Download, Upload, FileSpreadsheet } from 'lucide-react';
+import { Download, Upload, Map } from 'lucide-react';
 import { exportInventoryToExcel, processInventoryClearanceImport } from '../../../lib/utils/inventoryExcelUtils';
 import { useAuth } from '../../../auth';
+import WarehouseMap from './WarehouseMap';
 
-export default function StockInventoryTab({ inventory, projects = [], movements = [], onBulkMovement }) {
+export default function StockInventoryTab({ inventory, projects = [], movements = [], onBulkMovement, zones = [] }) {
     const { currentUser } = useAuth();
     const fileInputRef = useRef(null);
     const [search, setSearch] = useState('');
+    const [showMap, setShowMap] = useState(false);
 
     const handleExport = async () => {
         try {
@@ -159,7 +161,7 @@ export default function StockInventoryTab({ inventory, projects = [], movements 
                 if (!pName) return <Chip label="LIBRE" size="small" sx={{ bgcolor: '#F0FDF4', color: '#15803D', border: '1px solid #BBF7D0' }} />;
 
                 // Find project
-                const proj = projects.find(p => p.name === pName || p.nom_dossier === pName);
+                const proj = projects.find(p => p.name === pName);
                 // Si pas trouvé, on affiche un Chip neutre avec le statut ou '?'
                 if (!proj) return <Chip label="?" size="small" sx={{ bgcolor: '#F3F4F6' }} />;
 
@@ -232,7 +234,7 @@ export default function StockInventoryTab({ inventory, projects = [], movements 
             if (filterStatus === 'LIBRE') {
                 matchStatus = !item.project;
             } else {
-                const proj = projects.find(p => p.name === item.project || p.nom_dossier === item.project);
+                const proj = projects.find(p => p.name === item.project);
                 matchStatus = proj?.status === filterStatus;
             }
         }
@@ -297,7 +299,7 @@ export default function StockInventoryTab({ inventory, projects = [], movements 
 
                 {/* 2. Project Filter (Autocomplete) */}
                 <Autocomplete
-                    options={projects.map(p => p.name || p.nom_dossier)}
+                    options={projects.map(p => p.name)}
                     value={filterProj}
                     onChange={(e, val) => setFilterProj(val)}
                     renderInput={(params) => <TextField {...params} label="Filtrer par Projet" size="small" />}
@@ -368,6 +370,20 @@ export default function StockInventoryTab({ inventory, projects = [], movements 
                 {/* BULK ACTIONS */}
                 <Stack direction="row" spacing={1}>
                     <Button
+                        variant={showMap ? 'contained' : 'outlined'}
+                        size="small"
+                        startIcon={<Map size={16} />}
+                        onClick={() => setShowMap(v => !v)}
+                        sx={{
+                            textTransform: 'none', fontWeight: 700, borderRadius: 2,
+                            ...(showMap
+                                ? { bgcolor: '#0F172A', color: 'white', '&:hover': { bgcolor: '#1E293B' } }
+                                : { borderColor: '#CBD5E1', color: '#374151' })
+                        }}
+                    >
+                        Vue Entrepôt
+                    </Button>
+                    <Button
                         variant="outlined"
                         size="small"
                         startIcon={<Download size={16} />}
@@ -396,6 +412,13 @@ export default function StockInventoryTab({ inventory, projects = [], movements 
                     onChange={handleImportFile}
                 />
             </Card>
+
+            {/* VUE ENTREPÔT */}
+            {showMap && (
+                <Box sx={{ mb: 3 }}>
+                    <WarehouseMap zones={zones} inventory={inventory} />
+                </Box>
+            )}
 
             {/* INVENTORY GRID */}
             <Card sx={{ height: 600, width: '100%', borderRadius: 3, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
