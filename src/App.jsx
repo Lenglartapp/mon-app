@@ -13,6 +13,8 @@ import StocksModule from "./components/modules/Stocks/StocksModule";
 import { can } from "./lib/authz";
 import LoginScreen from "./screens/LoginScreen";
 import PlanningScreen from "./screens/PlanningScreen";
+import LogistiqueScreen from "./screens/LogistiqueScreen";
+import PerformanceScreen from "./screens/PerformanceScreen";
 import { useProjects, useMinutes, useEvents, useStocks } from './hooks/useSupabase';
 
 import { Bell } from 'lucide-react';
@@ -73,6 +75,8 @@ function AppShell() {
     if (target === "prodList" && !can(currentUser, "nav.production")) return;
     if (target === "inventory" && !can(currentUser, "nav.inventory")) return;
     if (target === "planning" && !can(currentUser, "planning.view")) return;
+    if (target === "logistique" && !can(currentUser, "nav.logistique")) return;
+    if (target === "performance" && !can(currentUser, "nav.performance")) return;
     setPendingRowId(null);
     setScreen(target);
   };
@@ -168,6 +172,8 @@ function AppShell() {
           onOpenChiffrage={() => go("chiffrageRoot")}
           onOpenInventory={() => go("inventory")}
           onOpenPlanning={() => go("planning")}
+          onOpenLogistique={() => go("logistique")}
+          onOpenPerformance={() => go("performance")}
         />
 
       )}
@@ -246,7 +252,21 @@ function AppShell() {
         />
       )}
 
+      {screen === "logistique" && (
+        <LogistiqueScreen
+          projects={cleanProjects}
+          onUpdateProject={handleUpdateProject}
+          onBack={() => setScreen("home")}
+        />
+      )}
 
+      {screen === "performance" && (
+        <PerformanceScreen
+          projects={cleanProjects}
+          events={planningEvents}
+          onBack={() => setScreen("home")}
+        />
+      )}
 
     </div>
   );

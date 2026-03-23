@@ -2,7 +2,7 @@
 import React from "react";
 import { S } from "../lib/constants/ui";
 import AppTile from "../components/AppTile.jsx";
-import { PencilRuler, Database, Boxes, GanttChart, Settings2 } from "lucide-react";
+import { PencilRuler, Database, Boxes, GanttChart, Settings2, Truck, TrendingUp } from "lucide-react";
 import { useViewportWidth } from "../lib/hooks/useViewportWidth";
 
 // 🔐 ACL
@@ -15,6 +15,8 @@ export default function HomeScreen({
   onOpenChiffrage,
   onOpenInventory,
   onOpenPlanning,
+  onOpenLogistique,
+  onOpenPerformance,
 }) {
   const width = useViewportWidth();
   const cols = width < 700 ? 2 : 4;
@@ -32,6 +34,8 @@ export default function HomeScreen({
     production: can(currentUser, "nav.production"),
     inventory: can(currentUser, "nav.inventory"),
     planning: can(currentUser, "planning.view"),
+    logistique: can(currentUser, "nav.logistique"),
+    performance: can(currentUser, "nav.performance"),
   };
 
   // helper pour MASQUER totalement une tuile si non autorisé
@@ -64,6 +68,16 @@ export default function HomeScreen({
           {hideTile(
             may.planning,
             <AppTile label="Planning" Icon={GanttChart} size={tileSize} onClick={onOpenPlanning} />
+          )}
+
+          {hideTile(
+            may.logistique,
+            <AppTile label="Logistique" Icon={Truck} size={tileSize} onClick={onOpenLogistique} />
+          )}
+
+          {hideTile(
+            may.performance,
+            <AppTile label="Performance" Icon={TrendingUp} size={tileSize} onClick={onOpenPerformance} />
           )}
 
           {/* ✅ Toujours visible */}
