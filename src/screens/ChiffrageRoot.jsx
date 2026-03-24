@@ -656,11 +656,11 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
       <div style={{ maxWidth: 1200, width: '100%', margin: '0 auto', background: 'white', borderRadius: 12, boxShadow: '0 1px 3px rgba(0,0,0,0.05), 0 4px 6px rgba(0,0,0,0.02)', overflow: 'hidden' }}>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-            <thead style={{ background: '#F3F4F6', borderBottom: '1px solid #E5E7EB' }}>
+            <thead style={{ background: '#F9FAFB', borderBottom: '1px solid #E5E7EB' }}>
               <tr>
-                <th style={{ padding: '12px 16px', fontSize: 13, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Nom Chiffrage</th>
-                <th style={{ padding: '12px 16px', fontSize: 13, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Client</th>
-                <th style={{ padding: '12px 16px', fontSize: 13, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>
+                <th style={{ padding: '12px 16px', fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Nom Chiffrage</th>
+                <th style={{ padding: '12px 16px', fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Client</th>
+                <th style={{ padding: '12px 16px', fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     Statut
                     <IconButton size="small" onClick={(e) => setStatusFilterAnchor(e.currentTarget)} sx={{ p: 0.5, color: activeFilters.some(f => f.field === 'status') ? '#1E2447' : '#9CA3AF' }}>
@@ -681,7 +681,7 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
                   <th
                     key={key}
                     onClick={() => handleSort(key)}
-                    style={{ padding: '12px 16px', fontSize: 13, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', textAlign: 'right', cursor: 'pointer', userSelect: 'none' }}
+                    style={{ padding: '12px 16px', fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: 'right', cursor: 'pointer', userSelect: 'none' }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
                       {label}
@@ -692,8 +692,8 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
                   </th>
                 ))}
 
-                <th style={{ padding: '12px 16px', fontSize: 13, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Mise à jour</th>
-                <th style={{ padding: '12px 16px', fontSize: 13, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>
+                <th style={{ padding: '12px 16px', fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Mise à jour</th>
+                <th style={{ padding: '12px 16px', fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     Chargé d'Affaires
                     <IconButton size="small" onClick={(e) => setOwnerFilterAnchor(e.currentTarget)} sx={{ p: 0.5, color: activeFilters.some(f => f.field === 'owner') ? '#1E2447' : '#9CA3AF' }}>
@@ -701,8 +701,7 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
                     </IconButton>
                   </div>
                 </th>
-                <th style={{ padding: '12px 16px', fontSize: 13, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Modules</th>
-                <th style={{ padding: '12px 16px', width: 100 }}></th>
+                <th style={{ padding: '12px 16px', width: 60 }}></th>
               </tr>
             </thead>
             <tbody>
@@ -819,22 +818,12 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
                             <span style={{ fontSize: 13, color: '#374151', fontWeight: 500 }}>{m.owner || "—"}</span>
                           </div>
                         </td>
-                        <td style={{ padding: '12px 16px', fontSize: 12, color: '#4B5563' }}>
-                          {(m.modules?.rideau || m.modules?.store || m.modules?.decor || m.modules?.autre_confection) ? [m.modules?.rideau && "Rideaux", m.modules?.store && "Stores", m.modules?.decor && "Décors", m.modules?.autre_confection && "Autre"].filter(Boolean).join(" · ") : "—"}
-                        </td>
                         <td style={{ padding: '12px 16px', textAlign: 'right' }} onClick={(e) => e.stopPropagation()}>
-                          <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end', opacity: 0.6 }}>
-                            <Tooltip title="Créer une variante">
-                              <IconButton size="small" onClick={(e) => { e.stopPropagation(); duplicate(m.id); }}>
-                                <GitBranch size={16} />
-                              </IconButton>
-                            </Tooltip>
-                            <Tooltip title="Supprimer">
-                              <IconButton size="small" onClick={(e) => { e.stopPropagation(); removeOne(m.id); }}>
-                                <Trash2 size={16} />
-                              </IconButton>
-                            </Tooltip>
-                          </div>
+                          <Tooltip title="Supprimer">
+                            <IconButton size="small" onClick={(e) => { e.stopPropagation(); removeOne(m.id); }} sx={{ opacity: 0.4, '&:hover': { opacity: 1 } }}>
+                              <Trash2 size={16} />
+                            </IconButton>
+                          </Tooltip>
                         </td>
                       </tr>
                       {/* Variantes dépliées */}
@@ -850,7 +839,7 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
 
                 return rows.length > 0 ? rows : (
                   <tr>
-                    <td colSpan={showKPIs ? 11 : 8} style={{ padding: 40, textAlign: 'center', color: '#9CA3AF' }}>
+                    <td colSpan={showKPIs ? 10 : 7} style={{ padding: 40, textAlign: 'center', color: '#9CA3AF' }}>
                       <FileText size={48} style={{ opacity: 0.2, marginBottom: 16 }} />
                       <div>Aucun chiffrage trouvé.</div>
                     </td>

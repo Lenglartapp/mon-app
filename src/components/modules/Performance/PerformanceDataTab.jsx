@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { ChevronRight, ChevronDown, Wrench, ArrowUp, ArrowDown, ArrowUpDown, Clock, Filter, X } from 'lucide-react';
+import { ChevronRight, ChevronDown, Wrench, ArrowUp, ArrowDown, ArrowUpDown, Clock, X } from 'lucide-react';
 import PerformanceEntryModal from './PerformanceEntryModal';
 import PerformanceHistoriqueModal from './PerformanceHistoriqueModal';
 import { RAISONS_CATALOGUE } from './PerformanceEntryModal';
@@ -25,6 +25,51 @@ function computeRealized(events, projectId) {
       else if (type === 'chantier' || type === 'pose' || type === 'installation') counts.pose += hours;
     });
   return counts;
+}
+
+function getQuarterBounds(offset = 0) {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  const currentQ = Math.floor(month / 3);
+
+  let q = currentQ - offset;
+  let y = year;
+  while (q < 0) { q += 4; y -= 1; }
+  while (q > 3) { q -= 4; y += 1; }
+
+  const from = new Date(y, q * 3, 1);
+  const to   = new Date(y, q * 3 + 3, 0, 23, 59, 59); // dernier jour du trimestre
+  return { from, to };
+}
+
+function getPeriodeCutoffs(filters) {
+  const now = new Date();
+  switch (filters.periode) {
+    case 'current_q': {
+      const { from } = getQuarterBounds(0);
+      return { from: startOfDay(from), to: null };
+    }
+    case 'last_q': {
+      const { from, to } = getQuarterBounds(1);
+      return { from: startOfDay(from), to };
+    }
+    case 'last2_q': {
+      const { from } = getQuarterBounds(1);
+      return { from: startOfDay(from), to: null };
+    }
+    case '6':
+      return { from: startOfDay(subMonths(now, 6)), to: null };
+    case '12':
+      return { from: startOfDay(subMonths(now, 12)), to: null };
+    case 'custom':
+      return {
+        from: filters.dateFrom ? startOfDay(new Date(filters.dateFrom)) : null,
+        to:   filters.dateTo   ? new Date(filters.dateTo + 'T23:59:59') : null,
+      };
+    default:
+      return { from: null, to: null };
+  }
 }
 
 function EcartBadge({ alloc, real, small }) {
@@ -139,19 +184,82 @@ function SortIcon({ col, sortKey, sortDir }) {
   return sortDir === 'asc' ? <ArrowUp size={12} color="#6366F1" /> : <ArrowDown size={12} color="#6366F1" />;
 }
 
-// ── Panneau de filtres ────────────────────────────────────────────────────────
-function FilterPanel({ filters, onChange, managers, allRaisons, onReset }) {
-  const PERIODE_OPTIONS = [
-    { key: '1', label: '1 mois' },
-    { key: '2', label: '2 mois' },
-    { key: '3', label: '3 mois' },
-    { key: '6', label: '6 mois' },
-    { key: '12', label: '12 mois' },
-    { key: 'all', label: 'Tout' },
-  ];
+// ── Sélecteur de période (dropdown style planning) ───────────────────────────
+const PERIODE_PRESETS = [
+  { key: 'last_q',    label: 'T-1' },
+  { key: 'current_q', label: 'T actuel' },
+  { key: '6',         label: '6 mois' },
+  { key: '12',        label: '1 an' },
+  { key: 'all',       label: 'Tout' },
+];
 
+function PeriodeDropdown({ filters, onChange }) {
+  const [open, setOpen] = useState(false);
+  const [tempFrom, setTempFrom] = useState(filters.dateFrom || '');
+  const [tempTo, setTempTo]     = useState(filters.dateTo   || '');
+  const ref = useRef();
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  const currentLabel = PERIODE_PRESETS.find(p => p.key === filters.periode)?.label
+    || (filters.periode === 'custom' ? 'Période perso.' : 'T-1');
+
+  const applyCustom = () => {
+    if (tempFrom && tempTo) {
+      onChange('dateFrom', tempFrom);
+      onChange('dateTo', tempTo);
+      onChange('periode', 'custom');
+      setOpen(false);
+    }
+  };
+
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <button onClick={() => setOpen(v => !v)} style={{
+        background: 'white', border: '1px solid #E5E7EB', borderRadius: 8,
+        padding: '6px 12px', fontSize: 13, fontWeight: 500, cursor: 'pointer',
+        display: 'flex', alignItems: 'center', gap: 8, color: '#374151',
+        boxShadow: open ? '0 0 0 2px #E0E7FF' : 'none',
+      }}>
+        {currentLabel} <ChevronDown size={14} color="#9CA3AF" />
+      </button>
+      {open && (
+        <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, zIndex: 90, background: 'white', border: '1px solid #E5E7EB', borderRadius: 8, boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', width: 220, padding: 4 }}>
+          <div style={{ paddingBottom: 4, borderBottom: '1px solid #F3F4F6' }}>
+            {PERIODE_PRESETS.map(o => (
+              <div key={o.key} onClick={() => { onChange('periode', o.key); setOpen(false); }} style={{
+                padding: '8px 12px', fontSize: 13, cursor: 'pointer', borderRadius: 4,
+                background: filters.periode === o.key ? '#EFF6FF' : 'transparent',
+                color: filters.periode === o.key ? '#2563EB' : '#374151',
+                fontWeight: filters.periode === o.key ? 600 : 400,
+              }}>{o.label}</div>
+            ))}
+          </div>
+          <div style={{ padding: 12 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 8 }}>Période personnalisée</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 8 }}>
+              <input type="date" value={tempFrom} onChange={e => setTempFrom(e.target.value)}
+                style={{ width: '100%', boxSizing: 'border-box', border: '1px solid #E5E7EB', borderRadius: 6, padding: '5px 8px', fontSize: 12, outline: 'none' }} />
+              <input type="date" value={tempTo} onChange={e => setTempTo(e.target.value)}
+                style={{ width: '100%', boxSizing: 'border-box', border: '1px solid #E5E7EB', borderRadius: 6, padding: '5px 8px', fontSize: 12, outline: 'none' }} />
+            </div>
+            <button onClick={applyCustom} style={{ width: '100%', background: '#1E2447', color: 'white', border: 'none', borderRadius: 6, padding: '6px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Appliquer</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Panneau de filtres (toujours visible) ─────────────────────────────────────
+function FilterPanel({ filters, onChange, managers, allRaisons, onReset }) {
   const selectStyle = { border: '1px solid #E5E7EB', borderRadius: 8, padding: '6px 10px', fontSize: 13, outline: 'none', background: 'white', color: '#374151' };
-  const labelStyle = { fontSize: 11, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 4, display: 'block' };
+  const labelStyle  = { fontSize: 11, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 4, display: 'block' };
 
   return (
     <div style={{ background: 'white', border: '1px solid #E5E7EB', borderRadius: 10, padding: '14px 18px', marginBottom: 16, display: 'flex', flexWrap: 'wrap', gap: 20, alignItems: 'flex-end' }}>
@@ -159,15 +267,18 @@ function FilterPanel({ filters, onChange, managers, allRaisons, onReset }) {
       {/* Période */}
       <div>
         <label style={labelStyle}>Période (clôture)</label>
-        <div style={{ display: 'flex', background: '#F3F4F6', borderRadius: 8, padding: 2, gap: 2 }}>
-          {PERIODE_OPTIONS.map(o => (
-            <button key={o.key} onClick={() => onChange('periode', o.key)} style={{
-              padding: '5px 10px', borderRadius: 6, fontSize: 12, fontWeight: 500, border: 'none', cursor: 'pointer',
-              background: filters.periode === o.key ? '#1E2447' : 'transparent',
-              color: filters.periode === o.key ? 'white' : '#6B7280',
-            }}>{o.label}</button>
-          ))}
-        </div>
+        <PeriodeDropdown filters={filters} onChange={onChange} />
+      </div>
+
+      {/* Service */}
+      <div>
+        <label style={labelStyle}>Service</label>
+        <select style={selectStyle} value={filters.service} onChange={e => onChange('service', e.target.value)}>
+          <option value="">Tous</option>
+          <option value="conf">Confection</option>
+          <option value="prepa">Préparation</option>
+          <option value="pose">Pose</option>
+        </select>
       </div>
 
       {/* Responsable */}
@@ -207,17 +318,16 @@ function FilterPanel({ filters, onChange, managers, allRaisons, onReset }) {
 }
 
 // ── Composant principal ───────────────────────────────────────────────────────
-const DEFAULT_FILTERS = { periode: '2', manager: '', raison: '', ecart: '' };
+const DEFAULT_FILTERS = { periode: 'last2_q', manager: '', raison: '', ecart: '', service: '', dateFrom: '', dateTo: '' };
 
 export default function PerformanceDataTab({ projects, events, entries, onUpsertEntry, canEdit }) {
-  const [expanded, setExpanded]     = useState(new Set());
-  const [sortKey, setSortKey]       = useState('archived_at');
-  const [sortDir, setSortDir]       = useState('desc');
-  const [search, setSearch]         = useState('');
-  const [filters, setFilters]       = useState(DEFAULT_FILTERS);
-  const [showFilters, setShowFilters] = useState(false);
-  const [detailModal, setDetailModal]   = useState(null);
-  const [histoModal, setHistoModal]     = useState(null);
+  const [expanded, setExpanded] = useState(new Set());
+  const [sortKey, setSortKey]   = useState('archived_at');
+  const [sortDir, setSortDir]   = useState('desc');
+  const [search, setSearch]     = useState('');
+  const [filters, setFilters]   = useState(DEFAULT_FILTERS);
+  const [detailModal, setDetailModal] = useState(null);
+  const [histoModal, setHistoModal]   = useState(null);
 
   const entryMap = useMemo(() => {
     const m = {};
@@ -239,7 +349,6 @@ export default function PerformanceDataTab({ projects, events, entries, onUpsert
         const totalAlloc = SERVICE_KEYS.reduce((s, k) => s + Number(p.budget?.[k] || 0), 0);
         const totalReal  = SERVICE_KEYS.reduce((s, k) => s + (realized[k] || 0), 0);
         const ecartPct   = totalAlloc > 0 ? Math.round(((totalReal - totalAlloc) / totalAlloc) * 100) : 0;
-        // Date de clôture = updated_at du projet (mis à jour au passage en ARCHIVED)
         const archivedAt = p.updated_at ? new Date(p.updated_at) : null;
         return { project: p, realized, totalAlloc, totalReal, ecartPct, archivedAt };
       });
@@ -258,22 +367,36 @@ export default function PerformanceDataTab({ projects, events, entries, onUpsert
     let list = enriched;
 
     // Période
-    if (filters.periode !== 'all') {
-      const cutoff = startOfDay(subMonths(new Date(), parseInt(filters.periode)));
-      list = list.filter(d => d.archivedAt && d.archivedAt >= cutoff);
-    }
+    const { from, to } = getPeriodeCutoffs(filters);
+    if (from) list = list.filter(d => d.archivedAt && d.archivedAt >= from);
+    if (to)   list = list.filter(d => d.archivedAt && d.archivedAt <= to);
+
     // Responsable
     if (filters.manager) list = list.filter(d => d.project.manager === filters.manager);
-    // Raison (au moins un service du projet a cette raison)
+
+    // Raison (au moins un service du projet a cette raison, sur le service filtré si applicable)
     if (filters.raison) {
-      list = list.filter(d => SERVICE_KEYS.some(svc => {
+      const svcsToCheck = filters.service ? [filters.service] : SERVICE_KEYS;
+      list = list.filter(d => svcsToCheck.some(svc => {
         const entry = entryMap[`${d.project.id}_${svc}`];
         return entry?.raisons?.includes(filters.raison);
       }));
     }
-    // Écart
-    if (filters.ecart === 'over') list = list.filter(d => d.ecartPct > 0);
-    if (filters.ecart === 'ok')   list = list.filter(d => d.ecartPct <= 0);
+
+    // Écart (calculé sur le service filtré si applicable)
+    if (filters.ecart) {
+      list = list.filter(d => {
+        const alloc = filters.service
+          ? Number(d.project.budget?.[filters.service] || 0)
+          : d.totalAlloc;
+        const real = filters.service
+          ? (d.realized[filters.service] || 0)
+          : d.totalReal;
+        const pct = alloc > 0 ? ((real - alloc) / alloc) * 100 : 0;
+        return filters.ecart === 'over' ? pct > 0 : pct <= 0;
+      });
+    }
+
     // Recherche texte
     if (search.trim()) {
       const q = search.toLowerCase();
@@ -313,32 +436,18 @@ export default function PerformanceDataTab({ projects, events, entries, onUpsert
     </button>
   );
 
-  const activeFilterCount = Object.entries(filters).filter(([k, v]) => v !== DEFAULT_FILTERS[k]).length;
-
   return (
     <div>
+      {/* Filtres en en-tête */}
+      <FilterPanel filters={filters} onChange={setFilter} managers={allManagers} allRaisons={allRaisons} onReset={resetFilters} />
+
       {/* Barre supérieure */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, gap: 12, flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <button onClick={() => setShowFilters(v => !v)} style={{
-            display: 'flex', alignItems: 'center', gap: 6, border: '1px solid #E5E7EB',
-            background: showFilters ? '#1E2447' : 'white', color: showFilters ? 'white' : '#374151',
-            borderRadius: 8, padding: '7px 14px', fontSize: 13, fontWeight: 500, cursor: 'pointer',
-          }}>
-            <Filter size={14} /> Filtres
-            {activeFilterCount > 0 && <span style={{ background: '#EF4444', color: 'white', borderRadius: 99, fontSize: 11, fontWeight: 700, padding: '0 5px', lineHeight: '16px' }}>{activeFilterCount}</span>}
-          </button>
-          <span style={{ fontSize: 12, color: '#9CA3AF' }}>{filtered.length} projet{filtered.length > 1 ? 's' : ''} archivé{filtered.length > 1 ? 's' : ''}</span>
-        </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, gap: 12 }}>
+        <span style={{ fontSize: 12, color: '#9CA3AF' }}>{filtered.length} projet{filtered.length > 1 ? 's' : ''} archivé{filtered.length > 1 ? 's' : ''}</span>
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher..."
           style={{ border: '1px solid #E5E7EB', borderRadius: 8, padding: '7px 12px', fontSize: 13, outline: 'none', width: 240, background: 'white' }}
         />
       </div>
-
-      {/* Panneau filtres */}
-      {showFilters && (
-        <FilterPanel filters={filters} onChange={setFilter} managers={allManagers} allRaisons={allRaisons} onReset={resetFilters} />
-      )}
 
       {/* Tableau */}
       <div style={{ background: 'white', borderRadius: 12, border: '1px solid #E5E7EB', overflow: 'hidden' }}>
@@ -369,6 +478,14 @@ export default function PerformanceDataTab({ projects, events, entries, onUpsert
 
             {filtered.map(({ project, realized, totalAlloc, totalReal, archivedAt }) => {
               const isExpanded = expanded.has(project.id);
+
+              // Totaux affichés selon le filtre service
+              const dispAlloc = filters.service ? Number(project.budget?.[filters.service] || 0) : totalAlloc;
+              const dispReal  = filters.service ? (realized[filters.service] || 0) : totalReal;
+
+              // Services affichés dans le détail
+              const visibleServices = filters.service ? [filters.service] : SERVICE_KEYS;
+
               return (
                 <React.Fragment key={project.id}>
                   {/* Ligne projet */}
@@ -385,13 +502,13 @@ export default function PerformanceDataTab({ projects, events, entries, onUpsert
                       {project.manager || <span style={{ color: '#D1D5DB' }}>—</span>}
                     </td>
                     <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 14, fontWeight: 600, color: '#374151' }}>
-                      {totalAlloc > 0 ? `${totalAlloc.toFixed(1)}h` : <span style={{ color: '#D1D5DB' }}>—</span>}
+                      {dispAlloc > 0 ? `${dispAlloc.toFixed(1)}h` : <span style={{ color: '#D1D5DB' }}>—</span>}
                     </td>
                     <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 14, fontWeight: 600, color: '#374151' }}>
-                      {totalAlloc > 0 ? `${totalReal.toFixed(1)}h` : <span style={{ color: '#D1D5DB' }}>—</span>}
+                      {dispAlloc > 0 ? `${dispReal.toFixed(1)}h` : <span style={{ color: '#D1D5DB' }}>—</span>}
                     </td>
                     <td style={{ padding: '12px 16px', textAlign: 'center' }}>
-                      {totalAlloc > 0 ? <EcartBadge alloc={totalAlloc} real={totalReal} /> : <span style={{ color: '#D1D5DB', fontSize: 12 }}>—</span>}
+                      {dispAlloc > 0 ? <EcartBadge alloc={dispAlloc} real={dispReal} /> : <span style={{ color: '#D1D5DB', fontSize: 12 }}>—</span>}
                     </td>
                     <td colSpan={3} style={{ padding: '12px 16px', fontSize: 12, color: '#9CA3AF', fontStyle: 'italic' }}>
                       {isExpanded ? 'Replier' : 'Voir le détail par service →'}
@@ -403,11 +520,11 @@ export default function PerformanceDataTab({ projects, events, entries, onUpsert
                   </tr>
 
                   {/* Lignes service */}
-                  {isExpanded && SERVICE_KEYS.map((svc, i) => {
+                  {isExpanded && visibleServices.map((svc, i) => {
                     const alloc = Number(project.budget?.[svc] || 0);
                     const real  = realized[svc] || 0;
                     const entry = entryMap[`${project.id}_${svc}`];
-                    const isLast = i === SERVICE_KEYS.length - 1;
+                    const isLast = i === visibleServices.length - 1;
 
                     return (
                       <tr key={`${project.id}_${svc}`} style={{ borderBottom: isLast ? '2px solid #E5E7EB' : '1px solid #F3F4F6', background: '#FAFBFF' }}>

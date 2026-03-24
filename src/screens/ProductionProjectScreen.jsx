@@ -1027,6 +1027,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
             gridKey="suivi_main"
             onRowClick={(id) => setOpenedRowId(id)}
             isMobile={isMobile}
+            showExpeditionCol={true}
           />
         </div>
       )}
