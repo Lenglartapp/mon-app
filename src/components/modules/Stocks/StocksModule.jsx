@@ -56,8 +56,8 @@ export default function StocksModule({
     ];
 
     return (
-        <Box sx={{ minHeight: '100vh', bgcolor: '#F9F7F2', p: 3, display: 'flex', flexDirection: 'column' }}>
-            <div style={{ maxWidth: 1600, width: '100%', margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
+        <Box sx={{ minHeight: '100vh', bgcolor: '#F9F7F2', p: 3, display: 'flex', flexDirection: 'column', width: '100%' }}>
+            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', flex: 1 }}>
 
                 {/* 1. Header Row (Back/Title Left, Actions Right) */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>

@@ -7,7 +7,6 @@ import DialogActions from '@mui/material/DialogActions';
 import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
 import Autocomplete from '@mui/material/Autocomplete';
-import Grid from '@mui/material/Grid';
 import Stack from '@mui/material/Stack';
 import MenuItem from '@mui/material/MenuItem';
 import Typography from '@mui/material/Typography';
@@ -384,22 +383,21 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
                             <Typography variant="caption" sx={{ fontWeight: 700, color: '#9CA3AF', mb: 2, display: 'block' }}>
                                 DÉTAILS
                             </Typography>
-                            <Grid container spacing={2}>
-                                {/* QTY & UNIT */}
-                                <Grid item xs={8}>
+                            <div style={{ display: 'flex', gap: 8 }}>
+                                <div style={{ flex: 2 }}>
                                     <TextField
                                         fullWidth label="Quantité" type="number"
                                         value={formData.qty}
                                         onChange={(e) => setFormData({ ...formData, qty: e.target.value })}
                                         InputProps={{ sx: { fontSize: 18, fontWeight: 700 } }}
                                     />
-                                </Grid>
-                                <Grid item xs={4}>
+                                </div>
+                                <div style={{ flex: 1 }}>
                                     <TextField select fullWidth label="Unité" value={formData.unit} onChange={(e) => setFormData({ ...formData, unit: e.target.value })}>
                                         {['ml', 'm2', 'u', 'kg'].map(u => <MenuItem key={u} value={u}>{u}</MenuItem>)}
                                     </TextField>
-                                </Grid>
-                            </Grid>
+                                </div>
+                            </div>
                         </Box>
                     )}
 
@@ -448,50 +446,45 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
 
                     {/* 6. CHAMPS FINAUX (Affectation, Laize, Opérateur) */}
                     <Box sx={{ p: 2, border: '1px solid #E5E7EB', borderRadius: 2 }}>
-                        <Grid container spacing={2}>
-                            {/* PRODUIT */}
-                            <Grid item xs={12}>
-                                <TextField
-                                    fullWidth label="Produit sélectionné"
-                                    value={formData.product}
-                                    variant="outlined"
-                                    size="small"
-                                    disabled={!isIN}
-                                    onChange={(e) => setFormData({ ...formData, product: e.target.value })}
-                                />
-                            </Grid>
-
-                            {/* LOCATION (Visible uniquement si pas de pièces gérées et pas un tissu en entrée) */}
-                            {(!pieces.length || (!isIN && !isOUT)) && !(isIN && typology === 'Tissu') && (
-                                <Grid item xs={6}>
-                                    <Autocomplete
-                                        size="small"
-                                        options={zones}
-                                        getOptionLabel={(z) => typeof z === 'string' ? z : `${z.code} – ${z.label_carte || z.description || ''}`}
-                                        groupBy={(z) => z.section === 'nord' ? 'Section Nord (D–H)' : z.section === 'sud' ? 'Section Sud (A–C)' : 'Zones Spéciales'}
-                                        value={zones.find(z => z.code === formData.location) || (formData.location ? formData.location : null)}
-                                        onChange={(e, val) => setFormData({ ...formData, location: val?.code || val || '' })}
-                                        disabled={!isIN && !isMOVE}
-                                        freeSolo
-                                        renderInput={(params) => (
-                                            <TextField {...params} label={isMOVE ? "Nouvel Emplacement" : "Emplacement"} required={isMOVE} size="small" />
-                                        )}
-                                    />
-                                </Grid>
-                            )}
-
-                            {/* LAIZE (Tissu uniquement) */}
-                            {typology === 'Tissu' && (
-                                <Grid item xs={pieces.length > 0 ? 12 : 6}>
-                                    <TextField
-                                        fullWidth label="Laize / Info"
-                                        value={formData.laize}
-                                        onChange={(e) => setFormData({ ...formData, laize: e.target.value })}
-                                        size="small"
-                                    />
-                                </Grid>
-                            )}
-                        </Grid>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            <TextField
+                                fullWidth label="Produit sélectionné"
+                                value={formData.product}
+                                variant="outlined"
+                                size="small"
+                                disabled={!isIN}
+                                onChange={(e) => setFormData({ ...formData, product: e.target.value })}
+                            />
+                            <div style={{ display: 'flex', gap: 8 }}>
+                                {(!pieces.length || (!isIN && !isOUT)) && !(isIN && typology === 'Tissu') && (
+                                    <div style={{ flex: 1 }}>
+                                        <Autocomplete
+                                            size="small"
+                                            options={zones}
+                                            getOptionLabel={(z) => typeof z === 'string' ? z : `${z.code} – ${z.label_carte || z.description || ''}`}
+                                            groupBy={(z) => z.section === 'nord' ? 'Section Nord (D–H)' : z.section === 'sud' ? 'Section Sud (A–C)' : 'Zones Spéciales'}
+                                            value={zones.find(z => z.code === formData.location) || (formData.location ? formData.location : null)}
+                                            onChange={(e, val) => setFormData({ ...formData, location: val?.code || val || '' })}
+                                            disabled={!isIN && !isMOVE}
+                                            freeSolo
+                                            renderInput={(params) => (
+                                                <TextField {...params} label={isMOVE ? "Nouvel Emplacement" : "Emplacement"} required={isMOVE} size="small" />
+                                            )}
+                                        />
+                                    </div>
+                                )}
+                                {typology === 'Tissu' && (
+                                    <div style={{ flex: 1 }}>
+                                        <TextField
+                                            fullWidth label="Laize / Info"
+                                            value={formData.laize}
+                                            onChange={(e) => setFormData({ ...formData, laize: e.target.value })}
+                                            size="small"
+                                        />
+                                    </div>
+                                )}
+                            </div>
+                        </div>
                     </Box>
 
                     {/* 4. PROJET (TISSUS UNIQUEMENT) */}

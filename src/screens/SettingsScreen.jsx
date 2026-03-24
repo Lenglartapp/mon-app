@@ -2,10 +2,10 @@
 import React, { useState } from "react";
 import {
   Container, Card, CardContent, CardHeader,
-  Typography, Grid, TextField, Button, Avatar, IconButton,
-  Divider, Box, Switch, Badge, Chip, Paper
+  Typography, TextField, Button, Avatar, IconButton,
+  Divider, Box, Badge, Chip, Paper
 } from "@mui/material";
-import { Camera, ArrowLeft, Mail, Briefcase, Users } from "lucide-react";
+import { Camera, ArrowLeft, Mail, Users, Clock } from "lucide-react";
 import { useAuth, ROLES } from "../auth";
 
 const ROLE_OPTIONS = [
@@ -31,18 +31,7 @@ export default function SettingsScreen({ onBack }) {
   // --- Profile State --- (keeps state)
   const [name, setName] = useState(currentUser?.name || "");
   const [email] = useState(currentUser?.email || "");
-  const [phone, setPhone] = useState(currentUser?.phone || "");
-  const [jobTitle, setJobTitle] = useState(currentUser?.jobTitle || "");
   const [avatarUrl, setAvatarUrl] = useState(currentUser?.avatarUrl || "");
-
-  // Security
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-
-  // Preferences
-  const [notifEmail, setNotifEmail] = useState(currentUser?.preferences?.notifEmail ?? true);
-  const [notifMentions, setNotifMentions] = useState(currentUser?.preferences?.mentions ?? true);
-  const [notifActivity, setNotifActivity] = useState(currentUser?.preferences?.activity ?? false);
 
   // --- GLOBAL SETTINGS ---
   const { settings: dbSettings, updateSettings } = useAppSettings();
@@ -55,11 +44,6 @@ export default function SettingsScreen({ onBack }) {
 
 
   const handleSaveProfile = async () => {
-    if (password && password !== confirmPassword) {
-      alert("Les mots de passe ne correspondent pas.");
-      return;
-    }
-
     try {
       // 0. Update Global Settings (Admin Only)
       if (isAdmin) {
@@ -67,16 +51,9 @@ export default function SettingsScreen({ onBack }) {
       }
 
       const updates = {
-        first_name: name.split(' ')[0], // Simple split for first/last name mapping
+        first_name: name.split(' ')[0],
         last_name: name.split(' ').slice(1).join(' '),
-        phone,
-        job_title: jobTitle,
         avatar_url: avatarUrl,
-        preferences: {
-          notifEmail,
-          mentions: notifMentions,
-          activity: notifActivity
-        }
       };
 
       // 1. Update Supabase Profile
@@ -87,23 +64,9 @@ export default function SettingsScreen({ onBack }) {
 
       if (error) throw error;
 
-      // 2. Update Password if changed (Requires separate auth API call)
-      if (password) {
-        const { error: pwdError } = await supabase.auth.updateUser({ password: password });
-        if (pwdError) throw pwdError;
-      }
-
-      // 3. Update Local State
-      const updatedUser = {
-        ...currentUser,
-        name, // Keep display name
-        phone,
-        jobTitle,
-        avatarUrl,
-        preferences: updates.preferences
-      };
-      setCurrentUser(updatedUser);
-      alert("Profil et paramètres mis à jour avec succès.");
+      // 2. Update Local State
+      setCurrentUser({ ...currentUser, name, avatarUrl });
+      alert("Profil mis à jour avec succès.");
       if (onBack) onBack();
 
     } catch (err) {
@@ -195,9 +158,9 @@ export default function SettingsScreen({ onBack }) {
 
         {/* === TAB: PROFILE === */}
         {tab === 'profile' && (
-          <Grid container spacing={4}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 32, alignItems: 'start' }}>
             {/* ... (Keep existing Left Column) */}
-            <Grid item xs={12} md={4}>
+            <div>
               {/* ... (Avatar & User Info Card Content - same as before) ... */}
               <Paper
                 elevation={0}
@@ -270,10 +233,6 @@ export default function SettingsScreen({ onBack }) {
                     <Mail size={18} />
                     <Typography variant="body2" fontWeight={500}>{email || "Aucun email"}</Typography>
                   </Box>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2, color: '#4B5563' }}>
-                    <Briefcase size={18} />
-                    <Typography variant="body2" fontWeight={500}>{jobTitle || "Poste non défini"}</Typography>
-                  </Box>
                 </Box>
 
                 <Divider sx={{ my: 3, width: '100%', borderColor: 'rgba(0,0,0,0.06)' }} />
@@ -282,10 +241,10 @@ export default function SettingsScreen({ onBack }) {
                   Membre depuis 2024
                 </Typography>
               </Paper>
-            </Grid>
+            </div>
 
             {/* COLONNE DROITE: FORMULAIRE */}
-            <Grid item xs={12} md={8}>
+            <div>
               <Paper
                 elevation={0}
                 sx={{
@@ -299,43 +258,15 @@ export default function SettingsScreen({ onBack }) {
                   sx={{ px: 4, pt: 4, pb: 0 }}
                 />
                 <CardContent sx={{ px: 4, py: 3 }}>
-                  <Grid container spacing={3}>
-                    <Grid item xs={12} sm={6}>
-                      <TextField
-                        label="Nom complet"
-                        fullWidth
-                        variant="outlined"
-                        size="small"
-                        value={name}
-                        onChange={e => setName(e.target.value)}
-                        InputProps={{ sx: inputStyle }}
-                      />
-                    </Grid>
-                    <Grid item xs={12} sm={6}>
-                      <TextField
-                        label="Téléphone"
-                        fullWidth
-                        variant="outlined"
-                        size="small"
-                        value={phone}
-                        onChange={e => setPhone(e.target.value)}
-                        placeholder="+33 6..."
-                        InputProps={{ sx: inputStyle }}
-                      />
-                    </Grid>
-                    <Grid item xs={12}>
-                      <TextField
-                        label="Fonction / Poste"
-                        fullWidth
-                        variant="outlined"
-                        size="small"
-                        placeholder="Ex: Responsable Production"
-                        value={jobTitle}
-                        onChange={e => setJobTitle(e.target.value)}
-                        InputProps={{ sx: inputStyle }}
-                      />
-                    </Grid>
-                  </Grid>
+                  <TextField
+                    label="Nom complet"
+                    fullWidth
+                    variant="outlined"
+                    size="small"
+                    value={name}
+                    onChange={e => setName(e.target.value)}
+                    InputProps={{ sx: inputStyle }}
+                  />
                 </CardContent>
 
                 <Divider sx={{ mx: 4, borderColor: 'rgba(0,0,0,0.06)' }} />
@@ -346,32 +277,13 @@ export default function SettingsScreen({ onBack }) {
                   sx={{ px: 4, pt: 3, pb: 0 }}
                 />
                 <CardContent sx={{ px: 4, py: 3 }}>
-                  <Grid container spacing={3}>
-                    <Grid item xs={12} sm={6}>
-                      <TextField
-                        label="Nouveau mot de passe"
-                        type="password"
-                        fullWidth
-                        variant="outlined"
-                        size="small"
-                        value={password}
-                        onChange={e => setPassword(e.target.value)}
-                        InputProps={{ sx: inputStyle }}
-                      />
-                    </Grid>
-                    <Grid item xs={12} sm={6}>
-                      <TextField
-                        label="Confirmer le mot de passe"
-                        type="password"
-                        fullWidth
-                        variant="outlined"
-                        size="small"
-                        value={confirmPassword}
-                        onChange={e => setConfirmPassword(e.target.value)}
-                        InputProps={{ sx: inputStyle }}
-                      />
-                    </Grid>
-                  </Grid>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 3, bgcolor: '#F9FAFB', borderRadius: 2, border: '1px solid rgba(0,0,0,0.06)', color: '#9CA3AF' }}>
+                    <Clock size={20} />
+                    <Box>
+                      <Typography fontWeight={600} fontSize={14} color="#6B7280">Modification du mot de passe</Typography>
+                      <Typography variant="caption" color="#9CA3AF">Disponible prochainement</Typography>
+                    </Box>
+                  </Box>
                 </CardContent>
 
                 <Divider sx={{ mx: 4, borderColor: 'rgba(0,0,0,0.06)' }} />
@@ -381,33 +293,13 @@ export default function SettingsScreen({ onBack }) {
                   titleTypographyProps={{ variant: 'subtitle1', fontWeight: 800, color: '#111827', letterSpacing: '0.05em', textTransform: 'uppercase', fontSize: 12 }}
                   sx={{ px: 4, pt: 3, pb: 0 }}
                 />
-                <CardContent sx={{ px: 4, pt: 1, pb: 3 }}>
-                  {/* Mentions */}
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 2, mb: 1, bgcolor: 'rgb(249 250 251)', borderRadius: 2, border: '1px solid rgba(0,0,0,0.04)' }}>
+                <CardContent sx={{ px: 4, py: 3 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 3, bgcolor: '#F9FAFB', borderRadius: 2, border: '1px solid rgba(0,0,0,0.06)', color: '#9CA3AF' }}>
+                    <Clock size={20} />
                     <Box>
-                      <Typography fontWeight={600} color="#374151" fontSize={14}>Mentions et Assignations</Typography>
-                      <Typography variant="caption" color="#6B7280">
-                        Être notifié quand on me cite ou m'assigne une tâche
-                      </Typography>
+                      <Typography fontWeight={600} fontSize={14} color="#6B7280">Préférences de notifications</Typography>
+                      <Typography variant="caption" color="#9CA3AF">Disponible prochainement</Typography>
                     </Box>
-                    <Switch
-                      checked={notifMentions}
-                      onChange={e => setNotifMentions(e.target.checked)}
-                    />
-                  </Box>
-
-                  {/* Activity */}
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 2, bgcolor: 'rgb(249 250 251)', borderRadius: 2, border: '1px solid rgba(0,0,0,0.04)' }}>
-                    <Box>
-                      <Typography fontWeight={600} color="#374151" fontSize={14}>Activité de mes projets</Typography>
-                      <Typography variant="caption" color="#6B7280">
-                        Modifications sur les projets où je suis membre
-                      </Typography>
-                    </Box>
-                    <Switch
-                      checked={notifActivity}
-                      onChange={e => setNotifActivity(e.target.checked)}
-                    />
                   </Box>
                 </CardContent>
 
@@ -440,8 +332,8 @@ export default function SettingsScreen({ onBack }) {
                   </Button>
                 </Box>
               </Paper>
-            </Grid>
-          </Grid>
+            </div>
+          </div>
         )}
 
         {/* === TAB: USERS (Admin) === */}

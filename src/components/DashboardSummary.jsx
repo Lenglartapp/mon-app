@@ -1,5 +1,5 @@
 import React from 'react';
-import { Paper, Grid, Typography, Divider, Box } from '@mui/material';
+import { Paper, Typography, Divider, Box } from '@mui/material';
 
 export default React.memo(function DashboardSummary({ recap, nf, activeModules }) {
     // Default modules if undefined (safeguard)
@@ -45,51 +45,36 @@ export default React.memo(function DashboardSummary({ recap, nf, activeModules }
                 borderBottom: '1px solid #e0e0e0'
             }}
         >
-            <Grid container alignItems="center" spacing={2}>
-                {/* Detail Items */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                 {items.map((item, index) => (
                     <React.Fragment key={item.label}>
-                        <Grid item xs>
-                            <Box sx={{ textAlign: 'center' }}>
-                                <Typography variant="caption" color="text.secondary" display="block" sx={{ textTransform: 'uppercase', fontWeight: 600, letterSpacing: 0.5 }}>
-                                    {item.label}
-                                </Typography>
-                                <Typography variant="h6" component="div" sx={{ fontWeight: 500, color: item.color || 'text.primary' }}>
-                                    {item.suffix
-                                        ? `${Math.round(item.value || 0)} ${item.suffix}`
-                                        : nf.format(item.value)}
-                                </Typography>
-                            </Box>
-                        </Grid>
-                        {/* Vertical Divider between items, but not after the last regular item before Total */}
+                        <div style={{ flex: 1, minWidth: 60, textAlign: 'center' }}>
+                            <Typography variant="caption" color="text.secondary" display="block" sx={{ textTransform: 'uppercase', fontWeight: 600, letterSpacing: 0.5 }}>
+                                {item.label}
+                            </Typography>
+                            <Typography variant="h6" component="div" sx={{ fontWeight: 500, color: item.color || 'text.primary' }}>
+                                {item.suffix
+                                    ? `${Math.round(item.value || 0)} ${item.suffix}`
+                                    : nf.format(item.value)}
+                            </Typography>
+                        </div>
                         {index < items.length - 1 && (
-                            <Divider orientation="vertical" flexItem sx={{ height: 40, my: 'auto', display: { xs: 'none', md: 'block' } }} />
+                            <Divider orientation="vertical" flexItem sx={{ height: 40, my: 'auto' }} />
                         )}
-                        {/* On small screens, force a break maybe? For now relying on Grid flow */}
                     </React.Fragment>
                 ))}
 
-                {/* Big Separator before Total */}
-                <Divider orientation="vertical" flexItem sx={{ height: 50, mx: 2, display: { xs: 'none', md: 'block' } }} />
+                <Divider orientation="vertical" flexItem sx={{ height: 50, mx: 2 }} />
 
-                {/* Total Block */}
-                <Grid item>
-                    <Box
-                        sx={{
-                            textAlign: 'right',
-                            pl: 2,
-                            borderLeft: { xs: 'none', md: 'none' } // Divider is enough
-                        }}
-                    >
-                        <Typography variant="body2" color="primary" sx={{ fontWeight: 'bold' }}>
-                            CA TOTAL
-                        </Typography>
-                        <Typography variant="h4" color="primary" sx={{ fontWeight: 800, lineHeight: 1 }}>
-                            {nf.format(recap.offreTotale)}
-                        </Typography>
-                    </Box>
-                </Grid>
-            </Grid>
+                <div style={{ textAlign: 'right', paddingLeft: 8 }}>
+                    <Typography variant="body2" color="primary" sx={{ fontWeight: 'bold' }}>
+                        CA TOTAL
+                    </Typography>
+                    <Typography variant="h4" color="primary" sx={{ fontWeight: 800, lineHeight: 1 }}>
+                        {nf.format(recap.offreTotale)}
+                    </Typography>
+                </div>
+            </div>
         </Paper>
     );
 });
