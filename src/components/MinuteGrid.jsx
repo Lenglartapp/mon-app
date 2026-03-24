@@ -187,6 +187,7 @@ function MinuteGrid({
     matiereGroups = [],
     activeMatieres = null,
     onMatiereChange,
+    showExpeditionCol = false,
 }) {
     const gridRef = useRef(null);
     const [selectedCount, setSelectedCount] = useState(0);
@@ -478,13 +479,42 @@ function MinuteGrid({
             return { ...col, width: w, initialWidth: undefined };
         });
 
+        // Colonne expédition toujours présente (pinned right)
+        const EXPEDITION_STYLES = {
+            'Non expédié':           { bg: '#F3F4F6', color: '#6B7280' },
+            'En préparation':        { bg: '#FEF3C7', color: '#92400E' },
+            'Expédié':               { bg: '#D1FAE5', color: '#065F46' },
+            'Rail expédié':          { bg: '#DBEAFE', color: '#1E40AF' },
+            'Rideau expédié':        { bg: '#EDE9FE', color: '#5B21B6' },
+            'Rail + Rideau expédié': { bg: '#D1FAE5', color: '#065F46' },
+        };
+        const ALL_EXPEDITION_STATUTS = Object.keys(EXPEDITION_STYLES);
+
+        const expeditionCol = {
+            field: 'statut_expedition',
+            headerName: 'Expédition',
+            width: savedWidths['statut_expedition'] ?? 170,
+            editable: !readOnly,
+            cellEditor: 'agSelectCellEditor',
+            cellEditorParams: { values: ALL_EXPEDITION_STATUTS },
+            pinned: 'right',
+            cellRenderer: (params) => {
+                const val = params.value || 'Non expédié';
+                const s = EXPEDITION_STYLES[val] || EXPEDITION_STYLES['Non expédié'];
+                return React.createElement('span', {
+                    style: { display: 'inline-block', padding: '2px 8px', borderRadius: 99, fontSize: 11, fontWeight: 700, background: s.bg, color: s.color }
+                }, val);
+            },
+        };
+
         if (isMobile) {
             const mobileKeys = ['piece', 'produit', 'statut_cotes', 'statut_prepa', 'statut_conf', 'statut_pose', 'detail'];
-            return withWidths.filter(c => mobileKeys.includes(c.field) || c.checkboxSelection);
+            const base = withWidths.filter(c => mobileKeys.includes(c.field) || c.checkboxSelection);
+            return showExpeditionCol ? [...base, expeditionCol] : base;
         }
 
-        return withWidths;
-    }, [schema, enableCellFormulas, handleOpenDetail, catalog, railOptions, handlePhotoChange, onDuplicateRow, hideCroquis, readOnly, title, isMobile, gridId]);
+        return showExpeditionCol ? [...withWidths, expeditionCol] : withWidths;
+    }, [schema, enableCellFormulas, handleOpenDetail, catalog, railOptions, handlePhotoChange, onDuplicateRow, hideCroquis, readOnly, title, isMobile, gridId, showExpeditionCol]);
 
     const defaultColDef = useMemo(() => ({
         resizable: true,
@@ -669,7 +699,21 @@ function MinuteGrid({
                             <div style={{ fontSize: 16, fontWeight: 700, color: '#111827' }}>{row.piece || 'Sans pièce'}</div>
                             <div style={{ fontSize: 13, color: '#4B5563', marginTop: 2 }}>{row.produit || '—'}</div>
                         </div>
-                        <div style={{ padding: '4px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700, background: mainStatus.bg, color: mainStatus.color, textTransform: 'uppercase' }}>{mainStatus.label}</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+                            <div style={{ padding: '4px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700, background: mainStatus.bg, color: mainStatus.color, textTransform: 'uppercase' }}>{mainStatus.label}</div>
+                            {row.statut_expedition && row.statut_expedition !== 'Non expédié' && (() => {
+                                const EXP_MOBILE = {
+                                    'En préparation':        { bg: '#FEF3C7', color: '#92400E', label: '📦 En prépa' },
+                                    'Expédié':               { bg: '#D1FAE5', color: '#065F46', label: '🚚 Expédié' },
+                                    'Rail expédié':          { bg: '#DBEAFE', color: '#1E40AF', label: '🚚 Rail exp.' },
+                                    'Rideau expédié':        { bg: '#EDE9FE', color: '#5B21B6', label: '🚚 Rideau exp.' },
+                                    'Rail + Rideau expédié': { bg: '#D1FAE5', color: '#065F46', label: '🚚 Tout exp.' },
+                                };
+                                const s = EXP_MOBILE[row.statut_expedition];
+                                if (!s) return null;
+                                return <div style={{ padding: '2px 6px', borderRadius: 6, fontSize: 10, fontWeight: 700, background: s.bg, color: s.color }}>{s.label}</div>;
+                            })()}
+                        </div>
                     </div>
                     <div style={{ display: 'flex', gap: 16, fontSize: 13, color: '#6B7280', borderTop: '1px solid #F9FAFB', paddingTop: 8 }}>
                         <div>L: <span style={{ color: '#111827', fontWeight: 600 }}>{row.largeur || '—'}</span></div>

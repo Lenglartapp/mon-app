@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { ArrowLeft, Plus, Truck, Package, Search, X, Check, Trash2, PackagePlus, ChevronRight, FileText, Box, Weight } from 'lucide-react';
 import { useShipments, isRideauVoilage } from '../hooks/useShipments';
+import LogistiqueAnalyseView from '../components/modules/Logistique/LogistiqueAnalyseView';
 
 // ── Constantes ────────────────────────────────────────────────────────────────
 const STATUTS = ['Brouillon', 'En préparation', 'Expédiée'];
@@ -738,19 +739,21 @@ function ShipmentList({ shipments, items, projects, onSelect, onDelete, onUpdate
     return (
         <>
             {/* Barre de filtres */}
-            <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
-                <div style={{ position: 'relative', flex: '1 1 200px' }}>
+            <div style={{ marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ position: 'relative' }}>
                     <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#9CA3AF', pointerEvents: 'none' }} />
                     <input style={{ ...inputStyle, paddingLeft: 32, background: 'white' }} placeholder="Rechercher..." value={search} onChange={e => setSearch(e.target.value)} />
                 </div>
-                <select style={{ ...inputStyle, flex: '0 0 auto', cursor: 'pointer', background: 'white' }} value={filterStatut} onChange={e => setFilterStatut(e.target.value)}>
-                    <option value="">Tous les statuts</option>
-                    {STATUTS.map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
-                <select style={{ ...inputStyle, flex: '0 0 auto', cursor: 'pointer', background: 'white' }} value={filterProject} onChange={e => setFilterProject(e.target.value)}>
-                    <option value="">Tous les projets</option>
-                    {usedProjects.map(p => <option key={p.id} value={String(p.id)}>{p.name}</option>)}
-                </select>
+                <div style={{ display: 'flex', gap: 8 }}>
+                    <select style={{ ...inputStyle, flex: 1, cursor: 'pointer', background: 'white' }} value={filterStatut} onChange={e => setFilterStatut(e.target.value)}>
+                        <option value="">Tous les statuts</option>
+                        {STATUTS.map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                    <select style={{ ...inputStyle, flex: 1, cursor: 'pointer', background: 'white' }} value={filterProject} onChange={e => setFilterProject(e.target.value)}>
+                        <option value="">Tous les projets</option>
+                        {usedProjects.map(p => <option key={p.id} value={String(p.id)}>{p.name}</option>)}
+                    </select>
+                </div>
             </div>
 
             {/* Tableau */}
@@ -845,6 +848,12 @@ function ShipmentList({ shipments, items, projects, onSelect, onDelete, onUpdate
     );
 }
 
+// ── Onglets ───────────────────────────────────────────────────────────────────
+const TABS = [
+    { key: 'expeditions', label: 'Expéditions' },
+    { key: 'analyse',     label: 'Analyse' },
+];
+
 // ── Écran principal ───────────────────────────────────────────────────────────
 export default function LogistiqueScreen({ projects, onUpdateProject, onBack }) {
     const {
@@ -855,9 +864,10 @@ export default function LogistiqueScreen({ projects, onUpdateProject, onBack }) 
         itemsForShipment, colisForShipment,
     } = useShipments();
 
-    const [view, setView] = useState('list');
+    const [tabKey, setTabKey]             = useState('expeditions');
+    const [view, setView]                 = useState('main'); // 'main' | 'detail'
     const [selectedShipment, setSelectedShipment] = useState(null);
-    const [showCreate, setShowCreate] = useState(false);
+    const [showCreate, setShowCreate]     = useState(false);
 
     const handleCreate = async (fields) => {
         const shipment = await createShipment(fields);
@@ -865,8 +875,8 @@ export default function LogistiqueScreen({ projects, onUpdateProject, onBack }) 
         return shipment;
     };
 
-    const handleSelect = (shipment) => { setSelectedShipment(shipment); setView('detail'); };
-    const handleBack = () => { setSelectedShipment(null); setView('list'); };
+    const handleSelect  = (shipment) => { setSelectedShipment(shipment); setView('detail'); };
+    const handleBack    = () => { setSelectedShipment(null); setView('main'); };
 
     const liveShipment = useMemo(() => {
         if (!selectedShipment) return null;
@@ -877,7 +887,7 @@ export default function LogistiqueScreen({ projects, onUpdateProject, onBack }) 
         await validateShipment(id, projects, onUpdateProject);
     };
 
-    // ── Vue détail ──
+    // ── Vue détail (full takeover, pas de tabs) ──
     if (view === 'detail' && liveShipment) {
         return (
             <ShipmentDetail
@@ -899,53 +909,97 @@ export default function LogistiqueScreen({ projects, onUpdateProject, onBack }) 
         );
     }
 
-    // ── Vue liste ──
+    // ── Vue principale (tabbed) ──
     return (
-        <div style={{ minHeight: '100vh', background: '#F9F7F2', padding: 24 }}>
-            <div style={{ maxWidth: 1200, width: '100%', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div style={{ minHeight: '100vh', background: '#F9F7F2', padding: 24, display: 'flex', flexDirection: 'column' }}>
+            <div style={{ maxWidth: 1600, width: '100%', margin: '0 auto', display: 'flex', flexDirection: 'column', flex: 1 }}>
 
                 {/* Header */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
                     <div>
-                        <button onClick={onBack} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6B7280', fontWeight: 600, fontSize: 13, marginBottom: 4, padding: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <button onClick={onBack} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6B7280', fontWeight: 600, fontSize: 13, marginBottom: 8, padding: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
                             ← Retour
                         </button>
-                        <h1 style={{ fontSize: 28, fontWeight: 700, color: '#1F2937', margin: 0, letterSpacing: '-0.5px' }}>Logistique</h1>
+                        <h1 style={{ fontSize: 32, fontWeight: 800, color: '#111827', margin: 0, letterSpacing: '-0.5px' }}>Logistique</h1>
+                        <p style={{ fontSize: 14, color: '#6B7280', margin: '4px 0 0' }}>Gestion des expéditions et suivi logistique</p>
                     </div>
-                    <button onClick={() => setShowCreate(true)} style={{ ...btnPrimary, background: '#1E2447', padding: '8px 16px', fontSize: 14, fontWeight: 600, boxShadow: '0 2px 4px rgba(0,0,0,0.1)', marginBottom: 4 }}>
-                        <Plus size={16} /> Nouvelle expédition
-                    </button>
+                    {tabKey === 'expeditions' && (
+                        <button onClick={() => setShowCreate(true)} style={{ ...btnPrimary, background: '#1E2447', padding: '10px 20px', fontSize: 14, fontWeight: 600, boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+                            <Plus size={16} /> Nouvelle expédition
+                        </button>
+                    )}
                 </div>
 
-                {/* Stats */}
-                {!loading && (
-                    <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                        {[
-                            { label: 'Total',          value: shipments.length,                                         bg: '#F9FAFB', color: '#374151' },
-                            { label: 'En préparation', value: shipments.filter(s => s.statut === 'En préparation').length, bg: '#FFFBEB', color: '#92400E' },
-                            { label: 'Expédiées',      value: shipments.filter(s => s.statut === 'Expédiée').length,      bg: '#ECFDF5', color: '#065F46' },
-                            { label: 'Brouillons',     value: shipments.filter(s => s.statut === 'Brouillon').length,     bg: '#F5F3FF', color: '#5B21B6' },
-                        ].map(s => (
-                            <div key={s.label} style={{ flex: '1 1 120px', background: s.bg, borderRadius: 12, padding: '14px 18px', border: '1px solid rgba(0,0,0,0.04)' }}>
-                                <div style={{ fontSize: 26, fontWeight: 800, color: s.color }}>{s.value}</div>
-                                <div style={{ fontSize: 11, fontWeight: 600, color: s.color, opacity: 0.7, marginTop: 2 }}>{s.label}</div>
-                            </div>
+                {/* Pastilles de navigation */}
+                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 24 }}>
+                    <div style={{
+                        background: 'white', borderRadius: 9999, padding: 4, display: 'flex', gap: 4,
+                        boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03)',
+                        border: '1px solid rgba(0,0,0,0.05)',
+                    }}>
+                        {TABS.map(t => (
+                            <button key={t.key} onClick={() => setTabKey(t.key)} style={{
+                                padding: '8px 28px', borderRadius: 9999, fontSize: 14, fontWeight: 500,
+                                border: 'none', cursor: 'pointer',
+                                background: tabKey === t.key ? '#1E2447' : 'transparent',
+                                color: tabKey === t.key ? 'white' : '#4B5563',
+                                transition: 'all 0.2s',
+                                boxShadow: tabKey === t.key ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                                outline: 'none',
+                            }}>
+                                {t.label}
+                            </button>
                         ))}
                     </div>
-                )}
+                </div>
 
-                {loading ? (
-                    <div style={{ padding: 40, textAlign: 'center', color: '#9CA3AF' }}>Chargement...</div>
-                ) : (
-                    <ShipmentList
-                        shipments={shipments}
-                        items={items}
-                        projects={projects}
-                        onSelect={handleSelect}
-                        onDelete={deleteShipment}
-                        onUpdateShipment={updateShipment}
-                    />
-                )}
+                {/* Contenu */}
+                <div style={{ flex: 1 }}>
+
+                    {/* ── Onglet Expéditions ── */}
+                    {tabKey === 'expeditions' && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                            {/* Stats */}
+                            {!loading && (
+                                <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                                    {[
+                                        { label: 'Total',          value: shipments.length,                                            bg: '#F9FAFB', color: '#374151' },
+                                        { label: 'En préparation', value: shipments.filter(s => s.statut === 'En préparation').length,  bg: '#FFFBEB', color: '#92400E' },
+                                        { label: 'Expédiées',      value: shipments.filter(s => s.statut === 'Expédiée').length,        bg: '#ECFDF5', color: '#065F46' },
+                                        { label: 'Brouillons',     value: shipments.filter(s => s.statut === 'Brouillon').length,       bg: '#F5F3FF', color: '#5B21B6' },
+                                    ].map(s => (
+                                        <div key={s.label} style={{ flex: '1 1 120px', background: s.bg, borderRadius: 12, padding: '14px 18px', border: '1px solid rgba(0,0,0,0.04)' }}>
+                                            <div style={{ fontSize: 26, fontWeight: 800, color: s.color }}>{s.value}</div>
+                                            <div style={{ fontSize: 11, fontWeight: 600, color: s.color, opacity: 0.7, marginTop: 2 }}>{s.label}</div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                            {loading ? (
+                                <div style={{ padding: 40, textAlign: 'center', color: '#9CA3AF' }}>Chargement...</div>
+                            ) : (
+                                <ShipmentList
+                                    shipments={shipments}
+                                    items={items}
+                                    projects={projects}
+                                    onSelect={handleSelect}
+                                    onDelete={deleteShipment}
+                                    onUpdateShipment={updateShipment}
+                                />
+                            )}
+                        </div>
+                    )}
+
+                    {/* ── Onglet Analyse ── */}
+                    {tabKey === 'analyse' && (
+                        <LogistiqueAnalyseView
+                            shipments={shipments}
+                            items={items}
+                            projects={projects}
+                            embedded
+                        />
+                    )}
+                </div>
             </div>
 
             {showCreate && (
