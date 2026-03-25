@@ -940,6 +940,8 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
               onRowsChange={mergeChildRowsFor("rideaux")}
               schema={RIDEAUX_PROD_SCHEMA}
               projectName={projectName}
+              project={project}
+              onUpdateProject={onUpdateProject}
               onEditRow={(row) => setOpenedRowId(row.id)}
             />
           )}
@@ -951,6 +953,8 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
               onRowsChange={(nr) => handleSubsetChange(nr, /store (bateau|velum)/i)}
               schema={STORES_BATEAUX_PROD_SCHEMA}
               projectName={projectName}
+              project={project}
+              onUpdateProject={onUpdateProject}
               onEditRow={(row) => setOpenedRowId(row.id)}
             />
           )}

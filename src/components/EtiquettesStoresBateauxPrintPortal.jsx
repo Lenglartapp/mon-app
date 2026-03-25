@@ -2,6 +2,7 @@
 // Portal d'impression : 3 étiquettes stores bateaux/velum par page A4
 import React, { useEffect } from "react";
 import ReactDOM from "react-dom";
+import { DEFAULT_HEADER_COLOR, getHeaderStyles } from "../lib/etiquetteColors.js";
 
 const v = (row, key, fallback = "—") => {
   const val = row?.[key];
@@ -93,6 +94,8 @@ function PrintLabel({ row, projectName, index, total }) {
   const statutCotes = v(row, "statut_cotes", "—");
   const isStatutWarn = statutCotes && !["Définitive", "Validé par chef de projet"].includes(statutCotes);
 
+  const hdr = getHeaderStyles(row?.etiquette_header_color || DEFAULT_HEADER_COLOR);
+
   const croquis = Array.isArray(row?.croquis_intervalle)
     ? row.croquis_intervalle[0]?.url || null
     : null;
@@ -112,7 +115,7 @@ function PrintLabel({ row, projectName, index, total }) {
 
       {/* HEADER PLEINE LARGEUR */}
       <div style={{
-        background: "#1F2937",
+        background: hdr.bg,
         padding: "3pt 6pt",
         display: "grid",
         gridTemplateColumns: "1fr auto auto",
@@ -121,23 +124,23 @@ function PrintLabel({ row, projectName, index, total }) {
         flexShrink: 0,
       }}>
         <div>
-          <div style={{ fontSize: "6pt", fontWeight: 800, color: "#F9FAFB", letterSpacing: "0.04em", textTransform: "uppercase", lineHeight: 1.2 }}>
+          <div style={{ fontSize: "6pt", fontWeight: 800, color: hdr.textMuted, letterSpacing: "0.04em", textTransform: "uppercase", lineHeight: 1.2 }}>
             {projectName || "Projet"}
           </div>
-          <div style={{ fontSize: "8pt", fontWeight: 700, color: "#92742A", marginTop: "1pt" }}>
+          <div style={{ fontSize: "8pt", fontWeight: 700, color: hdr.textMain, marginTop: "1pt" }}>
             {zone} — {piece}
           </div>
-          <div style={{ fontSize: "7pt", fontWeight: 600, color: "#D1D5DB", marginTop: "1pt" }}>
+          <div style={{ fontSize: "7pt", fontWeight: 600, color: hdr.textMuted, marginTop: "1pt" }}>
             {v(row, "produit")}
           </div>
         </div>
         <div style={{ textAlign: "right" }}>
-          <div style={{ fontSize: "4pt", color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.05em" }}>H. Conf.</div>
-          <div style={{ fontSize: "9pt", fontWeight: 700, color: "#F9FAFB" }}>{heuresConf}h</div>
+          <div style={{ fontSize: "4pt", color: hdr.textMuted, textTransform: "uppercase", letterSpacing: "0.05em" }}>H. Conf.</div>
+          <div style={{ fontSize: "9pt", fontWeight: 700, color: hdr.textMain }}>{heuresConf}h</div>
         </div>
         <div style={{
-          fontSize: "6pt", fontWeight: 600, color: "#9CA3AF",
-          background: "#374151", borderRadius: "2pt",
+          fontSize: "6pt", fontWeight: 600, color: hdr.badgeText,
+          background: hdr.badgeBg, borderRadius: "2pt",
           padding: "2pt 4pt", whiteSpace: "nowrap",
         }}>
           {(index ?? 0) + 1}/{total}

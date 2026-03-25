@@ -1,5 +1,6 @@
 // src/components/EtiquetteRideauxCard.jsx
 import React, { useState } from "react";
+import { DEFAULT_HEADER_COLOR, getHeaderStyles } from "../lib/etiquetteColors.js";
 
 // ─── Champs disponibles sur l'étiquette (ordre + sections) ───────────────────
 export const ETIQUETTE_RIDEAUX_FIELDS = [
@@ -16,23 +17,31 @@ export const ETIQUETTE_RIDEAUX_FIELDS = [
   { key: "etiquette_lavage",     label: "Étiq. lavage",       section: "Confection" },
   { key: "etiquette_lenglart",   label: "Étiq. Lenglart",     section: "Confection" },
   // Ourlets & Bas
-  { key: "_ob",                  label: "OB tissu / doublure",section: "Ourlets & Bas" },
-  { key: "_oc",                  label: "OC & fin. champs",   section: "Ourlets & Bas" },
-  { key: "finition_bas",         label: "Finition bas",       section: "Ourlets & Bas" },
+  { key: "piquage_ourlets_du_bas",       label: "OB Tissu",         section: "Ourlets & Bas" },
+  { key: "piquage_ourlet",               label: "Piquage ourlet",   section: "Ourlets & Bas" },
+  { key: "piquage_ourlets_bas_doublure", label: "OB Doublure",      section: "Ourlets & Bas" },
+  { key: "deduction_doublure",           label: "Déd. Doublure",    section: "Ourlets & Bas" },
+  { key: "v_ourlets_de_cotes",   label: "Ourlets de côté",    section: "Ourlets & Bas" },
+  { key: "finition_champs",      label: "Finition chant",     section: "Ourlets & Bas" },
+  { key: "finition_bas",         label: "Cassant / Rasant",   section: "Ourlets & Bas" },
   { key: "doublure_finition_bas",label: "Doubl. fin. bas",    section: "Ourlets & Bas" },
-  { key: "_retours",             label: "Retours",            section: "Ourlets & Bas" },
   // Dimensions
   { key: "nombre_les",           label: "Nb lés",             section: "Dimensions" },
   { key: "largeur_finie",        label: "L. Finie",           section: "Dimensions" },
+  { key: "retour_gauche",        label: "Retour G",           section: "Dimensions" },
+  { key: "retour_droit",         label: "Retour D",           section: "Dimensions" },
   { key: "hauteur_finie_gauche", label: "H. Finie G",         section: "Dimensions" },
+  { key: "hauteur_finie_milieu", label: "H. Finie M",         section: "Dimensions" },
   { key: "hauteur_finie_droite", label: "H. Finie D",         section: "Dimensions" },
-  { key: "hspf_gauche",          label: "HSPF G",             section: "Dimensions" },
-  { key: "hspf_droite",          label: "HSPF D",             section: "Dimensions" },
   { key: "nombre_glisseur",      label: "Nb glisseurs",       section: "Dimensions" },
   { key: "statut_cotes",         label: "Statut côtes",       section: "Dimensions" },
   { key: "hauteur_coupe",        label: "H. Coupe T1",        section: "Dimensions" },
   { key: "hauteur_coupe_motif",  label: "H. Coupe motif",     section: "Dimensions" },
   { key: "hauteur_coupe_doublure",label:"H. Coupe doubl.",    section: "Dimensions" },
+  // Mécanisme
+  { key: "type_mecanisme",       label: "Type Méca",          section: "Mécanisme" },
+  { key: "modele_mecanisme",     label: "Modèle Méca",        section: "Mécanisme" },
+  { key: "type_croisement",      label: "Type Croisement",    section: "Mécanisme" },
   // Matériaux
   { key: "tissu_deco1",          label: "Tissu 1",            section: "Matériaux" },
   { key: "tissu_deco2",          label: "Tissu 2",            section: "Matériaux" },
@@ -42,7 +51,7 @@ export const ETIQUETTE_RIDEAUX_FIELDS = [
   { key: "passementerie2",       label: "Pass. 2",            section: "Matériaux" },
 ];
 
-const SECTIONS = ["Confection", "Ourlets & Bas", "Dimensions", "Matériaux"];
+const SECTIONS = ["Confection", "Ourlets & Bas", "Dimensions", "Mécanisme", "Matériaux"];
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 const v = (row, key, fallback = "—") => {
@@ -56,22 +65,22 @@ function Cell({ label, value, accent = false, span = 1 }) {
   return (
     <div style={{
       gridColumn: `span ${span}`,
-      padding: "5px 10px",
+      padding: "3px 8px",
       borderRight: "1px solid #E5E7EB",
       borderBottom: "1px solid #E5E7EB",
-      display: "flex", flexDirection: "column", gap: 2, minWidth: 0,
+      display: "flex", flexDirection: "column", gap: 1, minWidth: 0,
     }}>
       <span style={{
-        fontSize: 10, fontWeight: 600, letterSpacing: "0.05em",
+        fontSize: 9, fontWeight: 600, letterSpacing: "0.05em",
         textTransform: "uppercase", color: "#9CA3AF", lineHeight: 1,
         whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
       }}>
         {label}
       </span>
       <span style={{
-        fontSize: 13, fontWeight: 700,
+        fontSize: 12, fontWeight: 700,
         color: accent ? "#92742A" : "#111827",
-        lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+        lineHeight: 1.25, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
       }}>
         {value}
       </span>
@@ -96,9 +105,9 @@ function Row({ children, cols, bg = "white" }) {
 function SectionTitle({ children }) {
   return (
     <div style={{
-      fontSize: 10, fontWeight: 700, letterSpacing: "0.1em",
+      fontSize: 9, fontWeight: 700, letterSpacing: "0.1em",
       textTransform: "uppercase", color: "#6B7280",
-      background: "#F3F4F6", padding: "4px 10px",
+      background: "#F3F4F6", padding: "2px 8px",
       borderBottom: "1px solid #E5E7EB",
       borderLeft: "1px solid #E5E7EB",
       borderRight: "1px solid #E5E7EB",
@@ -248,24 +257,11 @@ export default function EtiquetteRideauxCard({ row, projectName, index, total, o
     || (typeof row?.schema === "string" ? row.schema : null)
     || (Array.isArray(row?.schema_principe) ? row.schema_principe[0]?.url : null);
 
-  const ob = [
-    row?.piquage_ourlets_du_bas ? `OB : ${row.piquage_ourlets_du_bas}` : null,
-    row?.piquage_ourlets_bas_doublure ? `OB doubl. : ${row.piquage_ourlets_bas_doublure}` : null,
-  ].filter(Boolean).join(" — ") || "—";
-
-  const oc = [
-    row?.v_ourlets_de_cotes ? `OC : ${row.v_ourlets_de_cotes}` : null,
-    row?.finition_champs ? `Fin. : ${row.finition_champs}` : null,
-  ].filter(Boolean).join(" — ") || "—";
-
-  const retours = [
-    row?.retour_gauche ? `G : ${row.retour_gauche}` : null,
-    row?.retour_droit ? `D : ${row.retour_droit}` : null,
-    row?.type_retours || null,
-  ].filter(Boolean).join(" / ") || "—";
 
   const isStatutWarn = statutCotes && !["Définitive", "Validé par chef de projet"].includes(statutCotes);
   const hiddenCount = hiddenFields.length;
+
+  const hdr = getHeaderStyles(row?.etiquette_header_color || DEFAULT_HEADER_COLOR);
 
   const handleSaveHidden = (newHidden) => {
     if (onRowChange) onRowChange({ ...row, etiquette_hidden_fields: newHidden });
@@ -291,27 +287,27 @@ export default function EtiquetteRideauxCard({ row, projectName, index, total, o
 
       {/* HEADER */}
       <div style={{
-        background: "#1F2937", padding: "10px 16px",
+        background: hdr.bg, padding: "10px 16px",
         display: "grid", gridTemplateColumns: "1fr auto auto",
         alignItems: "center", gap: 12,
       }}>
         <div>
-          <div style={{ fontSize: 11, fontWeight: 700, color: "#9CA3AF", letterSpacing: "0.05em", textTransform: "uppercase" }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: hdr.textMuted, letterSpacing: "0.05em", textTransform: "uppercase" }}>
             {projectName || "Projet"}
           </div>
-          <div style={{ fontSize: 18, fontWeight: 800, color: "#92742A", marginTop: 2 }}>
+          <div style={{ fontSize: 18, fontWeight: 800, color: hdr.textMain, marginTop: 2 }}>
             {zone} — {piece}
           </div>
-          <div style={{ fontSize: 12, color: "#6B7280", marginTop: 2 }}>{produit}</div>
+          <div style={{ fontSize: 12, color: hdr.textMuted, marginTop: 2 }}>{produit}</div>
         </div>
         <div style={{ textAlign: "right" }}>
-          <div style={{ fontSize: 10, color: "#6B7280", textTransform: "uppercase", letterSpacing: "0.05em" }}>H. Conf.</div>
-          <div style={{ fontSize: 20, fontWeight: 800, color: "#F9FAFB" }}>{heuresConf}h</div>
+          <div style={{ fontSize: 10, color: hdr.textMuted, textTransform: "uppercase", letterSpacing: "0.05em" }}>H. Conf.</div>
+          <div style={{ fontSize: 20, fontWeight: 800, color: hdr.textMain }}>{heuresConf}h</div>
         </div>
         {total != null && (
           <div style={{
-            fontSize: 12, fontWeight: 600, color: "#9CA3AF",
-            background: "#374151", borderRadius: 6, padding: "5px 10px", whiteSpace: "nowrap",
+            fontSize: 12, fontWeight: 600, color: hdr.badgeText,
+            background: hdr.badgeBg, borderRadius: 6, padding: "5px 10px", whiteSpace: "nowrap",
           }}>
             n° {(index ?? 0) + 1}/{total}
           </div>
@@ -350,47 +346,65 @@ export default function EtiquetteRideauxCard({ row, projectName, index, total, o
 
           {/* Ourlets & Bas */}
           <SectionTitle>Ourlets & Bas</SectionTitle>
-          {(show("_ob") || show("finition_bas")) && (
+          {(show("piquage_ourlets_du_bas") || show("piquage_ourlet") || show("finition_bas")) && (
             <Row cols={3}>
-              {show("_ob")          && <Cell label="OB tissu / doublure" value={ob} span={2} />}
-              {show("finition_bas") && <Cell label="Finition bas" value={v(row, "finition_bas")} />}
+              {show("piquage_ourlets_du_bas") && <Cell label="OB Tissu" value={v(row, "piquage_ourlets_du_bas")} />}
+              {show("piquage_ourlet")         && <Cell label="Piquage ourlet" value={v(row, "piquage_ourlet")} />}
+              {show("finition_bas")           && <Cell label="Cassant / Rasant" value={v(row, "finition_bas")} />}
             </Row>
           )}
-          {(show("_oc") || show("doublure_finition_bas")) && (
+          {(show("piquage_ourlets_bas_doublure") || show("deduction_doublure") || show("doublure_finition_bas")) && (
             <Row cols={3} bg="#F9FAFB">
-              {show("_oc")                  && <Cell label="OC & fin. champs" value={oc} span={2} />}
-              {show("doublure_finition_bas") && <Cell label="Doubl. fin. bas" value={v(row, "doublure_finition_bas")} />}
+              {show("piquage_ourlets_bas_doublure") && <Cell label="OB Doublure" value={v(row, "piquage_ourlets_bas_doublure")} />}
+              {show("deduction_doublure")           && <Cell label="Déd. Doublure" value={v(row, "deduction_doublure")} />}
+              {show("doublure_finition_bas")        && <Cell label="Doubl. fin. bas" value={v(row, "doublure_finition_bas")} />}
             </Row>
           )}
-          {show("_retours") && (
+          {(show("v_ourlets_de_cotes") || show("finition_champs")) && (
             <Row cols={3}>
-              <Cell label="Retours" value={retours} span={3} accent />
+              {show("v_ourlets_de_cotes") && <Cell label="Ourlets de côté" value={v(row, "v_ourlets_de_cotes")} />}
+              {show("finition_champs")    && <Cell label="Finition chant" value={v(row, "finition_champs")} />}
             </Row>
           )}
 
           {/* Dimensions */}
           <SectionTitle>Dimensions</SectionTitle>
-          {(show("nombre_les") || show("largeur_finie") || show("hauteur_finie_gauche") || show("hauteur_finie_droite")) && (
+          {(show("nombre_les") || show("largeur_finie") || show("retour_gauche") || show("retour_droit")) && (
             <Row cols={4}>
-              {show("nombre_les")           && <Cell label="Nb lés" value={v(row, "nombre_les")} />}
-              {show("largeur_finie")        && <Cell label="L. Finie" value={v(row, "largeur_finie")} />}
+              {show("nombre_les")    && <Cell label="Nb lés" value={v(row, "nombre_les")} />}
+              {show("largeur_finie") && <Cell label="L. Finie" value={v(row, "largeur_finie")} />}
+              {show("retour_gauche") && <Cell label="Retour G" value={v(row, "retour_gauche")} />}
+              {show("retour_droit")  && <Cell label="Retour D" value={v(row, "retour_droit")} />}
+            </Row>
+          )}
+          {(show("hauteur_finie_gauche") || show("hauteur_finie_milieu") || show("hauteur_finie_droite")) && (
+            <Row cols={3} bg="#F9FAFB">
               {show("hauteur_finie_gauche") && <Cell label="H. Finie G" value={v(row, "hauteur_finie_gauche")} />}
+              {show("hauteur_finie_milieu") && <Cell label="H. Finie M" value={v(row, "hauteur_finie_milieu")} />}
               {show("hauteur_finie_droite") && <Cell label="H. Finie D" value={v(row, "hauteur_finie_droite")} />}
             </Row>
           )}
-          {(show("hspf_gauche") || show("hspf_droite") || show("nombre_glisseur") || show("statut_cotes")) && (
-            <Row cols={4} bg="#F9FAFB">
-              {show("hspf_gauche")    && <Cell label="HSPF G" value={v(row, "hspf_gauche")} />}
-              {show("hspf_droite")    && <Cell label="HSPF D" value={v(row, "hspf_droite")} />}
-              {show("nombre_glisseur")&& <Cell label="Nb glisseurs" value={v(row, "nombre_glisseur")} />}
-              {show("statut_cotes")   && <Cell label="Statut côtes" value={statutCotes} accent={isStatutWarn} />}
+          {(show("nombre_glisseur") || show("statut_cotes")) && (
+            <Row cols={2}>
+              {show("nombre_glisseur") && <Cell label="Nb glisseurs" value={v(row, "nombre_glisseur")} />}
+              {show("statut_cotes")    && <Cell label="Statut côtes" value={statutCotes} accent={isStatutWarn} />}
             </Row>
           )}
           {(show("hauteur_coupe") || show("hauteur_coupe_motif") || show("hauteur_coupe_doublure")) && (
-            <Row cols={3}>
+            <Row cols={3} bg="#F9FAFB">
               {show("hauteur_coupe")          && <Cell label="H. Coupe T1" value={v(row, "hauteur_coupe")} />}
               {show("hauteur_coupe_motif")    && <Cell label="H. Coupe motif" value={v(row, "hauteur_coupe_motif")} />}
               {show("hauteur_coupe_doublure") && <Cell label="H. Coupe doubl." value={v(row, "hauteur_coupe_doublure")} />}
+            </Row>
+          )}
+
+          {/* Mécanisme */}
+          <SectionTitle>Mécanisme</SectionTitle>
+          {(show("type_mecanisme") || show("modele_mecanisme") || show("type_croisement")) && (
+            <Row cols={3}>
+              {show("type_mecanisme")  && <Cell label="Type Méca" value={v(row, "type_mecanisme")} />}
+              {show("modele_mecanisme")&& <Cell label="Modèle Méca" value={v(row, "modele_mecanisme")} />}
+              {show("type_croisement") && <Cell label="Type Croisement" value={v(row, "type_croisement")} />}
             </Row>
           )}
 
@@ -414,7 +428,7 @@ export default function EtiquetteRideauxCard({ row, projectName, index, total, o
 
         {/* COLONNE DROITE : croquis + commentaire */}
         <div style={{ borderLeft: "1px solid #E5E7EB", display: "flex", flexDirection: "column" }}>
-          <div style={{ flex: 1, borderBottom: "1px solid #E5E7EB", display: "flex", flexDirection: "column", minHeight: 0 }}>
+          <div style={{ flex: 2, borderBottom: "1px solid #E5E7EB", display: "flex", flexDirection: "column", minHeight: 0 }}>
             <div style={{
               fontSize: 10, fontWeight: 700, letterSpacing: "0.1em",
               textTransform: "uppercase", color: "#6B7280",
@@ -423,15 +437,15 @@ export default function EtiquetteRideauxCard({ row, projectName, index, total, o
             }}>
               Croquis atelier
             </div>
-            <div style={{ flex: 1, padding: 8, display: "flex", alignItems: "center", justifyContent: "center", minHeight: 100 }}>
+            <div style={{ flex: 1, padding: 8, display: "flex", alignItems: "center", justifyContent: "center", minHeight: 0 }}>
               {schemaImg ? (
-                <img src={schemaImg} alt="Croquis" style={{ maxWidth: "100%", maxHeight: 160, objectFit: "contain" }} />
+                <img src={schemaImg} alt="Croquis" style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }} />
               ) : (
                 <div style={{ fontSize: 11, color: "#D1D5DB", fontStyle: "italic", textAlign: "center" }}>aucun croquis</div>
               )}
             </div>
           </div>
-          <div style={{ display: "flex", flexDirection: "column" }}>
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
             <div style={{
               fontSize: 10, fontWeight: 700, letterSpacing: "0.1em",
               textTransform: "uppercase", color: "#6B7280",
@@ -440,7 +454,7 @@ export default function EtiquetteRideauxCard({ row, projectName, index, total, o
             }}>
               Commentaires atelier
             </div>
-            <div style={{ padding: "8px 10px", fontSize: 12, color: "#374151", lineHeight: 1.5, minHeight: 50 }}>
+            <div style={{ flex: 1, padding: "8px 10px", fontSize: 12, color: "#374151", lineHeight: 1.5, overflow: "auto" }}>
               {v(row, "commentaire_confection", "")}
             </div>
           </div>

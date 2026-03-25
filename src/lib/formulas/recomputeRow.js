@@ -141,6 +141,15 @@ export function recomputeRow(row, schema, ctx = {}) {
     const H_Coupe = H + FinitionBas + 50;
     next.hauteur_coupe = H_Coupe;
 
+    // Hauteur finie milieu — moyenne de G et D, sauf si déjà renseignée manuellement
+    const _ded = NVL(next.valeur_deduction || next.val_ded_rail);
+    const _fb  = NVL(next.finition_bas || next.f_bas);
+    const _hfG = Math.round((NVL(next.hspf_gauche) - _ded + _fb) * 10) / 10;
+    const _hfD = Math.round((NVL(next.hspf_droite) - _ded + _fb) * 10) / 10;
+    if (next.hauteur_finie_milieu == null || next.hauteur_finie_milieu === '') {
+        next.hauteur_finie_milieu = Math.round(((_hfG + _hfD) / 2) * 10) / 10;
+    }
+
     // C. ML & Costs
     const RaccordV = NVL(next.raccord_v_tissu1, 0);
     next.hauteur_coupe_motif = (RaccordV > 0) ? Math.ceil(H_Coupe / RaccordV) * RaccordV + RaccordV : H_Coupe; // Added + RaccordV back
