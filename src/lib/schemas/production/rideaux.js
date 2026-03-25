@@ -136,6 +136,7 @@ export const RIDEAUX_PROD_SCHEMA = [
         type: "number",
         width: 110,
         readOnly: true,
+        tooltip: "Largeur finie par pan. Paire : (L/2 × 1,10) + croisement. Pan unique : L × 1,10",
         valueGetter: (v, r) => getters.largeur_finie(getRow(v, r))
     },
     {
@@ -144,6 +145,7 @@ export const RIDEAUX_PROD_SCHEMA = [
         type: "number",
         width: 110,
         readOnly: true,
+        tooltip: "Tissu à plat avant confection. Paire : (L_finie × ampleur) + 4 × ourlets côtés. Pan unique : (L_finie × ampleur) + 2 × ourlets côtés",
         valueGetter: (v, r) => getters.a_plat(getRow(v, r))
     },
     { key: "v_ourlets_de_cotes", label: "Ourlets Côtés", type: "number", width: 130, editable: true },
@@ -168,6 +170,7 @@ export const RIDEAUX_PROD_SCHEMA = [
         type: "number",
         width: 135,
         readOnly: true,
+        tooltip: "HSPF droit − déduction rail + finition bas",
         valueGetter: (v, r) => getters.hauteur_finie_droite(getRow(v, r))
     },
     {
@@ -176,6 +179,7 @@ export const RIDEAUX_PROD_SCHEMA = [
         type: "number",
         width: 140,
         readOnly: true,
+        tooltip: "HSPF gauche − déduction rail + finition bas",
         valueGetter: (v, r) => getters.hauteur_finie_gauche(getRow(v, r))
     },
     {
@@ -184,6 +188,7 @@ export const RIDEAUX_PROD_SCHEMA = [
         type: "number",
         width: 120,
         readOnly: true,
+        tooltip: "Si laize > H_finie + 50 cm : utilise la valeur À Plat (tissu couché). Sinon : H_finie + 50 cm de marge de coupe",
         valueGetter: (v, r) => getters.hauteur_coupe(getRow(v, r))
     },
     {
@@ -192,6 +197,7 @@ export const RIDEAUX_PROD_SCHEMA = [
         type: "number",
         width: 140,
         readOnly: true,
+        tooltip: "H. Coupe arrondie au raccord motif vertical supérieur : ceil(H_coupe ÷ raccord_V) × raccord_V",
         valueGetter: (v, r) => {
             const row = getRow(v, r);
             const hCoupe = getters.hauteur_coupe(row);
@@ -206,6 +212,7 @@ export const RIDEAUX_PROD_SCHEMA = [
         type: "number",
         width: 150,
         readOnly: true,
+        tooltip: "Même logique que H. Coupe mais basée sur la laize de doublure",
         valueGetter: (v, r) => {
             const row = getRow(v, r);
             const hFinieD = getters.hauteur_finie_droite(row);
@@ -226,6 +233,7 @@ export const RIDEAUX_PROD_SCHEMA = [
         type: "number",
         width: 100,
         readOnly: true,
+        tooltip: "Nombre de lés nécessaires : À Plat ÷ laize tissu 1, arrondi au supérieur (minimum 1)",
         valueGetter: (v, r) => {
             const row = getRow(v, r);
             const aPlat = getters.a_plat(row);
@@ -235,6 +243,7 @@ export const RIDEAUX_PROD_SCHEMA = [
         }
     },
     { key: "piquage_ourlets_du_bas", label: "Piq. Bas", type: "number", width: 115, editable: true },
+    { key: "piquage_ourlets_bas_doublure", label: "Piq. Bas Doubl.", type: "number", width: 145, editable: true },
     { key: "doublure_finition_bas", label: "Doubl. Fin. Bas", type: "number", width: 145, editable: true },
     { key: "finition_champs", label: "Fin. Champs", type: "number", width: 120, editable: true },
     { key: "poids", label: "Poids", type: "select", options: ["Oui", "Non"], width: 90, editable: true },
@@ -320,6 +329,7 @@ export const RIDEAUX_PROD_SCHEMA = [
         type: "number",
         width: 120,
         readOnly: true,
+        tooltip: "Wave 60 : L_finie/6 + 2. Wave 80 : L_finie/8 + 2. Autre : L_finie/10 + 2. Arrondi au pair supérieur. × 2 pour une paire",
         valueGetter: (v, row) => getters.nb_glisseurs(getRow(v, row))
     },
 
@@ -337,6 +347,7 @@ export const RIDEAUX_PROD_SCHEMA = [
     },
 
     // G. Suivi & Statuts
+    { key: "commentaire_confection", label: "Commentaire Confection", type: "textarea", width: 260, editable: true },
     { key: "type_pose", label: "Type Pose", type: "text", width: 130, editable: true },
     { key: "heures_confection", label: "H. Conf.", type: "number", width: 115, editable: true },
     { key: "statut_pose", label: "Statut Pose", type: "select", options: ['Non démarré', 'Méca posé', 'Accroché', 'Terminé', 'Reprise'], width: 155, editable: true },

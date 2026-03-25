@@ -1,5 +1,13 @@
 // src/lib/schemas/production.js
 import React from 'react';
+
+// Options de statut_conf selon le type de produit
+export function getStatutConfOptions(produit) {
+    const p = String(produit || '').toLowerCase();
+    if (/rideau|voilage/.test(p))          return ['Non démarré', 'Coupé', 'Assemblé', 'Plis terminés', 'Emballé'];
+    if (/store (bateau|velum)/.test(p))    return ['Non démarré', 'Ourlet fait', 'Fourreau terminé', 'Ficelle terminée', 'Emballé'];
+    return ['Non démarré', 'En cours', 'Terminé'];
+}
 // We might need to import UI components if we were defining renderCell here,
 // but usually the Grid component handles the mapping based on 'type'.
 // However, the user said "Preserve existing UI interactions".
@@ -383,7 +391,7 @@ export const SCHEMA_64 = [
   { key: "heures_confection", label: "H. Conf.", type: "number", width: 115, editable: true },
   { key: "statut_pose", label: "Statut Pose", type: "select", options: ['Non démarré', 'Méca posé', 'Accroché', 'Terminé', 'Reprise'], width: 155, editable: true },
   { key: "statut_prepa", label: "Statut Prépa", type: "select", options: ['Non démarré', 'En cours', 'Terminé'], width: 150, editable: true },
-  { key: "statut_conf", label: "Statut Conf", type: "select", options: ['Non démarré', 'En cours', 'Terminé'], width: 150, editable: true },
+  { key: "statut_conf", label: "Statut Conf", type: "select", options: ['Non démarré', 'En cours', 'Terminé'], optionsFn: (row) => getStatutConfOptions(row?.produit), width: 150, editable: true },
   // PRESERVED COMPONENTS
   { key: "schema_principe", label: "Schéma Principe", type: "photo", width: 150 }, // NEW
   { key: "photos_sur_site", label: "Photos Site", type: "photo", width: 150 },

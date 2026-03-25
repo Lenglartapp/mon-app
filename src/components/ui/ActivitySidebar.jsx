@@ -4,7 +4,8 @@ import Typography from '@mui/material/Typography';
 import TextField from '@mui/material/TextField';
 import IconButton from '@mui/material/IconButton';
 import SendIcon from '@mui/icons-material/Send';
-import AttachFileIcon from '@mui/icons-material/AttachFile'; // <--- New Icon
+import AttachFileIcon from '@mui/icons-material/AttachFile';
+import CloseIcon from '@mui/icons-material/Close';
 import Chip from '@mui/material/Chip';
 import Avatar from '@mui/material/Avatar';
 import Popover from '@mui/material/Popover';
@@ -52,12 +53,14 @@ function formatRelativeTime(dateStr) {
 // --- SUB-COMPONENTS ---
 
 // 1. INPUT FORM (ISOLATED & MEMOIZED)
-const CommentInputForm = React.memo(({ onSend, onUploadImage, users = [] }) => {
+const CommentInputForm = React.memo(({ onSend, onSendWithImage, users = [] }) => {
     // Uncontrolled input for maximum performance
     const inputRef = useRef(null);
     const fileInputRef = useRef(null);
     const [hasText, setHasText] = useState(false);
     const [uploading, setUploading] = useState(false);
+    const [pendingFile, setPendingFile] = useState(null);
+    const [pendingPreviewUrl, setPendingPreviewUrl] = useState(null);
 
     // Mention states
     const [anchorEl, setAnchorEl] = useState(null);
@@ -127,33 +130,49 @@ const CommentInputForm = React.memo(({ onSend, onUploadImage, users = [] }) => {
         }
     };
 
-    const handleSendClick = () => {
+    const handleSendClick = async () => {
         const val = inputRef.current?.value || '';
-        if (val.trim()) {
-            onSend(val);
-            // Clear manually
-            if (inputRef.current) {
-                inputRef.current.value = '';
+        if (!val.trim() && !pendingFile) return;
+
+        if (pendingFile) {
+            try {
+                setUploading(true);
+                await onSendWithImage(pendingFile, val.trim() || null);
+            } catch (err) {
+                console.error(err);
+            } finally {
+                setUploading(false);
             }
-            setHasText(false);
-            setAnchorEl(null);
+            // Clear
+            setPendingFile(null);
+            if (pendingPreviewUrl) URL.revokeObjectURL(pendingPreviewUrl);
+            setPendingPreviewUrl(null);
+        } else {
+            onSend(val);
         }
+
+        if (inputRef.current) inputRef.current.value = '';
+        setHasText(false);
+        setAnchorEl(null);
     };
 
-    const handleFileChange = async (e) => {
+    const handleFileChange = (e) => {
         const file = e.target.files?.[0];
         if (!file) return;
+        // Store as pending — don't upload yet
+        if (pendingPreviewUrl) URL.revokeObjectURL(pendingPreviewUrl);
+        setPendingFile(file);
+        setPendingPreviewUrl(URL.createObjectURL(file));
+        // Reset native input so same file can be reselected
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        // Focus text field for caption
+        setTimeout(() => inputRef.current?.focus(), 50);
+    };
 
-        try {
-            setUploading(true);
-            await onUploadImage(file);
-        } catch (err) {
-            console.error(err);
-        } finally {
-            setUploading(false);
-            // Reset input
-            if (fileInputRef.current) fileInputRef.current.value = "";
-        }
+    const handleRemovePending = () => {
+        if (pendingPreviewUrl) URL.revokeObjectURL(pendingPreviewUrl);
+        setPendingFile(null);
+        setPendingPreviewUrl(null);
     };
 
     const filteredUsers = useMemo(() => {
@@ -161,8 +180,34 @@ const CommentInputForm = React.memo(({ onSend, onUploadImage, users = [] }) => {
         return users.filter(u => u.name.toLowerCase().includes(mentionQuery.toLowerCase()));
     }, [users, mentionQuery, anchorEl]);
 
+    const canSend = hasText || !!pendingFile;
+
     return (
         <Box sx={{ p: 2, bgcolor: 'white', borderTop: '1px solid #E5E7EB' }}>
+            {/* Photo preview */}
+            {pendingPreviewUrl && (
+                <Box sx={{ mb: 1, position: 'relative', display: 'inline-block' }}>
+                    <Box
+                        component="img"
+                        src={pendingPreviewUrl}
+                        sx={{ maxHeight: 80, maxWidth: 120, borderRadius: 1.5, border: '1px solid #E5E7EB', display: 'block' }}
+                    />
+                    <IconButton
+                        size="small"
+                        onClick={handleRemovePending}
+                        sx={{
+                            position: 'absolute', top: -8, right: -8,
+                            bgcolor: 'white', border: '1px solid #E5E7EB',
+                            width: 18, height: 18,
+                            '&:hover': { bgcolor: '#FEF2F2' },
+                            '& svg': { fontSize: 11 }
+                        }}
+                    >
+                        <CloseIcon />
+                    </IconButton>
+                </Box>
+            )}
+
             <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-end', bgcolor: '#F3F4F6', borderRadius: 2, p: '8px 12px' }}>
                 <TextField
                     id="comment-input-field"
@@ -170,7 +215,7 @@ const CommentInputForm = React.memo(({ onSend, onUploadImage, users = [] }) => {
                     fullWidth
                     variant="standard"
                     InputProps={{ disableUnderline: true }}
-                    placeholder="Écrire un message... (@ pour mentionner)"
+                    placeholder={pendingFile ? "Ajouter un commentaire… (optionnel)" : "Écrire un message… (@ pour mentionner)"}
                     onChange={handleInputChange}
                     onKeyDown={handleKeyDown}
                     multiline
@@ -190,22 +235,22 @@ const CommentInputForm = React.memo(({ onSend, onUploadImage, users = [] }) => {
                     disabled={uploading}
                     size="small"
                 >
-                    {uploading ? (
-                        <div style={{
-                            width: 14, height: 14,
-                            border: '2px solid #ccc', borderTopColor: '#333',
-                            borderRadius: '50%', animation: 'spin 1s linear infinite'
-                        }} />
-                    ) : <AttachFileIcon fontSize="small" />}
+                    <AttachFileIcon fontSize="small" />
                 </IconButton>
 
                 <IconButton
                     color="primary"
                     onClick={handleSendClick}
-                    disabled={!hasText}
+                    disabled={!canSend || uploading}
                     size="small"
                 >
-                    <SendIcon fontSize="small" />
+                    {uploading ? (
+                        <div style={{
+                            width: 14, height: 14,
+                            border: '2px solid #ccc', borderTopColor: '#1d4ed8',
+                            borderRadius: '50%', animation: 'spin 1s linear infinite'
+                        }} />
+                    ) : <SendIcon fontSize="small" />}
                 </IconButton>
             </Box>
 
@@ -361,22 +406,30 @@ const MessageItem = React.memo(({ act, isMe }) => {
                         borderTopRightRadius: isMe ? 0 : 2,
                         p: '8px 12px',
                         boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
-                        // If image, transparent bg
-                        ...(isImage && { bgcolor: 'transparent', border: 'none', boxShadow: 'none', p: 0 })
+                        // If image (without caption), transparent bg
+                        ...(isImage && !act.caption && { bgcolor: 'transparent', border: 'none', boxShadow: 'none', p: 0 })
                     }}>
                         {isImage ? (
-                            <Box
-                                component="img"
-                                src={content}
-                                onClick={() => setLightboxOpen(true)}
-                                sx={{
-                                    maxWidth: 200,
-                                    maxHeight: 200,
-                                    borderRadius: 2,
-                                    border: '1px solid #E5E7EB',
-                                    cursor: 'zoom-in'
-                                }}
-                            />
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                                <Box
+                                    component="img"
+                                    src={content}
+                                    onClick={() => setLightboxOpen(true)}
+                                    sx={{
+                                        maxWidth: 200,
+                                        maxHeight: 200,
+                                        borderRadius: act.caption ? 1.5 : 2,
+                                        border: '1px solid #E5E7EB',
+                                        cursor: 'zoom-in',
+                                        display: 'block'
+                                    }}
+                                />
+                                {act.caption && (
+                                    <Typography variant="body2" sx={{ fontSize: 13, lineHeight: 1.6, color: '#1F2937' }}>
+                                        {processMessageText(act.caption)}
+                                    </Typography>
+                                )}
+                            </Box>
                         ) : (
                             <Typography variant="body2" sx={{ fontSize: 13, lineHeight: 1.6, color: '#1F2937' }}>
                                 {processMessageText(content || act.text)}
@@ -485,12 +538,12 @@ const ActivitySidebar = React.memo(({ activities = [], onAddComment, onAddImage,
         onAddComment(text);
     }, [users, onAddComment, addNotification, minuteId, projectId, currentUser, rowId]);
 
-    const handleUploadImage = useCallback(async (file) => {
+    const handleSendWithImage = useCallback(async (file, caption) => {
         if (!onAddImage) {
             console.error("onAddImage not provided to ActivitySidebar");
             return;
         }
-        await onAddImage(file);
+        await onAddImage(file, caption);
     }, [onAddImage]);
 
     if (!isOpen) return null;
@@ -534,7 +587,7 @@ const ActivitySidebar = React.memo(({ activities = [], onAddComment, onAddImage,
             {/* Input Form */}
             <CommentInputForm
                 onSend={handleSendMessage}
-                onUploadImage={handleUploadImage}
+                onSendWithImage={handleSendWithImage}
                 users={users}
             />
         </Box>

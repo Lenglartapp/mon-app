@@ -9,6 +9,7 @@ import MenuItem from '@mui/material/MenuItem';
 import Switch from '@mui/material/Switch';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
+import Badge from '@mui/material/Badge';
 import Tooltip from '@mui/material/Tooltip';
 
 import ActivitySidebar from './ui/ActivitySidebar';
@@ -31,6 +32,10 @@ export default function LineDetailPanel({ open, onClose, row, schema, onRowChang
     const resolvedAuthor = currentUser?.name || currentUser?.email || "Utilisateur";
 
     const activities = React.useMemo(() => row?.comments || [], [row?.comments]);
+    const activityCount = React.useMemo(() =>
+        activities.filter(c => c.type !== 'log' && c.type !== 'change').length,
+        [activities]
+    );
 
     const handleFieldChange = React.useCallback((key, value) => {
         if (!row) return;
@@ -63,13 +68,12 @@ export default function LineDetailPanel({ open, onClose, row, schema, onRowChang
         onRowChange({ ...row, comments: updatedComments });
     }, [row, onRowChange, currentUser]);
 
-    // NEW: Handle Image Upload for Activity Sidebar
-    const handleAddImage = React.useCallback(async (file) => {
+    // Handle Image Upload for Activity Sidebar (with optional caption)
+    const handleAddImage = React.useCallback(async (file, caption) => {
         if (!row || !file) return;
 
         try {
-            const fileExt = file.name.split('.').pop();
-            const fileName = `activity/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9]/g, '')}`;
+            const fileName = `activity/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.]/g, '')}`;
 
             const { error: uploadError } = await supabase.storage
                 .from('attachments')
@@ -81,33 +85,50 @@ export default function LineDetailPanel({ open, onClose, row, schema, onRowChang
                 .from('attachments')
                 .getPublicUrl(fileName);
 
-            // 1. Update Local Row (Legacy/Immediate Display)
+            const authorName = currentUser?.name || 'Utilisateur';
+            const now = new Date().toISOString();
+
+            // 1. Build activity entry
             const newActivity = {
                 id: Date.now(),
                 content: publicUrl,
-                text: publicUrl, // Fallback
+                caption: caption || null,
                 type: 'image',
-                createdAt: new Date().toISOString(),
+                createdAt: now,
                 date: Date.now(),
-                author: currentUser?.name || 'Utilisateur'
+                author: authorName
             };
             const updatedComments = row.comments ? [...row.comments, newActivity] : [newActivity];
-            onRowChange({ ...row, comments: updatedComments });
 
-            // 2. Insert into Supabase Activity Table (Persistent)
+            // 2. Sync photos_sur_site if this field exists in the schema
+            const hasSurSite = schema && schema.some(col => col.key === 'photos_sur_site');
+            const updatedPhotosSurSite = hasSurSite
+                ? [...(Array.isArray(row.photos_sur_site) ? row.photos_sur_site : []),
+                   { url: publicUrl, timestamp: now, user: authorName, id: Date.now() }]
+                : row.photos_sur_site;
+
+            const updatedRow = {
+                ...row,
+                comments: updatedComments,
+                ...(hasSurSite && { photos_sur_site: updatedPhotosSurSite })
+            };
+            onRowChange(updatedRow);
+
+            // 3. Persist in activity table
             await supabase.from('activity').insert({
                 type: 'image',
                 content: publicUrl,
-                user_name: currentUser?.name || 'Utilisateur',
+                caption: caption || null,
+                user_name: authorName,
                 row_id: String(row.id),
-                created_at: new Date().toISOString()
+                created_at: now
             });
 
         } catch (error) {
             console.error("Error uploading image:", error);
             alert("Erreur lors de l'envoi de l'image");
         }
-    }, [row, onRowChange, currentUser]);
+    }, [row, onRowChange, currentUser, schema]);
 
     if (!row) return null;
 
@@ -163,7 +184,9 @@ export default function LineDetailPanel({ open, onClose, row, schema, onRowChang
                                 '&:hover': { bgcolor: isSidebarOpen ? '#DBEAFE' : '#F3F4F6' }
                             }}
                         >
+                            <Badge badgeContent={activityCount} color="primary">
                             <ChatBubbleOutlineIcon />
+                        </Badge>
                         </IconButton>
                     </Tooltip>
                     <IconButton onClick={onClose} sx={{ color: '#9CA3AF', '&:hover': { color: '#111827', bgcolor: '#F3F4F6' } }}>

@@ -34,6 +34,7 @@ function AgColumnHeader(props) {
   const { displayName, column } = props;
   const icon = column?.getColDef?.()?.context?._headerIcon;
   const filterActive = column?.isFilterActive?.();
+  const tooltip = column?.getColDef?.()?.headerTooltip;
 
   const handleFilterClick = (e) => {
     e.stopPropagation();
@@ -46,6 +47,12 @@ function AgColumnHeader(props) {
     }
   };
 
+  const label = (
+    <span style={{ fontWeight: 600, color: '#374151', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', paddingTop: '2px', fontSize: '13px', flex: 1 }}>
+      {displayName}
+    </span>
+  );
+
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '4px', width: '100%', overflow: 'hidden' }}>
       {icon && (
@@ -53,9 +60,11 @@ function AgColumnHeader(props) {
           {icon}
         </div>
       )}
-      <span style={{ fontWeight: 600, color: '#374151', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', paddingTop: '2px', fontSize: '13px', flex: 1 }}>
-        {displayName}
-      </span>
+      {tooltip ? (
+        <Tooltip title={tooltip} placement="top" arrow enterDelay={300}>
+          {label}
+        </Tooltip>
+      ) : label}
       <button
         onClick={handleFilterClick}
         style={{
@@ -147,6 +156,11 @@ export function schemaToGridCols(
       },
     };
 
+    // Tooltip on column header for formula/readOnly columns
+    if (col.tooltip) {
+      gridCol.headerTooltip = col.tooltip;
+    }
+
     // valueFormatter (explicit override from schema)
     if (col.valueFormatter) {
       gridCol.valueFormatter = (params) => col.valueFormatter(params.value);
@@ -212,8 +226,13 @@ export function schemaToGridCols(
     // Standard singleSelect / select
     if ((col.type === 'singleSelect' || col.type === 'select') && Array.isArray(col.valueOptions || col.options)) {
       gridCol.cellEditor = 'agSelectCellEditor';
-      const rawOptions = col.valueOptions || col.options;
-      gridCol.cellEditorParams = { values: ['', ...rawOptions] };
+      if (col.optionsFn) {
+        // Options dynamiques selon la ligne (ex: statut_conf adapté au produit)
+        gridCol.cellEditorParams = (params) => ({ values: ['', ...col.optionsFn(params.data)] });
+      } else {
+        const rawOptions = col.valueOptions || col.options;
+        gridCol.cellEditorParams = { values: ['', ...rawOptions] };
+      }
     }
 
     // PHOTO CELL
