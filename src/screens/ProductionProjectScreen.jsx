@@ -2,6 +2,9 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { COLORS, S } from "../lib/constants/ui.js";
 
+const slugify = (str) =>
+  (str || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+
 import MinuteGrid from "../components/MinuteGrid.jsx"; // Replaces DataTable
 import DashboardTiles from "../components/DashboardTiles.jsx";
 import ProjectActivityFeed from "../components/ProjectActivityFeed.jsx";
@@ -103,6 +106,8 @@ import { useViewportWidth } from "../lib/hooks/useViewportWidth";
 // 1. SIGNATURE MISE A JOUR
 export function ProductionProjectScreen({ project: propProject, projects, inventory, onBack, onUpdateProjectRows, onUpdateProject, highlightRowId, events = [] }) {
   const { projectId: urlProjectId } = useParams();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   // FIX: useViewportWidth returns a number
   const width = useViewportWidth();
@@ -265,7 +270,38 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
   rowsRef.current = rows;
 
   // Calculate opened row
-  const openedRow = useMemo(() => (rows || []).find(r => r.id === openedRowId), [rows, openedRowId]);
+  const openedRow = useMemo(() => (rows || []).find(r => r.id === openedRowId || r.id.startsWith(openedRowId)), [rows, openedRowId]);
+
+  // Sync openedRowId ↔ URL (/production/projectSlug/rowSlug)
+  const projectBasePath = project
+    ? `/production/${project.id.slice(0, 8)}-${slugify(project.name)}`
+    : null;
+
+  useEffect(() => {
+    if (!projectBasePath) return;
+    if (openedRowId) {
+      const shortId = openedRowId.slice(0, 8);
+      const parts = openedRow
+        ? [openedRow.zone, openedRow.piece, openedRow.produit].filter(Boolean).map(slugify)
+        : [];
+      const rowSlug = parts.length ? `${shortId}-${parts.join('-')}` : shortId;
+      navigate(`${projectBasePath}/${rowSlug}`, { replace: true });
+    } else {
+      navigate(projectBasePath, { replace: true });
+    }
+  }, [openedRowId, openedRow, projectBasePath]);
+
+  // document.title
+  useEffect(() => {
+    const projectTitle = project?.name || "Projet";
+    if (openedRow) {
+      const parts = [openedRow.zone, openedRow.piece, openedRow.produit].filter(Boolean);
+      const rowLabel = parts.length ? parts.join(" — ") : "Ouvrage";
+      document.title = `${rowLabel} · ${projectTitle} — LENGLART`;
+    } else {
+      document.title = `${projectTitle} — LENGLART`;
+    }
+  }, [openedRow, project?.name]);
 
   // Schema et visibilité du formulaire détail selon le produit de la ligne et le stage actif
   const openedRowDetail = useMemo(() => {

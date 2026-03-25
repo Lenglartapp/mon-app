@@ -1,6 +1,10 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Plus, Truck, Package, Search, X, Check, Trash2, PackagePlus, ChevronRight, FileText, Box, Weight } from 'lucide-react';
 import { useShipments, isRideauVoilage } from '../hooks/useShipments';
+
+const slugify = (str) =>
+    (str || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 import LogistiqueAnalyseView from '../components/modules/Logistique/LogistiqueAnalyseView';
 
 // ── Constantes ────────────────────────────────────────────────────────────────
@@ -856,6 +860,9 @@ const TABS = [
 
 // ── Écran principal ───────────────────────────────────────────────────────────
 export default function LogistiqueScreen({ projects, onUpdateProject, onBack }) {
+    const navigate = useNavigate();
+    const location = useLocation();
+
     const {
         shipments, items, loading,
         createShipment, updateShipment, deleteShipment,
@@ -868,6 +875,34 @@ export default function LogistiqueScreen({ projects, onUpdateProject, onBack }) 
     const [view, setView]                 = useState('main'); // 'main' | 'detail'
     const [selectedShipment, setSelectedShipment] = useState(null);
     const [showCreate, setShowCreate]     = useState(false);
+    const [pendingShipmentShortId, setPendingShipmentShortId] = useState(null);
+
+    // Résolution depuis URL au chargement
+    useEffect(() => {
+        const segs = location.pathname.split('/');
+        if (segs[2]) {
+            const shortId = segs[2].slice(0, 8).toLowerCase();
+            setPendingShipmentShortId(shortId);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (!pendingShipmentShortId || !shipments.length) return;
+        const match = shipments.find(s => s.id.toLowerCase().startsWith(pendingShipmentShortId));
+        if (match) { setSelectedShipment(match); setView('detail'); }
+        setPendingShipmentShortId(null);
+    }, [pendingShipmentShortId, shipments]);
+
+    // Sync selectedShipment → URL
+    useEffect(() => {
+        if (selectedShipment) {
+            const shortId = selectedShipment.id.slice(0, 8);
+            const slug = slugify(selectedShipment.label || selectedShipment.reference);
+            navigate(`/logistique/${shortId}-${slug}`, { replace: true });
+        } else if (location.pathname.startsWith('/logistique/')) {
+            navigate('/logistique', { replace: true });
+        }
+    }, [selectedShipment]);
 
     const handleCreate = async (fields) => {
         const shipment = await createShipment(fields);

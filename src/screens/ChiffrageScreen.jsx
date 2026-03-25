@@ -1,4 +1,8 @@
 import React from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+
+const slugify = (str) =>
+  (str || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 import MinuteEditor from "../components/MinuteEditor";
 import ShoppingListScreen from "../screens/ShoppingListScreen";
 import MoulinetteView from "../components/modules/Moulinette/MoulinetteView";
@@ -78,6 +82,8 @@ const MemoizedShoppingListScreen = React.memo(ShoppingListScreen);
 const MemoizedMoulinetteView = React.memo(MoulinetteView);
 
 function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onBack, onOpenMinute, highlightRowId }) {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [localRowId, setLocalRowId] = React.useState(null);
   const [showHistory, setShowHistory] = React.useState(false);
   const [showCatalog, setShowCatalog] = React.useState(false);
@@ -101,7 +107,7 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onBack, onOpen
 
   // Minute Data
   const minute = React.useMemo(
-    () => (minutes || []).find((m) => String(m.id) === String(minuteId)),
+    () => (minutes || []).find((m) => m.id.toLowerCase().startsWith(String(minuteId).toLowerCase())),
     [minutes, minuteId]
   );
 
@@ -385,8 +391,39 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onBack, onOpen
   const openedRow = React.useMemo(() => {
     if (!localRowId) return null;
     const all = [...(rows || []), ...(depRows || []), ...(extraRows || [])];
-    return all.find(r => r.id === localRowId);
+    return all.find(r => r.id === localRowId || r.id.startsWith(localRowId));
   }, [localRowId, rows, depRows, extraRows]);
+
+  // Sync localRowId ↔ URL (/chiffrage/minuteSlug/rowSlug)
+  const minuteBasePath = minute
+    ? `/chiffrage/${minute.id.slice(0, 8)}-${slugify(minute.name)}`
+    : null;
+
+  React.useEffect(() => {
+    if (!minuteBasePath) return;
+    if (localRowId) {
+      const shortId = String(localRowId).slice(0, 8);
+      const parts = openedRow
+        ? [openedRow.zone, openedRow.piece, openedRow.produit].filter(Boolean).map(slugify)
+        : [];
+      const rowSlug = parts.length ? `${shortId}-${parts.join('-')}` : shortId;
+      navigate(`${minuteBasePath}/${rowSlug}`, { replace: true });
+    } else {
+      navigate(minuteBasePath, { replace: true });
+    }
+  }, [localRowId, openedRow, minuteBasePath]);
+
+  // document.title
+  React.useEffect(() => {
+    const minuteTitle = name || "Chiffrage";
+    if (openedRow) {
+      const parts = [openedRow.zone, openedRow.piece, openedRow.produit].filter(Boolean);
+      const rowLabel = parts.length ? parts.join(" — ") : "Ligne";
+      document.title = `${rowLabel} · ${minuteTitle} — LENGLART`;
+    } else {
+      document.title = `${minuteTitle} — LENGLART`;
+    }
+  }, [openedRow, name]);
 
   const handleDetailUpdate = React.useCallback((updatedRow) => {
     if (!canEdit) return;
