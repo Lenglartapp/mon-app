@@ -27,12 +27,31 @@ import { uid } from "../lib/utils/uid"; // Import uid
 
 import { Search, Filter, Layers3, Star, FlaskConical, Image as ImageIcon, Pin, Edit2, FileText } from "lucide-react";
 import AddressAutocomplete from "../components/AddressAutocomplete"; // Added FileText
-import { Dialog, DialogTitle, DialogContent, TextField, DialogActions, Button, Accordion, AccordionSummary, AccordionDetails } from "@mui/material";
+import { Dialog, DialogTitle, DialogContent, TextField, DialogActions, Button, Collapse, IconButton } from "@mui/material";
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { differenceInMinutes } from "date-fns";
 import DocumentListModal from "../components/DocumentListModal"; // Added import
 import { useAuth } from "../auth";
 import { can } from "../lib/authz";
+
+function SectionPanel({ title, count, expanded, onToggle, children }) {
+  return (
+    <div style={{ marginBottom: 24, borderRadius: 12, background: 'white', overflow: 'hidden', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', border: '1px solid #f3f4f6' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px', height: 56, borderBottom: expanded ? '1px solid #f3f4f6' : 'none', backgroundColor: '#fff' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <h3 style={{ margin: 0, fontSize: 18, color: '#111827', fontWeight: 700 }}>{title}</h3>
+          <span style={{ background: '#f3f4f6', color: '#4b5563', padding: '2px 8px', borderRadius: 12, fontSize: 12, fontWeight: 600 }}>{count} articles</span>
+        </div>
+        <IconButton size="small" onClick={onToggle} sx={{ color: '#6b7280' }}>
+          <ExpandMoreIcon sx={{ transform: expanded ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.2s ease' }} />
+        </IconButton>
+      </div>
+      <Collapse in={expanded} timeout="auto" unmountOnExit>
+        {children}
+      </Collapse>
+    </div>
+  );
+}
 
 /**
  * Helper to convert DEFAULT_VIEWS array to DataGrid visibility model
@@ -101,6 +120,9 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
   }, [propProject, projects, urlProjectId]);
 
   const [stage, setStage] = useState("dashboard");
+  const [panelsExpanded, setPanelsExpanded] = useState({});
+  const isPanelExpanded = (key) => panelsExpanded[key] !== false; // default: expanded
+  const togglePanel = (key) => setPanelsExpanded(p => ({ ...p, [key]: !isPanelExpanded(key) }));
   const [search, setSearch] = useState("");
   const [schema, setSchema] = useState(SCHEMA_64);
   const [openedRowId, setOpenedRowId] = useState(null);
@@ -918,6 +940,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
               onRowsChange={mergeChildRowsFor("rideaux")}
               schema={RIDEAUX_PROD_SCHEMA}
               projectName={projectName}
+              onEditRow={(row) => setOpenedRowId(row.id)}
             />
           )}
           {bpfStoresBateaux.length > 0 && (
@@ -928,6 +951,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
               onRowsChange={(nr) => handleSubsetChange(nr, /store (bateau|velum)/i)}
               schema={STORES_BATEAUX_PROD_SCHEMA}
               projectName={projectName}
+              onEditRow={(row) => setOpenedRowId(row.id)}
             />
           )}
         </div>
@@ -1035,33 +1059,35 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
       {stage === "bpf" && (
         <>
           {bpfRideaux.length > 0 && (
-            <div style={cardStyle}>
-              <div style={cardHeaderStyle}>BPF Rideaux</div>
-              <MinuteGrid
-                rows={bpfRideaux}
-                onRowsChange={mergeChildRowsFor("rideaux")}
-                schema={RIDEAUX_PROD_SCHEMA}
-                enableCellFormulas={true}
-                initialVisibilityModel={getVisibilityModel('bpf', 'rideaux', RIDEAUX_PROD_SCHEMA)}
-                onAdd={() => handleAddRow("Rideau")}
-                onDuplicateRow={handleDuplicateRow}
-                projectId={project?.id}
-                gridKey="bpf_rideaux"
-                onRowClick={(id) => setOpenedRowId(id)}
-                isMobile={isMobile}
-              />
-            </div>
+            <SectionPanel
+              title="BPF Rideaux"
+              count={bpfRideaux.length}
+              expanded={isPanelExpanded('bpf_rideaux')}
+              onToggle={() => togglePanel('bpf_rideaux')}
+            >
+                <MinuteGrid
+                  rows={bpfRideaux}
+                  onRowsChange={mergeChildRowsFor("rideaux")}
+                  schema={RIDEAUX_PROD_SCHEMA}
+                  enableCellFormulas={true}
+                  initialVisibilityModel={getVisibilityModel('bpf', 'rideaux', RIDEAUX_PROD_SCHEMA)}
+                  onAdd={() => handleAddRow("Rideau")}
+                  onDuplicateRow={handleDuplicateRow}
+                  projectId={project?.id}
+                  gridKey="bpf_rideaux"
+                  onRowClick={(id) => setOpenedRowId(id)}
+                  isMobile={isMobile}
+                />
+            </SectionPanel>
           )}
 
           {bpfStoresBateaux.length > 0 && (
-            <Accordion key="bpf_stores_bateaux" defaultExpanded disableGutters TransitionProps={{ unmountOnExit: true }} sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), border: 1px solid #f3f4f6' }}>
-              <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ borderBottom: '1px solid #f3f4f6', backgroundColor: '#fff', borderTopLeftRadius: 12, borderTopRightRadius: 12, px: 3 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <h3 style={{ margin: 0, fontSize: 18, color: '#111827', fontWeight: 700 }}>BPF Stores Bateaux / Velum</h3>
-                  <span style={{ background: '#f3f4f6', color: '#4b5563', padding: '2px 8px', borderRadius: 12, fontSize: 12, fontWeight: 600 }}>{bpfStoresBateaux.length} articles</span>
-                </div>
-              </AccordionSummary>
-              <AccordionDetails sx={{ p: 0 }}>
+            <SectionPanel
+              title="BPF Stores Bateaux / Velum"
+              count={bpfStoresBateaux.length}
+              expanded={isPanelExpanded('bpf_stores_bateaux')}
+              onToggle={() => togglePanel('bpf_stores_bateaux')}
+            >
                 <MinuteGrid
                   rows={bpfStoresBateaux}
                   onRowsChange={(nr) => handleSubsetChange(nr, /store (bateau|velum)/i)}
@@ -1074,19 +1100,16 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                   onRowClick={(id) => setOpenedRowId(id)}
                   isMobile={isMobile}
                 />
-              </AccordionDetails>
-            </Accordion>
+            </SectionPanel>
           )}
 
           {bpfCoussins.length > 0 && (
-            <Accordion key="bpf_coussins" defaultExpanded disableGutters TransitionProps={{ unmountOnExit: true }} sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), border: 1px solid #f3f4f6' }}>
-              <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ borderBottom: '1px solid #f3f4f6', backgroundColor: '#fff', borderTopLeftRadius: 12, borderTopRightRadius: 12, px: 3 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <h3 style={{ margin: 0, fontSize: 18, color: '#111827', fontWeight: 700 }}>BPF Coussins</h3>
-                  <span style={{ background: '#f3f4f6', color: '#4b5563', padding: '2px 8px', borderRadius: 12, fontSize: 12, fontWeight: 600 }}>{bpfCoussins.length} articles</span>
-                </div>
-              </AccordionSummary>
-              <AccordionDetails sx={{ p: 0 }}>
+            <SectionPanel
+              title="BPF Coussins"
+              count={bpfCoussins.length}
+              expanded={isPanelExpanded('bpf_coussins')}
+              onToggle={() => togglePanel('bpf_coussins')}
+            >
                 <MinuteGrid
                   rows={bpfCoussins}
                   onRowsChange={(nr) => handleSubsetChange(nr, /coussin/i)}
@@ -1100,19 +1123,16 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                   onRowClick={(id) => setOpenedRowId(id)}
                   isMobile={isMobile}
                 />
-              </AccordionDetails>
-            </Accordion>
+            </SectionPanel>
           )}
 
           {bpfCacheSommier.length > 0 && (
-            <Accordion key="bpf_cache_sommier" defaultExpanded disableGutters TransitionProps={{ unmountOnExit: true }} sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), border: 1px solid #f3f4f6' }}>
-              <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ borderBottom: '1px solid #f3f4f6', backgroundColor: '#fff', borderTopLeftRadius: 12, borderTopRightRadius: 12, px: 3 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <h3 style={{ margin: 0, fontSize: 18, color: '#111827', fontWeight: 700 }}>BPF Cache-Sommier</h3>
-                  <span style={{ background: '#f3f4f6', color: '#4b5563', padding: '2px 8px', borderRadius: 12, fontSize: 12, fontWeight: 600 }}>{bpfCacheSommier.length} articles</span>
-                </div>
-              </AccordionSummary>
-              <AccordionDetails sx={{ p: 0 }}>
+            <SectionPanel
+              title="BPF Cache-Sommier"
+              count={bpfCacheSommier.length}
+              expanded={isPanelExpanded('bpf_cache_sommier')}
+              onToggle={() => togglePanel('bpf_cache_sommier')}
+            >
                 <MinuteGrid
                   rows={bpfCacheSommier}
                   onRowsChange={(nr) => handleSubsetChange(nr, /cache-sommier/i)}
@@ -1126,19 +1146,16 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                   onRowClick={(id) => setOpenedRowId(id)}
                   isMobile={isMobile}
                 />
-              </AccordionDetails>
-            </Accordion>
+            </SectionPanel>
           )}
 
           {bpfPlaid.length > 0 && (
-            <Accordion key="bpf_plaid" defaultExpanded disableGutters TransitionProps={{ unmountOnExit: true }} sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), border: 1px solid #f3f4f6' }}>
-              <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ borderBottom: '1px solid #f3f4f6', backgroundColor: '#fff', borderTopLeftRadius: 12, borderTopRightRadius: 12, px: 3 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <h3 style={{ margin: 0, fontSize: 18, color: '#111827', fontWeight: 700 }}>BPF Plaids / Chemin de lit</h3>
-                  <span style={{ background: '#f3f4f6', color: '#4b5563', padding: '2px 8px', borderRadius: 12, fontSize: 12, fontWeight: 600 }}>{bpfPlaid.length} articles</span>
-                </div>
-              </AccordionSummary>
-              <AccordionDetails sx={{ p: 0 }}>
+            <SectionPanel
+              title="BPF Plaids / Chemin de lit"
+              count={bpfPlaid.length}
+              expanded={isPanelExpanded('bpf_plaid')}
+              onToggle={() => togglePanel('bpf_plaid')}
+            >
                 <MinuteGrid
                   rows={bpfPlaid}
                   onRowsChange={(nr) => handleSubsetChange(nr, /plaid/i)}
@@ -1152,19 +1169,16 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                   onRowClick={(id) => setOpenedRowId(id)}
                   isMobile={isMobile}
                 />
-              </AccordionDetails>
-            </Accordion>
+            </SectionPanel>
           )}
 
           {bpfMobilier.length > 0 && (
-            <Accordion key="bpf_mobilier" defaultExpanded disableGutters TransitionProps={{ unmountOnExit: true }} sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), border: 1px solid #f3f4f6' }}>
-              <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ borderBottom: '1px solid #f3f4f6', backgroundColor: '#fff', borderTopLeftRadius: 12, borderTopRightRadius: 12, px: 3 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <h3 style={{ margin: 0, fontSize: 18, color: '#111827', fontWeight: 700 }}>BPF Mobilier / Tête de Lit</h3>
-                  <span style={{ background: '#f3f4f6', color: '#4b5563', padding: '2px 8px', borderRadius: 12, fontSize: 12, fontWeight: 600 }}>{bpfMobilier.length} articles</span>
-                </div>
-              </AccordionSummary>
-              <AccordionDetails sx={{ p: 0 }}>
+            <SectionPanel
+              title="BPF Mobilier / Tête de Lit"
+              count={bpfMobilier.length}
+              expanded={isPanelExpanded('bpf_mobilier')}
+              onToggle={() => togglePanel('bpf_mobilier')}
+            >
                 <MinuteGrid
                   rows={bpfMobilier}
                   onRowsChange={(nr) => handleSubsetChange(nr, /tête de lit|mobilier/i)}
@@ -1178,19 +1192,16 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                   onRowClick={(id) => setOpenedRowId(id)}
                   isMobile={isMobile}
                 />
-              </AccordionDetails>
-            </Accordion>
+            </SectionPanel>
           )}
 
           {bpfTentureMurale.length > 0 && (
-            <Accordion key="bpf_tenture_murale" defaultExpanded disableGutters TransitionProps={{ unmountOnExit: true }} sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), border: 1px solid #f3f4f6' }}>
-              <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ borderBottom: '1px solid #f3f4f6', backgroundColor: '#fff', borderTopLeftRadius: 12, borderTopRightRadius: 12, px: 3 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <h3 style={{ margin: 0, fontSize: 18, color: '#111827', fontWeight: 700 }}>BPF Tenture Murale</h3>
-                  <span style={{ background: '#f3f4f6', color: '#4b5563', padding: '2px 8px', borderRadius: 12, fontSize: 12, fontWeight: 600 }}>{bpfTentureMurale.length} articles</span>
-                </div>
-              </AccordionSummary>
-              <AccordionDetails sx={{ p: 0 }}>
+            <SectionPanel
+              title="BPF Tenture Murale"
+              count={bpfTentureMurale.length}
+              expanded={isPanelExpanded('bpf_tenture_murale')}
+              onToggle={() => togglePanel('bpf_tenture_murale')}
+            >
                 <MinuteGrid
                   rows={bpfTentureMurale}
                   onRowsChange={(nr) => handleSubsetChange(nr, /tenture murale/i)}
@@ -1204,26 +1215,29 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                   onRowClick={(id) => setOpenedRowId(id)}
                   isMobile={isMobile}
                 />
-              </AccordionDetails>
-            </Accordion>
+            </SectionPanel>
           )}
 
           {bpfAutreConfection.length > 0 && (
-            <div style={cardStyle}>
-              <div style={cardHeaderStyle}>BPF Autre (Confection sur mesure)</div>
-              <MinuteGrid
-                rows={bpfAutreConfection}
-                onRowsChange={mergeChildRowsFor("autre_confection")}
-                schema={AUTRES_PROD_SCHEMA}
-                enableCellFormulas={true}
-                onAdd={() => handleAddRow("Autre")}
-                onDuplicateRow={handleDuplicateRow}
-                projectId={project?.id}
-                gridKey="bpf_autres"
-                onRowClick={(id) => setOpenedRowId(id)}
-                isMobile={isMobile}
-              />
-            </div>
+            <SectionPanel
+              title="BPF Autre (Confection sur mesure)"
+              count={bpfAutreConfection.length}
+              expanded={isPanelExpanded('bpf_autres')}
+              onToggle={() => togglePanel('bpf_autres')}
+            >
+                <MinuteGrid
+                  rows={bpfAutreConfection}
+                  onRowsChange={mergeChildRowsFor("autre_confection")}
+                  schema={AUTRES_PROD_SCHEMA}
+                  enableCellFormulas={true}
+                  onAdd={() => handleAddRow("Autre")}
+                  onDuplicateRow={handleDuplicateRow}
+                  projectId={project?.id}
+                  gridKey="bpf_autres"
+                  onRowClick={(id) => setOpenedRowId(id)}
+                  isMobile={isMobile}
+                />
+            </SectionPanel>
           )}
         </>
       )}
@@ -1231,33 +1245,35 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
       {stage === "bpp" && (
         <>
           {rowsRideaux.length > 0 && (
-            <div style={cardStyle}>
-              <div style={cardHeaderStyle}>BPP Rideaux (Préparation Mécanismes)</div>
-              <MinuteGrid
-                rows={rowsRideaux}
-                onRowsChange={mergeChildRowsFor("rideaux")}
-                schema={RIDEAUX_PROD_SCHEMA}
-                enableCellFormulas={true}
-                initialVisibilityModel={getVisibilityModel('bpp', 'rideaux', RIDEAUX_PROD_SCHEMA)}
-                onAdd={() => handleAddRow("Rideau")}
-                onDuplicateRow={handleDuplicateRow}
-                projectId={project?.id}
-                gridKey="bpp_rideaux"
-                onRowClick={(id) => setOpenedRowId(id)}
-                isMobile={isMobile}
-              />
-            </div>
+            <SectionPanel
+              title="BPP Rideaux (Préparation Mécanismes)"
+              count={rowsRideaux.length}
+              expanded={isPanelExpanded('bpp_rideaux')}
+              onToggle={() => togglePanel('bpp_rideaux')}
+            >
+                <MinuteGrid
+                  rows={rowsRideaux}
+                  onRowsChange={mergeChildRowsFor("rideaux")}
+                  schema={RIDEAUX_PROD_SCHEMA}
+                  enableCellFormulas={true}
+                  initialVisibilityModel={getVisibilityModel('bpp', 'rideaux', RIDEAUX_PROD_SCHEMA)}
+                  onAdd={() => handleAddRow("Rideau")}
+                  onDuplicateRow={handleDuplicateRow}
+                  projectId={project?.id}
+                  gridKey="bpp_rideaux"
+                  onRowClick={(id) => setOpenedRowId(id)}
+                  isMobile={isMobile}
+                />
+            </SectionPanel>
           )}
 
           {rowsStores.length > 0 && (
-            <Accordion key="bpp_stores" defaultExpanded disableGutters sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), border: 1px solid #f3f4f6' }}>
-              <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ borderBottom: '1px solid #f3f4f6', backgroundColor: '#fff', borderTopLeftRadius: 12, borderTopRightRadius: 12, px: 3 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <h3 style={{ margin: 0, fontSize: 18, color: '#111827', fontWeight: 700 }}>BPP Stores Négoce (Préparation Mécanismes)</h3>
-                  <span style={{ background: '#f3f4f6', color: '#4b5563', padding: '2px 8px', borderRadius: 12, fontSize: 12, fontWeight: 600 }}>{rowsStores.length} articles</span>
-                </div>
-              </AccordionSummary>
-              <AccordionDetails sx={{ p: 0 }}>
+            <SectionPanel
+              title="BPP Stores Négoce (Préparation Mécanismes)"
+              count={rowsStores.length}
+              expanded={isPanelExpanded('bpp_stores')}
+              onToggle={() => togglePanel('bpp_stores')}
+            >
                 <MinuteGrid
                   rows={rowsStores}
                   onRowsChange={mergeChildRowsFor("stores")}
@@ -1271,19 +1287,16 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                   onRowClick={(id) => setOpenedRowId(id)}
                   isMobile={isMobile}
                 />
-              </AccordionDetails>
-            </Accordion>
+            </SectionPanel>
           )}
 
           {rowsStoresBateaux.length > 0 && (
-            <Accordion key="bpp_stores_bateaux" defaultExpanded disableGutters sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), border: 1px solid #f3f4f6' }}>
-              <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ borderBottom: '1px solid #f3f4f6', backgroundColor: '#fff', borderTopLeftRadius: 12, borderTopRightRadius: 12, px: 3 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <h3 style={{ margin: 0, fontSize: 18, color: '#111827', fontWeight: 700 }}>BPP Stores Bateaux / Velum (Préparation Mécanismes)</h3>
-                  <span style={{ background: '#f3f4f6', color: '#4b5563', padding: '2px 8px', borderRadius: 12, fontSize: 12, fontWeight: 600 }}>{rowsStoresBateaux.length} articles</span>
-                </div>
-              </AccordionSummary>
-              <AccordionDetails sx={{ p: 0 }}>
+            <SectionPanel
+              title="BPP Stores Bateaux / Velum (Préparation Mécanismes)"
+              count={rowsStoresBateaux.length}
+              expanded={isPanelExpanded('bpp_stores_bateaux')}
+              onToggle={() => togglePanel('bpp_stores_bateaux')}
+            >
                 <MinuteGrid
                   rows={rowsStoresBateaux}
                   onRowsChange={(nr) => handleSubsetChange(nr, /store (bateau|velum)/i)}
@@ -1297,19 +1310,16 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                   onRowClick={(id) => setOpenedRowId(id)}
                   isMobile={isMobile}
                 />
-              </AccordionDetails>
-            </Accordion>
+            </SectionPanel>
           )}
 
           {rowsTentureMurale.length > 0 && (
-            <Accordion key="bpp_tenture_murale" defaultExpanded disableGutters sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), border: 1px solid #f3f4f6' }}>
-              <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ borderBottom: '1px solid #f3f4f6', backgroundColor: '#fff', borderTopLeftRadius: 12, borderTopRightRadius: 12, px: 3 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <h3 style={{ margin: 0, fontSize: 18, color: '#111827', fontWeight: 700 }}>BPP Tenture Murale</h3>
-                  <span style={{ background: '#f3f4f6', color: '#4b5563', padding: '2px 8px', borderRadius: 12, fontSize: 12, fontWeight: 600 }}>{rowsTentureMurale.length} articles</span>
-                </div>
-              </AccordionSummary>
-              <AccordionDetails sx={{ p: 0 }}>
+            <SectionPanel
+              title="BPP Tenture Murale"
+              count={rowsTentureMurale.length}
+              expanded={isPanelExpanded('bpp_tenture_murale')}
+              onToggle={() => togglePanel('bpp_tenture_murale')}
+            >
                 <MinuteGrid
                   rows={rowsTentureMurale}
                   onRowsChange={(nr) => handleSubsetChange(nr, /tenture murale/i)}
@@ -1323,19 +1333,16 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                   onRowClick={(id) => setOpenedRowId(id)}
                   isMobile={isMobile}
                 />
-              </AccordionDetails>
-            </Accordion>
+            </SectionPanel>
           )}
 
           {rowsMobilier.length > 0 && (
-            <Accordion key="bpp_mobilier" defaultExpanded disableGutters sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), border: 1px solid #f3f4f6' }}>
-              <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ borderBottom: '1px solid #f3f4f6', backgroundColor: '#fff', borderTopLeftRadius: 12, borderTopRightRadius: 12, px: 3 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <h3 style={{ margin: 0, fontSize: 18, color: '#111827', fontWeight: 700 }}>BPP Mobilier / Tête de Lit</h3>
-                  <span style={{ background: '#f3f4f6', color: '#4b5563', padding: '2px 8px', borderRadius: 12, fontSize: 12, fontWeight: 600 }}>{rowsMobilier.length} articles</span>
-                </div>
-              </AccordionSummary>
-              <AccordionDetails sx={{ p: 0 }}>
+            <SectionPanel
+              title="BPP Mobilier / Tête de Lit"
+              count={rowsMobilier.length}
+              expanded={isPanelExpanded('bpp_mobilier')}
+              onToggle={() => togglePanel('bpp_mobilier')}
+            >
                 <MinuteGrid
                   rows={rowsMobilier}
                   onRowsChange={(nr) => handleSubsetChange(nr, /tête de lit|mobilier/i)}
@@ -1349,8 +1356,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                   onRowClick={(id) => setOpenedRowId(id)}
                   isMobile={isMobile}
                 />
-              </AccordionDetails>
-            </Accordion>
+            </SectionPanel>
           )}
         </>
       )}

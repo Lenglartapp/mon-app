@@ -19,11 +19,23 @@ const extractActivity = (rows, wall, pinnedIds = []) => {
             const rowName = `${row.produit || 'Ligne'} - ${row.piece || '?'}`;
             if (Array.isArray(row.comments)) {
                 row.comments.forEach(c => {
+                    // Exclure les logs de modification
+                    if (c.type === 'log' || c.type === 'change') return;
                     if (c.text && typeof c.text === 'string' && c.text.startsWith('Modif')) return;
+
+                    const isImage = c.type === 'image';
                     const eventId = c.id ? String(c.id) : `com-${row.id}-${c.date}`;
                     allEvents.push({
-                        id: eventId, date: c.date || Date.now(), type: 'line_comment', category: 'messages',
-                        user: c.author || 'Utilisateur', actionLabel: 'a commenté sur', text: c.text, target: rowName, pinned: pinnedIds.includes(eventId)
+                        id: eventId,
+                        date: c.date || Date.now(),
+                        type: 'line_comment',
+                        category: 'messages',
+                        user: c.author || 'Utilisateur',
+                        actionLabel: isImage ? 'a ajouté une photo sur' : 'a commenté sur',
+                        text: isImage ? (c.caption || null) : c.text,
+                        image: isImage ? c.content : undefined,
+                        target: rowName,
+                        pinned: pinnedIds.includes(eventId)
                     });
                 });
             }

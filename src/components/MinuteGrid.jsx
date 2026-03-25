@@ -10,6 +10,7 @@ import { generateRowLogs } from '../lib/utils/logUtils';
 import { uid } from '../lib/utils/uid';
 import { Plus, Trash2, Columns, Layers, Edit2 } from 'lucide-react';
 import { getDefaultMatieres } from '../lib/constants/matiereGroups';
+import { useAuth } from '../auth';
 
 const STORAGE_PREFIX = 'ag_grid_state_v1_';
 const GRID_STATE_VERSION = 5; // à incrémenter si le calcul des largeurs change
@@ -190,6 +191,8 @@ function MinuteGrid({
     showExpeditionCol = false,
 }) {
     const gridRef = useRef(null);
+    const { currentUser: authUser } = useAuth();
+    const resolvedUser = currentUser ?? authUser;
     const [selectedCount, setSelectedCount] = useState(0);
     const [colPanelOpen, setColPanelOpen] = useState(false);
     const [matierePanelOpen, setMatierePanelOpen] = useState(false);
@@ -384,9 +387,30 @@ function MinuteGrid({
 
     // Upload photo
     const handlePhotoChange = useCallback((id, field, value) => {
-        const newRows = rowsRef.current.map(r => r.id === id ? { ...r, [field]: value } : r);
+        const authorName = resolvedUser?.name || resolvedUser?.email || 'Utilisateur';
+        const newRows = rowsRef.current.map(r => {
+            if (r.id !== id) return r;
+            let updatedRow = { ...r, [field]: value };
+
+            // Si c'est photos_sur_site, on crée aussi une entrée dans l'activité
+            if (field === 'photos_sur_site' && Array.isArray(value) && value.length > 0) {
+                const newPhoto = value[value.length - 1];
+                const newActivity = {
+                    id: Date.now(),
+                    content: newPhoto.url,
+                    type: 'image',
+                    createdAt: new Date().toISOString(),
+                    date: Date.now(),
+                    author: authorName
+                };
+                const updatedComments = r.comments ? [...r.comments, newActivity] : [newActivity];
+                updatedRow = { ...updatedRow, comments: updatedComments };
+            }
+
+            return updatedRow;
+        });
         onRowsChange(newRows);
-    }, [onRowsChange]);
+    }, [onRowsChange, resolvedUser]);
 
     // Ajouter une ligne
     const handleAddRow = useCallback(() => {
@@ -635,7 +659,7 @@ function MinuteGrid({
         });
 
         // 4. Auto-log
-        const author = currentUser?.name || currentUser?.email || 'Utilisateur';
+        const author = resolvedUser?.name || resolvedUser?.email || 'Utilisateur';
         const logs = generateRowLogs(oldRow, updatedRow, schema, author);
         if (logs.length > 0) {
             const prevComments = Array.isArray(oldRow.comments) ? oldRow.comments : [];
@@ -656,7 +680,7 @@ function MinuteGrid({
         } catch (e) {
             console.error('Erreur calcul', e);
         }
-    }, [schema, formulaCtx, catalog, currentUser, enableCellFormulas]);
+    }, [schema, formulaCtx, catalog, resolvedUser, enableCellFormulas]);
 
     const isLargeGrid = rows.length > 100;
 

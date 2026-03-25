@@ -114,6 +114,7 @@ export const COUSSINS_PROD_SCHEMA = [
     createCol('largeur_coupe', 'Larg. Coupe', 100, 'number', {
         editable: false,
         readOnly: true,
+        tooltip: "Largeur + marge selon épaisseur : 7-10 cm → +5 | 11-15 cm → +6 | 16-20 cm → +8",
         valueGetter: (value, row) => {
             const r = row || value?.row || {};
             const epaisseur = Number(r.epaisseur) || 0;
@@ -127,6 +128,7 @@ export const COUSSINS_PROD_SCHEMA = [
     createCol('hauteur_coupe', 'Haut. Coupe', 100, 'number', {
         editable: false,
         readOnly: true,
+        tooltip: "Hauteur + marge selon épaisseur : 7-10 cm → +5 | 11-15 cm → +6 | 16-20 cm → +8",
         valueGetter: (value, row) => {
             const r = row || value?.row || {};
             const epaisseur = Number(r.epaisseur) || 0;

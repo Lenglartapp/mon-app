@@ -1,9 +1,8 @@
 // src/components/MinuteEditor.jsx
 import React from "react";
-import { Grid, Box, Typography, Menu, MenuItem, Button } from "@mui/material";
-import Accordion from "@mui/material/Accordion";
-import AccordionSummary from "@mui/material/AccordionSummary";
-import AccordionDetails from "@mui/material/AccordionDetails";
+import { Box, Typography, Menu, MenuItem, Button } from "@mui/material";
+import Collapse from "@mui/material/Collapse";
+import IconButton from "@mui/material/IconButton";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 
 // composants internes
@@ -33,6 +32,25 @@ import { MOBILIER_SCHEMA } from "../lib/schemas/chiffrage/mobilier";
 
 
 
+function SectionPanel({ title, count, expanded, onToggle, children }) {
+  return (
+    <div style={{ marginBottom: 24, borderRadius: 12, background: 'white', overflow: 'hidden', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', border: '1px solid #f3f4f6' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px', height: 56, borderBottom: expanded ? '1px solid #f3f4f6' : 'none', backgroundColor: '#fff' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <h3 style={{ margin: 0, fontSize: 18, color: '#111827', fontWeight: 700 }}>{title}</h3>
+          <span style={{ background: '#f3f4f6', color: '#4b5563', padding: '2px 8px', borderRadius: 12, fontSize: 12, fontWeight: 600 }}>{count} articles</span>
+        </div>
+        <IconButton size="small" onClick={onToggle} sx={{ color: '#6b7280' }}>
+          <ExpandMoreIcon sx={{ transform: expanded ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.2s ease' }} />
+        </IconButton>
+      </div>
+      <Collapse in={expanded} timeout="auto" unmountOnExit>
+        {children}
+      </Collapse>
+    </div>
+  );
+}
+
 const EMPTY_CTX = {};
 
 // ================ MinuteEditor (tableau des lignes d'une minute) =================
@@ -43,6 +61,10 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
   const [moduleMenuAnchor, setModuleMenuAnchor] = React.useState(null);
 
   const mods = minute?.modules || { rideau: true, store: true, decor: true };
+
+  const [panelsExpanded, setPanelsExpanded] = React.useState({});
+  const isPanelExpanded = (key) => panelsExpanded[key] !== false;
+  const togglePanel = (key) => setPanelsExpanded(p => ({ ...p, [key]: !isPanelExpanded(key) }));
 
   // Refs for Debounce & Safety
   const saveTimerRef = React.useRef(null);
@@ -434,299 +456,283 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
     switch (key) {
       case 'rideau':
         return (
-          <Accordion key="rideau" defaultExpanded disableGutters TransitionProps={{ unmountOnExit: true }} sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03)', border: '1px solid #f3f4f6' }}>
-            <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ borderBottom: '1px solid #f3f4f6', backgroundColor: '#fff', borderTopLeftRadius: 12, borderTopRightRadius: 12, px: 3 }}>
-              {renderHeaderContent("Rideaux", rowsRideaux)}
-            </AccordionSummary>
-            <AccordionDetails sx={{ p: 0 }}>
-
-
-              <MinuteGrid
-                title=""
-                rows={rowsRideaux}
-                onRowsChange={mergeChildRowsFor("rideaux")}
-                schema={RIDEAUX_SCHEMA}
-                enableCellFormulas={enableCellFormulas}
-                formulaCtx={extendedCtx}
-                onAdd={() => handleAddRow("rideaux")}
-                onDelete={() => handleDeleteRows(selRideaux)}
-                rowSelectionModel={selRideaux}
-                onRowSelectionModelChange={setSelRideaux}
-                catalog={catalog}
-                railOptions={railOptions}
-                initialVisibilityModel={RIDEAUX_DEFAULT_VISIBILITY}
-                matiereGroups={RIDEAUX_MATIERE_GROUPS}
-                activeMatieres={minute?.matieres?.chiff_rideaux || null}
-                onMatiereChange={(m) => handleMatiereChange('chiff_rideaux', m)}
-                onDuplicateRow={handleDuplicateRow}
-                hideCroquis={true}
-                minuteId={minute?.id}
-                gridKey="chiff_rideaux"
-                targetRowId={targetRowId}
-                onRowClick={onRowClick}
-                readOnly={readOnly}
-                currentUser={currentUser}
-              />
-
-            </AccordionDetails>
-          </Accordion>
+          <SectionPanel
+            key="rideau"
+            title="Rideaux"
+            count={rowsRideaux.length}
+            expanded={isPanelExpanded('rideau')}
+            onToggle={() => togglePanel('rideau')}
+          >
+            <MinuteGrid
+              title=""
+              rows={rowsRideaux}
+              onRowsChange={mergeChildRowsFor("rideaux")}
+              schema={RIDEAUX_SCHEMA}
+              enableCellFormulas={enableCellFormulas}
+              formulaCtx={extendedCtx}
+              onAdd={() => handleAddRow("rideaux")}
+              onDelete={() => handleDeleteRows(selRideaux)}
+              rowSelectionModel={selRideaux}
+              onRowSelectionModelChange={setSelRideaux}
+              catalog={catalog}
+              railOptions={railOptions}
+              initialVisibilityModel={RIDEAUX_DEFAULT_VISIBILITY}
+              matiereGroups={RIDEAUX_MATIERE_GROUPS}
+              activeMatieres={minute?.matieres?.chiff_rideaux || null}
+              onMatiereChange={(m) => handleMatiereChange('chiff_rideaux', m)}
+              onDuplicateRow={handleDuplicateRow}
+              hideCroquis={true}
+              minuteId={minute?.id}
+              gridKey="chiff_rideaux"
+              targetRowId={targetRowId}
+              onRowClick={onRowClick}
+              readOnly={readOnly}
+              currentUser={currentUser}
+            />
+          </SectionPanel>
         );
       case 'store':
         return (
-          <Accordion key="store" defaultExpanded disableGutters TransitionProps={{ unmountOnExit: true }} sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03)', border: '1px solid #f3f4f6' }}>
-            <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ borderBottom: '1px solid #f3f4f6', backgroundColor: '#fff', borderTopLeftRadius: 12, borderTopRightRadius: 12, px: 3 }}>
-              {renderHeaderContent("Stores Négoce", rowsStore)}
-            </AccordionSummary>
-            <AccordionDetails sx={{ p: 0 }}>
-
-
-              <MinuteGrid
-                title=""
-                rows={rowsStore}
-                onRowsChange={mergeChildRowsFor("store")}
-                schema={STORES_CLASSIQUES_SCHEMA}
-                enableCellFormulas={enableCellFormulas}
-                formulaCtx={extendedCtx}
-                onAdd={() => handleAddRow("store")}
-                onDelete={() => handleDeleteRows(selStore)}
-                rowSelectionModel={selStore}
-                onRowSelectionModelChange={setSelStore}
-                catalog={catalog}
-                initialVisibilityModel={STORES_DEFAULT_VISIBILITY}
-                onDuplicateRow={handleDuplicateRow}
-                hideCroquis={true}
-                minuteId={minute?.id}
-                gridKey="chiff_stores"
-                targetRowId={targetRowId}
-                onRowClick={onRowClick}
-                readOnly={readOnly}
-                currentUser={currentUser}
-              />
-
-            </AccordionDetails>
-          </Accordion>
+          <SectionPanel
+            key="store"
+            title="Stores Négoce"
+            count={rowsStore.length}
+            expanded={isPanelExpanded('store')}
+            onToggle={() => togglePanel('store')}
+          >
+            <MinuteGrid
+              title=""
+              rows={rowsStore}
+              onRowsChange={mergeChildRowsFor("store")}
+              schema={STORES_CLASSIQUES_SCHEMA}
+              enableCellFormulas={enableCellFormulas}
+              formulaCtx={extendedCtx}
+              onAdd={() => handleAddRow("store")}
+              onDelete={() => handleDeleteRows(selStore)}
+              rowSelectionModel={selStore}
+              onRowSelectionModelChange={setSelStore}
+              catalog={catalog}
+              initialVisibilityModel={STORES_DEFAULT_VISIBILITY}
+              onDuplicateRow={handleDuplicateRow}
+              hideCroquis={true}
+              minuteId={minute?.id}
+              gridKey="chiff_stores"
+              targetRowId={targetRowId}
+              onRowClick={onRowClick}
+              readOnly={readOnly}
+              currentUser={currentUser}
+            />
+          </SectionPanel>
         );
       case 'store_bateau':
         return (
-          <Accordion key="store_bateau" defaultExpanded disableGutters TransitionProps={{ unmountOnExit: true }} sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03)', border: '1px solid #f3f4f6' }}>
-            <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ borderBottom: '1px solid #f3f4f6', backgroundColor: '#fff', borderTopLeftRadius: 12, borderTopRightRadius: 12, px: 3 }}>
-              {renderHeaderContent("Stores Bateaux / Velum", rowsStoresBateau)}
-            </AccordionSummary>
-            <AccordionDetails sx={{ p: 0 }}>
-
-
-              <MinuteGrid
-                title=""
-                rows={rowsStoresBateau}
-                onRowsChange={mergeChildRowsFor("store_bateau")}
-                schema={STORES_BATEAUX_SCHEMA}
-                enableCellFormulas={enableCellFormulas}
-                formulaCtx={extendedCtx}
-                onAdd={() => handleAddRow("store_bateau")}
-                onDelete={() => handleDeleteRows(selStoreBateau)}
-                rowSelectionModel={selStoreBateau}
-                onRowSelectionModelChange={setSelStoreBateau}
-                catalog={catalog}
-                initialVisibilityModel={STORES_DEFAULT_VISIBILITY}
-                matiereGroups={STORES_BATEAUX_MATIERE_GROUPS}
-                activeMatieres={minute?.matieres?.chiff_stores_bateau || null}
-                onMatiereChange={(m) => handleMatiereChange('chiff_stores_bateau', m)}
-                onDuplicateRow={handleDuplicateRow}
-                hideCroquis={true}
-                minuteId={minute?.id}
-                gridKey="chiff_stores_bateau"
-                targetRowId={targetRowId}
-                onRowClick={onRowClick}
-                readOnly={readOnly}
-                currentUser={currentUser}
-              />
-
-            </AccordionDetails>
-          </Accordion>
+          <SectionPanel
+            key="store_bateau"
+            title="Stores Bateaux / Velum"
+            count={rowsStoresBateau.length}
+            expanded={isPanelExpanded('store_bateau')}
+            onToggle={() => togglePanel('store_bateau')}
+          >
+            <MinuteGrid
+              title=""
+              rows={rowsStoresBateau}
+              onRowsChange={mergeChildRowsFor("store_bateau")}
+              schema={STORES_BATEAUX_SCHEMA}
+              enableCellFormulas={enableCellFormulas}
+              formulaCtx={extendedCtx}
+              onAdd={() => handleAddRow("store_bateau")}
+              onDelete={() => handleDeleteRows(selStoreBateau)}
+              rowSelectionModel={selStoreBateau}
+              onRowSelectionModelChange={setSelStoreBateau}
+              catalog={catalog}
+              initialVisibilityModel={STORES_DEFAULT_VISIBILITY}
+              matiereGroups={STORES_BATEAUX_MATIERE_GROUPS}
+              activeMatieres={minute?.matieres?.chiff_stores_bateau || null}
+              onMatiereChange={(m) => handleMatiereChange('chiff_stores_bateau', m)}
+              onDuplicateRow={handleDuplicateRow}
+              hideCroquis={true}
+              minuteId={minute?.id}
+              gridKey="chiff_stores_bateau"
+              targetRowId={targetRowId}
+              onRowClick={onRowClick}
+              readOnly={readOnly}
+              currentUser={currentUser}
+            />
+          </SectionPanel>
         );
       case 'coussins':
         return (
-          <Accordion key="coussins" defaultExpanded disableGutters TransitionProps={{ unmountOnExit: true }} sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03)', border: '1px solid #f3f4f6' }}>
-            <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ borderBottom: '1px solid #f3f4f6', backgroundColor: '#fff', borderTopLeftRadius: 12, borderTopRightRadius: 12, px: 3 }}>
-              {renderHeaderContent("Coussins", rowsCoussins)}
-            </AccordionSummary>
-            <AccordionDetails sx={{ p: 0 }}>
-
-
-              <MinuteGrid
-                title=""
-                rows={rowsCoussins}
-                onRowsChange={mergeChildRowsFor("coussins")}
-                schema={COUSSINS_SCHEMA}
-                enableCellFormulas={enableCellFormulas}
-                formulaCtx={extendedCtx}
-                onAdd={() => handleAddRow("coussins")}
-                onDelete={() => handleDeleteRows(selCoussins)}
-                rowSelectionModel={selCoussins}
-                onRowSelectionModelChange={setSelCoussins}
-                catalog={catalog}
-                initialVisibilityModel={COUSSINS_DEFAULT_VISIBILITY}
-                matiereGroups={COUSSINS_MATIERE_GROUPS}
-                activeMatieres={minute?.matieres?.chiff_coussins || null}
-                onMatiereChange={(m) => handleMatiereChange('chiff_coussins', m)}
-                onDuplicateRow={handleDuplicateRow}
-                hideCroquis={true}
-                minuteId={minute?.id}
-                gridKey="chiff_coussins"
-                targetRowId={targetRowId}
-                onRowClick={onRowClick}
-                readOnly={readOnly}
-                currentUser={currentUser}
-              />
-
-            </AccordionDetails>
-          </Accordion>
+          <SectionPanel
+            key="coussins"
+            title="Coussins"
+            count={rowsCoussins.length}
+            expanded={isPanelExpanded('coussins')}
+            onToggle={() => togglePanel('coussins')}
+          >
+            <MinuteGrid
+              title=""
+              rows={rowsCoussins}
+              onRowsChange={mergeChildRowsFor("coussins")}
+              schema={COUSSINS_SCHEMA}
+              enableCellFormulas={enableCellFormulas}
+              formulaCtx={extendedCtx}
+              onAdd={() => handleAddRow("coussins")}
+              onDelete={() => handleDeleteRows(selCoussins)}
+              rowSelectionModel={selCoussins}
+              onRowSelectionModelChange={setSelCoussins}
+              catalog={catalog}
+              initialVisibilityModel={COUSSINS_DEFAULT_VISIBILITY}
+              matiereGroups={COUSSINS_MATIERE_GROUPS}
+              activeMatieres={minute?.matieres?.chiff_coussins || null}
+              onMatiereChange={(m) => handleMatiereChange('chiff_coussins', m)}
+              onDuplicateRow={handleDuplicateRow}
+              hideCroquis={true}
+              minuteId={minute?.id}
+              gridKey="chiff_coussins"
+              targetRowId={targetRowId}
+              onRowClick={onRowClick}
+              readOnly={readOnly}
+              currentUser={currentUser}
+            />
+          </SectionPanel>
         );
       case 'cache_sommier':
         return (
-          <Accordion key="cache_sommier" defaultExpanded disableGutters TransitionProps={{ unmountOnExit: true }} sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03)', border: '1px solid #f3f4f6' }}>
-            <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ borderBottom: '1px solid #f3f4f6', backgroundColor: '#fff', borderTopLeftRadius: 12, borderTopRightRadius: 12, px: 3 }}>
-              {renderHeaderContent("Cache Sommier", rowsCacheSommier)}
-            </AccordionSummary>
-            <AccordionDetails sx={{ p: 0 }}>
-
-
-              <MinuteGrid
-                title=""
-                rows={rowsCacheSommier}
-                onRowsChange={mergeChildRowsFor("cache_sommier")}
-                schema={CACHE_SOMMIER_SCHEMA}
-                enableCellFormulas={enableCellFormulas}
-                formulaCtx={extendedCtx}
-                onAdd={() => handleAddRow("cache_sommier")}
-                onDelete={() => handleDeleteRows(selCacheSommier)}
-                rowSelectionModel={selCacheSommier}
-                onRowSelectionModelChange={setSelCacheSommier}
-                catalog={catalog}
-                initialVisibilityModel={CACHE_SOMMIER_DEFAULT_VISIBILITY}
-                matiereGroups={CACHE_SOMMIER_MATIERE_GROUPS}
-                activeMatieres={minute?.matieres?.chiff_cache_sommier || null}
-                onMatiereChange={(m) => handleMatiereChange('chiff_cache_sommier', m)}
-                onDuplicateRow={handleDuplicateRow}
-                hideCroquis={true}
-                minuteId={minute?.id}
-                gridKey="chiff_cache_sommier_v2"
-                targetRowId={targetRowId}
-                onRowClick={onRowClick}
-                readOnly={readOnly}
-                currentUser={currentUser}
-              />
-
-            </AccordionDetails>
-          </Accordion>
+          <SectionPanel
+            key="cache_sommier"
+            title="Cache Sommier"
+            count={rowsCacheSommier.length}
+            expanded={isPanelExpanded('cache_sommier')}
+            onToggle={() => togglePanel('cache_sommier')}
+          >
+            <MinuteGrid
+              title=""
+              rows={rowsCacheSommier}
+              onRowsChange={mergeChildRowsFor("cache_sommier")}
+              schema={CACHE_SOMMIER_SCHEMA}
+              enableCellFormulas={enableCellFormulas}
+              formulaCtx={extendedCtx}
+              onAdd={() => handleAddRow("cache_sommier")}
+              onDelete={() => handleDeleteRows(selCacheSommier)}
+              rowSelectionModel={selCacheSommier}
+              onRowSelectionModelChange={setSelCacheSommier}
+              catalog={catalog}
+              initialVisibilityModel={CACHE_SOMMIER_DEFAULT_VISIBILITY}
+              matiereGroups={CACHE_SOMMIER_MATIERE_GROUPS}
+              activeMatieres={minute?.matieres?.chiff_cache_sommier || null}
+              onMatiereChange={(m) => handleMatiereChange('chiff_cache_sommier', m)}
+              onDuplicateRow={handleDuplicateRow}
+              hideCroquis={true}
+              minuteId={minute?.id}
+              gridKey="chiff_cache_sommier_v2"
+              targetRowId={targetRowId}
+              onRowClick={onRowClick}
+              readOnly={readOnly}
+              currentUser={currentUser}
+            />
+          </SectionPanel>
         );
       case 'plaid':
         return (
-          <Accordion key="plaid" defaultExpanded disableGutters TransitionProps={{ unmountOnExit: true }} sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03)', border: '1px solid #f3f4f6' }}>
-            <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ borderBottom: '1px solid #f3f4f6', backgroundColor: '#fff', borderTopLeftRadius: 12, borderTopRightRadius: 12, px: 3 }}>
-              {renderHeaderContent("Plaid / Chemin de lit", rowsPlaid)}
-            </AccordionSummary>
-            <AccordionDetails sx={{ p: 0 }}>
-
-
-              <MinuteGrid
-                title=""
-                rows={rowsPlaid}
-                onRowsChange={mergeChildRowsFor("plaid")}
-                schema={PLAID_SCHEMA}
-                enableCellFormulas={enableCellFormulas}
-                formulaCtx={extendedCtx}
-                onAdd={() => handleAddRow("plaid")}
-                onDelete={() => handleDeleteRows(selPlaid)}
-                rowSelectionModel={selPlaid}
-                onRowSelectionModelChange={setSelPlaid}
-                catalog={catalog}
-                initialVisibilityModel={PLAID_DEFAULT_VISIBILITY}
-                matiereGroups={PLAID_MATIERE_GROUPS}
-                activeMatieres={minute?.matieres?.chiff_plaid || null}
-                onMatiereChange={(m) => handleMatiereChange('chiff_plaid', m)}
-                onDuplicateRow={handleDuplicateRow}
-                hideCroquis={true}
-                minuteId={minute?.id}
-                gridKey="chiff_plaid_v2"
-                targetRowId={targetRowId}
-                onRowClick={onRowClick}
-                readOnly={readOnly}
-                currentUser={currentUser}
-              />
-
-            </AccordionDetails>
-          </Accordion>
+          <SectionPanel
+            key="plaid"
+            title="Plaid / Chemin de lit"
+            count={rowsPlaid.length}
+            expanded={isPanelExpanded('plaid')}
+            onToggle={() => togglePanel('plaid')}
+          >
+            <MinuteGrid
+              title=""
+              rows={rowsPlaid}
+              onRowsChange={mergeChildRowsFor("plaid")}
+              schema={PLAID_SCHEMA}
+              enableCellFormulas={enableCellFormulas}
+              formulaCtx={extendedCtx}
+              onAdd={() => handleAddRow("plaid")}
+              onDelete={() => handleDeleteRows(selPlaid)}
+              rowSelectionModel={selPlaid}
+              onRowSelectionModelChange={setSelPlaid}
+              catalog={catalog}
+              initialVisibilityModel={PLAID_DEFAULT_VISIBILITY}
+              matiereGroups={PLAID_MATIERE_GROUPS}
+              activeMatieres={minute?.matieres?.chiff_plaid || null}
+              onMatiereChange={(m) => handleMatiereChange('chiff_plaid', m)}
+              onDuplicateRow={handleDuplicateRow}
+              hideCroquis={true}
+              minuteId={minute?.id}
+              gridKey="chiff_plaid_v2"
+              targetRowId={targetRowId}
+              onRowClick={onRowClick}
+              readOnly={readOnly}
+              currentUser={currentUser}
+            />
+          </SectionPanel>
         );
       case 'tenture_murale':
         return (
-          <Accordion key="tenture_murale" defaultExpanded disableGutters TransitionProps={{ unmountOnExit: true }} sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03)', border: '1px solid #f3f4f6' }}>
-            <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ borderBottom: '1px solid #f3f4f6', backgroundColor: '#fff', borderTopLeftRadius: 12, borderTopRightRadius: 12, px: 3 }}>
-              {renderHeaderContent("Tenture Murale", rowsTenture)}
-            </AccordionSummary>
-            <AccordionDetails sx={{ p: 0 }}>
-
-
-              <MinuteGrid
-                title=""
-                rows={rowsTenture}
-                onRowsChange={mergeChildRowsFor("tenture_murale")}
-                schema={TENTURE_MURALE_SCHEMA}
-                enableCellFormulas={enableCellFormulas}
-                formulaCtx={extendedCtx}
-                onAdd={() => handleAddRow("tenture_murale")}
-                onDelete={() => handleDeleteRows(selTenture)}
-                rowSelectionModel={selTenture}
-                onRowSelectionModelChange={setSelTenture}
-                catalog={catalog}
-                initialVisibilityModel={TENTURE_DEFAULT_VISIBILITY}
-                onDuplicateRow={handleDuplicateRow}
-                hideCroquis={true}
-                minuteId={minute?.id}
-                gridKey="chiff_tenture_v2"
-                targetRowId={targetRowId}
-                onRowClick={onRowClick}
-                readOnly={readOnly}
-                currentUser={currentUser}
-              />
-
-            </AccordionDetails>
-          </Accordion>
+          <SectionPanel
+            key="tenture_murale"
+            title="Tenture Murale"
+            count={rowsTenture.length}
+            expanded={isPanelExpanded('tenture_murale')}
+            onToggle={() => togglePanel('tenture_murale')}
+          >
+            <MinuteGrid
+              title=""
+              rows={rowsTenture}
+              onRowsChange={mergeChildRowsFor("tenture_murale")}
+              schema={TENTURE_MURALE_SCHEMA}
+              enableCellFormulas={enableCellFormulas}
+              formulaCtx={extendedCtx}
+              onAdd={() => handleAddRow("tenture_murale")}
+              onDelete={() => handleDeleteRows(selTenture)}
+              rowSelectionModel={selTenture}
+              onRowSelectionModelChange={setSelTenture}
+              catalog={catalog}
+              initialVisibilityModel={TENTURE_DEFAULT_VISIBILITY}
+              onDuplicateRow={handleDuplicateRow}
+              hideCroquis={true}
+              minuteId={minute?.id}
+              gridKey="chiff_tenture_v2"
+              targetRowId={targetRowId}
+              onRowClick={onRowClick}
+              readOnly={readOnly}
+              currentUser={currentUser}
+            />
+          </SectionPanel>
         );
       case 'mobilier':
         return (
-          <Accordion key="mobilier" defaultExpanded disableGutters TransitionProps={{ unmountOnExit: true }} sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03)', border: '1px solid #f3f4f6' }}>
-            <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ borderBottom: '1px solid #f3f4f6', backgroundColor: '#fff', borderTopLeftRadius: 12, borderTopRightRadius: 12, px: 3 }}>
-              {renderHeaderContent("Mobilier / Tête de Lit", rowsMobilier)}
-            </AccordionSummary>
-            <AccordionDetails sx={{ p: 0 }}>
-
-
-              <MinuteGrid
-                title=""
-                rows={rowsMobilier}
-                onRowsChange={mergeChildRowsFor("mobilier")}
-                schema={MOBILIER_SCHEMA}
-                enableCellFormulas={enableCellFormulas}
-                formulaCtx={extendedCtx}
-                onAdd={() => handleAddRow("mobilier")}
-                onDelete={() => handleDeleteRows(selMobilier)}
-                rowSelectionModel={selMobilier}
-                onRowSelectionModelChange={setSelMobilier}
-                catalog={catalog}
-                initialVisibilityModel={MOBILIER_DEFAULT_VISIBILITY}
-                onDuplicateRow={handleDuplicateRow}
-                hideCroquis={false}
-                minuteId={minute?.id}
-                gridKey="chiff_mobilier_v2"
-                targetRowId={targetRowId}
-                onRowClick={onRowClick}
-                readOnly={readOnly}
-                currentUser={currentUser}
-              />
-
-            </AccordionDetails>
-          </Accordion>
+          <SectionPanel
+            key="mobilier"
+            title="Mobilier / Tête de Lit"
+            count={rowsMobilier.length}
+            expanded={isPanelExpanded('mobilier')}
+            onToggle={() => togglePanel('mobilier')}
+          >
+            <MinuteGrid
+              title=""
+              rows={rowsMobilier}
+              onRowsChange={mergeChildRowsFor("mobilier")}
+              schema={MOBILIER_SCHEMA}
+              enableCellFormulas={enableCellFormulas}
+              formulaCtx={extendedCtx}
+              onAdd={() => handleAddRow("mobilier")}
+              onDelete={() => handleDeleteRows(selMobilier)}
+              rowSelectionModel={selMobilier}
+              onRowSelectionModelChange={setSelMobilier}
+              catalog={catalog}
+              initialVisibilityModel={MOBILIER_DEFAULT_VISIBILITY}
+              onDuplicateRow={handleDuplicateRow}
+              hideCroquis={false}
+              minuteId={minute?.id}
+              gridKey="chiff_mobilier_v2"
+              targetRowId={targetRowId}
+              onRowClick={onRowClick}
+              readOnly={readOnly}
+              currentUser={currentUser}
+            />
+          </SectionPanel>
         );
       default:
         return null;
@@ -741,64 +747,64 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
         {/* --- NOUVEAUX TABLEAUX : Autres Dépenses & Déplacement (EN HAUT, FIXES) --- */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24, marginBottom: 24 }}>
           {/* Tableau Autres Dépenses */}
-          <Accordion key="autre" defaultExpanded disableGutters TransitionProps={{ unmountOnExit: true }} sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03)', border: '1px solid #f3f4f6' }}>
-            <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ borderBottom: '1px solid #f3f4f6', backgroundColor: '#fff', borderTopLeftRadius: 12, borderTopRightRadius: 12, px: 3 }}>
-              {renderHeaderContent("Autres Dépenses", rowsAutre)}
-            </AccordionSummary>
-            <AccordionDetails sx={{ p: 0 }}>
-              <MinuteGrid
-                title=""
-                rows={rowsAutre}
-                onRowsChange={mergeChildRowsFor("autre")}
-                schema={EXTRA_DEPENSES_SCHEMA}
-                enableCellFormulas={enableCellFormulas}
-                formulaCtx={extendedCtx}
-                onAdd={() => handleAddRow("autre")}
-                onDelete={() => handleDeleteRows(selAutre)}
-                rowSelectionModel={selAutre}
-                onRowSelectionModelChange={setSelAutre}
-                catalog={catalog}
-                onDuplicateRow={handleDuplicateRow}
-                hideCroquis={true}
-                minuteId={minute?.id}
-                gridKey="chiff_autres" // <--- NEW KEY
-                targetRowId={targetRowId}
-                onRowClick={onRowClick}
-                readOnly={readOnly}
-                currentUser={currentUser}
-              />
-            </AccordionDetails>
-          </Accordion>
+          <SectionPanel
+            title="Autres Dépenses"
+            count={rowsAutre.length}
+            expanded={isPanelExpanded('autre')}
+            onToggle={() => togglePanel('autre')}
+          >
+            <MinuteGrid
+              title=""
+              rows={rowsAutre}
+              onRowsChange={mergeChildRowsFor("autre")}
+              schema={EXTRA_DEPENSES_SCHEMA}
+              enableCellFormulas={enableCellFormulas}
+              formulaCtx={extendedCtx}
+              onAdd={() => handleAddRow("autre")}
+              onDelete={() => handleDeleteRows(selAutre)}
+              rowSelectionModel={selAutre}
+              onRowSelectionModelChange={setSelAutre}
+              catalog={catalog}
+              onDuplicateRow={handleDuplicateRow}
+              hideCroquis={true}
+              minuteId={minute?.id}
+              gridKey="chiff_autres"
+              targetRowId={targetRowId}
+              onRowClick={onRowClick}
+              readOnly={readOnly}
+              currentUser={currentUser}
+            />
+          </SectionPanel>
 
           {/* Tableau Déplacement */}
-          <Accordion key="deplacement" defaultExpanded disableGutters TransitionProps={{ unmountOnExit: true }} sx={{ mb: 3, borderRadius: '12px !important', '&:before': { display: 'none' }, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03)', border: '1px solid #f3f4f6' }}>
-            <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ borderBottom: '1px solid #f3f4f6', backgroundColor: '#fff', borderTopLeftRadius: 12, borderTopRightRadius: 12, px: 3 }}>
-              {renderHeaderContent("Déplacements & Logistique", rowsDeplacement)}
-            </AccordionSummary>
-            <AccordionDetails sx={{ p: 0 }}>
-              <MinuteGrid
-                title=""
-                rows={rowsDeplacement}
-                onRowsChange={mergeChildRowsFor("deplacement")}
-                schema={CHIFFRAGE_SCHEMA_DEP}
-                enableCellFormulas={enableCellFormulas}
-                formulaCtx={extendedCtx}
-                onAdd={() => handleAddRow("deplacement")}
-                onDelete={() => handleDeleteRows(selDeplacement)}
-                rowSelectionModel={selDeplacement}
-                onRowSelectionModelChange={setSelDeplacement}
-                catalog={catalog}
-                onDuplicateRow={handleDuplicateRow}
-                hideCroquis={true}
-                minuteId={minute?.id}
-                gridKey="chiff_deplacement_v2" // <--- NEW KEY (v2 to reset cache)
-                targetRowId={targetRowId}
-                onRowClick={onRowClick}
-                readOnly={readOnly}
-                currentUser={currentUser}
-              />
-            </AccordionDetails>
-          </Accordion>
+          <SectionPanel
+            title="Déplacements & Logistique"
+            count={rowsDeplacement.length}
+            expanded={isPanelExpanded('deplacement')}
+            onToggle={() => togglePanel('deplacement')}
+          >
+            <MinuteGrid
+              title=""
+              rows={rowsDeplacement}
+              onRowsChange={mergeChildRowsFor("deplacement")}
+              schema={CHIFFRAGE_SCHEMA_DEP}
+              enableCellFormulas={enableCellFormulas}
+              formulaCtx={extendedCtx}
+              onAdd={() => handleAddRow("deplacement")}
+              onDelete={() => handleDeleteRows(selDeplacement)}
+              rowSelectionModel={selDeplacement}
+              onRowSelectionModelChange={setSelDeplacement}
+              catalog={catalog}
+              onDuplicateRow={handleDuplicateRow}
+              hideCroquis={true}
+              minuteId={minute?.id}
+              gridKey="chiff_deplacement_v2"
+              targetRowId={targetRowId}
+              onRowClick={onRowClick}
+              readOnly={readOnly}
+              currentUser={currentUser}
+            />
+          </SectionPanel>
         </div>
 
         {/* --- MODULES DYNAMIQUES --- */}

@@ -295,6 +295,8 @@ export const STORES_BATEAUX_PROD_SCHEMA = [
 
     { key: "type_pose", label: "Pose", type: "select", options: ['Mural', 'Plafond', 'Tableau', 'Grande hauteur'], width: 130 },
 
+    { key: "commentaire_confection", label: "Commentaire Confection", type: "textarea", width: 260, editable: true },
+
     ...mapSchema([
         // HEURES (Hide if 0)
         { key: 'heures_prepa', valueFormatter: hideZero },

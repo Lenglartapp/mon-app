@@ -102,6 +102,7 @@ export const PLAID_PROD_SCHEMA = [
     createCol('largeur_coupe', 'Larg. Coupe', 100, 'number', {
         editable: false,
         readOnly: true,
+        tooltip: "Largeur de coupe = Largeur + 5 cm (marges de couture)",
         valueGetter: (value, row) => {
             const r = row || value?.row || {};
             const l = Number(r.largeur) || 0;
@@ -111,6 +112,7 @@ export const PLAID_PROD_SCHEMA = [
     createCol('hauteur_coupe', 'Haut. Coupe', 100, 'number', {
         editable: false,
         readOnly: true,
+        tooltip: "Hauteur de coupe = Hauteur + 5 cm (marges de couture)",
         valueGetter: (value, row) => {
             const r = row || value?.row || {};
             const h = Number(r.hauteur) || 0;
