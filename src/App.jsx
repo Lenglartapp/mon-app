@@ -1,5 +1,20 @@
-import React, { useState, useMemo, useCallback } from "react";
-import { BrowserRouter } from "react-router-dom";
+import React, { useState, useCallback, useEffect } from "react";
+import { BrowserRouter, useNavigate, useLocation } from "react-router-dom";
+
+// "villa martin" → "villa-martin", gère les accents français
+const slugify = (str) =>
+  (str || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+// Extrait le préfixe court (8 hex chars) depuis un segment comme "800ec8af-big-one"
+const extractShortId = (segment) => {
+  const m = segment.match(/^([0-9a-f]{8})/i);
+  return m ? m[1].toLowerCase() : segment;
+};
 import { S } from "./lib/constants/ui";
 import { ProjectListScreen } from "./screens/ProjectListScreen";
 import { ProductionProjectScreen } from "./screens/ProductionProjectScreen";
@@ -56,12 +71,80 @@ function AppShell() {
   const cleanProjects = projects;
   const cleanMinutes = minutes;
 
+  const navigate = useNavigate();
+  const location = useLocation();
+
   // --- 3. STATE UI ---
   const [screen, setScreen] = useState("home");
   const [logoOk, setLogoOk] = useState(true);
   const [currentProject, setCurrentProject] = useState(null);
   const [openMinuteId, setOpenMinuteId] = useState(null);
   const [pendingRowId, setPendingRowId] = useState(null);
+  const [pendingProjectId, setPendingProjectId] = useState(null);
+
+  // URL → State : lit l'URL au chargement et à chaque navigation
+  useEffect(() => {
+    const path = location.pathname;
+    const params = new URLSearchParams(location.search);
+
+    if (path === "/" || path === "") {
+      setScreen("home");
+    } else if (path === "/chiffrage") {
+      setScreen("chiffrageRoot");
+    } else if (path.startsWith("/chiffrage/")) {
+      const segs = path.split("/");
+      setOpenMinuteId(extractShortId(segs[2]));
+      setScreen("chiffrage");
+      if (segs[3]) setPendingRowId(extractShortId(segs[3]));
+    } else if (path === "/production") {
+      setScreen("prodList");
+    } else if (path.startsWith("/production/")) {
+      const segs = path.split("/");
+      setPendingProjectId(extractShortId(segs[2]));
+      if (segs[3]) setPendingRowId(extractShortId(segs[3]));
+    } else if (path === "/planning") {
+      setScreen("planning");
+    } else if (path === "/logistique" || path.startsWith("/logistique/")) {
+      setScreen("logistique");
+    } else if (path === "/inventaire") {
+      setScreen("inventory");
+    } else if (path === "/performance") {
+      setScreen("performance");
+    } else if (path === "/parametres") {
+      setScreen("settings");
+    }
+  }, [location]);
+
+  // document.title pour les écrans sans sous-composant dédié
+  useEffect(() => {
+    const base = "LENGLART";
+    const staticTitles = {
+      home:          base,
+      prodList:      `Production — ${base}`,
+      chiffrageRoot: `Chiffrage — ${base}`,
+      planning:      `Planning — ${base}`,
+      logistique:    `Logistique — ${base}`,
+      inventory:     `Inventaire — ${base}`,
+      performance:   `Performance — ${base}`,
+      settings:      `Paramètres — ${base}`,
+    };
+    // project et chiffrage gèrent leur propre title dans leurs composants
+    if (screen !== "project" && screen !== "chiffrage") {
+      document.title = staticTitles[screen] || base;
+    }
+  }, [screen]);
+
+  // Résolution différée du projet (attend que cleanProjects soit chargé)
+  // pendingProjectId est un short ID (8 hex chars), on cherche par startsWith
+  useEffect(() => {
+    if (!pendingProjectId || !cleanProjects.length) return;
+    const project = cleanProjects.find(p => p.id.toLowerCase().startsWith(pendingProjectId.toLowerCase()));
+    if (project) {
+      setCurrentProject(project);
+      setScreen("project");
+      setPendingProjectId(null);
+    }
+  }, [pendingProjectId, cleanProjects]);
 
   // Notifications
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
@@ -70,6 +153,17 @@ function AppShell() {
   const handleNotifClose = () => setNotifAnchor(null);
 
   // Navigation interne
+  const SCREEN_PATHS = {
+    home: "/",
+    prodList: "/production",
+    chiffrageRoot: "/chiffrage",
+    planning: "/planning",
+    logistique: "/logistique",
+    inventory: "/inventaire",
+    performance: "/performance",
+    settings: "/parametres",
+  };
+
   const go = (target) => {
     if (target === "chiffrageRoot" && !can(currentUser, "nav.chiffrage")) return;
     if (target === "prodList" && !can(currentUser, "nav.production")) return;
@@ -78,7 +172,7 @@ function AppShell() {
     if (target === "logistique" && !can(currentUser, "nav.logistique")) return;
     if (target === "performance" && !can(currentUser, "nav.performance")) return;
     setPendingRowId(null);
-    setScreen(target);
+    navigate(SCREEN_PATHS[target] || "/");
   };
 
   // --- FONCTION DE SAUVEGARDE LIGNES (Legacy) ---
@@ -117,15 +211,14 @@ function AppShell() {
     if (action.screen === "chiffrage") {
       const target = cleanMinutes.find(m => String(m.id) === String(action.id));
       if (target) {
-        setOpenMinuteId(target.id);
-        setScreen("chiffrage");
+        const ligneParam = action.rowId ? `?ligne=${action.rowId}` : "";
+        navigate(`/chiffrage/${target.id.slice(0,8)}-${slugify(target.name)}${ligneParam}`);
       }
     }
     else if (action.screen === "project") {
       const target = cleanProjects.find(p => String(p.id) === String(action.id));
       if (target) {
-        setCurrentProject(target);
-        setScreen("project");
+        navigate(`/production/${target.id.slice(0,8)}-${slugify(target.name)}`);
       }
     }
   };
@@ -137,7 +230,7 @@ function AppShell() {
   return (
     <div style={S.page}>
       <header style={S.header}>
-        <button style={S.brandBtn} onClick={() => setScreen("home")} aria-label="Retour à l'accueil">
+        <button style={S.brandBtn} onClick={() => navigate("/")} aria-label="Retour à l'accueil">
           {logoOk ? (
             <img src={LOGO_SRC} alt="LENGLART" style={{ height: "clamp(24px, 5vw, 36px)", width: "auto" }} onError={() => setLogoOk(false)} />
           ) : (
@@ -151,7 +244,7 @@ function AppShell() {
               <Bell size={20} />
             </Badge>
           </IconButton>
-          <UserBadge onClick={() => setScreen("settings")} />
+          <UserBadge onClick={() => navigate("/parametres")} />
         </div>
       </header>
 
@@ -168,7 +261,7 @@ function AppShell() {
       {screen === "home" && (
         <HomeScreen
           onOpenProdList={() => go("prodList")}
-          onOpenSettings={() => setScreen("settings")}
+          onOpenSettings={() => navigate("/parametres")}
           onOpenChiffrage={() => go("chiffrageRoot")}
           onOpenInventory={() => go("inventory")}
           onOpenPlanning={() => go("planning")}
@@ -184,10 +277,10 @@ function AppShell() {
           onCreate={addProject}
           onDelete={deleteProject}
           onUpdateProject={handleUpdateProject}
-          onOpenProject={(p) => { setCurrentProject(p); setScreen("project"); }}
+          onOpenProject={(p) => navigate(`/production/${p.id.slice(0,8)}-${slugify(p.name)}`)}
           minutes={can(currentUser, "chiffrage.view") ? cleanMinutes : []}
           onUpdateMinute={updateMinute}
-          onBack={() => setScreen("home")}
+          onBack={() => navigate("/")}
         />
       )}
 
@@ -197,8 +290,11 @@ function AppShell() {
           onCreate={addMinute}
           onDelete={deleteMinute}
           onUpdate={updateMinute}
-          onBack={() => setScreen("home")}
-          onOpenMinute={(id) => { setOpenMinuteId(id); setScreen("chiffrage"); }}
+          onBack={() => navigate("/")}
+          onOpenMinute={(id) => {
+            const m = cleanMinutes.find(m => String(m.id) === String(id));
+            navigate(`/chiffrage/${String(id).slice(0,8)}-${slugify(m?.name)}`);
+          }}
         />
       )}
 
@@ -208,8 +304,11 @@ function AppShell() {
           minutes={cleanMinutes}
           onUpdate={updateMinute}
           onCreate={addMinute}
-          onBack={() => setScreen("chiffrageRoot")}
-          onOpenMinute={(id) => setOpenMinuteId(id)}
+          onBack={() => navigate("/chiffrage")}
+          onOpenMinute={(id) => {
+            const m = cleanMinutes.find(m => String(m.id) === String(id));
+            navigate(`/chiffrage/${String(id).slice(0,8)}-${slugify(m?.name)}`);
+          }}
           highlightRowId={pendingRowId}
         />
       )}
@@ -219,7 +318,7 @@ function AppShell() {
           inventory={inventory}
           project={cleanProjects.find(p => String(p.id) === String(currentProject.id)) || currentProject}
           projects={cleanProjects}
-          onBack={() => setScreen("prodList")}
+          onBack={() => navigate("/production")}
           onUpdateProjectRows={handleUpdateProjectRows}
           onUpdateProject={handleUpdateProject}
           highlightRowId={pendingRowId}
@@ -227,7 +326,7 @@ function AppShell() {
         />
       )}
 
-      {screen === "settings" && <SettingsScreen onBack={() => setScreen("home")} />}
+      {screen === "settings" && <SettingsScreen onBack={() => navigate("/")} />}
 
       {screen === "inventory" && (
         <StocksModule
@@ -237,7 +336,7 @@ function AppShell() {
           movements={movements}
           onAddMovement={addMovement}
           onBulkMovement={bulkUpdateInventory}
-          onBack={() => setScreen("home")}
+          onBack={() => navigate("/")}
         />
       )}
 
@@ -248,7 +347,7 @@ function AppShell() {
           onUpdateEvent={updateEvent}
           onDeleteEvent={(id) => deleteEvent(id)}
           onUpdateProject={handleUpdateProject}
-          onBack={() => setScreen("home")}
+          onBack={() => navigate("/")}
         />
       )}
 
@@ -256,7 +355,7 @@ function AppShell() {
         <LogistiqueScreen
           projects={cleanProjects}
           onUpdateProject={handleUpdateProject}
-          onBack={() => setScreen("home")}
+          onBack={() => navigate("/")}
         />
       )}
 
@@ -264,7 +363,7 @@ function AppShell() {
         <PerformanceScreen
           projects={cleanProjects}
           events={planningEvents}
-          onBack={() => setScreen("home")}
+          onBack={() => navigate("/")}
         />
       )}
 
