@@ -12,6 +12,12 @@ import PrintableLabelsContainer from "./PrintableLabelsContainer.jsx";
 import BPFPrintPortal from "./print/BPFPrintPortal.jsx";
 import EtiquettesRideauxPrintPortal from "./EtiquettesRideauxPrintPortal.jsx";
 import EtiquettesStoresBateauxPrintPortal from "./EtiquettesStoresBateauxPrintPortal.jsx";
+import {
+  ETIQUETTE_COLOR_PALETTE,
+  DEFAULT_HEADER_COLOR,
+  getHeaderStyles,
+  getContrastColor,
+} from "../lib/etiquetteColors.js";
 
 // CONSTANTES
 const PAGE_SIZE = 9;
@@ -309,17 +315,253 @@ function BulkCustomizePanel({ fields, initialHidden, count, onApply, onClose }) 
   );
 }
 
+// ─── Panneau couleurs ─────────────────────────────────────────────────────────
+function Swatch({ hex, selected, onClick, label }) {
+  const textColor = getContrastColor(hex);
+  return (
+    <div
+      title={label}
+      onClick={onClick}
+      style={{
+        width: 28, height: 28, borderRadius: 6,
+        background: hex, cursor: "pointer",
+        border: selected ? `2.5px solid ${textColor === "#FFFFFF" ? "#fff" : "#111827"}` : "2.5px solid transparent",
+        outline: selected ? "2px solid #374151" : "none",
+        outlineOffset: 1,
+        boxShadow: "0 1px 3px rgba(0,0,0,0.25)",
+        flexShrink: 0,
+        position: "relative",
+      }}
+    >
+      {selected && (
+        <span style={{
+          position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: 12, color: textColor, fontWeight: 700,
+        }}>✓</span>
+      )}
+    </div>
+  );
+}
+
+function ColorPanel({ rows, onApply, onClose }) {
+  const [selectedColor, setSelectedColor] = React.useState(null);
+  const [scopeType, setScopeType] = React.useState("all"); // "all" | "zone" | "produit"
+  const [selectedZones, setSelectedZones] = React.useState(new Set());
+  const [selectedProduits, setSelectedProduits] = React.useState(new Set());
+
+  const zones = React.useMemo(() =>
+    [...new Set((rows || []).map(r => r.zone).filter(Boolean))].sort(),
+    [rows]);
+
+  const produits = React.useMemo(() =>
+    [...new Set((rows || []).map(r => r.produit).filter(Boolean))].sort(),
+    [rows]);
+
+  const matchingCount = React.useMemo(() => {
+    if (scopeType === "all") return (rows || []).length;
+    if (scopeType === "zone") return (rows || []).filter(r => selectedZones.has(r.zone)).length;
+    if (scopeType === "produit") return (rows || []).filter(r => selectedProduits.has(r.produit)).length;
+    return 0;
+  }, [rows, scopeType, selectedZones, selectedProduits]);
+
+  const toggleZone = (z) => setSelectedZones(prev => {
+    const n = new Set(prev); n.has(z) ? n.delete(z) : n.add(z); return n;
+  });
+  const toggleProduit = (p) => setSelectedProduits(prev => {
+    const n = new Set(prev); n.has(p) ? n.delete(p) : n.add(p); return n;
+  });
+
+  const canApply = selectedColor && (
+    scopeType === "all" ||
+    (scopeType === "zone" && selectedZones.size > 0) ||
+    (scopeType === "produit" && selectedProduits.size > 0)
+  );
+
+  const handleApply = () => {
+    let predicate;
+    if (scopeType === "all") predicate = () => true;
+    else if (scopeType === "zone") predicate = r => selectedZones.has(r.zone);
+    else predicate = r => selectedProduits.has(r.produit);
+    onApply(selectedColor, predicate);
+    onClose();
+  };
+
+  const handleReset = () => {
+    let predicate;
+    if (scopeType === "all") predicate = () => true;
+    else if (scopeType === "zone") predicate = r => selectedZones.has(r.zone);
+    else predicate = r => selectedProduits.has(r.produit);
+    onApply(null, predicate);
+    onClose();
+  };
+
+  // preview
+  const previewBg = selectedColor || DEFAULT_HEADER_COLOR;
+  const hdr = getHeaderStyles(previewBg);
+  const previewZone = zones[0] || "Salon";
+
+  return (
+    <Box sx={{
+      mb: 3, bgcolor: "white", borderRadius: 2,
+      boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+      border: "1px solid #E5E7EB",
+      overflow: "hidden",
+    }}>
+      {/* Header */}
+      <Box sx={{ p: "10px 14px", borderBottom: "1px solid #F3F4F6", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <span style={{ fontSize: 13, fontWeight: 700, color: "#111827" }}>Couleur du bandeau</span>
+        <button onClick={onClose} style={{ fontSize: 11, color: "#6B7280", background: "none", border: "1px solid #E5E7EB", borderRadius: 6, padding: "4px 10px", cursor: "pointer" }}>
+          Fermer
+        </button>
+      </Box>
+
+      <Box sx={{ p: 2, display: "flex", flexDirection: "column", gap: 2.5 }}>
+
+        {/* Prévisualisation */}
+        <div style={{ background: hdr.bg, borderRadius: 6, padding: "8px 14px", display: "flex", alignItems: "center", gap: 12 }}>
+          <div>
+            <div style={{ fontSize: 10, fontWeight: 700, color: hdr.textMuted, textTransform: "uppercase", letterSpacing: "0.05em" }}>Nom du projet</div>
+            <div style={{ fontSize: 15, fontWeight: 800, color: hdr.textMain, marginTop: 1 }}>{previewZone} — Chambre</div>
+            <div style={{ fontSize: 11, color: hdr.textMuted, marginTop: 1 }}>Rideau</div>
+          </div>
+          <div style={{ marginLeft: "auto", textAlign: "right" }}>
+            <div style={{ fontSize: 9, color: hdr.textMuted, textTransform: "uppercase" }}>H. Conf.</div>
+            <div style={{ fontSize: 16, fontWeight: 800, color: hdr.textMain }}>4h</div>
+          </div>
+          <div style={{ fontSize: 11, fontWeight: 600, color: hdr.badgeText, background: hdr.badgeBg, borderRadius: 5, padding: "3px 8px" }}>1/8</div>
+        </div>
+
+        {/* Palette */}
+        <div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "#6B7280", letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 8 }}>
+            Couleur de fond
+          </div>
+          <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
+            {ETIQUETTE_COLOR_PALETTE.map(c => (
+              <Swatch key={c.id} hex={c.hex} label={c.label} selected={selectedColor === c.hex} onClick={() => setSelectedColor(c.hex)} />
+            ))}
+          </Box>
+        </div>
+
+        {/* Scope */}
+        <div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "#6B7280", letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 8 }}>
+            Appliquer à
+          </div>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+            {/* Tout */}
+            <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, fontWeight: scopeType === "all" ? 700 : 400, color: "#111827" }}>
+              <input type="radio" checked={scopeType === "all"} onChange={() => setScopeType("all")} style={{ accentColor: "#191919" }} />
+              Toutes les étiquettes <span style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 400 }}>({(rows || []).length})</span>
+            </label>
+
+            {/* Par zone */}
+            <div>
+              <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, fontWeight: scopeType === "zone" ? 700 : 400, color: "#111827" }}>
+                <input type="radio" checked={scopeType === "zone"} onChange={() => setScopeType("zone")} style={{ accentColor: "#191919" }} />
+                Par zone
+              </label>
+              {scopeType === "zone" && zones.length > 0 && (
+                <Box sx={{ pl: 3.5, mt: 1, display: "flex", flexWrap: "wrap", gap: 0.8 }}>
+                  {zones.map(z => (
+                    <button
+                      key={z}
+                      onClick={() => toggleZone(z)}
+                      style={{
+                        fontSize: 12, fontWeight: 600, padding: "3px 10px",
+                        borderRadius: 6, cursor: "pointer",
+                        background: selectedZones.has(z) ? "#191919" : "white",
+                        color: selectedZones.has(z) ? "white" : "#374151",
+                        border: `1px solid ${selectedZones.has(z) ? "#191919" : "#D1D5DB"}`,
+                      }}
+                    >
+                      {z}
+                    </button>
+                  ))}
+                </Box>
+              )}
+            </div>
+
+            {/* Par produit */}
+            <div>
+              <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, fontWeight: scopeType === "produit" ? 700 : 400, color: "#111827" }}>
+                <input type="radio" checked={scopeType === "produit"} onChange={() => setScopeType("produit")} style={{ accentColor: "#191919" }} />
+                Par produit
+              </label>
+              {scopeType === "produit" && produits.length > 0 && (
+                <Box sx={{ pl: 3.5, mt: 1, display: "flex", flexWrap: "wrap", gap: 0.8 }}>
+                  {produits.map(p => (
+                    <button
+                      key={p}
+                      onClick={() => toggleProduit(p)}
+                      style={{
+                        fontSize: 12, fontWeight: 600, padding: "3px 10px",
+                        borderRadius: 6, cursor: "pointer",
+                        background: selectedProduits.has(p) ? "#191919" : "white",
+                        color: selectedProduits.has(p) ? "white" : "#374151",
+                        border: `1px solid ${selectedProduits.has(p) ? "#191919" : "#D1D5DB"}`,
+                      }}
+                    >
+                      {p}
+                    </button>
+                  ))}
+                </Box>
+              )}
+            </div>
+          </Box>
+        </div>
+
+        {/* Actions */}
+        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", pt: 0.5 }}>
+          <button
+            onClick={handleReset}
+            disabled={scopeType !== "all" && (scopeType === "zone" ? selectedZones.size === 0 : selectedProduits.size === 0)}
+            style={{
+              fontSize: 11, color: "#6B7280", background: "none",
+              border: "1px solid #E5E7EB", borderRadius: 6, padding: "5px 12px", cursor: "pointer",
+            }}
+          >
+            Réinitialiser la sélection
+          </button>
+          <button
+            onClick={handleApply}
+            disabled={!canApply}
+            style={{
+              fontSize: 13, fontWeight: 700, color: "white",
+              background: canApply ? "#191919" : "#9CA3AF",
+              border: "none", borderRadius: 6, padding: "6px 18px", cursor: canApply ? "pointer" : "default",
+            }}
+          >
+            Appliquer à {matchingCount} étiquette{matchingCount > 1 ? "s" : ""}
+          </button>
+        </Box>
+      </Box>
+    </Box>
+  );
+}
+
 export default function EtiquettesSection({
   title,
   tableKey,
   rows,
   schema,
   projectName,
+  project,
   onEditRow,
   onRowsChange,
+  onUpdateProject,
 }) {
   const isRideaux = tableKey === "rideaux";
   const isStoresBateaux = tableKey === "stores_bateaux";
+
+  // Appliquer une couleur de bandeau à une sélection de lignes
+  const handleColorApply = React.useCallback((color, predicate) => {
+    if (!onRowsChange) return;
+    const updated = (rows || []).map(r =>
+      predicate(r) ? { ...r, etiquette_header_color: color } : r
+    );
+    onRowsChange(updated);
+  }, [rows, onRowsChange]);
 
   const handleRowChange = React.useCallback((updatedRow) => {
     if (!onRowsChange) return;
@@ -335,6 +577,7 @@ export default function EtiquettesSection({
   const [showFilters, setShowFilters] = useState(false);
   const [showBulkCustomize, setShowBulkCustomize] = useState(false);
   const [showSelection, setShowSelection] = useState(false);
+  const [showColors, setShowColors] = useState(false);
   const [selectedOuvrages, setSelectedOuvrages] = useState(new Set());
   const [anchorElPicker, setAnchorElPicker] = useState(null);
   const [page, setPage] = useState(1);
@@ -608,6 +851,15 @@ export default function EtiquettesSection({
             >
               Champs
             </Button>
+            {(isRideaux || isStoresBateaux) && (
+              <Button
+                onClick={() => setShowColors(v => !v)}
+                size="small"
+                variant={showColors ? "contained" : "outlined"}
+              >
+                Couleurs
+              </Button>
+            )}
             <Button
               startIcon={<Print />}
               onClick={handlePrint}
@@ -649,6 +901,17 @@ export default function EtiquettesSection({
               count={filteredRows.length}
               onApply={handleBulkApply}
               onClose={() => setShowBulkCustomize(false)}
+            />
+          </Collapse>
+        )}
+
+        {/* COULEURS */}
+        {(isRideaux || isStoresBateaux) && (
+          <Collapse in={showColors} unmountOnExit>
+            <ColorPanel
+              rows={rows}
+              onApply={handleColorApply}
+              onClose={() => setShowColors(false)}
             />
           </Collapse>
         )}

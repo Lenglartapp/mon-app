@@ -1,5 +1,6 @@
 // src/components/EtiquetteStoresBateauxCard.jsx
 import React, { useState } from "react";
+import { DEFAULT_HEADER_COLOR, getHeaderStyles } from "../lib/etiquetteColors.js";
 
 // ─── Champs disponibles sur l'étiquette (ordre + sections) ───────────────────
 export const ETIQUETTE_STORES_BATEAUX_FIELDS = [
@@ -244,6 +245,8 @@ export default function EtiquetteStoresBateauxCard({ row, projectName, index, to
   const isStatutWarn = statutCotes && !["Définitive", "Validé par chef de projet"].includes(statutCotes);
   const hiddenCount = hiddenFields.length;
 
+  const hdr = getHeaderStyles(row?.etiquette_header_color || DEFAULT_HEADER_COLOR);
+
   const handleSaveHidden = (newHidden) => {
     if (onRowChange) onRowChange({ ...row, etiquette_hidden_fields: newHidden });
   };
@@ -268,27 +271,27 @@ export default function EtiquetteStoresBateauxCard({ row, projectName, index, to
 
       {/* HEADER */}
       <div style={{
-        background: "#1F2937", padding: "10px 16px",
+        background: hdr.bg, padding: "10px 16px",
         display: "grid", gridTemplateColumns: "1fr auto auto",
         alignItems: "center", gap: 12,
       }}>
         <div>
-          <div style={{ fontSize: 11, fontWeight: 700, color: "#9CA3AF", letterSpacing: "0.05em", textTransform: "uppercase" }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: hdr.textMuted, letterSpacing: "0.05em", textTransform: "uppercase" }}>
             {projectName || "Projet"}
           </div>
-          <div style={{ fontSize: 18, fontWeight: 800, color: "#92742A", marginTop: 2 }}>
+          <div style={{ fontSize: 18, fontWeight: 800, color: hdr.textMain, marginTop: 2 }}>
             {zone} — {piece}
           </div>
-          <div style={{ fontSize: 12, color: "#6B7280", marginTop: 2 }}>{produit}</div>
+          <div style={{ fontSize: 12, color: hdr.textMuted, marginTop: 2 }}>{produit}</div>
         </div>
         <div style={{ textAlign: "right" }}>
-          <div style={{ fontSize: 10, color: "#6B7280", textTransform: "uppercase", letterSpacing: "0.05em" }}>H. Conf.</div>
-          <div style={{ fontSize: 20, fontWeight: 800, color: "#F9FAFB" }}>{heuresConf}h</div>
+          <div style={{ fontSize: 10, color: hdr.textMuted, textTransform: "uppercase", letterSpacing: "0.05em" }}>H. Conf.</div>
+          <div style={{ fontSize: 20, fontWeight: 800, color: hdr.textMain }}>{heuresConf}h</div>
         </div>
         {total != null && (
           <div style={{
-            fontSize: 12, fontWeight: 600, color: "#9CA3AF",
-            background: "#374151", borderRadius: 6, padding: "5px 10px", whiteSpace: "nowrap",
+            fontSize: 12, fontWeight: 600, color: hdr.badgeText,
+            background: hdr.badgeBg, borderRadius: 6, padding: "5px 10px", whiteSpace: "nowrap",
           }}>
             n° {(index ?? 0) + 1}/{total}
           </div>

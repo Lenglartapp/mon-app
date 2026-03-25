@@ -69,6 +69,15 @@ const getters = {
         return round1(H - ded + fBas);
     },
 
+    hauteur_finie_milieu: (row) => {
+        if (row.hauteur_finie_milieu != null && row.hauteur_finie_milieu !== '') {
+            return toNum(row.hauteur_finie_milieu);
+        }
+        const hG = getters.hauteur_finie_gauche(row);
+        const hD = getters.hauteur_finie_droite(row);
+        return round1((hG + hD) / 2);
+    },
+
     hauteur_coupe: (row) => {
         const hFinieD = getters.hauteur_finie_droite(row);
         const hFinieG = getters.hauteur_finie_gauche(row);
@@ -149,6 +158,7 @@ export const RIDEAUX_PROD_SCHEMA = [
         valueGetter: (v, r) => getters.a_plat(getRow(v, r))
     },
     { key: "v_ourlets_de_cotes", label: "Ourlets Côtés", type: "number", width: 130, editable: true },
+    { key: "piquage_ourlet", label: "Piquage Ourlet", type: "select", options: ["Apparent", "Invisible"], width: 145, editable: true },
 
 
     // C. Hauteurs & Coupe
@@ -172,6 +182,15 @@ export const RIDEAUX_PROD_SCHEMA = [
         readOnly: true,
         tooltip: "HSPF droit − déduction rail + finition bas",
         valueGetter: (v, r) => getters.hauteur_finie_droite(getRow(v, r))
+    },
+    {
+        key: "hauteur_finie_milieu",
+        label: "H. Finie Milieu",
+        type: "number",
+        width: 140,
+        editable: true,
+        tooltip: "Moyenne de H. Finie G et H. Finie D. Modifiable manuellement.",
+        valueGetter: (v, r) => getters.hauteur_finie_milieu(getRow(v, r))
     },
     {
         key: "hauteur_finie_gauche",
@@ -226,6 +245,8 @@ export const RIDEAUX_PROD_SCHEMA = [
         }
     },
 
+    { key: "deduction_doublure", label: "Déd. Doublure", type: "number", width: 140, editable: true },
+
     // D. Détails Confection
     {
         key: "nombre_les",
@@ -245,7 +266,7 @@ export const RIDEAUX_PROD_SCHEMA = [
     { key: "piquage_ourlets_du_bas", label: "Piq. Bas", type: "number", width: 115, editable: true },
     { key: "piquage_ourlets_bas_doublure", label: "Piq. Bas Doubl.", type: "number", width: 145, editable: true },
     { key: "doublure_finition_bas", label: "Doubl. Fin. Bas", type: "number", width: 145, editable: true },
-    { key: "finition_champs", label: "Fin. Champs", type: "number", width: 120, editable: true },
+    { key: "finition_champs", label: "Fin. Chant", type: "number", width: 120, editable: true },
     { key: "poids", label: "Poids", type: "select", options: ["Oui", "Non"], width: 90, editable: true },
 
     // Onglets: Non / Régulier / Irrégulier

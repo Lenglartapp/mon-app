@@ -3,6 +3,7 @@
 // Format physique : 190mm × 65mm par étiquette
 import React, { useEffect } from "react";
 import ReactDOM from "react-dom";
+import { DEFAULT_HEADER_COLOR, getHeaderStyles } from "../lib/etiquetteColors.js";
 
 const v = (row, key, fallback = "—") => {
   const val = row?.[key];
@@ -97,22 +98,7 @@ function PrintLabel({ row, projectName, index, total }) {
   const schemaImg = schemaArr[0]?.url || (typeof row?.schema === 'string' ? row.schema : null)
     || (Array.isArray(row?.schema_principe) ? row.schema_principe[0]?.url : null);
 
-  const ob = [
-    row?.piquage_ourlets_du_bas ? `OB : ${row.piquage_ourlets_du_bas}` : null,
-    row?.piquage_ourlets_bas_doublure ? `OB doubl. : ${row.piquage_ourlets_bas_doublure}` : null,
-  ].filter(Boolean).join(" — ") || "—";
-
-  const oc = [
-    row?.v_ourlets_de_cotes ? `OC : ${row.v_ourlets_de_cotes}` : null,
-    row?.finition_champs ? `Fin. : ${row.finition_champs}` : null,
-  ].filter(Boolean).join(" — ") || "—";
-
-  const retours = [
-    row?.retour_gauche ? `G:${row.retour_gauche}` : null,
-    row?.retour_droit ? `D:${row.retour_droit}` : null,
-    row?.type_retours || null,
-  ].filter(Boolean).join(" / ") || "—";
-
+  const hdr = getHeaderStyles(row?.etiquette_header_color || DEFAULT_HEADER_COLOR);
   const isStatutWarn = statutCotes && !["Définitive", "Validé par chef de projet"].includes(statutCotes);
 
   return (
@@ -130,7 +116,7 @@ function PrintLabel({ row, projectName, index, total }) {
 
       {/* HEADER PLEINE LARGEUR */}
       <div style={{
-        background: "#1F2937",
+        background: hdr.bg,
         padding: "3pt 6pt",
         display: "grid",
         gridTemplateColumns: "1fr auto auto",
@@ -139,20 +125,23 @@ function PrintLabel({ row, projectName, index, total }) {
         flexShrink: 0,
       }}>
         <div>
-          <div style={{ fontSize: "6pt", fontWeight: 800, color: "#F9FAFB", letterSpacing: "0.04em", textTransform: "uppercase", lineHeight: 1.2 }}>
+          <div style={{ fontSize: "6pt", fontWeight: 800, color: hdr.textMuted, letterSpacing: "0.04em", textTransform: "uppercase", lineHeight: 1.2 }}>
             {projectName || "Projet"}
           </div>
-          <div style={{ fontSize: "8pt", fontWeight: 700, color: "#92742A", marginTop: "1pt" }}>
+          <div style={{ fontSize: "8pt", fontWeight: 700, color: hdr.textMain, marginTop: "1pt" }}>
             {zone} — {piece}
+          </div>
+          <div style={{ fontSize: "7pt", fontWeight: 600, color: hdr.textMuted, marginTop: "1pt" }}>
+            {v(row, "produit")}
           </div>
         </div>
         <div style={{ textAlign: "right" }}>
-          <div style={{ fontSize: "4pt", color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.05em" }}>H. Conf.</div>
-          <div style={{ fontSize: "9pt", fontWeight: 700, color: "#F9FAFB" }}>{heuresConf}h</div>
+          <div style={{ fontSize: "4pt", color: hdr.textMuted, textTransform: "uppercase", letterSpacing: "0.05em" }}>H. Conf.</div>
+          <div style={{ fontSize: "9pt", fontWeight: 700, color: hdr.textMain }}>{heuresConf}h</div>
         </div>
         <div style={{
-          fontSize: "6pt", fontWeight: 600, color: "#9CA3AF",
-          background: "#374151", borderRadius: "2pt",
+          fontSize: "6pt", fontWeight: 600, color: hdr.badgeText,
+          background: hdr.badgeBg, borderRadius: "2pt",
           padding: "2pt 4pt", whiteSpace: "nowrap",
         }}>
           {(index ?? 0) + 1}/{total}
@@ -173,8 +162,7 @@ function PrintLabel({ row, projectName, index, total }) {
 
         {/* Confection */}
         <PSectionTitle>Confection</PSectionTitle>
-        <PRow cols={6}>
-          <PCell label="Produit" value={v(row, "produit")} span={2} />
+        <PRow cols={4}>
           {show("type_confection")      && <PCell label="Type conf." value={v(row, "type_confection")} span={2} />}
           {show("paire_ou_un_seul_pan") && <PCell label="Paire/Pan" value={v(row, "paire_ou_un_seul_pan")} span={2} />}
         </PRow>
@@ -192,34 +180,52 @@ function PrintLabel({ row, projectName, index, total }) {
           {show("etiquette_lenglart") && <PCell label="Étiq. Lenglart" value={v(row, "etiquette_lenglart")} span={2} />}
         </PRow>
 
-        {/* Ourlets */}
+        {/* Ourlets & Bas */}
         <PSectionTitle>Ourlets & Bas</PSectionTitle>
-        <PRow cols={6}>
-          {show("_ob")          && <PCell label="OB tissu / doublure" value={ob} span={3} />}
-          {show("_oc")          && <PCell label="OC & fin. champs" value={oc} span={2} />}
-          {show("finition_bas") && <PCell label="Fin. bas" value={v(row, "finition_bas")} />}
+        <PRow cols={3}>
+          {show("piquage_ourlets_du_bas") && <PCell label="OB Tissu" value={v(row, "piquage_ourlets_du_bas")} />}
+          {show("piquage_ourlet")         && <PCell label="Piquage ourlet" value={v(row, "piquage_ourlet")} />}
+          {show("finition_bas")           && <PCell label="Cassant / Rasant" value={v(row, "finition_bas")} />}
         </PRow>
-        <PRow cols={6} bg="#F9FAFB">
-          {show("doublure_finition_bas") && <PCell label="Doubl. fin. bas" value={v(row, "doublure_finition_bas")} span={2} />}
-          {show("_retours")              && <PCell label="Retours" value={retours} span={4} accent />}
+        <PRow cols={3} bg="#F9FAFB">
+          {show("piquage_ourlets_bas_doublure") && <PCell label="OB Doublure" value={v(row, "piquage_ourlets_bas_doublure")} />}
+          {show("deduction_doublure")           && <PCell label="Déd. Doublure" value={v(row, "deduction_doublure")} />}
+          {show("doublure_finition_bas")        && <PCell label="Doubl. fin. bas" value={v(row, "doublure_finition_bas")} />}
+        </PRow>
+        <PRow cols={3}>
+          {show("v_ourlets_de_cotes") && <PCell label="Ourlets de côté" value={v(row, "v_ourlets_de_cotes")} />}
+          {show("finition_champs")    && <PCell label="Finition chant" value={v(row, "finition_champs")} />}
         </PRow>
 
         {/* Dimensions */}
         <PSectionTitle>Dimensions</PSectionTitle>
-        <PRow cols={6}>
-          {show("nombre_les")           && <PCell label="Nb lés" value={v(row, "nombre_les")} />}
-          {show("largeur_finie")        && <PCell label="L. Finie" value={v(row, "largeur_finie")} />}
-          {show("hauteur_finie_gauche") && <PCell label="H. Fin. G" value={v(row, "hauteur_finie_gauche")} />}
-          {show("hauteur_finie_droite") && <PCell label="H. Fin. D" value={v(row, "hauteur_finie_droite")} />}
-          {show("nombre_glisseur")      && <PCell label="Nb glisseurs" value={v(row, "nombre_glisseur")} />}
-          {show("statut_cotes")         && <PCell label="Statut côtes" value={statutCotes} accent={isStatutWarn} />}
+        <PRow cols={4}>
+          {show("nombre_les")    && <PCell label="Nb lés" value={v(row, "nombre_les")} />}
+          {show("largeur_finie") && <PCell label="L. Finie" value={v(row, "largeur_finie")} />}
+          {show("retour_gauche") && <PCell label="Retour G" value={v(row, "retour_gauche")} />}
+          {show("retour_droit")  && <PCell label="Retour D" value={v(row, "retour_droit")} />}
         </PRow>
-        <PRow cols={6} bg="#F9FAFB">
-          {show("hspf_gauche")             && <PCell label="HSPF G" value={v(row, "hspf_gauche")} />}
-          {show("hspf_droite")             && <PCell label="HSPF D" value={v(row, "hspf_droite")} />}
-          {show("hauteur_coupe")           && <PCell label="H. Coupe T1" value={v(row, "hauteur_coupe")} />}
-          {show("hauteur_coupe_motif")     && <PCell label="H. Coupe motif" value={v(row, "hauteur_coupe_motif")} />}
-          {show("hauteur_coupe_doublure")  && <PCell label="H. Coupe doubl." value={v(row, "hauteur_coupe_doublure")} span={2} />}
+        <PRow cols={3} bg="#F9FAFB">
+          {show("hauteur_finie_gauche") && <PCell label="H. Fin. G" value={v(row, "hauteur_finie_gauche")} />}
+          {show("hauteur_finie_milieu") && <PCell label="H. Fin. M" value={v(row, "hauteur_finie_milieu")} />}
+          {show("hauteur_finie_droite") && <PCell label="H. Fin. D" value={v(row, "hauteur_finie_droite")} />}
+        </PRow>
+        <PRow cols={4}>
+          {show("nombre_glisseur")     && <PCell label="Nb glisseurs" value={v(row, "nombre_glisseur")} />}
+          {show("statut_cotes")        && <PCell label="Statut côtes" value={statutCotes} accent={isStatutWarn} />}
+          {show("hauteur_coupe")       && <PCell label="H. Coupe T1" value={v(row, "hauteur_coupe")} />}
+          {show("hauteur_coupe_motif") && <PCell label="H. Coupe motif" value={v(row, "hauteur_coupe_motif")} />}
+        </PRow>
+        <PRow cols={3} bg="#F9FAFB">
+          {show("hauteur_coupe_doublure") && <PCell label="H. Coupe doubl." value={v(row, "hauteur_coupe_doublure")} />}
+        </PRow>
+
+        {/* Mécanisme */}
+        <PSectionTitle>Mécanisme</PSectionTitle>
+        <PRow cols={3}>
+          {show("type_mecanisme")  && <PCell label="Type Méca" value={v(row, "type_mecanisme")} />}
+          {show("modele_mecanisme")&& <PCell label="Modèle Méca" value={v(row, "modele_mecanisme")} />}
+          {show("type_croisement") && <PCell label="Type Croisement" value={v(row, "type_croisement")} />}
         </PRow>
 
         {/* Matériaux */}
@@ -245,7 +251,7 @@ function PrintLabel({ row, projectName, index, total }) {
       }}>
         {/* Croquis */}
         <div style={{
-          flex: 1,
+          flex: 2,
           borderBottom: "0.4pt solid #CBD5E1",
           display: "flex",
           flexDirection: "column",
@@ -259,7 +265,7 @@ function PrintLabel({ row, projectName, index, total }) {
           }}>
             Croquis atelier
           </div>
-          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "3pt" }}>
+          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "3pt", minHeight: 0 }}>
             {schemaImg ? (
               <img src={schemaImg} alt="Croquis" style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }} />
             ) : (
@@ -269,7 +275,7 @@ function PrintLabel({ row, projectName, index, total }) {
         </div>
 
         {/* Commentaire */}
-        <div style={{ display: "flex", flexDirection: "column" }}>
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
           <div style={{
             fontSize: "4pt", fontWeight: 700, letterSpacing: "0.1em",
             textTransform: "uppercase", color: "#6B7280",
@@ -279,11 +285,13 @@ function PrintLabel({ row, projectName, index, total }) {
             Commentaires atelier
           </div>
           <div style={{
+            flex: 1,
             padding: "3pt 4pt",
             fontSize: "6pt",
             color: "#374151",
             lineHeight: 1.4,
             wordBreak: "break-word",
+            overflow: "hidden",
           }}>
             {v(row, "commentaire_confection", "")}
           </div>
@@ -348,7 +356,7 @@ function PrintPage({ labels, projectName, totalCount, startIndex }) {
 }
 
 export default function EtiquettesRideauxPrintPortal({ rows, projectName, onClose }) {
-  // Découper en pages de 4
+  // Découper en pages de 3
   const pages = [];
   for (let i = 0; i < rows.length; i += 3) {
     pages.push({ labels: rows.slice(i, i + 3), startIndex: i });
