@@ -172,7 +172,8 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
       // Et on le sauvegarde explicitement dans CE devis pour le détacher du global
       onChangeMinute?.({ ...minute, catalog: formulaCtx.catalog, updatedAt: Date.now() });
     }
-  }, [minute?.catalog, catalog, formulaCtx?.catalog, onChangeMinute]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [minute?.catalog, formulaCtx?.catalog, onChangeMinute]);
 
   // Create shared context with settings
   // NOW DEPENDS on 'catalog' state to ensure recomputeRow sees the active items
