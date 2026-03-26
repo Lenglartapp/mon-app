@@ -684,6 +684,7 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onBack, onOpen
           projectId={null}
           authorName={currentUser?.name || currentUser?.email || 'Utilisateur'}
           currentUser={currentUser}
+          allRows={[...(rows || []), ...(depRows || []), ...(extraRows || [])]}
         />
       )}
     </div>

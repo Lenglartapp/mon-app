@@ -21,7 +21,7 @@ import BlurTextField from './ui/BlurTextField';
 import { useAuth } from '../auth'; // <--- NEW IMPORT
 import { supabase } from '../lib/supabaseClient'; // <--- NEW IMPORT
 
-export default function LineDetailPanel({ open, onClose, row, schema, onRowChange, columnVisibilityModel, minuteId, projectId, currentUser: propUser, authorName: propAuthorName, fullScreen = false }) {
+export default function LineDetailPanel({ open, onClose, row, schema, onRowChange, columnVisibilityModel, minuteId, projectId, currentUser: propUser, authorName: propAuthorName, fullScreen = false, allRows }) {
     // New Sidebar Toggle State
     // New Sidebar Toggle State. On mobile (fullScreen), default to closed (false). On desktop, open (true).
     const [isSidebarOpen, setIsSidebarOpen] = useState(!fullScreen);
@@ -30,6 +30,18 @@ export default function LineDetailPanel({ open, onClose, row, schema, onRowChang
 
     // Simple and robust author resolution
     const resolvedAuthor = currentUser?.name || currentUser?.email || "Utilisateur";
+
+    // Conflit (zone, pièce) : vrai si une autre ligne a déjà la même combinaison
+    const pieceConflict = React.useMemo(() => {
+        if (!allRows || !row?.piece) return false;
+        const normalizedZone = (row.zone || '').trim().toLowerCase();
+        const normalizedPiece = (row.piece || '').trim().toLowerCase();
+        return allRows.some(r =>
+            r.id !== row.id &&
+            (r.zone || '').trim().toLowerCase() === normalizedZone &&
+            (r.piece || '').trim().toLowerCase() === normalizedPiece
+        );
+    }, [allRows, row?.piece, row?.zone, row?.id]);
 
     const activities = React.useMemo(() => row?.comments || [], [row?.comments]);
     const activityCount = React.useMemo(() =>
@@ -309,6 +321,8 @@ export default function LineDetailPanel({ open, onClose, row, schema, onRowChang
                             }
 
                             // Default Text / Number
+                            const isPieceField = col.key === 'piece';
+                            const hasConflict = isPieceField && pieceConflict;
                             return (
                                 <BlurTextField
                                     key={col.key}
@@ -320,7 +334,8 @@ export default function LineDetailPanel({ open, onClose, row, schema, onRowChang
                                     type={col.type === 'number' || col.type === 'formula' ? 'number' : 'text'}
                                     variant="outlined"
                                     size="medium"
-                                    helperText={col.formula ? `Formule: ${col.formula}` : ''}
+                                    error={hasConflict}
+                                    helperText={hasConflict ? 'Ce nom de pièce existe déjà dans cette zone' : (col.formula ? `Formule: ${col.formula}` : '')}
                                 />
                             );
                         })}

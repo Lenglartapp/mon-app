@@ -53,6 +53,22 @@ function SectionPanel({ title, count, expanded, onToggle, children }) {
 
 const EMPTY_CTX = {};
 
+// Renvoie un nom de pièce unique dans la zone donnée.
+// Si desiredPiece est déjà pris, essaie desiredPiece 2, 3, ...
+const getUniquePiece = (zone, desiredPiece, allRows, excludeId) => {
+  if (!desiredPiece) return desiredPiece;
+  const normalizedZone = (zone || '').trim().toLowerCase();
+  const taken = new Set(
+    allRows
+      .filter(r => r.id !== excludeId && (r.zone || '').trim().toLowerCase() === normalizedZone)
+      .map(r => (r.piece || '').trim().toLowerCase())
+  );
+  if (!taken.has(desiredPiece.trim().toLowerCase())) return desiredPiece;
+  let i = 2;
+  while (taken.has(`${desiredPiece} ${i}`.toLowerCase())) i++;
+  return `${desiredPiece} ${i}`;
+};
+
 // ================ MinuteEditor (tableau des lignes d'une minute) =================
 function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formulaCtx = EMPTY_CTX, schema = [], targetRowId, onRowClick, readOnly = false, currentUser }) {
 
@@ -416,16 +432,35 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
     return catalog.filter(item => item.category === 'Rail').map(item => item.name);
   }, [catalog]);
 
+  // Détection des doublons (zone, pièce) — réactif sur localLines (source directe)
+  const pieceConflicts = React.useMemo(() => {
+    const seen = new Map();
+    const found = [];
+    for (const r of localLines) {
+      if (!r.piece) continue;
+      const key = `${(r.zone || '').trim().toLowerCase()}|${(r.piece || '').trim().toLowerCase()}`;
+      if (seen.has(key)) {
+        const label = r.zone ? `"${r.piece}" (${r.zone})` : `"${r.piece}"`;
+        if (!found.some(f => f.key === key)) found.push({ key, label });
+      } else {
+        seen.set(key, true);
+      }
+    }
+    return found;
+  }, [localLines]);
+
   const handleDuplicateRow = (id) => {
     const index = rows.findIndex(r => r.id === id);
     if (index === -1) return;
 
     const source = rows[index];
+    const baseName = source.piece ? `${source.piece} Copie` : source.piece;
+    const uniquePiece = getUniquePiece(source.zone, baseName, rows, source.id);
+
     const newRow = {
       ...source,
       id: genId(),
-      piece: source.piece ? `${source.piece} (Copie)` : source.piece,
-      // Shallow copy arrays if they exist to avoid ref sharing
+      piece: uniquePiece,
       comments: source.comments ? [...source.comments] : []
     };
 
@@ -742,6 +777,30 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
 
   return (
     <div style={{ paddingBottom: 40 }}>
+
+      {/* Popup flottante bas-droite — pièces en double */}
+      {pieceConflicts.length > 0 && (
+        <div style={{
+          position: 'fixed', bottom: 24, right: 24, zIndex: 9999,
+          display: 'flex', alignItems: 'flex-start', gap: 10,
+          background: '#FEF3C7', border: '1px solid #F59E0B',
+          borderRadius: 10, padding: '12px 16px',
+          fontSize: 13, color: '#92400E',
+          boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+          maxWidth: 360, pointerEvents: 'none'
+        }}>
+          <span style={{ fontSize: 18, lineHeight: 1 }}>⚠️</span>
+          <div>
+            <div style={{ fontWeight: 700, marginBottom: 4 }}>Pièces en double</div>
+            {pieceConflicts.map(c => (
+              <div key={c.key} style={{ fontSize: 12, opacity: 0.85 }}>{c.label}</div>
+            ))}
+            <div style={{ fontSize: 11, marginTop: 6, opacity: 0.7 }}>
+              Même nom interdit dans la même zone
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 1/2/3 tableaux selon modules */}
       <>
