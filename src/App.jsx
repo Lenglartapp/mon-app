@@ -32,7 +32,8 @@ import LogistiqueScreen from "./screens/LogistiqueScreen";
 import PerformanceScreen from "./screens/PerformanceScreen";
 import { useProjects, useMinutes, useEvents, useStocks } from './hooks/useSupabase';
 
-import { Bell } from 'lucide-react';
+import { useNetworkStatus } from './hooks/useNetworkStatus';
+import { Bell, WifiOff } from 'lucide-react';
 import Badge from '@mui/material/Badge';
 import IconButton from '@mui/material/IconButton';
 import NotificationMenu from "./components/NotificationMenu";
@@ -225,10 +226,23 @@ function AppShell() {
 
   const LOGO_SRC = "/logo.png";
 
+  const isOnline = useNetworkStatus();
+
   if (!currentUser) return <LoginScreen />;
 
   return (
     <div style={S.page}>
+      {!isOnline && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          background: '#92400e', color: '#fef3c7',
+          padding: '8px 16px', fontSize: 13, fontWeight: 500,
+          position: 'sticky', top: 0, zIndex: 9999,
+        }}>
+          <WifiOff size={15} />
+          Mode hors ligne — les données affichées sont celles de votre dernière connexion
+        </div>
+      )}
       <header style={S.header}>
         <button style={S.brandBtn} onClick={() => navigate("/")} aria-label="Retour à l'accueil">
           {logoOk ? (

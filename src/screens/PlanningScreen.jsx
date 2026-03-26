@@ -89,6 +89,13 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [localEvents, setLocalEvents] = useState(initialEvents || []);
 
+    // Sync quand initialEvents arrive en async (ex: chargement depuis IndexedDB hors ligne)
+    useEffect(() => {
+        if (initialEvents?.length > 0 && localEvents.length === 0) {
+            setLocalEvents(initialEvents);
+        }
+    }, [initialEvents]);
+
     // --- STATE ÉDITION & DRAG ---
     const [editingEvent, setEditingEvent] = useState(null);
     const [draggedEvent, setDraggedEvent] = useState(null);

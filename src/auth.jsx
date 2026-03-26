@@ -44,19 +44,22 @@ export const AuthProvider = ({ children }) => {
     return () => subscription.unsubscribe();
   }, []);
 
+  const USERS_KEY = 'df_users';
+
   const fetchUsers = async () => {
-    // Optional: Only fetch if authenticated? Or fetch public profiles?
-    // Assuming 'profiles' table is readable.
     const { data, error } = await supabase.from('profiles').select('*');
     if (!error && data) {
-      // Map to match the shape expected by the UI (if any legacy fields are needed)
       const mappedUsers = data.map(u => ({
         ...u,
         name: u.first_name || u.last_name ? `${u.first_name || ''} ${u.last_name || ''}`.trim() : u.email,
         initials: getInitials(u.first_name, u.last_name),
-        // Assuming role is already a column in profiles
       }));
       setUsers(mappedUsers);
+      localStorage.setItem(USERS_KEY, JSON.stringify(mappedUsers));
+    } else {
+      // Hors ligne : restaurer depuis le cache
+      const cached = localStorage.getItem(USERS_KEY);
+      if (cached) setUsers(JSON.parse(cached));
     }
   };
 
@@ -68,49 +71,33 @@ export const AuthProvider = ({ children }) => {
   };
 
   const syncUser = async (supabaseUser) => {
-    try {
-      // Fetch detailed profile from 'profiles' table using auth.uid()
-      const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', supabaseUser.id)
-        .single();
+    const PROFILE_KEY = `df_profile_${supabaseUser.id}`;
+    const { data: profile, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', supabaseUser.id)
+      .single();
 
-      if (profile) {
-        // Merge auth user with profile data
-        const name = profile.first_name || profile.last_name ?
-          `${profile.first_name || ''} ${profile.last_name || ''}`.trim() :
-          supabaseUser.email;
-
-        const initials = getInitials(profile.first_name, profile.last_name);
-
-        setCurrentUser({
-          ...supabaseUser,
-          ...profile,
-          name,
-          initials,
-          role: profile.role || 'user' // Default to user if no role
-        });
+    if (profile && !error) {
+      // En ligne : profil récupéré, on met à jour le cache
+      const name = profile.first_name || profile.last_name ?
+        `${profile.first_name || ''} ${profile.last_name || ''}`.trim() :
+        supabaseUser.email;
+      const initials = getInitials(profile.first_name, profile.last_name);
+      const user = { ...supabaseUser, ...profile, name, initials, role: profile.role || 'user' };
+      setCurrentUser(user);
+      localStorage.setItem(PROFILE_KEY, JSON.stringify(user));
+    } else {
+      // Erreur réseau ou hors ligne : on tente le cache local
+      const cached = localStorage.getItem(PROFILE_KEY);
+      if (cached) {
+        setCurrentUser(JSON.parse(cached));
       } else {
-        // Fallback if profile doesn't exist yet (shouldn't happen in prod if table is seeded)
-        setCurrentUser({
-          ...supabaseUser,
-          name: supabaseUser.email,
-          role: "user",
-          initials: "??",
-        });
+        setCurrentUser({ ...supabaseUser, name: supabaseUser.email, role: "user", initials: "??" });
       }
-    } catch (err) {
-      console.error("Error fetching user profile:", err);
-      setCurrentUser({
-        ...supabaseUser,
-        name: supabaseUser.email,
-        role: "user",
-        initials: "??",
-      });
-    } finally {
-      setLoading(false);
     }
+
+    setLoading(false);
   };
 
   const login = async (email, password) => {
