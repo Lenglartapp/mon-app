@@ -20,18 +20,9 @@ window.addEventListener("unhandledrejection", (e) => {
   console.error("Unhandled promise:", e.reason);
 });
 
-// ====== Service Worker Registration for PWA ======
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
-      .then((registration) => {
-        console.log('SW registered: ', registration);
-      })
-      .catch((registrationError) => {
-        console.log('SW registration failed: ', registrationError);
-      });
-  });
-}
+// ====== Service Worker Registration for PWA (géré par vite-plugin-pwa) ======
+import { registerSW } from 'virtual:pwa-register';
+registerSW({ immediate: true });
 
 // ====== Montage ======
 ReactDOM.createRoot(document.getElementById("root")).render(

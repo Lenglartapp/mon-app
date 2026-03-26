@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
+import { db } from '../lib/offlineDb';
 
 // --- PROJETS ---
 export const useProjects = () => {
@@ -11,7 +12,14 @@ export const useProjects = () => {
             .from('projects')
             .select('*')
             .order('updated_at', { ascending: false });
-        if (!error) setProjects(data || []);
+        if (!error && data) {
+            setProjects(data);
+            db.projects.bulkPut(data).catch(() => {});
+        } else {
+            // Hors ligne ou erreur réseau : charger depuis IndexedDB
+            const cached = await db.projects.toArray();
+            if (cached.length > 0) setProjects(cached);
+        }
         setLoading(false);
     };
 
@@ -450,34 +458,29 @@ export const useEvents = () => {
         const fetchEvents = async () => {
             const { data, error } = await supabase.from('events').select('*');
 
-            if (error) {
-                console.error("Erreur chargement planning:", error);
-            }
-
-            if (data) {
+            if (!error && data) {
                 // MAPPING INVERSE : DB (Snake) -> Frontend (Camel)
                 const formatted = data.map(e => {
-                    // Sécurité pour la date (extrait YYYY-MM-DD depuis l'ISO)
                     const dateStr = e.start_time ? e.start_time.split('T')[0] : null;
-
                     return {
                         ...e,
-                        id: String(e.id), // Sécurité : on veut du texte pour l'ID
-                        resourceId: e.resource_id, // C'est ICI que ça se jouait !
-
-                        // C'EST ICI LA CORRECTION CRUCIALE 👇
+                        id: String(e.id),
+                        resourceId: e.resource_id,
                         date: dateStr,
-
-                        // On reconstruit l'objet meta que le PlanningScreen attend
                         meta: {
                             ...(e.meta || {}),
-                            start: e.start_time, // La DB a stocké start_time
-                            end: e.end_time,     // La DB a stocké end_time
+                            start: e.start_time,
+                            end: e.end_time,
                             projectId: e.project_id
                         }
                     };
                 });
                 setEvents(formatted);
+                db.events.bulkPut(formatted).catch(() => {});
+            } else {
+                // Hors ligne ou erreur réseau : charger depuis IndexedDB
+                const cached = await db.events.toArray();
+                if (cached.length > 0) setEvents(cached);
             }
         };
 
