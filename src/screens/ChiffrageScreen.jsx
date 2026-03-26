@@ -241,8 +241,8 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onBack, onOpen
   // Update Wrapper (Memoized)
   const updateMinute = React.useCallback((patch) => {
     if (!canEdit) return;
-    if (onUpdate) onUpdate(minuteId, patch);
-  }, [canEdit, onUpdate, minuteId]);
+    if (onUpdate && minute?.id) onUpdate(minute.id, patch);
+  }, [canEdit, onUpdate, minute?.id]);
 
   // Local status for optimistic UI
   const [localStatus, setLocalStatus] = React.useState(minute?.status || "DRAFT");
