@@ -393,18 +393,21 @@ function MinuteGrid({
             let updatedRow = { ...r, [field]: value };
 
             // Si c'est photos_sur_site, on crée aussi une entrée dans l'activité
+            // (sauf pour les photos pending offline — l'activité sera créée après sync)
             if (field === 'photos_sur_site' && Array.isArray(value) && value.length > 0) {
                 const newPhoto = value[value.length - 1];
-                const newActivity = {
-                    id: Date.now(),
-                    content: newPhoto.url,
-                    type: 'image',
-                    createdAt: new Date().toISOString(),
-                    date: Date.now(),
-                    author: authorName
-                };
-                const updatedComments = r.comments ? [...r.comments, newActivity] : [newActivity];
-                updatedRow = { ...updatedRow, comments: updatedComments };
+                if (!newPhoto.pending) {
+                    const newActivity = {
+                        id: Date.now(),
+                        content: newPhoto.url,
+                        type: 'image',
+                        createdAt: new Date().toISOString(),
+                        date: Date.now(),
+                        author: authorName
+                    };
+                    const updatedComments = r.comments ? [...r.comments, newActivity] : [newActivity];
+                    updatedRow = { ...updatedRow, comments: updatedComments };
+                }
             }
 
             return updatedRow;
@@ -494,7 +497,8 @@ function MinuteGrid({
         const cols = schemaToGridCols(
             schema, enableCellFormulas, handleOpenDetail,
             catalog, railOptions, handlePhotoChange,
-            onDuplicateRow, hideCroquis, readOnly, title
+            onDuplicateRow, hideCroquis, readOnly, title,
+            projectId
         );
 
         const withWidths = cols.map(col => {

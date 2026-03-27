@@ -103,7 +103,8 @@ export function schemaToGridCols(
   onDuplicate,
   hideCroquis = false,
   readOnly = false,
-  gridTitle = ''
+  gridTitle = '',
+  projectId = null
 ) {
   if (!Array.isArray(schema)) return [];
 
@@ -240,9 +241,8 @@ export function schemaToGridCols(
       gridCol.cellRenderer = (params) => (
         <GridPhotoCell
           value={params.value}
-          rowId={params.data?.id}
-          field={params.colDef?.field}
           onImageUpload={(newVal) => onPhotoChange && onPhotoChange(params.data?.id, params.colDef?.field, newVal)}
+          offlineContext={projectId ? { projectId, rowId: params.data?.id, fieldKey: params.colDef?.field } : undefined}
         />
       );
       gridCol.editable = false;

@@ -1,8 +1,10 @@
 import React, { useRef, useState } from 'react';
 import { Plus } from 'lucide-react';
 import { COLORS } from '../../lib/constants/ui';
-import ImageLightbox from './ImageLightbox'; // Import du nouveau composant
-import { useAuth } from '../../auth'; // <--- Import
+import ImageLightbox from './ImageLightbox';
+import { useAuth } from '../../auth';
+import { supabase } from '../../lib/supabaseClient';
+import { blobToBase64, queuePhoto } from '../../lib/syncQueue';
 
 const normalizePhoto = (item) => {
     if (typeof item === 'string') {
@@ -11,24 +13,11 @@ const normalizePhoto = (item) => {
     return item;
 };
 
-import { supabase } from '../../lib/supabaseClient'; // <--- Import Supabase
-
-// ... imports remain the same
-
-// Add style for spinner
-if (typeof document !== 'undefined') {
-    const styleSheet = document.createElement("style");
-    styleSheet.innerText = `
-@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-`;
-    document.head.appendChild(styleSheet);
-}
-
-export default function GridPhotoCell({ value, onImageUpload, onCustomAdd }) {
+export default function GridPhotoCell({ value, onImageUpload, onCustomAdd, offlineContext }) {
     const fileInputRef = useRef(null);
     const [isOpen, setIsOpen] = useState(false);
     const [currentIndex, setCurrentIndex] = useState(0);
-    const [uploading, setUploading] = useState(false); // <--- Loading State
+    const [uploading, setUploading] = useState(false);
     const { currentUser } = useAuth();
 
     const rawArray = Array.isArray(value) ? value : (value ? [value] : []);
@@ -56,7 +45,7 @@ export default function GridPhotoCell({ value, onImageUpload, onCustomAdd }) {
         img.src = objectUrl;
     });
 
-    // Fonction d'upload vers Supabase
+    // Upload vers Supabase Storage
     const uploadToSupabase = async (file) => {
         const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.jpg`;
         const filePath = `minutes/${fileName}`;
@@ -65,10 +54,7 @@ export default function GridPhotoCell({ value, onImageUpload, onCustomAdd }) {
             .from('attachments')
             .upload(filePath, file);
 
-        if (uploadError) {
-            console.error('Error uploading image:', uploadError);
-            throw uploadError;
-        }
+        if (uploadError) throw uploadError;
 
         const { data: { publicUrl } } = supabase.storage
             .from('attachments')
@@ -85,17 +71,46 @@ export default function GridPhotoCell({ value, onImageUpload, onCustomAdd }) {
         try {
             setUploading(true);
             const compressed = await compressImage(file);
-            const publicUrl = await uploadToSupabase(compressed);
 
-            const newPhoto = {
-                url: publicUrl,
-                timestamp: new Date().toISOString(),
-                user: currentUser?.name || "Utilisateur",
-                id: Date.now()
-            };
-            if (onImageUpload) onImageUpload([...rawArray, newPhoto]);
-        } catch (error) {
-            alert("Erreur lors de l'upload de l'image.");
+            try {
+                // Tentative d'upload en ligne
+                const publicUrl = await uploadToSupabase(compressed);
+                const newPhoto = {
+                    url: publicUrl,
+                    timestamp: new Date().toISOString(),
+                    user: currentUser?.name || 'Utilisateur',
+                    id: Date.now(),
+                };
+                if (onImageUpload) onImageUpload([...rawArray, newPhoto]);
+            } catch {
+                // Hors ligne : stocker en base64 + afficher en pending
+                if (!offlineContext?.projectId || !offlineContext?.rowId || !offlineContext?.fieldKey) {
+                    alert("Impossible d'ajouter une photo hors ligne ici. Reconnectez-vous et réessayez.");
+                    return;
+                }
+                const base64 = await blobToBase64(compressed);
+                const localId = `pending_${Date.now()}`;
+                const photoMeta = {
+                    timestamp: new Date().toISOString(),
+                    user: currentUser?.name || 'Utilisateur',
+                };
+                await queuePhoto(
+                    offlineContext.projectId,
+                    offlineContext.rowId,
+                    offlineContext.fieldKey,
+                    localId,
+                    base64,
+                    photoMeta,
+                );
+                const pendingPhoto = {
+                    url: base64,
+                    id: localId,
+                    pending: true,
+                    timestamp: photoMeta.timestamp,
+                    user: photoMeta.user,
+                };
+                if (onImageUpload) onImageUpload([...rawArray, pendingPhoto]);
+            }
         } finally {
             setUploading(false);
         }
@@ -122,11 +137,21 @@ export default function GridPhotoCell({ value, onImageUpload, onCustomAdd }) {
                     key={photo.id || idx}
                     onClick={(e) => { e.stopPropagation(); setCurrentIndex(idx); setIsOpen(true); }}
                     style={{
+                        position: 'relative',
                         width: 30, height: 30, flexShrink: 0, borderRadius: 4,
-                        border: `1px solid ${COLORS.border}`,
-                        backgroundImage: `url(${photo.url})`, backgroundSize: 'cover', backgroundPosition: 'center', cursor: 'pointer'
+                        border: `1px solid ${photo.pending ? '#f59e0b' : COLORS.border}`,
+                        backgroundImage: `url(${photo.url})`, backgroundSize: 'cover', backgroundPosition: 'center', cursor: 'pointer',
                     }}
-                />
+                >
+                    {photo.pending && (
+                        <div style={{
+                            position: 'absolute', inset: 0, borderRadius: 3,
+                            background: 'rgba(245,158,11,0.45)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontSize: 12,
+                        }} title="Photo en attente de synchronisation">⏳</div>
+                    )}
+                </div>
             ))}
 
             <button
@@ -138,14 +163,14 @@ export default function GridPhotoCell({ value, onImageUpload, onCustomAdd }) {
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     cursor: uploading ? 'wait' : 'pointer',
                     background: '#F9FAFB', color: '#6B7280',
-                    opacity: uploading ? 0.5 : 1
+                    opacity: uploading ? 0.5 : 1,
                 }}
             >
                 {uploading ? (
                     <div style={{
                         width: 14, height: 14,
                         border: '2px solid #ccc', borderTopColor: '#333',
-                        borderRadius: '50%', animation: 'spin 1s linear infinite'
+                        borderRadius: '50%', animation: 'spin 1s linear infinite',
                     }} />
                 ) : (
                     <Plus size={14} />
