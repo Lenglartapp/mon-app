@@ -26,7 +26,6 @@ export function usePerformanceEntries() {
       commentaire: entry.commentaire || '',
       has_sav: entry.has_sav || false,
       heures_sav: entry.heures_sav || 0,
-      updated_by: currentUserName,
       updated_at: new Date().toISOString(),
     };
 
@@ -37,6 +36,7 @@ export function usePerformanceEntries() {
         .update(payload)
         .eq('id', entry.id)
         .select();
+      if (error) console.error('[Performance] UPDATE error:', error, payload);
       if (!error && data?.[0]) {
         setEntries(prev => prev.map(e => e.id === entry.id ? data[0] : e));
       }
@@ -47,6 +47,7 @@ export function usePerformanceEntries() {
         .from('performance_entries')
         .upsert([payload], { onConflict: 'project_id,service' })
         .select();
+      if (error) console.error('[Performance] UPSERT error:', error, payload);
       if (!error && data?.[0]) {
         setEntries(prev => {
           const exists = prev.find(e => e.project_id === payload.project_id && e.service === payload.service);

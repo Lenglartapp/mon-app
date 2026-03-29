@@ -2,6 +2,8 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Plus, Truck, Package, Search, X, Check, Trash2, PackagePlus, ChevronRight, FileText, Box, Weight } from 'lucide-react';
 import { useShipments, isRideauVoilage } from '../hooks/useShipments';
+import { useAuth } from '../auth';
+import { can } from '../lib/authz';
 
 const slugify = (str) =>
     (str || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
@@ -369,7 +371,7 @@ function CreateColisModal({ onClose, onCreate }) {
 }
 
 // ── Section Répartition ───────────────────────────────────────────────────────
-function ColisSection({ shipmentId, shipmentItems, colisItems, isExpediee, onCreateColis, onUpdateColis, onDeleteColis, onToggleItem }) {
+function ColisSection({ shipmentId, shipmentItems, colisItems, isExpediee, onCreateColis, onUpdateColis, onDeleteColis, onToggleItem, canEdit }) {
     const [showCreate, setShowCreate] = useState(false);
     const [expandedColisId, setExpandedColisId] = useState(null);
 
@@ -389,7 +391,7 @@ function ColisSection({ shipmentId, shipmentItems, colisItems, isExpediee, onCre
                 <div style={{ fontWeight: 700, fontSize: 13, color: '#374151' }}>
                     RÉPARTITION <span style={{ color: '#9CA3AF', fontWeight: 400 }}>({colisItems.length} colis)</span>
                 </div>
-                {!isExpediee && (
+                {!isExpediee && canEdit && (
                     <button onClick={() => setShowCreate(true)} style={{ ...btnSecondary, fontSize: 12, display: 'flex', alignItems: 'center', gap: 5 }}>
                         <Box size={13} /> Ajouter un colis
                     </button>
@@ -424,7 +426,7 @@ function ColisSection({ shipmentId, shipmentItems, colisItems, isExpediee, onCre
                                     </div>
                                     <span style={{ fontSize: 11, color: '#9CA3AF' }}>{assignedItems.length} item{assignedItems.length !== 1 ? 's' : ''}</span>
                                     <span style={{ fontSize: 12, color: '#9CA3AF', transform: isOpen ? 'rotate(90deg)' : 'none', display: 'inline-block', transition: 'transform 0.15s' }}>›</span>
-                                    {!isExpediee && (
+                                    {!isExpediee && canEdit && (
                                         <button onClick={e => { e.stopPropagation(); if (window.confirm('Supprimer ce colis ?')) onDeleteColis(c.id); }}
                                             style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#E5E7EB', padding: 2, marginLeft: 4 }}>
                                             <Trash2 size={13} />
@@ -441,7 +443,7 @@ function ColisSection({ shipmentId, shipmentItems, colisItems, isExpediee, onCre
                                                 {assignedItems.map(item => (
                                                     <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 8px', borderRadius: 6, background: '#F5F3FF' }}>
                                                         <span style={{ fontSize: 12, flex: 1, color: '#374151' }}>{labelForItem(item)}</span>
-                                                        {!isExpediee && (
+                                                        {!isExpediee && canEdit && (
                                                             <button onClick={() => onToggleItem(c.id, item.id)}
                                                                 style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', padding: 0, fontSize: 14, lineHeight: 1 }}>
                                                                 ×
@@ -453,7 +455,7 @@ function ColisSection({ shipmentId, shipmentItems, colisItems, isExpediee, onCre
                                         )}
 
                                         {/* Ajouter des items depuis l'expédition */}
-                                        {!isExpediee && unassignedItems.length > 0 && (
+                                        {!isExpediee && canEdit && unassignedItems.length > 0 && (
                                             <div>
                                                 <div style={{ fontSize: 11, color: '#9CA3AF', fontWeight: 600, marginBottom: 4 }}>AJOUTER DANS CE COLIS</div>
                                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -492,7 +494,7 @@ function ColisSection({ shipmentId, shipmentItems, colisItems, isExpediee, onCre
 }
 
 // ── Vue Détail expédition ─────────────────────────────────────────────────────
-function ShipmentDetail({ shipment, shipmentItems, colisItems, projects, onBack, onUpdateShipment, onAddItems, onRemoveItem, onValidate, onDelete, onCreateColis, onUpdateColis, onDeleteColis, onToggleItem }) {
+function ShipmentDetail({ shipment, shipmentItems, colisItems, projects, onBack, onUpdateShipment, onAddItems, onRemoveItem, onValidate, onDelete, onCreateColis, onUpdateColis, onDeleteColis, onToggleItem, canEdit }) {
     const [showPicker, setShowPicker] = useState(false);
     const [showFreeItem, setShowFreeItem] = useState(false);
     const [editingStatut, setEditingStatut] = useState(false);
@@ -546,7 +548,7 @@ function ShipmentDetail({ shipment, shipmentItems, colisItems, projects, onBack,
                         <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8, flexWrap: 'wrap' }}>
                             {/* Statut cliquable */}
                             <div style={{ position: 'relative' }}>
-                                <button onClick={() => !isExpediee && setEditingStatut(v => !v)} style={{ background: 'none', border: 'none', cursor: isExpediee ? 'default' : 'pointer', padding: 0 }}>
+                                <button onClick={() => !isExpediee && canEdit && setEditingStatut(v => !v)} style={{ background: 'none', border: 'none', cursor: (isExpediee || !canEdit) ? 'default' : 'pointer', padding: 0 }}>
                                     {pill(shipment.statut, STATUT_STYLE[shipment.statut] || STATUT_STYLE['Brouillon'])}
                                 </button>
                                 {editingStatut && (
@@ -565,14 +567,16 @@ function ShipmentDetail({ shipment, shipmentItems, colisItems, projects, onBack,
                         {shipment.notes && <div style={{ fontSize: 13, color: '#6B7280', marginTop: 6, fontStyle: 'italic' }}>{shipment.notes}</div>}
                     </div>
                     <div style={{ display: 'flex', gap: 8 }}>
-                        {!isExpediee && (
+                        {!isExpediee && canEdit && (
                             <button onClick={handleValidate} style={{ ...btnPrimary, background: '#1E2447' }}>
                                 <Truck size={14} /> Valider expédition
                             </button>
                         )}
-                        <button onClick={handleDelete} style={{ ...btnSecondary, color: '#EF4444', borderColor: '#FEE2E2' }}>
-                            <Trash2 size={14} />
-                        </button>
+                        {canEdit && (
+                            <button onClick={handleDelete} style={{ ...btnSecondary, color: '#EF4444', borderColor: '#FEE2E2' }}>
+                                <Trash2 size={14} />
+                            </button>
+                        )}
                     </div>
                 </div>
 
@@ -582,7 +586,7 @@ function ShipmentDetail({ shipment, shipmentItems, colisItems, projects, onBack,
                         <div style={{ fontWeight: 700, fontSize: 13, color: '#374151' }}>
                             OUVRAGES <span style={{ color: '#9CA3AF', fontWeight: 400 }}>({ouvrageItems.length})</span>
                         </div>
-                        {!isExpediee && (
+                        {!isExpediee && canEdit && (
                             <button onClick={() => setShowPicker(true)} style={{ ...btnSecondary, fontSize: 12, display: 'flex', alignItems: 'center', gap: 5 }}>
                                 <PackagePlus size={13} /> Ajouter des ouvrages
                             </button>
@@ -597,7 +601,7 @@ function ShipmentDetail({ shipment, shipmentItems, colisItems, projects, onBack,
                                     <TH>Pièce</TH>
                                     <TH>Produit</TH>
                                     <TH>Projet</TH>
-                                    {!isExpediee && <TH style={{ width: 40 }} />}
+                                    {!isExpediee && canEdit && <TH style={{ width: 40 }} />}
                                 </tr>
                             </thead>
                             <tbody>
@@ -617,7 +621,7 @@ function ShipmentDetail({ shipment, shipmentItems, colisItems, projects, onBack,
                                                 )}
                                             </td>
                                             <td style={{ padding: '10px 16px', fontSize: 12, color: '#9CA3AF' }}>{projectName(item.project_id)}</td>
-                                            {!isExpediee && (
+                                            {!isExpediee && canEdit && (
                                                 <td style={{ padding: '10px 16px' }}>
                                                     <button onClick={() => onRemoveItem(item.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#D1D5DB', padding: 2 }}>
                                                         <X size={14} />
@@ -638,7 +642,7 @@ function ShipmentDetail({ shipment, shipmentItems, colisItems, projects, onBack,
                         <div style={{ fontWeight: 700, fontSize: 13, color: '#374151' }}>
                             ITEMS LIBRES <span style={{ color: '#9CA3AF', fontWeight: 400 }}>({libreItems.length})</span>
                         </div>
-                        {!isExpediee && (
+                        {!isExpediee && canEdit && (
                             <button onClick={() => setShowFreeItem(true)} style={{ ...btnSecondary, fontSize: 12, display: 'flex', alignItems: 'center', gap: 5 }}>
                                 <Plus size={13} /> Ajouter un item
                             </button>
@@ -653,7 +657,7 @@ function ShipmentDetail({ shipment, shipmentItems, colisItems, projects, onBack,
                                     <TH>Description</TH>
                                     <TH>Quantité</TH>
                                     <TH>Notes</TH>
-                                    {!isExpediee && <TH style={{ width: 40 }} />}
+                                    {!isExpediee && canEdit && <TH style={{ width: 40 }} />}
                                 </tr>
                             </thead>
                             <tbody>
@@ -662,7 +666,7 @@ function ShipmentDetail({ shipment, shipmentItems, colisItems, projects, onBack,
                                         <td style={{ padding: '10px 16px', fontSize: 13, fontWeight: 600 }}>{item.description}</td>
                                         <td style={{ padding: '10px 16px', fontSize: 13, color: '#6B7280' }}>{item.quantite || '—'}</td>
                                         <td style={{ padding: '10px 16px', fontSize: 12, color: '#9CA3AF' }}>{item.notes || '—'}</td>
-                                        {!isExpediee && (
+                                        {!isExpediee && canEdit && (
                                             <td style={{ padding: '10px 16px' }}>
                                                 <button onClick={() => onRemoveItem(item.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#D1D5DB', padding: 2 }}>
                                                     <X size={14} />
@@ -686,6 +690,7 @@ function ShipmentDetail({ shipment, shipmentItems, colisItems, projects, onBack,
                     onUpdateColis={onUpdateColis}
                     onDeleteColis={onDeleteColis}
                     onToggleItem={onToggleItem}
+                    canEdit={canEdit}
                 />
             </div>
 
@@ -700,7 +705,7 @@ function ShipmentDetail({ shipment, shipmentItems, colisItems, projects, onBack,
 }
 
 // ── Vue liste (tableau style ProjectList) ─────────────────────────────────────
-function ShipmentList({ shipments, items, projects, onSelect, onDelete, onUpdateShipment }) {
+function ShipmentList({ shipments, items, projects, onSelect, onDelete, onUpdateShipment, canEdit }) {
     const [search, setSearch] = useState('');
     const [filterStatut, setFilterStatut] = useState('');
     const [filterProject, setFilterProject] = useState('');
@@ -823,7 +828,7 @@ function ShipmentList({ shipments, items, projects, onSelect, onDelete, onUpdate
                                                 <select
                                                     value={s.statut || 'Brouillon'}
                                                     onChange={e => onUpdateShipment(s.id, { statut: e.target.value })}
-                                                    disabled={s.statut === 'Expédiée'}
+                                                    disabled={s.statut === 'Expédiée' || !canEdit}
                                                     style={{
                                                         appearance: 'none', padding: '5px 12px', borderRadius: 20,
                                                         border: '1px solid #E5E7EB', background: 'white',
@@ -836,9 +841,11 @@ function ShipmentList({ shipments, items, projects, onSelect, onDelete, onUpdate
                                                 </select>
                                             </td>
                                             <td style={{ padding: '12px 16px' }} onClick={e => e.stopPropagation()}>
-                                                <button onClick={e => handleDelete(e, s.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#D1D5DB', padding: 4 }}>
-                                                    <Trash2 size={14} />
-                                                </button>
+                                                {canEdit && (
+                                                    <button onClick={e => handleDelete(e, s.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#D1D5DB', padding: 4 }}>
+                                                        <Trash2 size={14} />
+                                                    </button>
+                                                )}
                                             </td>
                                         </tr>
                                     );
@@ -862,6 +869,8 @@ const TABS = [
 export default function LogistiqueScreen({ projects, onUpdateProject, onBack }) {
     const navigate = useNavigate();
     const location = useLocation();
+    const { currentUser } = useAuth();
+    const canEdit = can(currentUser, 'logistique.edit');
 
     const {
         shipments, items, loading,
@@ -940,6 +949,7 @@ export default function LogistiqueScreen({ projects, onUpdateProject, onBack }) 
                 onUpdateColis={updateColis}
                 onDeleteColis={deleteColis}
                 onToggleItem={toggleItemInColis}
+                canEdit={canEdit}
             />
         );
     }
@@ -958,7 +968,7 @@ export default function LogistiqueScreen({ projects, onUpdateProject, onBack }) 
                         <h1 style={{ fontSize: 32, fontWeight: 800, color: '#111827', margin: 0, letterSpacing: '-0.5px' }}>Logistique</h1>
                         <p style={{ fontSize: 14, color: '#6B7280', margin: '4px 0 0' }}>Gestion des expéditions et suivi logistique</p>
                     </div>
-                    {tabKey === 'expeditions' && (
+                    {tabKey === 'expeditions' && canEdit && (
                         <button onClick={() => setShowCreate(true)} style={{ ...btnPrimary, background: '#1E2447', padding: '10px 20px', fontSize: 14, fontWeight: 600, boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
                             <Plus size={16} /> Nouvelle expédition
                         </button>
@@ -1020,6 +1030,7 @@ export default function LogistiqueScreen({ projects, onUpdateProject, onBack }) 
                                     onSelect={handleSelect}
                                     onDelete={deleteShipment}
                                     onUpdateShipment={updateShipment}
+                                    canEdit={canEdit}
                                 />
                             )}
                         </div>

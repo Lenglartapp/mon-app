@@ -26,6 +26,8 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
     const { users: authUsers, currentUser } = useAuth();
     const canEdit = can(currentUser, 'planning.edit');
     const showGauges = can(currentUser, 'planning.view_gauges');
+    const canManageTeam = can(currentUser, 'planning.manage_team');
+    const canViewAssistant = can(currentUser, 'planning.view_assistant');
 
     // STATE LOCAL USERS (pour permettre renommage en pseudo temps réel)
     const [localUsers, setLocalUsers] = useState(authUsers || []);
@@ -1171,6 +1173,8 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                 onToggleMyView={handleToggleMyView}
                 onDownloadTemplate={canEdit ? handleDownloadTemplate : undefined}
                 onImport={canEdit ? handleImport : undefined}
+                canManageTeam={canManageTeam}
+                canViewAssistant={canViewAssistant}
             />
 
             <EventModal
