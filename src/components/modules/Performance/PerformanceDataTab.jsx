@@ -91,11 +91,16 @@ function RaisonsCell({ raisons, onSave }) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(raisons || []);
   const [autre, setAutre] = useState('');
+  const [pos, setPos] = useState({ top: 0, left: 0 });
+  const [displayed, setDisplayed] = useState(raisons || []);
   const ref = useRef();
+  const triggerRef = useRef();
+
+  useEffect(() => { setDisplayed(raisons || []); }, [raisons]);
 
   useEffect(() => {
     if (!open) return;
-    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) commit(); };
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target) && !triggerRef.current?.contains(e.target)) commit(); };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [open, draft, autre]);
@@ -105,16 +110,23 @@ function RaisonsCell({ raisons, onSave }) {
   const commit = () => {
     const final = draft.filter(r => r !== 'Autre')
       .concat(draft.includes('Autre') && autre.trim() ? [autre.trim()] : []);
+    setDisplayed(final);
     onSave(final);
     setOpen(false);
   };
 
-  const displayed = (raisons || []);
+  const handleOpen = () => {
+    const rect = triggerRef.current?.getBoundingClientRect();
+    if (rect) setPos({ top: rect.bottom + 4, left: rect.left });
+    setDraft(raisons || []);
+    setOpen(true);
+  };
 
   return (
-    <div ref={ref} style={{ position: 'relative' }}>
+    <div style={{ position: 'relative' }}>
       <div
-        onClick={() => { setDraft(raisons || []); setOpen(true); }}
+        ref={triggerRef}
+        onClick={handleOpen}
         style={{ cursor: 'pointer', display: 'flex', flexWrap: 'wrap', gap: 4, minWidth: 80, padding: '3px 6px', borderRadius: 6, border: '1px solid transparent', transition: 'border 0.15s' }}
         onMouseEnter={e => e.currentTarget.style.border = '1px solid #E5E7EB'}
         onMouseLeave={e => !open && (e.currentTarget.style.border = '1px solid transparent')}
@@ -124,7 +136,7 @@ function RaisonsCell({ raisons, onSave }) {
           : displayed.map(r => <span key={r} style={{ background: '#F3F4F6', color: '#374151', borderRadius: 4, padding: '2px 6px', fontSize: 11 }}>{r}</span>)}
       </div>
       {open && (
-        <div style={{ position: 'absolute', top: '100%', left: 0, zIndex: 200, background: 'white', border: '1px solid #E5E7EB', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', padding: 12, minWidth: 260 }}>
+        <div ref={ref} style={{ position: 'fixed', top: pos.top, left: pos.left, zIndex: 9999, background: 'white', border: '1px solid #E5E7EB', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', padding: 12, minWidth: 260 }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', marginBottom: 8 }}>Raisons</div>
           {RAISONS_CATALOGUE.map(r => (
             <label key={r} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 4px', cursor: 'pointer', fontSize: 13, color: '#374151', borderRadius: 4 }}

@@ -111,7 +111,7 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
                 resourceIds: selectedResources,
                 startDate,
                 startTime,
-                endDate: isHourMode ? startDate : endDate, // mode durée : pas de multi-jours
+                endDate: endDate,
                 endTime,
                 durationHours: isHourMode ? parseFloat(durationHours) || 8 : null,
                 description,
@@ -193,21 +193,36 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
                         {/* 2. DATES & HEURES / DURÉE */}
                         <div>
                             <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 8, color: '#374151' }}>
-                                {isHourMode ? 'Date et durée' : 'Période d\'intervention'}
+                                {isHourMode ? 'Période et durée journalière' : 'Période d\'intervention'}
                             </label>
 
                             {isHourMode ? (
                                 /* MODE DURÉE — conf & prepa */
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                    {/* Date */}
+                                    {/* Date début */}
                                     <div style={{ flex: 1, display: 'flex', alignItems: 'center', border: '1px solid #E5E7EB', borderRadius: 8, padding: '10px 12px', background: '#F9FAFB' }}>
                                         <CalendarIcon size={16} color="#6B7280" style={{ marginRight: 8, flexShrink: 0 }} />
                                         <input
-                                            type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
+                                            type="date" value={startDate} onChange={e => {
+                                                setStartDate(e.target.value);
+                                                if (e.target.value > endDate) setEndDate(e.target.value);
+                                            }}
                                             style={{ ...dateTimeInputStyle, flex: 1, minWidth: 0 }}
                                         />
                                     </div>
-                                    {/* Durée */}
+
+                                    <ArrowRight size={18} color="#9CA3AF" />
+
+                                    {/* Date fin */}
+                                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', border: '1px solid #E5E7EB', borderRadius: 8, padding: '10px 12px', background: '#F9FAFB' }}>
+                                        <CalendarIcon size={16} color="#6B7280" style={{ marginRight: 8, flexShrink: 0 }} />
+                                        <input
+                                            type="date" value={endDate} min={startDate} onChange={e => setEndDate(e.target.value)}
+                                            style={{ ...dateTimeInputStyle, flex: 1, minWidth: 0 }}
+                                        />
+                                    </div>
+
+                                    {/* Durée par jour */}
                                     <div style={{ display: 'flex', alignItems: 'center', border: '1px solid #E5E7EB', borderRadius: 8, padding: '10px 12px', background: '#F9FAFB', gap: 8 }}>
                                         <Clock size={16} color="#6B7280" style={{ flexShrink: 0 }} />
                                         <input
@@ -217,7 +232,7 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
                                             onChange={e => setDurationHours(e.target.value)}
                                             style={{ ...dateTimeInputStyle, width: 48, textAlign: 'center' }}
                                         />
-                                        <span style={{ fontSize: 13, color: '#6B7280', fontWeight: 500 }}>h</span>
+                                        <span style={{ fontSize: 13, color: '#6B7280', fontWeight: 500 }}>h/j</span>
                                     </div>
                                 </div>
                             ) : (
@@ -282,7 +297,7 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
                                             <div style={{ padding: '8px 12px', background: '#F3F4F6', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#6B7280', borderRadius: 4, margin: 4 }}>
                                                 {groupsConfig[grpKey].label}
                                             </div>
-                                            {groupsConfig[grpKey].members.map(member => (
+                                            {groupsConfig[grpKey].members.filter(m => m.id !== 'backlog_confection').map(member => (
                                                 <div
                                                     key={member.id}
                                                     onClick={() => toggleResource(member.id)}

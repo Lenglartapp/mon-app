@@ -208,7 +208,9 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
   }, [highlightRowId]);
 
   const { currentUser } = useAuth();
-  const canEditProd = can(currentUser, "production.edit");
+  const canEditProd = can(currentUser, "production.edit") ||
+    (stage === 'prise' && can(currentUser, 'production.edit.prise_de_cotes')) ||
+    (stage === 'suivi' && can(currentUser, 'production.edit.suivi_projet'));
   const seeChiffrage = can(currentUser, "chiffrage.view");
 
   // --- CALCUL REALISÉ (Temps Réel) ---

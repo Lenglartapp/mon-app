@@ -26,6 +26,8 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
     const { users: authUsers, currentUser } = useAuth();
     const canEdit = can(currentUser, 'planning.edit');
     const showGauges = can(currentUser, 'planning.view_gauges');
+    const canManageTeam = can(currentUser, 'planning.manage_team');
+    const canViewAssistant = can(currentUser, 'planning.view_assistant');
 
     // STATE LOCAL USERS (pour permettre renommage en pseudo temps réel)
     const [localUsers, setLocalUsers] = useState(authUsers || []);
@@ -610,7 +612,6 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
         }
 
         const days = eachDayOfInterval({ start: parseISO(eventData.startDate), end: parseISO(eventData.endDate) });
-        const seriesId = uid();
         const createdEvents = [];
 
         // Helper : calcule l'heure de fin à partir d'une durée en heures (en sautant la pause déjeuner 12-13)
@@ -638,10 +639,13 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
 
         const isHourMode = eventData.durationHours != null && ['conf', 'prepa'].includes(eventData.type);
 
-        days.forEach(d => {
-            if (!showWeekends && isWeekend(d)) return;
+        // Un seriesId par ressource : les jours d'une même personne sont groupés,
+        // mais deux personnes planifiées ensemble restent indépendantes.
+        eventData.resourceIds.forEach(resId => {
+            const seriesId = uid();
 
-            eventData.resourceIds.forEach(resId => {
+            days.forEach(d => {
+            if (!showWeekends && isWeekend(d)) return;
                 const assignedUser = localUsers.find(u => u.id === resId);
                 const assignedName = assignedUser ? `${assignedUser.first_name} ${assignedUser.last_name || ''}`.trim() : 'Inconnu';
 
@@ -1171,6 +1175,8 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                 onToggleMyView={handleToggleMyView}
                 onDownloadTemplate={canEdit ? handleDownloadTemplate : undefined}
                 onImport={canEdit ? handleImport : undefined}
+                canManageTeam={canManageTeam}
+                canViewAssistant={canViewAssistant}
             />
 
             <EventModal

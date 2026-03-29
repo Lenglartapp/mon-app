@@ -2,6 +2,9 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Plus, Truck, Package, Search, X, Check, Trash2, PackagePlus, ChevronRight, FileText, Box, Weight } from 'lucide-react';
 import { useShipments, isRideauVoilage } from '../hooks/useShipments';
+import { useStocks } from '../hooks/useSupabase';
+import { useAuth } from '../auth';
+import { can } from '../lib/authz';
 
 const slugify = (str) =>
     (str || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
@@ -9,6 +12,12 @@ import LogistiqueAnalyseView from '../components/modules/Logistique/LogistiqueAn
 
 // ── Constantes ────────────────────────────────────────────────────────────────
 const STATUTS = ['Brouillon', 'En préparation', 'Expédiée'];
+const OPERATORS = [
+    'Elisa Laprune', 'Guillaume Mailly', 'David Vergel', 'Lucie Jaulin', 'Maelane Poulaud',
+    'Thomas Bonnet', 'Delphine Butez', 'Catherine Bosse', 'Thierry Menant', 'Alain Houdemont',
+    'Nicolas Podyma', 'Audry Papin', 'Julie Rabin', 'Alison Gloaguen', 'Samuel Blandin',
+    'Emilie David', 'Emmanuel Peltier', 'Malcolm Jeantal', 'Florence Gobbe',
+].sort();
 
 const STATUT_STYLE = {
     'Brouillon':       { bg: '#F3F4F6', color: '#6B7280' },
@@ -63,14 +72,21 @@ function Modal({ title, onClose, children, width = 520 }) {
 }
 
 // ── Formulaire création expédition ────────────────────────────────────────────
-function CreateShipmentModal({ onClose, onCreate }) {
-    const [form, setForm] = useState({ label: '', reference: '', destination: '', notes: '', date_expedition: '' });
+function CreateShipmentModal({ onClose, onCreate, projects }) {
+    const [form, setForm] = useState({ label: '', destination: '', date_expedition: '', operateur: 'David Vergel' });
+    const [selectedProjectIds, setSelectedProjectIds] = useState([]);
     const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+    const toggleProject = (id) => {
+        setSelectedProjectIds(prev =>
+            prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+        );
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         const result = await onCreate(form);
-        if (result) onClose(result);
+        if (result) onClose({ shipment: result, projectIds: selectedProjectIds });
     };
 
     return (
@@ -80,10 +96,21 @@ function CreateShipmentModal({ onClose, onCreate }) {
                     <label style={labelStyle}>Nom de l'expédition</label>
                     <input style={inputStyle} placeholder="ex: Livraison chantier Dupont" value={form.label} onChange={e => set('label', e.target.value)} required autoFocus />
                 </div>
+                <div>
+                    <label style={labelStyle}>Opérateur</label>
+                    <select style={inputStyle} value={form.operateur} onChange={e => set('operateur', e.target.value)}>
+                        {OPERATORS.map(name => <option key={name} value={name}>{name}</option>)}
+                    </select>
+                </div>
                 <div style={{ display: 'flex', gap: 12 }}>
                     <div style={{ flex: 1 }}>
-                        <label style={labelStyle}>Référence (laissez vide pour auto)</label>
-                        <input style={inputStyle} placeholder="EXP-2026-001" value={form.reference} onChange={e => set('reference', e.target.value)} />
+                        <label style={labelStyle}>Référence</label>
+                        <input
+                            style={{ ...inputStyle, background: '#F3F4F6', color: '#9CA3AF', cursor: 'not-allowed' }}
+                            value="Auto-générée"
+                            readOnly
+                            disabled
+                        />
                     </div>
                     <div style={{ flex: 1 }}>
                         <label style={labelStyle}>Date d'expédition</label>
@@ -94,10 +121,40 @@ function CreateShipmentModal({ onClose, onCreate }) {
                     <label style={labelStyle}>Destination</label>
                     <input style={inputStyle} placeholder="Adresse ou nom du chantier" value={form.destination} onChange={e => set('destination', e.target.value)} />
                 </div>
-                <div>
-                    <label style={labelStyle}>Notes</label>
-                    <textarea style={{ ...inputStyle, resize: 'vertical', minHeight: 64 }} placeholder="Code portail, instructions particulières..." value={form.notes} onChange={e => set('notes', e.target.value)} />
-                </div>
+                {projects && projects.length > 0 && (
+                    <div>
+                        <label style={labelStyle}>Projets concernés</label>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 180, overflowY: 'auto', border: '1px solid #E5E7EB', borderRadius: 8, padding: '8px 4px' }}>
+                            {projects.map(p => {
+                                const checked = selectedProjectIds.includes(String(p.id));
+                                return (
+                                    <div
+                                        key={p.id}
+                                        onClick={() => toggleProject(String(p.id))}
+                                        style={{
+                                            display: 'flex', alignItems: 'center', gap: 10,
+                                            padding: '7px 12px', borderRadius: 6, cursor: 'pointer',
+                                            background: checked ? '#EEF2FF' : 'transparent',
+                                            userSelect: 'none',
+                                        }}
+                                        onMouseEnter={e => { if (!checked) e.currentTarget.style.background = '#F9FAFB'; }}
+                                        onMouseLeave={e => { if (!checked) e.currentTarget.style.background = 'transparent'; }}
+                                    >
+                                        <div style={{
+                                            width: 16, height: 16, borderRadius: 4, flexShrink: 0,
+                                            border: `2px solid ${checked ? '#6366F1' : '#D1D5DB'}`,
+                                            background: checked ? '#6366F1' : '#fff',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        }}>
+                                            {checked && <Check size={10} color="#fff" />}
+                                        </div>
+                                        <span style={{ fontSize: 13, fontWeight: checked ? 600 : 400, color: checked ? '#4F46E5' : '#374151' }}>{p.name}</span>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 4 }}>
                     <button type="button" onClick={() => onClose(null)} style={btnSecondary}>Annuler</button>
                     <button type="submit" style={btnPrimary}>Créer</button>
@@ -368,8 +425,211 @@ function CreateColisModal({ onClose, onCreate }) {
     );
 }
 
+// ── Section Rouleaux Tissu ────────────────────────────────────────────────────
+// ── Picker rouleaux de tissu ──────────────────────────────────────────────────
+function RouleauPicker({ onClose, onAdd, projectIds, projects, stocks }) {
+    // Map<key (itemId_pieceId), { stockItem, piece, qty }>
+    const [selection, setSelection] = useState(new Map());
+
+    const selectedProjectNames = useMemo(() => new Set(
+        projectIds.map(id => projects.find(p => String(p.id) === String(id))?.name).filter(Boolean)
+    ), [projectIds, projects]);
+
+    const rouleaux = useMemo(() => stocks.filter(s =>
+        /tissu/i.test(s.category || '') &&
+        (projectIds.length === 0 || selectedProjectNames.has(s.project))
+    ), [stocks, projectIds, selectedProjectNames]);
+
+    const togglePiece = (stockItem, piece) => {
+        const key = `${stockItem.id}_${piece.id}`;
+        setSelection(prev => {
+            const next = new Map(prev);
+            if (next.has(key)) { next.delete(key); }
+            else { next.set(key, { stockItem, piece, qty: piece.qty }); }
+            return next;
+        });
+    };
+
+    const setPieceQty = (stockItem, piece, qty) => {
+        const key = `${stockItem.id}_${piece.id}`;
+        setSelection(prev => {
+            const next = new Map(prev);
+            if (next.has(key)) next.set(key, { ...next.get(key), qty });
+            return next;
+        });
+    };
+
+    const handleAdd = () => {
+        const items = [...selection.values()].map(({ stockItem, piece, qty }) => ({
+            type: 'rouleau',
+            project_id: String(projects.find(p => p.name === stockItem.project)?.id || ''),
+            row_id: stockItem.id,
+            description: stockItem.product,
+            quantite: String(qty),
+            notes: [piece.name, piece.location].filter(Boolean).join(' — ') || 'Sous-traitance',
+        }));
+        onAdd(items);
+    };
+
+    return (
+        <Modal title="Ajouter des rouleaux de tissu" onClose={onClose} width={620}>
+            <div style={{ padding: '16px 24px 24px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {rouleaux.length === 0 ? (
+                    <div style={{ color: '#9CA3AF', fontSize: 13, textAlign: 'center', padding: '32px 0' }}>
+                        {projectIds.length === 0
+                            ? 'Aucun projet associé à cette expédition.'
+                            : 'Aucun rouleau de tissu en stock pour les projets sélectionnés.'}
+                    </div>
+                ) : (
+                    <div style={{ maxHeight: 420, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {rouleaux.map(stockItem => {
+                            const pieces = Array.isArray(stockItem.pieces) && stockItem.pieces.length > 0
+                                ? stockItem.pieces
+                                : [{ id: 'single', qty: stockItem.qty, location: stockItem.location, name: null }];
+                            return (
+                                <div key={stockItem.id} style={{ border: '1px solid #E5E7EB', borderRadius: 10, overflow: 'hidden' }}>
+                                    {/* En-tête rouleau */}
+                                    <div style={{ padding: '9px 14px', background: '#F9FAFB', borderBottom: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', gap: 8 }}>
+                                        <span style={{ fontWeight: 700, fontSize: 13, flex: 1 }}>{stockItem.product}</span>
+                                        {stockItem.project && <span style={{ fontSize: 11, color: '#6B7280' }}>{stockItem.project}</span>}
+                                        <span style={{ fontSize: 11, color: '#9CA3AF' }}>{stockItem.qty} {stockItem.unit} total</span>
+                                    </div>
+                                    {/* Pièces */}
+                                    {pieces.map((piece, idx) => {
+                                        const key = `${stockItem.id}_${piece.id}`;
+                                        const checked = selection.has(key);
+                                        return (
+                                            <div key={piece.id} style={{ borderBottom: idx < pieces.length - 1 ? '1px solid #F3F4F6' : 'none', background: checked ? '#EEF2FF' : 'white' }}>
+                                                <div
+                                                    onClick={() => togglePiece(stockItem, piece)}
+                                                    style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 14px', cursor: 'pointer', userSelect: 'none' }}
+                                                >
+                                                    <div style={{
+                                                        width: 16, height: 16, borderRadius: 4, flexShrink: 0,
+                                                        border: `2px solid ${checked ? '#6366F1' : '#D1D5DB'}`,
+                                                        background: checked ? '#6366F1' : '#fff',
+                                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                    }}>
+                                                        {checked && <Check size={10} color="#fff" />}
+                                                    </div>
+                                                    <div style={{ flex: 1, fontSize: 13 }}>
+                                                        {piece.name
+                                                            ? <span style={{ fontWeight: 600 }}>{piece.name}</span>
+                                                            : <span style={{ color: '#6B7280' }}>Pièce {idx + 1}</span>
+                                                        }
+                                                        <span style={{ color: '#9CA3AF', marginLeft: 6 }}>
+                                                            {piece.qty} {stockItem.unit}
+                                                            {piece.location ? ` · ${piece.location}` : ''}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                {checked && (
+                                                    <div style={{ padding: '4px 14px 10px 40px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                        <span style={{ fontSize: 12, color: '#6B7280' }}>Quantité expédiée :</span>
+                                                        <input
+                                                            type="number"
+                                                            min={0}
+                                                            max={piece.qty}
+                                                            step={0.1}
+                                                            value={selection.get(key).qty}
+                                                            onChange={e => setPieceQty(stockItem, piece, e.target.value)}
+                                                            onClick={e => e.stopPropagation()}
+                                                            style={{ width: 80, padding: '4px 8px', borderRadius: 6, border: '1px solid #6366F1', fontSize: 12, outline: 'none' }}
+                                                        />
+                                                        <span style={{ fontSize: 11, color: '#9CA3AF' }}>{stockItem.unit} (max {piece.qty})</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 4 }}>
+                    <button onClick={onClose} style={btnSecondary}>Annuler</button>
+                    <button
+                        onClick={handleAdd}
+                        disabled={selection.size === 0}
+                        style={{ ...btnPrimary, opacity: selection.size === 0 ? 0.5 : 1 }}
+                    >
+                        Ajouter ({selection.size})
+                    </button>
+                </div>
+            </div>
+        </Modal>
+    );
+}
+
+function RouleauxSection({ shipmentId, rouleauItems, projectIds, projects, stocks, isExpediee, onAddItems, onRemoveItem, canEdit }) {
+    const [showPicker, setShowPicker] = useState(false);
+    const projectName = (projectId) => projects.find(p => String(p.id) === String(projectId))?.name || '—';
+
+    return (
+        <div style={{ background: 'white', borderRadius: 12, boxShadow: '0 1px 3px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
+            <div style={{ padding: '14px 20px', borderBottom: '1px solid #F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ fontWeight: 700, fontSize: 13, color: '#374151' }}>
+                    ROULEAUX TISSU <span style={{ color: '#9CA3AF', fontWeight: 400 }}>({rouleauItems.length})</span>
+                </div>
+                {!isExpediee && canEdit && (
+                    <button onClick={() => setShowPicker(true)} style={{ ...btnSecondary, fontSize: 12, display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <Plus size={13} /> Ajouter des rouleaux
+                    </button>
+                )}
+            </div>
+
+            {rouleauItems.length === 0 ? (
+                <div style={{ padding: '24px', color: '#9CA3AF', fontSize: 13, textAlign: 'center' }}>Aucun rouleau ajouté.</div>
+            ) : (
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead style={{ background: '#F9FAFB' }}>
+                        <tr>
+                            <TH>Rouleau / Pièce</TH>
+                            <TH>Quantité</TH>
+                            <TH>Projet</TH>
+                            {!isExpediee && canEdit && <TH style={{ width: 40 }} />}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {rouleauItems.map(item => (
+                            <tr key={item.id} style={{ borderBottom: '1px solid #F3F4F6' }}>
+                                <td style={{ padding: '10px 16px', fontSize: 13 }}>
+                                    <div style={{ fontWeight: 600 }}>{item.description || '—'}</div>
+                                    {item.notes && item.notes !== 'Sous-traitance' && (
+                                        <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2 }}>{item.notes}</div>
+                                    )}
+                                </td>
+                                <td style={{ padding: '10px 16px', fontSize: 13, color: '#6B7280' }}>{item.quantite || '—'}</td>
+                                <td style={{ padding: '10px 16px', fontSize: 12, color: '#9CA3AF' }}>{projectName(item.project_id)}</td>
+                                {!isExpediee && canEdit && (
+                                    <td style={{ padding: '10px 16px' }}>
+                                        <button onClick={() => onRemoveItem(item.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#D1D5DB', padding: 2 }}>
+                                            <X size={14} />
+                                        </button>
+                                    </td>
+                                )}
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            )}
+
+            {showPicker && (
+                <RouleauPicker
+                    onClose={() => setShowPicker(false)}
+                    onAdd={(items) => { onAddItems(shipmentId, items); setShowPicker(false); }}
+                    projectIds={projectIds}
+                    projects={projects}
+                    stocks={stocks}
+                />
+            )}
+        </div>
+    );
+}
+
 // ── Section Répartition ───────────────────────────────────────────────────────
-function ColisSection({ shipmentId, shipmentItems, colisItems, isExpediee, onCreateColis, onUpdateColis, onDeleteColis, onToggleItem }) {
+function ColisSection({ shipmentId, shipmentItems, colisItems, isExpediee, onCreateColis, onUpdateColis, onDeleteColis, onToggleItem, canEdit }) {
     const [showCreate, setShowCreate] = useState(false);
     const [expandedColisId, setExpandedColisId] = useState(null);
 
@@ -387,9 +647,9 @@ function ColisSection({ shipmentId, shipmentItems, colisItems, isExpediee, onCre
         <div style={{ background: 'white', borderRadius: 12, boxShadow: '0 1px 3px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
             <div style={{ padding: '14px 20px', borderBottom: '1px solid #F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ fontWeight: 700, fontSize: 13, color: '#374151' }}>
-                    RÉPARTITION <span style={{ color: '#9CA3AF', fontWeight: 400 }}>({colisItems.length} colis)</span>
+                    COLISAGE <span style={{ color: '#9CA3AF', fontWeight: 400 }}>({colisItems.length} colis)</span>
                 </div>
-                {!isExpediee && (
+                {!isExpediee && canEdit && (
                     <button onClick={() => setShowCreate(true)} style={{ ...btnSecondary, fontSize: 12, display: 'flex', alignItems: 'center', gap: 5 }}>
                         <Box size={13} /> Ajouter un colis
                     </button>
@@ -424,7 +684,7 @@ function ColisSection({ shipmentId, shipmentItems, colisItems, isExpediee, onCre
                                     </div>
                                     <span style={{ fontSize: 11, color: '#9CA3AF' }}>{assignedItems.length} item{assignedItems.length !== 1 ? 's' : ''}</span>
                                     <span style={{ fontSize: 12, color: '#9CA3AF', transform: isOpen ? 'rotate(90deg)' : 'none', display: 'inline-block', transition: 'transform 0.15s' }}>›</span>
-                                    {!isExpediee && (
+                                    {!isExpediee && canEdit && (
                                         <button onClick={e => { e.stopPropagation(); if (window.confirm('Supprimer ce colis ?')) onDeleteColis(c.id); }}
                                             style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#E5E7EB', padding: 2, marginLeft: 4 }}>
                                             <Trash2 size={13} />
@@ -441,7 +701,7 @@ function ColisSection({ shipmentId, shipmentItems, colisItems, isExpediee, onCre
                                                 {assignedItems.map(item => (
                                                     <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 8px', borderRadius: 6, background: '#F5F3FF' }}>
                                                         <span style={{ fontSize: 12, flex: 1, color: '#374151' }}>{labelForItem(item)}</span>
-                                                        {!isExpediee && (
+                                                        {!isExpediee && canEdit && (
                                                             <button onClick={() => onToggleItem(c.id, item.id)}
                                                                 style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', padding: 0, fontSize: 14, lineHeight: 1 }}>
                                                                 ×
@@ -453,7 +713,7 @@ function ColisSection({ shipmentId, shipmentItems, colisItems, isExpediee, onCre
                                         )}
 
                                         {/* Ajouter des items depuis l'expédition */}
-                                        {!isExpediee && unassignedItems.length > 0 && (
+                                        {!isExpediee && canEdit && unassignedItems.length > 0 && (
                                             <div>
                                                 <div style={{ fontSize: 11, color: '#9CA3AF', fontWeight: 600, marginBottom: 4 }}>AJOUTER DANS CE COLIS</div>
                                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -492,13 +752,28 @@ function ColisSection({ shipmentId, shipmentItems, colisItems, isExpediee, onCre
 }
 
 // ── Vue Détail expédition ─────────────────────────────────────────────────────
-function ShipmentDetail({ shipment, shipmentItems, colisItems, projects, onBack, onUpdateShipment, onAddItems, onRemoveItem, onValidate, onDelete, onCreateColis, onUpdateColis, onDeleteColis, onToggleItem }) {
+function ShipmentDetail({ shipment, shipmentItems, colisItems, projects, onBack, onUpdateShipment, onAddItems, onRemoveItem, onValidate, onDelete, onCreateColis, onUpdateColis, onDeleteColis, onToggleItem, canEdit, initialProjectIds = [], stocks = [], onAddMovement }) {
     const [showPicker, setShowPicker] = useState(false);
     const [showFreeItem, setShowFreeItem] = useState(false);
     const [editingStatut, setEditingStatut] = useState(false);
+    const [notesValue, setNotesValue] = useState(shipment.notes || '');
+
+    // Sync notes si shipment change depuis le parent
+    useEffect(() => { setNotesValue(shipment.notes || ''); }, [shipment.notes]);
+
+    // Projets concernés : initialProjectIds + ceux déduits des items au fil du temps
+    const [projectIds, setProjectIds] = useState(() => {
+        const fromItems = [...new Set(shipmentItems.map(i => i.project_id).filter(Boolean))];
+        return [...new Set([...initialProjectIds, ...fromItems])];
+    });
+    useEffect(() => {
+        const fromItems = [...new Set(shipmentItems.map(i => i.project_id).filter(Boolean))];
+        setProjectIds(prev => [...new Set([...prev, ...fromItems])]);
+    }, [shipmentItems]);
 
     const ouvrageItems = shipmentItems.filter(i => i.type === 'ouvrage');
     const libreItems = shipmentItems.filter(i => i.type === 'libre');
+    const rouleauItems = shipmentItems.filter(i => i.type === 'rouleau');
     const existingRowIds = useMemo(() => new Set(ouvrageItems.map(i => i.row_id)), [ouvrageItems]);
     const isExpediee = shipment.statut === 'Expédiée';
 
@@ -520,6 +795,26 @@ function ShipmentDetail({ shipment, shipmentItems, colisItems, projects, onBack,
     const handleValidate = async () => {
         if (!window.confirm(`Confirmer l'expédition "${shipment.label || shipment.reference}" ?\n\nLes ouvrages inclus seront marqués "Expédié".`)) return;
         await onValidate(shipment.id);
+
+        // Créer des sorties stock pour les rouleaux de tissu
+        if (onAddMovement && rouleauItems.length > 0) {
+            for (const item of rouleauItems) {
+                const stockItem = stocks.find(s => String(s.id) === String(item.row_id));
+                if (stockItem) {
+                    await onAddMovement({
+                        type: 'OUT',
+                        product: stockItem.product,
+                        qty: Number(item.quantite) || 1,
+                        unit: stockItem.unit || 'm',
+                        location: stockItem.location ?? null,
+                        project: stockItem.project ?? null,
+                        reason: 'Sous-traitance',
+                        category: stockItem.category,
+                        user: shipment.operateur || null,
+                    });
+                }
+            }
+        }
     };
 
     const handleDelete = async () => {
@@ -546,7 +841,7 @@ function ShipmentDetail({ shipment, shipmentItems, colisItems, projects, onBack,
                         <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8, flexWrap: 'wrap' }}>
                             {/* Statut cliquable */}
                             <div style={{ position: 'relative' }}>
-                                <button onClick={() => !isExpediee && setEditingStatut(v => !v)} style={{ background: 'none', border: 'none', cursor: isExpediee ? 'default' : 'pointer', padding: 0 }}>
+                                <button onClick={() => !isExpediee && canEdit && setEditingStatut(v => !v)} style={{ background: 'none', border: 'none', cursor: (isExpediee || !canEdit) ? 'default' : 'pointer', padding: 0 }}>
                                     {pill(shipment.statut, STATUT_STYLE[shipment.statut] || STATUT_STYLE['Brouillon'])}
                                 </button>
                                 {editingStatut && (
@@ -562,19 +857,62 @@ function ShipmentDetail({ shipment, shipmentItems, colisItems, projects, onBack,
                             {shipment.date_expedition && <span style={{ fontSize: 12, color: '#6B7280' }}>{new Date(shipment.date_expedition).toLocaleDateString('fr-FR')}</span>}
                             {shipment.destination && <span style={{ fontSize: 12, color: '#6B7280' }}>· {shipment.destination}</span>}
                         </div>
-                        {shipment.notes && <div style={{ fontSize: 13, color: '#6B7280', marginTop: 6, fontStyle: 'italic' }}>{shipment.notes}</div>}
+                        {projectIds.length > 0 && (
+                            <div style={{ fontSize: 13, color: '#6B7280', marginTop: 6, display: 'flex', alignItems: 'baseline', gap: 6, flexWrap: 'wrap' }}>
+                                <span style={{ fontWeight: 600, color: '#374151' }}>Projets :</span>
+                                {projectIds.map(id => {
+                                    const name = projects.find(p => String(p.id) === String(id))?.name;
+                                    return name ? (
+                                        <span key={id} style={{ padding: '2px 8px', background: '#F3F4F6', borderRadius: 6, fontSize: 12 }}>{name}</span>
+                                    ) : null;
+                                })}
+                            </div>
+                        )}
                     </div>
                     <div style={{ display: 'flex', gap: 8 }}>
-                        {!isExpediee && (
+                        {!isExpediee && canEdit && (
                             <button onClick={handleValidate} style={{ ...btnPrimary, background: '#1E2447' }}>
                                 <Truck size={14} /> Valider expédition
                             </button>
                         )}
-                        <button onClick={handleDelete} style={{ ...btnSecondary, color: '#EF4444', borderColor: '#FEE2E2' }}>
-                            <Trash2 size={14} />
-                        </button>
+                        {canEdit && (
+                            <button onClick={handleDelete} style={{ ...btnSecondary, color: '#EF4444', borderColor: '#FEE2E2' }}>
+                                <Trash2 size={14} />
+                            </button>
+                        )}
                     </div>
                 </div>
+
+                {/* Notes */}
+                <div style={{ background: 'white', borderRadius: 12, boxShadow: '0 1px 3px rgba(0,0,0,0.05)', padding: '16px 20px' }}>
+                    <div style={{ fontWeight: 700, fontSize: 13, color: '#374151', marginBottom: 8 }}>NOTES</div>
+                    {isExpediee || !canEdit ? (
+                        <div style={{ fontSize: 13, color: shipment.notes ? '#374151' : '#9CA3AF', fontStyle: shipment.notes ? 'normal' : 'italic' }}>
+                            {shipment.notes || 'Aucune note.'}
+                        </div>
+                    ) : (
+                        <textarea
+                            style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid #E5E7EB', fontSize: 13, outline: 'none', resize: 'vertical', minHeight: 72, fontFamily: 'inherit', boxSizing: 'border-box' }}
+                            placeholder="Code portail, instructions particulières, remarques..."
+                            value={notesValue}
+                            onChange={e => setNotesValue(e.target.value)}
+                            onBlur={() => { if (notesValue !== (shipment.notes || '')) onUpdateShipment(shipment.id, { notes: notesValue }); }}
+                        />
+                    )}
+                </div>
+
+                {/* Rouleaux tissu */}
+                <RouleauxSection
+                    shipmentId={shipment.id}
+                    rouleauItems={rouleauItems}
+                    projectIds={projectIds}
+                    projects={projects}
+                    stocks={stocks}
+                    isExpediee={isExpediee}
+                    onAddItems={onAddItems}
+                    onRemoveItem={onRemoveItem}
+                    canEdit={canEdit}
+                />
 
                 {/* Ouvrages */}
                 <div style={{ background: 'white', borderRadius: 12, boxShadow: '0 1px 3px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
@@ -582,7 +920,7 @@ function ShipmentDetail({ shipment, shipmentItems, colisItems, projects, onBack,
                         <div style={{ fontWeight: 700, fontSize: 13, color: '#374151' }}>
                             OUVRAGES <span style={{ color: '#9CA3AF', fontWeight: 400 }}>({ouvrageItems.length})</span>
                         </div>
-                        {!isExpediee && (
+                        {!isExpediee && canEdit && (
                             <button onClick={() => setShowPicker(true)} style={{ ...btnSecondary, fontSize: 12, display: 'flex', alignItems: 'center', gap: 5 }}>
                                 <PackagePlus size={13} /> Ajouter des ouvrages
                             </button>
@@ -597,7 +935,7 @@ function ShipmentDetail({ shipment, shipmentItems, colisItems, projects, onBack,
                                     <TH>Pièce</TH>
                                     <TH>Produit</TH>
                                     <TH>Projet</TH>
-                                    {!isExpediee && <TH style={{ width: 40 }} />}
+                                    {!isExpediee && canEdit && <TH style={{ width: 40 }} />}
                                 </tr>
                             </thead>
                             <tbody>
@@ -617,7 +955,7 @@ function ShipmentDetail({ shipment, shipmentItems, colisItems, projects, onBack,
                                                 )}
                                             </td>
                                             <td style={{ padding: '10px 16px', fontSize: 12, color: '#9CA3AF' }}>{projectName(item.project_id)}</td>
-                                            {!isExpediee && (
+                                            {!isExpediee && canEdit && (
                                                 <td style={{ padding: '10px 16px' }}>
                                                     <button onClick={() => onRemoveItem(item.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#D1D5DB', padding: 2 }}>
                                                         <X size={14} />
@@ -638,7 +976,7 @@ function ShipmentDetail({ shipment, shipmentItems, colisItems, projects, onBack,
                         <div style={{ fontWeight: 700, fontSize: 13, color: '#374151' }}>
                             ITEMS LIBRES <span style={{ color: '#9CA3AF', fontWeight: 400 }}>({libreItems.length})</span>
                         </div>
-                        {!isExpediee && (
+                        {!isExpediee && canEdit && (
                             <button onClick={() => setShowFreeItem(true)} style={{ ...btnSecondary, fontSize: 12, display: 'flex', alignItems: 'center', gap: 5 }}>
                                 <Plus size={13} /> Ajouter un item
                             </button>
@@ -653,7 +991,7 @@ function ShipmentDetail({ shipment, shipmentItems, colisItems, projects, onBack,
                                     <TH>Description</TH>
                                     <TH>Quantité</TH>
                                     <TH>Notes</TH>
-                                    {!isExpediee && <TH style={{ width: 40 }} />}
+                                    {!isExpediee && canEdit && <TH style={{ width: 40 }} />}
                                 </tr>
                             </thead>
                             <tbody>
@@ -662,7 +1000,7 @@ function ShipmentDetail({ shipment, shipmentItems, colisItems, projects, onBack,
                                         <td style={{ padding: '10px 16px', fontSize: 13, fontWeight: 600 }}>{item.description}</td>
                                         <td style={{ padding: '10px 16px', fontSize: 13, color: '#6B7280' }}>{item.quantite || '—'}</td>
                                         <td style={{ padding: '10px 16px', fontSize: 12, color: '#9CA3AF' }}>{item.notes || '—'}</td>
-                                        {!isExpediee && (
+                                        {!isExpediee && canEdit && (
                                             <td style={{ padding: '10px 16px' }}>
                                                 <button onClick={() => onRemoveItem(item.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#D1D5DB', padding: 2 }}>
                                                     <X size={14} />
@@ -686,6 +1024,7 @@ function ShipmentDetail({ shipment, shipmentItems, colisItems, projects, onBack,
                     onUpdateColis={onUpdateColis}
                     onDeleteColis={onDeleteColis}
                     onToggleItem={onToggleItem}
+                    canEdit={canEdit}
                 />
             </div>
 
@@ -700,7 +1039,7 @@ function ShipmentDetail({ shipment, shipmentItems, colisItems, projects, onBack,
 }
 
 // ── Vue liste (tableau style ProjectList) ─────────────────────────────────────
-function ShipmentList({ shipments, items, projects, onSelect, onDelete, onUpdateShipment }) {
+function ShipmentList({ shipments, items, projects, onSelect, onDelete, onUpdateShipment, canEdit }) {
     const [search, setSearch] = useState('');
     const [filterStatut, setFilterStatut] = useState('');
     const [filterProject, setFilterProject] = useState('');
@@ -823,7 +1162,7 @@ function ShipmentList({ shipments, items, projects, onSelect, onDelete, onUpdate
                                                 <select
                                                     value={s.statut || 'Brouillon'}
                                                     onChange={e => onUpdateShipment(s.id, { statut: e.target.value })}
-                                                    disabled={s.statut === 'Expédiée'}
+                                                    disabled={s.statut === 'Expédiée' || !canEdit}
                                                     style={{
                                                         appearance: 'none', padding: '5px 12px', borderRadius: 20,
                                                         border: '1px solid #E5E7EB', background: 'white',
@@ -836,9 +1175,11 @@ function ShipmentList({ shipments, items, projects, onSelect, onDelete, onUpdate
                                                 </select>
                                             </td>
                                             <td style={{ padding: '12px 16px' }} onClick={e => e.stopPropagation()}>
-                                                <button onClick={e => handleDelete(e, s.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#D1D5DB', padding: 4 }}>
-                                                    <Trash2 size={14} />
-                                                </button>
+                                                {canEdit && (
+                                                    <button onClick={e => handleDelete(e, s.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#D1D5DB', padding: 4 }}>
+                                                        <Trash2 size={14} />
+                                                    </button>
+                                                )}
                                             </td>
                                         </tr>
                                     );
@@ -862,6 +1203,8 @@ const TABS = [
 export default function LogistiqueScreen({ projects, onUpdateProject, onBack }) {
     const navigate = useNavigate();
     const location = useLocation();
+    const { currentUser } = useAuth();
+    const canEdit = can(currentUser, 'logistique.edit');
 
     const {
         shipments, items, loading,
@@ -871,10 +1214,13 @@ export default function LogistiqueScreen({ projects, onUpdateProject, onBack }) 
         itemsForShipment, colisForShipment,
     } = useShipments();
 
+    const { inventory: stocks, addMovement } = useStocks();
+
     const [tabKey, setTabKey]             = useState('expeditions');
     const [view, setView]                 = useState('main'); // 'main' | 'detail'
     const [selectedShipment, setSelectedShipment] = useState(null);
     const [showCreate, setShowCreate]     = useState(false);
+    const [initialProjectIds, setInitialProjectIds] = useState([]);
     const [pendingShipmentShortId, setPendingShipmentShortId] = useState(null);
 
     // Résolution depuis URL au chargement
@@ -911,7 +1257,7 @@ export default function LogistiqueScreen({ projects, onUpdateProject, onBack }) 
     };
 
     const handleSelect  = (shipment) => { setSelectedShipment(shipment); setView('detail'); };
-    const handleBack    = () => { setSelectedShipment(null); setView('main'); };
+    const handleBack    = () => { setInitialProjectIds([]); setSelectedShipment(null); setView('main'); };
 
     const liveShipment = useMemo(() => {
         if (!selectedShipment) return null;
@@ -940,6 +1286,10 @@ export default function LogistiqueScreen({ projects, onUpdateProject, onBack }) 
                 onUpdateColis={updateColis}
                 onDeleteColis={deleteColis}
                 onToggleItem={toggleItemInColis}
+                canEdit={canEdit}
+                initialProjectIds={initialProjectIds}
+                stocks={stocks || []}
+                onAddMovement={addMovement}
             />
         );
     }
@@ -958,7 +1308,7 @@ export default function LogistiqueScreen({ projects, onUpdateProject, onBack }) 
                         <h1 style={{ fontSize: 32, fontWeight: 800, color: '#111827', margin: 0, letterSpacing: '-0.5px' }}>Logistique</h1>
                         <p style={{ fontSize: 14, color: '#6B7280', margin: '4px 0 0' }}>Gestion des expéditions et suivi logistique</p>
                     </div>
-                    {tabKey === 'expeditions' && (
+                    {tabKey === 'expeditions' && canEdit && (
                         <button onClick={() => setShowCreate(true)} style={{ ...btnPrimary, background: '#1E2447', padding: '10px 20px', fontSize: 14, fontWeight: 600, boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
                             <Plus size={16} /> Nouvelle expédition
                         </button>
@@ -994,23 +1344,7 @@ export default function LogistiqueScreen({ projects, onUpdateProject, onBack }) 
                     {/* ── Onglet Expéditions ── */}
                     {tabKey === 'expeditions' && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                            {/* Stats */}
-                            {!loading && (
-                                <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                                    {[
-                                        { label: 'Total',          value: shipments.length,                                            bg: '#F9FAFB', color: '#374151' },
-                                        { label: 'En préparation', value: shipments.filter(s => s.statut === 'En préparation').length,  bg: '#FFFBEB', color: '#92400E' },
-                                        { label: 'Expédiées',      value: shipments.filter(s => s.statut === 'Expédiée').length,        bg: '#ECFDF5', color: '#065F46' },
-                                        { label: 'Brouillons',     value: shipments.filter(s => s.statut === 'Brouillon').length,       bg: '#F5F3FF', color: '#5B21B6' },
-                                    ].map(s => (
-                                        <div key={s.label} style={{ flex: '1 1 120px', background: s.bg, borderRadius: 12, padding: '14px 18px', border: '1px solid rgba(0,0,0,0.04)' }}>
-                                            <div style={{ fontSize: 26, fontWeight: 800, color: s.color }}>{s.value}</div>
-                                            <div style={{ fontSize: 11, fontWeight: 600, color: s.color, opacity: 0.7, marginTop: 2 }}>{s.label}</div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                            {loading ? (
+                                    {loading ? (
                                 <div style={{ padding: 40, textAlign: 'center', color: '#9CA3AF' }}>Chargement...</div>
                             ) : (
                                 <ShipmentList
@@ -1020,6 +1354,7 @@ export default function LogistiqueScreen({ projects, onUpdateProject, onBack }) 
                                     onSelect={handleSelect}
                                     onDelete={deleteShipment}
                                     onUpdateShipment={updateShipment}
+                                    canEdit={canEdit}
                                 />
                             )}
                         </div>
@@ -1038,7 +1373,18 @@ export default function LogistiqueScreen({ projects, onUpdateProject, onBack }) 
             </div>
 
             {showCreate && (
-                <CreateShipmentModal onClose={(result) => { setShowCreate(false); if (result) handleSelect(result); }} onCreate={createShipment} />
+                <CreateShipmentModal
+                    onClose={(data) => {
+                        setShowCreate(false);
+                        if (data?.shipment) {
+                            setInitialProjectIds(data.projectIds || []);
+                            setSelectedShipment(data.shipment);
+                            setView('detail');
+                        }
+                    }}
+                    onCreate={createShipment}
+                    projects={projects}
+                />
             )}
         </div>
     );

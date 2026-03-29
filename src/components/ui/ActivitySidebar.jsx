@@ -411,19 +411,30 @@ const MessageItem = React.memo(({ act, isMe }) => {
                     }}>
                         {isImage ? (
                             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                                <Box
-                                    component="img"
-                                    src={content}
-                                    onClick={() => setLightboxOpen(true)}
-                                    sx={{
-                                        maxWidth: 200,
-                                        maxHeight: 200,
-                                        borderRadius: act.caption ? 1.5 : 2,
-                                        border: '1px solid #E5E7EB',
-                                        cursor: 'zoom-in',
-                                        display: 'block'
-                                    }}
-                                />
+                                <Box sx={{ position: 'relative', display: 'inline-block' }}>
+                                    <Box
+                                        component="img"
+                                        src={content}
+                                        onClick={() => !act.pending && setLightboxOpen(true)}
+                                        sx={{
+                                            maxWidth: 200,
+                                            maxHeight: 200,
+                                            borderRadius: act.caption ? 1.5 : 2,
+                                            border: `1px solid ${act.pending ? '#f59e0b' : '#E5E7EB'}`,
+                                            cursor: act.pending ? 'default' : 'zoom-in',
+                                            display: 'block'
+                                        }}
+                                    />
+                                    {act.pending && (
+                                        <Box sx={{
+                                            position: 'absolute', inset: 0,
+                                            bgcolor: 'rgba(245,158,11,0.45)',
+                                            borderRadius: act.caption ? 1.5 : 2,
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            fontSize: 20,
+                                        }} title="Photo en attente de synchronisation">⏳</Box>
+                                    )}
+                                </Box>
                                 {act.caption && (
                                     <Typography variant="body2" sx={{ fontSize: 13, lineHeight: 1.6, color: '#1F2937' }}>
                                         {processMessageText(act.caption)}

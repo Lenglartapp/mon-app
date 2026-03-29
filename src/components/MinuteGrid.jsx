@@ -8,7 +8,8 @@ import { schemaToGridCols } from '../lib/utils/schemaToGridCols.jsx';
 import { recomputeRow } from '../lib/formulas/recomputeRow';
 import { generateRowLogs } from '../lib/utils/logUtils';
 import { uid } from '../lib/utils/uid';
-import { Plus, Trash2, Columns, Layers, Edit2 } from 'lucide-react';
+import { Plus, Trash2, Columns, Layers, Edit2, Filter } from 'lucide-react';
+import FilterPanel, { isConditionActive, evaluateCondition } from './FilterPanel';
 import { getDefaultMatieres } from '../lib/constants/matiereGroups';
 import { useAuth } from '../auth';
 
@@ -155,6 +156,10 @@ const AG_CUSTOM_CSS = `
   align-items: center;
   justify-content: center;
 }
+.ag-theme-alpine .ag-header-cell.filter-col-active {
+  background-color: #dbeafe !important;
+  border-bottom: 2px solid #3b82f6 !important;
+}
 `;
 
 // Injecter le CSS une seule fois
@@ -201,6 +206,11 @@ function MinuteGrid({
     const [colAggregations, setColAggregations] = useState({});
     const [aggMenu, setAggMenu] = useState(null); // { field, x, y }
     const [resizeInfo, setResizeInfo] = useState(null); // { name, width }
+    const [filterConditions, setFilterConditions] = useState([]);
+    const [filterPanelOpen, setFilterPanelOpen] = useState(false);
+    const filterConditionsRef = useRef([]);
+    filterConditionsRef.current = filterConditions;
+    const activeFilterFieldsRef = useRef(new Set());
 
     // État local des matières (source de vérité pour le panneau Matières)
     const [localMatieres, setLocalMatieres] = useState(
@@ -393,18 +403,21 @@ function MinuteGrid({
             let updatedRow = { ...r, [field]: value };
 
             // Si c'est photos_sur_site, on crée aussi une entrée dans l'activité
+            // (sauf pour les photos pending offline — l'activité sera créée après sync)
             if (field === 'photos_sur_site' && Array.isArray(value) && value.length > 0) {
                 const newPhoto = value[value.length - 1];
-                const newActivity = {
-                    id: Date.now(),
-                    content: newPhoto.url,
-                    type: 'image',
-                    createdAt: new Date().toISOString(),
-                    date: Date.now(),
-                    author: authorName
-                };
-                const updatedComments = r.comments ? [...r.comments, newActivity] : [newActivity];
-                updatedRow = { ...updatedRow, comments: updatedComments };
+                if (!newPhoto.pending) {
+                    const newActivity = {
+                        id: Date.now(),
+                        content: newPhoto.url,
+                        type: 'image',
+                        createdAt: new Date().toISOString(),
+                        date: Date.now(),
+                        author: authorName
+                    };
+                    const updatedComments = r.comments ? [...r.comments, newActivity] : [newActivity];
+                    updatedRow = { ...updatedRow, comments: updatedComments };
+                }
             }
 
             return updatedRow;
@@ -494,13 +507,19 @@ function MinuteGrid({
         const cols = schemaToGridCols(
             schema, enableCellFormulas, handleOpenDetail,
             catalog, railOptions, handlePhotoChange,
-            onDuplicateRow, hideCroquis, readOnly, title
+            onDuplicateRow, hideCroquis, readOnly, title,
+            projectId
         );
 
         const withWidths = cols.map(col => {
             const schemaWidth = col.initialWidth ?? col.width ?? 120;
             const w = savedWidths[col.field] ?? schemaWidth;
-            return { ...col, width: w, initialWidth: undefined };
+            return {
+                ...col,
+                width: w,
+                initialWidth: undefined,
+                headerClass: () => activeFilterFieldsRef.current.has(col.field) ? 'filter-col-active' : '',
+            };
         });
 
         // Colonne expédition toujours présente (pinned right)
@@ -540,10 +559,26 @@ function MinuteGrid({
         return showExpeditionCol ? [...withWidths, expeditionCol] : withWidths;
     }, [schema, enableCellFormulas, handleOpenDetail, catalog, railOptions, handlePhotoChange, onDuplicateRow, hideCroquis, readOnly, title, isMobile, gridId, showExpeditionCol]);
 
+    const isExternalFilterPresent = useCallback(() => {
+        return filterConditionsRef.current.some(isConditionActive);
+    }, []);
+
+    const doesExternalFilterPass = useCallback((node) => {
+        const conditions = filterConditionsRef.current.filter(isConditionActive);
+        if (conditions.length === 0) return true;
+        let result = evaluateCondition(conditions[0], node.data);
+        for (let i = 1; i < conditions.length; i++) {
+            const cond = conditions[i];
+            const condResult = evaluateCondition(cond, node.data);
+            result = cond.logic === 'ou' ? result || condResult : result && condResult;
+        }
+        return result;
+    }, []);
+
     const defaultColDef = useMemo(() => ({
         resizable: true,
         sortable: true,
-        filter: true,
+        filter: false,
         minWidth: 60,
     }), []);
 
@@ -763,6 +798,14 @@ function MinuteGrid({
         );
     }
 
+    useEffect(() => {
+        const activeFields = new Set(filterConditions.filter(isConditionActive).map(c => c.field));
+        activeFilterFieldsRef.current = activeFields;
+        if (!isGridReadyRef.current || !gridRef.current?.api) return;
+        gridRef.current.api.onFilterChanged();
+        gridRef.current.api.refreshHeader();
+    }, [filterConditions]);
+
     // Colonnes visibles pour le panneau (en excluant la colonne checkbox)
     const schemaCols = useMemo(() =>
         schema.filter(col => col.key !== 'sel' && !col.hidden).map(col => ({
@@ -854,6 +897,44 @@ function MinuteGrid({
                     onChange={e => setQuickFilter(e.target.value)}
                     style={{ padding: '4px 8px', border: '1px solid #d1d5db', borderRadius: 4, fontSize: 12, width: 160, outline: 'none' }}
                 />
+                {/* Bouton Filtrer */}
+                {(() => {
+                    const activeFields = [...new Set(
+                        filterConditions.filter(isConditionActive)
+                            .map(c => schema.find(s => s.key === c.field)?.label || c.field)
+                    )];
+                    const hasActive = activeFields.length > 0;
+                    const label = hasActive ? `Filtré par ${activeFields.join(' et ')}` : 'Filtrer';
+                    return (
+                        <div style={{ position: 'relative' }}>
+                            <button
+                                onClick={() => { setFilterPanelOpen(o => !o); setColPanelOpen(false); setMatierePanelOpen(false); }}
+                                style={{
+                                    cursor: 'pointer', padding: '5px 10px',
+                                    background: hasActive ? '#dcfce7' : (filterPanelOpen ? '#eff6ff' : 'white'),
+                                    color: hasActive ? '#15803d' : '#374151',
+                                    border: `1px solid ${hasActive ? '#86efac' : (filterPanelOpen ? '#2563eb' : '#d1d5db')}`,
+                                    borderRadius: 4, display: 'flex', alignItems: 'center', gap: 5, fontSize: 12,
+                                    fontWeight: hasActive ? 600 : 400,
+                                }}
+                            >
+                                <Filter size={14} /> {label}
+                            </button>
+                            {filterPanelOpen && (
+                                <div style={{ position: 'absolute', left: 0, top: '100%', marginTop: 4, zIndex: 1001 }}>
+                                    <FilterPanel
+                                        schema={schema}
+                                        conditions={filterConditions}
+                                        onChange={setFilterConditions}
+                                    />
+                                </div>
+                            )}
+                        </div>
+                    );
+                })()}
+                {filterPanelOpen && (
+                    <div style={{ position: 'fixed', inset: 0, zIndex: 1000 }} onClick={() => setFilterPanelOpen(false)} />
+                )}
                 {/* Bouton Matières */}
                 {matiereGroups?.length > 0 && (
                     <div style={{ position: 'relative' }}>
@@ -1010,6 +1091,8 @@ function MinuteGrid({
                     onColumnResized={onColumnResized}
                     onColumnVisible={onColumnVisible}
                     onColumnMoved={onColumnMoved}
+                    isExternalFilterPresent={isExternalFilterPresent}
+                    doesExternalFilterPass={doesExternalFilterPass}
                     localeText={AG_GRID_LOCALE_FR}
                     theme="legacy"
                     animateRows={false}

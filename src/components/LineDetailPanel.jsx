@@ -20,6 +20,7 @@ import { generateRowLogs } from '../lib/utils/logUtils';
 import BlurTextField from './ui/BlurTextField';
 import { useAuth } from '../auth'; // <--- NEW IMPORT
 import { supabase } from '../lib/supabaseClient'; // <--- NEW IMPORT
+import { blobToBase64, queuePhoto } from '../lib/syncQueue';
 
 export default function LineDetailPanel({ open, onClose, row, schema, onRowChange, columnVisibilityModel, minuteId, projectId, currentUser: propUser, authorName: propAuthorName, fullScreen = false, allRows }) {
     // New Sidebar Toggle State
@@ -137,10 +138,52 @@ export default function LineDetailPanel({ open, onClose, row, schema, onRowChang
             });
 
         } catch (error) {
+            // Offline fallback : stocker en base64 + afficher en pending
+            if (projectId && row) {
+                try {
+                    const localId = `pending_activity_${Date.now()}`;
+                    const base64 = await blobToBase64(file);
+                    const authorName = currentUser?.name || 'Utilisateur';
+                    const now = new Date().toISOString();
+
+                    // '__activity__' : sentinel pour drainPhotos qui mettra à jour comments + photos_sur_site
+                    await queuePhoto(projectId, row.id, '__activity__', localId, base64, {
+                        timestamp: now, user: authorName, caption: caption || null
+                    });
+
+                    // id = localId pour pouvoir matcher et remplacer dans drainPhotos
+                    const pendingActivity = {
+                        id: localId,
+                        content: base64,
+                        caption: caption || null,
+                        type: 'image',
+                        createdAt: now,
+                        date: Date.now(),
+                        author: authorName,
+                        pending: true,
+                    };
+                    const updatedComments = row.comments ? [...row.comments, pendingActivity] : [pendingActivity];
+
+                    const hasSurSite = schema && schema.some(col => col.key === 'photos_sur_site');
+                    const updatedPhotosSurSite = hasSurSite
+                        ? [...(Array.isArray(row.photos_sur_site) ? row.photos_sur_site : []),
+                           { url: base64, id: localId, pending: true, timestamp: now, user: authorName }]
+                        : row.photos_sur_site;
+
+                    onRowChange({
+                        ...row,
+                        comments: updatedComments,
+                        ...(hasSurSite && { photos_sur_site: updatedPhotosSurSite })
+                    });
+                    return;
+                } catch (offlineError) {
+                    console.error("Erreur fallback offline photo:", offlineError);
+                }
+            }
             console.error("Error uploading image:", error);
             alert("Erreur lors de l'envoi de l'image");
         }
-    }, [row, onRowChange, currentUser, schema]);
+    }, [row, onRowChange, currentUser, schema, projectId]);
 
     if (!row) return null;
 
@@ -246,9 +289,8 @@ export default function LineDetailPanel({ open, onClose, row, schema, onRowChang
                                         }}>
                                             <GridPhotoCell
                                                 value={row[col.key]}
-                                                rowId={row.id}
-                                                field={col.key}
                                                 onImageUpload={(newVal) => handleFieldChange(col.key, newVal)}
+                                                offlineContext={projectId ? { projectId, rowId: row?.id, fieldKey: col.key } : undefined}
                                             />
                                         </div>
                                     </Box>

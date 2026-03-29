@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { db } from '../lib/offlineDb';
+import { queueMutation } from '../lib/syncQueue';
 
 // --- PROJETS ---
 export const useProjects = () => {
@@ -74,7 +75,10 @@ export const useProjects = () => {
         // 1. Optimistic UI (Mise à jour immédiate)
         setProjects(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
 
-        // 2. Préparation pour la DB
+        // 2. Mise à jour du cache IndexedDB immédiatement (persistance offline)
+        db.projects.where('id').equals(id).modify(updates).catch(() => {});
+
+        // 3. Préparation pour la DB
         const dbUpdates = { ...updates };
 
         // Conversion Dates ISO
@@ -93,7 +97,24 @@ export const useProjects = () => {
             delete dbUpdates.sourceMinuteId;
         }
 
-        await supabase.from('projects').update(dbUpdates).eq('id', id);
+        // 4. Nettoyer les photos pending (base64) des rows avant envoi à Supabase
+        if (dbUpdates.rows) {
+            dbUpdates.rows = dbUpdates.rows.map(row => {
+                const cleanRow = { ...row };
+                for (const key of Object.keys(cleanRow)) {
+                    if (Array.isArray(cleanRow[key]) && cleanRow[key].some(p => p?.pending)) {
+                        cleanRow[key] = cleanRow[key].filter(p => !p?.pending);
+                    }
+                }
+                return cleanRow;
+            });
+        }
+
+        // 5. Envoi Supabase ; si hors ligne → enfile pour sync ultérieure
+        const { error } = await supabase.from('projects').update(dbUpdates).eq('id', id);
+        if (error) {
+            queueMutation('projects', id, dbUpdates).catch(() => {});
+        }
     };
 
     const deleteProject = async (id) => {

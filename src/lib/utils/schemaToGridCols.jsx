@@ -9,7 +9,7 @@ import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import Chip from '@mui/material/Chip';
-import { Type, Hash, Calendar, CheckSquare, Image as ImageIcon, PenTool, ChevronDown, Filter } from 'lucide-react';
+import { Type, Hash, Calendar, CheckSquare, Image as ImageIcon, PenTool, ChevronDown } from 'lucide-react';
 
 // Formateur EUR créé une seule fois au niveau module (Intl.NumberFormat est coûteux à instancier)
 const EUR_FORMATTER = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' });
@@ -29,23 +29,11 @@ const getColumnIcon = (col) => {
   return <Type size={14} className="text-gray-400" />;
 };
 
-// Composant Header AG Grid — affiche icône + label + bouton filtre
+// Composant Header AG Grid — affiche icône + label
 function AgColumnHeader(props) {
   const { displayName, column } = props;
   const icon = column?.getColDef?.()?.context?._headerIcon;
-  const filterActive = column?.isFilterActive?.();
   const tooltip = column?.getColDef?.()?.headerTooltip;
-
-  const handleFilterClick = (e) => {
-    e.stopPropagation();
-    if (props.showFilter) {
-      props.showFilter(e.currentTarget);
-    } else if (props.showColumnMenu) {
-      props.showColumnMenu(e.currentTarget);
-    } else if (props.api) {
-      props.api.showColumnFilter(column?.getColId?.());
-    }
-  };
 
   const label = (
     <span style={{ fontWeight: 600, color: '#374151', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', paddingTop: '2px', fontSize: '13px', flex: 1 }}>
@@ -65,25 +53,6 @@ function AgColumnHeader(props) {
           {label}
         </Tooltip>
       ) : label}
-      <button
-        onClick={handleFilterClick}
-        style={{
-          flexShrink: 0,
-          background: 'none',
-          border: 'none',
-          cursor: 'pointer',
-          padding: '2px 3px',
-          borderRadius: 3,
-          display: 'flex',
-          alignItems: 'center',
-          color: filterActive ? '#2563eb' : '#9ca3af',
-        }}
-        onMouseEnter={e => { e.currentTarget.style.background = '#e5e7eb'; e.currentTarget.style.color = '#374151'; }}
-        onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = filterActive ? '#2563eb' : '#9ca3af'; }}
-        title="Filtrer"
-      >
-        <Filter size={12} strokeWidth={2.5} />
-      </button>
     </div>
   );
 }
@@ -103,7 +72,8 @@ export function schemaToGridCols(
   onDuplicate,
   hideCroquis = false,
   readOnly = false,
-  gridTitle = ''
+  gridTitle = '',
+  projectId = null
 ) {
   if (!Array.isArray(schema)) return [];
 
@@ -240,9 +210,8 @@ export function schemaToGridCols(
       gridCol.cellRenderer = (params) => (
         <GridPhotoCell
           value={params.value}
-          rowId={params.data?.id}
-          field={params.colDef?.field}
           onImageUpload={(newVal) => onPhotoChange && onPhotoChange(params.data?.id, params.colDef?.field, newVal)}
+          offlineContext={projectId ? { projectId, rowId: params.data?.id, fieldKey: params.colDef?.field } : undefined}
         />
       );
       gridCol.editable = false;

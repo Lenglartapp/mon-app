@@ -33,7 +33,8 @@ import PerformanceScreen from "./screens/PerformanceScreen";
 import { useProjects, useMinutes, useEvents, useStocks } from './hooks/useSupabase';
 
 import { useNetworkStatus } from './hooks/useNetworkStatus';
-import { Bell, WifiOff } from 'lucide-react';
+import { useSyncQueue } from './hooks/useSyncQueue';
+import { Bell, WifiOff, RefreshCw } from 'lucide-react';
 import Badge from '@mui/material/Badge';
 import IconButton from '@mui/material/IconButton';
 import NotificationMenu from "./components/NotificationMenu";
@@ -63,7 +64,7 @@ function AppShell() {
   const { currentUser } = useAuth();
 
   // --- 1. CHARGEMENT DONNÉES (Supabase) ---
-  const { projects, addProject, updateProject, deleteProject } = useProjects();
+  const { projects, addProject, updateProject, deleteProject, refreshProjects } = useProjects();
   const { minutes, addMinute, updateMinute, deleteMinute } = useMinutes();
   const { events: planningEvents, updateEvent, deleteEvent } = useEvents();
   const { inventory, movements, addMovement, bulkUpdateInventory } = useStocks();
@@ -227,6 +228,7 @@ function AppShell() {
   const LOGO_SRC = "/logo.png";
 
   const isOnline = useNetworkStatus();
+  const { pendingCount, isSyncing } = useSyncQueue(refreshProjects);
 
   if (!currentUser) return <LoginScreen />;
 
@@ -241,6 +243,22 @@ function AppShell() {
         }}>
           <WifiOff size={15} />
           Mode hors ligne — les données affichées sont celles de votre dernière connexion
+          {pendingCount > 0 && (
+            <span style={{ marginLeft: 8, opacity: 0.85 }}>
+              · {pendingCount} modification{pendingCount > 1 ? 's' : ''} en attente de sync
+            </span>
+          )}
+        </div>
+      )}
+      {isOnline && isSyncing && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          background: '#1d4ed8', color: '#eff6ff',
+          padding: '8px 16px', fontSize: 13, fontWeight: 500,
+          position: 'sticky', top: 0, zIndex: 9999,
+        }}>
+          <RefreshCw size={15} style={{ animation: 'spin 1s linear infinite' }} />
+          Synchronisation des modifications hors ligne…
         </div>
       )}
       <header style={S.header}>

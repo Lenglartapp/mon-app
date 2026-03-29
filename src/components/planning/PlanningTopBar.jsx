@@ -48,7 +48,8 @@ const PlanningTopBar = ({
     activeFilters, onAddFilter, onRemoveFilter,
     assistantMode, onSetAssistantMode, showWeekends, onToggleWeekends,
     myViewMode, onToggleMyView,
-    onDownloadTemplate, onImport
+    onDownloadTemplate, onImport,
+    canManageTeam, canViewAssistant,
 }) => {
     const fileInputRef = useRef(null);
     const [showAssistantMenu, setShowAssistantMenu] = useState(false);
@@ -61,9 +62,11 @@ const PlanningTopBar = ({
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 24px', background: '#FAF5EE' }}>
             <div style={{ display: 'flex', gap: 12 }}>
                 <button onClick={onNew} style={{ background: '#111827', color: '#fff', border: 'none', borderRadius: 6, padding: '8px 16px', fontWeight: 600, fontSize: 14, cursor: 'pointer' }}>Nouveau</button>
-                <button onClick={onManageTeam} style={{ background: 'white', color: '#374151', border: '1px solid #D1D5DB', borderRadius: 6, padding: '8px 16px', fontWeight: 600, fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <User size={16} /> Gérer l'équipe
-                </button>
+                {canManageTeam && (
+                    <button onClick={onManageTeam} style={{ background: 'white', color: '#374151', border: '1px solid #D1D5DB', borderRadius: 6, padding: '8px 16px', fontWeight: 600, fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <User size={16} /> Gérer l'équipe
+                    </button>
+                )}
                 {onDownloadTemplate && (
                     <button onClick={onDownloadTemplate} title="Télécharger le template Excel pour la période affichée" style={{ background: 'white', color: '#374151', border: '1px solid #D1D5DB', borderRadius: 6, padding: '8px 16px', fontWeight: 600, fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
                         <Download size={16} /> Modèle Excel
@@ -77,8 +80,8 @@ const PlanningTopBar = ({
                         </button>
                     </>
                 )}
-                {/* Vue Assistant dropdown */}
-                <div style={{ position: 'relative' }}>
+                {/* Vue Assistant dropdown — visible uniquement pour admin et ordo */}
+                {canViewAssistant && <div style={{ position: 'relative' }}>
                     {assistantMode ? (
                         /* En mode assistant : tabs + bouton retour */
                         <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
@@ -125,7 +128,7 @@ const PlanningTopBar = ({
                             )}
                         </>
                     )}
-                </div>
+                </div>}
             </div>
 
             <div style={{ flex: 1, maxWidth: 600, margin: '0 24px' }}>
