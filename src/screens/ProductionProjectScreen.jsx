@@ -895,7 +895,14 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                       <div style={{ fontSize: 12, color: '#6B7280', fontWeight: 600, marginBottom: 4 }}>{labels[key]}</div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
                         <span style={{ fontSize: 20, fontWeight: 800, color: '#1F2937' }}>{realVal.toFixed(1)}h</span>
-                        <span style={{ fontSize: 13, color: '#9CA3AF' }}>/ {budgetVal}h</span>
+                        <span style={{ fontSize: 13, color: '#9CA3AF' }}>
+                          / {budgetVal}h
+                          {budgetVal > 0 && (
+                            <span style={{ marginLeft: 5, fontSize: 11, color: color, fontWeight: 700 }}>
+                              — {Math.round(percent)}%
+                            </span>
+                          )}
+                        </span>
                       </div>
                       <div style={{ height: 6, background: '#E5E7EB', borderRadius: 3, overflow: 'hidden' }}>
                         <div style={{ width: `${Math.min(percent, 100)}%`, height: '100%', background: color, transition: 'width 0.3s' }} />
