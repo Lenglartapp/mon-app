@@ -82,7 +82,7 @@ export const useShipments = () => {
     // ── CRUD Items ──────────────────────────────────────────────────────────
     // newItems : array of { type, project_id, row_id, piece, produit, partie?, description?, quantite?, notes? }
     const addItems = async (expeditionId, newItems) => {
-        const payload = newItems.map((item, idx) => ({ ...item, expedition_id: expeditionId, ordre: idx }));
+        const payload = newItems.map(({ piece_name: _pn, ...item }, idx) => ({ ...item, expedition_id: expeditionId, ordre: idx }));
         const { data, error } = await supabase.from('expedition_items').insert(payload).select();
         if (!error && data) setItems(prev => [...prev, ...data]);
         return !error;
