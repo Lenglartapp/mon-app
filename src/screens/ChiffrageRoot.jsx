@@ -406,7 +406,7 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
         version: 1,
         lines: [],
         params: [
-          { id: uid(), name: "taux_horaire", type: "prix", value: 135 },
+          { id: uid(), name: "taux_horaire", type: "prix", value: globalSettings?.hourlyRate ?? globalSettings?.taux_horaire ?? 135 },
           { id: uid(), name: "prix_achat_tissu", type: "prix", value: null },
           { id: uid(), name: "nuit_hotel", type: "prix", value: 150 },
         ],

@@ -136,7 +136,8 @@ export function recomputeRow(row, schema, ctx = {}) {
     const RetourD = NVL(next.retour_droit, 0);
 
     const isOnePanel = (next.paire_ou_un_seul_pan || "").startsWith("Un seul pan");
-    const A_Plat = isOnePanel ? ((L + (L * 0.10)) * Ampleur + RetourG + RetourD) : (((L / 2) + (L / 2 * 0.10)) * Ampleur + RetourG) * 2 + Croisement;
+    const coeff = L >= 200 ? 1.06 : 1.10;
+    const A_Plat = isOnePanel ? ((L * coeff) * Ampleur + RetourG + RetourD) : (((L / 2) * coeff * Ampleur + RetourG) * 2 + Croisement);
     next.a_plat = A_Plat;
     const H_Coupe = H + FinitionBas + 50;
     next.hauteur_coupe = H_Coupe;

@@ -38,22 +38,14 @@ const getters = {
   largeur_finie: (row) => {
     const L = toNum(row.largeur);
     const croisement = toNum(row.croisement);
-
-    // User Formula Update (10% Allowance):
-    // Paire: (L/2)*1.10 + Croisement
-    // Single: L*1.10
-
-    let val = 0;
-    // Check if it's "Un seul pan" (or similar variations)
+    const coeff = L >= 200 ? 1.06 : 1.10;
     const isOnePanel = (row.paire_ou_un_seul_pan || "").startsWith("Un seul pan") || (row.pair_un || "").startsWith("Un seul pan");
 
+    let val = 0;
     if (!isOnePanel) {
-      // Paire (Default)
-      const halfL = L / 2;
-      val = (halfL * 1.10) + croisement;
+      val = (L / 2 * coeff) + croisement;
     } else {
-      // Un seul pan (All variants)
-      val = L * 1.10;
+      val = L * coeff;
     }
     return round1(val);
   },

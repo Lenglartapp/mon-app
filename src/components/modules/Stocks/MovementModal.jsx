@@ -42,6 +42,7 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
     });
 
     const [pieces, setPieces] = useState([]); // Array of {id, qty}
+    const [existingPiecesCount, setExistingPiecesCount] = useState(0);
 
     // Reset à l'ouverture
     useEffect(() => {
@@ -49,9 +50,10 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
             setSelectedItem(null);
             setExitReason('Production');
             setTypology('Tissu');
+            setExistingPiecesCount(0);
             setFormData({ product: '', ref: '', qty: '', unit: 'ml', project: '', location: '', notes: '', laize: '', category: '' });
             // Pour Tissu en Entrée, on démarre avec une pièce
-            setPieces(isIN ? [{ id: 1, qty: '', location: '', name: '' }] : []);
+            setPieces(isIN ? [{ id: 1, qty: '', location: '' }] : []);
         }
     }, [open, type, isIN]);
 
@@ -59,6 +61,7 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
     const handleTypologyChange = (t) => {
         setTypology(t);
         setSelectedItem(null);
+        setExistingPiecesCount(0);
         setFormData(prev => ({
             ...prev,
             product: '',
@@ -68,7 +71,7 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
             location: ''
         }));
         if (isIN) {
-            setPieces(t === 'Tissu' ? [{ id: Date.now(), qty: '', location: '', name: '' }] : []);
+            setPieces(t === 'Tissu' ? [{ id: Date.now(), qty: '', location: '' }] : []);
         } else {
             setPieces([]);
         }
@@ -146,9 +149,14 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
                 category: typology,
                 laize: newValue.dim || ''
             }));
-            // Pour le tissu, on garde au moins une pièce prête à remplir
+            // Pour le tissu, chercher le nombre de pièces existantes pour la numérotation
             if (typology === 'Tissu') {
-                setPieces([{ id: Date.now(), qty: '', location: '', name: '' }]);
+                const existingInv = inventory.find(i =>
+                    i.product === (newValue.productName || newValue.product || '') &&
+                    (i.project === (newValue.project || '') || (!i.project && !newValue.project))
+                );
+                setExistingPiecesCount(Array.isArray(existingInv?.pieces) ? existingInv.pieces.length : 0);
+                setPieces([{ id: Date.now(), qty: '', location: '' }]);
             } else {
                 setPieces([]);
             }
@@ -169,7 +177,7 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
     };
 
     const addPiece = () => {
-        setPieces(prev => [...prev, { id: Date.now(), qty: '', location: '', name: '' }]);
+        setPieces(prev => [...prev, { id: Date.now(), qty: '', location: '' }]);
     };
 
     const removePiece = (id) => {
@@ -182,10 +190,6 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
 
     const updatePieceLocation = (id, val) => {
         setPieces(prev => prev.map(p => p.id === id ? { ...p, location: val } : p));
-    };
-
-    const updatePieceName = (id, val) => {
-        setPieces(prev => prev.map(p => p.id === id ? { ...p, name: val } : p));
     };
 
     const updatePieceRemaining = (id, val) => {
@@ -238,11 +242,11 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
             reason: formData.customReason || (isOUT ? exitReason : null),
             // MOVE: Capture Origin
             from_location: isMOVE && selectedItem ? selectedItem.location : null,
-            pieces: isIN ? pieces.filter(p => Number(p.qty) > 0).map(({ id, qty, location, name }) => ({ 
-                id, 
-                qty: Number(qty), 
+            pieces: isIN ? pieces.filter(p => Number(p.qty) > 0).map(({ id, qty, location }, idx) => ({
+                id,
+                qty: Number(qty),
                 location: location || formData.location,
-                name: name || ''
+                name: `Pièce ${existingPiecesCount + idx + 1}`
             })) : pieces
         });
         onClose();
@@ -344,14 +348,9 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
                             <Stack spacing={1}>
                                 {pieces.map((p, idx) => (
                                     <Box key={p.id} sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                                        <Typography variant="body2" sx={{ color: '#9CA3AF', minWidth: 60 }}>P. {idx + 1}</Typography>
-                                        <TextField
-                                            size="small"
-                                            value={p.name || ''}
-                                            onChange={(e) => updatePieceName(p.id, e.target.value)}
-                                            placeholder="Nom"
-                                            sx={{ flex: 1, bgcolor: 'white' }}
-                                        />
+                                        <Typography variant="body2" sx={{ color: '#374151', fontWeight: 600, minWidth: 80 }}>
+                                            Pièce {existingPiecesCount + idx + 1}
+                                        </Typography>
                                         <TextField
                                             size="small"
                                             type="number"

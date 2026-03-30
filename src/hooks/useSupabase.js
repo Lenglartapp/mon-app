@@ -600,8 +600,8 @@ export const useStocks = () => {
                         user_name: movement.user,
                         location: p.location || movement.location,
                         project: movement.project,
-                        reason: `Réception Pièce ${idx + 1}`,
-                        pieces_names: p.name || `P${idx + 1}`, // Nouveau champ
+                        reason: `Réception ${p.name || `Pièce ${idx + 1}`}`,
+                        pieces_names: p.name || `Pièce ${idx + 1}`,
                         date: new Date().toISOString()
                     });
                 });
@@ -616,7 +616,8 @@ export const useStocks = () => {
                         const locChanged = p.location && initialPiece.location !== p.location;
 
                         if (consumed > 0 || locChanged) {
-                            let reason = `Consommation Pièce ${idx + 1}`;
+                            const pieceName = p.name || initialPiece.name || `Pièce ${idx + 1}`;
+                            let reason = `Consommation ${pieceName}`;
                             if (locChanged) reason += ` | Déplacé de ${initialPiece.location || 'N/A'} vers ${p.location}`;
 
                             logsToCreate.push({
@@ -628,7 +629,7 @@ export const useStocks = () => {
                                 location: p.location || initialPiece.location || movement.location,
                                 project: movement.project,
                                 reason: reason,
-                                pieces_names: p.name || initialPiece.name || `P${idx + 1}`, // Nouveau champ
+                                pieces_names: pieceName,
                                 date: new Date().toISOString()
                             });
                         }

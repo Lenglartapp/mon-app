@@ -25,16 +25,14 @@ const getters = {
     largeur_finie: (row) => {
         const L = toNum(row.largeur);
         const croisement = toNum(row.croisement);
-
-        // User Formula Update (10% Allowance):
-        let val = 0;
+        const coeff = L >= 200 ? 1.06 : 1.10;
         const isOnePanel = (row.paire_ou_un_seul_pan || "").startsWith("Un seul pan") || (row.pair_un || "").startsWith("Un seul pan");
 
+        let val = 0;
         if (!isOnePanel) {
-            const halfL = L / 2;
-            val = (halfL * 1.10) + croisement;
+            val = (L / 2 * coeff) + croisement;
         } else {
-            val = L * 1.10;
+            val = L * coeff;
         }
         return round1(val);
     },
@@ -145,7 +143,7 @@ export const RIDEAUX_PROD_SCHEMA = [
         type: "number",
         width: 110,
         readOnly: true,
-        tooltip: "Largeur finie par pan. Paire : (L/2 × 1,10) + croisement. Pan unique : L × 1,10",
+        tooltip: "Si L < 200 cm → coeff 1,10 ; si L ≥ 200 cm → coeff 1,06. Paire : (L/2 × coeff) + croisement. Pan unique : L × coeff",
         valueGetter: (v, r) => getters.largeur_finie(getRow(v, r))
     },
     {

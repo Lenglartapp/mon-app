@@ -28,7 +28,7 @@ export const RIDEAUX_SCHEMA = [
     // 13
     { key: "retour_droit", label: "Ret. D", type: "number", width: 120 },
     // 14
-    { key: "a_plat", label: "À Plat", type: "number", width: 130, readOnly: true, tooltip: "Paire : (L_finie × ampleur) + 4 × ourlets. Pan unique : (L_finie × ampleur) + 2 × ourlets" },
+    { key: "a_plat", label: "À Plat", type: "number", width: 130, readOnly: true, tooltip: "Si L < 200 cm → coeff 1,10 ; si L ≥ 200 cm → coeff 1,06. Paire : ((L/2 × coeff) × ampleur + Ret.G) × 2 + Croisement. Pan unique : (L × coeff) × ampleur + Ret.G + Ret.D" },
     // 15
     { key: "hauteur", label: "Hauteur", type: "number", width: 130 },
 

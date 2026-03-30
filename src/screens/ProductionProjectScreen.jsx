@@ -359,9 +359,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
   }), [filteredRows]);
 
   // Filtre sous-traitance : exclu du BPF et des étiquettes
-  // Un ouvrage est sous-traité si realise_par = 'Sous-Traitant' OU si heures_confection est vide/zéro
-  const isSousTraite = (r) =>
-    r.realise_par === 'Sous-Traitant' || !(parseFloat(r.heures_confection) > 0);
+  const isSousTraite = (r) => r.realise_par === 'Sous-Traitant';
 
   const {
     bpfRideaux, bpfStoresBateaux, bpfCoussins,

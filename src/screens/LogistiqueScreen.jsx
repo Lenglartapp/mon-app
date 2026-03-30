@@ -75,6 +75,7 @@ function Modal({ title, onClose, children, width = 520 }) {
 function CreateShipmentModal({ onClose, onCreate, projects }) {
     const [form, setForm] = useState({ label: '', destination: '', date_expedition: '', operateur: 'David Vergel' });
     const [selectedProjectIds, setSelectedProjectIds] = useState([]);
+    const [projectSearch, setProjectSearch] = useState('');
     const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
     const toggleProject = (id) => {
@@ -124,8 +125,14 @@ function CreateShipmentModal({ onClose, onCreate, projects }) {
                 {projects && projects.length > 0 && (
                     <div>
                         <label style={labelStyle}>Projets concernés</label>
+                        <input
+                            style={{ ...inputStyle, marginBottom: 4 }}
+                            placeholder="Rechercher un projet..."
+                            value={projectSearch}
+                            onChange={e => setProjectSearch(e.target.value)}
+                        />
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 180, overflowY: 'auto', border: '1px solid #E5E7EB', borderRadius: 8, padding: '8px 4px' }}>
-                            {projects.map(p => {
+                            {projects.filter(p => !projectSearch.trim() || p.name?.toLowerCase().includes(projectSearch.toLowerCase())).map(p => {
                                 const checked = selectedProjectIds.includes(String(p.id));
                                 return (
                                     <div
@@ -811,6 +818,7 @@ function ShipmentDetail({ shipment, shipmentItems, colisItems, projects, onBack,
                         reason: 'Sous-traitance',
                         category: stockItem.category,
                         user: shipment.operateur || null,
+                        piece_name: (item.notes && item.notes !== 'Sous-traitance') ? item.notes.split(' — ')[0] : null,
                     });
                 }
             }
