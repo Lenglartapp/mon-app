@@ -222,10 +222,12 @@ function MinuteGrid({
 
     const rowsRef = useRef(rows);
     rowsRef.current = rows;
-    // Ref pour éviter le stale closure sur onRowsChange (arePropsEqual bloque le re-render
-    // quand seul onRowsChange change, donc useCallback ne se met pas à jour)
+    // Ref pour éviter le stale closure sur onRowsChange et onAdd (arePropsEqual bloque le re-render
+    // quand seul onRowsChange/onAdd change, donc useCallback ne se met pas à jour)
     const onRowsChangeRef = useRef(onRowsChange);
     onRowsChangeRef.current = onRowsChange;
+    const onAddRef = useRef(onAdd);
+    onAddRef.current = onAdd;
 
     // ID unique pour la persistance des colonnes
     const gridId = useMemo(() => {
@@ -427,10 +429,10 @@ function MinuteGrid({
 
     // Ajouter une ligne
     const handleAddRow = useCallback(() => {
-        if (onAdd) { onAdd(); return; }
+        if (onAddRef.current) { onAddRef.current(); return; }
         const newRow = { id: uid(), ...Object.fromEntries(schema.map(col => [col.key, ''])) };
-        onRowsChange([...rowsRef.current, newRow]);
-    }, [onRowsChange, schema, onAdd]);
+        onRowsChangeRef.current([...rowsRef.current, newRow]);
+    }, [schema]);
 
     // Supprimer les lignes sélectionnées
     const handleDeleteRows = useCallback(() => {

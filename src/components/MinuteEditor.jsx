@@ -202,6 +202,8 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
     return { ...formulaCtx, settings, catalog };
   }, [minute?.settings, catalog, formulaCtx]);
 
+  const rowsRef = React.useRef([]);
+
   const rows = React.useMemo(() => {
     // UTILISATION DE LOCAL_LINES À LA PLACE DE MINUTE.LINES
     const rawSource = localLines || [];
@@ -235,6 +237,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
       return recomputeRow(uniqueRow, targetSchema, extendedCtx);
     });
   }, [localLines, schema, extendedCtx]); // Depend on localLines
+  rowsRef.current = rows;
 
 
 
@@ -323,7 +326,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
       if (key === "autre") return p === "Autre Dépense";
       return false;
     };
-    const others = (rows || []).filter((r) => !isInSubset(r));
+    const others = (rowsRef.current || []).filter((r) => !isInSubset(r));
 
     // Determine strict schema for this subset to avoid cross-pollution of formulas
     // (e.g. preventing 'prix_total' formula from main schema applying to extraDepenses)
@@ -384,12 +387,12 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
 
     // 2. Recompute the new row immediately
     const computedRow = recomputeRow(newRow, targetSchema, extendedCtx);
-    const nextRows = [...rows, computedRow];
+    const nextRows = [...rowsRef.current, computedRow];
 
     // DEBOUNCED UPDATE
     triggerUpdate(nextRows);
     // onChangeMinute?.({ ...minute, lines: nextRows, updatedAt: Date.now() });
-  }, [rows, schema, extendedCtx, triggerUpdate]);
+  }, [schema, extendedCtx, triggerUpdate]);
 
   // États de sélection pour chaque grille
   const [selRideaux, setSelRideaux] = React.useState([]);
@@ -408,7 +411,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
     if (!idsToDelete || idsToDelete.length === 0) return;
     if (!confirm(`Supprimer ${idsToDelete.length} ligne(s) ?`)) return;
 
-    const nextRows = rows.filter(r => !idsToDelete.includes(r.id));
+    const nextRows = rowsRef.current.filter(r => !idsToDelete.includes(r.id));
 
     // DEBOUNCED UPDATE (ou immédiat pour delete? on garde debounced pour consistance)
     triggerUpdate(nextRows);
@@ -450,12 +453,13 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
   }, [localLines]);
 
   const handleDuplicateRow = (id) => {
-    const index = rows.findIndex(r => r.id === id);
+    const currentRows = rowsRef.current;
+    const index = currentRows.findIndex(r => r.id === id);
     if (index === -1) return;
 
-    const source = rows[index];
+    const source = currentRows[index];
     const baseName = source.piece ? `${source.piece} Copie` : source.piece;
-    const uniquePiece = getUniquePiece(source.zone, baseName, rows, source.id);
+    const uniquePiece = getUniquePiece(source.zone, baseName, currentRows, source.id);
 
     const newRow = {
       ...source,
@@ -464,7 +468,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
       comments: source.comments ? [...source.comments] : []
     };
 
-    const newRows = [...rows];
+    const newRows = [...currentRows];
     newRows.splice(index + 1, 0, newRow);
 
     triggerUpdate(newRows);
