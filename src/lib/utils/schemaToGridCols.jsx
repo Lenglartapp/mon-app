@@ -184,7 +184,7 @@ export function schemaToGridCols(
           const typeMeca = params.data?.type_mecanisme;
           let subFiltered = filteredCatalog;
           if (typeMeca === 'Rail') {
-            subFiltered = subFiltered.filter(a => !a.unit || a.unit === 'ml');
+            subFiltered = subFiltered.filter(a => !a.unit || a.unit === 'ml' || a.unit === 'pce');
           }
           return { values: ['', ...subFiltered.map(a => a.name)] };
         };
