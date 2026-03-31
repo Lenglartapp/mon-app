@@ -8,8 +8,12 @@ import { differenceInMinutes, subMonths, startOfDay } from 'date-fns';
 const SERVICE_KEYS = ['conf', 'prepa', 'pose'];
 const SERVICE_LABELS = { conf: 'Confection', prepa: 'Préparation', pose: 'Pose' };
 
-function computeRealized(events, projectId) {
-  const counts = { prepa: 0, conf: 0, pose: 0 };
+function computeRealized(events, projectId, consumedImport = {}) {
+  const counts = {
+    prepa: Number(consumedImport?.prepa) || 0,
+    conf:  Number(consumedImport?.conf)  || 0,
+    pose:  Number(consumedImport?.pose)  || 0,
+  };
   if (!events || !projectId) return counts;
   events
     .filter(e => e.meta?.projectId === projectId && e.meta?.status === 'validated')
@@ -357,7 +361,7 @@ export default function PerformanceDataTab({ projects, events, entries, onUpsert
     return projects
       .filter(p => p.status === 'ARCHIVED')
       .map(p => {
-        const realized = computeRealized(events, p.id);
+        const realized = computeRealized(events, p.id, p.consumed_import);
         const totalAlloc = SERVICE_KEYS.reduce((s, k) => s + Number(p.budget?.[k] || 0), 0);
         const totalReal  = SERVICE_KEYS.reduce((s, k) => s + (realized[k] || 0), 0);
         const ecartPct   = totalAlloc > 0 ? Math.round(((totalReal - totalAlloc) / totalAlloc) * 100) : 0;

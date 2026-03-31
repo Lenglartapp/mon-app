@@ -217,12 +217,13 @@ export function recomputeRow(row, schema, ctx = {}) {
     const L_Pan = isPaire ? A_Plat / 2 : A_Plat;
 
     const calcPassML = (app) => {
-      if (!app || app === '-') return 0;
+      if (!app) return 0;
       let res = 0;
       if (app === 'I') res = H_Coupe;
       else if (app === 'U') res = (H_Coupe * 2) + L_Pan;
       else if (app === 'L') res = H_Coupe + L_Pan;
-      else res = L_Pan;
+      else if (app === '-') res = L_Pan;
+      else return 0;
 
       return isPaire ? (res * 2) : res;
     };
