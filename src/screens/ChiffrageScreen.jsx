@@ -210,12 +210,7 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onBack, onOpen
     (depRows || []).forEach(r => {
       const q = toNum(r?.quantite) || 1;
       const h = toNum(r?.heures_facturees) * q;
-      const typeDep = String(r?.type_deplacement || "").toLowerCase();
-      if (typeDep.includes("prise de cote")) {
-        hPrepa += h;
-      } else {
-        hPose += h;
-      }
+      hPose += h;
     });
 
     // 3. Process Autres Dépenses (extraRows)

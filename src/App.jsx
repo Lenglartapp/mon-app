@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import { BrowserRouter, useNavigate, useLocation } from "react-router-dom";
 
 // "villa martin" → "villa-martin", gère les accents français
@@ -34,12 +34,13 @@ import { useProjects, useMinutes, useEvents, useStocks } from './hooks/useSupaba
 
 import { useNetworkStatus } from './hooks/useNetworkStatus';
 import { useSyncQueue } from './hooks/useSyncQueue';
-import { Bell, WifiOff, RefreshCw } from 'lucide-react';
+import { Bell, WifiOff, RefreshCw, Search } from 'lucide-react';
 import Badge from '@mui/material/Badge';
 import IconButton from '@mui/material/IconButton';
 import NotificationMenu from "./components/NotificationMenu";
 
 import { NotificationProvider, useNotifications } from "./contexts/NotificationContext";
+import CommandPalette from "./components/CommandPalette";
 
 // --- Composants UI ---
 function UserBadge({ onClick }) {
@@ -147,6 +148,10 @@ function AppShell() {
       setPendingProjectId(null);
     }
   }, [pendingProjectId, cleanProjects]);
+
+  // Command Palette
+  const cmdRef = useRef();
+  const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/i.test(navigator.platform);
 
   // Notifications
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
@@ -271,6 +276,26 @@ function AppShell() {
         </button>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <button
+            onClick={() => cmdRef.current?.open()}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              background: '#F3F4F6', border: '1px solid #E5E7EB',
+              borderRadius: 8, padding: '7px 12px',
+              color: '#6B7280', fontSize: 13, cursor: 'pointer',
+              fontFamily: 'inherit',
+            }}
+          >
+            <Search size={13} />
+            <span style={{ color: '#9CA3AF' }}>Rechercher…</span>
+            <kbd style={{
+              background: '#fff', border: '1px solid #D1D5DB',
+              borderRadius: 4, padding: '1px 5px',
+              fontSize: 11, color: '#9CA3AF', fontFamily: 'inherit',
+            }}>
+              {isMac ? '⌘K' : 'Ctrl+K'}
+            </kbd>
+          </button>
           <IconButton onClick={handleNotifClick} sx={{ color: '#6B7280' }}>
             <Badge badgeContent={unreadCount} color="error" invisible={unreadCount === 0} sx={{ '& .MuiBadge-badge': { fontSize: 10, height: 16, minWidth: 16 } }}>
               <Bell size={20} />
@@ -398,6 +423,14 @@ function AppShell() {
           onBack={() => navigate("/")}
         />
       )}
+
+      <CommandPalette
+        ref={cmdRef}
+        projects={cleanProjects}
+        minutes={cleanMinutes}
+        navigate={navigate}
+        currentUser={currentUser}
+      />
 
     </div>
   );

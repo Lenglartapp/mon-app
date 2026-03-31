@@ -218,6 +218,12 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
     const counts = { prepa: 0, conf: 0, pose: 0 };
     if (!project || !events) return counts;
 
+    // Base importée (override pour projets repris en cours)
+    const imp = project.consumed_import || {};
+    counts.prepa += Number(imp.prepa) || 0;
+    counts.conf  += Number(imp.conf)  || 0;
+    counts.pose  += Number(imp.pose)  || 0;
+
     const projEvents = events.filter(e =>
       e.meta?.projectId === project.id &&
       e.meta?.status === 'validated'

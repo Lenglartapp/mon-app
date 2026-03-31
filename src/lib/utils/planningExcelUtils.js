@@ -1,4 +1,3 @@
-import ExcelJS from 'exceljs';
 import readXlsxFile from 'read-excel-file';
 import { format, parse, setHours, setMinutes, setSeconds } from 'date-fns';
 import { uid } from './uid';
@@ -41,6 +40,7 @@ function computeEndFromDuration(baseDate, durationHours) {
  *  - Pose                     : colonne E grisée,  F et G remplies
  */
 export async function generatePlanningTemplate(columns, allMembers, projects) {
+    const { default: ExcelJS } = await import('exceljs');
     const workbook = new ExcelJS.Workbook();
 
     const ws = workbook.addWorksheet('Déclaration');

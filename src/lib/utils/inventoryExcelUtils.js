@@ -1,4 +1,3 @@
-import ExcelJS from 'exceljs';
 import readXlsxFile from 'read-excel-file';
 
 /**
@@ -6,6 +5,7 @@ import readXlsxFile from 'read-excel-file';
  * @param {Array} inventory 
  */
 export async function exportInventoryToExcel(inventory) {
+    const { default: ExcelJS } = await import('exceljs');
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Inventaire Solde');
 

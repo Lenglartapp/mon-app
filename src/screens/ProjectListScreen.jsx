@@ -4,7 +4,7 @@ import Chip from '@mui/material/Chip';
 import Avatar from '@mui/material/Avatar';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
-import { Edit2, Plus, FileText, Trash2, ArrowUpDown, ArrowUp, ArrowDown, Archive } from 'lucide-react';
+import { Edit2, Plus, FileText, Trash2, ArrowUpDown, ArrowUp, ArrowDown, Archive, Upload } from 'lucide-react';
 
 import { SmartFilterBar } from "../components/ui/SmartFilterBar.jsx";
 import { useViewportWidth } from "../lib/hooks/useViewportWidth";
@@ -12,6 +12,7 @@ import { formatDateFR } from "../lib/utils/format";
 import { truncate } from "../lib/utils/truncate";
 
 import CreateProjectDialog from "../components/CreateProjectDialog.jsx";
+import ImportProjectsDialog from "../components/ImportProjectsDialog.jsx";
 import { SCHEMA_64 } from "../lib/schemas/production.js";
 import { computeFormulas } from "../lib/formulas/compute.js";
 import { createBlankProject } from "../lib/import/createBlankProject.js";
@@ -32,6 +33,7 @@ const PROJECT_STATUS_OPTIONS = {
 
 export function ProjectListScreen({ projects, setProjects, onOpenProject, minutes = [], onCreate, onDelete, onUpdateProject, onUpdateMinute, onBack }) {
   const [showCreate, setShowCreate] = useState(false);
+  const [showImport, setShowImport] = useState(false);
   const list = Array.isArray(projects) ? projects : [];
   const { currentUser, users } = useAuth();
   const canCreate = ["ADMIN", "ORDONNANCEMENT", "ADV"].includes(currentUser?.role) || can(currentUser, "project.create");
@@ -159,18 +161,31 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
             <h1 style={{ fontSize: 28, fontWeight: 700, color: '#1F2937', margin: 0, letterSpacing: '-0.5px' }}>Projets</h1>
           </div>
           {canCreate && (
-            <button
-              className="header-actions"
-              onClick={() => setShowCreate(true)}
-              style={{
-                background: '#1E2447', color: 'white', padding: '8px 16px', borderRadius: 8, border: 'none',
-                display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontWeight: 600,
-                boxShadow: '0 2px 4px rgba(0,0,0,0.1)', marginBottom: isMobile ? 0 : 4,
-                width: isMobile ? '100%' : 'auto', justifyContent: isMobile ? 'center' : 'flex-start'
-              }}
-            >
-              <Plus size={18} /> Nouveau Projet
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <button
+                className="header-actions"
+                onClick={() => setShowCreate(true)}
+                style={{
+                  background: '#1E2447', color: 'white', padding: '8px 16px', borderRadius: 8, border: 'none',
+                  display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontWeight: 600,
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)', marginBottom: isMobile ? 0 : 4,
+                  width: isMobile ? '100%' : 'auto', justifyContent: isMobile ? 'center' : 'flex-start'
+                }}
+              >
+                <Plus size={18} /> Nouveau Projet
+              </button>
+              <button
+                onClick={() => setShowImport(true)}
+                title="Importer des projets depuis Excel"
+                style={{
+                  background: '#F3F4F6', color: '#374151', padding: '8px 12px', borderRadius: 8,
+                  border: '1px solid #D1D5DB', display: 'flex', alignItems: 'center', gap: 6,
+                  cursor: 'pointer', fontWeight: 500, fontSize: 13, marginBottom: isMobile ? 0 : 4,
+                }}
+              >
+                <Upload size={15} /> Import Excel
+              </button>
+            </div>
           )}
         </div>
 
@@ -478,6 +493,23 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
         </div>
       </div>
 
+
+      <ImportProjectsDialog
+        open={showImport}
+        onClose={() => setShowImport(false)}
+        users={users}
+        onCreate={async (project) => {
+          if (onCreate) {
+            const { data, error } = await onCreate(project);
+            if (error) throw new Error(error.message);
+            if (data?.[0]) {
+              setProjects?.(prev => [data[0], ...(Array.isArray(prev) ? prev : [])]);
+            }
+          } else if (setProjects) {
+            setProjects(prev => [project, ...(Array.isArray(prev) ? prev : [])]);
+          }
+        }}
+      />
 
       {
         showCreate && (
