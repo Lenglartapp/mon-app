@@ -193,7 +193,7 @@ export default function ImportProjectsDialog({ open, onClose, onCreate, users = 
                                 {STATUS_LABELS[p.status] || p.status}
                               </span>
                             </td>
-                            <td style={{ padding: '7px 10px', color: '#374151', whiteSpace: 'nowrap' }}>{p.due || '—'}</td>
+                            <td style={{ padding: '7px 10px', color: '#374151', whiteSpace: 'nowrap' }}>{p.deadline || '—'}</td>
                             <td style={{ padding: '7px 10px', color: '#374151', whiteSpace: 'nowrap' }}>
                               {p.budget.prepa}h / {p.budget.conf}h / {p.budget.pose}h
                             </td>

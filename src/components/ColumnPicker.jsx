@@ -2,7 +2,7 @@ import React from "react";
 import { X } from "lucide-react";
 import { COLORS, S } from "../lib/constants/ui";
 
-export default function ColumnPicker({ visibleCols, setVisibleCols, schema, onClose }) {
+export default function ColumnPicker({ visibleCols, setVisibleCols, schema, onClose, fixedPos }) {
   // Colonnes protégées (toujours visibles)
   const MIN_COLS = ["sel", "detail"];
 
@@ -18,8 +18,18 @@ export default function ColumnPicker({ visibleCols, setVisibleCols, schema, onCl
     });
   };
 
+  const popStyle = fixedPos
+    ? {
+        ...S.pop,
+        position: 'fixed',
+        top: fixedPos.top,
+        right: fixedPos.right,
+        maxHeight: `calc(100vh - ${fixedPos.top}px - 16px)`,
+      }
+    : S.pop;
+
   return (
-    <div style={S.pop}>
+    <div style={popStyle}>
       {/* Entête */}
       <div
         style={{

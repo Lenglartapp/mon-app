@@ -122,13 +122,13 @@ export const CHIFFRAGE_SCHEMA = [
   { key: "pv_pass2", label: "PV Pass 2", type: "number", width: 90 },
 
   // 57
-  { key: "type_mecanisme", label: "Type Méca", type: "select", options: ["Rail", "Tringle", "Rail Motorisé"], width: 120 },
+  { key: "type_mecanisme", label: "Type Méca", type: "select", options: ["Rail", "Tringle", "Rail Motorisé", "Sans Méca"], width: 120 },
   // 58
-  { key: "modele_mecanisme", label: "Modèle Méca", type: "catalog_item", category: "Rail", width: 140 },
+  { key: "modele_mecanisme", label: "Modèle Méca", type: "catalog_item", category: "Rail", width: 140, readOnly: (row) => row.type_mecanisme === 'Sans Méca' },
   // 59
-  { key: "pa_mecanisme", label: "PA Méca", type: "number", width: 90 },
+  { key: "pa_mecanisme", label: "PA Méca", type: "number", width: 90, readOnly: (row) => row.type_mecanisme === 'Sans Méca' },
   // 60
-  { key: "pv_mecanisme", label: "PV Méca", type: "number", width: 90 },
+  { key: "pv_mecanisme", label: "PV Méca", type: "number", width: 90, readOnly: (row) => row.type_mecanisme === 'Sans Méca' },
 
   // 60b (NEW) - Mécanisme Bis
   { key: "mecanisme_bis", label: "Méca Bis", type: "catalog_item", category: "Rail", width: 140 }, // Same categories as main meca

@@ -120,13 +120,13 @@ export const RIDEAUX_SCHEMA = [
     { key: "pv_pass2", label: "PV Pass 2", type: "number", width: 145 },
 
     // 57
-    { key: "type_mecanisme", label: "Type Méca", type: "select", options: ["Rail", "Tringle", "Rail Motorisé"], width: 148 },
+    { key: "type_mecanisme", label: "Type Méca", type: "select", options: ["Rail", "Tringle", "Rail Motorisé", "Sans Méca"], width: 148 },
     // 58
-    { key: "modele_mecanisme", label: "Modèle Méca", type: "catalog_item", category: "Rail", width: 165 },
+    { key: "modele_mecanisme", label: "Modèle Méca", type: "catalog_item", category: "Rail", width: 165, readOnly: (row) => row.type_mecanisme === 'Sans Méca' },
     // 59
-    { key: "pa_mecanisme", label: "PA Méca", type: "number", width: 135 },
+    { key: "pa_mecanisme", label: "PA Méca", type: "number", width: 135, readOnly: (row) => row.type_mecanisme === 'Sans Méca' },
     // 60
-    { key: "pv_mecanisme", label: "PV Méca", type: "number", width: 135 },
+    { key: "pv_mecanisme", label: "PV Méca", type: "number", width: 135, readOnly: (row) => row.type_mecanisme === 'Sans Méca' },
 
     // 60b
     { key: "mecanisme_bis", label: "Méca Bis", type: "catalog_item", category: "Rail", width: 135 },

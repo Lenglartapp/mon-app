@@ -478,7 +478,10 @@ const esc = React.useCallback(
   );
 
 const [showCols, setShowCols] = useState(false);
+  const colsBtnRef = useRef(null);
+  const [colsPos, setColsPos] = useState(null);
   const [editColKey, setEditColKey] = useState(null);
+
   const [detailRow, setDetailRow] = useState(null);
   const wrapRef = useRef(null);
   const [menu, setMenu] = useState(null); // { key, x, y }
@@ -679,6 +682,17 @@ useEffect(() => {
   }
   // eslint-disable-next-line react-hooks/exhaustive-deps
 }, [cols?.length, schema?.length]);
+
+// Recalcule la position du panel colonnes lors du scroll (position: fixed doit suivre le bouton)
+useEffect(() => {
+  if (!showCols) return;
+  const updatePos = () => {
+    const rect = colsBtnRef.current?.getBoundingClientRect();
+    if (rect) setColsPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+  };
+  window.addEventListener('scroll', updatePos, true);
+  return () => window.removeEventListener('scroll', updatePos, true);
+}, [showCols]);
 
 
   // Si plus aucune colonne n'est réellement visible (par ex. préférences locales corrompues),
@@ -2110,7 +2124,18 @@ const insertField = (key, side = "right") => {
 
   {/* Colonnes */}
   <div style={{ position: "relative" }}>
-    <button style={S.smallBtn} title="Colonnes" onClick={() => setShowCols((s) => !s)}>
+    <button
+      ref={colsBtnRef}
+      style={S.smallBtn}
+      title="Colonnes"
+      onClick={() => {
+        if (!showCols) {
+          const rect = colsBtnRef.current?.getBoundingClientRect();
+          if (rect) setColsPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+        }
+        setShowCols((s) => !s);
+      }}
+    >
       <Settings2 size={16} />
     </button>
     {showCols && (
@@ -2119,6 +2144,7 @@ const insertField = (key, side = "right") => {
         setVisibleCols={setVisibleCols}
         schema={schema}
         onClose={() => setShowCols(false)}
+        fixedPos={colsPos}
       />
     )}
   </div>

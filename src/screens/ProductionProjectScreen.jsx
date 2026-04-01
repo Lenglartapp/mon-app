@@ -133,6 +133,8 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
   const [openedRowId, setOpenedRowId] = useState(null);
   const [stockOpen, setStockOpen] = useState(false);
   const [showDocs, setShowDocs] = useState(false);
+  const [deliveryOpen, setDeliveryOpen] = useState(false);
+  const deliveryRef = useRef(null);
 
   const handleUpdateDocs = (newDocs) => {
     if (onUpdateProject && project) {
@@ -206,6 +208,18 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
       setOpenedRowId(highlightRowId);
     }
   }, [highlightRowId]);
+
+  // Fermer le dropdown livraison au clic extérieur
+  useEffect(() => {
+    if (!deliveryOpen) return;
+    const handler = (e) => {
+      if (deliveryRef.current && !deliveryRef.current.contains(e.target)) {
+        setDeliveryOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [deliveryOpen]);
 
   const { currentUser } = useAuth();
   const canEditProd = can(currentUser, "production.edit") ||
@@ -764,23 +778,100 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
 
             {/* Delivery Date - Hidden on Mobile */}
             {!isMobile && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'white', border: '1px solid #E5E7EB', borderRadius: 20, padding: '6px 12px', boxShadow: "0 1px 2px rgba(0,0,0,0.05)", flexShrink: 0, whiteSpace: 'nowrap' }}>
-                <span style={{ fontSize: 13, color: '#6B7280', fontWeight: 500 }}>Livraison :</span>
-                <input
-                  type="date"
-                  value={project?.delivery_date || ""}
-                  onChange={(e) => onUpdateProject(project.id, { delivery_date: e.target.value })}
+              <div ref={deliveryRef} style={{ position: 'relative', flexShrink: 0 }}>
+                <button
+                  onClick={() => setDeliveryOpen(o => !o)}
                   style={{
-                    border: 'none',
-                    background: 'transparent',
-                    color: '#374151',
-                    fontSize: 13,
-                    fontFamily: 'inherit',
-                    cursor: 'pointer',
-                    outline: 'none',
-                    minWidth: 110 // Ensure input has space
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    background: 'white', border: '1px solid #E5E7EB', borderRadius: 20,
+                    padding: '6px 12px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                    whiteSpace: 'nowrap', cursor: 'pointer', fontSize: 13,
+                    color: '#374151', fontFamily: 'inherit'
                   }}
-                />
+                >
+                  <span style={{ color: '#6B7280', fontWeight: 500 }}>Livraison :</span>
+                  <span style={{ color: project?.deadline ? '#374151' : '#9CA3AF' }}>
+                    {project?.deadline ? new Date(project.deadline).toLocaleDateString('fr-FR') : '—'}
+                  </span>
+                  {(project?.delivery_phases?.length > 0) && (
+                    <span style={{ background: '#EFF6FF', color: '#2563EB', borderRadius: 10, fontSize: 11, fontWeight: 600, padding: '1px 6px' }}>
+                      {project.delivery_phases.length} phase{project.delivery_phases.length > 1 ? 's' : ''}
+                    </span>
+                  )}
+                </button>
+
+                {deliveryOpen && (
+                  <div style={{
+                    position: 'absolute', top: 'calc(100% + 6px)', right: 0,
+                    background: 'white', border: '1px solid #E5E7EB', borderRadius: 12,
+                    boxShadow: '0 4px 16px rgba(0,0,0,0.1)', padding: 16, minWidth: 290, zIndex: 1000
+                  }}>
+                    {/* Date globale */}
+                    <div style={{ marginBottom: 14 }}>
+                      <label style={{ fontSize: 11, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 6 }}>
+                        Date de livraison souhaitée
+                      </label>
+                      <input
+                        type="date"
+                        value={project?.deadline ? project.deadline.split('T')[0] : ''}
+                        onChange={(e) => onUpdateProject(project.id, { deadline: e.target.value })}
+                        style={{ width: '100%', border: '1px solid #E5E7EB', borderRadius: 8, padding: '6px 10px', fontSize: 13, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
+                      />
+                    </div>
+
+                    {/* Phases */}
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                        <span style={{ fontSize: 11, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Phases</span>
+                        <button
+                          onClick={() => {
+                            const phases = [...(project?.delivery_phases || []), { id: uid(), label: '', date: '' }];
+                            onUpdateProject(project.id, { delivery_phases: phases });
+                          }}
+                          style={{ fontSize: 12, color: '#2563EB', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500, padding: 0 }}
+                        >
+                          + Phase
+                        </button>
+                      </div>
+
+                      {(project?.delivery_phases || []).map((phase, idx) => (
+                        <div key={phase.id || idx} style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 6 }}>
+                          <input
+                            value={phase.label}
+                            placeholder="Phase 1…"
+                            onChange={(e) => {
+                              const phases = (project.delivery_phases || []).map((p, i) => i === idx ? { ...p, label: e.target.value } : p);
+                              onUpdateProject(project.id, { delivery_phases: phases });
+                            }}
+                            style={{ flex: 1, border: '1px solid #E5E7EB', borderRadius: 8, padding: '5px 8px', fontSize: 12, fontFamily: 'inherit', outline: 'none', minWidth: 0 }}
+                          />
+                          <input
+                            type="date"
+                            value={phase.date || ''}
+                            onChange={(e) => {
+                              const phases = (project.delivery_phases || []).map((p, i) => i === idx ? { ...p, date: e.target.value } : p);
+                              onUpdateProject(project.id, { delivery_phases: phases });
+                            }}
+                            style={{ border: '1px solid #E5E7EB', borderRadius: 8, padding: '5px 8px', fontSize: 12, fontFamily: 'inherit', outline: 'none', width: 130 }}
+                          />
+                          <button
+                            onClick={() => {
+                              const phases = (project.delivery_phases || []).filter((_, i) => i !== idx);
+                              onUpdateProject(project.id, { delivery_phases: phases });
+                            }}
+                            style={{ color: '#9CA3AF', background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '0 2px' }}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+
+                      {(!project?.delivery_phases || project.delivery_phases.length === 0) && (
+                        <p style={{ fontSize: 12, color: '#9CA3AF', margin: 0, textAlign: 'center', padding: '8px 0' }}>Aucune phase</p>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 

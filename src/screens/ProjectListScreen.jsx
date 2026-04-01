@@ -304,7 +304,7 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
         {filteredProjects.map((p) => {
           const statusOpt = PROJECT_STATUS_OPTIONS[p?.status] || PROJECT_STATUS_OPTIONS.TODO;
           const budget = p.budget || { prepa: 0, conf: 0, pose: 0 };
-          const dateStr = p.due ? formatDateFR(p.due) : "—";
+          const dateStr = p.deadline ? formatDateFR(p.deadline) : "—";
 
           return (
             <div key={p.id} style={{
@@ -517,12 +517,12 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
                     <td style={{ padding: '12px 16px' }} onClick={(e) => e.stopPropagation()}>
                       <input
                         type="date"
-                        value={p?.due ? p.due.split('T')[0] : ""}
-                        onChange={(e) => handleUpdate(p.id, { due: e.target.value })}
+                        value={p?.deadline ? p.deadline.split('T')[0] : ""}
+                        onChange={(e) => handleUpdate(p.id, { deadline: e.target.value })}
                         style={{
                           border: 'none',
                           background: 'transparent',
-                          color: p?.due ? '#374151' : '#9CA3AF',
+                          color: p?.deadline ? '#374151' : '#9CA3AF',
                           fontSize: 13,
                           fontFamily: 'inherit',
                           cursor: 'pointer',
@@ -617,7 +617,7 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
               project.budget = calculateBudgetFromRows(rows);
               project.manager = meta?.owner || project.manager;
               project.notes = meta?.notes || project.notes;
-              project.due = deliveryDate || null;
+              project.deadline = deliveryDate || null;
               project.location = location || null;
               project.intervention_type = intervention_type || null;
               project.expedition_type = expedition_type || null;
@@ -657,7 +657,7 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
                 name: projectName || "Nouveau Projet",
                 budget: { prepa: 0, conf: 0, pose: 0 },
                 config: config,
-                due: config?.deliveryDate || null,
+                deadline: config?.deliveryDate || null,
                 location: config?.location || null,
                 intervention_type: config?.intervention_type || null,
                 expedition_type: config?.expedition_type || null,

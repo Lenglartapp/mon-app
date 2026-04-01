@@ -214,6 +214,7 @@ export const DEFAULT_VIEWS = {
     rideaux: [
       "sel", "detail", "zone", "piece", "produit", "type_confection",
       "paire_ou_un_seul_pan", "largeur_mecanisme", "largeur",
+      "hauteur_finie_gauche", "hauteur_finie_droite",
       "statut_cotes", "type_crochets",
       "croisement", "type_croisement", "retour_gauche", "retour_droit", "type_retours",
       "type_mecanisme", "modele_mecanisme", "couleur_mecanisme",

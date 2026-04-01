@@ -200,6 +200,7 @@ function MinuteGrid({
     const resolvedUser = currentUser ?? authUser;
     const [selectedCount, setSelectedCount] = useState(0);
     const [colPanelOpen, setColPanelOpen] = useState(false);
+    const colBtnRef = useRef(null);
     const [matierePanelOpen, setMatierePanelOpen] = useState(false);
     const [colVisibility, setColVisibility] = useState({});
     const [quickFilter, setQuickFilter] = useState('');
@@ -473,6 +474,19 @@ function MinuteGrid({
     }, [bulkField, bulkValue]);
 
     // Panneau de visibilité des colonnes
+    const [colPanelPos, setColPanelPos] = useState(null);
+
+    // Recalcule la position du panel colonnes lors du scroll (position: fixed doit suivre le bouton)
+    useEffect(() => {
+        if (!colPanelOpen) return;
+        const updatePos = () => {
+            const rect = colBtnRef.current?.getBoundingClientRect();
+            if (rect) setColPanelPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+        };
+        window.addEventListener('scroll', updatePos, true);
+        return () => window.removeEventListener('scroll', updatePos, true);
+    }, [colPanelOpen]);
+
     const handleToggleColPanel = useCallback(() => {
         const api = gridRef.current?.api;
         if (!api) return;
@@ -485,6 +499,8 @@ function MinuteGrid({
                 }
             });
             setColVisibility(vis);
+            const rect = colBtnRef.current?.getBoundingClientRect();
+            if (rect) setColPanelPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
         }
         setColPanelOpen(prev => !prev);
     }, [colPanelOpen]);
@@ -605,6 +621,13 @@ function MinuteGrid({
         const cellFx = { ...(oldRow.__cellFormulas || {}) };
         let hasOverride = false;
 
+        // 0. Sans Méca — vider modèle, PA et PV mécanisme
+        if (changedKey === 'type_mecanisme' && newVal === 'Sans Méca') {
+            updatedRow.modele_mecanisme = '';
+            updatedRow.pa_mecanisme = 0;
+            updatedRow.pv_mecanisme = 0;
+        }
+
         // 1. Catalog auto-fill
         const isCatalogColumn = changedKey && (
             changedKey.includes('tissu') ||
@@ -724,6 +747,19 @@ function MinuteGrid({
     // Ligne de totaux interactive (valeurs calculées selon colAggregations)
     const pinnedBottomRowData = useMemo(() => {
         if (rows.length === 0) return [];
+        // Filtrer les lignes selon les conditions actives (cohérent avec doesExternalFilterPass)
+        const activeConditions = filterConditions.filter(isConditionActive);
+        const filteredRows = activeConditions.length === 0
+            ? rows
+            : rows.filter(r => {
+                let result = evaluateCondition(activeConditions[0], r);
+                for (let i = 1; i < activeConditions.length; i++) {
+                    const cond = activeConditions[i];
+                    const condResult = evaluateCondition(cond, r);
+                    result = cond.logic === 'ou' ? result || condResult : result && condResult;
+                }
+                return result;
+            });
         const totals = { _isPinnedTotal: true };
         schema.forEach(col => {
             // Exclure les types clairement non-numériques
@@ -731,7 +767,7 @@ function MinuteGrid({
             if (col.key === 'detail' || col.key === 'sel') return;
             const aggType = colAggregations[col.key] || 'none';
             if (aggType === 'none') return;
-            const values = rows.map(r => {
+            const values = filteredRows.map(r => {
                 if (col.valueGetter) {
                     try { return col.valueGetter({ row: r }); } catch { return r[col.key]; }
                 }
@@ -741,7 +777,7 @@ function MinuteGrid({
             if (result !== null) totals[col.key] = result;
         });
         return [totals];
-    }, [rows, schema, colAggregations]);
+    }, [rows, schema, colAggregations, filterConditions]);
 
     // Vue mobile (cards)
     if (isMobile) {
@@ -983,41 +1019,46 @@ function MinuteGrid({
                 {/* Bouton colonnes */}
                 <div style={{ position: 'relative', marginLeft: 'auto' }}>
                     <button
+                        ref={colBtnRef}
                         onClick={handleToggleColPanel}
                         style={{ cursor: 'pointer', padding: '5px 10px', background: 'white', color: '#374151', border: '1px solid #d1d5db', borderRadius: 4, display: 'flex', alignItems: 'center', gap: 5, fontSize: 12 }}
                     >
                         <Columns size={14} /> Colonnes
                     </button>
-                    {colPanelOpen && (
-                        <div
-                            style={{
-                                position: 'absolute', right: 0, top: '100%', marginTop: 4,
-                                background: 'white', border: '1px solid #e5e7eb', borderRadius: 8,
-                                boxShadow: '0 10px 25px rgba(0,0,0,0.1)', zIndex: 1000,
-                                maxHeight: 320, overflowY: 'auto', minWidth: 200, padding: 8,
-                            }}
-                        >
-                            <div style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', padding: '4px 8px 8px' }}>Afficher / Masquer</div>
-                            {schemaCols.map(col => (
-                                <label key={col.field} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 8px', borderRadius: 4, cursor: 'pointer', fontSize: 13 }}
-                                    onMouseEnter={e => e.currentTarget.style.background = '#f3f4f6'}
-                                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                                >
-                                    <input
-                                        type="checkbox"
-                                        checked={colVisibility[col.field] !== false}
-                                        onChange={e => handleToggleColumn(col.field, e.target.checked)}
-                                        style={{ accentColor: '#2563eb' }}
-                                    />
-                                    <span>{col.label}</span>
-                                </label>
-                            ))}
-                        </div>
-                    )}
                 </div>
                 {/* Fermer le panneau colonnes en cliquant ailleurs */}
                 {colPanelOpen && (
                     <div style={{ position: 'fixed', inset: 0, zIndex: 999 }} onClick={() => setColPanelOpen(false)} />
+                )}
+                {/* Panel colonnes en position fixed pour ne pas être rogné par les overflow parents */}
+                {colPanelOpen && colPanelPos && (
+                    <div
+                        style={{
+                            position: 'fixed',
+                            top: colPanelPos.top,
+                            right: colPanelPos.right,
+                            background: 'white', border: '1px solid #e5e7eb', borderRadius: 8,
+                            boxShadow: '0 10px 25px rgba(0,0,0,0.1)', zIndex: 1000,
+                            maxHeight: 'calc(100vh - ' + colPanelPos.top + 'px - 16px)',
+                            overflowY: 'auto', minWidth: 200, padding: 8,
+                        }}
+                    >
+                        <div style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', padding: '4px 8px 8px' }}>Afficher / Masquer</div>
+                        {schemaCols.map(col => (
+                            <label key={col.field} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 8px', borderRadius: 4, cursor: 'pointer', fontSize: 13 }}
+                                onMouseEnter={e => e.currentTarget.style.background = '#f3f4f6'}
+                                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                            >
+                                <input
+                                    type="checkbox"
+                                    checked={colVisibility[col.field] !== false}
+                                    onChange={e => handleToggleColumn(col.field, e.target.checked)}
+                                    style={{ accentColor: '#2563eb' }}
+                                />
+                                <span>{col.label}</span>
+                            </label>
+                        ))}
+                    </div>
                 )}
             </div>
 
