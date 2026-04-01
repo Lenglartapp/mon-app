@@ -499,12 +499,26 @@ const ActivityList = React.memo(({ activities, currentUser }) => {
 
 // --- MAIN COMPONENT ---
 
+const ACTIVITY_FILTERS = [
+    { key: 'all', label: 'Tout' },
+    { key: 'activity', label: 'Activité' },
+    { key: 'messages', label: 'Messages & Photos' },
+];
+
 const ActivitySidebar = React.memo(({ activities = [], onAddComment, onAddImage, currentUser = "Moi", isOpen, minuteId, projectId, rowId, row }) => {
     const { addNotification } = useNotifications();
     const { users } = useAuth(); // We might need this, but maybe not if we just pass callback
 
     // Notification Menu State (Visual)
     const [headerAnchor, setHeaderAnchor] = useState(null);
+    const [activityFilter, setActivityFilter] = useState('all');
+
+    const filteredActivities = useMemo(() => {
+        if (activityFilter === 'all') return activities;
+        if (activityFilter === 'activity') return activities.filter(a => a.type === 'log' || a.type === 'change');
+        if (activityFilter === 'messages') return activities.filter(a => a.type === 'msg' || a.type === 'image');
+        return activities;
+    }, [activities, activityFilter]);
 
     // Memoized Handler to prevent re-renders of CommentInputForm
     const handleSendMessage = useCallback((text) => {
@@ -575,7 +589,7 @@ const ActivitySidebar = React.memo(({ activities = [], onAddComment, onAddImage,
                     <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#111827' }}>
                         Activité
                     </Typography>
-                    <Chip label={activities.length} size="small" sx={{ height: 18, fontSize: 10, fontWeight: 600, bgcolor: '#F3F4F6' }} />
+                    <Chip label={filteredActivities.length} size="small" sx={{ height: 18, fontSize: 10, fontWeight: 600, bgcolor: '#F3F4F6' }} />
                 </Box>
 
                 <IconButton size="small" onClick={(e) => setHeaderAnchor(e.currentTarget)}>
@@ -592,8 +606,30 @@ const ActivitySidebar = React.memo(({ activities = [], onAddComment, onAddImage,
                 </Menu>
             </Box>
 
+            {/* Filter tabs */}
+            <Box sx={{ display: 'flex', gap: '4px', px: 2, py: 1, borderBottom: '1px solid #E5E7EB', bgcolor: 'white' }}>
+                {ACTIVITY_FILTERS.map(f => (
+                    <button
+                        key={f.key}
+                        onClick={() => setActivityFilter(f.key)}
+                        style={{
+                            padding: '4px 10px',
+                            borderRadius: 20,
+                            border: 'none',
+                            fontSize: 11,
+                            fontWeight: 500,
+                            cursor: 'pointer',
+                            background: activityFilter === f.key ? '#374151' : '#E5E7EB',
+                            color: activityFilter === f.key ? 'white' : '#4B5563',
+                        }}
+                    >
+                        {f.label}
+                    </button>
+                ))}
+            </Box>
+
             {/* List */}
-            <ActivityList activities={activities} currentUser={currentUser?.name || currentUser} />
+            <ActivityList activities={filteredActivities} currentUser={currentUser?.name || currentUser} />
 
             {/* Input Form */}
             <CommentInputForm

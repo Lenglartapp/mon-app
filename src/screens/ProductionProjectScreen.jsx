@@ -452,7 +452,11 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
       oldSubset = allRows.filter(r => filterRegex.test(String(r.produit || "")));
     }
     const newIds = new Set(newSubsetRows.map(r => r.id));
-    const deletedIds = new Set(oldSubset.filter(r => !newIds.has(r.id)).map(r => r.id));
+    const deletedRows = oldSubset.filter(r => !newIds.has(r.id));
+    if (deletedRows.length > 0) {
+      console.warn('[handleSubsetChange] Suppression de lignes détectée :', deletedRows.map(r => ({ id: r.id, produit: r.produit, section: r.section })));
+    }
+    const deletedIds = new Set(deletedRows.map(r => r.id));
     const updatedMap = new Map(newSubsetRows.map(r => [r.id, r]));
 
     const updatedAllRows = allRows
@@ -474,31 +478,19 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
   }, [canEditProd, schema, currentUser?.name, debouncedSave, project?.id]);
 
   const mergeChildRowsFor = (tableKey) => {
-    let regex = /./; // Default
-    if (tableKey === "rideaux") regex = /rideau|voilage/i;
-    else if (tableKey === "rideaux") regex = /rideau|voilage/i;
-    else if (tableKey === "stores") regex = /store/i;
-
-    // For Autre Confection, we might not use regex but direct check in handleSubsetChange? 
-    // Actually handleSubsetChange uses regex to IDENTIFY old rows to replace.
-    // IF section='autre', regex is weak. We should ideally update handleSubsetChange to support custom filter predicate.
-    // For now, let's skip regex for 'section' based updates if possible, or use a dummy regex that matches nothing if we rely on IDs?
-    // No, handleSubsetChange uses regex to find `oldSubset`.
-    // We should modify handleSubsetChange OR provide a regex that matches `rowsAutreConfection`.
-    // Since 'produit' is free text, no specific regex works perfectly unless we enforce a tag.
-    // BUT we filter by `section === 'autre'`.
-    // Let's adapt `mergeChildRowsFor` to pass a predicate function instead of regex?
-    // Changing that would break other calls.
-    // Alternative: pass a regex that matches EVERYTHING if we want? No that deletes everything.
-
-    // QUICK FIX: If tableKey is "autre_confection", we assume we shouldn't use regex for filtering old rows based on Product Name.
-    // We need to pass a "filter function" to handleSubsetChange.
-
+    if (tableKey === "rideaux") {
+      return (nr) => handleSubsetChange(nr, /rideau|voilage/i);
+    }
+    if (tableKey === "stores") {
+      return (nr) => handleSubsetChange(nr, null, (r) => r.produit && /store/i.test(String(r.produit)) && !/bateau|velum/i.test(String(r.produit)));
+    }
     if (tableKey === "autre_confection") {
       return (nr) => handleSubsetChange(nr, null, (r) => r.section === 'autre');
     }
-
-    return (nr) => handleSubsetChange(nr, regex);
+    // Sécurité : tableKey inconnu → ne jamais appeler handleSubsetChange avec une regex par défaut
+    // qui pourrait supprimer des données non ciblées.
+    console.error(`mergeChildRowsFor: tableKey inconnu "${tableKey}" — aucune action effectuée.`);
+    return () => {};
   };
 
   // 2. handleRowsChangeInstallation — stable via rowsRef

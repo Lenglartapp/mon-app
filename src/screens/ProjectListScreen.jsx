@@ -4,9 +4,10 @@ import Chip from '@mui/material/Chip';
 import Avatar from '@mui/material/Avatar';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
-import { Edit2, Plus, FileText, Trash2, ArrowUpDown, ArrowUp, ArrowDown, Archive, Upload } from 'lucide-react';
+import { Edit2, Plus, FileText, Trash2, ArrowUpDown, ArrowUp, ArrowDown, Archive, Upload, Filter } from 'lucide-react';
 
 import { SmartFilterBar } from "../components/ui/SmartFilterBar.jsx";
+import FilterPanel, { isConditionActive, evaluateCondition } from "../components/FilterPanel.jsx";
 import { useViewportWidth } from "../lib/hooks/useViewportWidth";
 import { formatDateFR } from "../lib/utils/format";
 import { truncate } from "../lib/utils/truncate";
@@ -31,6 +32,17 @@ const PROJECT_STATUS_OPTIONS = {
   ARCHIVED: { label: "Archivé", color: "#374151", bg: "#F9FAFB" }
 };
 
+const PROJECT_FILTER_SCHEMA = [
+  { key: 'name',    label: 'Nom du projet',      type: 'text' },
+  { key: 'manager', label: 'Responsable',         type: 'text' },
+  { key: 'status',  label: 'Statut',              type: 'select', options: Object.entries(PROJECT_STATUS_OPTIONS).map(([k, v]) => ({ value: k, label: v.label })) },
+  { key: 'notes',   label: 'Notes',               type: 'text' },
+  { key: 'due',     label: 'Date de livraison',   type: 'text' },
+  { key: 'prepa',   label: 'Heures Prépa',        type: 'number' },
+  { key: 'conf',    label: 'Heures Conf',         type: 'number' },
+  { key: 'pose',    label: 'Heures Pose',         type: 'number' },
+];
+
 export function ProjectListScreen({ projects, setProjects, onOpenProject, minutes = [], onCreate, onDelete, onUpdateProject, onUpdateMinute, onBack }) {
   const [showCreate, setShowCreate] = useState(false);
   const [showImport, setShowImport] = useState(false);
@@ -38,9 +50,10 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
   const { currentUser, users } = useAuth();
   const canCreate = ["ADMIN", "ORDONNANCEMENT", "ADV"].includes(currentUser?.role) || can(currentUser, "project.create");
   const canSeeChiffrage = can(currentUser, "chiffrage.view");
-  const [searchQuery, setSearchQuery] = useState("");
   const [activeFilters, setActiveFilters] = useState([]);
   const [sortConfig, setSortConfig] = useState({ key: 'created_at', direction: 'desc' });
+  const [filterConditions, setFilterConditions] = useState([]);
+  const [filterPanelOpen, setFilterPanelOpen] = useState(false);
 
   const [showArchived, setShowArchived] = useState(false);
 
@@ -62,15 +75,26 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
     }
   };
 
+  const SEARCH_FIELDS = [
+    { id: 'name',    label: 'Nom du projet' },
+    { id: 'manager', label: 'Responsable' },
+    { id: 'status',  label: 'Statut' },
+    { id: 'notes',   label: 'Notes' },
+  ];
+
   useEffect(() => {
-    setActiveFilters([{ id: 'my_projects', label: '👤 Mes Projets', field: 'manager' }]);
+    setActiveFilters([{ id: 'my_projects', label: '👤 Mes Projets', field: 'manager', value: currentUser?.name || currentUser?.displayName || '' }]);
   }, []);
 
+  const handleAddFilter = (filter) => setActiveFilters(prev => [...prev, filter]);
   const handleRemoveFilter = (id) => setActiveFilters(prev => prev.filter(f => f.id !== id));
 
   const filteredProjects = useMemo(() => {
     let res = list;
-    if (activeFilters.some(f => f.id === 'my_projects')) {
+
+    // Filtre "Mes Projets"
+    const myFilter = activeFilters.find(f => f.id === 'my_projects');
+    if (myFilter) {
       const userName = (currentUser?.displayName || currentUser?.name || "").toLowerCase();
       const userEmail = (currentUser?.email || "").toLowerCase();
       if (userName || userEmail) {
@@ -80,20 +104,36 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
         });
       }
     }
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      res = res.filter(p => [p.name, p.manager, p.status, p.notes].some(x => String(x || "").toLowerCase().includes(q)));
-    }
 
-    if (showArchived) {
-      // Show ONLY Archived
-      res = res.filter(p => p.status === 'ARCHIVED');
-    } else {
-      // Show ONLY Active (Not Archived)
+    // Filtres texte (champ spécifique ou tous les champs)
+    const textFilters = activeFilters.filter(f => f.id !== 'my_projects' && f.value);
+    textFilters.forEach(f => {
+      const q = f.value.toLowerCase();
+      if (f.field === 'all') {
+        res = res.filter(p => [p.name, p.manager, p.status, p.notes].some(x => String(x || "").toLowerCase().includes(q)));
+      } else {
+        res = res.filter(p => String(p[f.field] || "").toLowerCase().includes(q));
+      }
+    });
+
+    if (!showArchived) {
       res = res.filter(p => p.status !== 'ARCHIVED');
     }
 
-    // Sort
+    const activeConditions = filterConditions.filter(isConditionActive);
+    if (activeConditions.length > 0) {
+      res = res.filter(p => {
+        const flat = { ...p, prepa: p.budget?.prepa || 0, conf: p.budget?.conf || 0, pose: p.budget?.pose || 0 };
+        let result = evaluateCondition(activeConditions[0], flat);
+        for (let i = 1; i < activeConditions.length; i++) {
+          const cond = activeConditions[i];
+          const val = evaluateCondition(cond, flat);
+          result = cond.logic === 'ou' ? result || val : result && val;
+        }
+        return result;
+      });
+    }
+
     if (sortConfig.key) {
       res = [...res].sort((a, b) => {
         const getValue = (obj, k) => {
@@ -102,7 +142,6 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
         };
         const valA = getValue(a, sortConfig.key) || 0;
         const valB = getValue(b, sortConfig.key) || 0;
-
         if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
         if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
         return 0;
@@ -110,7 +149,7 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
     }
 
     return res;
-  }, [list, searchQuery, activeFilters, currentUser, sortConfig, showArchived]);
+  }, [list, activeFilters, currentUser, sortConfig, showArchived, filterConditions]);
 
   // FIX: useViewportWidth returns a number, not an object
   const width = useViewportWidth();
@@ -191,12 +230,50 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
 
         <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
           <SmartFilterBar
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
+            fields={SEARCH_FIELDS}
             activeFilters={activeFilters}
+            onAddFilter={handleAddFilter}
             onRemoveFilter={handleRemoveFilter}
-            style={{ flex: 1 }} // Ensure full width
+            placeholder="Nom, responsable, statut..."
           />
+          <div style={{ position: 'relative' }}>
+            {(() => {
+              const hasActive = filterConditions.some(isConditionActive);
+              return (
+                <button
+                  onClick={() => setFilterPanelOpen(o => !o)}
+                  style={{
+                    cursor: 'pointer', padding: '5px 12px', height: 38,
+                    background: hasActive ? '#dcfce7' : (filterPanelOpen ? '#eff6ff' : 'white'),
+                    color: hasActive ? '#15803d' : '#374151',
+                    border: `1px solid ${hasActive ? '#86efac' : (filterPanelOpen ? '#2563eb' : '#d1d5db')}`,
+                    borderRadius: 6, display: 'flex', alignItems: 'center', gap: 6, fontSize: 13,
+                    fontWeight: hasActive ? 600 : 400,
+                  }}
+                >
+                  <Filter size={14} />
+                  Filtrer
+                  {hasActive && (
+                    <span style={{ background: '#16a34a', color: 'white', borderRadius: 10, fontSize: 11, fontWeight: 700, padding: '0 6px', lineHeight: '18px' }}>
+                      {filterConditions.filter(isConditionActive).length}
+                    </span>
+                  )}
+                </button>
+              );
+            })()}
+            {filterPanelOpen && (
+              <>
+                <div style={{ position: 'fixed', inset: 0, zIndex: 1000 }} onClick={() => setFilterPanelOpen(false)} />
+                <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, zIndex: 1001 }}>
+                  <FilterPanel
+                    schema={PROJECT_FILTER_SCHEMA}
+                    conditions={filterConditions}
+                    onChange={setFilterConditions}
+                  />
+                </div>
+              </>
+            )}
+          </div>
           <Tooltip title={showArchived ? "Retour aux dossiers actifs" : "Voir archives"}>
             <IconButton
               onClick={() => setShowArchived(!showArchived)}
