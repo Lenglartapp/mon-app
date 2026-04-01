@@ -627,7 +627,8 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onBack, onOpen
                   status: m.status,
                   catalog: m.catalog,
                   settings: m.settings,
-                  modules: m.modules // ADDED: Persist modules
+                  modules: m.modules,
+                  matieres: m.matieres,
                 });
               }}
               enableCellFormulas={true}

@@ -250,14 +250,25 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
     onChangeMinute?.({ ...minute, settings: newSettings, updatedAt: Date.now() });
   };
 
-  // Persistance des matières sélectionnées par grille (stocké dans minute.matieres)
+  // Persistance des matières sélectionnées — localStorage keyed par minuteId
+  const matieresStorageKey = minute?.id ? `matieres_${minute.id}` : null;
+  const [localMatieres, setLocalMatieres] = React.useState(() => {
+    if (!minute?.id) return {};
+    try {
+      const stored = localStorage.getItem(`matieres_${minute.id}`);
+      return stored ? JSON.parse(stored) : {};
+    } catch { return {}; }
+  });
+
   const handleMatiereChange = React.useCallback((gridKey, newMatieres) => {
-    onChangeMinute?.({
-      ...minute,
-      matieres: { ...(minute?.matieres || {}), [gridKey]: newMatieres },
-      updatedAt: Date.now(),
+    setLocalMatieres(prev => {
+      const next = { ...prev, [gridKey]: newMatieres };
+      if (matieresStorageKey) {
+        try { localStorage.setItem(matieresStorageKey, JSON.stringify(next)); } catch {}
+      }
+      return next;
     });
-  }, [minute, onChangeMinute]);
+  }, [matieresStorageKey]);
 
 
 
@@ -518,7 +529,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
               railOptions={railOptions}
               initialVisibilityModel={RIDEAUX_DEFAULT_VISIBILITY}
               matiereGroups={RIDEAUX_MATIERE_GROUPS}
-              activeMatieres={minute?.matieres?.chiff_rideaux || null}
+              activeMatieres={localMatieres.chiff_rideaux || null}
               onMatiereChange={(m) => handleMatiereChange('chiff_rideaux', m)}
               onDuplicateRow={handleDuplicateRow}
               hideCroquis={true}
@@ -587,7 +598,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
               catalog={catalog}
               initialVisibilityModel={STORES_DEFAULT_VISIBILITY}
               matiereGroups={STORES_BATEAUX_MATIERE_GROUPS}
-              activeMatieres={minute?.matieres?.chiff_stores_bateau || null}
+              activeMatieres={localMatieres.chiff_stores_bateau || null}
               onMatiereChange={(m) => handleMatiereChange('chiff_stores_bateau', m)}
               onDuplicateRow={handleDuplicateRow}
               hideCroquis={true}
@@ -623,7 +634,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
               catalog={catalog}
               initialVisibilityModel={COUSSINS_DEFAULT_VISIBILITY}
               matiereGroups={COUSSINS_MATIERE_GROUPS}
-              activeMatieres={minute?.matieres?.chiff_coussins || null}
+              activeMatieres={localMatieres.chiff_coussins || null}
               onMatiereChange={(m) => handleMatiereChange('chiff_coussins', m)}
               onDuplicateRow={handleDuplicateRow}
               hideCroquis={true}
@@ -659,7 +670,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
               catalog={catalog}
               initialVisibilityModel={CACHE_SOMMIER_DEFAULT_VISIBILITY}
               matiereGroups={CACHE_SOMMIER_MATIERE_GROUPS}
-              activeMatieres={minute?.matieres?.chiff_cache_sommier || null}
+              activeMatieres={localMatieres.chiff_cache_sommier || null}
               onMatiereChange={(m) => handleMatiereChange('chiff_cache_sommier', m)}
               onDuplicateRow={handleDuplicateRow}
               hideCroquis={true}
@@ -695,7 +706,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
               catalog={catalog}
               initialVisibilityModel={PLAID_DEFAULT_VISIBILITY}
               matiereGroups={PLAID_MATIERE_GROUPS}
-              activeMatieres={minute?.matieres?.chiff_plaid || null}
+              activeMatieres={localMatieres.chiff_plaid || null}
               onMatiereChange={(m) => handleMatiereChange('chiff_plaid', m)}
               onDuplicateRow={handleDuplicateRow}
               hideCroquis={true}
