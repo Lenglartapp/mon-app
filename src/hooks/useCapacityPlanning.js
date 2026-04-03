@@ -73,8 +73,8 @@ export function useCapacityPlanning(projects, events, capacityConfig = {}) {
             if (totalScheduled > totalSold && totalSold > 0) status = 'warning';
 
             // Check Retard Deadline (si projet a une due date)
-            if (proj.due && lastEventDate) {
-                if (isAfter(lastEventDate, new Date(proj.due))) {
+            if (proj.deadline && lastEventDate) {
+                if (isAfter(lastEventDate, new Date(proj.deadline))) {
                     status = 'late';
                 }
             }
@@ -86,7 +86,7 @@ export function useCapacityPlanning(projects, events, capacityConfig = {}) {
                 id: proj.id,
                 name: proj.name,
                 manager: proj.manager,
-                deadline: proj.due,
+                deadline: proj.deadline,
                 totalSold: Math.round(totalSold),
                 totalConsumed: Math.round(totalConsumed),
                 totalFuture: Math.round(totalFuture),

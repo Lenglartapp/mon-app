@@ -74,20 +74,33 @@ export function recomputeRow(row, schema, ctx = {}) {
     const prixBillet = NVL(next.prix_billet, 0);
     const isDecouchage = next.decouchage === "Oui";
 
+    const tauxHoraire = NVL(settings.taux_horaire, 0);
+
     let heuresFactureesUnit = 0;
+    let coutMOUnit = 0;
     if (!isSimpleCotes) {
       if (tempsTrajetAR > 0) {
-        const tranche4h = Math.ceil((tempsTrajetAR / 2) / 4) * 4;
-        heuresFactureesUnit = tranche4h * 2;
+        // Aller seul = A/R ÷ 2, arrondi au plafond pair (tranches de 2h)
+        const tempsAller = tempsTrajetAR / 2;
+        const tempsAllerArrondi = Math.ceil(tempsAller / 2) * 2;
+
+        if (tempsAllerArrondi <= 8) {
+          // Tout en heures normales × 2 (aller + retour)
+          heuresFactureesUnit = tempsAllerArrondi * 2;
+          coutMOUnit = heuresFactureesUnit * tauxHoraire;
+        } else {
+          // 8h aller + retour au tarif normal, dépassement à +25%
+          const heuresNormales = 8 * 2;
+          const heuresSup = (tempsAllerArrondi - 8) * 2;
+          heuresFactureesUnit = heuresNormales + heuresSup;
+          coutMOUnit = heuresNormales * tauxHoraire + heuresSup * tauxHoraire * 1.25;
+        }
       }
-      const heuresFactureesTotal = heuresFactureesUnit * nbAR * nbTech;
-      next.heures_facturees = heuresFactureesTotal;
+      next.heures_facturees = heuresFactureesUnit * nbAR * nbTech;
     }
 
-    const tauxHoraire = NVL(settings.taux_horaire, 35);
-
     if (!isSimpleCotes) {
-      next.cout_mo = Number(next.heures_facturees) * tauxHoraire;
+      next.cout_mo = coutMOUnit * nbAR * nbTech;
 
       if (isDecouchage && joursInter > 0) {
         next.nb_nuits = Math.max(0, (joursInter - 1) * nbTech);
@@ -242,14 +255,23 @@ export function recomputeRow(row, schema, ctx = {}) {
     }
 
     // Mecanisme
-    // Only calculation if it's a 'Rail' (Multiplied by width)
+    if (next.type_mecanisme === 'Sans Méca') {
+      next.modele_mecanisme = '';
+      next.pa_mecanisme = 0;
+      next.pv_mecanisme = 0;
+    } else
+    // Only calculation if it's a 'Rail' AND billed per ml (not per piece)
     if (next.type_mecanisme === 'Rail') {
-      const pM = getPrice(next.modele_mecanisme);
-      const wM = NVL(next.largeur_mecanisme) / 100;
-      if (pM.found) {
-        next.pa_mecanisme = wM * (pM.pa || 0);
-        next.pv_mecanisme = wM * (pM.pv || 0);
+      const railItem = catalog.find(i => i.name === next.modele_mecanisme);
+      if (railItem?.unit !== 'pce') {
+        const pM = getPrice(next.modele_mecanisme);
+        const wM = NVL(next.largeur_mecanisme) / 100;
+        if (pM.found) {
+          next.pa_mecanisme = wM * (pM.pa || 0);
+          next.pv_mecanisme = wM * (pM.pv || 0);
+        }
       }
+      // unit === 'pce' → PA/PV saisis manuellement dans le tableau, on ne touche pas
     }
   }
 

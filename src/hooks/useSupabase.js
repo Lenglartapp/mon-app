@@ -36,7 +36,7 @@ export const useProjects = () => {
             // Mapping des dates
             created_at: toIsoString(project.createdAt || new Date()),
             updated_at: toIsoString(project.updatedAt || new Date()),
-            due: toIsoString(project.due), // Date de livraison
+            deadline: toIsoString(project.due || project.deadline), // Date de livraison
 
             // Mapping CamelCase -> SnakeCase
             source_minute_id: project.sourceMinuteId || null,
@@ -82,12 +82,12 @@ export const useProjects = () => {
         const dbUpdates = { ...updates };
 
         // Conversion Dates ISO
-        if (updates.due) dbUpdates.due = new Date(updates.due).toISOString();
+        if (updates.deadline) dbUpdates.deadline = new Date(updates.deadline).toISOString();
+        else if (updates.due) { dbUpdates.deadline = new Date(updates.due).toISOString(); delete dbUpdates.due; }
         if (updates.updatedAt) dbUpdates.updated_at = new Date(updates.updatedAt).toISOString();
         if (updates.createdAt) dbUpdates.created_at = new Date(updates.createdAt).toISOString();
 
-        // Nettoyage des clés JS
-        delete dbUpdates.due;
+        // Nettoyage des clés JS (due est une vraie colonne DB, on ne la supprime pas)
         delete dbUpdates.updatedAt;
         delete dbUpdates.createdAt;
 
