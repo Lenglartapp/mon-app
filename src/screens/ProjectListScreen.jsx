@@ -361,6 +361,7 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
                   >
                     <Edit2 size={16} />
                   </button>
+                  {currentUser?.role !== 'pose' && (
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -373,6 +374,7 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
                   >
                     <Trash2 size={16} />
                   </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -545,6 +547,7 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
                     <td style={{ padding: '12px 16px' }} onClick={(e) => e.stopPropagation()}>
                       <div style={{ display: 'flex', gap: 4, opacity: 0.6 }} className="actions">
                         <Tooltip title="Éditer"><IconButton size="small" onClick={() => onOpenProject?.(p)}><Edit2 size={16} /></IconButton></Tooltip>
+                        {currentUser?.role !== 'pose' && (
                         <Tooltip title="Supprimer">
                           <IconButton
                             size="small"
@@ -559,6 +562,7 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
                             <Trash2 size={16} />
                           </IconButton>
                         </Tooltip>
+                        )}
                       </div>
                     </td>
                   </tr>
