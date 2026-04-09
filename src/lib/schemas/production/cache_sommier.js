@@ -159,6 +159,15 @@ export const CACHE_SOMMIER_PROD_SCHEMA = [
         valueOptions: ['Oui', 'Non']
     }),
     { field: 'heures_confection', valueFormatter: hideZero },
+    {
+        field: 'statut_conf',
+        headerName: 'Statut Conf',
+        type: 'select',
+        width: 150,
+        editable: true,
+        options: ['Non démarré', 'En cours', 'Terminé'],
+        readOnly: (row) => !(Number(row?.heures_confection) > 0),
+    },
     createCol('schema_photo', 'Schéma', 120, 'photo'),
     createCol('photos_sur_site', 'Photo sur site', 150, 'photo'),
     'quantite',

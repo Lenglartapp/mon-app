@@ -199,6 +199,7 @@ function MinuteGrid({
     const { currentUser: authUser } = useAuth();
     const resolvedUser = currentUser ?? authUser;
     const [selectedCount, setSelectedCount] = useState(0);
+    const [selectedRows, setSelectedRows] = useState([]);
     const [colPanelOpen, setColPanelOpen] = useState(false);
     const colBtnRef = useRef(null);
     const [matierePanelOpen, setMatierePanelOpen] = useState(false);
@@ -443,10 +444,13 @@ function MinuteGrid({
         const newRows = rowsRef.current.filter(r => !selectedIds.has(r.id));
         onRowsChange(newRows);
         setSelectedCount(0);
+        setSelectedRows([]);
     }, [onRowsChange]);
 
     const onSelectionChanged = useCallback((params) => {
-        setSelectedCount(params.api.getSelectedRows().length);
+        const rows = params.api.getSelectedRows();
+        setSelectedCount(rows.length);
+        setSelectedRows(rows);
     }, []);
 
     // ── Mise à jour en masse ──
@@ -454,24 +458,45 @@ function MinuteGrid({
     const [bulkField, setBulkField] = useState('');
     const [bulkValue, setBulkValue] = useState('');
 
-    const bulkStatutCols = useMemo(() =>
-        schema.filter(c => c.key.startsWith('statut_') && Array.isArray(c.options)),
-        [schema]
-    );
+    const bulkStatutCols = useMemo(() => {
+        if (selectedRows.length === 0) return [];
+        return schema
+            .filter(c => c.key.startsWith('statut_'))
+            .map(c => {
+                // Exclure si readOnly pour au moins une ligne sélectionnée
+                const allApplicable = selectedRows.every(r =>
+                    typeof c.readOnly === 'function' ? !c.readOnly(r) : !c.readOnly
+                );
+                if (!allApplicable) return null;
+
+                // Résoudre les options via optionsFn si disponible
+                const resolvedOptions = c.optionsFn
+                    ? c.optionsFn(selectedRows[0])
+                    : c.options;
+                if (!Array.isArray(resolvedOptions) || resolvedOptions.length === 0) return null;
+
+                return { ...c, _resolvedOptions: resolvedOptions };
+            })
+            .filter(Boolean);
+    }, [schema, selectedRows]);
 
     const applyBulkUpdate = useCallback(() => {
         if (!bulkField || !bulkValue) return;
         const api = gridRef.current?.api;
         if (!api) return;
         const selectedIds = new Set(api.getSelectedRows().map(r => r.id));
-        const next = rowsRef.current.map(r =>
-            selectedIds.has(r.id) ? { ...r, [bulkField]: bulkValue } : r
-        );
+        const col = schema.find(c => c.key === bulkField);
+        const next = rowsRef.current.map(r => {
+            if (!selectedIds.has(r.id)) return r;
+            // Ne pas écraser si le champ est readOnly pour cette ligne
+            if (col?.readOnly && (typeof col.readOnly === 'function' ? col.readOnly(r) : col.readOnly)) return r;
+            return { ...r, [bulkField]: bulkValue };
+        });
         onRowsChangeRef.current(next);
         setShowBulkUpdate(false);
         setBulkField('');
         setBulkValue('');
-    }, [bulkField, bulkValue]);
+    }, [bulkField, bulkValue, schema]);
 
     // Panneau de visibilité des colonnes
     const [colPanelPos, setColPanelPos] = useState(null);
@@ -903,7 +928,7 @@ function MinuteGrid({
                                         onChange={e => setBulkValue(e.target.value)}
                                     >
                                         <option value="">— Choisir une valeur —</option>
-                                        {(bulkStatutCols.find(c => c.key === bulkField)?.options ?? []).map(opt => (
+                                        {(bulkStatutCols.find(c => c.key === bulkField)?._resolvedOptions ?? []).map(opt => (
                                             <option key={opt} value={opt}>{opt}</option>
                                         ))}
                                     </select>

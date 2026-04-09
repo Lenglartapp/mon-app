@@ -6,6 +6,7 @@ import {
     ComposedChart, Line, Area, XAxis, YAxis, CartesianGrid, Tooltip,
     ResponsiveContainer, ReferenceLine, Legend,
 } from 'recharts';
+import { useAuth } from '../../auth';
 
 const WORK_HOURS_PER_DAY = 9;
 
@@ -17,8 +18,10 @@ const WORKSHOP_CONFIG = {
 
 const CapaciteView = ({ localUsers, localEvents }) => {
     const today = new Date();
+    const { currentUser } = useAuth();
+    const isPoseTech = currentUser?.role === 'pose';
 
-    const [selectedWorkshops, setSelectedWorkshops] = useState(['conf', 'pose', 'prepa']);
+    const [selectedWorkshops, setSelectedWorkshops] = useState(isPoseTech ? ['pose'] : ['conf', 'pose', 'prepa']);
     const [rangeStart, setRangeStart] = useState(format(subMonths(today, 1), 'yyyy-MM-dd'));
     const [rangeEnd,   setRangeEnd]   = useState(format(addMonths(today, 2), 'yyyy-MM-dd'));
     const [selectedWeekData, setSelectedWeekData] = useState(null);
@@ -180,24 +183,28 @@ const CapaciteView = ({ localUsers, localEvents }) => {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
                     {/* Filtres ateliers */}
                     <div style={{ display: 'flex', gap: 6 }}>
-                        {Object.entries(WORKSHOP_CONFIG).map(([key, cfg]) => (
-                            <button key={key} onClick={() => toggleWorkshop(key)} style={{
-                                padding: '6px 14px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s',
-                                background: selectedWorkshops.includes(key) ? cfg.color : 'white',
-                                color:      selectedWorkshops.includes(key) ? 'white'   : '#6B7280',
-                                border:     `1px solid ${selectedWorkshops.includes(key) ? cfg.color : '#E5E7EB'}`,
+                        {Object.entries(WORKSHOP_CONFIG)
+                            .filter(([key]) => !isPoseTech || key === 'pose')
+                            .map(([key, cfg]) => (
+                                <button key={key} onClick={() => toggleWorkshop(key)} style={{
+                                    padding: '6px 14px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s',
+                                    background: selectedWorkshops.includes(key) ? cfg.color : 'white',
+                                    color:      selectedWorkshops.includes(key) ? 'white'   : '#6B7280',
+                                    border:     `1px solid ${selectedWorkshops.includes(key) ? cfg.color : '#E5E7EB'}`,
+                                }}>
+                                    {cfg.label}
+                                </button>
+                            ))}
+                        {!isPoseTech && (
+                            <button onClick={() => setSelectedWorkshops(['conf', 'pose', 'prepa'])} style={{
+                                padding: '6px 14px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                                background: selectedWorkshops.length === 3 ? '#111827' : 'white',
+                                color:      selectedWorkshops.length === 3 ? 'white'   : '#6B7280',
+                                border:     `1px solid ${selectedWorkshops.length === 3 ? '#111827' : '#E5E7EB'}`,
                             }}>
-                                {cfg.label}
+                                Tous
                             </button>
-                        ))}
-                        <button onClick={() => setSelectedWorkshops(['conf', 'pose', 'prepa'])} style={{
-                            padding: '6px 14px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                            background: selectedWorkshops.length === 3 ? '#111827' : 'white',
-                            color:      selectedWorkshops.length === 3 ? 'white'   : '#6B7280',
-                            border:     `1px solid ${selectedWorkshops.length === 3 ? '#111827' : '#E5E7EB'}`,
-                        }}>
-                            Tous
-                        </button>
+                        )}
                     </div>
 
                     {/* Sélecteur de période */}
