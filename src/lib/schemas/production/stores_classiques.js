@@ -4,7 +4,7 @@
 const STORE_BLOCKED_TYPES = [
     'Store Enrouleur',
     'Store Vénitien',
-    'Store Californien',
+    'Store Bande Verticale',
     'Store Canishade'
 ];
 
@@ -25,8 +25,8 @@ const BASE_STORES_CLASSIQUES_SCHEMA = [
         key: "produit",
         label: "Produit",
         type: "select",
-        options: ['Store Enrouleur', 'Store Vénitien', 'Store Californien', 'Store Canishade', 'Autre'],
-        width: 125
+        options: ['Store Enrouleur', 'Store Vénitien', 'Store Bande Verticale', 'Store Canishade', 'Store Coffre', 'Autre'],
+        width: 160
     },
 
     // largeur (number) : Largeur
@@ -34,6 +34,12 @@ const BASE_STORES_CLASSIQUES_SCHEMA = [
 
     // hauteur (number) : Hauteur
     { key: "hauteur", label: "Hauteur", type: "number", width: 130 },
+
+    // largeur_gorge (number) : Largeur Gorge
+    { key: "largeur_gorge", label: "Largeur Gorge (cm)", type: "number", width: 155 },
+
+    // profondeur_gorge (number) : Profondeur Gorge
+    { key: "profondeur_gorge", label: "Profondeur Gorge (cm)", type: "number", width: 175 },
 
     // toil_finition_1 (text/catalog) : toile finition 1 -> BLOCKED
     { key: "toile_finition_1", label: "Toile 1", type: "catalog_item", category: "Tissu,Tissus", width: 180, readOnly: isBlocked },
@@ -67,6 +73,18 @@ const BASE_STORES_CLASSIQUES_SCHEMA = [
 
     // mecanisme_store (text/catalog) : Meca store
     { key: "mecanisme_store", label: "Méca Store", type: "catalog_item", category: "Store,Stores,Mecanisme Store", width: 150 },
+
+    // cote_manoeuvre (select) : Côté Manœuvre
+    { key: "cote_manoeuvre", label: "Côté Manœuvre", type: "select", options: ["Manœuvre gauche", "Manœuvre droite"], width: 165 },
+
+    // hauteur_manoeuvre (number) : Hauteur Manœuvre
+    { key: "hauteur_manoeuvre", label: "H. Manœuvre (cm)", type: "number", width: 155 },
+
+    // type_pose (select) : Type de pose
+    { key: "type_pose", label: "Type Pose", type: "select", options: ["Mural", "Plafond", "Grande hauteur", "Suspente", "Naissance", "Sur ouvrant", "Encastré"], width: 160 },
+
+    // guidage_coulisse (select) : Guidage / Coulisse
+    { key: "guidage_coulisse", label: "Guidage / Coulisse", type: "select", options: ["Guidé", "Pas guidé", "Coulisse"], width: 160 },
 
     // pa_mecanisme_store (number) : PA Méca
     { key: "pa_mecanisme_store", label: "PA Méca", type: "number", width: 100 },
@@ -133,10 +151,19 @@ export const STORES_PROD_SCHEMA = [
         'zone', 'piece', 'produit',
         { key: "largeur", width: 130 },
         'hauteur',
+        'largeur_gorge',
+        'profondeur_gorge',
     ]),
 
     // EXCLUSIVE PROD FIELDS
     { key: "mecanisme_store", label: "Méca Store", type: "catalog_item", category: "Store,Stores,Mecanisme Store", width: 150 },
+
+    ...mapSchema([
+        'cote_manoeuvre',
+        'hauteur_manoeuvre',
+        'type_pose',
+        'guidage_coulisse',
+    ]),
 
     // STATUTS
     {

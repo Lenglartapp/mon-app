@@ -429,6 +429,14 @@ function MinuteGrid({
         onRowsChange(newRows);
     }, [onRowsChange, resolvedUser]);
 
+    // Mettre à jour un champ lien (embout_meca_link, support_link, etc.)
+    const handleLinkUpdate = useCallback((id, field, value) => {
+        const newRows = rowsRef.current.map(r =>
+            r.id !== id ? r : { ...r, [field]: value }
+        );
+        onRowsChange(newRows);
+    }, [onRowsChange]);
+
     // Ajouter une ligne
     const handleAddRow = useCallback(() => {
         if (onAddRef.current) { onAddRef.current(); return; }
@@ -547,11 +555,13 @@ function MinuteGrid({
             savedWidths = JSON.parse(localStorage.getItem(`${gridId}_widths`) || '{}');
         } catch { /* ignore */ }
 
+        const canEditLinks = ['admin', 'sales', 'ordo', 'op'].includes(resolvedUser?.role?.toLowerCase());
         const cols = schemaToGridCols(
             schema, enableCellFormulas, handleOpenDetail,
             catalog, railOptions, handlePhotoChange,
             onDuplicateRow, hideCroquis, readOnly, title,
-            projectId
+            projectId,
+            handleLinkUpdate, canEditLinks
         );
 
         const withWidths = cols.map(col => {
@@ -600,7 +610,7 @@ function MinuteGrid({
         }
 
         return showExpeditionCol ? [...withWidths, expeditionCol] : withWidths;
-    }, [schema, enableCellFormulas, handleOpenDetail, catalog, railOptions, handlePhotoChange, onDuplicateRow, hideCroquis, readOnly, title, isMobile, gridId, showExpeditionCol]);
+    }, [schema, enableCellFormulas, handleOpenDetail, catalog, railOptions, handlePhotoChange, handleLinkUpdate, onDuplicateRow, hideCroquis, readOnly, title, isMobile, gridId, showExpeditionCol, resolvedUser]);
 
     const isExternalFilterPresent = useCallback(() => {
         return filterConditionsRef.current.some(isConditionActive);

@@ -4,7 +4,7 @@
 const STORE_BLOCKED_TYPES = [
     'Store Enrouleur',
     'Store Vénitien',
-    'Store Californien',
+    'Store Bande Verticale',
     'Store Canishade'
 ];
 
@@ -25,8 +25,8 @@ export const STORES_CLASSIQUES_SCHEMA = [
         key: "produit",
         label: "Produit",
         type: "select",
-        options: ['Store Enrouleur', 'Store Vénitien', 'Store Californien', 'Store Canishade', 'Autre'],
-        width: 125
+        options: ['Store Enrouleur', 'Store Vénitien', 'Store Bande Verticale', 'Store Canishade', 'Store Coffre', 'Autre'],
+        width: 160
     },
 
     // largeur (number) : Largeur

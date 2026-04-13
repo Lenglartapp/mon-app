@@ -68,12 +68,10 @@ const getters = {
     },
 
     hauteur_finie_milieu: (row) => {
-        if (row.hauteur_finie_milieu != null && row.hauteur_finie_milieu !== '') {
-            return toNum(row.hauteur_finie_milieu);
-        }
-        const hG = getters.hauteur_finie_gauche(row);
-        const hD = getters.hauteur_finie_droite(row);
-        return round1((hG + hD) / 2);
+        const H = toNum(row.hspf_milieu);
+        const ded = toNum(row.valeur_deduction || row.val_ded_rail);
+        const fBas = toNum(row.finition_bas || row.f_bas);
+        return round1(H - ded + fBas);
     },
 
     hauteur_coupe: (row) => {
@@ -132,6 +130,8 @@ export const RIDEAUX_PROD_SCHEMA = [
     { key: "type_confection", label: "Type Conf.", type: "select", options: ["Pli Flamand", "Plis Creux", "Pli Plat", "Tripli", "Wave 80", "Wave 60", "Pli Couteau", "A Plat"], width: 150, editable: true },
     { key: "hauteur_renfort_tete", label: "H/Renfort Têtes", type: "text", width: 155, editable: true },
     { key: "paire_ou_un_seul_pan", label: "Paire ou un Pan", type: "select", options: ["Paire", "Un seul pan", "Un seul pan (Rapatriement Droit)", "Un seul pan (Rapatriement Gauche)"], width: 260, editable: true },
+    { key: "largeur_gorge", label: "Largeur Gorge (cm)", type: "number", width: 155, editable: true },
+    { key: "profondeur_gorge", label: "Profondeur Gorge (cm)", type: "number", width: 175, editable: true },
     { key: "ampleur", label: "Ampleur", type: "number", width: 110, editable: true },
     { key: "largeur_mecanisme", label: "L. Méca (cm)", type: "number", width: 130, editable: true },
     { key: "largeur", label: "Largeur (cm)", type: "number", width: 130, editable: true },
@@ -161,6 +161,7 @@ export const RIDEAUX_PROD_SCHEMA = [
 
     // C. Hauteurs & Coupe
     { key: "hspf_droite", label: "HSPF Droit", type: "number", width: 120, editable: true },
+    { key: "hspf_milieu", label: "HSPF Milieu", type: "number", width: 125, editable: true },
     { key: "hspf_gauche", label: "HSPF Gauche", type: "number", width: 125, editable: true },
     {
         key: "statut_cotes",
@@ -171,7 +172,7 @@ export const RIDEAUX_PROD_SCHEMA = [
         editable: true
     },
     { key: "valeur_deduction", label: "Val. Déduc.", type: "number", width: 120, editable: true },
-    { key: "finition_bas", label: "Finition Bas", type: "number", width: 120, editable: true },
+    { key: "finition_bas", label: "Cassant / Rasant", type: "number", width: 140, editable: true },
     {
         key: "hauteur_finie_droite",
         label: "H. Finie Droite",
@@ -186,8 +187,8 @@ export const RIDEAUX_PROD_SCHEMA = [
         label: "H. Finie Milieu",
         type: "number",
         width: 140,
-        editable: true,
-        tooltip: "Moyenne de H. Finie G et H. Finie D. Modifiable manuellement.",
+        readOnly: true,
+        tooltip: "HSPF milieu − déduction rail + finition bas",
         valueGetter: (v, r) => getters.hauteur_finie_milieu(getRow(v, r))
     },
     {
@@ -317,7 +318,8 @@ export const RIDEAUX_PROD_SCHEMA = [
 
     { key: "retour_gauche", label: "Retour G", type: "number", width: 110, editable: true },
     { key: "retour_droit", label: "Retour D", type: "number", width: 110, editable: true },
-    { key: "type_retours", label: "Type Retours", type: "select", options: ['Élastique', 'Velcro'], width: 130, editable: true },
+    { key: "type_retours", label: "Type Retours", type: "select", options: ['Élastique', 'Velcro', 'Piton'], width: 130, editable: true },
+    { key: "hauteur_corniere_elastique", label: "H. Cornière / Élastique (cm)", type: "number", width: 200, editable: true },
     { key: "etiquette_lavage", label: "Etiq. Lavage", type: "select", options: ["Oui", "Non"], width: 125, editable: true },
     { key: "etiquette_lenglart", label: "Etiq. Lenglart", type: "select", options: ["Oui", "Non"], width: 130, editable: true, defaultValue: "Oui" },
     { key: "schema", label: "Modèle", type: "croquis", width: 110 }, // PRESERVED COMPONENT
@@ -354,8 +356,10 @@ export const RIDEAUX_PROD_SCHEMA = [
 
     { key: "couleur_glisseur", label: "Couleur Glisseur", type: "text", width: 145, editable: true },
     { key: "piton", label: "Piton", type: "text", width: 110, editable: true },
-    { key: "embout_meca", label: "Embout Méca", type: "text", width: 130, editable: true },
-    { key: "support", label: "Support", type: "text", width: 120, editable: true },
+    { key: "embout_meca", label: "Embout Méca", type: "text", width: 130, editable: true, withLink: true },
+    { key: "embout_meca_link", label: "Embout Méca (lien)", type: "text", width: 0, editable: true, hidden: true },
+    { key: "support", label: "Support", type: "text", width: 120, editable: true, withLink: true },
+    { key: "support_link", label: "Support (lien)", type: "text", width: 0, editable: true, hidden: true },
     {
         key: "equerre",
         label: "Equerre",
@@ -367,7 +371,7 @@ export const RIDEAUX_PROD_SCHEMA = [
 
     // G. Suivi & Statuts
     { key: "commentaire_confection", label: "Commentaire Confection", type: "textarea", width: 260, editable: true },
-    { key: "type_pose", label: "Type Pose", type: "text", width: 130, editable: true },
+    { key: "type_pose", label: "Type Pose", type: "select", options: ["Mural", "Plafond", "Grande hauteur", "Suspente", "Naissance", "Encastrée"], width: 145, editable: true },
     { key: "heures_confection", label: "H. Conf.", type: "number", width: 115, editable: true },
     { key: "statut_pose", label: "Statut Pose", type: "select", options: ['Non démarré', 'Méca posé', 'Accroché', 'Terminé', 'Reprise'], width: 155, editable: true },
     { key: "statut_prepa", label: "Statut Prépa", type: "select", options: ['Non démarré', 'En cours', 'Terminé'], width: 150, editable: true },

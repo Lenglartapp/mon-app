@@ -69,9 +69,10 @@ export const DEFAULT_VIEWS = {
   prise: {
     rideaux: [
       "sel", "detail", "zone", "piece", "produit", "type_confection",
-      "paire_ou_un_seul_pan", "largeur_mecanisme", "largeur",
-      "hspf_droite", "hspf_gauche", "statut_cotes",
+      "paire_ou_un_seul_pan", "largeur_gorge", "profondeur_gorge", "largeur_mecanisme", "largeur",
+      "hspf_droite", "hspf_milieu", "hspf_gauche", "statut_cotes",
       "croisement", "type_croisement", "retour_gauche", "retour_droit", "type_retours",
+      "hauteur_corniere_elastique",
       "type_mecanisme", "modele_mecanisme", "couleur_mecanisme",
       "meca_couvert", "type_commande",
       "piton", "embout_meca", "support", "equerre",
@@ -79,7 +80,9 @@ export const DEFAULT_VIEWS = {
     ],
     stores: [
       "detail", "zone", "piece", "produit",
-      "largeur", "hauteur", "mecanisme_store",
+      "largeur", "hauteur", "largeur_gorge", "profondeur_gorge",
+      "mecanisme_store", "cote_manoeuvre", "hauteur_manoeuvre",
+      "type_pose", "guidage_coulisse",
       "statut_cotes", "quantite", "photos_sur_site"
     ],
     stores_bateaux: [
@@ -87,9 +90,12 @@ export const DEFAULT_VIEWS = {
       "largeur", "largeur_finie",
       "ourlet_de_cote", "a_plat",
       "hauteur_finie", "statut_cotes",
+      "largeur_gorge", "profondeur_gorge",
+      "espace_ouverture_fenetre",
       "mecanisme_store", "couleur_mecanisme", "type_commande",
       "type_moteur", "cote_manoeuvre", "methode_manoeuvre", "equerre_support",
       "valeur_intervalle", "croquis_intervalle",
+      "guidage", "cable_intermediaire",
       "type_pose", "photos_sur_site", "quantite"
     ],
     tenture_murale: [
@@ -110,9 +116,9 @@ export const DEFAULT_VIEWS = {
       "sel", "detail", "zone", "piece", "produit", "type_confection",
       "hauteur_renfort_tete", "paire_ou_un_seul_pan", "ampleur",
       "largeur_mecanisme", "largeur", "largeur_finie", "a_plat",
-      "v_ourlets_de_cotes", "hspf_droite", "hspf_gauche", "statut_cotes",
+      "v_ourlets_de_cotes", "hspf_droite", "hspf_milieu", "hspf_gauche", "statut_cotes",
       "valeur_deduction", "finition_bas",
-      "hauteur_finie_droite", "hauteur_finie_gauche",
+      "hauteur_finie_droite", "hauteur_finie_milieu", "hauteur_finie_gauche",
       "hauteur_coupe", "hauteur_coupe_motif", "hauteur_coupe_doublure",
       "nombre_les", "piquage_ourlets_du_bas", "doublure_finition_bas",
       "finition_champs", "poids", "onglets", "bride",
@@ -123,6 +129,7 @@ export const DEFAULT_VIEWS = {
       "passementerie1", "application_passementerie1",
       "passementerie2", "application_passementerie2",
       "croisement", "type_croisement", "retour_gauche", "retour_droit", "type_retours",
+      "hauteur_corniere_elastique",
       "etiquette_lavage", "etiquette_lenglart", "schema",
       "type_mecanisme", "modele_mecanisme", "couleur_mecanisme", "meca_couvert",
       "nombre_glisseur",
@@ -147,6 +154,7 @@ export const DEFAULT_VIEWS = {
       "croquis_intervalle",
       "barre_de_charge", "longueur_barre_de_charge",
       "longueur_tigette", "nombre_de_tigettes",
+      "cable_intermediaire",
       "type_pose",
       "heures_confection", "statut_prepa", "statut_conf", "statut_pose",
       "photos_sur_site", "quantite"
@@ -213,10 +221,11 @@ export const DEFAULT_VIEWS = {
   bpp: {
     rideaux: [
       "sel", "detail", "zone", "piece", "produit", "type_confection",
-      "paire_ou_un_seul_pan", "largeur_mecanisme", "largeur",
+      "paire_ou_un_seul_pan", "largeur_gorge", "profondeur_gorge", "largeur_mecanisme", "largeur",
       "hauteur_finie_gauche", "hauteur_finie_droite",
       "statut_cotes", "type_crochets",
       "croisement", "type_croisement", "retour_gauche", "retour_droit", "type_retours",
+      "hauteur_corniere_elastique",
       "type_mecanisme", "modele_mecanisme", "couleur_mecanisme",
       "meca_couvert", "type_commande",
       "nombre_glisseur", "couleur_glisseur",
@@ -225,7 +234,9 @@ export const DEFAULT_VIEWS = {
     ],
     stores: [
       "detail", "zone", "piece", "produit",
-      "largeur", "hauteur", "mecanisme_store",
+      "largeur", "hauteur", "largeur_gorge", "profondeur_gorge",
+      "mecanisme_store", "cote_manoeuvre", "hauteur_manoeuvre",
+      "type_pose", "guidage_coulisse",
       "statut_cotes", "statut_prepa", "quantite"
     ],
     stores_bateaux: null, // tout visible
