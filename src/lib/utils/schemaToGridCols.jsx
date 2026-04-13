@@ -1,18 +1,121 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import FormulaEditCell from '../../components/FormulaEditCell';
 import GridPhotoCell from '../../components/ui/GridPhotoCell';
 import GridSketchCell from '../../components/ui/GridSketchCell';
 import Tooltip from '@mui/material/Tooltip';
 import Badge from '@mui/material/Badge';
 import IconButton from '@mui/material/IconButton';
+import Popover from '@mui/material/Popover';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import LinkIcon from '@mui/icons-material/Link';
 import Chip from '@mui/material/Chip';
 import { Type, Hash, Calendar, CheckSquare, Image as ImageIcon, PenTool, ChevronDown } from 'lucide-react';
 
 // Formateur EUR créé une seule fois au niveau module (Intl.NumberFormat est coûteux à instancier)
 const EUR_FORMATTER = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' });
+
+// Cellule avec lien optionnel (Embout Méca, Support)
+function LinkableCell({ value, linkValue, canEdit, rowId, linkField, onLinkUpdate }) {
+  const [open, setOpen] = useState(false);
+  const [draft, setDraft] = useState('');
+  const anchorRef = useRef(null);
+
+  const handleOpen = (e) => {
+    e.stopPropagation();
+    setDraft(linkValue || '');
+    setOpen(true);
+  };
+
+  const handleClose = () => setOpen(false);
+
+  const handleSave = () => {
+    onLinkUpdate && onLinkUpdate(rowId, linkField, draft.trim());
+    setOpen(false);
+  };
+
+  const handleDelete = (e) => {
+    e.stopPropagation();
+    onLinkUpdate && onLinkUpdate(rowId, linkField, '');
+    setOpen(false);
+  };
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%', height: '100%' }}>
+      <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        {value || ''}
+      </span>
+      {linkValue && (
+        <Tooltip title="Ouvrir la documentation" placement="top">
+          <IconButton
+            size="small"
+            onClick={(e) => { e.stopPropagation(); window.open(linkValue, '_blank', 'noopener,noreferrer'); }}
+          >
+            <OpenInNewIcon style={{ fontSize: 14, color: '#3B82F6' }} />
+          </IconButton>
+        </Tooltip>
+      )}
+      {canEdit && (
+        <>
+          <Tooltip title={linkValue ? "Modifier le lien" : "Ajouter un lien"} placement="top">
+            <IconButton size="small" ref={anchorRef} onClick={handleOpen}>
+              <LinkIcon style={{ fontSize: 14, color: linkValue ? '#10B981' : '#9CA3AF' }} />
+            </IconButton>
+          </Tooltip>
+          <Popover
+            open={open}
+            anchorEl={anchorRef.current}
+            onClose={handleClose}
+            anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+            transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 10, minWidth: 340 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>
+                {linkValue ? 'Modifier le lien de documentation' : 'Ajouter un lien de documentation'}
+              </div>
+              <input
+                autoFocus
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleSave(); if (e.key === 'Escape') handleClose(); }}
+                placeholder="https://... ou lien OneDrive"
+                style={{
+                  border: '1px solid #D1D5DB', borderRadius: 4, padding: '6px 8px',
+                  fontSize: 13, outline: 'none', width: '100%', boxSizing: 'border-box',
+                  fontFamily: 'inherit',
+                }}
+              />
+              <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', alignItems: 'center' }}>
+                {linkValue && (
+                  <button
+                    onClick={handleDelete}
+                    style={{ fontSize: 12, color: '#EF4444', border: 'none', background: 'none', cursor: 'pointer', padding: '4px 8px', marginRight: 'auto' }}
+                  >
+                    Supprimer
+                  </button>
+                )}
+                <button
+                  onClick={handleClose}
+                  style={{ fontSize: 12, border: '1px solid #D1D5DB', borderRadius: 4, background: 'white', cursor: 'pointer', padding: '4px 10px' }}
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={handleSave}
+                  style={{ fontSize: 12, background: '#3B82F6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', padding: '4px 10px' }}
+                >
+                  Enregistrer
+                </button>
+              </div>
+            </div>
+          </Popover>
+        </>
+      )}
+    </div>
+  );
+}
 
 
 const getColumnIcon = (col) => {
@@ -73,7 +176,9 @@ export function schemaToGridCols(
   hideCroquis = false,
   readOnly = false,
   gridTitle = '',
-  projectId = null
+  projectId = null,
+  onLinkUpdate = null,
+  canEditLinks = false
 ) {
   if (!Array.isArray(schema)) return [];
 
@@ -295,6 +400,25 @@ export function schemaToGridCols(
           );
         };
       }
+    }
+
+    // --- Linkable text cell (withLink: true) ---
+    if (col.withLink) {
+      const linkField = col.key + '_link';
+      gridCol.cellRenderer = (params) => {
+        if (params.node?.rowPinned) return params.value || '';
+        return (
+          <LinkableCell
+            value={params.value}
+            linkValue={params.data?.[linkField]}
+            canEdit={canEditLinks}
+            rowId={params.data?.id}
+            linkField={linkField}
+            onLinkUpdate={onLinkUpdate}
+          />
+        );
+      };
+      gridCol.editable = readOnly ? false : (params) => params.node?.rowPinned ? false : isCellEditableFn(params);
     }
 
     // --- Detail / Button column ---

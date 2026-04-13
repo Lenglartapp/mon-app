@@ -190,6 +190,10 @@ const BASE_STORES_BATEAUX_SCHEMA = [
     { key: "doublure", label: "Doublure", type: "catalog_item", category: "Tissu,Tissus", width: 180 },
     { key: "laize_doublure", label: "Laize D.", type: "number", width: 120 },
 
+    // GORGE
+    { key: "largeur_gorge", label: "Largeur Gorge (cm)", type: "number", width: 155 },
+    { key: "profondeur_gorge", label: "Profondeur Gorge (cm)", type: "number", width: 175 },
+
     // HEURES & STATUTS
     { key: "heures_prepa", label: "H. Prépa", type: "number", width: 120 },
     { key: "heures_pose", label: "H. Pose", type: "number", width: 120 },
@@ -232,6 +236,10 @@ export const STORES_BATEAUX_PROD_SCHEMA = [
         // DOUBLURE
         'doublure',
         'laize_doublure',
+
+        // GORGE
+        'largeur_gorge',
+        'profondeur_gorge',
     ]),
 
     // EXCLUSIVE PROD FIELDS (Mechanism)
@@ -293,7 +301,10 @@ export const STORES_BATEAUX_PROD_SCHEMA = [
         }
     },
 
-    { key: "type_pose", label: "Pose", type: "select", options: ['Mural', 'Plafond', 'Tableau', 'Grande hauteur'], width: 130 },
+    { key: "espace_ouverture_fenetre", label: "Espace Ouv. Fenêtre", type: "number", width: 175 },
+    { key: "guidage", label: "Guidage", type: "select", options: ["Guidé", "Pas guidé"], width: 130 },
+    { key: "cable_intermediaire", label: "Câble Intermédiaire", type: "select", options: ["1", "2", "3"], width: 165, readOnly: (row) => row?.produit === 'Store Bateau' },
+    { key: "type_pose", label: "Pose", type: "select", options: ['Mural', 'Plafond', 'Grande hauteur', 'Naissance', 'Sur ouvrant', 'Encastré'], width: 145 },
 
     { key: "commentaire_confection", label: "Commentaire Confection", type: "textarea", width: 260, editable: true },
 
