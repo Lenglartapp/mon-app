@@ -67,6 +67,17 @@ export default function Moulinette({ rows = [], extraRows = [], depRows = [] }) 
           g.total_qty += q;
           g.total_pa += paStoreNum;
         }
+      } else if (isBateau) {
+        // ---- STORES BATEAUX ----
+        const bateauName = String(r.mecanisme_store || r.modele_mecanisme || r.nom_tringle || "").trim();
+        const paBateauNum = toNum(r.pa_mecanisme_store) > 0
+          ? toNum(r.pa_mecanisme_store)
+          : (toNum(r.pa_meca) + toNum(r.pa_mecanisme) + toNum(r.pa_mecanisme_bis));
+        if (bateauName && paBateauNum > 0) {
+          const g = push(mapStores, bateauName, bateauName);
+          g.total_qty += q;
+          g.total_pa += paBateauNum;
+        }
       } else {
         // ---- RAILS / TRINGLES ----
         const railName = String(r.nom_tringle || r.modele_mecanisme || r.mecanisme_fourniture || "").trim();

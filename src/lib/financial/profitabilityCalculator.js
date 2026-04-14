@@ -100,8 +100,17 @@ export const calculateProfitability = (rows = [], depRows = [], extraRows = [], 
             if (storeName && val > 0) {
                 pushMap(mapStores, storeName, q, val, getSource(r, q, val));
             }
+        } else if (isBateau) {
+            // STORES BATEAUX
+            const bateauName = r.mecanisme_store || r.modele_mecanisme || r.nom_tringle;
+            const val = (toNum(r.pa_mecanisme_store) > 0
+                ? toNum(r.pa_mecanisme_store)
+                : (toNum(r.pa_meca) + toNum(r.pa_mecanisme) + toNum(r.pa_mecanisme_bis))) * q;
+            if (bateauName && val > 0) {
+                pushMap(mapStores, bateauName, q, val, getSource(r, q, val));
+            }
         } else {
-            // RAILS, BATEAUX, TRINGLES, DECOR MECANISMES
+            // RAILS, TRINGLES, DECOR MECANISMES
             const mecaName = r.nom_tringle || r.modele_mecanisme || r.type_mecanisme || r.mecanisme_fourniture;
             const val = (toNum(r.pa_meca) + toNum(r.pa_mecanisme) + toNum(r.pa_mecanisme_bis)) * q;
 
