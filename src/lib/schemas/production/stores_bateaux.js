@@ -185,10 +185,12 @@ const BASE_STORES_BATEAUX_SCHEMA = [
     { key: "laize_toile_finition_1", label: "Laize TF1", type: "number", width: 120 },
     { key: "raccord_v_toile_finition_1", label: "Rac V. TF1", type: "number", width: 125 },
     { key: "raccord_h_toile_finition_1", label: "Rac H. TF1", type: "number", width: 125 },
+    { key: "ml_toile_finition_1", label: "ML TF1", type: "number", width: 120 },
 
     // DOUBLURE
     { key: "doublure", label: "Doublure", type: "catalog_item", category: "Tissu,Tissus", width: 180 },
     { key: "laize_doublure", label: "Laize D.", type: "number", width: 120 },
+    { key: "ml_doublure", label: "ML Doubl.", type: "number", width: 120 },
 
     // GORGE
     { key: "largeur_gorge", label: "Largeur Gorge (cm)", type: "number", width: 155 },
@@ -232,10 +234,12 @@ export const STORES_BATEAUX_PROD_SCHEMA = [
         'raccord_v_toile_finition_1',
         'raccord_h_toile_finition_1',
         'laize_toile_finition_1',
+        'ml_toile_finition_1',
 
         // DOUBLURE
         'doublure',
         'laize_doublure',
+        'ml_doublure',
 
         // GORGE
         'largeur_gorge',
