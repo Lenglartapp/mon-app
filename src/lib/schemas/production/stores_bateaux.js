@@ -246,7 +246,7 @@ export const STORES_BATEAUX_PROD_SCHEMA = [
     { key: "etiquette_lavage", label: "Étiq. Lavage", type: "select", options: ["Oui", "Non"], width: 125 },
     { key: "mecanisme_store", label: "Méca Store", type: "catalog_item", category: "Store,Stores,Mecanisme Store", width: 180 },
     { key: "couleur_mecanisme", label: "Couleur Méca", type: "text", width: 145 },
-    { key: "type_commande", label: "Type Commande", type: "select", options: ["Télécommande", "Commande murale", "Fourni par le client"], width: 180 },
+    { key: "type_commande", label: "Type Commande", type: "select", options: ["Manuelle", "Télécommande", "Commande murale", "Fourni par le client"], width: 180 },
     { key: "type_moteur", label: "Type Moteur", type: "text", width: 130 },
     { key: "cote_manoeuvre", label: "Côté Manœuvre", type: "select", options: ["Droite", "Gauche"], width: 130 },
     { key: "methode_manoeuvre", label: "Méthode Manœuvre", type: "select", options: ["Cabestan", "Freel", "Cordon", "Chaînette"], width: 160 },

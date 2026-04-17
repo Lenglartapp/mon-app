@@ -201,6 +201,7 @@ function MinuteGrid({
     const [selectedCount, setSelectedCount] = useState(0);
     const [selectedRows, setSelectedRows] = useState([]);
     const [colPanelOpen, setColPanelOpen] = useState(false);
+    const [colSearch, setColSearch] = useState('');
     const colBtnRef = useRef(null);
     const [matierePanelOpen, setMatierePanelOpen] = useState(false);
     const [colVisibility, setColVisibility] = useState({});
@@ -532,11 +533,23 @@ function MinuteGrid({
                 }
             });
             setColVisibility(vis);
+            setColSearch('');
             const rect = colBtnRef.current?.getBoundingClientRect();
             if (rect) setColPanelPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
         }
         setColPanelOpen(prev => !prev);
     }, [colPanelOpen]);
+
+    const handleToggleAllColumns = useCallback((visible) => {
+        const api = gridRef.current?.api;
+        if (!api) return;
+        const ids = schema.filter(col => col.key !== 'sel' && !col.hidden).map(col => col.key);
+        api.setColumnsVisible(ids, visible);
+        saveColumnState(api);
+        const newVis = {};
+        ids.forEach(id => { newVis[id] = visible; });
+        setColVisibility(prev => ({ ...prev, ...newVis }));
+    }, [schema, saveColumnState]);
 
     const handleToggleColumn = useCallback((colId, visible) => {
         const api = gridRef.current?.api;
@@ -1075,24 +1088,59 @@ function MinuteGrid({
                             background: 'white', border: '1px solid #e5e7eb', borderRadius: 8,
                             boxShadow: '0 10px 25px rgba(0,0,0,0.1)', zIndex: 1000,
                             maxHeight: 'calc(100vh - ' + colPanelPos.top + 'px - 16px)',
-                            overflowY: 'auto', minWidth: 200, padding: 8,
+                            display: 'flex', flexDirection: 'column', minWidth: 220,
                         }}
                     >
-                        <div style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', padding: '4px 8px 8px' }}>Afficher / Masquer</div>
-                        {schemaCols.map(col => (
-                            <label key={col.field} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 8px', borderRadius: 4, cursor: 'pointer', fontSize: 13 }}
-                                onMouseEnter={e => e.currentTarget.style.background = '#f3f4f6'}
-                                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                            >
+                        {/* En-tête fixe */}
+                        <div style={{ padding: '8px 8px 6px', borderBottom: '1px solid #e5e7eb', flexShrink: 0 }}>
+                            <div style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', padding: '0 4px 6px' }}>Afficher / Masquer</div>
+                            {/* Barre de recherche */}
+                            <div style={{ position: 'relative', marginBottom: 6 }}>
                                 <input
-                                    type="checkbox"
-                                    checked={colVisibility[col.field] !== false}
-                                    onChange={e => handleToggleColumn(col.field, e.target.checked)}
-                                    style={{ accentColor: '#2563eb' }}
+                                    type="text"
+                                    placeholder="Rechercher une colonne…"
+                                    value={colSearch}
+                                    onChange={e => setColSearch(e.target.value)}
+                                    onClick={e => e.stopPropagation()}
+                                    style={{ width: '100%', boxSizing: 'border-box', padding: '5px 8px 5px 26px', border: '1px solid #d1d5db', borderRadius: 4, fontSize: 12, outline: 'none' }}
                                 />
-                                <span>{col.label}</span>
-                            </label>
-                        ))}
+                                <svg style={{ position: 'absolute', left: 7, top: '50%', transform: 'translateY(-50%)', color: '#9ca3af', pointerEvents: 'none' }} width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                            </div>
+                            {/* Tout cocher / décocher */}
+                            <div style={{ display: 'flex', gap: 6 }}>
+                                <button
+                                    onClick={e => { e.stopPropagation(); handleToggleAllColumns(true); }}
+                                    style={{ flex: 1, padding: '4px 6px', fontSize: 11, cursor: 'pointer', background: '#f0f9ff', color: '#0369a1', border: '1px solid #bae6fd', borderRadius: 4, fontWeight: 600 }}
+                                >Tout afficher</button>
+                                <button
+                                    onClick={e => { e.stopPropagation(); handleToggleAllColumns(false); }}
+                                    style={{ flex: 1, padding: '4px 6px', fontSize: 11, cursor: 'pointer', background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: 4, fontWeight: 600 }}
+                                >Tout masquer</button>
+                            </div>
+                        </div>
+                        {/* Liste scrollable */}
+                        <div style={{ overflowY: 'auto', padding: '4px 8px 8px' }}>
+                            {schemaCols
+                                .filter(col => !colSearch || col.label.toLowerCase().includes(colSearch.toLowerCase()))
+                                .map(col => (
+                                    <label key={col.field} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 4px', borderRadius: 4, cursor: 'pointer', fontSize: 13 }}
+                                        onMouseEnter={e => e.currentTarget.style.background = '#f3f4f6'}
+                                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                    >
+                                        <input
+                                            type="checkbox"
+                                            checked={colVisibility[col.field] !== false}
+                                            onChange={e => handleToggleColumn(col.field, e.target.checked)}
+                                            style={{ accentColor: '#2563eb' }}
+                                        />
+                                        <span>{col.label}</span>
+                                    </label>
+                                ))
+                            }
+                            {schemaCols.filter(col => !colSearch || col.label.toLowerCase().includes(colSearch.toLowerCase())).length === 0 && (
+                                <div style={{ padding: '8px 4px', fontSize: 12, color: '#9ca3af', textAlign: 'center' }}>Aucune colonne trouvée</div>
+                            )}
+                        </div>
                     </div>
                 )}
             </div>

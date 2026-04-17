@@ -157,6 +157,7 @@ export const STORES_PROD_SCHEMA = [
 
     // EXCLUSIVE PROD FIELDS
     { key: "mecanisme_store", label: "Méca Store", type: "catalog_item", category: "Store,Stores,Mecanisme Store", width: 150 },
+    { key: "type_commande", label: "Type Commande", type: "select", options: ["Manuelle", "Radio", "Commande murale", "Fourni par le client"], width: 180, editable: true },
 
     ...mapSchema([
         'cote_manoeuvre',
