@@ -8,7 +8,7 @@ import ImageLightbox from './ui/ImageLightbox'; // <--- IMPORT LIGHTBOX
 const FILTERS = [
     { key: 'all', label: 'Tout' },
     { key: 'messages', label: 'Messages & Photos' },
-    { key: 'activity', label: 'Activités Système' },
+    { key: 'activity', label: 'Activités' },
 ];
 
 const extractActivity = (rows, wall, pinnedIds = []) => {
