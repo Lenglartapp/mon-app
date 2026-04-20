@@ -20,6 +20,36 @@ const toNum = (v) => {
 // Round to 1 decimal place
 const round1 = (v) => Math.round(v * 10) / 10;
 
+// Round to nearest 0.05 (for ML in metres)
+const roundStep05 = (v) => Math.round(v / 0.05) * 0.05;
+
+// ML tissu : calcul selon orientation (laize vs hauteur_coupe)
+// aPlat, laize, hCoupe, hCoupeMotif en cm → résultat en m
+const calcML = (aPlat, laize, hCoupe, hCoupeMotif) => {
+    if (!laize || laize <= 0 || !aPlat || aPlat <= 0) return 0;
+    if (laize >= hCoupe) {
+        // Horizontal (tissu couché)
+        return roundStep05(aPlat / 100);
+    }
+    // Vertical
+    const nbLes = Math.ceil(aPlat / laize);
+    return roundStep05((nbLes * hCoupeMotif) / 100);
+};
+
+// ML passementerie selon application (I/U/L/-)
+// aPlat, hCoupe en cm → résultat en m
+const calcPassML = (app, aPlat, hCoupe, isPaire) => {
+    if (!app || !aPlat || !hCoupe) return 0;
+    const L_Pan = isPaire ? aPlat / 2 : aPlat;
+    let res = 0;
+    if (app === 'I') res = hCoupe;
+    else if (app === 'U') res = (hCoupe * 2) + L_Pan;
+    else if (app === 'L') res = hCoupe + L_Pan;
+    else if (app === '-') res = L_Pan;
+    else return 0;
+    return roundStep05((isPaire ? res * 2 : res) / 100);
+};
+
 // Helper for complex calculations
 const getters = {
     largeur_finie: (row) => {
@@ -284,18 +314,103 @@ export const RIDEAUX_PROD_SCHEMA = [
     { key: "laize_tissu1", label: "Laize T1", type: "number", width: 110, editable: true },
     { key: "raccord_v_tissu1", label: "Raccord V T1", type: "number", width: 125, editable: true },
     { key: "raccord_h_tissu1", label: "Raccord H T1", type: "number", width: 125, editable: true },
+    {
+        key: "ml_tissu1",
+        label: "ML T1",
+        type: "number",
+        width: 100,
+        readOnly: true,
+        tooltip: "ML Tissu 1 calculé depuis les cotes BPF. Horizontal si laize ≥ H.Coupe : À Plat ÷ 100. Vertical : Nb lés × H.Coupe Motif ÷ 100",
+        valueGetter: (v, r) => {
+            const row = getRow(v, r);
+            return calcML(getters.a_plat(row), toNum(row.laize_tissu1), getters.hauteur_coupe(row),
+                (() => { const hC = getters.hauteur_coupe(row); const rV = toNum(row.raccord_v_tissu1); return rV > 0 ? Math.ceil(hC / rV) * rV : hC; })());
+        }
+    },
     { key: "tissu_deco2", label: "Tissu 2", type: "text", width: 160, editable: true },
     { key: "laize_tissu2", label: "Laize T2", type: "number", width: 110, editable: true },
     { key: "raccord_v_tissu2", label: "Raccord V T2", type: "number", width: 125, editable: true },
     { key: "raccord_h_tissu2", label: "Raccord H T2", type: "number", width: 125, editable: true },
+    {
+        key: "ml_tissu2",
+        label: "ML T2",
+        type: "number",
+        width: 100,
+        readOnly: true,
+        tooltip: "ML Tissu 2 calculé depuis les cotes BPF (tissu uni, sans raccord motif)",
+        valueGetter: (v, r) => {
+            const row = getRow(v, r);
+            const hC = getters.hauteur_coupe(row);
+            return calcML(getters.a_plat(row), toNum(row.laize_tissu2), hC, hC);
+        }
+    },
     { key: "doublure", label: "Doublure", type: "text", width: 160, editable: true },
     { key: "laize_doublure", label: "Laize D.", type: "number", width: 110, editable: true },
+    {
+        key: "ml_doublure",
+        label: "ML Doubl.",
+        type: "number",
+        width: 110,
+        readOnly: true,
+        tooltip: "ML Doublure calculé depuis les cotes BPF (utilise H.Coupe Doublure)",
+        valueGetter: (v, r) => {
+            const row = getRow(v, r);
+            const hCD = (() => {
+                const hFinieD = getters.hauteur_finie_droite(row);
+                const hFinieG = getters.hauteur_finie_gauche(row);
+                const hFinie = Math.max(hFinieD, hFinieG);
+                const laizeD = toNum(row.laize_doublure);
+                const aPlat = getters.a_plat(row);
+                return laizeD > (hFinie + 50) ? aPlat : hFinie + 50;
+            })();
+            return calcML(getters.a_plat(row), toNum(row.laize_doublure), hCD, hCD);
+        }
+    },
     { key: "inter_doublure", label: "Interdoublure", type: "text", width: 160 },
     { key: "laize_inter", label: "Laize Interdoublure", type: "number", width: 175 },
+    {
+        key: "ml_inter_doublure",
+        label: "ML Interdoubl.",
+        type: "number",
+        width: 120,
+        readOnly: true,
+        tooltip: "ML Interdoublure calculé depuis les cotes BPF",
+        valueGetter: (v, r) => {
+            const row = getRow(v, r);
+            const hC = getters.hauteur_coupe(row);
+            return calcML(getters.a_plat(row), toNum(row.laize_inter), hC, hC);
+        }
+    },
     { key: "passementerie1", label: "Pass. 1", type: "text", width: 160, editable: true },
-    { key: "application_passementerie1", label: "Appli Pass. 1", type: "text", width: 140, editable: true },
+    { key: "application_passementerie1", label: "Appli Pass. 1", type: "select", options: ["I", "U", "L", "-"], width: 140, editable: true },
+    {
+        key: "ml_pass1",
+        label: "ML Pass. 1",
+        type: "number",
+        width: 110,
+        readOnly: true,
+        tooltip: "ML Pass. 1 selon application : I = 1 côté | U = périmètre | L = 3 côtés | - = largeur seule",
+        valueGetter: (v, r) => {
+            const row = getRow(v, r);
+            const isPaire = (row.paire_ou_un_seul_pan || "").startsWith("Paire");
+            return calcPassML(row.application_passementerie1, getters.a_plat(row), getters.hauteur_coupe(row), isPaire);
+        }
+    },
     { key: "passementerie2", label: "Pass. 2", type: "text", width: 160, editable: true },
-    { key: "application_passementerie2", label: "Appli Pass. 2", type: "text", width: 140, editable: true },
+    { key: "application_passementerie2", label: "Appli Pass. 2", type: "select", options: ["I", "U", "L", "-"], width: 140, editable: true },
+    {
+        key: "ml_pass2",
+        label: "ML Pass. 2",
+        type: "number",
+        width: 110,
+        readOnly: true,
+        tooltip: "ML Pass. 2 selon application : I = 1 côté | U = périmètre | L = 3 côtés | - = largeur seule",
+        valueGetter: (v, r) => {
+            const row = getRow(v, r);
+            const isPaire = (row.paire_ou_un_seul_pan || "").startsWith("Paire");
+            return calcPassML(row.application_passementerie2, getters.a_plat(row), getters.hauteur_coupe(row), isPaire);
+        }
+    },
 
     // F. Finitions & Logistique Atelier
     { key: "croisement", label: "Croisement", type: "number", width: 120, editable: true },

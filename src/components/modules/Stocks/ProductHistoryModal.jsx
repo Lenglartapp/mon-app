@@ -67,6 +67,19 @@ const COLUMNS = [
         }
     },
     {
+        field: 'user',
+        headerName: 'Opérateur',
+        width: 150,
+        renderCell: (params) => params.value ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Avatar sx={{ width: 24, height: 24, fontSize: 11, bgcolor: stringToColor(params.value) }}>
+                    {params.value?.[0]}
+                </Avatar>
+                <span>{params.value}</span>
+            </div>
+        ) : <span style={{ color: '#9CA3AF', fontStyle: 'italic' }}>-</span>
+    },
+    {
         field: 'qty',
         headerName: 'Quantité',
         width: 100,
@@ -103,19 +116,6 @@ const COLUMNS = [
             <span style={{ fontSize: 12, fontWeight: 700, color: '#4338CA' }}>{params.value || '-'}</span>
         )
     },
-    {
-        field: 'user',
-        headerName: 'Opérateur',
-        width: 150,
-        renderCell: (params) => (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Avatar sx={{ width: 24, height: 24, fontSize: 11, bgcolor: stringToColor(params.value) }}>
-                    {params.value?.[0]}
-                </Avatar>
-                <span>{params.value}</span>
-            </div>
-        )
-    }
 ];
 
 export default function ProductHistoryModal({ open, onClose, product, movements = [] }) {

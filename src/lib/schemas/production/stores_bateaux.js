@@ -185,10 +185,12 @@ const BASE_STORES_BATEAUX_SCHEMA = [
     { key: "laize_toile_finition_1", label: "Laize TF1", type: "number", width: 120 },
     { key: "raccord_v_toile_finition_1", label: "Rac V. TF1", type: "number", width: 125 },
     { key: "raccord_h_toile_finition_1", label: "Rac H. TF1", type: "number", width: 125 },
+    { key: "ml_toile_finition_1", label: "ML TF1", type: "number", width: 120 },
 
     // DOUBLURE
     { key: "doublure", label: "Doublure", type: "catalog_item", category: "Tissu,Tissus", width: 180 },
     { key: "laize_doublure", label: "Laize D.", type: "number", width: 120 },
+    { key: "ml_doublure", label: "ML Doubl.", type: "number", width: 120 },
 
     // GORGE
     { key: "largeur_gorge", label: "Largeur Gorge (cm)", type: "number", width: 155 },
@@ -232,10 +234,12 @@ export const STORES_BATEAUX_PROD_SCHEMA = [
         'raccord_v_toile_finition_1',
         'raccord_h_toile_finition_1',
         'laize_toile_finition_1',
+        'ml_toile_finition_1',
 
         // DOUBLURE
         'doublure',
         'laize_doublure',
+        'ml_doublure',
 
         // GORGE
         'largeur_gorge',
@@ -249,7 +253,7 @@ export const STORES_BATEAUX_PROD_SCHEMA = [
     { key: "type_commande", label: "Type Commande", type: "select", options: ["Manuelle", "Télécommande", "Commande murale", "Fourni par le client"], width: 180 },
     { key: "type_moteur", label: "Type Moteur", type: "text", width: 130 },
     { key: "cote_manoeuvre", label: "Côté Manœuvre", type: "select", options: ["Droite", "Gauche"], width: 130 },
-    { key: "methode_manoeuvre", label: "Méthode Manœuvre", type: "select", options: ["Cabestan", "Freel", "Cordon", "Chaînette"], width: 160 },
+    { key: "methode_manoeuvre", label: "Méthode Manœuvre", type: "select", options: ["Freel", "Cordon", "Chaînette"], width: 160 },
     { key: "equerre_support", label: "Équerre Support", type: "text", width: 140 },
     {
         key: "nombre_anneaux_largeur",

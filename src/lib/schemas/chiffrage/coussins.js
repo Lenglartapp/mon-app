@@ -84,6 +84,6 @@ export const COUSSINS_SCHEMA = [
 
     // 8. TOTAUX
     createCol('unit_price', 'P.U.', 115, 'number', { valueFormatter: (value) => new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(value) }),
-    createCol('quantite', 'Qté', 115, 'number', { editable: false, defaultValue: 1 }),
+    createCol('quantite', 'Qté', 115, 'number', { defaultValue: 1 }),
     createCol('total_price', 'Total', 125, 'number'),
 ].map(c => ({ ...c, key: c.field }));
