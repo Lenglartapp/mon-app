@@ -326,7 +326,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
       if (r.section === 'autre') return false;
 
       if (key === "rideaux") return /rideau|voilage/i.test(p);
-      if (key === "store") return /store|canishade/i.test(p) && !/bateau|velum|vélum/i.test(p);
+      if (key === "store") return (/store|canishade/i.test(p) || /^autre$/i.test(p)) && !/bateau|velum|vélum/i.test(p);
       if (key === "store_bateau") return /bateau|velum|vélum/i.test(p);
       if (key === "coussins") return /coussin/i.test(p);
       if (key === "cache_sommier") return /cache-sommier/i.test(p);
