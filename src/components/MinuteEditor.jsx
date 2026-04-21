@@ -279,7 +279,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
     rowsDeplacement, rowsAutre
   } = React.useMemo(() => ({
     rowsRideaux:      rows.filter((r) => /rideau|voilage/i.test(String(r.produit || ""))),
-    rowsStore:        rows.filter((r) => /store|canishade/i.test(String(r.produit || "")) && !/bateau|velum|vélum/i.test(String(r.produit || ""))),
+    rowsStore:        rows.filter((r) => (/store|canishade/i.test(String(r.produit || "")) || /^autre$/i.test(String(r.produit || ""))) && !/bateau|velum|vélum/i.test(String(r.produit || ""))),
     rowsStoresBateau: rows.filter((r) => /bateau|velum|vélum/i.test(String(r.produit || ""))),
     rowsCoussins:     rows.filter((r) => /coussin/i.test(String(r.produit || ""))),
     rowsCacheSommier: rows.filter((r) => /cache-sommier/i.test(String(r.produit || ""))),

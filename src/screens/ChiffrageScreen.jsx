@@ -195,7 +195,7 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onBack, onOpen
 
       // Categorize Revenue
       if (/bateau|velum|vélum/i.test(prod)) caStoresBateau += total;
-      else if (/store|canishade/i.test(prod)) caStores += total;
+      else if (/store|canishade/i.test(prod) || /^autre$/i.test(prod)) caStores += total;
       else if (/coussin/i.test(prod)) caCoussins += total;
       else if (/cache-sommier/i.test(prod)) caCacheSommier += total;
       else if (/plaid|chemin de lit/i.test(prod)) caPlaid += total;
