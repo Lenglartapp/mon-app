@@ -52,6 +52,8 @@ const PERMISSIONS = {
     "planning.view_assistant": true,
     "planning.manage_team": true,
 
+    "production.edit": true,
+
     "inventory.view": true,
     "inventory.edit": true,
 
@@ -73,6 +75,8 @@ const PERMISSIONS = {
     "planning.view_gauges": true,
     "planning.view_assistant": false,
     "planning.manage_team": false,
+
+    "production.edit": true,
 
     "inventory.view": true,
     "inventory.edit": true,
