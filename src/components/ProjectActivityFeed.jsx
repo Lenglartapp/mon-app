@@ -19,8 +19,18 @@ const extractActivity = (rows, wall, pinnedIds = []) => {
             const rowName = `${row.produit || 'Ligne'} - ${row.piece || '?'}`;
             if (Array.isArray(row.comments)) {
                 row.comments.forEach(c => {
-                    // Exclure les logs de modification
-                    if (c.type === 'log' || c.type === 'change') return;
+                    if (c.type === 'log') {
+                        // Logs de modification — affichés comme activités dans le journal
+                        const ts = c.createdAt ? new Date(c.createdAt).getTime() : (c.date || Date.now());
+                        const eventId = `log-${row.id}-${c.id || ts}`;
+                        allEvents.push({
+                            id: eventId, date: ts, type: 'system_edit', category: 'activity',
+                            user: c.author || 'Système', actionLabel: 'a modifié', target: rowName,
+                            details: { field: c.field, old: c.from, new: c.to }, pinned: false
+                        });
+                        return;
+                    }
+                    if (c.type === 'change') return;
                     if (c.text && typeof c.text === 'string' && c.text.startsWith('Modif')) return;
 
                     const isImage = c.type === 'image';
@@ -41,6 +51,7 @@ const extractActivity = (rows, wall, pinnedIds = []) => {
             }
             if (Array.isArray(row.history)) {
                 row.history.forEach(h => {
+                    if (!h.field) return;
                     const eventId = `hist-${row.id}-${h.date}-${h.field.replace(/\s/g, '')}`;
                     allEvents.push({
                         id: eventId, date: h.date, type: 'system_edit', category: 'activity',
