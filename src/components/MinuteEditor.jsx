@@ -243,7 +243,24 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
 
   const handleCatalogChange = (newCatalog) => {
     setCatalog(newCatalog);
-    onChangeMinute?.({ ...minute, catalog: newCatalog, updatedAt: Date.now() });
+    // Recompute toutes les lignes avec le nouveau catalog pour que le récap parent se mette à jour
+    const newCtx = { ...extendedCtx, catalog: newCatalog };
+    const recomputedLines = (localLines || []).map(row => {
+      let targetSchema = schema;
+      const p = String(row.produit || "").toLowerCase();
+      if (p === 'autre dépense') targetSchema = EXTRA_DEPENSES_SCHEMA;
+      else if (p === 'déplacement') targetSchema = CHIFFRAGE_SCHEMA_DEP;
+      else if (/store|canishade|^autre$/i.test(p)) targetSchema = STORES_CLASSIQUES_SCHEMA;
+      else if (/bateau|velum|vélum/i.test(p)) targetSchema = STORES_BATEAUX_SCHEMA;
+      else if (/rideau|voilage/i.test(p)) targetSchema = RIDEAUX_SCHEMA;
+      else if (/coussin/i.test(p)) targetSchema = COUSSINS_SCHEMA;
+      else if (/cache-sommier/i.test(p)) targetSchema = CACHE_SOMMIER_SCHEMA;
+      else if (/plaid|chemin de lit/i.test(p)) targetSchema = PLAID_SCHEMA;
+      else if (/tenture/i.test(p)) targetSchema = TENTURE_MURALE_SCHEMA;
+      else if (/t[êe]te|mobilier/i.test(p)) targetSchema = MOBILIER_SCHEMA;
+      return recomputeRow(row, targetSchema, newCtx);
+    });
+    onChangeMinute?.({ ...minute, catalog: newCatalog, lines: recomputedLines, updatedAt: Date.now() });
   };
 
   const handleSettingsChange = (newSettings) => {
