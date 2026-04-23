@@ -185,11 +185,18 @@ export default function CatalogManager({ open, onClose, catalog, onCatalogChange
             { field: 'name', headerName: 'Nom Complet(ID)', width: 250, editable: false, description: 'Généré automatiquement (Fournisseur + Ref + Coloris)' },
         ];
 
+        const parseDecimal = (value) => {
+            const str = String(value ?? '').trim().replace(',', '.');
+            const n = parseFloat(str);
+            return isNaN(n) ? value : n;
+        };
+
         const priceCols = [
             {
                 field: 'buyPrice',
                 headerName: 'Prix Achat (€)',
                 width: 130,
+                valueParser: (value) => parseDecimal(value),
                 editable: (params) => params.row.unit !== 'pce', // Lock if Piece
                 type: 'number',
                 valueFormatter: (value) => {
@@ -210,6 +217,7 @@ export default function CatalogManager({ open, onClose, catalog, onCatalogChange
                 width: 100,
                 editable: activeCategoryTab !== 'stores', // Only editable if not stores
                 type: 'number',
+                valueParser: (value) => parseDecimal(value),
                 description: 'Coefficient multiplicateur pour le calcul du PV (PV = PA * Coef)'
             },
             {
@@ -218,6 +226,7 @@ export default function CatalogManager({ open, onClose, catalog, onCatalogChange
                 width: 130,
                 editable: (params) => params.row.unit !== 'pce', // Lock if Piece
                 type: 'number',
+                valueParser: (value) => parseDecimal(value),
                 valueFormatter: (value) => {
                     if (value === undefined || value === null || value === '') return '';
                     return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(value);
@@ -241,10 +250,10 @@ export default function CatalogManager({ open, onClose, catalog, onCatalogChange
         ];
 
         const fabricCols = [
-            { field: 'width', headerName: 'Laize (cm)', width: 100, editable: true, type: 'number' },
+            { field: 'width', headerName: 'Laize (cm)', width: 100, editable: true, type: 'number', valueParser: (value) => parseDecimal(value) },
             { field: 'motif', headerName: 'Motif ?', width: 80, editable: true, type: 'boolean' },
-            { field: 'raccord_v', headerName: 'Raccord V (cm)', width: 110, editable: true, type: 'number' },
-            { field: 'raccord_h', headerName: 'Raccord H (cm)', width: 110, editable: true, type: 'number' },
+            { field: 'raccord_v', headerName: 'Raccord V (cm)', width: 110, editable: true, type: 'number', valueParser: (value) => parseDecimal(value) },
+            { field: 'raccord_h', headerName: 'Raccord H (cm)', width: 110, editable: true, type: 'number', valueParser: (value) => parseDecimal(value) },
         ];
 
         let cols = [...base];
