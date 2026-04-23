@@ -150,14 +150,19 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onBack, onOpen
     const local = localSettings || {};
     const effectiveSettings = { ...defaults, ...global, ...local };
 
+    // Priorité : catalog per-minute (bibliothèque d'achat de la minute) > catalog global
+    const globalCatalog = [...(catalog || []), ...(catalogRails || [])];
+    const effectiveCatalog = (minute?.catalog && minute.catalog.length > 0)
+      ? minute.catalog
+      : globalCatalog;
+
     return {
       paramsMap,
       totalCA: baseCA,
       settings: effectiveSettings,
-      // On passe le catalogue combiné aux formules au cas où !
-      catalog: [...(catalog || []), ...(catalogRails || [])]
+      catalog: effectiveCatalog
     };
-  }, [paramsMap, baseCA, globalSettings, catalog, catalogRails, localSettings]);
+  }, [paramsMap, baseCA, globalSettings, catalog, catalogRails, localSettings, minute?.catalog]);
 
   // Rows State
   const [rows, setRows] = React.useState(() => computeFormulas(minute?.lines || [], schema, formulaCtx));
