@@ -29,6 +29,8 @@ const PERMISSIONS = {
     "inventory.view": true,
     "inventory.edit": false,
 
+    "production.edit": true,
+
     "logistique.edit": false,
   },
 
