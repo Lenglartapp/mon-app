@@ -252,6 +252,12 @@ export function schemaToGridCols(
     // Numbers → right-aligned
     if (col.type === 'number' || col.type === 'formula') {
       gridCol.type = 'numericColumn';
+      // Accepte virgule ET point comme séparateur décimal (usage français)
+      gridCol.valueParser = (params) => {
+        const str = String(params.newValue ?? '').trim().replace(',', '.');
+        const n = parseFloat(str);
+        return isNaN(n) ? params.newValue : n;
+      };
     }
 
     // --- Catalog columns (dropdown) ---
