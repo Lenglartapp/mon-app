@@ -90,7 +90,7 @@ export const calculateProfitability = (rows = [], depRows = [], extraRows = [], 
         // --- RAILS & STORES ---
         const prodStr = String(r.produit || "");
         const isBateau = /bateau|vélum|velum/i.test(prodStr);
-        const isStore = /store|canishade/i.test(prodStr) && !isBateau;
+        const isStore = (/store|canishade/i.test(prodStr) || /^autre$/i.test(prodStr)) && !isBateau;
 
         if (isStore) {
             // STORES (Enrouleurs, Californiens, etc.)
