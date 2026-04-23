@@ -350,6 +350,35 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
     );
   }, [project?.id]);
 
+  // Sync history/comments en temps réel quand un autre utilisateur sauvegarde.
+  // On ne touche que les lignes où l'entrant a PLUS d'entrées (évite d'écraser les éditions locales en cours).
+  useEffect(() => {
+    if (!project?.rows) return;
+    setRows(prev => {
+      if (!prev) return prev;
+      const incomingMap = new Map(project.rows.map(r => [r.id, r]));
+      let changed = false;
+      const merged = prev.map(r => {
+        const inc = incomingMap.get(r.id);
+        if (!inc) return r;
+        const inHist = inc.history || [];
+        const inComm = inc.comments || [];
+        const locHist = r.history || [];
+        const locComm = r.comments || [];
+        if (inHist.length > locHist.length || inComm.length > locComm.length) {
+          changed = true;
+          return {
+            ...r,
+            history: inHist.length > locHist.length ? inHist : locHist,
+            comments: inComm.length > locComm.length ? inComm : locComm,
+          };
+        }
+        return r;
+      });
+      return changed ? merged : prev;
+    });
+  }, [project?.rows]);
+
   // NOTE: On a supprimé le useEffect de persistance automatique pour éviter les boucles infinies.
   // La sauvegarde se fait maintenant manuellement dans chaque handler ("Immediate Save").
 
@@ -408,11 +437,20 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
       { key: 'statut_prepa', label: 'Statut Prépa' },
       { key: 'statut_conf', label: 'Statut Conf' },
       { key: 'statut_pose', label: 'Statut Pose' },
+      { key: 'piece', label: 'Pièce' },
+      { key: 'produit', label: 'Produit' },
+      { key: 'largeur_mecanisme', label: 'Largeur Méca' },
       { key: 'largeur', label: 'Largeur' },
       { key: 'hauteur', label: 'Hauteur' },
-      { key: 'produit', label: 'Produit' },
-      { key: 'piece', label: 'Pièce' },
-      { key: 'largeur_mecanisme', label: 'Largeur Méca' } // Ajouté pour le dashboard
+      { key: 'hspf_droite', label: 'HSPF Droit' },
+      { key: 'hspf_milieu', label: 'HSPF Milieu' },
+      { key: 'hspf_gauche', label: 'HSPF Gauche' },
+      { key: 'finition_bas', label: 'Cassant / Rasant' },
+      { key: 'valeur_deduction', label: 'Val. Déduc.' },
+      { key: 'type_confection', label: 'Type Conf.' },
+      { key: 'tissu_deco1', label: 'Tissu 1' },
+      { key: 'tissu_deco2', label: 'Tissu 2' },
+      { key: 'doublure', label: 'Doublure' },
     ];
 
     watchedFields.forEach(field => {
