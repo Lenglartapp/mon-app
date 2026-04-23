@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Clock, MessageSquare, CheckCircle, Edit, ArrowRight, Pin, Image as ImageIcon } from 'lucide-react';
+import { Clock, MessageSquare, CheckCircle, Edit, ArrowRight, Pin, Image as ImageIcon, Search, X } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { COLORS } from '../lib/constants/ui';
@@ -85,6 +85,7 @@ const extractActivity = (rows, wall, pinnedIds = []) => {
 
 export default function ProjectActivityFeed({ rows, wall, pinnedIds, onTogglePin, isMobile = false }) {
     const [filter, setFilter] = useState('all');
+    const [search, setSearch] = useState('');
 
     // Lightbox States
     const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -92,7 +93,20 @@ export default function ProjectActivityFeed({ rows, wall, pinnedIds, onTogglePin
 
     const events = useMemo(() => extractActivity(rows, wall, pinnedIds), [rows, wall, pinnedIds]);
     const pinnedPosts = useMemo(() => events.filter(e => e.pinned), [events]);
-    const feedEvents = useMemo(() => events.filter(e => filter === 'all' ? true : e.category === filter), [events, filter]);
+    const feedEvents = useMemo(() => {
+        const byFilter = filter === 'all' ? events : events.filter(e => e.category === filter);
+        if (!search.trim()) return byFilter;
+        const q = search.trim().toLowerCase();
+        return byFilter.filter(e => {
+            if (e.user?.toLowerCase().includes(q)) return true;
+            if (e.target?.toLowerCase().includes(q)) return true;
+            if (e.text?.toLowerCase().includes(q)) return true;
+            if (e.details?.field?.toLowerCase().includes(q)) return true;
+            if (String(e.details?.old ?? '').toLowerCase().includes(q)) return true;
+            if (String(e.details?.new ?? '').toLowerCase().includes(q)) return true;
+            return false;
+        });
+    }, [events, filter, search]);
 
     // Galerie : On récupère toutes les images du flux pour pouvoir naviguer
     const galleryImages = useMemo(() => {
@@ -177,12 +191,29 @@ export default function ProjectActivityFeed({ rows, wall, pinnedIds, onTogglePin
 
     return (
         <div style={{ background: '#fff', borderRadius: 12, border: `1px solid ${COLORS.border}`, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ padding: '12px 20px', borderBottom: `1px solid ${COLORS.border}`, background: '#f9fafb', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
-                <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8, color: '#374151' }}><Clock size={18} /> Journal & Messages</div>
-                <div style={{ display: 'flex', gap: 4 }}>
-                    {FILTERS.map(f => (
-                        <button key={f.key} onClick={() => setFilter(f.key)} style={{ padding: '4px 12px', borderRadius: 20, border: 'none', fontSize: 12, fontWeight: 500, cursor: 'pointer', background: filter === f.key ? '#374151' : '#E5E7EB', color: filter === f.key ? 'white' : '#4B5563' }}>{f.label}</button>
-                    ))}
+            <div style={{ padding: '12px 20px', borderBottom: `1px solid ${COLORS.border}`, background: '#f9fafb', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+                    <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8, color: '#374151' }}><Clock size={18} /> Journal & Messages</div>
+                    <div style={{ display: 'flex', gap: 4 }}>
+                        {FILTERS.map(f => (
+                            <button key={f.key} onClick={() => setFilter(f.key)} style={{ padding: '4px 12px', borderRadius: 20, border: 'none', fontSize: 12, fontWeight: 500, cursor: 'pointer', background: filter === f.key ? '#374151' : '#E5E7EB', color: filter === f.key ? 'white' : '#4B5563' }}>{f.label}</button>
+                        ))}
+                    </div>
+                </div>
+                <div style={{ position: 'relative' }}>
+                    <Search size={14} style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', color: '#9CA3AF', pointerEvents: 'none' }} />
+                    <input
+                        type="text"
+                        placeholder="Rechercher par ouvrage, personne, contenu…"
+                        value={search}
+                        onChange={e => setSearch(e.target.value)}
+                        style={{ width: '100%', paddingLeft: 28, paddingRight: search ? 28 : 10, paddingTop: 6, paddingBottom: 6, border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 12, outline: 'none', background: 'white', boxSizing: 'border-box', color: '#374151' }}
+                    />
+                    {search && (
+                        <button onClick={() => setSearch('')} style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', padding: 2, color: '#9CA3AF', display: 'flex', alignItems: 'center' }}>
+                            <X size={13} />
+                        </button>
+                    )}
                 </div>
             </div>
             {pinnedPosts.length > 0 && <div style={{ background: '#FFFBEB', borderBottom: '4px solid #F3F4F6' }}><div style={{ padding: '8px 20px', fontSize: 11, fontWeight: 700, color: '#D97706', textTransform: 'uppercase' }}>📌 Épinglés ({pinnedPosts.length})</div>{pinnedPosts.map(post => renderEvent(post, true))}</div>}
