@@ -892,6 +892,12 @@ function MinuteGrid({
         gridRef.current.api.refreshHeader();
     }, [filterConditions]);
 
+    // Rafraîchit les cellules AG Grid quand rowData change (ex: mise à jour prix catalog ML)
+    useEffect(() => {
+        if (!isGridReadyRef.current || !gridRef.current?.api) return;
+        gridRef.current.api.refreshCells({ force: true });
+    }, [rows]);
+
     // Colonnes visibles pour le panneau (en excluant la colonne checkbox)
     const schemaCols = useMemo(() =>
         schema.filter(col => col.key !== 'sel' && !col.hidden).map(col => ({
