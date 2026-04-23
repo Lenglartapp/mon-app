@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Clock, MessageSquare, CheckCircle, Edit, ArrowRight, Pin, Image as ImageIcon } from 'lucide-react';
+import { SmartFilterBar } from './ui/SmartFilterBar';
 import { formatDistanceToNow, format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { COLORS } from '../lib/constants/ui';
@@ -19,8 +20,18 @@ const extractActivity = (rows, wall, pinnedIds = []) => {
             const rowName = `${row.produit || 'Ligne'} - ${row.piece || '?'}`;
             if (Array.isArray(row.comments)) {
                 row.comments.forEach(c => {
-                    // Exclure les logs de modification
-                    if (c.type === 'log' || c.type === 'change') return;
+                    if (c.type === 'log') {
+                        // Logs de modification — affichés comme activités dans le journal
+                        const ts = c.createdAt ? new Date(c.createdAt).getTime() : (c.date || Date.now());
+                        const eventId = `log-${row.id}-${c.id || ts}`;
+                        allEvents.push({
+                            id: eventId, date: ts, type: 'system_edit', category: 'activity',
+                            user: c.author || 'Système', actionLabel: 'a modifié', target: rowName,
+                            details: { field: c.field, old: c.from, new: c.to }, pinned: false
+                        });
+                        return;
+                    }
+                    if (c.type === 'change') return;
                     if (c.text && typeof c.text === 'string' && c.text.startsWith('Modif')) return;
 
                     const isImage = c.type === 'image';
@@ -41,6 +52,7 @@ const extractActivity = (rows, wall, pinnedIds = []) => {
             }
             if (Array.isArray(row.history)) {
                 row.history.forEach(h => {
+                    if (!h.field) return;
                     const eventId = `hist-${row.id}-${h.date}-${h.field.replace(/\s/g, '')}`;
                     allEvents.push({
                         id: eventId, date: h.date, type: 'system_edit', category: 'activity',
@@ -74,6 +86,7 @@ const extractActivity = (rows, wall, pinnedIds = []) => {
 
 export default function ProjectActivityFeed({ rows, wall, pinnedIds, onTogglePin, isMobile = false }) {
     const [filter, setFilter] = useState('all');
+    const [activeFilters, setActiveFilters] = useState([]);
 
     // Lightbox States
     const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -81,7 +94,30 @@ export default function ProjectActivityFeed({ rows, wall, pinnedIds, onTogglePin
 
     const events = useMemo(() => extractActivity(rows, wall, pinnedIds), [rows, wall, pinnedIds]);
     const pinnedPosts = useMemo(() => events.filter(e => e.pinned), [events]);
-    const feedEvents = useMemo(() => events.filter(e => filter === 'all' ? true : e.category === filter), [events, filter]);
+    const feedEvents = useMemo(() => {
+        const byFilter = filter === 'all' ? events : events.filter(e => e.category === filter);
+        if (activeFilters.length === 0) return byFilter;
+        return byFilter.filter(e => activeFilters.every(f => {
+            const q = f.value.toLowerCase();
+            if (f.field === 'user')    return e.user?.toLowerCase().includes(q);
+            if (f.field === 'target')  return e.target?.toLowerCase().includes(q);
+            if (f.field === 'content') return (
+                e.text?.toLowerCase().includes(q) ||
+                e.details?.field?.toLowerCase().includes(q) ||
+                String(e.details?.old ?? '').toLowerCase().includes(q) ||
+                String(e.details?.new ?? '').toLowerCase().includes(q)
+            );
+            // 'all' — tous les champs
+            return (
+                e.user?.toLowerCase().includes(q) ||
+                e.target?.toLowerCase().includes(q) ||
+                e.text?.toLowerCase().includes(q) ||
+                e.details?.field?.toLowerCase().includes(q) ||
+                String(e.details?.old ?? '').toLowerCase().includes(q) ||
+                String(e.details?.new ?? '').toLowerCase().includes(q)
+            );
+        }));
+    }, [events, filter, activeFilters]);
 
     // Galerie : On récupère toutes les images du flux pour pouvoir naviguer
     const galleryImages = useMemo(() => {
@@ -166,13 +202,26 @@ export default function ProjectActivityFeed({ rows, wall, pinnedIds, onTogglePin
 
     return (
         <div style={{ background: '#fff', borderRadius: 12, border: `1px solid ${COLORS.border}`, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ padding: '12px 20px', borderBottom: `1px solid ${COLORS.border}`, background: '#f9fafb', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
-                <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8, color: '#374151' }}><Clock size={18} /> Journal & Messages</div>
-                <div style={{ display: 'flex', gap: 4 }}>
-                    {FILTERS.map(f => (
-                        <button key={f.key} onClick={() => setFilter(f.key)} style={{ padding: '4px 12px', borderRadius: 20, border: 'none', fontSize: 12, fontWeight: 500, cursor: 'pointer', background: filter === f.key ? '#374151' : '#E5E7EB', color: filter === f.key ? 'white' : '#4B5563' }}>{f.label}</button>
-                    ))}
+            <div style={{ padding: '12px 20px', borderBottom: `1px solid ${COLORS.border}`, background: '#f9fafb', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+                    <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8, color: '#374151' }}><Clock size={18} /> Journal & Messages</div>
+                    <div style={{ display: 'flex', gap: 4 }}>
+                        {FILTERS.map(f => (
+                            <button key={f.key} onClick={() => setFilter(f.key)} style={{ padding: '4px 12px', borderRadius: 20, border: 'none', fontSize: 12, fontWeight: 500, cursor: 'pointer', background: filter === f.key ? '#374151' : '#E5E7EB', color: filter === f.key ? 'white' : '#4B5563' }}>{f.label}</button>
+                        ))}
+                    </div>
                 </div>
+                <SmartFilterBar
+                    fields={[
+                        { id: 'user',    label: 'Auteur' },
+                        { id: 'target',  label: 'Ouvrage' },
+                        { id: 'content', label: 'Contenu' },
+                    ]}
+                    activeFilters={activeFilters}
+                    onAddFilter={f => setActiveFilters(prev => [...prev, f])}
+                    onRemoveFilter={id => setActiveFilters(prev => prev.filter(f => f.id !== id))}
+                    placeholder="Ouvrage, auteur, contenu…"
+                />
             </div>
             {pinnedPosts.length > 0 && <div style={{ background: '#FFFBEB', borderBottom: '4px solid #F3F4F6' }}><div style={{ padding: '8px 20px', fontSize: 11, fontWeight: 700, color: '#D97706', textTransform: 'uppercase' }}>📌 Épinglés ({pinnedPosts.length})</div>{pinnedPosts.map(post => renderEvent(post, true))}</div>}
             <div style={{ maxHeight: 600, overflowY: 'auto' }}>{feedEvents.length === 0 ? <div style={{ padding: 40, textAlign: 'center', color: '#9CA3AF', fontStyle: 'italic' }}>Aucune activité.</div> : feedEvents.map(evt => renderEvent(evt, false))}</div>
