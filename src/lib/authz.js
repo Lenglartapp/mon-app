@@ -94,6 +94,8 @@ const PERMISSIONS = {
     "nav.performance": false,
     "nav.settings": true,
 
+    "production.edit": true,
+
     "planning.view": true,
     "planning.edit": false,
     "planning.view_gauges": true,
