@@ -196,6 +196,7 @@ function MinuteGrid({
     showExpeditionCol = false,
 }) {
     const gridRef = useRef(null);
+    const gridContainerRef = useRef(null);
     const { currentUser: authUser } = useAuth();
     const resolvedUser = currentUser ?? authUser;
     const [selectedCount, setSelectedCount] = useState(0);
@@ -222,6 +223,8 @@ function MinuteGrid({
     const localMatieresRef = useRef(localMatieres);
     localMatieresRef.current = localMatieres;
     const isGridReadyRef = useRef(false);
+    const pendingRowUpdatesRef = useRef({});  // batch des onCellValueChanged simultanés (paste/fill)
+    const flushScheduledRef    = useRef(false);
 
     const rowsRef = useRef(rows);
     rowsRef.current = rows;
@@ -306,20 +309,43 @@ function MinuteGrid({
         } catch { /* ignore */ }
     }, [gridId]);
 
-    const onPinnedCellClicked = useCallback((params) => {
-        if (params.node.rowPinned !== 'bottom') return;
-        const field = params.colDef?.field;
-        if (!field) return;
-        const schemaCol = schema.find(s => s.key === field);
-        if (!schemaCol) return;
-        if (NON_NUMERIC_TYPES.has(schemaCol.type) || field === 'detail' || field === 'sel') return;
-        // Position du menu : juste sous la cellule cliquée
-        const cellEl = params.event?.target?.closest('[comp-id]') || params.event?.target;
-        const rect = cellEl?.getBoundingClientRect?.();
-        const x = rect ? rect.left : params.event.clientX;
-        const y = rect ? rect.bottom + 4 : params.event.clientY + 4;
-        setAggMenu({ field, x, y });
-    }, [schema]);
+    // Efface la sélection de cellules quand l'utilisateur clique hors du tableau
+    useEffect(() => {
+        const handleOutsideClick = (e) => {
+            if (!gridContainerRef.current) return;
+            if (!gridContainerRef.current.contains(e.target)) {
+                gridRef.current?.api?.clearCellSelection();
+            }
+        };
+        document.addEventListener('mousedown', handleOutsideClick);
+        return () => document.removeEventListener('mousedown', handleOutsideClick);
+    }, []);
+
+    const onCellClicked = useCallback((params) => {
+        // Ligne de totaux : ouvre le menu d'agrégation
+        if (params.node.rowPinned === 'bottom') {
+            const field = params.colDef?.field;
+            if (!field) return;
+            const schemaCol = schema.find(s => s.key === field);
+            if (!schemaCol) return;
+            if (NON_NUMERIC_TYPES.has(schemaCol.type) || field === 'detail' || field === 'sel') return;
+            const cellEl = params.event?.target?.closest('[comp-id]') || params.event?.target;
+            const rect = cellEl?.getBoundingClientRect?.();
+            const x = rect ? rect.left : params.event.clientX;
+            const y = rect ? rect.bottom + 4 : params.event.clientY + 4;
+            setAggMenu({ field, x, y });
+            return;
+        }
+
+        // singleClickEdit pour les cellules non-select (les selects s'éditent au double-clic)
+        if (readOnly || params.node.rowPinned) return;
+        if (params.colDef?.cellEditor === 'agSelectCellEditor') return;
+        const isEditable = typeof params.colDef?.editable === 'function'
+            ? params.colDef.editable(params)
+            : params.colDef?.editable;
+        if (!isEditable) return;
+        params.api.startEditingCell({ rowIndex: params.rowIndex, colKey: params.column.getColId() });
+    }, [schema, readOnly]);
 
     const onAggregationChange = useCallback((field, aggType) => {
         setColAggregations(prev => {
@@ -776,19 +802,52 @@ function MinuteGrid({
 
         // 5. Recompute formulas avec le schema de la section
         try {
-
             const recomputed = recomputeRow(updatedRow, schema, formulaCtx);
 
-            const newAllRows = [];
-            params.api.forEachNode(node => {
-                newAllRows.push(node.data.id === recomputed.id ? recomputed : node.data);
-            });
-
-            onRowsChangeRef.current(newAllRows);
+            // Batch : accumule les mises à jour et flush en un seul rendu React.
+            // Nécessaire pour paste/fill Enterprise qui appelle onCellValueChanged
+            // pour chaque cellule en séquence — sans batch, seule la dernière survit.
+            pendingRowUpdatesRef.current[String(recomputed.id)] = recomputed;
+            if (!flushScheduledRef.current) {
+                flushScheduledRef.current = true;
+                Promise.resolve().then(() => {
+                    flushScheduledRef.current = false;
+                    const updates = { ...pendingRowUpdatesRef.current };
+                    pendingRowUpdatesRef.current = {};
+                    const api = gridRef.current?.api;
+                    if (!api) return;
+                    const newAllRows = [];
+                    api.forEachNode(node => {
+                        if (!node.rowPinned)
+                            newAllRows.push(updates[String(node.data.id)] ?? node.data);
+                    });
+                    onRowsChangeRef.current(newAllRows);
+                });
+            }
         } catch (e) {
             console.error('Erreur calcul', e);
         }
     }, [schema, formulaCtx, catalog, resolvedUser, enableCellFormulas]);
+
+    // Valide la valeur avant de l'appliquer via clipboard/fill.
+    // Pour les selects, rejette toute valeur absente des options autorisées.
+    const processCellFromClipboard = useCallback((params) => {
+        const colDef = params.column?.getColDef?.();
+        if (!colDef) return params.value;
+
+        if (colDef.cellEditor === 'agSelectCellEditor') {
+            const editorParams = typeof colDef.cellEditorParams === 'function'
+                ? colDef.cellEditorParams({ data: params.node?.data, node: params.node })
+                : colDef.cellEditorParams;
+            const allowed = editorParams?.values;
+            if (Array.isArray(allowed) && !allowed.includes(params.value)) {
+                // Valeur invalide pour ce select → on conserve la valeur actuelle
+                return params.node?.data?.[colDef.field] ?? params.value;
+            }
+        }
+
+        return params.value;
+    }, []);
 
     const isLargeGrid = rows.length > 100;
 
@@ -1192,10 +1251,11 @@ function MinuteGrid({
             )}
 
             {/* AG Grid */}
-            <div className="ag-theme-alpine" style={{ width: '100%', height: isLargeGrid ? 600 : undefined }}>
+            <div ref={gridContainerRef} className="ag-theme-alpine" style={{ width: '100%', height: isLargeGrid ? 600 : undefined }}>
                 <AgGridReact
                     ref={gridRef}
                     rowData={rows}
+                    cellSelection={readOnly ? false : { handle: { mode: 'fill' } }}
                     pinnedBottomRowData={pinnedBottomRowData}
                     columnDefs={columnDefs}
                     defaultColDef={defaultColDef}
@@ -1217,8 +1277,9 @@ function MinuteGrid({
                         headerCheckbox: !readOnly,
                     }}
                     onSelectionChanged={onSelectionChanged}
-                    onCellClicked={onPinnedCellClicked}
+                    onCellClicked={onCellClicked}
                     onCellValueChanged={onCellValueChanged}
+                    processCellFromClipboard={processCellFromClipboard}
                     onGridReady={onGridReady}
                     onColumnResized={onColumnResized}
                     onColumnVisible={onColumnVisible}
@@ -1228,7 +1289,6 @@ function MinuteGrid({
                     localeText={AG_GRID_LOCALE_FR}
                     theme="legacy"
                     animateRows={false}
-                    singleClickEdit
                     stopEditingWhenCellsLoseFocus
                 />
             </div>

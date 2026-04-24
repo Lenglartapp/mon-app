@@ -11,7 +11,7 @@ export default defineConfig({
       manifest: false, // utilise public/manifest.json existant
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
-        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5 MiB (bundle actuel ~4.5 MiB)
+        maximumFileSizeToCacheInBytes: 8 * 1024 * 1024, // 8 MiB (bundle ~6 MiB avec AG Grid Enterprise)
       },
     }),
   ],
