@@ -1,6 +1,6 @@
 // src/components/MinuteEditor.jsx
 import React from "react";
-import { Box, Typography, Menu, MenuItem, Button } from "@mui/material";
+import { Box, Typography, Menu, MenuItem, Button, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions } from "@mui/material";
 import Collapse from "@mui/material/Collapse";
 import IconButton from "@mui/material/IconButton";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
@@ -32,7 +32,7 @@ import { MOBILIER_SCHEMA } from "../lib/schemas/chiffrage/mobilier";
 
 
 
-function SectionPanel({ title, count, expanded, onToggle, children }) {
+function SectionPanel({ title, count, expanded, onToggle, onDelete, readOnly, children }) {
   return (
     <div style={{ marginBottom: 24, borderRadius: 12, background: 'white', overflow: 'hidden', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', border: '1px solid #f3f4f6' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px', height: 56, borderBottom: expanded ? '1px solid #f3f4f6' : 'none', backgroundColor: '#fff' }}>
@@ -40,9 +40,16 @@ function SectionPanel({ title, count, expanded, onToggle, children }) {
           <h3 style={{ margin: 0, fontSize: 18, color: '#111827', fontWeight: 700 }}>{title}</h3>
           <span style={{ background: '#f3f4f6', color: '#4b5563', padding: '2px 8px', borderRadius: 12, fontSize: 12, fontWeight: 600 }}>{count} articles</span>
         </div>
-        <IconButton size="small" onClick={onToggle} sx={{ color: '#6b7280' }}>
-          <ExpandMoreIcon sx={{ transform: expanded ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.2s ease' }} />
-        </IconButton>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          {onDelete && !readOnly && (
+            <IconButton size="small" onClick={onDelete} title="Supprimer le tableau" sx={{ color: '#d1d5db', '&:hover': { color: '#ef4444', bgcolor: '#fef2f2' } }}>
+              <Trash2 size={16} />
+            </IconButton>
+          )}
+          <IconButton size="small" onClick={onToggle} sx={{ color: '#6b7280' }}>
+            <ExpandMoreIcon sx={{ transform: expanded ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.2s ease' }} />
+          </IconButton>
+        </div>
       </div>
       <Collapse in={expanded} timeout="auto" unmountOnExit>
         {children}
@@ -75,6 +82,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
   // --- STATE LOCAL & DEBOUNCE ---
   const [localLines, setLocalLines] = React.useState(minute?.lines || []);
   const [moduleMenuAnchor, setModuleMenuAnchor] = React.useState(null);
+  const [deleteConfirmKey, setDeleteConfirmKey] = React.useState(null);
 
   const mods = minute?.modules || { rideau: true, store: true, decor: true };
 
@@ -530,6 +538,8 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
             count={rowsRideaux.length}
             expanded={isPanelExpanded('rideau')}
             onToggle={() => togglePanel('rideau')}
+            onDelete={() => setDeleteConfirmKey('rideau')}
+            readOnly={readOnly}
           >
             <MinuteGrid
               title=""
@@ -569,6 +579,8 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
             count={rowsStore.length}
             expanded={isPanelExpanded('store')}
             onToggle={() => togglePanel('store')}
+            onDelete={() => setDeleteConfirmKey('store')}
+            readOnly={readOnly}
           >
             <MinuteGrid
               title=""
@@ -602,6 +614,8 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
             count={rowsStoresBateau.length}
             expanded={isPanelExpanded('store_bateau')}
             onToggle={() => togglePanel('store_bateau')}
+            onDelete={() => setDeleteConfirmKey('store_bateau')}
+            readOnly={readOnly}
           >
             <MinuteGrid
               title=""
@@ -638,6 +652,8 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
             count={rowsCoussins.length}
             expanded={isPanelExpanded('coussins')}
             onToggle={() => togglePanel('coussins')}
+            onDelete={() => setDeleteConfirmKey('coussins')}
+            readOnly={readOnly}
           >
             <MinuteGrid
               title=""
@@ -674,6 +690,8 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
             count={rowsCacheSommier.length}
             expanded={isPanelExpanded('cache_sommier')}
             onToggle={() => togglePanel('cache_sommier')}
+            onDelete={() => setDeleteConfirmKey('cache_sommier')}
+            readOnly={readOnly}
           >
             <MinuteGrid
               title=""
@@ -710,6 +728,8 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
             count={rowsPlaid.length}
             expanded={isPanelExpanded('plaid')}
             onToggle={() => togglePanel('plaid')}
+            onDelete={() => setDeleteConfirmKey('plaid')}
+            readOnly={readOnly}
           >
             <MinuteGrid
               title=""
@@ -746,6 +766,8 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
             count={rowsTenture.length}
             expanded={isPanelExpanded('tenture_murale')}
             onToggle={() => togglePanel('tenture_murale')}
+            onDelete={() => setDeleteConfirmKey('tenture_murale')}
+            readOnly={readOnly}
           >
             <MinuteGrid
               title=""
@@ -779,6 +801,8 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
             count={rowsMobilier.length}
             expanded={isPanelExpanded('mobilier')}
             onToggle={() => togglePanel('mobilier')}
+            onDelete={() => setDeleteConfirmKey('mobilier')}
+            readOnly={readOnly}
           >
             <MinuteGrid
               title=""
@@ -912,14 +936,14 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
       {/* --- ADD MODULE BUTTON --- */}
       {(() => {
         const availableModules = [
-          { key: 'rideau', label: 'Rideaux' },
-          { key: 'store', label: 'Stores' },
-          { key: 'store_bateau', label: 'Stores Bateaux/Velum' },
-          { key: 'coussins', label: 'Coussins' },
-          { key: 'cache_sommier', label: 'Cache-Sommier' },
-          { key: 'plaid', label: 'Plaids / Chemin de lit' },
-          { key: 'tenture_murale', label: 'Tenture Murale' },
-          { key: 'mobilier', label: 'Mobilier / Tête de lit' },
+          { key: 'rideau',        label: 'Rideaux' },
+          { key: 'store',         label: 'Stores Négoce' },
+          { key: 'store_bateau',  label: 'Stores Bateaux / Velum' },
+          { key: 'coussins',      label: 'Coussins' },
+          { key: 'cache_sommier', label: 'Cache Sommier' },
+          { key: 'plaid',         label: 'Plaid / Chemin de lit' },
+          { key: 'tenture_murale',label: 'Tenture Murale' },
+          { key: 'mobilier',      label: 'Mobilier / Tête de Lit' },
         ].filter(m => {
           // A module is available if:
           // 1. It is NOT in the renderOrder
@@ -974,6 +998,48 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
               ))}
             </Menu>
           </div>
+        );
+      })()}
+
+      {/* --- CONFIRMATION SUPPRESSION MODULE --- */}
+      {(() => {
+        const MODULE_LABELS = {
+          rideau:        'Rideaux',
+          store:         'Stores Négoce',
+          store_bateau:  'Stores Bateaux / Velum',
+          coussins:      'Coussins',
+          cache_sommier: 'Cache Sommier',
+          plaid:         'Plaid / Chemin de lit',
+          tenture_murale:'Tenture Murale',
+          mobilier:      'Mobilier / Tête de Lit',
+        };
+        return (
+          <Dialog open={Boolean(deleteConfirmKey)} onClose={() => setDeleteConfirmKey(null)}>
+            <DialogTitle>Supprimer le tableau</DialogTitle>
+            <DialogContent>
+              <DialogContentText>
+                Voulez-vous vraiment supprimer le tableau <strong>{MODULE_LABELS[deleteConfirmKey]}</strong> ?
+              </DialogContentText>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setDeleteConfirmKey(null)}>Annuler</Button>
+              <Button
+                color="error"
+                variant="contained"
+                onClick={() => {
+                  const key = deleteConfirmKey;
+                  onChangeMinute?.({
+                    ...minute,
+                    modules: { ...mods, [key]: false },
+                    updatedAt: Date.now(),
+                  });
+                  setDeleteConfirmKey(null);
+                }}
+              >
+                Supprimer
+              </Button>
+            </DialogActions>
+          </Dialog>
         );
       })()}
 
