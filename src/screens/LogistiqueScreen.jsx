@@ -818,7 +818,9 @@ function ShipmentDetail({ shipment, shipmentItems, colisItems, projects, onBack,
                         reason: 'Sous-traitance',
                         category: stockItem.category,
                         user: shipment.operateur || null,
-                        piece_name: (item.notes && item.notes !== 'Sous-traitance') ? item.notes.split(' — ')[0] : null,
+                        piece_name: (item.notes && item.notes !== 'Sous-traitance' && item.notes.includes(' — '))
+                                ? item.notes.split(' — ')[0]
+                                : null,
                     });
                 }
             }

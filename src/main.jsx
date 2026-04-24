@@ -3,9 +3,11 @@ import React from 'react';
 import ReactDOM from "react-dom/client";
 import "./index.css";
 
-// AG Grid — enregistrement global des modules Community (une seule fois au démarrage)
+// AG Grid Enterprise
 import { ModuleRegistry, AllCommunityModule } from 'ag-grid-community';
-ModuleRegistry.registerModules([AllCommunityModule]);
+import { AllEnterpriseModule, LicenseManager } from 'ag-grid-enterprise';
+LicenseManager.setLicenseKey('Using_this_{AG_Grid}_Enterprise_key_{AG-127260}_in_excess_of_the_licence_granted_is_not_permitted___Please_report_misuse_to_legal@ag-grid.com___For_help_with_changing_this_key_please_contact_info@ag-grid.com___{Lenglart}_is_granted_a_{Single_Application}_Developer_License_for_the_application_{Droitfil}_only_for_{1}_Front-End_JavaScript_developer___All_Front-End_JavaScript_developers_working_on_{Droitfil}_need_to_be_licensed___{Droitfil}_has_not_been_granted_a_Deployment_License_Add-on___This_key_works_with_{AG_Grid}_Enterprise_versions_released_before_{24_April_2027}____[v3]_[01]_MTgwODUyMTIwMDAwMA==d43c1dfca1cacd3e42537e196b6b2780');
+ModuleRegistry.registerModules([AllCommunityModule, AllEnterpriseModule]);
 
 import App from "./App.jsx";
 import ErrorBoundary from "./ErrorBoundary.jsx";
