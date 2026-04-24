@@ -17,7 +17,7 @@ import { Library, Plus, Trash2 } from 'lucide-react';
 import { CHIFFRAGE_SCHEMA_DEP } from "../lib/schemas/deplacement";
 import { EXTRA_DEPENSES_SCHEMA } from "../lib/schemas/extraDepenses";
 import { RIDEAUX_DEFAULT_VISIBILITY, STORES_DEFAULT_VISIBILITY, COUSSINS_DEFAULT_VISIBILITY, CACHE_SOMMIER_DEFAULT_VISIBILITY, PLAID_DEFAULT_VISIBILITY, TENTURE_DEFAULT_VISIBILITY, MOBILIER_DEFAULT_VISIBILITY } from "../lib/constants/gridDefaults";
-import { RIDEAUX_MATIERE_GROUPS, STORES_BATEAUX_MATIERE_GROUPS, COUSSINS_MATIERE_GROUPS, CACHE_SOMMIER_MATIERE_GROUPS, PLAID_MATIERE_GROUPS } from "../lib/constants/matiereGroups";
+import { RIDEAUX_MATIERE_GROUPS, STORES_BATEAUX_MATIERE_GROUPS, COUSSINS_MATIERE_GROUPS, CACHE_SOMMIER_MATIERE_GROUPS, PLAID_MATIERE_GROUPS, RIDEAUX_MECA_GROUPS, RIDEAUX_CONF_GROUPS } from "../lib/constants/matiereGroups";
 import { RIDEAUX_SCHEMA } from "../lib/schemas/chiffrage/rideaux";
 import { STORES_CLASSIQUES_SCHEMA } from "../lib/schemas/chiffrage/stores_classiques";
 import { STORES_BATEAUX_SCHEMA } from "../lib/schemas/chiffrage/stores_bateaux";
@@ -548,6 +548,8 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
               matiereGroups={RIDEAUX_MATIERE_GROUPS}
               activeMatieres={localMatieres.chiff_rideaux || null}
               onMatiereChange={(m) => handleMatiereChange('chiff_rideaux', m)}
+              mecaGroups={RIDEAUX_MECA_GROUPS}
+              confGroups={RIDEAUX_CONF_GROUPS}
               onDuplicateRow={handleDuplicateRow}
               hideCroquis={true}
               minuteId={minute?.id}

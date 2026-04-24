@@ -41,6 +41,19 @@ export const PLAID_MATIERE_GROUPS = [
     { id: 'passementerie2', label: 'Passementerie 2', fields: ['passementerie_2', 'app_passementerie_2', 'ml_pass_2', 'pa_pass_2', 'pv_pass_2'] },
 ];
 
+// Groupes mécanisme pour la grille Rideaux (bouton Configuration)
+export const RIDEAUX_MECA_GROUPS = [
+    { id: 'meca',     label: 'Méca',     fields: ['type_mecanisme', 'modele_mecanisme', 'pa_mecanisme', 'pv_mecanisme'] },
+    { id: 'meca_bis', label: 'Méca Bis', fields: ['mecanisme_bis', 'pa_mecanisme_bis', 'pv_mecanisme_bis'] },
+];
+
+// Groupes détail confection pour la grille Rideaux (bouton Configuration)
+export const RIDEAUX_CONF_GROUPS = [
+    { id: 'croisement', label: 'Croisement', fields: ['croisement'] },
+    { id: 'retour_g',   label: 'Retour G',   fields: ['retour_gauche'] },
+    { id: 'retour_d',   label: 'Retour D',   fields: ['retour_droit'] },
+];
+
 /**
  * Calcule l'état actif par défaut de chaque groupe
  * à partir du modèle de visibilité initial (initialVisibilityModel).

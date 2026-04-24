@@ -193,6 +193,8 @@ function MinuteGrid({
     matiereGroups = [],
     activeMatieres = null,
     onMatiereChange,
+    mecaGroups = [],
+    confGroups = [],
     showExpeditionCol = false,
 }) {
     const gridRef = useRef(null);
@@ -216,12 +218,36 @@ function MinuteGrid({
     filterConditionsRef.current = filterConditions;
     const activeFilterFieldsRef = useRef(new Set());
 
-    // État local des matières (source de vérité pour le panneau Matières)
+    // État local des matières (source de vérité pour le panneau Configuration)
     const [localMatieres, setLocalMatieres] = useState(
         () => activeMatieres ?? getDefaultMatieres(matiereGroups, initialVisibilityModel)
     );
     const localMatieresRef = useRef(localMatieres);
     localMatieresRef.current = localMatieres;
+
+    // État local méca et conf — persisté en localStorage par gridKey
+    const [localMeca, setLocalMeca] = useState(() => {
+        if (gridKey && mecaGroups.length > 0) {
+            try {
+                const saved = JSON.parse(localStorage.getItem(`${gridKey}_meca`) || 'null');
+                if (saved) return saved;
+            } catch {}
+        }
+        return Object.fromEntries(mecaGroups.map(g => [g.id, initialVisibilityModel[g.fields[0]] !== false]));
+    });
+    const [localConf, setLocalConf] = useState(() => {
+        if (gridKey && confGroups.length > 0) {
+            try {
+                const saved = JSON.parse(localStorage.getItem(`${gridKey}_conf`) || 'null');
+                if (saved) return saved;
+            } catch {}
+        }
+        return Object.fromEntries(confGroups.map(g => [g.id, initialVisibilityModel[g.fields[0]] !== false]));
+    });
+    const localMecaRef = useRef(localMeca);
+    localMecaRef.current = localMeca;
+    const localConfRef = useRef(localConf);
+    localConfRef.current = localConf;
     const isGridReadyRef = useRef(false);
     const pendingRowUpdatesRef = useRef({});  // batch des onCellValueChanged simultanés (paste/fill)
     const flushScheduledRef    = useRef(false);
@@ -299,7 +325,25 @@ function MinuteGrid({
             });
             params.api.applyColumnState({ state: matiereState });
         }
-    }, [gridId, initialVisibilityModel, matiereGroups]);
+
+        // Appliquer méca et conf sauvegardés
+        if (mecaGroups?.length > 0) {
+            const mecaState = [];
+            mecaGroups.forEach(group => {
+                const isActive = localMecaRef.current[group.id] !== false;
+                group.fields.forEach(field => mecaState.push({ colId: field, hide: !isActive }));
+            });
+            params.api.applyColumnState({ state: mecaState });
+        }
+        if (confGroups?.length > 0) {
+            const confState = [];
+            confGroups.forEach(group => {
+                const isActive = localConfRef.current[group.id] !== false;
+                group.fields.forEach(field => confState.push({ colId: field, hide: !isActive }));
+            });
+            params.api.applyColumnState({ state: confState });
+        }
+    }, [gridId, initialVisibilityModel, matiereGroups, mecaGroups, confGroups]);
 
     // Charger les agrégations sauvegardées
     useEffect(() => {
@@ -395,6 +439,32 @@ function MinuteGrid({
             return next;
         });
     }, [matiereGroups, saveColumnState, onMatiereChange]);
+
+    const handleToggleMeca = useCallback((groupId, active) => {
+        const api = gridRef.current?.api;
+        const group = mecaGroups?.find(g => g.id === groupId);
+        if (!api || !group) return;
+        api.setColumnsVisible(group.fields, active);
+        saveColumnState(api);
+        setLocalMeca(prev => {
+            const next = { ...prev, [groupId]: active };
+            if (gridKey) { try { localStorage.setItem(`${gridKey}_meca`, JSON.stringify(next)); } catch {} }
+            return next;
+        });
+    }, [mecaGroups, saveColumnState, gridKey]);
+
+    const handleToggleConf = useCallback((groupId, active) => {
+        const api = gridRef.current?.api;
+        const group = confGroups?.find(g => g.id === groupId);
+        if (!api || !group) return;
+        api.setColumnsVisible(group.fields, active);
+        saveColumnState(api);
+        setLocalConf(prev => {
+            const next = { ...prev, [groupId]: active };
+            if (gridKey) { try { localStorage.setItem(`${gridKey}_conf`, JSON.stringify(next)); } catch {} }
+            return next;
+        });
+    }, [confGroups, saveColumnState, gridKey]);
 
     const onColumnResized = useCallback((params) => {
         if (!params.column) return;
@@ -1086,41 +1156,73 @@ function MinuteGrid({
                 {filterPanelOpen && (
                     <div style={{ position: 'fixed', inset: 0, zIndex: 1000 }} onClick={() => setFilterPanelOpen(false)} />
                 )}
-                {/* Bouton Matières */}
+                {/* Bouton Configuration (Matières + Méca + Conf) */}
                 {matiereGroups?.length > 0 && (
                     <div style={{ position: 'relative' }}>
                         <button
                             onClick={() => { setMatierePanelOpen(prev => !prev); setColPanelOpen(false); }}
                             style={{ cursor: 'pointer', padding: '5px 10px', background: matierePanelOpen ? '#eff6ff' : 'white', color: '#374151', border: `1px solid ${matierePanelOpen ? '#2563eb' : '#d1d5db'}`, borderRadius: 4, display: 'flex', alignItems: 'center', gap: 5, fontSize: 12 }}
                         >
-                            <Layers size={14} /> Matières
+                            <Layers size={14} /> Configuration
                         </button>
                         {matierePanelOpen && (
                             <div style={{
                                 position: 'absolute', left: 0, top: '100%', marginTop: 4,
                                 background: 'white', border: '1px solid #e5e7eb', borderRadius: 8,
                                 boxShadow: '0 10px 25px rgba(0,0,0,0.1)', zIndex: 1000,
-                                minWidth: 190, padding: 8,
+                                padding: 8, display: 'flex', gap: 0,
                             }}>
-                                <div style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', padding: '4px 8px 8px', borderBottom: '1px solid #f3f4f6', marginBottom: 4 }}>
-                                    Matières actives
+                                {/* Colonne Matières actives */}
+                                <div style={{ minWidth: 180, paddingRight: mecaGroups.length > 0 || confGroups.length > 0 ? 12 : 0, borderRight: mecaGroups.length > 0 || confGroups.length > 0 ? '1px solid #f3f4f6' : 'none' }}>
+                                    <div style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', padding: '4px 8px 8px', borderBottom: '1px solid #f3f4f6', marginBottom: 4 }}>
+                                        Matières actives
+                                    </div>
+                                    {matiereGroups.map(group => (
+                                        <label key={group.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderRadius: 4, cursor: 'pointer', fontSize: 13 }}
+                                            onMouseEnter={e => e.currentTarget.style.background = '#f3f4f6'}
+                                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                        >
+                                            <input type="checkbox" checked={localMatieres[group.id] !== false} onChange={e => handleToggleMatiere(group.id, e.target.checked)} style={{ accentColor: '#2563eb', width: 14, height: 14 }} />
+                                            <span>{group.label}</span>
+                                        </label>
+                                    ))}
                                 </div>
-                                {matiereGroups.map(group => (
-                                    <label
-                                        key={group.id}
-                                        style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderRadius: 4, cursor: 'pointer', fontSize: 13 }}
-                                        onMouseEnter={e => e.currentTarget.style.background = '#f3f4f6'}
-                                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                                    >
-                                        <input
-                                            type="checkbox"
-                                            checked={localMatieres[group.id] !== false}
-                                            onChange={e => handleToggleMatiere(group.id, e.target.checked)}
-                                            style={{ accentColor: '#2563eb', width: 14, height: 14 }}
-                                        />
-                                        <span>{group.label}</span>
-                                    </label>
-                                ))}
+
+                                {/* Colonne Méca actifs */}
+                                {mecaGroups.length > 0 && (
+                                    <div style={{ minWidth: 150, paddingLeft: 12, paddingRight: confGroups.length > 0 ? 12 : 0, borderRight: confGroups.length > 0 ? '1px solid #f3f4f6' : 'none' }}>
+                                        <div style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', padding: '4px 8px 8px', borderBottom: '1px solid #f3f4f6', marginBottom: 4 }}>
+                                            Méca actifs
+                                        </div>
+                                        {mecaGroups.map(group => (
+                                            <label key={group.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderRadius: 4, cursor: 'pointer', fontSize: 13 }}
+                                                onMouseEnter={e => e.currentTarget.style.background = '#f3f4f6'}
+                                                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                            >
+                                                <input type="checkbox" checked={localMeca[group.id] !== false} onChange={e => handleToggleMeca(group.id, e.target.checked)} style={{ accentColor: '#2563eb', width: 14, height: 14 }} />
+                                                <span>{group.label}</span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                )}
+
+                                {/* Colonne Conf actifs */}
+                                {confGroups.length > 0 && (
+                                    <div style={{ minWidth: 150, paddingLeft: 12 }}>
+                                        <div style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', padding: '4px 8px 8px', borderBottom: '1px solid #f3f4f6', marginBottom: 4 }}>
+                                            Conf actifs
+                                        </div>
+                                        {confGroups.map(group => (
+                                            <label key={group.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderRadius: 4, cursor: 'pointer', fontSize: 13 }}
+                                                onMouseEnter={e => e.currentTarget.style.background = '#f3f4f6'}
+                                                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                            >
+                                                <input type="checkbox" checked={localConf[group.id] !== false} onChange={e => handleToggleConf(group.id, e.target.checked)} style={{ accentColor: '#2563eb', width: 14, height: 14 }} />
+                                                <span>{group.label}</span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
