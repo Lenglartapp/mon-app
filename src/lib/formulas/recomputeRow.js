@@ -362,19 +362,19 @@ export function recomputeRow(row, schema, ctx = {}) {
       }
     }
 
-    // C. Interior / Mechanism (Shared)
+    // C. Interior / Mechanism (Shared) — per-unit costs, quantite applied at total level
     if (next.type_interieur) {
       const pInt = getPrice(next.type_interieur);
       if (pInt.found) {
-        next.pa_interieur = NVL(next.quantite) * (pInt.pa || 0);
-        next.pv_interieur = NVL(next.quantite) * (pInt.pv || 0);
+        next.pa_interieur = (pInt.pa || 0);
+        next.pv_interieur = (pInt.pv || 0);
       }
     }
     if (next.mecanisme_fourniture && NVL(next.pa_mecanisme) === 0) {
       const pMF = getPrice(next.mecanisme_fourniture);
       if (pMF.found) {
-        next.pa_mecanisme = NVL(next.quantite) * (pMF.pa || 0);
-        next.pv_mecanisme = NVL(next.quantite) * (pMF.pv || 0);
+        next.pa_mecanisme = (pMF.pa || 0);
+        next.pv_mecanisme = (pMF.pv || 0);
       }
     }
 
@@ -450,12 +450,17 @@ export function recomputeRow(row, schema, ctx = {}) {
     NVL(next.st_pose_pv) + NVL(next.st_conf_pv) +
     NVL(next.livraison);
 
-  // Safeguard: If components > 0, we use it. If 0 and we have a manual unit_price, keep it.
+  // For isDecor: all pv_ components are per-unit, so unit_price = sum of components, total = unit_price × quantite
+  // For others (stores, rideaux): pv_ components may already include quantite, so keep existing logic
   if (totalPriceComponents > 0) {
-    next.unit_price = totalPriceComponents / NVL(next.quantite, 1);
+    next.unit_price = isDecor
+      ? totalPriceComponents
+      : totalPriceComponents / NVL(next.quantite, 1);
   }
 
-  next.total_price = totalPriceComponents > 0 ? totalPriceComponents : NVL(next.unit_price) * NVL(next.quantite, 1);
+  next.total_price = totalPriceComponents > 0
+    ? (isDecor ? totalPriceComponents * NVL(next.quantite, 1) : totalPriceComponents)
+    : NVL(next.unit_price) * NVL(next.quantite, 1);
   next.prix_total = next.total_price;
 
   return next;
