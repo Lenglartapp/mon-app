@@ -327,3 +327,46 @@ export const STORES_BATEAUX_PROD_SCHEMA = [
         'quantite'
     ])
 ];
+
+// ─── Getters pour champs calculés (utilisés par les étiquettes) ───────────────
+export const STORES_BATEAUX_GETTERS = {
+    largeur_finie: (row) => {
+        const l = Number(row?.largeur) || 0;
+        return Math.round((l + 1) * 10) / 10;
+    },
+    a_plat: (row) => {
+        const L = Number(row?.largeur) || 0;
+        const ourlet = Number(row?.ourlet_de_cote) || 0;
+        return Math.round(((L + 1) + ourlet * 2) * 10) / 10;
+    },
+    hauteur_coupe: (row) => {
+        const hFinie = Number(row?.hauteur_finie) || 0;
+        const laize = Number(row?.laize_toile_finition_1) || 0;
+        const aPlat = STORES_BATEAUX_GETTERS.a_plat(row);
+        const threshold = hFinie < 400 ? 50 : 80;
+        return Math.round((laize > (hFinie + threshold) ? aPlat : hFinie + threshold) * 10) / 10;
+    },
+    hauteur_coupe_motif: (row) => {
+        const hCoupe = STORES_BATEAUX_GETTERS.hauteur_coupe(row);
+        const raccordV = Number(row?.raccord_v_toile_finition_1) || 0;
+        if (raccordV === 0) return 0;
+        return Math.round(((Math.ceil(hCoupe / raccordV) * raccordV) + raccordV) * 10) / 10;
+    },
+    hauteur_coupe_doublure: (row) => {
+        const hFinie = Number(row?.hauteur_finie) || 0;
+        const laizeDouble = Number(row?.laize_doublure) || 0;
+        const aPlat = STORES_BATEAUX_GETTERS.a_plat(row);
+        const threshold = hFinie < 400 ? 50 : 80;
+        return Math.round((laizeDouble > (hFinie + threshold) ? aPlat : hFinie + threshold) * 10) / 10;
+    },
+    nombre_anneaux_largeur: (row) => {
+        const L = Number(row?.largeur) || 0;
+        return Math.round((L + 1) / 50) + 1;
+    },
+    nombre_intervalles: (row) => {
+        const hFinie = Number(row?.hauteur_finie) || 0;
+        const vIntervalle = Number(row?.valeur_intervalle) || 0;
+        if (vIntervalle <= 0) return 0;
+        return Math.max(0, Math.round(hFinie / vIntervalle));
+    },
+};

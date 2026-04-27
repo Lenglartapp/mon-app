@@ -1,6 +1,7 @@
 // src/components/EtiquetteRideauxCard.jsx
 import React, { useState } from "react";
 import { DEFAULT_HEADER_COLOR, getHeaderStyles } from "../lib/etiquetteColors.js";
+import { RIDEAUX_GETTERS } from "../lib/schemas/production/rideaux.js";
 
 // ─── Champs disponibles sur l'étiquette (ordre + sections) ───────────────────
 export const ETIQUETTE_RIDEAUX_FIELDS = [
@@ -55,7 +56,12 @@ const SECTIONS = ["Confection", "Ourlets & Bas", "Dimensions", "Mécanisme", "Ma
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 const v = (row, key, fallback = "—") => {
-  const val = row?.[key];
+  let val;
+  if (RIDEAUX_GETTERS[key]) {
+    val = RIDEAUX_GETTERS[key](row || {});
+  } else {
+    val = row?.[key];
+  }
   if (val == null || val === "") return fallback;
   return String(val);
 };

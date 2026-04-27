@@ -118,6 +118,30 @@ const getters = {
         return round1(hFinie + 50);
     },
 
+    hauteur_coupe_motif: (row) => {
+        const hCoupe = getters.hauteur_coupe(row);
+        const rV = toNum(row.raccord_v_tissu1);
+        if (rV > 0) return Math.ceil(hCoupe / rV) * rV;
+        return hCoupe;
+    },
+
+    hauteur_coupe_doublure: (row) => {
+        const hFinieD = getters.hauteur_finie_droite(row);
+        const hFinieG = getters.hauteur_finie_gauche(row);
+        const hFinie = Math.max(hFinieD, hFinieG);
+        const laizeD = toNum(row.laize_doublure);
+        const aPlat = getters.a_plat(row);
+        if (laizeD > (hFinie + 50)) return aPlat;
+        return hFinie + 50;
+    },
+
+    nombre_les: (row) => {
+        const aPlat = getters.a_plat(row);
+        const laize = toNum(row.laize_tissu1);
+        if (laize <= 0) return 0;
+        return Math.max(1, Math.ceil(aPlat / laize));
+    },
+
     nb_glisseurs: (row) => {
         const lFinie = getters.largeur_finie(row);
         if (!lFinie) return 0;
@@ -147,6 +171,19 @@ const getters = {
             return glidersPerPanel * 2;
         }
     }
+};
+
+// ─── Export des getters pour les étiquettes (clés = field keys du schema) ─────
+export const RIDEAUX_GETTERS = {
+    largeur_finie:         getters.largeur_finie,
+    hauteur_finie_droite:  getters.hauteur_finie_droite,
+    hauteur_finie_milieu:  getters.hauteur_finie_milieu,
+    hauteur_finie_gauche:  getters.hauteur_finie_gauche,
+    hauteur_coupe:         getters.hauteur_coupe,
+    hauteur_coupe_motif:   getters.hauteur_coupe_motif,
+    hauteur_coupe_doublure:getters.hauteur_coupe_doublure,
+    nombre_les:            getters.nombre_les,
+    nombre_glisseur:       getters.nb_glisseurs,
 };
 
 
