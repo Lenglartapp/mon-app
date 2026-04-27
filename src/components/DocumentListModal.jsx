@@ -163,8 +163,8 @@ function AddDocDialog({ open, onClose, onAdd }) {
             <DialogTitle sx={{ px: 3, pt: 2.5, pb: 1.5, fontWeight: 700, fontSize: 15, color: '#111827', borderBottom: '1px solid #F3F4F6' }}>
                 Ajouter un document
             </DialogTitle>
-            <DialogContent sx={{ px: 3, pt: 2.5, pb: 1 }}>
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <DialogContent sx={{ px: 3, pt: 1, pb: 1, overflow: 'visible' }}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1.5 }}>
 
                     {/* Nom */}
                     <TextField
