@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import {
     Dialog, DialogTitle, DialogContent, DialogActions,
     Button, TextField, IconButton, Typography, Box, Tooltip,
-    InputAdornment, Popover, Select, MenuItem, FormControl, InputLabel
+    InputAdornment, Popover
 } from '@mui/material';
 import { ExternalLink, Trash2, Plus, FileText, FolderOpen, Search, SlidersHorizontal, Check } from 'lucide-react';
 
@@ -34,13 +34,110 @@ function TypeBadge({ type }) {
     );
 }
 
+// ─── Sélecteur de catégorie style Airtable ───────────────────────────────────
+
+function CategorySelect({ value, onChange, error }) {
+    const [anchor, setAnchor] = useState(null);
+    const open = Boolean(anchor);
+    const selected = value ? getType(value) : null;
+
+    return (
+        <Box>
+            {/* Label */}
+            <Typography variant="caption" sx={{
+                display: 'block', mb: 0.6, fontSize: 12, fontWeight: 600,
+                color: error ? '#EF4444' : '#6B7280',
+            }}>
+                Catégorie *
+            </Typography>
+
+            {/* Trigger */}
+            <Box
+                onClick={e => setAnchor(e.currentTarget)}
+                sx={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    px: 1.5, height: 38, borderRadius: 2, cursor: 'pointer',
+                    border: `1px solid ${error ? '#EF4444' : open ? '#1F2937' : '#D1D5DB'}`,
+                    bgcolor: 'white', transition: 'border-color 0.15s',
+                    '&:hover': { borderColor: '#1F2937' },
+                }}
+            >
+                {selected ? (
+                    <span style={{
+                        display: 'inline-flex', alignItems: 'center',
+                        background: selected.bg, color: selected.color,
+                        border: `1px solid ${selected.border}`,
+                        borderRadius: 20, fontWeight: 600, fontSize: 12,
+                        padding: '3px 10px',
+                    }}>
+                        {selected.label}
+                    </span>
+                ) : (
+                    <Typography sx={{ fontSize: 13, color: '#9CA3AF' }}>
+                        Sélectionner une catégorie…
+                    </Typography>
+                )}
+                {/* Chevron */}
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ color: '#9CA3AF', flexShrink: 0, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>
+                    <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+            </Box>
+
+            {error && (
+                <Typography variant="caption" sx={{ color: '#EF4444', mt: 0.4, display: 'block', fontSize: 11, ml: 0.5 }}>
+                    {error}
+                </Typography>
+            )}
+
+            {/* Dropdown */}
+            <Popover
+                open={open}
+                anchorEl={anchor}
+                onClose={() => setAnchor(null)}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+                transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+                PaperProps={{
+                    sx: {
+                        mt: 0.5, borderRadius: 2, boxShadow: '0 8px 24px rgba(0,0,0,0.10)',
+                        border: '1px solid #F3F4F6', minWidth: 220, py: 1,
+                    }
+                }}
+            >
+                {DOC_TYPES.map(t => (
+                    <Box
+                        key={t.value}
+                        onClick={() => { onChange(t.value); setAnchor(null); }}
+                        sx={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                            px: 2, py: 0.9, cursor: 'pointer',
+                            bgcolor: value === t.value ? '#F9FAFB' : 'transparent',
+                            '&:hover': { bgcolor: '#F9FAFB' },
+                        }}
+                    >
+                        <span style={{
+                            display: 'inline-flex', alignItems: 'center',
+                            background: t.bg, color: t.color,
+                            border: `1px solid ${t.border}`,
+                            borderRadius: 20, fontWeight: 600, fontSize: 12,
+                            padding: '3px 10px',
+                        }}>
+                            {t.label}
+                        </span>
+                        {value === t.value && <Check size={14} color="#1F2937" />}
+                    </Box>
+                ))}
+            </Popover>
+        </Box>
+    );
+}
+
 // ─── Sub-dialog : formulaire d'ajout ─────────────────────────────────────────
 
 function AddDocDialog({ open, onClose, onAdd }) {
     const [name,    setName]    = useState("");
     const [url,     setUrl]     = useState("");
     const [comment, setComment] = useState("");
-    const [type,    setType]    = useState("");   // vide = non sélectionné
+    const [type,    setType]    = useState("");
     const [errors,  setErrors]  = useState({});
 
     const reset = () => { setName(""); setUrl(""); setComment(""); setType(""); setErrors({}); };
@@ -59,9 +156,6 @@ function AddDocDialog({ open, onClose, onAdd }) {
         reset();
         onClose();
     };
-
-    const selectedType = getType(type);
-    const hasValue = Boolean(type);
 
     return (
         <Dialog open={open} onClose={handleClose} maxWidth="xs" fullWidth
@@ -94,37 +188,12 @@ function AddDocDialog({ open, onClose, onAdd }) {
                         inputProps={{ style: { fontSize: 13 } }}
                     />
 
-                    {/* Catégorie — select coloré */}
-                    <FormControl size="small" fullWidth error={Boolean(errors.type)}>
-                        <InputLabel sx={{ fontSize: 13 }}>Catégorie *</InputLabel>
-                        <Select
-                            value={type}
-                            label="Catégorie *"
-                            onChange={e => { setType(e.target.value); setErrors(p => ({ ...p, type: '' })); }}
-                            renderValue={(val) => {
-                                const def = getType(val);
-                                return (
-                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                        <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: def.color, flexShrink: 0 }} />
-                                        <Typography sx={{ fontSize: 13, fontWeight: 600, color: def.color }}>{def.label}</Typography>
-                                    </Box>
-                                );
-                            }}
-                            sx={{ fontSize: 13 }}
-                        >
-                            {DOC_TYPES.map(t => (
-                                <MenuItem key={t.value} value={t.value}>
-                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, py: 0.3 }}>
-                                        <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: t.color, flexShrink: 0 }} />
-                                        <Typography sx={{ fontSize: 13, fontWeight: 600, color: t.color }}>{t.label}</Typography>
-                                    </Box>
-                                </MenuItem>
-                            ))}
-                        </Select>
-                        {errors.type && (
-                            <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.5 }}>{errors.type}</Typography>
-                        )}
-                    </FormControl>
+                    {/* Catégorie — style Airtable */}
+                    <CategorySelect
+                        value={type}
+                        onChange={val => { setType(val); setErrors(p => ({ ...p, type: '' })); }}
+                        error={errors.type}
+                    />
 
                     {/* Commentaire */}
                     <TextField
