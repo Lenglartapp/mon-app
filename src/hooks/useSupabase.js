@@ -692,6 +692,18 @@ export const useStocks = () => {
                         // Si on a le détail des pièces (le reste), on remplace tout
                         newPieces = movement.pieces.map(p => ({ ...p, qty: Number(p.p_qty || p.qty) })).filter(p => p.qty > 0);
                         newQty = newPieces.reduce((sum, p) => sum + p.qty, 0);
+                    } else if (movement.type === 'OUT' && movement.piece_name && newPieces.length > 0) {
+                        // Sortie ciblée sur une pièce spécifique (ex: expédition tissu)
+                        newPieces = newPieces.map(p =>
+                            p.name === movement.piece_name
+                                ? { ...p, qty: Math.max(0, Number(p.qty) - Number(movement.qty)) }
+                                : p
+                        );
+                    }
+
+                    // Toujours recalculer qty depuis la somme des pièces quand elles existent (source de vérité)
+                    if (newPieces.length > 0) {
+                        newQty = newPieces.reduce((sum, p) => sum + Number(p.qty), 0);
                     }
 
                     const { error } = await supabase.from('inventory_items').update({ qty: Math.max(0, newQty), pieces: newPieces }).eq('id', existingItem.id);

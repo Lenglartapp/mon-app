@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { COLORS } from '../../../lib/constants/ui';
 
 const nfEur0 = new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
@@ -158,14 +158,41 @@ export default function ProfitabilitySimulatorModal({ currentData, onClose }) {
 }
 
 function InputBlock({ label, suffix, value, onChange, color = 'gray', max }) {
+    const [localValue, setLocalValue] = useState(Number(value).toFixed(2));
+    const focused = useRef(false);
+
+    useEffect(() => {
+        if (!focused.current) {
+            setLocalValue(Number(value).toFixed(2));
+        }
+    }, [value]);
+
+    const handleFocus = (e) => {
+        focused.current = true;
+        e.target.select();
+    };
+
+    const handleChange = (e) => {
+        const raw = e.target.value;
+        setLocalValue(raw);
+        onChange(raw);
+    };
+
+    const handleBlur = () => {
+        focused.current = false;
+        setLocalValue(Number(parseFloat(localValue) || 0).toFixed(2));
+    };
+
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             <label style={{ fontSize: 12, fontWeight: 600, color: '#4b5563', whiteSpace: 'nowrap' }}>{label}</label>
             <div style={{ position: 'relative' }}>
                 <input
                     type="number"
-                    value={Number(value).toFixed(2)} // Display nicely
-                    onChange={e => onChange(e.target.value)}
+                    value={localValue}
+                    onChange={handleChange}
+                    onFocus={handleFocus}
+                    onBlur={handleBlur}
                     style={{
                         width: '100%',
                         padding: '10px 12px',

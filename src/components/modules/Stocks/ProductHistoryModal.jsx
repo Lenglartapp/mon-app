@@ -121,6 +121,10 @@ const COLUMNS = [
 export default function ProductHistoryModal({ open, onClose, product, movements = [] }) {
     if (!product) return null;
 
+    const displayQty = Array.isArray(product.pieces) && product.pieces.length > 0
+        ? product.pieces.reduce((sum, p) => sum + Number(p.qty || 0), 0)
+        : product.qty;
+
     // Filter movements for this product and sort descending
     const productMovements = movements
         .filter(m => m.product === product.product)
@@ -139,7 +143,7 @@ export default function ProductHistoryModal({ open, onClose, product, movements 
                     </Typography>
                 </Box>
                 <Chip
-                    label={`Stock Actuel : ${product.qty} ${product.unit}`}
+                    label={`Stock Actuel : ${displayQty} ${product.unit}`}
                     color={product.qty > 0 ? "success" : "error"}
                     sx={{ fontWeight: 700 }}
                 />
