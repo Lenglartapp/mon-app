@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import {
     Dialog, DialogTitle, DialogContent, DialogActions,
     Button, TextField, IconButton, Typography, Box, Tooltip,
-    InputAdornment, Popover
+    InputAdornment, Popover, Select, MenuItem, FormControl, InputLabel
 } from '@mui/material';
 import { ExternalLink, Trash2, Plus, FileText, FolderOpen, Search, SlidersHorizontal, Check } from 'lucide-react';
 
@@ -40,22 +40,28 @@ function AddDocDialog({ open, onClose, onAdd }) {
     const [name,    setName]    = useState("");
     const [url,     setUrl]     = useState("");
     const [comment, setComment] = useState("");
-    const [type,    setType]    = useState("plan");
-    const [error,   setError]   = useState("");
+    const [type,    setType]    = useState("");   // vide = non sélectionné
+    const [errors,  setErrors]  = useState({});
 
-    const reset = () => { setName(""); setUrl(""); setComment(""); setType("plan"); setError(""); };
-
+    const reset = () => { setName(""); setUrl(""); setComment(""); setType(""); setErrors({}); };
     const handleClose = () => { reset(); onClose(); };
 
     const handleSubmit = () => {
-        if (!name.trim())  { setError("Le nom du document est obligatoire."); return; }
-        if (!url.trim())   { setError("Le lien URL est obligatoire."); return; }
+        const e = {};
+        if (!name.trim()) e.name = "Le nom est obligatoire.";
+        if (!url.trim())  e.url  = "Le lien URL est obligatoire.";
+        if (!type)        e.type = "La catégorie est obligatoire.";
+        if (Object.keys(e).length) { setErrors(e); return; }
+
         let finalUrl = url.trim();
         if (!finalUrl.startsWith('http')) finalUrl = 'https://' + finalUrl;
         onAdd({ id: Date.now().toString(), name: name.trim(), url: finalUrl, comment: comment.trim(), type, createdAt: new Date().toISOString() });
         reset();
         onClose();
     };
+
+    const selectedType = getType(type);
+    const hasValue = Boolean(type);
 
     return (
         <Dialog open={open} onClose={handleClose} maxWidth="xs" fullWidth
@@ -66,49 +72,59 @@ function AddDocDialog({ open, onClose, onAdd }) {
             <DialogContent sx={{ px: 3, pt: 2.5, pb: 1 }}>
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
 
-                    {/* Type */}
-                    <Box>
-                        <Typography variant="caption" sx={{ fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', mb: 1 }}>
-                            Catégorie
-                        </Typography>
-                        <Box sx={{ display: 'flex', gap: 0.8, flexWrap: 'wrap' }}>
-                            {DOC_TYPES.map(t => {
-                                const active = type === t.value;
-                                return (
-                                    <Box key={t.value} onClick={() => setType(t.value)} sx={{
-                                        cursor: 'pointer', px: 1.5, py: 0.6, borderRadius: 20,
-                                        fontSize: 12, fontWeight: 600,
-                                        border: `1.5px solid ${active ? t.border : '#E5E7EB'}`,
-                                        background: active ? t.bg : 'white',
-                                        color: active ? t.color : '#9CA3AF',
-                                        transition: 'all 0.12s', userSelect: 'none',
-                                    }}>
-                                        {t.label}
-                                    </Box>
-                                );
-                            })}
-                        </Box>
-                    </Box>
-
                     {/* Nom */}
                     <TextField
-                        label="Nom du document"
+                        label="Nom du document *"
                         placeholder="ex : Plan RDC, FT Tringle Barnabé…"
                         size="small" fullWidth
-                        value={name} onChange={e => setName(e.target.value)}
-                        onKeyDown={e => e.key === 'Enter' && handleSubmit()}
+                        value={name} onChange={e => { setName(e.target.value); setErrors(p => ({ ...p, name: '' })); }}
+                        error={Boolean(errors.name)}
+                        helperText={errors.name || ''}
                         inputProps={{ style: { fontSize: 13 } }}
                     />
 
                     {/* URL */}
                     <TextField
-                        label="Lien URL"
+                        label="Lien URL *"
                         placeholder="https://…"
                         size="small" fullWidth
-                        value={url} onChange={e => setUrl(e.target.value)}
-                        onKeyDown={e => e.key === 'Enter' && handleSubmit()}
+                        value={url} onChange={e => { setUrl(e.target.value); setErrors(p => ({ ...p, url: '' })); }}
+                        error={Boolean(errors.url)}
+                        helperText={errors.url || ''}
                         inputProps={{ style: { fontSize: 13 } }}
                     />
+
+                    {/* Catégorie — select coloré */}
+                    <FormControl size="small" fullWidth error={Boolean(errors.type)}>
+                        <InputLabel sx={{ fontSize: 13 }}>Catégorie *</InputLabel>
+                        <Select
+                            value={type}
+                            label="Catégorie *"
+                            onChange={e => { setType(e.target.value); setErrors(p => ({ ...p, type: '' })); }}
+                            renderValue={(val) => {
+                                const def = getType(val);
+                                return (
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                        <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: def.color, flexShrink: 0 }} />
+                                        <Typography sx={{ fontSize: 13, fontWeight: 600, color: def.color }}>{def.label}</Typography>
+                                    </Box>
+                                );
+                            }}
+                            sx={{ fontSize: 13 }}
+                        >
+                            {DOC_TYPES.map(t => (
+                                <MenuItem key={t.value} value={t.value}>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, py: 0.3 }}>
+                                        <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: t.color, flexShrink: 0 }} />
+                                        <Typography sx={{ fontSize: 13, fontWeight: 600, color: t.color }}>{t.label}</Typography>
+                                    </Box>
+                                </MenuItem>
+                            ))}
+                        </Select>
+                        {errors.type && (
+                            <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.5 }}>{errors.type}</Typography>
+                        )}
+                    </FormControl>
 
                     {/* Commentaire */}
                     <TextField
@@ -119,9 +135,6 @@ function AddDocDialog({ open, onClose, onAdd }) {
                         inputProps={{ style: { fontSize: 13 } }}
                     />
 
-                    {error && (
-                        <Typography color="error" variant="caption">{error}</Typography>
-                    )}
                 </Box>
             </DialogContent>
             <DialogActions sx={{ px: 3, py: 2, gap: 1, borderTop: '1px solid #F3F4F6' }}>
