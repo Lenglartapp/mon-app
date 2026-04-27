@@ -1,63 +1,150 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
     Dialog, DialogTitle, DialogContent, DialogActions,
-    Button, TextField, IconButton, Typography, Box, Tooltip
+    Button, TextField, IconButton, Typography, Box, Tooltip,
+    InputAdornment, Popover
 } from '@mui/material';
-import { ExternalLink, Trash2, Plus, FileText, FolderOpen } from 'lucide-react';
+import { ExternalLink, Trash2, Plus, FileText, FolderOpen, Search, SlidersHorizontal, Check } from 'lucide-react';
+
+// ─── Types ───────────────────────────────────────────────────────────────────
 
 const DOC_TYPES = [
-    { value: 'plan',         label: 'Plan',               bg: '#EFF6FF', color: '#1D4ED8' },
-    { value: 'reperage',     label: 'Plan de repérage',   bg: '#FFF7ED', color: '#C2410C' },
-    { value: 'fiche',        label: 'Fiche technique',    bg: '#F0FDF4', color: '#15803D' },
-    { value: 'autre',        label: 'Autre',              bg: '#F3F4F6', color: '#4B5563' },
+    { value: 'plan',      label: 'Plan',             bg: '#EFF6FF', color: '#1D4ED8', border: '#BFDBFE' },
+    { value: 'reperage',  label: 'Plan de repérage', bg: '#FFF7ED', color: '#C2410C', border: '#FED7AA' },
+    { value: 'fiche',     label: 'Fiche technique',  bg: '#F0FDF4', color: '#15803D', border: '#BBF7D0' },
+    { value: 'autre',     label: 'Autre',            bg: '#F3F4F6', color: '#4B5563', border: '#E5E7EB' },
 ];
 
-function TypeChip({ type, size = 'md' }) {
-    const def = DOC_TYPES.find(t => t.value === type) || DOC_TYPES[3];
+function getType(value) {
+    return DOC_TYPES.find(t => t.value === value) || DOC_TYPES[3];
+}
+
+function TypeBadge({ type }) {
+    const def = getType(type);
     return (
         <span style={{
             display: 'inline-flex', alignItems: 'center',
             background: def.bg, color: def.color,
-            borderRadius: 6, fontWeight: 600,
-            fontSize: size === 'sm' ? 10 : 11,
-            padding: size === 'sm' ? '2px 6px' : '3px 8px',
-            whiteSpace: 'nowrap',
+            border: `1px solid ${def.border}`,
+            borderRadius: 20, fontWeight: 600, fontSize: 11,
+            padding: '3px 10px', whiteSpace: 'nowrap', flexShrink: 0,
         }}>
             {def.label}
         </span>
     );
 }
 
-export default function DocumentListModal({ open, onClose, documents = [], onUpdate }) {
-    const [newDocName, setNewDocName] = useState("");
-    const [newDocUrl, setNewDocUrl]   = useState("");
-    const [newDocType, setNewDocType] = useState("plan");
-    const [error, setError]           = useState("");
+// ─── Sub-dialog : formulaire d'ajout ─────────────────────────────────────────
 
-    const handleAdd = () => {
-        if (!newDocName.trim()) { setError("Le nom est obligatoire."); return; }
-        if (!newDocUrl.trim())  { setError("Le lien est obligatoire."); return; }
+function AddDocDialog({ open, onClose, onAdd }) {
+    const [name,    setName]    = useState("");
+    const [url,     setUrl]     = useState("");
+    const [comment, setComment] = useState("");
+    const [type,    setType]    = useState("plan");
+    const [error,   setError]   = useState("");
 
-        let url = newDocUrl.trim();
-        if (!url.startsWith('http')) url = 'https://' + url;
+    const reset = () => { setName(""); setUrl(""); setComment(""); setType("plan"); setError(""); };
 
-        const newDoc = {
-            id:        Date.now().toString(),
-            name:      newDocName.trim(),
-            url,
-            type:      newDocType,
-            createdAt: new Date().toISOString(),
-        };
+    const handleClose = () => { reset(); onClose(); };
 
-        onUpdate([...documents, newDoc]);
-        setNewDocName("");
-        setNewDocUrl("");
-        setNewDocType("plan");
-        setError("");
+    const handleSubmit = () => {
+        if (!name.trim())  { setError("Le nom du document est obligatoire."); return; }
+        if (!url.trim())   { setError("Le lien URL est obligatoire."); return; }
+        let finalUrl = url.trim();
+        if (!finalUrl.startsWith('http')) finalUrl = 'https://' + finalUrl;
+        onAdd({ id: Date.now().toString(), name: name.trim(), url: finalUrl, comment: comment.trim(), type, createdAt: new Date().toISOString() });
+        reset();
+        onClose();
     };
 
-    const handleKeyDown = (e) => {
-        if (e.key === 'Enter') handleAdd();
+    return (
+        <Dialog open={open} onClose={handleClose} maxWidth="xs" fullWidth
+            PaperProps={{ sx: { borderRadius: 3 } }}>
+            <DialogTitle sx={{ px: 3, pt: 2.5, pb: 1.5, fontWeight: 700, fontSize: 15, color: '#111827', borderBottom: '1px solid #F3F4F6' }}>
+                Ajouter un document
+            </DialogTitle>
+            <DialogContent sx={{ px: 3, pt: 2.5, pb: 1 }}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+
+                    {/* Type */}
+                    <Box>
+                        <Typography variant="caption" sx={{ fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', mb: 1 }}>
+                            Catégorie
+                        </Typography>
+                        <Box sx={{ display: 'flex', gap: 0.8, flexWrap: 'wrap' }}>
+                            {DOC_TYPES.map(t => {
+                                const active = type === t.value;
+                                return (
+                                    <Box key={t.value} onClick={() => setType(t.value)} sx={{
+                                        cursor: 'pointer', px: 1.5, py: 0.6, borderRadius: 20,
+                                        fontSize: 12, fontWeight: 600,
+                                        border: `1.5px solid ${active ? t.border : '#E5E7EB'}`,
+                                        background: active ? t.bg : 'white',
+                                        color: active ? t.color : '#9CA3AF',
+                                        transition: 'all 0.12s', userSelect: 'none',
+                                    }}>
+                                        {t.label}
+                                    </Box>
+                                );
+                            })}
+                        </Box>
+                    </Box>
+
+                    {/* Nom */}
+                    <TextField
+                        label="Nom du document"
+                        placeholder="ex : Plan RDC, FT Tringle Barnabé…"
+                        size="small" fullWidth
+                        value={name} onChange={e => setName(e.target.value)}
+                        onKeyDown={e => e.key === 'Enter' && handleSubmit()}
+                        inputProps={{ style: { fontSize: 13 } }}
+                    />
+
+                    {/* URL */}
+                    <TextField
+                        label="Lien URL"
+                        placeholder="https://…"
+                        size="small" fullWidth
+                        value={url} onChange={e => setUrl(e.target.value)}
+                        onKeyDown={e => e.key === 'Enter' && handleSubmit()}
+                        inputProps={{ style: { fontSize: 13 } }}
+                    />
+
+                    {/* Commentaire */}
+                    <TextField
+                        label="Commentaire (facultatif)"
+                        placeholder="ex : Version mise à jour le 12/03"
+                        size="small" fullWidth multiline rows={2}
+                        value={comment} onChange={e => setComment(e.target.value)}
+                        inputProps={{ style: { fontSize: 13 } }}
+                    />
+
+                    {error && (
+                        <Typography color="error" variant="caption">{error}</Typography>
+                    )}
+                </Box>
+            </DialogContent>
+            <DialogActions sx={{ px: 3, py: 2, gap: 1, borderTop: '1px solid #F3F4F6' }}>
+                <Button onClick={handleClose} sx={{ color: '#6B7280', fontWeight: 600 }}>Annuler</Button>
+                <Button variant="contained" onClick={handleSubmit}
+                    sx={{ bgcolor: '#1F2937', borderRadius: 2, fontWeight: 600, '&:hover': { bgcolor: '#111827' } }}>
+                    Ajouter
+                </Button>
+            </DialogActions>
+        </Dialog>
+    );
+}
+
+// ─── Composant principal ──────────────────────────────────────────────────────
+
+export default function DocumentListModal({ open, onClose, documents = [], onUpdate }) {
+    const [addOpen,      setAddOpen]      = useState(false);
+    const [search,       setSearch]       = useState("");
+    const [filterAnchor, setFilterAnchor] = useState(null);
+    const [activeFilter, setActiveFilter] = useState(null); // null = tous
+
+    const handleAdd = (doc) => {
+        onUpdate([...documents, doc]);
     };
 
     const handleDelete = (id) => {
@@ -69,181 +156,252 @@ export default function DocumentListModal({ open, onClose, documents = [], onUpd
         catch { return url; }
     };
 
+    const formatDate = (iso) => {
+        if (!iso) return '';
+        const d = new Date(iso);
+        return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' });
+    };
+
+    const filtered = useMemo(() => {
+        let list = documents;
+        if (activeFilter) list = list.filter(d => d.type === activeFilter);
+        if (search.trim()) {
+            const q = search.trim().toLowerCase();
+            list = list.filter(d =>
+                d.name?.toLowerCase().includes(q) ||
+                d.comment?.toLowerCase().includes(q)
+            );
+        }
+        return list;
+    }, [documents, activeFilter, search]);
+
+    const filterOpen = Boolean(filterAnchor);
+
     return (
-        <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth
-            PaperProps={{ sx: { borderRadius: 3, overflow: 'hidden' } }}>
+        <>
+            <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth
+                PaperProps={{ sx: { borderRadius: 3, overflow: 'hidden', maxHeight: '80vh' } }}>
 
-            {/* HEADER */}
-            <DialogTitle sx={{
-                display: 'flex', alignItems: 'center', gap: 1.5,
-                px: 3, py: 2.5, borderBottom: '1px solid #F3F4F6',
-                fontWeight: 700, fontSize: 17, color: '#111827',
-            }}>
-                <Box sx={{
-                    width: 34, height: 34, borderRadius: 2,
-                    background: '#F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                {/* ── HEADER ── */}
+                <DialogTitle sx={{
+                    display: 'flex', alignItems: 'center', gap: 1.5,
+                    px: 3, py: 2, borderBottom: '1px solid #F3F4F6',
                 }}>
-                    <FileText size={18} color="#1F2937" />
-                </Box>
-                Documents &amp; Plans
-                {documents.length > 0 && (
-                    <Box component="span" sx={{
-                        ml: 'auto', fontSize: 12, fontWeight: 600,
-                        background: '#F3F4F6', color: '#6B7280',
-                        borderRadius: 10, px: 1.2, py: 0.3,
+                    <Box sx={{
+                        width: 32, height: 32, borderRadius: 1.5,
+                        background: '#F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
                     }}>
-                        {documents.length}
+                        <FileText size={16} color="#374151" />
                     </Box>
-                )}
-            </DialogTitle>
-
-            <DialogContent sx={{ px: 3, py: 2.5 }}>
-
-                {/* FORM */}
-                <Box sx={{ mb: 3 }}>
-                    <Typography variant="caption" sx={{ fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', mb: 1.5 }}>
-                        Ajouter un document
+                    <Typography sx={{ fontWeight: 700, fontSize: 16, color: '#111827' }}>
+                        Documents &amp; Plans
                     </Typography>
 
-                    {/* Type selector */}
-                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 1.5 }}>
-                        {DOC_TYPES.map(t => (
-                            <Box key={t.value} onClick={() => setNewDocType(t.value)} sx={{
-                                cursor: 'pointer',
-                                px: 1.5, py: 0.6,
-                                borderRadius: 2,
-                                fontSize: 12, fontWeight: 600,
-                                border: '1.5px solid',
-                                borderColor: newDocType === t.value ? t.color : 'transparent',
-                                background: newDocType === t.value ? t.bg : '#F9FAFB',
-                                color: newDocType === t.value ? t.color : '#9CA3AF',
-                                transition: 'all 0.15s',
-                                userSelect: 'none',
-                            }}>
-                                {t.label}
-                            </Box>
-                        ))}
-                    </Box>
+                    {/* Bouton ajout */}
+                    <Button
+                        variant="contained"
+                        startIcon={<Plus size={15} />}
+                        onClick={() => setAddOpen(true)}
+                        size="small"
+                        sx={{
+                            ml: 1, bgcolor: '#1F2937', borderRadius: 2, fontWeight: 600,
+                            fontSize: 12, textTransform: 'none', px: 1.5,
+                            '&:hover': { bgcolor: '#111827' },
+                        }}
+                    >
+                        Ajouter un document
+                    </Button>
 
-                    {/* Inputs */}
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                    {/* Compteur */}
+                    <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Box sx={{
+                            minWidth: 26, height: 26, borderRadius: '50%',
+                            background: documents.length > 0 ? '#1F2937' : '#F3F4F6',
+                            color: documents.length > 0 ? 'white' : '#9CA3AF',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontSize: 12, fontWeight: 700,
+                        }}>
+                            {documents.length}
+                        </Box>
+                    </Box>
+                </DialogTitle>
+
+                <DialogContent sx={{ px: 3, py: 2.5, display: 'flex', flexDirection: 'column', gap: 2 }}>
+
+                    {/* ── BARRE RECHERCHE + FILTRE ── */}
+                    <Box sx={{ display: 'flex', gap: 1 }}>
                         <TextField
-                            placeholder="Nom du document  (ex : Plan RDC)"
+                            placeholder="Rechercher un document…"
                             size="small" fullWidth
-                            value={newDocName}
-                            onChange={e => setNewDocName(e.target.value)}
-                            onKeyDown={handleKeyDown}
-                            inputProps={{ style: { fontSize: 13 } }}
+                            value={search} onChange={e => setSearch(e.target.value)}
+                            InputProps={{
+                                startAdornment: (
+                                    <InputAdornment position="start">
+                                        <Search size={15} color="#9CA3AF" />
+                                    </InputAdornment>
+                                ),
+                                style: { fontSize: 13, borderRadius: 8 },
+                            }}
                         />
-                        <Box sx={{ display: 'flex', gap: 1 }}>
-                            <TextField
-                                placeholder="Lien URL  (Sharepoint, Drive…)"
-                                size="small" fullWidth
-                                value={newDocUrl}
-                                onChange={e => setNewDocUrl(e.target.value)}
-                                onKeyDown={handleKeyDown}
-                                inputProps={{ style: { fontSize: 13 } }}
-                            />
+                        <Tooltip title="Filtrer par catégorie">
                             <Button
-                                variant="contained"
-                                onClick={handleAdd}
+                                variant="outlined"
+                                onClick={e => setFilterAnchor(e.currentTarget)}
+                                startIcon={<SlidersHorizontal size={14} />}
                                 sx={{
-                                    minWidth: 44, px: 1.5,
-                                    bgcolor: '#1F2937', borderRadius: 2,
-                                    '&:hover': { bgcolor: '#111827' },
-                                    flexShrink: 0,
+                                    borderColor: activeFilter ? '#1F2937' : '#E5E7EB',
+                                    color: activeFilter ? '#1F2937' : '#6B7280',
+                                    bgcolor: activeFilter ? '#F9FAFB' : 'white',
+                                    borderRadius: 2, fontWeight: 600, fontSize: 12,
+                                    textTransform: 'none', px: 1.5, whiteSpace: 'nowrap',
+                                    '&:hover': { borderColor: '#1F2937', bgcolor: '#F9FAFB' },
                                 }}
                             >
-                                <Plus size={18} />
+                                {activeFilter ? getType(activeFilter).label : 'Filtrer'}
                             </Button>
-                        </Box>
-                        {error && (
-                            <Typography color="error" variant="caption" sx={{ mt: -0.5 }}>
-                                {error}
+                        </Tooltip>
+                    </Box>
+
+                    {/* ── LISTE ── */}
+                    {documents.length === 0 ? (
+                        <Box sx={{
+                            display: 'flex', flexDirection: 'column', alignItems: 'center',
+                            py: 6, gap: 1.5, color: '#9CA3AF',
+                        }}>
+                            <FolderOpen size={36} strokeWidth={1.2} />
+                            <Typography variant="body2" sx={{ color: '#9CA3AF' }}>
+                                Aucun document lié à ce projet
                             </Typography>
-                        )}
-                    </Box>
-                </Box>
+                            <Typography variant="caption" sx={{ color: '#D1D5DB' }}>
+                                Cliquez sur « Ajouter un document » pour commencer
+                            </Typography>
+                        </Box>
+                    ) : filtered.length === 0 ? (
+                        <Box sx={{ py: 4, textAlign: 'center' }}>
+                            <Typography variant="body2" sx={{ color: '#9CA3AF', fontStyle: 'italic' }}>
+                                Aucun document ne correspond à la recherche
+                            </Typography>
+                        </Box>
+                    ) : (
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                            {filtered.map((doc) => (
+                                <Box key={doc.id} sx={{
+                                    display: 'flex', alignItems: 'center', gap: 2,
+                                    px: 2, py: 1.5,
+                                    border: '1px solid #F3F4F6', borderRadius: 2,
+                                    bgcolor: '#FAFAFA',
+                                    transition: 'all 0.12s',
+                                    '&:hover': { borderColor: '#E5E7EB', bgcolor: 'white', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' },
+                                }}>
+                                    {/* Nom + hostname */}
+                                    <Box sx={{ flex: '0 0 220px', minWidth: 0 }}>
+                                        <a href={doc.url} target="_blank" rel="noopener noreferrer"
+                                            style={{ color: '#1D4ED8', textDecoration: 'none', fontWeight: 600, fontSize: 13, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                {doc.name}
+                                            </span>
+                                            <ExternalLink size={11} style={{ flexShrink: 0 }} />
+                                        </a>
+                                        <Typography variant="caption" sx={{ color: '#9CA3AF', fontSize: 10 }}>
+                                            {getHostname(doc.url)}
+                                        </Typography>
+                                    </Box>
 
-                {/* DIVIDER */}
-                <Box sx={{ borderTop: '1px solid #F3F4F6', mb: 2.5 }} />
+                                    {/* Type */}
+                                    <Box sx={{ flex: '0 0 140px' }}>
+                                        <TypeBadge type={doc.type} />
+                                    </Box>
 
-                {/* LIST */}
-                <Typography variant="caption" sx={{ fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', mb: 1.5 }}>
-                    Documents liés
-                </Typography>
+                                    {/* Date */}
+                                    <Box sx={{ flex: '0 0 90px' }}>
+                                        <Typography variant="caption" sx={{ color: '#6B7280', fontSize: 11 }}>
+                                            Ajouté le
+                                        </Typography>
+                                        <Typography variant="body2" sx={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>
+                                            {formatDate(doc.createdAt)}
+                                        </Typography>
+                                    </Box>
 
-                {documents.length === 0 ? (
-                    <Box sx={{
-                        display: 'flex', flexDirection: 'column', alignItems: 'center',
-                        py: 4, gap: 1, color: '#9CA3AF',
-                    }}>
-                        <FolderOpen size={32} strokeWidth={1.5} />
-                        <Typography variant="body2" sx={{ color: '#9CA3AF', fontStyle: 'italic' }}>
-                            Aucun document lié pour le moment
-                        </Typography>
-                    </Box>
-                ) : (
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                        {documents.map((doc) => (
-                            <Box key={doc.id} sx={{
-                                display: 'flex', alignItems: 'center', gap: 1.5,
-                                p: '10px 12px',
-                                border: '1px solid #F3F4F6',
-                                borderRadius: 2,
-                                bgcolor: '#FAFAFA',
-                                transition: 'border-color 0.15s',
-                                '&:hover': { borderColor: '#E5E7EB', bgcolor: 'white' },
-                            }}>
-                                {/* Type badge */}
-                                <TypeChip type={doc.type} size="sm" />
+                                    {/* Commentaire */}
+                                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                                        {doc.comment ? (
+                                            <>
+                                                <Typography variant="caption" sx={{ color: '#6B7280', fontSize: 11 }}>
+                                                    Commentaire
+                                                </Typography>
+                                                <Typography variant="body2" sx={{
+                                                    fontSize: 12, color: '#374151',
+                                                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                                                }}>
+                                                    {doc.comment}
+                                                </Typography>
+                                            </>
+                                        ) : (
+                                            <Typography variant="caption" sx={{ color: '#D1D5DB', fontSize: 11, fontStyle: 'italic' }}>
+                                                —
+                                            </Typography>
+                                        )}
+                                    </Box>
 
-                                {/* Name + hostname */}
-                                <Box sx={{ flex: 1, minWidth: 0 }}>
-                                    <a
-                                        href={doc.url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        style={{
-                                            color: '#1D4ED8', textDecoration: 'none', fontWeight: 600,
-                                            fontSize: 13, display: 'flex', alignItems: 'center', gap: 4,
-                                        }}
-                                    >
-                                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                            {doc.name}
-                                        </span>
-                                        <ExternalLink size={11} style={{ flexShrink: 0 }} />
-                                    </a>
-                                    <Typography variant="caption" sx={{ color: '#9CA3AF', fontSize: 10 }}>
-                                        {getHostname(doc.url)}
-                                    </Typography>
-                                </Box>
-
-                                {/* Delete */}
-                                <Tooltip title="Supprimer" placement="left">
-                                    <IconButton
-                                        size="small"
-                                        onClick={() => handleDelete(doc.id)}
-                                        sx={{
+                                    {/* Delete */}
+                                    <Tooltip title="Supprimer" placement="left">
+                                        <IconButton size="small" onClick={() => handleDelete(doc.id)} sx={{
                                             color: '#D1D5DB', flexShrink: 0,
                                             '&:hover': { color: '#EF4444', bgcolor: '#FEF2F2' },
-                                        }}
-                                    >
-                                        <Trash2 size={15} />
-                                    </IconButton>
-                                </Tooltip>
-                            </Box>
-                        ))}
+                                        }}>
+                                            <Trash2 size={15} />
+                                        </IconButton>
+                                    </Tooltip>
+                                </Box>
+                            ))}
+                        </Box>
+                    )}
+                </DialogContent>
+
+                <DialogActions sx={{ px: 3, py: 2, borderTop: '1px solid #F3F4F6' }}>
+                    <Button onClick={onClose} sx={{ color: '#6B7280', fontWeight: 600 }}>Fermer</Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* ── POPOVER FILTRE ── */}
+            <Popover
+                open={filterOpen}
+                anchorEl={filterAnchor}
+                onClose={() => setFilterAnchor(null)}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+                PaperProps={{ sx: { borderRadius: 2, mt: 0.5, boxShadow: '0 4px 16px rgba(0,0,0,0.08)', minWidth: 180 } }}
+            >
+                <Box sx={{ py: 1 }}>
+                    {/* Tous */}
+                    <Box onClick={() => { setActiveFilter(null); setFilterAnchor(null); }} sx={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        px: 2, py: 1, cursor: 'pointer', fontSize: 13, fontWeight: 600,
+                        color: activeFilter === null ? '#111827' : '#6B7280',
+                        bgcolor: activeFilter === null ? '#F9FAFB' : 'transparent',
+                        '&:hover': { bgcolor: '#F9FAFB' },
+                    }}>
+                        Tous les types
+                        {activeFilter === null && <Check size={14} color="#1F2937" />}
                     </Box>
-                )}
+                    {DOC_TYPES.map(t => (
+                        <Box key={t.value} onClick={() => { setActiveFilter(t.value); setFilterAnchor(null); }} sx={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                            px: 2, py: 1, cursor: 'pointer', fontSize: 13,
+                            color: activeFilter === t.value ? t.color : '#374151',
+                            bgcolor: activeFilter === t.value ? t.bg : 'transparent',
+                            fontWeight: activeFilter === t.value ? 700 : 500,
+                            '&:hover': { bgcolor: t.bg },
+                        }}>
+                            {t.label}
+                            {activeFilter === t.value && <Check size={14} />}
+                        </Box>
+                    ))}
+                </Box>
+            </Popover>
 
-            </DialogContent>
-
-            <DialogActions sx={{ px: 3, py: 2, borderTop: '1px solid #F3F4F6' }}>
-                <Button onClick={onClose} sx={{ color: '#6B7280', fontWeight: 600 }}>
-                    Fermer
-                </Button>
-            </DialogActions>
-        </Dialog>
+            {/* ── SOUS-DIALOG AJOUT ── */}
+            <AddDocDialog open={addOpen} onClose={() => setAddOpen(false)} onAdd={handleAdd} />
+        </>
     );
 }
