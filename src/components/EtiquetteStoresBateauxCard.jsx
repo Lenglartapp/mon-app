@@ -1,6 +1,7 @@
 // src/components/EtiquetteStoresBateauxCard.jsx
 import React, { useState } from "react";
 import { DEFAULT_HEADER_COLOR, getHeaderStyles } from "../lib/etiquetteColors.js";
+import { STORES_BATEAUX_GETTERS } from "../lib/schemas/production/stores_bateaux.js";
 
 // ─── Champs disponibles sur l'étiquette (ordre + sections) ───────────────────
 export const ETIQUETTE_STORES_BATEAUX_FIELDS = [
@@ -40,7 +41,12 @@ const SECTIONS = ["Dimensions", "Coupes & Finitions", "Matériaux", "Mécanisme"
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 const v = (row, key, fallback = "—") => {
-  const val = row?.[key];
+  let val;
+  if (STORES_BATEAUX_GETTERS[key]) {
+    val = STORES_BATEAUX_GETTERS[key](row || {});
+  } else {
+    val = row?.[key];
+  }
   if (val == null || val === "") return fallback;
   return String(val);
 };

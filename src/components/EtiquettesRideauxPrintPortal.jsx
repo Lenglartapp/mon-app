@@ -4,9 +4,15 @@
 import React, { useEffect } from "react";
 import ReactDOM from "react-dom";
 import { DEFAULT_HEADER_COLOR, getHeaderStyles } from "../lib/etiquetteColors.js";
+import { RIDEAUX_GETTERS } from "../lib/schemas/production/rideaux.js";
 
 const v = (row, key, fallback = "—") => {
-  const val = row?.[key];
+  let val;
+  if (RIDEAUX_GETTERS[key]) {
+    val = RIDEAUX_GETTERS[key](row || {});
+  } else {
+    val = row?.[key];
+  }
   if (val == null || val === "") return fallback;
   return String(val);
 };

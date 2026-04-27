@@ -182,7 +182,17 @@ export default function CatalogManager({ open, onClose, catalog, onCatalogChange
             { field: 'provider', headerName: 'Fournisseur', width: 140, editable: true },
             { field: 'reference', headerName: 'Référence', width: 140, editable: true },
             { field: 'color', headerName: 'Coloris', width: 120, editable: true },
-            { field: 'name', headerName: 'Nom Complet(ID)', width: 250, editable: false, description: 'Généré automatiquement (Fournisseur + Ref + Coloris)' },
+            {
+                field: 'name',
+                headerName: 'Nom Complet(ID)',
+                width: 250,
+                editable: false,
+                description: 'Généré automatiquement (Fournisseur + Ref + Coloris)',
+                valueGetter: (value, row) => {
+                    const parts = [row?.provider, row?.reference, row?.color].filter(Boolean);
+                    return parts.length > 0 ? parts.join(' ') : (value || '');
+                },
+            },
         ];
 
         const parseDecimal = (value) => {

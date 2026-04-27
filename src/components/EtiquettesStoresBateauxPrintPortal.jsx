@@ -3,9 +3,15 @@
 import React, { useEffect } from "react";
 import ReactDOM from "react-dom";
 import { DEFAULT_HEADER_COLOR, getHeaderStyles } from "../lib/etiquetteColors.js";
+import { STORES_BATEAUX_GETTERS } from "../lib/schemas/production/stores_bateaux.js";
 
 const v = (row, key, fallback = "—") => {
-  const val = row?.[key];
+  let val;
+  if (STORES_BATEAUX_GETTERS[key]) {
+    val = STORES_BATEAUX_GETTERS[key](row || {});
+  } else {
+    val = row?.[key];
+  }
   if (val == null || val === "") return fallback;
   return String(val);
 };
