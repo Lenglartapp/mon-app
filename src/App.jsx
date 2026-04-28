@@ -43,20 +43,65 @@ import { NotificationProvider, useNotifications } from "./contexts/NotificationC
 import CommandPalette from "./components/CommandPalette";
 
 // --- Composants UI ---
-function UserBadge({ onClick }) {
+function UserAvatarMenu({ onSettings }) {
   const { currentUser, logout } = useAuth();
-  const hasAvatar = Boolean(currentUser?.avatarUrl);
+  const [open, setOpen] = React.useState(false);
+  const ref = React.useRef();
+
+  React.useEffect(() => {
+    if (!open) return;
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  const initials = currentUser?.initials || (currentUser?.name || "").split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase() || "AL";
+
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-      <button style={S.userBtn} onClick={onClick} aria-label="Profil utilisateur" title="Ouvrir mes paramètres">
-        <div style={S.avatarBox}>
-          {hasAvatar ? (
-            <img src={currentUser.avatarUrl} alt="Avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-          ) : (<div>{currentUser?.initials || "AL"}</div>)}
-        </div>
-        <span style={{ fontWeight: 600 }}>{currentUser?.name || "Utilisateur"}</span>
+    <div ref={ref} style={{ position: "relative" }}>
+      <button
+        onClick={() => setOpen(v => !v)}
+        aria-label="Menu utilisateur"
+        style={{
+          width: 36, height: 36, borderRadius: "50%",
+          background: "#1E2447", color: "#fff",
+          border: "none", cursor: "pointer",
+          fontWeight: 700, fontSize: 13,
+          fontFamily: "Roboto, system-ui, sans-serif",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          flexShrink: 0,
+        }}
+      >
+        {initials}
       </button>
-      <button onClick={() => { if (window.confirm("Se déconnecter ?")) logout(); }} style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 12, color: '#ef4444', fontWeight: 600, padding: 4 }}>Sortir</button>
+
+      {open && (
+        <div style={{
+          position: "absolute", top: "calc(100% + 10px)", right: 0,
+          background: "#fff", borderRadius: 12,
+          border: "1px solid #E6DDD2",
+          boxShadow: "0 8px 28px rgba(30,36,71,0.13)",
+          minWidth: 200, zIndex: 200, overflow: "hidden",
+          fontFamily: "Roboto, system-ui, sans-serif",
+        }}>
+          <div style={{ padding: "12px 16px", borderBottom: "1px solid #F0EBE3" }}>
+            <div style={{ fontWeight: 600, fontSize: 14, color: "#191919" }}>{currentUser?.name || "Utilisateur"}</div>
+            <div style={{ fontSize: 12, color: "#9E8E7E", marginTop: 2, textTransform: "capitalize" }}>{currentUser?.role || ""}</div>
+          </div>
+          <button
+            onClick={() => { setOpen(false); onSettings(); }}
+            style={{ width: "100%", padding: "11px 16px", textAlign: "left", background: "transparent", border: "none", cursor: "pointer", fontSize: 14, color: "#191919", display: "flex", alignItems: "center", gap: 10 }}
+          >
+            Paramètres
+          </button>
+          <button
+            onClick={() => { setOpen(false); if (window.confirm("Se déconnecter ?")) logout(); }}
+            style={{ width: "100%", padding: "11px 16px", textAlign: "left", background: "transparent", border: "none", cursor: "pointer", fontSize: 14, color: "#ef4444", display: "flex", alignItems: "center", gap: 10, borderTop: "1px solid #F0EBE3" }}
+          >
+            Se déconnecter
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -266,7 +311,8 @@ function AppShell() {
           Synchronisation des modifications hors ligne…
         </div>
       )}
-      <header style={S.header}>
+      <header style={{ display: "flex", alignItems: "center", padding: "14px 32px", gap: 16 }}>
+        {/* Gauche : logo */}
         <button style={S.brandBtn} onClick={() => navigate("/")} aria-label="Retour à l'accueil">
           {logoOk ? (
             <img src={LOGO_SRC} alt="LENGLART" style={{ height: "clamp(24px, 5vw, 36px)", width: "auto" }} onError={() => setLogoOk(false)} />
@@ -275,33 +321,41 @@ function AppShell() {
           )}
         </button>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+        {/* Centre : barre de recherche */}
+        <div style={{ flex: 1, display: "flex", justifyContent: "center" }}>
           <button
             onClick={() => cmdRef.current?.open()}
             style={{
-              display: 'flex', alignItems: 'center', gap: 8,
-              background: '#F3F4F6', border: '1px solid #E5E7EB',
-              borderRadius: 8, padding: '7px 12px',
-              color: '#6B7280', fontSize: 13, cursor: 'pointer',
-              fontFamily: 'inherit',
+              display: "flex", alignItems: "center", gap: 10,
+              background: "#fff", border: "1px solid #E6DDD2",
+              borderRadius: 999, padding: "8px 16px",
+              color: "#9B8E82", fontSize: 13, cursor: "pointer",
+              fontFamily: "Roboto, system-ui, sans-serif",
+              width: "min(480px, 100%)",
+              boxShadow: "0 1px 4px rgba(30,36,71,0.06)",
             }}
           >
-            <Search size={13} />
-            <span style={{ color: '#9CA3AF' }}>Rechercher…</span>
+            <Search size={14} color="#CEAB95" />
+            <span style={{ flex: 1, textAlign: "left", color: "#B0A396" }}>Rechercher…</span>
             <kbd style={{
-              background: '#fff', border: '1px solid #D1D5DB',
-              borderRadius: 4, padding: '1px 5px',
-              fontSize: 11, color: '#9CA3AF', fontFamily: 'inherit',
+              background: "#F5EFE6", border: "1px solid #E6DDD2",
+              borderRadius: 6, padding: "1px 6px",
+              fontSize: 11, color: "#B0A396",
+              fontFamily: "Roboto, system-ui, sans-serif",
             }}>
-              {isMac ? '⌘K' : 'Ctrl+K'}
+              {isMac ? "⌘K" : "Ctrl+K"}
             </kbd>
           </button>
-          <IconButton onClick={handleNotifClick} sx={{ color: '#6B7280' }}>
+        </div>
+
+        {/* Droite : cloche + avatar */}
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <IconButton onClick={handleNotifClick} sx={{ color: '#9B8E82' }}>
             <Badge badgeContent={unreadCount} color="error" invisible={unreadCount === 0} sx={{ '& .MuiBadge-badge': { fontSize: 10, height: 16, minWidth: 16 } }}>
               <Bell size={20} />
             </Badge>
           </IconButton>
-          <UserBadge onClick={() => navigate("/parametres")} />
+          <UserAvatarMenu onSettings={() => navigate("/parametres")} />
         </div>
       </header>
 

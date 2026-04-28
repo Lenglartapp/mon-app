@@ -20,8 +20,8 @@ export default function HomeScreen({
 }) {
   const width = useViewportWidth();
   const cols = width < 700 ? 2 : 4;
-  const gap = width < 700 ? 40 : 64;
-  const tileSize = Math.max(88, Math.min(112, Math.round(width * 0.18)));
+  const gap = width < 700 ? 32 : 52;
+  const tileSize = Math.max(80, Math.min(96, Math.round(width * 0.14)));
 
   const { currentUser } = useAuth();
 
@@ -41,11 +41,20 @@ export default function HomeScreen({
   // helper pour MASQUER totalement une tuile si non autorisé
   const hideTile = (ok, node) => (ok ? node : null);
 
+  const firstName = currentUser?.name?.split(" ")[0] || currentUser?.name || "";
+  const dateStr = new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+
   return (
-    <div style={S.mainCenter}>
-      {/* Petit bandeau de debug discret pour comprendre pourquoi ça bloque */}
-      <div style={{ position: 'absolute', top: 60, right: 20, fontSize: 10, color: '#999', opacity: 0.5 }}>
-        Debug: {currentUser?.name} ({detectedRole})
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 24px" }}>
+
+      {/* Salutation */}
+      <div style={{ marginBottom: 64, textAlign: "center" }}>
+        <div style={{ fontFamily: "Roboto, system-ui, sans-serif", fontWeight: 300, fontSize: "clamp(30px, 3.2vw, 46px)", color: "#191919", letterSpacing: -0.5 }}>
+          Bonjour {firstName},
+        </div>
+        <div style={{ fontFamily: "Roboto, system-ui, sans-serif", fontWeight: 300, fontStyle: "italic", fontSize: "clamp(14px, 1.3vw, 17px)", color: "#9B8E82", marginTop: 8 }}>
+          {dateStr.charAt(0).toUpperCase() + dateStr.slice(1)}
+        </div>
       </div>
 
       <div style={S.appsWrap}>
@@ -86,4 +95,5 @@ export default function HomeScreen({
       </div>
     </div>
   );
+
 }
