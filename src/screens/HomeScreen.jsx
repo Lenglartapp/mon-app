@@ -9,6 +9,28 @@ import { useViewportWidth } from "../lib/hooks/useViewportWidth";
 import { useAuth } from "../auth";
 import { can } from "../lib/authz";
 
+// Calendrier des fêtes (index 0 = 1er du mois)
+const FETES = [
+  ["Marie","Basile","Geneviève","Odilon","Édouard","Melchior","Raymond","Lucien","Alix","Guillaume","Paulin","Tatiana","Yvette","Nina","Rémi","Marcel","Antoine","Prisca","Marius","Sébastien","Agnès","Vincent","Bernard","François de Sales","Paul","Timothée","Angèle","Thomas","Gildas","Martine","Don Bosco"],
+  ["Ella","Présentation","Blaise","Véronique","Agathe","Gaston","Eugénie","Jacqueline","Apolline","Arnaud","Lourdes","Félix","Béatrice","Valentin","Claude","Julienne","Alexis","Bernadette","Gabin","Aimée","Damien","Isabelle","Lazare","Modeste","Roméo","Nestor","Anne-Line","Romain","Auguste","Martine"],
+  ["Aubin","Charles","Guénolé","Casimir","Olive","Colette","Félicité","Jean de Dieu","Françoise","Vivien","Rosine","Justine","Rodrigue","Mathilde","Louise","Bénédicte","Patrick","Cyrille","Joseph","Herbert","Clémence","Léa","Victorien","Cathy","Annonciation","Larissa","Habib","Gontran","Gwladys","Amédée","Benjamin"],
+  ["Hugues","Sandrine","Richard","Isidore","Irène","Marcellin","Baptiste","Julie","Gautier","Fulbert","Stanislas","Jules","Ida","Maxime","Paterne","Benoît-Joseph","Anicet","Parfait","Emma","Odette","Anselme","Alexandre","Georges","Fidèle","Marc","Alida","Zita","Valérie","Catherine","Pio","Robert"],
+  ["Fête du Travail","Boris","Philippe","Sylvain","Judith","Prudence","Gisèle","Victoire","Pacôme","Solange","Estelle","Achille","Rolande","Matthias","Denise","Honoré","Pascal","Éric","Yves","Bernardin","Constantin","Émile","Didier","Donatien","Sophie","Bérenger","Augustin","Germain","Maximin","Ferdinand","Visitation"],
+  ["Justin","Blandine","Kévin","Clotilde","Igor","Norbert","Gilbert","Médard","Diane","Landry","Barnabé","Guy","Antoine","Élisée","Germaine","Régis","Hervé","Léonce","Romuald","Sylvère","Rodolphe","Paulin","Audrey","Jean-Baptiste","Prosper","Anthelme","Fernand","Irénée","Pierre","Martial"],
+  ["Thierry","Martinien","Thomas","Florent","Antoine","Mariette","Raoul","Thibaut","Amandine","Ulrich","Benoît","Olivier","Henri","Aimé","Donald","Eustache","Charlotte","Frédéric","Arsène","Marina","Victor","Marie-Madeleine","Brigitte","Christine","Jacques","Nathalie","Liliane","Samson","Marthe","Juliette","Ignace"],
+  ["Alphonse","Julien","Lydie","Jean-Marie","Abel","Transfiguration","Gaétan","Dominique","Amour","Laurent","Claire","Clarisse","Hippolyte","Evrard","Assomption","Armel","Hyacinthe","Hélène","Jean-Eudes","Bernard","Christophe","Fabrice","Rose","Barthélemy","Louis","Natacha","Monique","Augustin","Sabine","Fiacre","Aristide"],
+  ["Gilles","Ingrid","Grégoire","Rosalie","Raïssa","Bertrand","Reine","Nativité","Alain","Inès","Adelphe","Apollinaire","Aimé","Sainte-Croix","Roland","Edith","Lambert","Nadège","Émilie","Davy","Matthieu","Maurice","Constance","Thècle","Hermann","Côme","Vincent","Venceslas","Michel","Jérôme"],
+  ["Thérèse","Léger","Gérard","François","Fleur","Bruno","Serge","Pélagie","Denis","Ghislain","Firmin","Wilfrid","Géraud","Juste","Thérèse d'Avila","Edwige","Baudouin","Luc","René","Adeline","Céline","Élodie","Jean","Claret","Crépin","Dimitri","Émeline","Simon","Narcisse","Bienheureux","Quentin"],
+  ["Toussaint","Défunts","Hubert","Charles","Sylvie","Bertille","Carine","Geoffrey","Théodore","Léon","Martin","Christian","Brice","Sidoine","Albert","Marguerite","Élisabeth","Aude","Tanguy","Edmond","Présentation","Cécile","Clément","Flora","Catherine","Delphine","Sévrin","Jacques","Saturnin","André"],
+  ["Florence","Viviane","François-Xavier","Barbara","Gérald","Nicolas","Ambroise","Immaculée Conception","Pierre Fourier","Romaric","Daniel","Jeanne","Lucie","Odile","Ninon","Alice","Gaël","Gatien","Urbain","Abraham","Pierre Canisius","Françoise-Xavière","Armand","Adèle","Noël","Étienne","Jean","Innocents","David","Roger","Sylvestre"],
+];
+
+function getFete() {
+  const now = new Date();
+  const name = FETES[now.getMonth()]?.[now.getDate() - 1];
+  return name ? `Fête de ${name}` : null;
+}
+
 function pickGreeting(name) {
   const n = name?.split(" ")[0] || "";
   const h = new Date().getHours();
@@ -91,6 +113,7 @@ export default function HomeScreen({
         </div>
         <div style={{ fontFamily: "Roboto, system-ui, sans-serif", fontWeight: 300, fontStyle: "italic", fontSize: "clamp(14px, 1.3vw, 17px)", color: "#9B8E82", marginTop: 8 }}>
           {dateStr.charAt(0).toUpperCase() + dateStr.slice(1)}
+          {getFete() && <span style={{ opacity: 0.6 }}> · {getFete()}</span>}
         </div>
       </div>
 
