@@ -15,72 +15,47 @@ function pickGreeting(name) {
   const day = new Date().getDay(); // 0=dim, 1=lun … 6=sam
   const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
-  // Weekend
-  if (day === 0 || day === 6) return pick([
-    `On bosse le weekend ${n} ?`,
-    `Même le weekend ${n} !`,
-    `Repos… ou pas ${n} ?`,
-    `Bonjour ${n},`,
-  ]);
-
   // Lundi matin
   if (day === 1 && h < 12) return pick([
-    `Bonne semaine ${n} !`,
-    `On attaque ${n} ?`,
-    `Lundi, c'est parti ${n} !`,
     `Bonjour ${n},`,
+    `Bonne semaine ${n},`,
+    `Bonne matinée ${n},`,
   ]);
 
   // Vendredi après-midi
   if (day === 5 && h >= 14) return pick([
-    `Bon vendredi ${n} !`,
-    `Dernière ligne droite ${n},`,
-    `On finit la semaine en beauté ${n} ?`,
-    `Bientôt le weekend ${n} !`,
+    `Bon vendredi ${n},`,
+    `Bonne fin de semaine ${n},`,
+    `Bonsoir ${n},`,
   ]);
 
   // Matin (6h–12h)
   if (h >= 6 && h < 12) return pick([
     `Bonjour ${n},`,
     `Bonne matinée ${n},`,
-    `Salut ${n},`,
-    `C'est parti ${n} !`,
-    `On commence ${n} ?`,
-    `Au boulot ${n} !`,
-    `Prêt pour la journée ${n} ?`,
+    `Bonjour ${n}, belle journée devant vous.`,
   ]);
 
-  // Pause déjeuner (12h–14h)
+  // Midi (12h–14h)
   if (h >= 12 && h < 14) return pick([
-    `Bon appétit ${n} !`,
-    `Bonne pause ${n},`,
-    `Salut ${n},`,
     `Bonjour ${n},`,
+    `Bon après-midi ${n},`,
+    `Bonne continuation ${n},`,
   ]);
 
   // Après-midi (14h–18h)
   if (h >= 14 && h < 18) return pick([
-    `Comment ça avance ${n} ?`,
-    `On continue ${n} ?`,
-    `Toujours là ${n} ?`,
-    `Qu'est-ce qu'on fait ${n} ?`,
-    `Salut ${n},`,
-    `L'après-midi est à toi ${n},`,
+    `Bon après-midi ${n},`,
+    `Comment se passe la journée ${n} ?`,
+    `Bonne continuation ${n},`,
+    `Que faisons-nous ${n} ?`,
   ]);
 
-  // Soirée (18h–22h)
-  if (h >= 18 && h < 22) return pick([
-    `Bonsoir ${n},`,
-    `Encore là ${n} ?`,
-    `On finit fort ${n} ?`,
-    `Dernière ligne droite ${n},`,
-  ]);
-
-  // Nuit tardive
+  // Soirée et nuit
   return pick([
     `Bonsoir ${n},`,
-    `Encore debout ${n} ?`,
-    `C'est tard ${n}…`,
+    `Bonne soirée ${n},`,
+    `Bonsoir ${n}, bonne continuation.`,
   ]);
 }
 
