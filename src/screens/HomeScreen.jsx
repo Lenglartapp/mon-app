@@ -25,10 +25,18 @@ const FETES = [
   ["Florence","Viviane","François-Xavier","Barbara","Gérald","Nicolas","Ambroise","Immaculée Conception","Pierre Fourier","Romaric","Daniel","Jeanne","Lucie","Odile","Ninon","Alice","Gaël","Gatien","Urbain","Abraham","Pierre Canisius","Françoise-Xavière","Armand","Adèle","Noël","Étienne","Jean","Innocents","David","Roger","Sylvestre"],
 ];
 
+// Jours qui s'affichent tels quels (pas de "Saint" devant)
+const JOURS_SPECIAUX = new Set([
+  "Fête du Travail","Toussaint","Défunts","Noël","Assomption",
+  "Transfiguration","Présentation","Annonciation","Immaculée Conception",
+  "Sainte-Croix","Nativité","Visitation","Innocents","Lourdes",
+]);
+
 function getFete() {
   const now = new Date();
   const name = FETES[now.getMonth()]?.[now.getDate() - 1];
-  return name ? `Fête de ${name}` : null;
+  if (!name) return null;
+  return JOURS_SPECIAUX.has(name) ? name : `Saint ${name}`;
 }
 
 function pickGreeting(name) {
@@ -113,7 +121,7 @@ export default function HomeScreen({
         </div>
         <div style={{ fontFamily: "Roboto, system-ui, sans-serif", fontWeight: 300, fontStyle: "italic", fontSize: "clamp(14px, 1.3vw, 17px)", color: "#9B8E82", marginTop: 8 }}>
           {dateStr.charAt(0).toUpperCase() + dateStr.slice(1)}
-          {getFete() && <span style={{ opacity: 0.6 }}> · {getFete()}</span>}
+          {getFete() && `, ${getFete()}`}
         </div>
       </div>
 
