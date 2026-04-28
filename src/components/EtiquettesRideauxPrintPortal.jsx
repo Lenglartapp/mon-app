@@ -24,7 +24,7 @@ function PCell({ label, value, span = 1, accent = false }) {
       gridColumn: `span ${span}`,
       borderRight: "0.4pt solid #CBD5E1",
       borderBottom: "0.4pt solid #CBD5E1",
-      padding: "3pt 4pt",
+      padding: "1.5pt 3pt",
       display: "flex",
       flexDirection: "column",
       gap: 0,
@@ -32,7 +32,7 @@ function PCell({ label, value, span = 1, accent = false }) {
       minWidth: 0,
     }}>
       <span style={{
-        fontSize: "4.5pt",
+        fontSize: "4pt",
         fontWeight: 600,
         letterSpacing: "0.04em",
         textTransform: "uppercase",
@@ -45,7 +45,7 @@ function PCell({ label, value, span = 1, accent = false }) {
         {label}
       </span>
       <span style={{
-        fontSize: "7pt",
+        fontSize: "6pt",
         fontWeight: 700,
         color: accent ? "#92742A" : "#111827",
         lineHeight: 1.15,
@@ -82,7 +82,7 @@ function PSectionTitle({ children }) {
       textTransform: "uppercase",
       color: "#6B7280",
       background: "#F3F4F6",
-      padding: "2.5pt 4pt",
+      padding: "1.5pt 3pt",
       borderLeft: "0.4pt solid #CBD5E1",
       borderRight: "0.4pt solid #CBD5E1",
       borderBottom: "0.4pt solid #CBD5E1",
@@ -110,7 +110,7 @@ function PrintLabel({ row, projectName, index, total }) {
   return (
     <div style={{
       width: "200mm",
-      height: "90mm",
+      height: "96mm",
       border: "0.5pt solid #9CA3AF",
       fontFamily: "system-ui, -apple-system, Arial, sans-serif",
       display: "flex",
@@ -123,28 +123,32 @@ function PrintLabel({ row, projectName, index, total }) {
       {/* HEADER PLEINE LARGEUR */}
       <div style={{
         background: hdr.bg,
-        padding: "3pt 6pt",
+        padding: "2pt 6pt",
         display: "grid",
-        gridTemplateColumns: "1fr auto auto",
+        gridTemplateColumns: "auto 1fr auto auto",
         alignItems: "center",
-        gap: "4pt",
+        gap: "6pt",
         flexShrink: 0,
       }}>
+        {/* Gauche : nom du projet */}
+        <div style={{ fontSize: "6pt", fontWeight: 800, color: hdr.textMuted, letterSpacing: "0.04em", textTransform: "uppercase", whiteSpace: "nowrap" }}>
+          {projectName || "Projet"}
+        </div>
+        {/* Centre : zone — pièce + produit */}
         <div>
-          <div style={{ fontSize: "6pt", fontWeight: 800, color: hdr.textMuted, letterSpacing: "0.04em", textTransform: "uppercase", lineHeight: 1.2 }}>
-            {projectName || "Projet"}
-          </div>
-          <div style={{ fontSize: "8pt", fontWeight: 700, color: hdr.textMain, marginTop: "1pt" }}>
+          <div style={{ fontSize: "8pt", fontWeight: 700, color: hdr.textMain, lineHeight: 1.1 }}>
             {zone} — {piece}
           </div>
-          <div style={{ fontSize: "7pt", fontWeight: 600, color: hdr.textMuted, marginTop: "1pt" }}>
+          <div style={{ fontSize: "5.5pt", fontWeight: 600, color: hdr.textMuted, lineHeight: 1.1 }}>
             {v(row, "produit")}
           </div>
         </div>
+        {/* H. Conf. */}
         <div style={{ textAlign: "right" }}>
           <div style={{ fontSize: "4pt", color: hdr.textMuted, textTransform: "uppercase", letterSpacing: "0.05em" }}>H. Conf.</div>
           <div style={{ fontSize: "9pt", fontWeight: 700, color: hdr.textMain }}>{heuresConf}h</div>
         </div>
+        {/* Badge n° */}
         <div style={{
           fontSize: "6pt", fontWeight: 600, color: hdr.badgeText,
           background: hdr.badgeBg, borderRadius: "2pt",
@@ -205,8 +209,10 @@ function PrintLabel({ row, projectName, index, total }) {
 
         {/* Dimensions */}
         <PSectionTitle>Dimensions</PSectionTitle>
-        <PRow cols={4}>
+        <PRow cols={6}>
           {show("nombre_les")    && <PCell label="Nb lés" value={v(row, "nombre_les")} />}
+          {show("reste_les")     && <PCell label="Reste Lés (cm)" value={v(row, "reste_les")} />}
+          {show("a_plat")        && <PCell label="À Plat" value={v(row, "a_plat")} />}
           {show("largeur_finie") && <PCell label="L. Finie" value={v(row, "largeur_finie")} />}
           {show("retour_gauche") && <PCell label="Retour G" value={v(row, "retour_gauche")} />}
           {show("retour_droit")  && <PCell label="Retour D" value={v(row, "retour_droit")} />}
@@ -236,15 +242,21 @@ function PrintLabel({ row, projectName, index, total }) {
 
         {/* Matériaux */}
         <PSectionTitle>Matériaux</PSectionTitle>
-        <PRow cols={6}>
-          {show("tissu_deco1") && <PCell label="Tissu 1" value={v(row, "tissu_deco1")} span={2} accent />}
-          {show("tissu_deco2") && <PCell label="Tissu 2" value={v(row, "tissu_deco2")} span={2} accent />}
-          {show("doublure")    && <PCell label="Doublure" value={v(row, "doublure")} span={2} accent />}
+        <PRow cols={4}>
+          {show("tissu_deco1")  && <PCell label="Tissu 1" value={v(row, "tissu_deco1")} accent />}
+          {show("laize_tissu1") && <PCell label="Laize T1" value={v(row, "laize_tissu1")} />}
+          {show("tissu_deco2")  && <PCell label="Tissu 2" value={v(row, "tissu_deco2")} accent />}
+          {show("laize_tissu2") && <PCell label="Laize T2" value={v(row, "laize_tissu2")} />}
         </PRow>
-        <PRow cols={6} bg="#F9FAFB">
-          {show("inter_doublure")  && <PCell label="Interdoublure" value={v(row, "inter_doublure")} span={2} />}
-          {show("passementerie1")  && <PCell label="Pass. 1" value={[v(row, "passementerie1"), v(row, "application_passementerie1")].filter(x => x !== "—").join(" — ") || "—"} span={2} />}
-          {show("passementerie2")  && <PCell label="Pass. 2" value={[v(row, "passementerie2"), v(row, "application_passementerie2")].filter(x => x !== "—").join(" — ") || "—"} span={2} />}
+        <PRow cols={4} bg="#F9FAFB">
+          {show("doublure")       && <PCell label="Doublure" value={v(row, "doublure")} accent />}
+          {show("laize_doublure") && <PCell label="Laize Doubl." value={v(row, "laize_doublure")} />}
+          {show("inter_doublure") && <PCell label="Interdoublure" value={v(row, "inter_doublure")} />}
+          {show("laize_inter")    && <PCell label="Laize Inter." value={v(row, "laize_inter")} />}
+        </PRow>
+        <PRow cols={2}>
+          {show("passementerie1") && <PCell label="Pass. 1" value={[v(row, "passementerie1"), v(row, "application_passementerie1")].filter(x => x !== "—").join(" — ") || "—"} />}
+          {show("passementerie2") && <PCell label="Pass. 2" value={[v(row, "passementerie2"), v(row, "application_passementerie2")].filter(x => x !== "—").join(" — ") || "—"} />}
         </PRow>
       </div>
 
@@ -314,7 +326,7 @@ function DecoupeTrait() {
   return (
     <div style={{
       width: "200mm",
-      height: "3mm",
+      height: "2mm",
       display: "flex",
       alignItems: "center",
       justifyContent: "flex-start",
@@ -342,7 +354,7 @@ function PrintPage({ labels, projectName, totalCount, startIndex }) {
       flexDirection: "column",
       alignItems: "center",
       justifyContent: "flex-start",
-      padding: "3mm 5mm",
+      padding: "2mm 5mm",
       boxSizing: "border-box",
       pageBreakAfter: "always",
     }}>

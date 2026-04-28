@@ -1255,11 +1255,12 @@ function MinuteGrid({
                             background: 'white', border: '1px solid #e5e7eb', borderRadius: 8,
                             boxShadow: '0 10px 25px rgba(0,0,0,0.1)', zIndex: 1000,
                             maxHeight: 'calc(100vh - ' + colPanelPos.top + 'px - 16px)',
-                            display: 'flex', flexDirection: 'column', minWidth: 220,
+                            display: 'flex', flexDirection: 'column',
+                            width: 'min(720px, calc(100vw - 32px))',
                         }}
                     >
                         {/* En-tête fixe */}
-                        <div style={{ padding: '8px 8px 6px', borderBottom: '1px solid #e5e7eb', flexShrink: 0 }}>
+                        <div style={{ padding: '8px 12px 6px', borderBottom: '1px solid #e5e7eb', flexShrink: 0 }}>
                             <div style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', padding: '0 4px 6px' }}>Afficher / Masquer</div>
                             {/* Barre de recherche */}
                             <div style={{ position: 'relative', marginBottom: 6 }}>
@@ -1285,28 +1286,39 @@ function MinuteGrid({
                                 >Tout masquer</button>
                             </div>
                         </div>
-                        {/* Liste scrollable */}
-                        <div style={{ overflowY: 'auto', padding: '4px 8px 8px' }}>
-                            {schemaCols
-                                .filter(col => !colSearch || col.label.toLowerCase().includes(colSearch.toLowerCase()))
-                                .map(col => (
-                                    <label key={col.field} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 4px', borderRadius: 4, cursor: 'pointer', fontSize: 13 }}
-                                        onMouseEnter={e => e.currentTarget.style.background = '#f3f4f6'}
-                                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                                    >
-                                        <input
-                                            type="checkbox"
-                                            checked={colVisibility[col.field] !== false}
-                                            onChange={e => handleToggleColumn(col.field, e.target.checked)}
-                                            style={{ accentColor: '#2563eb' }}
-                                        />
-                                        <span>{col.label}</span>
-                                    </label>
-                                ))
-                            }
-                            {schemaCols.filter(col => !colSearch || col.label.toLowerCase().includes(colSearch.toLowerCase())).length === 0 && (
-                                <div style={{ padding: '8px 4px', fontSize: 12, color: '#9ca3af', textAlign: 'center' }}>Aucune colonne trouvée</div>
-                            )}
+                        {/* Grille multi-colonnes */}
+                        <div style={{ overflowY: 'auto', padding: '8px 12px 12px' }}>
+                            {(() => {
+                                const filtered = schemaCols.filter(col => !colSearch || col.label.toLowerCase().includes(colSearch.toLowerCase()));
+                                if (filtered.length === 0) {
+                                    return <div style={{ padding: '8px 4px', fontSize: 12, color: '#9ca3af', textAlign: 'center' }}>Aucune colonne trouvée</div>;
+                                }
+                                const COLS = 3;
+                                const perCol = Math.ceil(filtered.length / COLS);
+                                const columns = Array.from({ length: COLS }, (_, i) => filtered.slice(i * perCol, (i + 1) * perCol));
+                                return (
+                                    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${COLS}, 1fr)`, gap: '0 16px' }}>
+                                        {columns.map((group, gi) => (
+                                            <div key={gi}>
+                                                {group.map(col => (
+                                                    <label key={col.field} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 4px', borderRadius: 4, cursor: 'pointer', fontSize: 13 }}
+                                                        onMouseEnter={e => e.currentTarget.style.background = '#f3f4f6'}
+                                                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                                    >
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={colVisibility[col.field] !== false}
+                                                            onChange={e => handleToggleColumn(col.field, e.target.checked)}
+                                                            style={{ accentColor: '#2563eb', flexShrink: 0 }}
+                                                        />
+                                                        <span>{col.label}</span>
+                                                    </label>
+                                                ))}
+                                            </div>
+                                        ))}
+                                    </div>
+                                );
+                            })()}
                         </div>
                     </div>
                 )}

@@ -139,7 +139,15 @@ const getters = {
         const aPlat = getters.a_plat(row);
         const laize = toNum(row.laize_tissu1);
         if (laize <= 0) return 0;
-        return Math.max(1, Math.ceil(aPlat / laize));
+        return Math.max(1, Math.floor(aPlat / laize));
+    },
+
+    reste_les: (row) => {
+        const aPlat = getters.a_plat(row);
+        const laize = toNum(row.laize_tissu1);
+        if (laize <= 0) return 0;
+        const fraction = (aPlat / laize) - Math.floor(aPlat / laize);
+        return round1(fraction * laize);
     },
 
     nb_glisseurs: (row) => {
@@ -176,6 +184,7 @@ const getters = {
 // ─── Export des getters pour les étiquettes (clés = field keys du schema) ─────
 export const RIDEAUX_GETTERS = {
     largeur_finie:         getters.largeur_finie,
+    a_plat:                getters.a_plat,
     hauteur_finie_droite:  getters.hauteur_finie_droite,
     hauteur_finie_milieu:  getters.hauteur_finie_milieu,
     hauteur_finie_gauche:  getters.hauteur_finie_gauche,
@@ -183,6 +192,7 @@ export const RIDEAUX_GETTERS = {
     hauteur_coupe_motif:   getters.hauteur_coupe_motif,
     hauteur_coupe_doublure:getters.hauteur_coupe_doublure,
     nombre_les:            getters.nombre_les,
+    reste_les:             getters.reste_les,
     nombre_glisseur:       getters.nb_glisseurs,
 };
 
@@ -221,6 +231,30 @@ export const RIDEAUX_PROD_SCHEMA = [
         readOnly: true,
         tooltip: "Tissu à plat avant confection. Paire : (L_finie × ampleur) + 4 × ourlets côtés. Pan unique : (L_finie × ampleur) + 2 × ourlets côtés",
         valueGetter: (v, r) => getters.a_plat(getRow(v, r))
+    },
+    {
+        key: "nombre_les",
+        label: "Nb Lés",
+        type: "number",
+        width: 100,
+        readOnly: true,
+        tooltip: "Nombre de lés entiers : À Plat ÷ laize tissu 1, arrondi à l'inférieur (minimum 1)",
+        valueGetter: (v, r) => {
+            const row = getRow(v, r);
+            const aPlat = getters.a_plat(row);
+            const laize = toNum(row.laize_tissu1);
+            if (laize <= 0) return 0;
+            return Math.max(1, Math.floor(aPlat / laize));
+        }
+    },
+    {
+        key: "reste_les",
+        label: "Reste Lés (cm)",
+        type: "number",
+        width: 130,
+        readOnly: true,
+        tooltip: "Partie fractionnaire × laize T1 : reste de tissu après les lés entiers",
+        valueGetter: (v, r) => getters.reste_les(getRow(v, r))
     },
     { key: "v_ourlets_de_cotes", label: "Ourlets Côtés", type: "number", width: 130, editable: true },
     { key: "piquage_ourlet", label: "Piquage Ourlet", type: "select", options: ["Apparent", "Invisible"], width: 145, editable: true },
@@ -314,21 +348,6 @@ export const RIDEAUX_PROD_SCHEMA = [
     { key: "deduction_doublure", label: "Déd. Doublure", type: "number", width: 140, editable: true },
 
     // D. Détails Confection
-    {
-        key: "nombre_les",
-        label: "Nb Lés",
-        type: "number",
-        width: 100,
-        readOnly: true,
-        tooltip: "Nombre de lés nécessaires : À Plat ÷ laize tissu 1, arrondi au supérieur (minimum 1)",
-        valueGetter: (v, r) => {
-            const row = getRow(v, r);
-            const aPlat = getters.a_plat(row);
-            const laize = toNum(row.laize_tissu1);
-            if (laize <= 0) return 0;
-            return Math.max(1, Math.ceil(aPlat / laize));
-        }
-    },
     { key: "piquage_ourlets_du_bas", label: "Piq. Bas", type: "number", width: 115, editable: true },
     { key: "piquage_ourlets_bas_doublure", label: "Piq. Bas Doubl.", type: "number", width: 145, editable: true },
     { key: "doublure_finition_bas", label: "Doubl. Fin. Bas", type: "number", width: 145, editable: true },
