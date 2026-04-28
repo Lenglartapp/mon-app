@@ -28,6 +28,8 @@ export const ETIQUETTE_RIDEAUX_FIELDS = [
   { key: "doublure_finition_bas",label: "Doubl. fin. bas",    section: "Ourlets & Bas" },
   // Dimensions
   { key: "nombre_les",           label: "Nb lés",             section: "Dimensions" },
+  { key: "reste_les",            label: "Reste Lés (cm)",     section: "Dimensions" },
+  { key: "a_plat",               label: "À Plat",             section: "Dimensions" },
   { key: "largeur_finie",        label: "L. Finie",           section: "Dimensions" },
   { key: "retour_gauche",        label: "Retour G",           section: "Dimensions" },
   { key: "retour_droit",         label: "Retour D",           section: "Dimensions" },
@@ -45,9 +47,13 @@ export const ETIQUETTE_RIDEAUX_FIELDS = [
   { key: "type_croisement",      label: "Type Croisement",    section: "Mécanisme" },
   // Matériaux
   { key: "tissu_deco1",          label: "Tissu 1",            section: "Matériaux" },
+  { key: "laize_tissu1",         label: "Laize T1",           section: "Matériaux" },
   { key: "tissu_deco2",          label: "Tissu 2",            section: "Matériaux" },
+  { key: "laize_tissu2",         label: "Laize T2",           section: "Matériaux" },
   { key: "doublure",             label: "Doublure",           section: "Matériaux" },
+  { key: "laize_doublure",       label: "Laize Doubl.",       section: "Matériaux" },
   { key: "inter_doublure",       label: "Interdoublure",      section: "Matériaux" },
+  { key: "laize_inter",          label: "Laize Inter.",       section: "Matériaux" },
   { key: "passementerie1",       label: "Pass. 1",            section: "Matériaux" },
   { key: "passementerie2",       label: "Pass. 2",            section: "Matériaux" },
 ];
@@ -375,9 +381,11 @@ export default function EtiquetteRideauxCard({ row, projectName, index, total, o
 
           {/* Dimensions */}
           <SectionTitle>Dimensions</SectionTitle>
-          {(show("nombre_les") || show("largeur_finie") || show("retour_gauche") || show("retour_droit")) && (
-            <Row cols={4}>
+          {(show("nombre_les") || show("reste_les") || show("a_plat") || show("largeur_finie") || show("retour_gauche") || show("retour_droit")) && (
+            <Row cols={6}>
               {show("nombre_les")    && <Cell label="Nb lés" value={v(row, "nombre_les")} />}
+              {show("reste_les")     && <Cell label="Reste Lés (cm)" value={v(row, "reste_les")} />}
+              {show("a_plat")        && <Cell label="À Plat" value={v(row, "a_plat")} />}
               {show("largeur_finie") && <Cell label="L. Finie" value={v(row, "largeur_finie")} />}
               {show("retour_gauche") && <Cell label="Retour G" value={v(row, "retour_gauche")} />}
               {show("retour_droit")  && <Cell label="Retour D" value={v(row, "retour_droit")} />}
@@ -416,18 +424,26 @@ export default function EtiquetteRideauxCard({ row, projectName, index, total, o
 
           {/* Matériaux */}
           <SectionTitle>Matériaux</SectionTitle>
-          {(show("tissu_deco1") || show("tissu_deco2") || show("doublure")) && (
-            <Row cols={3}>
-              {show("tissu_deco1") && <Cell label="Tissu 1" value={v(row, "tissu_deco1")} accent />}
-              {show("tissu_deco2") && <Cell label="Tissu 2" value={v(row, "tissu_deco2")} accent />}
-              {show("doublure")    && <Cell label="Doublure" value={v(row, "doublure")} accent />}
+          {(show("tissu_deco1") || show("laize_tissu1") || show("tissu_deco2") || show("laize_tissu2")) && (
+            <Row cols={4}>
+              {show("tissu_deco1")   && <Cell label="Tissu 1" value={v(row, "tissu_deco1")} accent />}
+              {show("laize_tissu1")  && <Cell label="Laize T1" value={v(row, "laize_tissu1")} />}
+              {show("tissu_deco2")   && <Cell label="Tissu 2" value={v(row, "tissu_deco2")} accent />}
+              {show("laize_tissu2")  && <Cell label="Laize T2" value={v(row, "laize_tissu2")} />}
             </Row>
           )}
-          {(show("inter_doublure") || show("passementerie1") || show("passementerie2")) && (
-            <Row cols={3} bg="#F9FAFB">
-              {show("inter_doublure")  && <Cell label="Interdoublure" value={v(row, "inter_doublure")} />}
-              {show("passementerie1")  && <Cell label="Pass. 1" value={[v(row, "passementerie1"), v(row, "application_passementerie1")].filter(x => x !== "—").join(" — ") || "—"} />}
-              {show("passementerie2")  && <Cell label="Pass. 2" value={[v(row, "passementerie2"), v(row, "application_passementerie2")].filter(x => x !== "—").join(" — ") || "—"} />}
+          {(show("doublure") || show("laize_doublure") || show("inter_doublure") || show("laize_inter")) && (
+            <Row cols={4} bg="#F9FAFB">
+              {show("doublure")       && <Cell label="Doublure" value={v(row, "doublure")} accent />}
+              {show("laize_doublure") && <Cell label="Laize Doubl." value={v(row, "laize_doublure")} />}
+              {show("inter_doublure") && <Cell label="Interdoublure" value={v(row, "inter_doublure")} />}
+              {show("laize_inter")    && <Cell label="Laize Inter." value={v(row, "laize_inter")} />}
+            </Row>
+          )}
+          {(show("passementerie1") || show("passementerie2")) && (
+            <Row cols={2}>
+              {show("passementerie1") && <Cell label="Pass. 1" value={[v(row, "passementerie1"), v(row, "application_passementerie1")].filter(x => x !== "—").join(" — ") || "—"} />}
+              {show("passementerie2") && <Cell label="Pass. 2" value={[v(row, "passementerie2"), v(row, "application_passementerie2")].filter(x => x !== "—").join(" — ") || "—"} />}
             </Row>
           )}
         </div>
