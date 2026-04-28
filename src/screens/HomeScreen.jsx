@@ -9,6 +9,81 @@ import { useViewportWidth } from "../lib/hooks/useViewportWidth";
 import { useAuth } from "../auth";
 import { can } from "../lib/authz";
 
+function pickGreeting(name) {
+  const n = name?.split(" ")[0] || "";
+  const h = new Date().getHours();
+  const day = new Date().getDay(); // 0=dim, 1=lun … 6=sam
+  const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+  // Weekend
+  if (day === 0 || day === 6) return pick([
+    `On bosse le weekend ${n} ?`,
+    `Même le weekend ${n} !`,
+    `Repos… ou pas ${n} ?`,
+    `Bonjour ${n},`,
+  ]);
+
+  // Lundi matin
+  if (day === 1 && h < 12) return pick([
+    `Bonne semaine ${n} !`,
+    `On attaque ${n} ?`,
+    `Lundi, c'est parti ${n} !`,
+    `Bonjour ${n},`,
+  ]);
+
+  // Vendredi après-midi
+  if (day === 5 && h >= 14) return pick([
+    `Bon vendredi ${n} !`,
+    `Dernière ligne droite ${n},`,
+    `On finit la semaine en beauté ${n} ?`,
+    `Bientôt le weekend ${n} !`,
+  ]);
+
+  // Matin (6h–12h)
+  if (h >= 6 && h < 12) return pick([
+    `Bonjour ${n},`,
+    `Bonne matinée ${n},`,
+    `Salut ${n},`,
+    `C'est parti ${n} !`,
+    `On commence ${n} ?`,
+    `Au boulot ${n} !`,
+    `Prêt pour la journée ${n} ?`,
+  ]);
+
+  // Pause déjeuner (12h–14h)
+  if (h >= 12 && h < 14) return pick([
+    `Bon appétit ${n} !`,
+    `Bonne pause ${n},`,
+    `Salut ${n},`,
+    `Bonjour ${n},`,
+  ]);
+
+  // Après-midi (14h–18h)
+  if (h >= 14 && h < 18) return pick([
+    `Comment ça avance ${n} ?`,
+    `On continue ${n} ?`,
+    `Toujours là ${n} ?`,
+    `Qu'est-ce qu'on fait ${n} ?`,
+    `Salut ${n},`,
+    `L'après-midi est à toi ${n},`,
+  ]);
+
+  // Soirée (18h–22h)
+  if (h >= 18 && h < 22) return pick([
+    `Bonsoir ${n},`,
+    `Encore là ${n} ?`,
+    `On finit fort ${n} ?`,
+    `Dernière ligne droite ${n},`,
+  ]);
+
+  // Nuit tardive
+  return pick([
+    `Bonsoir ${n},`,
+    `Encore debout ${n} ?`,
+    `C'est tard ${n}…`,
+  ]);
+}
+
 export default function HomeScreen({
   onOpenProdList,
   onOpenSettings,
@@ -41,7 +116,7 @@ export default function HomeScreen({
   // helper pour MASQUER totalement une tuile si non autorisé
   const hideTile = (ok, node) => (ok ? node : null);
 
-  const firstName = currentUser?.name?.split(" ")[0] || currentUser?.name || "";
+  const greetingText = React.useMemo(() => pickGreeting(currentUser?.name), [currentUser?.name]);
   const dateStr = new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
 
   return (
@@ -50,7 +125,7 @@ export default function HomeScreen({
       {/* Salutation */}
       <div style={{ marginBottom: 64, textAlign: "center" }}>
         <div style={{ fontFamily: "Roboto, system-ui, sans-serif", fontWeight: 300, fontSize: "clamp(30px, 3.2vw, 46px)", color: "#191919", letterSpacing: -0.5 }}>
-          Bonjour {firstName},
+          {greetingText}
         </div>
         <div style={{ fontFamily: "Roboto, system-ui, sans-serif", fontWeight: 300, fontStyle: "italic", fontSize: "clamp(14px, 1.3vw, 17px)", color: "#9B8E82", marginTop: 8 }}>
           {dateStr.charAt(0).toUpperCase() + dateStr.slice(1)}
