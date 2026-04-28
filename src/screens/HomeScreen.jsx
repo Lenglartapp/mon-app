@@ -16,46 +16,33 @@ function pickGreeting(name) {
   const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
   // Lundi matin
-  if (day === 1 && h < 12) return pick([
-    `Bonjour ${n},`,
-    `Bonne semaine ${n},`,
-    `Bonne matinée ${n},`,
-  ]);
-
-  // Vendredi après-midi
-  if (day === 5 && h >= 14) return pick([
-    `Bon vendredi ${n},`,
-    `Bonne fin de semaine ${n},`,
-    `Bonsoir ${n},`,
-  ]);
+  if (day === 1 && h < 12) return `Bonne semaine ${n},`;
 
   // Matin (6h–12h)
   if (h >= 6 && h < 12) return pick([
     `Bonjour ${n},`,
     `Bonne matinée ${n},`,
-    `Bonjour ${n}, belle journée devant vous.`,
+    `Nous sommes d'attaque ${n} !`,
   ]);
 
   // Midi (12h–14h)
   if (h >= 12 && h < 14) return pick([
     `Bonjour ${n},`,
-    `Bon après-midi ${n},`,
-    `Bonne continuation ${n},`,
+    `Comment allez-vous ${n} ?`,
   ]);
 
   // Après-midi (14h–18h)
   if (h >= 14 && h < 18) return pick([
-    `Bon après-midi ${n},`,
-    `Comment se passe la journée ${n} ?`,
-    `Bonne continuation ${n},`,
+    `Salut ${n},`,
+    `Comment allez-vous ${n} ?`,
     `Que faisons-nous ${n} ?`,
+    `Nous sommes d'attaque ${n} !`,
   ]);
 
   // Soirée et nuit
   return pick([
     `Bonsoir ${n},`,
-    `Bonne soirée ${n},`,
-    `Bonsoir ${n}, bonne continuation.`,
+    `Comment allez-vous ${n} ?`,
   ]);
 }
 
