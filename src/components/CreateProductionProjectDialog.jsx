@@ -3,73 +3,7 @@ import React from "react";
 import { importMinuteToProduction } from "../lib/import/importMinuteToProduction";
 import { createBlankProject } from "../lib/import/createBlankProject";
 import { S } from "../lib/constants/ui";
-
-// ── Autocomplétion adresse via Nominatim (OpenStreetMap) ──
-function AddressAutocomplete({ value, onChange }) {
-  const [query, setQuery] = React.useState(value || "");
-  const [suggestions, setSuggestions] = React.useState([]);
-  const [open, setOpen] = React.useState(false);
-  const timerRef = React.useRef(null);
-
-  const handleInput = (e) => {
-    const q = e.target.value;
-    setQuery(q);
-    onChange(""); // reset jusqu'à sélection
-    clearTimeout(timerRef.current);
-    if (q.length < 3) { setSuggestions([]); setOpen(false); return; }
-    timerRef.current = setTimeout(async () => {
-      try {
-        const res = await fetch(
-          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=6&addressdetails=0`,
-          { headers: { "Accept-Language": "fr" } }
-        );
-        const data = await res.json();
-        setSuggestions(data);
-        setOpen(true);
-      } catch { /* ignore réseau */ }
-    }, 350);
-  };
-
-  const pick = (item) => {
-    setQuery(item.display_name);
-    onChange(item.display_name);
-    setSuggestions([]);
-    setOpen(false);
-  };
-
-  return (
-    <div style={{ position: "relative" }}>
-      <input
-        style={S.input}
-        placeholder="Ex: 12 rue de la Paix, Nantes"
-        value={query}
-        onChange={handleInput}
-        onBlur={() => setTimeout(() => setOpen(false), 150)}
-        onFocus={() => suggestions.length > 0 && setOpen(true)}
-        autoComplete="off"
-      />
-      {open && suggestions.length > 0 && (
-        <div style={{
-          position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, zIndex: 1000,
-          background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8,
-          boxShadow: "0 4px 16px rgba(0,0,0,0.10)", maxHeight: 220, overflowY: "auto",
-        }}>
-          {suggestions.map((s) => (
-            <div
-              key={s.place_id}
-              onMouseDown={() => pick(s)}
-              style={{ padding: "8px 12px", cursor: "pointer", fontSize: 13, borderBottom: "1px solid #f1f5f9" }}
-              onMouseEnter={e => e.currentTarget.style.background = "#f8fafc"}
-              onMouseLeave={e => e.currentTarget.style.background = "#fff"}
-            >
-              {s.display_name}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
+import AddressAutocomplete from "./AddressAutocomplete";
 
 // Normalisation simple pour recherches accent-insensibles
 const norm = (s = "") =>
@@ -263,7 +197,12 @@ export default function CreateProductionProjectDialog({
           <label style={{ display: "block", marginBottom: 6, fontWeight: 600 }}>
             Emplacement du projet
           </label>
-          <AddressAutocomplete value={location} onChange={setLocation} />
+          <AddressAutocomplete
+            value={location}
+            onChange={setLocation}
+            placeholder="Ex: 12 rue de la Paix, Nantes"
+            style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid #d1d5db', boxSizing: 'border-box', background: '#fff' }}
+          />
           {location && (
             <div style={{ marginTop: 6, fontSize: 12, color: "#6B7280", padding: "4px 8px", background: "#f8fafc", borderRadius: 6, border: "1px solid #e2e8f0" }}>
               📍 {location}
