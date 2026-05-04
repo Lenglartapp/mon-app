@@ -1,61 +1,108 @@
 // src/components/AddressAutocomplete.jsx
-// Autocomplétion d'adresse via Nominatim (OpenStreetMap) — aucune clé API requise
-import React, { useRef, useState } from 'react';
+// Autocomplétion d'adresse via Google Places API (New)
+import React, { useEffect, useRef, useState } from 'react';
+import { X, MapPin } from 'lucide-react';
 
-const formatAddress = (a) => {
-    const parts = [];
-    if (a.house_number && a.road) parts.push(`${a.house_number} ${a.road}`);
-    else if (a.road) parts.push(a.road);
-    else if (a.amenity || a.tourism || a.building) parts.push(a.amenity || a.tourism || a.building);
-    const city = a.city || a.town || a.village || a.municipality;
-    if (a.postcode && city) parts.push(`${a.postcode} ${city}`);
-    else if (city) parts.push(city);
-    return parts.join(", ") || null;
-};
+const GKEY = import.meta.env.VITE_GOOGLE_PLACES_KEY;
+
+async function fetchPlaces(q) {
+    try {
+        const res = await fetch('https://places.googleapis.com/v1/places:autocomplete', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Goog-Api-Key': GKEY,
+            },
+            body: JSON.stringify({ input: q, languageCode: 'fr' }),
+        });
+        const data = await res.json();
+        return (data.suggestions ?? []).map(s => s.placePrediction?.text?.text).filter(Boolean);
+    } catch { return []; }
+}
 
 /**
- * Champ adresse avec autocomplétion Nominatim.
+ * Champ adresse avec autocomplétion Google Places (New).
+ * Après sélection dans la liste, l'adresse s'affiche sous forme de chip.
  * Props:
  *   value       – valeur courante (string)
- *   onChange    – (string) => void  appelé à chaque frappe ET à la sélection
+ *   onChange    – (string) => void
  *   placeholder – texte gris
- *   style       – style inline pour l'<input>
- *   inputStyle  – alias de style (accepté aussi)
+ *   style       – style inline pour le wrapper <div>
+ *   inputStyle  – style inline pour le <input> intérieur
  */
 export default function AddressAutocomplete({ value, onChange, placeholder = "Ex: 20 rue du Renard, Paris…", style, inputStyle }) {
     const [suggestions, setSuggestions] = useState([]);
     const [open, setOpen] = useState(false);
+    const [isConfirmed, setIsConfirmed] = useState(false);
+    const inputRef = useRef(null);
     const timerRef = useRef(null);
+
+    useEffect(() => {
+        if (!value) setIsConfirmed(false);
+    }, [value]);
 
     const fetchSuggestions = (q) => {
         clearTimeout(timerRef.current);
         if (q.length < 3) { setSuggestions([]); setOpen(false); return; }
         timerRef.current = setTimeout(async () => {
-            try {
-                const res = await fetch(
-                    `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=6&addressdetails=1`,
-                    { headers: { "Accept-Language": "fr" } }
-                );
-                const data = await res.json();
-                const opts = data
-                    .map(d => formatAddress(d.address))
-                    .filter(Boolean)
-                    .filter((v, i, arr) => arr.indexOf(v) === i);
-                setSuggestions(opts);
-                setOpen(opts.length > 0);
-            } catch { /* ignore réseau */ }
-        }, 350);
+            const results = await fetchPlaces(q);
+            setSuggestions(results);
+            setOpen(results.length > 0);
+        }, 250);
     };
 
     const pick = (addr) => {
         onChange(addr);
+        setIsConfirmed(true);
         setSuggestions([]);
         setOpen(false);
     };
 
+    const clear = () => {
+        onChange('');
+        setIsConfirmed(false);
+        setSuggestions([]);
+        setTimeout(() => inputRef.current?.focus(), 50);
+    };
+
+    // ── Vue chip (adresse confirmée) ──────────────────────────────────────────
+    if (isConfirmed && value) {
+        return (
+            <div style={{ position: 'relative', ...style }}>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, maxWidth: '100%' }}>
+                    <span style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 5,
+                        padding: '3px 8px 3px 7px', borderRadius: 999,
+                        border: '1px solid #D1D5DB', background: '#fff',
+                        fontSize: 12, color: '#374151', fontWeight: 500,
+                        maxWidth: '100%', overflow: 'hidden',
+                    }}>
+                        <MapPin size={11} color="#9CA3AF" style={{ flexShrink: 0 }} />
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {value}
+                        </span>
+                        <button
+                            type="button"
+                            onClick={clear}
+                            style={{
+                                border: 'none', background: 'none', cursor: 'pointer',
+                                padding: 0, display: 'flex', alignItems: 'center',
+                                color: '#9CA3AF', flexShrink: 0, marginLeft: 2,
+                            }}
+                        >
+                            <X size={12} />
+                        </button>
+                    </span>
+                </div>
+            </div>
+        );
+    }
+
+    // ── Vue input (saisie en cours) ───────────────────────────────────────────
     return (
         <div style={{ position: 'relative', ...style }}>
             <input
+                ref={inputRef}
                 value={value}
                 placeholder={placeholder}
                 onChange={e => { onChange(e.target.value); fetchSuggestions(e.target.value); }}

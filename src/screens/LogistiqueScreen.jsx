@@ -9,6 +9,7 @@ import { can } from '../lib/authz';
 const slugify = (str) =>
     (str || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 import LogistiqueAnalyseView from '../components/modules/Logistique/LogistiqueAnalyseView';
+import AddressAutocomplete from '../components/AddressAutocomplete';
 
 // ── Constantes ────────────────────────────────────────────────────────────────
 const STATUTS = ['Brouillon', 'En préparation', 'Expédiée'];
@@ -120,7 +121,12 @@ function CreateShipmentModal({ onClose, onCreate, projects }) {
                 </div>
                 <div>
                     <label style={labelStyle}>Destination</label>
-                    <input style={inputStyle} placeholder="Adresse ou nom du chantier" value={form.destination} onChange={e => set('destination', e.target.value)} />
+                    <AddressAutocomplete
+                        value={form.destination}
+                        onChange={v => set('destination', v)}
+                        placeholder="Adresse"
+                        style={inputStyle}
+                    />
                 </div>
                 {projects && projects.length > 0 && (
                     <div>
