@@ -28,7 +28,8 @@ import { MOBILIER_PROD_SCHEMA } from "../lib/schemas/production/mobilier";
 import { AUTRES_PROD_SCHEMA } from "../lib/schemas/autres";
 import { uid } from "../lib/utils/uid"; // Import uid
 
-import { Search, Filter, Layers3, Star, FlaskConical, Image as ImageIcon, Pin, Edit2, FileText } from "lucide-react";
+import { Search, Filter, Layers3, Star, FlaskConical, Image as ImageIcon, Pin, Edit2, FileText, BookOpen } from "lucide-react";
+import ProjectMaterialsPanel from "../components/ProjectMaterialsPanel";
 import AddressAutocomplete from "../components/AddressAutocomplete"; // Added FileText
 import { Dialog, DialogTitle, DialogContent, TextField, DialogActions, Button, Collapse, IconButton } from "@mui/material";
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -134,11 +135,19 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
   const [stockOpen, setStockOpen] = useState(false);
   const [showDocs, setShowDocs] = useState(false);
   const [deliveryOpen, setDeliveryOpen] = useState(false);
+  const [showMaterials, setShowMaterials] = useState(false);
   const deliveryRef = useRef(null);
 
   const handleUpdateDocs = (newDocs) => {
     if (onUpdateProject && project) {
       onUpdateProject(project.id, { documents: newDocs });
+    }
+  };
+
+  const projectMaterials = project?.materials || [];
+  const handleMaterialsChange = (newMaterials) => {
+    if (onUpdateProject && project) {
+      onUpdateProject(project.id, { materials: newMaterials });
     }
   };
 
@@ -770,6 +779,28 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', width: isMobile ? '100%' : 'auto' }}>
+            {/* Matériauthèque Button */}
+            <button
+              onClick={() => setShowMaterials(true)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                background: projectMaterials.length > 0 ? '#EDE9FE' : 'white',
+                border: `1px solid ${projectMaterials.length > 0 ? '#C4B5FD' : '#E5E7EB'}`,
+                borderRadius: 20,
+                padding: '7px 16px',
+                boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+                cursor: 'pointer',
+                fontSize: 13,
+                color: projectMaterials.length > 0 ? '#5B21B6' : '#374151',
+                fontWeight: 600,
+                outline: 'none',
+                flex: 'initial', justifyContent: 'center'
+              }}
+            >
+              <BookOpen size={16} />
+              Matériauthèque{projectMaterials.length > 0 ? ` (${projectMaterials.length})` : ''}
+            </button>
+
             {/* Documents Button - Visible Mobile & Desktop */}
             <button
               onClick={() => setShowDocs(true)}
@@ -1144,6 +1175,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                 initialVisibilityModel={getVisibilityModel('prise', 'rideaux', RIDEAUX_PROD_SCHEMA)}
                 onAdd={() => handleAddRow("Rideau")}
                 onDuplicateRow={handleDuplicateRow}
+                catalog={projectMaterials}
                 projectId={project?.id}
                 gridKey="pv_rideaux"
                 onRowClick={(id) => setOpenedRowId(id)}
@@ -1163,6 +1195,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                 initialVisibilityModel={getVisibilityModel('prise', 'stores', STORES_PROD_SCHEMA)}
                 onAdd={() => handleAddRow("Store Enrouleur")}
                 onDuplicateRow={handleDuplicateRow}
+                catalog={projectMaterials}
                 projectId={project?.id}
                 gridKey="pv_stores"
                 onRowClick={(id) => setOpenedRowId(id)}
@@ -1182,6 +1215,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                 initialVisibilityModel={getVisibilityModel('prise', 'stores_bateaux', STORES_BATEAUX_PROD_SCHEMA)}
                 onAdd={() => handleAddRow("Store Bateau")}
                 onDuplicateRow={handleDuplicateRow}
+                catalog={projectMaterials}
                 projectId={project?.id}
                 gridKey="pv_stores_bateaux"
                 onRowClick={(id) => setOpenedRowId(id)}
@@ -1201,6 +1235,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                 initialVisibilityModel={getVisibilityModel('prise', 'tenture_murale', TENTURE_MURALE_PROD_SCHEMA)}
                 onAdd={() => handleAddRow("Tenture Murale")}
                 onDuplicateRow={handleDuplicateRow}
+                catalog={projectMaterials}
                 projectId={project?.id}
                 gridKey="pv_tenture_murale"
                 onRowClick={(id) => setOpenedRowId(id)}
@@ -1221,6 +1256,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
             enableCellFormulas={true}
             initialVisibilityModel={getVisibilityModel('suivi', 'all', schema)}
             onDuplicateRow={handleDuplicateRow}
+            catalog={projectMaterials}
             projectId={project?.id}
             gridKey="suivi_main"
             onRowClick={(id) => setOpenedRowId(id)}
@@ -1247,7 +1283,8 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                   initialVisibilityModel={getVisibilityModel('bpf', 'rideaux', RIDEAUX_PROD_SCHEMA)}
                   onAdd={() => handleAddRow("Rideau")}
                   onDuplicateRow={handleDuplicateRow}
-                  projectId={project?.id}
+                  catalog={projectMaterials}
+                projectId={project?.id}
                   gridKey="bpf_rideaux"
                   onRowClick={(id) => setOpenedRowId(id)}
                   isMobile={isMobile}
@@ -1269,7 +1306,8 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                   enableCellFormulas={true}
                   onAdd={() => handleAddRow("Store Bateau")}
                   onDuplicateRow={handleDuplicateRow}
-                  projectId={project?.id}
+                  catalog={projectMaterials}
+                projectId={project?.id}
                   gridKey="bpf_stores_bateaux"
                   onRowClick={(id) => setOpenedRowId(id)}
                   isMobile={isMobile}
@@ -1292,7 +1330,8 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                   enableCellFormulas={true}
                   onAdd={() => handleAddRow("Coussins")}
                   onDuplicateRow={handleDuplicateRow}
-                  projectId={project?.id}
+                  catalog={projectMaterials}
+                projectId={project?.id}
                   gridKey="bpf_coussins"
                   onRowClick={(id) => setOpenedRowId(id)}
                   isMobile={isMobile}
@@ -1315,7 +1354,8 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                   enableCellFormulas={true}
                   onAdd={() => handleAddRow("Cache-Sommier")}
                   onDuplicateRow={handleDuplicateRow}
-                  projectId={project?.id}
+                  catalog={projectMaterials}
+                projectId={project?.id}
                   gridKey="bpf_cache_sommier"
                   onRowClick={(id) => setOpenedRowId(id)}
                   isMobile={isMobile}
@@ -1338,7 +1378,8 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                   enableCellFormulas={true}
                   onAdd={() => handleAddRow("Plaid")}
                   onDuplicateRow={handleDuplicateRow}
-                  projectId={project?.id}
+                  catalog={projectMaterials}
+                projectId={project?.id}
                   gridKey="bpf_plaid"
                   onRowClick={(id) => setOpenedRowId(id)}
                   isMobile={isMobile}
@@ -1361,7 +1402,8 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                   enableCellFormulas={true}
                   onAdd={() => handleAddRow("Tête de Lit")}
                   onDuplicateRow={handleDuplicateRow}
-                  projectId={project?.id}
+                  catalog={projectMaterials}
+                projectId={project?.id}
                   gridKey="bpf_mobilier"
                   onRowClick={(id) => setOpenedRowId(id)}
                   isMobile={isMobile}
@@ -1384,7 +1426,8 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                   enableCellFormulas={true}
                   onAdd={() => handleAddRow("Tenture Murale")}
                   onDuplicateRow={handleDuplicateRow}
-                  projectId={project?.id}
+                  catalog={projectMaterials}
+                projectId={project?.id}
                   gridKey="bpf_tenture_murale"
                   onRowClick={(id) => setOpenedRowId(id)}
                   isMobile={isMobile}
@@ -1406,7 +1449,8 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                   enableCellFormulas={true}
                   onAdd={() => handleAddRow("Autre")}
                   onDuplicateRow={handleDuplicateRow}
-                  projectId={project?.id}
+                  catalog={projectMaterials}
+                projectId={project?.id}
                   gridKey="bpf_autres"
                   onRowClick={(id) => setOpenedRowId(id)}
                   isMobile={isMobile}
@@ -1433,7 +1477,8 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                   initialVisibilityModel={getVisibilityModel('bpp', 'rideaux', RIDEAUX_PROD_SCHEMA)}
                   onAdd={() => handleAddRow("Rideau")}
                   onDuplicateRow={handleDuplicateRow}
-                  projectId={project?.id}
+                  catalog={projectMaterials}
+                projectId={project?.id}
                   gridKey="bpp_rideaux"
                   onRowClick={(id) => setOpenedRowId(id)}
                   isMobile={isMobile}
@@ -1456,7 +1501,8 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                   initialVisibilityModel={getVisibilityModel('bpp', 'stores', STORES_PROD_SCHEMA)}
                   onAdd={() => handleAddRow("Store Enrouleur")}
                   onDuplicateRow={handleDuplicateRow}
-                  projectId={project?.id}
+                  catalog={projectMaterials}
+                projectId={project?.id}
                   gridKey="bpp_stores"
                   onRowClick={(id) => setOpenedRowId(id)}
                   isMobile={isMobile}
@@ -1479,7 +1525,8 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                   initialVisibilityModel={getVisibilityModel('bpp', 'stores_bateaux', STORES_BATEAUX_PROD_SCHEMA)}
                   onAdd={() => handleAddRow("Store Bateau")}
                   onDuplicateRow={handleDuplicateRow}
-                  projectId={project?.id}
+                  catalog={projectMaterials}
+                projectId={project?.id}
                   gridKey="bpp_stores_bateaux"
                   onRowClick={(id) => setOpenedRowId(id)}
                   isMobile={isMobile}
@@ -1502,7 +1549,8 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                   initialVisibilityModel={getVisibilityModel('bpp', 'tenture_murale', TENTURE_MURALE_PROD_SCHEMA)}
                   onAdd={() => handleAddRow("Tenture Murale")}
                   onDuplicateRow={handleDuplicateRow}
-                  projectId={project?.id}
+                  catalog={projectMaterials}
+                projectId={project?.id}
                   gridKey="bpp_tenture_murale"
                   onRowClick={(id) => setOpenedRowId(id)}
                   isMobile={isMobile}
@@ -1525,7 +1573,8 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                   initialVisibilityModel={getVisibilityModel('bpp', 'mobilier', MOBILIER_PROD_SCHEMA)}
                   onAdd={() => handleAddRow("Tête de Lit")}
                   onDuplicateRow={handleDuplicateRow}
-                  projectId={project?.id}
+                  catalog={projectMaterials}
+                projectId={project?.id}
                   gridKey="bpp_mobilier"
                   onRowClick={(id) => setOpenedRowId(id)}
                   isMobile={isMobile}
@@ -1623,6 +1672,14 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
           onUpdate={handleUpdateDocs}
         />
       )}
+
+      {/* MATÉRIOTHÈQUE PROJET */}
+      <ProjectMaterialsPanel
+        open={showMaterials}
+        onClose={() => setShowMaterials(false)}
+        materials={projectMaterials}
+        onMaterialsChange={handleMaterialsChange}
+      />
 
     </div >
   );

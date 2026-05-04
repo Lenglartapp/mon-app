@@ -23,6 +23,7 @@ import { useAuth } from "../auth";
 import { can, role } from "../lib/authz";
 // 👇 IMPORT IMPORTANT
 import { uid } from "../lib/utils/uid";
+import { extractMaterialsFromLines } from "../lib/data/demo";
 
 const PROJECT_STATUS_OPTIONS = {
   TODO: { label: "À commencer", color: "#6B7280", bg: "#F3F4F6" },
@@ -626,6 +627,7 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
               project.intervention_type = intervention_type || null;
               project.expedition_type = expedition_type || null;
               project.rows = computeFormulas(rows || [], SCHEMA_64);
+              project.materials = extractMaterialsFromLines(rows || []);
 
               if (onCreate) {
                 try {
