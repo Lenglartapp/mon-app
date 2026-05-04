@@ -28,6 +28,43 @@ export const DEMO_MINUTES = [
   }
 ];
 
+// Fabric fields to scan across production rows (chiffrage lines carry these over via spread)
+const MATERIAL_FIELDS = [
+  { nameKey: 'tissu_deco1',       laizeKey: 'laize_tissu1',            rvKey: 'raccord_v_tissu1',            rhKey: 'raccord_h_tissu1',            category: 'Tissu' },
+  { nameKey: 'tissu_deco2',       laizeKey: 'laize_tissu2',            rvKey: 'raccord_v_tissu2',            rhKey: 'raccord_h_tissu2',            category: 'Tissu' },
+  { nameKey: 'doublure',          laizeKey: 'laize_doublure',          rvKey: null,                          rhKey: null,                          category: 'Tissu' },
+  { nameKey: 'interdoublure',     laizeKey: 'laize_interdoublure',     rvKey: null,                          rhKey: null,                          category: 'Tissu' },
+  { nameKey: 'toile_finition_1',  laizeKey: 'laize_toile_finition_1',  rvKey: 'raccord_v_toile_finition_1',  rhKey: 'raccord_h_toile_finition_1',  category: 'Tissu' },
+  { nameKey: 'passementerie1',    laizeKey: null,                      rvKey: null,                          rhKey: null,                          category: 'Passementerie' },
+  { nameKey: 'passementerie2',    laizeKey: null,                      rvKey: null,                          rhKey: null,                          category: 'Passementerie' },
+  { nameKey: 'modele_mecanisme',  laizeKey: null,                      rvKey: null,                          rhKey: null,                          category: 'Rail' },
+  { nameKey: 'mecanisme_store',   laizeKey: null,                      rvKey: null,                          rhKey: null,                          category: 'Store' },
+];
+
+export function extractMaterialsFromLines(rows) {
+  const seen = new Set();
+  const materials = [];
+  (rows || []).forEach(row => {
+    MATERIAL_FIELDS.forEach(({ nameKey, laizeKey, rvKey, rhKey, category }) => {
+      const name = row[nameKey];
+      if (!name || seen.has(name)) return;
+      seen.add(name);
+      const rv = rvKey ? Number(row[rvKey] || 0) : 0;
+      const rh = rhKey ? Number(row[rhKey] || 0) : 0;
+      materials.push({
+        id: uid(),
+        name,
+        category,
+        width: laizeKey ? Number(row[laizeKey] || 0) : 0,
+        motif: rv > 0 || rh > 0,
+        raccord_v: rv,
+        raccord_h: rh,
+      });
+    });
+  });
+  return materials;
+}
+
 export function mapMinuteLinesToProductionRows(lines) {
   return (lines || []).map((m) => {
     const isRideau = (m.produit || "").toLowerCase().includes("rideau") || (m.produit || "").toLowerCase().includes("voilage");
