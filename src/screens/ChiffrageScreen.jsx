@@ -12,8 +12,10 @@ import CatalogManager from "../components/CatalogManager";
 
 import { COLORS, S } from "../lib/constants/ui";
 import { CHIFFRAGE_SCHEMA } from "../lib/schemas/chiffrage";
+import { CHIFFRAGE_SCHEMA_DEP } from "../lib/schemas/deplacement";
 
 import { computeFormulas, preserveManualAfterCompute } from "../lib/formulas/compute";
+import { recomputeRow } from "../lib/formulas/recomputeRow";
 import { uid } from "../lib/utils/uid";
 
 import { useAuth } from "../auth";
@@ -148,7 +150,12 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onBack, onOpen
       taux_horaire: globalSettings.hourlyRate ?? globalSettings.taux_horaire
     } : {};
     const local = localSettings || {};
-    const effectiveSettings = { ...defaults, ...global, ...local };
+    // paramsMap has highest priority: c'est la colonne fiable qui persiste après navigation
+    const fromParams = {};
+    if (paramsMap.taux_horaire != null) fromParams.taux_horaire = Number(paramsMap.taux_horaire);
+    if (paramsMap.prix_nuit != null) fromParams.prix_nuit = Number(paramsMap.prix_nuit);
+    if (paramsMap.prix_repas != null) fromParams.prix_repas = Number(paramsMap.prix_repas);
+    const effectiveSettings = { ...defaults, ...global, ...local, ...fromParams };
 
     // Priorité : catalog per-minute (bibliothèque d'achat de la minute) > catalog global
     const globalCatalog = [...(catalog || []), ...(catalogRails || [])];
@@ -166,14 +173,21 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onBack, onOpen
 
   // Rows State
   const [rows, setRows] = React.useState(() => computeFormulas(minute?.lines || [], schema, formulaCtx));
-  const [depRows, setDepRows] = React.useState(minute?.deplacements || []);
+  const [depRows, setDepRows] = React.useState(() =>
+    (minute?.deplacements || []).map(r =>
+      recomputeRow({ ...r, produit: r.produit || "Déplacement" }, CHIFFRAGE_SCHEMA_DEP, formulaCtx)
+    )
+  );
   const [extraRows, setExtraRows] = React.useState(minute?.extraDepenses || []);
 
   // Sync Logic
   React.useEffect(() => {
     const computedMain = computeFormulas(minute?.lines || [], schema, formulaCtx);
     setRows((prev) => preserveManualAfterCompute(computedMain, prev || []));
-    setDepRows(minute?.deplacements || []);
+    const computedDeps = (minute?.deplacements || []).map(r =>
+      recomputeRow({ ...r, produit: r.produit || "Déplacement" }, CHIFFRAGE_SCHEMA_DEP, formulaCtx)
+    );
+    setDepRows(computedDeps);
     setExtraRows(minute?.extraDepenses || []);
   }, [minute?.id, minute?.lines, minute?.deplacements, minute?.extraDepenses, schema, formulaCtx]);
 
@@ -602,6 +616,9 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onBack, onOpen
               key={`${minute?.id}-${Object.keys(mods || {}).filter(k => mods[k]).sort().join('-')}`} // FORCE REMOUNT on module change
               minute={{
                 ...minute,
+                // Toujours passer localSettings (état local autoritatif) pour éviter
+                // la race condition où minute.settings est stale pendant un save Supabase
+                settings: localSettings,
                 lines: [
                   ...(rows || []),
                   ...(extraRows || []).map(r => ({ ...r, produit: r.produit || "Autre Dépense" })),
@@ -623,6 +640,10 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onBack, onOpen
                 setDepRows(newDeps);
                 if (m.modules) setLocalModules(m.modules);
 
+                // NE JAMAIS lire m.settings ici — les settings viennent UNIQUEMENT
+                // du callback onSettingsChange du CatalogManager (ci-dessous).
+                // Lire m.settings ici provoquerait un écrasement des settings
+                // par une closure stale de performSave dans MinuteEditor.
                 updateMinute({
                   lines: newLines,
                   extraDepenses: newExtras,
@@ -631,7 +652,6 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onBack, onOpen
                   notes: m.notes,
                   status: m.status,
                   catalog: m.catalog,
-                  settings: m.settings,
                   modules: m.modules,
                   matieres: m.matieres,
                 });
@@ -670,6 +690,22 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onBack, onOpen
         settings={formulaCtx.settings}
         onSettingsChange={(newSettings) => {
           setLocalSettings({ ...localSettings, ...newSettings }); // Optimistic UI
+
+          // Sauvegarder dans params (colonne fiable, toujours présente)
+          const paramKeys = ["taux_horaire", "prix_nuit", "prix_repas"];
+          const hasParamChange = paramKeys.some(k => newSettings[k] != null);
+          if (hasParamChange) {
+            const currentParams = minute?.params || [];
+            const updatedParams = [...currentParams];
+            paramKeys.forEach(key => {
+              if (newSettings[key] == null) return;
+              const idx = updatedParams.findIndex(p => p.name === key);
+              if (idx >= 0) updatedParams[idx] = { ...updatedParams[idx], value: Number(newSettings[key]) };
+              else updatedParams.push({ name: key, value: Number(newSettings[key]) });
+            });
+            updateMinute({ params: updatedParams });
+          }
+
           updateMinute({ settings: { ...formulaCtx.settings, ...newSettings } });
         }}
       />
