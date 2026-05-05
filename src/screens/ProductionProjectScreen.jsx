@@ -136,6 +136,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
   const [showDocs, setShowDocs] = useState(false);
   const [deliveryOpen, setDeliveryOpen] = useState(false);
   const [showMaterials, setShowMaterials] = useState(false);
+  const [showAllPrise, setShowAllPrise] = useState(false);
   const deliveryRef = useRef(null);
 
   const handleUpdateDocs = (newDocs) => {
@@ -357,6 +358,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
         prev || []
       )
     );
+    setShowAllPrise(false);
   }, [project?.id]);
 
   // Sync history/comments en temps réel quand un autre utilisateur sauvegarde.
@@ -1164,7 +1166,27 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
 
       {stage === "prise" && (
         <>
-          {rowsRideaux.length > 0 && (
+          {/* Toggle Voir tous les tableaux */}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+            <button
+              onClick={() => setShowAllPrise(v => !v)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                background: showAllPrise ? '#1D4ED8' : 'white',
+                color: showAllPrise ? 'white' : '#374151',
+                border: `1px solid ${showAllPrise ? '#1D4ED8' : '#E5E7EB'}`,
+                borderRadius: 20, padding: '6px 14px', fontSize: 13, fontWeight: 600,
+                fontFamily: 'inherit', cursor: 'pointer',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <Layers3 size={14} />
+              {showAllPrise ? 'Vue filtrée' : 'Voir tous les tableaux'}
+            </button>
+          </div>
+
+          {(showAllPrise || rowsRideaux.length > 0) && (
             <div style={cardStyle}>
               <div style={cardHeaderStyle}>Prise de Cote Rideaux / Voilages</div>
               <MinuteGrid
@@ -1184,7 +1206,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
             </div>
           )}
 
-          {rowsStores.length > 0 && (
+          {(showAllPrise || rowsStores.length > 0) && (
             <div style={cardStyle}>
               <div style={cardHeaderStyle}>Prise de Cote Stores Négoce</div>
               <MinuteGrid
@@ -1204,7 +1226,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
             </div>
           )}
 
-          {rowsStoresBateaux.length > 0 && (
+          {(showAllPrise || rowsStoresBateaux.length > 0) && (
             <div style={cardStyle}>
               <div style={cardHeaderStyle}>Prise de Cote Stores Bateaux / Velum</div>
               <MinuteGrid
@@ -1224,7 +1246,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
             </div>
           )}
 
-          {rowsTentureMurale.length > 0 && (
+          {(showAllPrise || rowsTentureMurale.length > 0) && (
             <div style={cardStyle}>
               <div style={cardHeaderStyle}>Prise de Cote Tenture Murale</div>
               <MinuteGrid
@@ -1243,6 +1265,87 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
               />
             </div>
           )}
+
+          {showAllPrise && (
+            <div style={cardStyle}>
+              <div style={cardHeaderStyle}>Prise de Cote Coussins</div>
+              <MinuteGrid
+                rows={rowsCoussins}
+                onRowsChange={(nr) => handleSubsetChange(nr, /coussin/i)}
+                schema={COUSSINS_PROD_SCHEMA}
+                enableCellFormulas={true}
+                initialVisibilityModel={getVisibilityModel('prise', 'coussins', COUSSINS_PROD_SCHEMA)}
+                onAdd={() => handleAddRow("Coussin")}
+                onDuplicateRow={handleDuplicateRow}
+                catalog={projectMaterials}
+                projectId={project?.id}
+                gridKey="pv_coussins"
+                onRowClick={(id) => setOpenedRowId(id)}
+                isMobile={isMobile}
+              />
+            </div>
+          )}
+
+          {showAllPrise && (
+            <div style={cardStyle}>
+              <div style={cardHeaderStyle}>Prise de Cote Plaids / Chemins de Lit</div>
+              <MinuteGrid
+                rows={rowsPlaid}
+                onRowsChange={(nr) => handleSubsetChange(nr, /plaid/i)}
+                schema={PLAID_PROD_SCHEMA}
+                enableCellFormulas={true}
+                initialVisibilityModel={getVisibilityModel('prise', 'plaid', PLAID_PROD_SCHEMA)}
+                onAdd={() => handleAddRow("Plaid")}
+                onDuplicateRow={handleDuplicateRow}
+                catalog={projectMaterials}
+                projectId={project?.id}
+                gridKey="pv_plaid"
+                onRowClick={(id) => setOpenedRowId(id)}
+                isMobile={isMobile}
+              />
+            </div>
+          )}
+
+          {showAllPrise && (
+            <div style={cardStyle}>
+              <div style={cardHeaderStyle}>Prise de Cote Mobilier / Tête de Lit</div>
+              <MinuteGrid
+                rows={rowsMobilier}
+                onRowsChange={(nr) => handleSubsetChange(nr, /tête de lit|mobilier/i)}
+                schema={MOBILIER_PROD_SCHEMA}
+                enableCellFormulas={true}
+                initialVisibilityModel={getVisibilityModel('prise', 'mobilier', MOBILIER_PROD_SCHEMA)}
+                onAdd={() => handleAddRow("Tête de Lit")}
+                onDuplicateRow={handleDuplicateRow}
+                catalog={projectMaterials}
+                projectId={project?.id}
+                gridKey="pv_mobilier"
+                onRowClick={(id) => setOpenedRowId(id)}
+                isMobile={isMobile}
+              />
+            </div>
+          )}
+
+          {showAllPrise && (
+            <div style={cardStyle}>
+              <div style={cardHeaderStyle}>Prise de Cote Cache-Sommier</div>
+              <MinuteGrid
+                rows={rowsCacheSommier}
+                onRowsChange={(nr) => handleSubsetChange(nr, /cache-sommier/i)}
+                schema={CACHE_SOMMIER_PROD_SCHEMA}
+                enableCellFormulas={true}
+                initialVisibilityModel={getVisibilityModel('prise', 'cache_sommier', CACHE_SOMMIER_PROD_SCHEMA)}
+                onAdd={() => handleAddRow("Cache-Sommier")}
+                onDuplicateRow={handleDuplicateRow}
+                catalog={projectMaterials}
+                projectId={project?.id}
+                gridKey="pv_cache_sommier"
+                onRowClick={(id) => setOpenedRowId(id)}
+                isMobile={isMobile}
+              />
+            </div>
+          )}
+
         </>
       )}
 
