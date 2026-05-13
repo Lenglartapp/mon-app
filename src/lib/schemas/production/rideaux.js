@@ -204,7 +204,7 @@ export const RIDEAUX_PROD_SCHEMA = [
     { key: "zone", label: "Zone", type: "text", width: 120, editable: true },
     { key: "piece", label: "Pièce", type: "text", width: 120, editable: true },
     { key: "produit", label: "Produit", type: "select", options: ["Rideau", "Voilage", "Store Bateau", "Autres"], width: 125, editable: true },
-    { key: "type_confection", label: "Type Conf.", type: "select", options: ["Pli Flamand", "Plis Creux", "Pli Plat", "Tripli", "Wave 80", "Wave 60", "Pli Couteau", "A Plat"], width: 150, editable: true },
+    { key: "type_confection", label: "Type Conf.", type: "select", options: ["Pli Flamand", "Pli Creux", "Pli Plat", "Tripli", "Wave 80", "Wave 60", "Pli Couteau", "Pli Rabattu Cousu", "A Plat"], width: 150, editable: true },
     { key: "hauteur_renfort_tete", label: "H/Renfort Têtes", type: "text", width: 155, editable: true },
     { key: "paire_ou_un_seul_pan", label: "Paire ou un Pan", type: "select", options: ["Paire", "Un seul pan", "Un seul pan (Rapatriement Droit)", "Un seul pan (Rapatriement Gauche)"], width: 260, editable: true },
     { key: "largeur_gorge", label: "Largeur Gorge (cm)", type: "number", width: 155, editable: true },

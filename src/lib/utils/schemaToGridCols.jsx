@@ -289,7 +289,6 @@ export function schemaToGridCols(
       }
 
       gridCol.cellEditor = 'agSelectCellEditor';
-      gridCol.suppressClickEdit = true;
 
       if (col.key === 'modele_mecanisme' || col.key === 'mecanisme_bis') {
         gridCol.cellEditorParams = (params) => {
@@ -308,7 +307,6 @@ export function schemaToGridCols(
     // Standard singleSelect / select
     if ((col.type === 'singleSelect' || col.type === 'select') && Array.isArray(col.valueOptions || col.options)) {
       gridCol.cellEditor = 'agSelectCellEditor';
-      gridCol.suppressClickEdit = true;
       if (col.optionsFn) {
         gridCol.cellEditorParams = (params) => ({ values: ['', ...col.optionsFn(params.data)] });
       } else {

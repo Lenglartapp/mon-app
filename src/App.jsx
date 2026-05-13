@@ -1,14 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef } from "react";
 import { BrowserRouter, useNavigate, useLocation } from "react-router-dom";
 
-// "villa martin" → "villa-martin", gère les accents français
-const slugify = (str) =>
-  (str || "")
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
+import { slugify } from "./lib/utils/slugify";
 
 // Extrait le préfixe court (8 hex chars) depuis un segment comme "800ec8af-big-one"
 const extractShortId = (segment) => {

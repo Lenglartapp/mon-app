@@ -2,9 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { COLORS, S } from "../lib/constants/ui.js";
 
-const slugify = (str) =>
-  (str || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-
+import { slugify } from "../lib/utils/slugify";
 import MinuteGrid from "../components/MinuteGrid.jsx"; // Replaces DataTable
 import DashboardTiles from "../components/DashboardTiles.jsx";
 import ProjectActivityFeed from "../components/ProjectActivityFeed.jsx";
@@ -91,18 +89,8 @@ const getVisibilityModel = (viewKey, tableKey, schema) => {
   return model;
 };
 
-const PROJECT_STATUS_OPTIONS = {
-  TODO: { label: "À commencer", color: "#6B7280", bg: "#F3F4F6" },
-  IN_PROGRESS: { label: "En cours", color: "#3B82F6", bg: "#EFF6FF" },
-  DONE: { label: "Terminé", color: "#10B981", bg: "#ECFDF5" },
-  SAV: { label: "SAV", color: "#F59E0B", bg: "#FFFBEB" },
-  ARCHIVED: { label: "Archivé", color: "#374151", bg: "#F9FAFB" }
-};
-
-
+import { PROJECT_STATUS_OPTIONS } from "../lib/constants/projectStatus";
 import { useViewportWidth } from "../lib/hooks/useViewportWidth";
-
-// ... existing code ...
 
 // 1. SIGNATURE MISE A JOUR
 export function ProductionProjectScreen({ project: propProject, projects, inventory, onBack, onUpdateProjectRows, onUpdateProject, highlightRowId, events = [] }) {
@@ -469,7 +457,6 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
       const newVal = newRowRaw[field.key];
       // Comparaison simple (attention aux types string/number)
       if (oldVal != newVal && (oldVal || newVal)) {
-        console.log("History Change Detected:", { field: field.label, oldVal, newVal, authorName });
         changes.push({
           date: now,
           author: authorName,
@@ -528,10 +515,17 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
         if (updatedMap.has(r.id)) {
           const newRaw = updatedMap.get(r.id);
           if (newRaw === r) return r; // Ligne inchangée — préserve la référence
+          // Garde-fou : si le produit de la ligne entrante ne correspond plus au filtre
+          // de la section (ex. Tab a vidé le champ via agSelectCellEditor), on le restaure.
+          const effectiveRegex = filterRegex || (filterPredicate ? null : null);
+          const produitCorrupted = effectiveRegex &&
+            !effectiveRegex.test(String(newRaw.produit || '')) &&
+            effectiveRegex.test(String(r.produit || ''));
+          const safeNewRaw = produitCorrupted ? { ...newRaw, produit: r.produit } : newRaw;
           // MinuteGrid a déjà appelé recomputeRow(section_schema) dans onCellValueChanged.
           // On appelle uniquement updateRowWithHistory pour l'audit, sans re-calculer les formules
           // (qui ont déjà été calculées avec le bon schema de section).
-          return updateRowWithHistory(r, newRaw, currentUser?.name);
+          return updateRowWithHistory(r, safeNewRaw, currentUser?.name);
         }
         return r;
       });
@@ -667,8 +661,6 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
     // Note: Test data seeding update is usually implicit, but could be forced if desired
     alert("Données de test ajoutées ! (3 lignes)");
   };
-
-  // ... existing code ...
 
   // Helper styles for Header inside Card
   const cardHeaderStyle = {
@@ -1404,7 +1396,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
             >
                 <MinuteGrid
                   rows={bpfStoresBateaux}
-                  onRowsChange={(nr) => handleSubsetChange(nr, /store (bateau|velum)/i)}
+                  onRowsChange={(nr) => handleSubsetChange(nr, /store (bateau|velum)/i, r => /store (bateau|velum)/i.test(String(r.produit || "")) && !isSousTraite(r))}
                   schema={STORES_BATEAUX_PROD_SCHEMA}
                   enableCellFormulas={true}
                   onAdd={() => handleAddRow("Store Bateau")}
@@ -1427,7 +1419,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
             >
                 <MinuteGrid
                   rows={bpfCoussins}
-                  onRowsChange={(nr) => handleSubsetChange(nr, /coussin/i)}
+                  onRowsChange={(nr) => handleSubsetChange(nr, /coussin/i, r => /coussin/i.test(String(r.produit || "")) && !isSousTraite(r))}
                   schema={COUSSINS_PROD_SCHEMA}
                   initialVisibilityModel={getVisibilityModel('bpf', 'coussins', COUSSINS_PROD_SCHEMA)}
                   enableCellFormulas={true}
@@ -1451,7 +1443,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
             >
                 <MinuteGrid
                   rows={bpfCacheSommier}
-                  onRowsChange={(nr) => handleSubsetChange(nr, /cache-sommier/i)}
+                  onRowsChange={(nr) => handleSubsetChange(nr, /cache-sommier/i, r => /cache-sommier/i.test(String(r.produit || "")) && !isSousTraite(r))}
                   schema={CACHE_SOMMIER_PROD_SCHEMA}
                   initialVisibilityModel={getVisibilityModel('bpf', 'cache_sommier', CACHE_SOMMIER_PROD_SCHEMA)}
                   enableCellFormulas={true}
@@ -1475,7 +1467,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
             >
                 <MinuteGrid
                   rows={bpfPlaid}
-                  onRowsChange={(nr) => handleSubsetChange(nr, /plaid/i)}
+                  onRowsChange={(nr) => handleSubsetChange(nr, /plaid/i, r => /plaid/i.test(String(r.produit || "")) && !isSousTraite(r))}
                   schema={PLAID_PROD_SCHEMA}
                   initialVisibilityModel={getVisibilityModel('bpf', 'plaid', PLAID_PROD_SCHEMA)}
                   enableCellFormulas={true}
@@ -1499,7 +1491,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
             >
                 <MinuteGrid
                   rows={bpfMobilier}
-                  onRowsChange={(nr) => handleSubsetChange(nr, /tête de lit|mobilier/i)}
+                  onRowsChange={(nr) => handleSubsetChange(nr, /tête de lit|mobilier/i, r => /tête de lit|mobilier/i.test(String(r.produit || "")) && !isSousTraite(r))}
                   schema={MOBILIER_PROD_SCHEMA}
                   initialVisibilityModel={getVisibilityModel('bpf', 'mobilier', MOBILIER_PROD_SCHEMA)}
                   enableCellFormulas={true}
@@ -1523,7 +1515,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
             >
                 <MinuteGrid
                   rows={bpfTentureMurale}
-                  onRowsChange={(nr) => handleSubsetChange(nr, /tenture murale/i)}
+                  onRowsChange={(nr) => handleSubsetChange(nr, /tenture murale/i, r => /tenture murale/i.test(String(r.produit || "")) && !isSousTraite(r))}
                   schema={TENTURE_MURALE_PROD_SCHEMA}
                   initialVisibilityModel={getVisibilityModel('bpf', 'tenture_murale', TENTURE_MURALE_PROD_SCHEMA)}
                   enableCellFormulas={true}

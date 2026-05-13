@@ -4,7 +4,7 @@ import Chip from '@mui/material/Chip';
 import Avatar from '@mui/material/Avatar';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
-import { Edit2, Plus, FileText, Trash2, ArrowUpDown, ArrowUp, ArrowDown, Archive, Upload, Filter } from 'lucide-react';
+import { Edit2, Plus, FileText, Trash2, ArrowUpDown, ArrowUp, ArrowDown, Archive, Upload, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
 
 import { SmartFilterBar } from "../components/ui/SmartFilterBar.jsx";
 import FilterPanel, { isConditionActive, evaluateCondition } from "../components/FilterPanel.jsx";
@@ -25,13 +25,7 @@ import { can, role } from "../lib/authz";
 import { uid } from "../lib/utils/uid";
 import { extractMaterialsFromLines } from "../lib/data/demo";
 
-const PROJECT_STATUS_OPTIONS = {
-  TODO: { label: "À commencer", color: "#6B7280", bg: "#F3F4F6" },
-  IN_PROGRESS: { label: "En cours", color: "#3B82F6", bg: "#EFF6FF" },
-  DONE: { label: "Terminé", color: "#10B981", bg: "#ECFDF5" },
-  SAV: { label: "SAV", color: "#F59E0B", bg: "#FFFBEB" },
-  ARCHIVED: { label: "Archivé", color: "#374151", bg: "#F9FAFB" }
-};
+import { PROJECT_STATUS_OPTIONS } from "../lib/constants/projectStatus";
 
 const PROJECT_FILTER_SCHEMA = [
   { key: 'name',    label: 'Nom du projet',      type: 'text' },
