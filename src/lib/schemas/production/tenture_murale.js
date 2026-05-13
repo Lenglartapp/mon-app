@@ -29,7 +29,9 @@ const BASE_TENTURE_MURALE_SCHEMA = [
     createCol('piece', 'Pièce', 120, 'text', autoCap),
 
     createCol('produit', 'Produit', 125, 'singleSelect', {
-        valueOptions: ['Tenture Murale']
+        valueOptions: ['Tenture Murale'],
+        editable: false,
+        readOnly: true,
     }),
 
     createCol('largeur', 'Largeur', 130, 'number'),

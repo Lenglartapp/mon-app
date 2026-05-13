@@ -29,7 +29,9 @@ const BASE_CACHE_SOMMIER_SCHEMA = [
     createCol('piece', 'Pièce', 120, 'text', autoCap),
 
     createCol('produit', 'Produit', 125, 'singleSelect', {
-        valueOptions: ['Cache-Sommier']
+        valueOptions: ['Cache-Sommier'],
+        editable: false,
+        readOnly: true,
     }),
 
     createCol('realise_par', 'Réalisé par', 130, 'singleSelect', {

@@ -31,7 +31,9 @@ const BASE_COUSSINS_SCHEMA = [
 
     // 1. Produit
     createCol('produit', 'Produit', 125, 'singleSelect', {
-        valueOptions: ['Coussins']
+        valueOptions: ['Coussins'],
+        editable: false,
+        readOnly: true,
     }),
 
     createCol('realise_par', 'Réalisé par', 130, 'singleSelect', {

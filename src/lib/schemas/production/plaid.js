@@ -29,7 +29,9 @@ const BASE_PLAID_SCHEMA = [
     createCol('piece', 'Pièce', 120, 'text', autoCap),
 
     createCol('produit', 'Produit', 125, 'singleSelect', {
-        valueOptions: ['Plaid']
+        valueOptions: ['Plaid'],
+        editable: false,
+        readOnly: true,
     }),
 
     createCol('realise_par', 'Réalisé par', 130, 'singleSelect', {

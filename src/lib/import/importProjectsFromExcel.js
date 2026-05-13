@@ -82,7 +82,7 @@ const PRODUCT_SHEETS = [
       c('zone',                        'Zone',                    'text',     16),
       c('piece',                       'Pièce',                   'text',     18),
       c('produit',                     'Produit',                 'select',   16, { options: ['Rideau', 'Voilage'] }),
-      c('type_confection',             'Type Conf.',              'select',   18, { options: ['Pli Flamand', 'Plis Creux', 'Pli Plat', 'Tripli', 'Wave 80', 'Wave 60', 'Pli Couteau', 'A Plat'] }),
+      c('type_confection',             'Type Conf.',              'select',   18, { options: ['Pli Flamand', 'Pli Creux', 'Pli Plat', 'Tripli', 'Wave 80', 'Wave 60', 'Pli Couteau', 'Pli Rabattu Cousu', 'A Plat'] }),
       c('hauteur_renfort_tete',        'H. Renfort Tête',         'text',     16),
       c('paire_ou_un_seul_pan',        'Paire ou Pan',            'select',   20, { options: ['Paire', 'Un seul pan', 'Un seul pan (Rapatriement Droit)', 'Un seul pan (Rapatriement Gauche)'] }),
       c('largeur_gorge',               'Larg. Gorge (cm)',        'number',   16),

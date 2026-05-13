@@ -29,7 +29,9 @@ const BASE_MOBILIER_SCHEMA = [
     createCol('piece', 'Pièce', 120, 'text', autoCap),
 
     createCol('produit', 'Produit', 125, 'singleSelect', {
-        valueOptions: ['Tête de Lit']
+        valueOptions: ['Tête de Lit'],
+        editable: false,
+        readOnly: true,
     }),
 
     createCol('realise_par', 'Réalisé par', 130, 'singleSelect', {

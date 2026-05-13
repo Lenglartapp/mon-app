@@ -12,7 +12,7 @@ export const RIDEAUX_SCHEMA = [
     // 5
     { key: "produit", label: "Produit", type: "select", options: ["Rideau", "Voilage"], width: 125 },
     // 6
-    { key: "type_confection", label: "Confection", type: "select", options: ["Pli Flamand", "Plis Creux", "Pli Plat", "Tripli", "Wave 80", "Wave 60", "Pli Couteau", "A Plat"], width: 150 },
+    { key: "type_confection", label: "Confection", type: "select", options: ["Pli Flamand", "Pli Creux", "Pli Plat", "Tripli", "Wave 80", "Wave 60", "Pli Couteau", "Pli Rabattu Cousu", "A Plat"], width: 150 },
     // 7
     { key: "paire_ou_un_seul_pan", label: "Paire ou un Pan", type: "select", options: ["Paire", "Un seul pan", "Un seul pan (Rapatriement Droit)", "Un seul pan (Rapatriement Gauche)"], width: 260 },
     // 8

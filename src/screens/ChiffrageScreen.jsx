@@ -1,8 +1,7 @@
 import React from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 
-const slugify = (str) =>
-  (str || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+import { slugify } from "../lib/utils/slugify";
 import MinuteEditor from "../components/MinuteEditor";
 import ShoppingListScreen from "../screens/ShoppingListScreen";
 import MoulinetteView from "../components/modules/Moulinette/MoulinetteView";
@@ -554,7 +553,6 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onBack, onOpen
               <option value="DRAFT">À faire</option>
               <option value="IN_PROGRESS">En cours</option>
               <option value="PENDING_APPROVAL">À valider</option>
-              <option value="REVISE">À reprendre</option>
               <option value="REVISE">À reprendre</option>
               <option value="VALIDATED">Validée</option>
               <option value="ORDERED">Commande</option>

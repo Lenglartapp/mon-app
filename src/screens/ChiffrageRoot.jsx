@@ -1,6 +1,6 @@
 // src/screens/ChiffrageRoot.jsx
 import React, { useState, useMemo, useEffect, useRef } from "react";
-import { Plus, Copy, Trash2, FileText, ArrowUpDown, ArrowUp, ArrowDown, Archive, Filter, ChevronDown, ChevronRight, GitBranch, SlidersHorizontal } from "lucide-react";
+import { Plus, Copy, Trash2, FileText, ArrowUpDown, ArrowUp, ArrowDown, Archive, Filter, ChevronDown, ChevronRight, ChevronLeft, GitBranch, SlidersHorizontal } from "lucide-react";
 import Chip from '@mui/material/Chip';
 import Avatar from '@mui/material/Avatar';
 import IconButton from '@mui/material/IconButton';
