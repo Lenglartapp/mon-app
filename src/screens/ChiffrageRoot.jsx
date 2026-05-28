@@ -274,8 +274,9 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
       owner: m.owner || currentUser?.name || "—",
       status: m.status || "DRAFT",
       modules: m.modules,
-      // KPIs
-      ca_ht: kpis.ca_total || 0,
+      // KPIs — priorité à la valeur précalculée stockée en BDD (ca_total),
+      // fallback sur le recalcul pour les anciennes minutes qui n'ont pas encore ce champ.
+      ca_ht: m.ca_total > 0 ? m.ca_total : (kpis.ca_total || 0),
       marge_eur: kpis.contribution || 0, // Contribution displayed as Marge EUR
       marge_pct: kpis.contribution_pct || 0, // Contribution % displayed as Marge %
       renta_hh: kpis.contribution_horaire || 0,

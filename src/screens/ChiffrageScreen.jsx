@@ -642,10 +642,17 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onBack, onOpen
                 // du callback onSettingsChange du CatalogManager (ci-dessous).
                 // Lire m.settings ici provoquerait un écrasement des settings
                 // par une closure stale de performSave dans MinuteEditor.
+
+                // CA précalculé : somme des prix_total déjà calculés par MinuteEditor.
+                // Stocké en BDD pour que la liste des chiffrages puisse l'afficher sans recalculer.
+                const cachedCaTotal = newLines.reduce((s, r) => s + toNum(r.prix_total), 0)
+                                    + newDeps.reduce((s, r) => s + toNum(r.prix_total), 0);
+
                 updateMinute({
                   lines: newLines,
                   extraDepenses: newExtras,
                   deplacements: newDeps,
+                  ca_total: cachedCaTotal,
                   name: m.name,
                   notes: m.notes,
                   status: m.status,
