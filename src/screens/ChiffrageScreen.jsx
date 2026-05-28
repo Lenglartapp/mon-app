@@ -21,6 +21,7 @@ import { useAuth } from "../auth";
 import { can } from "../lib/authz";
 import { useNotifications } from "../contexts/NotificationContext";
 import { useAppSettings, useCatalog, useCatalogRail } from "../hooks/useSupabase";
+import { calculateProfitability } from '../lib/financial/profitabilityCalculator';
 
 import MinuteHistoryDialog from "../components/MinuteHistoryDialog";
 import RecalibrationModal from "../components/RecalibrationModal";
@@ -643,16 +644,20 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onBack, onOpen
                 // Lire m.settings ici provoquerait un écrasement des settings
                 // par une closure stale de performSave dans MinuteEditor.
 
-                // CA précalculé : somme des prix_total déjà calculés par MinuteEditor.
-                // Stocké en BDD pour que la liste des chiffrages puisse l'afficher sans recalculer.
+                // KPIs précalculés — stockés en BDD pour un affichage instantané dans la liste.
                 const cachedCaTotal = newLines.reduce((s, r) => s + toNum(r.prix_total), 0)
                                     + newDeps.reduce((s, r) => s + toNum(r.prix_total), 0);
+
+                const { kpis } = calculateProfitability(newLines, newDeps, newExtras);
 
                 updateMinute({
                   lines: newLines,
                   extraDepenses: newExtras,
                   deplacements: newDeps,
-                  ca_total: cachedCaTotal,
+                  ca_total:  cachedCaTotal,
+                  marge_eur: kpis.contribution        || 0,
+                  marge_pct: kpis.contribution_pct    || 0,
+                  renta_hh:  kpis.contribution_horaire || 0,
                   name: m.name,
                   notes: m.notes,
                   status: m.status,

@@ -104,7 +104,7 @@ function AppShell() {
 
   // --- 1. CHARGEMENT DONNÉES (Supabase) ---
   const { projects, addProject, updateProject, deleteProject, refreshProjects } = useProjects();
-  const { minutes, addMinute, updateMinute, deleteMinute, loadMoreMinutes, hasMoreMinutes, loadingMinutes } = useMinutes();
+  const { minutes, addMinute, updateMinute, deleteMinute } = useMinutes();
   const { events: planningEvents, updateEvent, deleteEvent } = useEvents();
   const { inventory, movements, addMovement, bulkUpdateInventory } = useStocks();
 
@@ -390,7 +390,6 @@ function AppShell() {
 
       {screen === "chiffrageRoot" && (
         <ChiffrageRoot
-          minutes={cleanMinutes}
           onCreate={addMinute}
           onDelete={deleteMinute}
           onUpdate={updateMinute}
@@ -399,9 +398,6 @@ function AppShell() {
             const m = cleanMinutes.find(m => String(m.id) === String(id));
             navigate(`/chiffrage/${String(id).slice(0,8)}-${slugify(m?.name)}`);
           }}
-          loadMore={loadMoreMinutes}
-          hasMore={hasMoreMinutes}
-          loadingMore={loadingMinutes}
         />
       )}
 

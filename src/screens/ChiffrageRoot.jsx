@@ -15,7 +15,7 @@ import { SmartFilterBar } from "../components/ui/SmartFilterBar.jsx";
 import { DataGrid } from '@mui/x-data-grid';
 import { frFR } from '@mui/x-data-grid/locales';
 import { calculateProfitability } from '../lib/financial/profitabilityCalculator';
-import { useAppSettings, useCatalog } from "../hooks/useSupabase";
+import { useAppSettings, useCatalog, useMinutesQuery, fetchMinuteById } from "../hooks/useSupabase";
 
 // CONSTANTES & HELPERS
 const SEARCH_FIELDS = [
@@ -86,7 +86,7 @@ function stringToColor(string) {
   return color;
 }
 
-export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, onDelete, onUpdate, onBack, loadMore, hasMore, loadingMore }) {
+export default function ChiffrageRoot({ onCreate, onOpenMinute, onDelete, onUpdate, onBack }) {
   const { currentUser, users } = useAuth?.() || { currentUser: { name: "—" }, users: [] };
   const { settings: globalSettings } = useAppSettings();
   const { catalog } = useCatalog();
@@ -110,9 +110,10 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
 
   const handleStatusClose = () => setStatusMenu({ anchor: null, minuteId: null });
 
-  const handleStatusSelect = (status) => {
+  const handleStatusSelect = async (status) => {
     if (statusMenu.minuteId && onUpdate) {
-      onUpdate(statusMenu.minuteId, { status });
+      await onUpdate(statusMenu.minuteId, { status });
+      refresh();
     }
     handleStatusClose();
   };
@@ -124,9 +125,10 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
 
   const handleOwnerClose = () => setOwnerMenu({ anchor: null, minuteId: null });
 
-  const handleOwnerSelect = (ownerName) => {
+  const handleOwnerSelect = async (ownerName) => {
     if (ownerMenu.minuteId && onUpdate) {
-      onUpdate(ownerMenu.minuteId, { owner: ownerName });
+      await onUpdate(ownerMenu.minuteId, { owner: ownerName });
+      refresh();
     }
     handleOwnerClose();
   };
@@ -200,6 +202,57 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
   const [showArchived, setShowArchived] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState(new Set());
 
+  // Dérive les paramètres de la requête serveur depuis l'état UI des filtres.
+  const queryOptions = useMemo(() => {
+    const userName = currentUser?.name || null;
+    const isMyMinutes = activeFilters.some(f => f.id === 'my_minutes');
+
+    const textFilter = activeFilters.find(f => f.matchType === 'contains');
+    // Quand la recherche porte sur le champ "statut", on convertit le label FR en clés DB
+    let searchText = null;
+    let statusSearch = null;
+    if (textFilter) {
+      if (textFilter.field === 'status') {
+        statusSearch = Object.entries(STATUS_OPTIONS)
+          .filter(([k, v]) => v.label.toLowerCase().includes(textFilter.value.toLowerCase()) || k.toLowerCase().includes(textFilter.value.toLowerCase()))
+          .map(([k]) => k);
+      } else {
+        searchText = { field: textFilter.field, value: textFilter.value };
+      }
+    }
+
+    const ownerFilters = activeFilters
+      .filter(f => f.field === 'owner' && f.id !== 'my_minutes' && f.matchType !== 'contains' && f.matchType !== 'advanced')
+      .map(f => f.value);
+
+    const statusFilters = activeFilters
+      .filter(f => f.field === 'status' && f.matchType !== 'contains' && f.matchType !== 'advanced')
+      .map(f => f.value);
+
+    const conditions = activeFilters
+      .filter(f => f.matchType === 'advanced')
+      .map(f => ({ field: f.filterField, operator: f.operator, value: f.value, value2: f.value2 || '' }));
+
+    const sortFieldMap = {
+      ca_ht: 'ca_total', marge_pct: 'marge_pct', marge_eur: 'marge_eur',
+      renta_hh: 'renta_hh', updatedAt: 'updated_at', createdAt: 'created_at',
+    };
+
+    return {
+      myMinutesOwner: isMyMinutes ? userName : null,
+      searchText,
+      statusSearch: statusSearch?.length > 0 ? statusSearch : null,
+      ownerFilters,
+      statusFilters,
+      showArchived,
+      conditions,
+      sortField: sortFieldMap[sortConfig.key] || 'updated_at',
+      sortAscending: sortConfig.direction === 'asc',
+    };
+  }, [activeFilters, currentUser?.name, showArchived, sortConfig]);
+
+  const { results, loading: loadingQuery, hasMore, loadMore, refresh } = useMinutesQuery(queryOptions);
+
   const toggleGroup = (parentId) => {
     setExpandedGroups(prev => {
       const next = new Set(prev);
@@ -209,10 +262,12 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
   };
 
   const norm = (m) => {
-    // Les prix_total en BDD sont déjà calculés avec le bon schéma par MinuteEditor.
-    // On passe directement les lignes stockées à calculateProfitability sans recalculer.
-    const kpiData = calculateProfitability(m.lines || [], m.deplacements || [], m.extraDepenses || []);
-    const kpis = kpiData.kpis;
+    // Utilise les KPIs précalculés stockés en BDD quand disponibles.
+    // Fallback sur calculateProfitability pour les anciennes minutes non encore migrées.
+    const needsCalc = !m.marge_pct && !m.marge_eur && !m.renta_hh;
+    const kpis = needsCalc
+      ? calculateProfitability(m.lines || [], m.deplacements || [], m.extraDepenses || []).kpis
+      : {};
 
     return {
       id: m.id,
@@ -227,23 +282,18 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
       deplacements: m.deplacements || [],
       createdAt: m.createdAt || Date.now(),
       updatedAt: m.updatedAt || Date.now(),
-      owner: m.owner || currentUser?.name || "—",
+      owner: m.owner || "—",
       status: m.status || "DRAFT",
       modules: m.modules,
-      // KPIs — priorité à la valeur précalculée stockée en BDD (ca_total),
-      // fallback sur le recalcul pour les anciennes minutes qui n'ont pas encore ce champ.
-      ca_ht: m.ca_total > 0 ? m.ca_total : (kpis.ca_total || 0),
-      marge_eur: kpis.contribution || 0, // Contribution displayed as Marge EUR
-      marge_pct: kpis.contribution_pct || 0, // Contribution % displayed as Marge %
-      renta_hh: kpis.contribution_horaire || 0,
+      ca_ht:    m.ca_total  > 0 ? m.ca_total  : (kpis.ca_total            || 0),
+      marge_eur: m.marge_eur > 0 ? m.marge_eur : (kpis.contribution        || 0),
+      marge_pct: m.marge_pct > 0 ? m.marge_pct : (kpis.contribution_pct    || 0),
+      renta_hh:  m.renta_hh  > 0 ? m.renta_hh  : (kpis.contribution_horaire || 0),
     };
   };
 
-  const list = useMemo(() => {
-    // Recalculate only if we have settings (avoid double calc on mount if settings not loaded yet, or just calc)
-    // Actually safe to calc with defaults
-    return (minutes || []).map(norm).sort((a, b) => b.updatedAt - a.updatedAt);
-  }, [minutes]); // Dépend uniquement des minutes : plus de recalcul de formules
+  // Les résultats de useMinutesQuery sont déjà filtrés et triés côté serveur.
+  const displayList = useMemo(() => results.map(norm), [results]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const removeFilter = (id) => setActiveFilters(prev => prev.filter(f => f.id !== id));
   const addFilter = (filter) => setActiveFilters(prev => {
@@ -283,86 +333,6 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
     setShowAdvancedPanel(false);
   };
 
-  const filteredList = useMemo(() => {
-    let res = list;
-    if (activeFilters.some(f => f.id === 'my_minutes')) {
-      const userName = currentUser?.name || currentUser?.displayName || currentUser?.email || "";
-      if (userName) {
-        res = res.filter(m => {
-          const owner = (m.owner || "").toLowerCase();
-          const user = userName.toLowerCase();
-          return owner.includes(user) || user.includes(owner) || !m.owner;
-        });
-      }
-    }
-
-    // Field filters — OR within same field, AND across fields
-    // matchType 'contains' = substring (from search bar), else = exact match (from filter menus)
-    const fieldFilters = activeFilters.filter(f => f.field && f.id !== 'my_minutes' && f.matchType !== 'advanced');
-    if (fieldFilters.length > 0) {
-      const grouped = fieldFilters.reduce((acc, f) => {
-        if (!acc[f.field]) acc[f.field] = [];
-        acc[f.field].push(f);
-        return acc;
-      }, {});
-
-      Object.keys(grouped).forEach(field => {
-        res = res.filter(m => grouped[field].some(f => {
-          if (f.matchType === 'contains') {
-            if (f.field === 'all') {
-              return [m.name, m.client, m.owner, m.notes].some(x => String(x || '').toLowerCase().includes(f.value.toLowerCase()));
-            }
-            if (f.field === 'status') {
-              return (STATUS_OPTIONS[m.status]?.label || '').toLowerCase().includes(f.value.toLowerCase());
-            }
-            return String(m[f.field] || '').toLowerCase().includes(f.value.toLowerCase());
-          }
-          return String(m[field] || '') === String(f.value);
-        }));
-      });
-    }
-
-    // Conditions avancées (chips créés depuis le constructeur) — toutes AND
-    const advancedConds = activeFilters.filter(f => f.matchType === 'advanced');
-    if (advancedConds.length > 0) {
-      res = res.filter(m => advancedConds.every(f => {
-        const mVal = m[f.filterField];
-        const v1 = Number(f.value);
-        const v2 = Number(f.value2 || 0);
-        switch (f.operator) {
-          case 'gt':      return mVal > v1;
-          case 'gte':     return mVal >= v1;
-          case 'lt':      return mVal < v1;
-          case 'lte':     return mVal <= v1;
-          case 'eq':      return Math.abs(mVal - v1) < 0.5;
-          case 'between': return mVal >= Math.min(v1, v2) && mVal <= Math.max(v1, v2);
-          default:        return true;
-        }
-      }));
-    }
-
-    if (showArchived) {
-      // Show ONLY Archived (Lost/Completed)
-      res = res.filter(m => ['LOST', 'ORDER_COMPLETED'].includes(m.status));
-    } else {
-      // Show ONLY Active (Not Lost/Completed)
-      res = res.filter(m => !['LOST', 'ORDER_COMPLETED'].includes(m.status));
-    }
-
-    // Apply Sort
-    if (sortConfig.key) {
-      res = [...res].sort((a, b) => { // Copy to avoid mutating
-        const valA = a[sortConfig.key];
-        const valB = b[sortConfig.key];
-
-        if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
-        if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
-        return 0;
-      });
-    }
-
-    return res;
-  }, [list, activeFilters, currentUser, sortConfig, showArchived]);
 
   const handleCreateMinute = async () => {
     const { charge, projet, client, deliveryDate, note, status, modules } = newMin;
@@ -423,30 +393,36 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
     }
   };
 
-  const duplicate = (id) => {
-    const src = minutes.find(x => x.id === id);
+  const duplicate = async (id) => {
+    // Récupère les données complètes (avec les lignes) pour la duplication
+    const src = await fetchMinuteById(id);
     if (!src) return;
-    // Le parent est toujours la racine : si src est déjà une variante, on pointe vers son parent
     const rootParentId = src.parentId || src.id;
-    // Compter les variantes existantes pour nommer la copie
-    const siblingCount = minutes.filter(m => (m.parentId || m.id) === rootParentId && m.id !== rootParentId).length;
-    const newVersion = siblingCount + 2; // v2, v3, etc.
+    // Compter les variantes existantes depuis les résultats actuels
+    const siblingCount = results.filter(m => (m.parentId || m.id) === rootParentId && m.id !== rootParentId).length;
+    const newVersion = siblingCount + 2;
     const copy = {
       ...src,
       id: uid(),
-      name: src.name.replace(/ — v\d+.*$/, ''), // Retire un suffixe de version précédent
+      name: src.name.replace(/ — v\d+.*$/, ''),
       version: newVersion,
       parentId: rootParentId,
       createdAt: Date.now(),
       updatedAt: Date.now(),
       status: "DRAFT",
     };
-    if (onCreate) onCreate(copy);
+    if (onCreate) {
+      await onCreate(copy);
+      refresh();
+    }
   };
 
-  const removeOne = (id) => {
+  const removeOne = async (id) => {
     if (window.confirm("Voulez-vous vraiment supprimer ce chiffrage ? Cette action est irréversible.")) {
-      if (onDelete) onDelete(id);
+      if (onDelete) {
+        await onDelete(id);
+        refresh();
+      }
     }
   };
 
@@ -683,9 +659,9 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
             </thead>
             <tbody>
               {(() => {
-                // Séparation parents / enfants
-                const parents = filteredList.filter(m => !m.parentId);
-                const childrenMap = filteredList.reduce((acc, m) => {
+                // Séparation parents / enfants dans la page courante
+                const parents = displayList.filter(m => !m.parentId);
+                const childrenMap = displayList.reduce((acc, m) => {
                   if (m.parentId) {
                     if (!acc[m.parentId]) acc[m.parentId] = [];
                     acc[m.parentId].push(m);
@@ -693,9 +669,9 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
                   return acc;
                 }, {});
 
-                // Orphelins : variantes dont le parent n'est pas dans filteredList (ex: parent archivé)
+                // Orphelins : variantes dont le parent n'est pas dans la page courante
                 const visibleParentIds = new Set(parents.map(p => p.id));
-                const orphans = filteredList.filter(m => m.parentId && !visibleParentIds.has(m.parentId));
+                const orphans = displayList.filter(m => m.parentId && !visibleParentIds.has(m.parentId));
 
                 const renderRow = (m, isChild = false) => {
                   const statusInfo = STATUS_OPTIONS[m.status] || STATUS_OPTIONS.DRAFT;
@@ -814,6 +790,16 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
 
                 const rows = [...parents.map(p => renderRow(p, false)), ...orphans.map(o => renderRow(o, true))];
 
+                if (loadingQuery && rows.length === 0) {
+                  return (
+                    <tr>
+                      <td colSpan={showKPIs ? 10 : 7} style={{ padding: 40, textAlign: 'center', color: '#9CA3AF' }}>
+                        Chargement…
+                      </td>
+                    </tr>
+                  );
+                }
+
                 return rows.length > 0 ? rows : (
                   <tr>
                     <td colSpan={showKPIs ? 10 : 7} style={{ padding: 40, textAlign: 'center', color: '#9CA3AF' }}>
@@ -827,27 +813,27 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
           </table>
         </div>
 
-        {/* Bouton Charger plus */}
+        {/* Charger plus — utilise les mêmes filtres serveur que la page courante */}
         {hasMore && (
           <div style={{ display: 'flex', justifyContent: 'center', padding: '24px 0' }}>
             <button
               onClick={loadMore}
-              disabled={loadingMore}
+              disabled={loadingQuery}
               style={{
-                background: loadingMore ? '#f3f4f6' : 'white',
+                background: loadingQuery ? '#f3f4f6' : 'white',
                 border: '1px solid #e5e7eb',
                 borderRadius: 8,
                 padding: '10px 24px',
-                cursor: loadingMore ? 'default' : 'pointer',
+                cursor: loadingQuery ? 'default' : 'pointer',
                 fontWeight: 600,
                 fontSize: 14,
-                color: loadingMore ? '#9ca3af' : '#374151',
+                color: loadingQuery ? '#9ca3af' : '#374151',
                 display: 'flex',
                 alignItems: 'center',
                 gap: 8,
               }}
             >
-              {loadingMore ? 'Chargement…' : 'Charger plus'}
+              {loadingQuery ? 'Chargement…' : 'Charger plus'}
             </button>
           </div>
         )}

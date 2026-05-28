@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { db } from '../lib/offlineDb';
 import { queueMutation } from '../lib/syncQueue';
@@ -126,7 +126,7 @@ export const useProjects = () => {
 };
 
 // --- MINUTES (CHIFFRAGE) ---
-const MINUTES_PAGE_SIZE = 30;
+const QUERY_PAGE_SIZE = 30;
 
 const formatMinutes = (data) => data.map(m => ({
     ...m,
@@ -137,32 +137,129 @@ const formatMinutes = (data) => data.map(m => ({
     updatedAt: m.updated_at ? new Date(m.updated_at).getTime() : Date.now(),
 }));
 
+// Fetch a single minute with full data (used for duplication, detail pages, etc.)
+export const fetchMinuteById = async (id) => {
+    const { data, error } = await supabase.from('minutes').select('*').eq('id', id).single();
+    if (error || !data) return null;
+    return formatMinutes([data])[0];
+};
+
+// Paginated, server-side filtered query hook — used by ChiffrageRoot list view.
+export const useMinutesQuery = (queryOptions) => {
+    const [results, setResults] = useState([]);
+    const [hasMore, setHasMore] = useState(false);
+    const [loading, setLoading] = useState(false);
+
+    const stateRef = useRef({ offset: 0, fetching: false });
+    const optsRef = useRef(queryOptions);
+    optsRef.current = queryOptions;
+
+    const doFetch = useCallback(async (reset) => {
+        if (stateRef.current.fetching && !reset) return;
+        stateRef.current.fetching = true;
+        setLoading(true);
+
+        const from = reset ? 0 : stateRef.current.offset;
+        const to = from + QUERY_PAGE_SIZE - 1;
+        const opts = optsRef.current;
+
+        let q = supabase.from('minutes').select('*', { count: 'exact' });
+
+        // "Mes chiffrages" — ilike sur le nom du CA, ou propriétaire absent
+        if (opts.myMinutesOwner) {
+            q = q.or(`owner.ilike.%${opts.myMinutesOwner}%,owner.is.null`);
+        }
+
+        // Filtre par CA(s) spécifique(s) (depuis le menu de filtre)
+        if (opts.ownerFilters?.length > 0) {
+            q = q.in('owner', opts.ownerFilters);
+        }
+
+        // Recherche textuelle
+        if (opts.searchText?.value) {
+            const v = opts.searchText.value;
+            const field = opts.searchText.field;
+            if (field === 'all') {
+                q = q.or(`name.ilike.%${v}%,client.ilike.%${v}%`);
+            } else if (field === 'name' || field === 'client' || field === 'owner') {
+                q = q.ilike(field, `%${v}%`);
+            }
+        }
+
+        // Recherche dans les statuts (labels français → clés DB)
+        if (opts.statusSearch?.length > 0) {
+            q = q.in('status', opts.statusSearch);
+        }
+
+        // Toggle archives / statuts sélectionnés
+        if (opts.showArchived) {
+            q = q.in('status', ['LOST', 'ORDER_COMPLETED']);
+        } else if (opts.statusFilters?.length > 0) {
+            q = q.in('status', opts.statusFilters);
+        } else {
+            q = q.not('status', 'in', '(LOST,ORDER_COMPLETED)');
+        }
+
+        // Conditions avancées numériques (ca_ht → ca_total, marge_pct, renta_hh)
+        for (const cond of (opts.conditions || [])) {
+            const col = cond.field === 'ca_ht' ? 'ca_total' : cond.field;
+            const v1 = Number(cond.value);
+            const v2 = Number(cond.value2 || 0);
+            switch (cond.operator) {
+                case 'gt':      q = q.gt(col, v1); break;
+                case 'gte':     q = q.gte(col, v1); break;
+                case 'lt':      q = q.lt(col, v1); break;
+                case 'lte':     q = q.lte(col, v1); break;
+                case 'eq':      q = q.eq(col, v1); break;
+                case 'between': q = q.gte(col, Math.min(v1, v2)).lte(col, Math.max(v1, v2)); break;
+                default: break;
+            }
+        }
+
+        q = q.order(opts.sortField || 'updated_at', { ascending: !!opts.sortAscending });
+        q = q.range(from, to);
+
+        const { data, error, count } = await q;
+        if (!error && data) {
+            const formatted = formatMinutes(data);
+            if (reset) {
+                setResults(formatted);
+                stateRef.current.offset = data.length;
+            } else {
+                setResults(prev => [...prev, ...formatted]);
+                stateRef.current.offset += data.length;
+            }
+            setHasMore(stateRef.current.offset < (count || 0));
+        }
+        stateRef.current.fetching = false;
+        setLoading(false);
+    }, []); // stable — lit depuis les refs
+
+    useEffect(() => {
+        stateRef.current.offset = 0;
+        doFetch(true);
+    }, [queryOptions, doFetch]); // re-fetch dès que les options changent
+
+    const loadMore = () => doFetch(false);
+    const refresh = () => { stateRef.current.offset = 0; doFetch(true); };
+
+    return { results, loading, hasMore, loadMore, refresh };
+};
+
 export const useMinutes = () => {
     const [minutes, setMinutes] = useState([]);
-    const [hasMoreMinutes, setHasMoreMinutes] = useState(true);
-    const [loadingMinutes, setLoadingMinutes] = useState(false);
-    const offsetRef = useRef(0);
 
-    const fetchMinutes = async (reset = false) => {
-        if (loadingMinutes) return;
-        setLoadingMinutes(true);
-        const from = reset ? 0 : offsetRef.current;
-        const to = from + MINUTES_PAGE_SIZE - 1;
+    const fetchMinutes = async () => {
         const { data, error } = await supabase
             .from('minutes')
             .select('*')
-            .order('updated_at', { ascending: false })
-            .range(from, to);
+            .order('updated_at', { ascending: false });
         if (!error && data) {
-            const formatted = formatMinutes(data);
-            setMinutes(prev => reset ? formatted : [...prev, ...formatted]);
-            offsetRef.current = reset ? data.length : offsetRef.current + data.length;
-            setHasMoreMinutes(data.length === MINUTES_PAGE_SIZE);
+            setMinutes(formatMinutes(data));
         }
-        setLoadingMinutes(false);
     };
 
-    useEffect(() => { fetchMinutes(true); }, []);
+    useEffect(() => { fetchMinutes(); }, []);
 
     const updateMinute = async (id, updates) => {
         const dbUpdates = { ...updates };
@@ -262,10 +359,7 @@ export const useMinutes = () => {
         addMinute,
         updateMinute,
         deleteMinute,
-        refreshMinutes: () => fetchMinutes(true),
-        loadMoreMinutes: () => fetchMinutes(false),
-        hasMoreMinutes,
-        loadingMinutes,
+        refreshMinutes: fetchMinutes,
     };
 };
 
