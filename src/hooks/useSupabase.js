@@ -126,27 +126,43 @@ export const useProjects = () => {
 };
 
 // --- MINUTES (CHIFFRAGE) ---
+const MINUTES_PAGE_SIZE = 30;
+
+const formatMinutes = (data) => data.map(m => ({
+    ...m,
+    tables: m.lines || [],
+    budgetSnapshot: m.budget_snapshot || { prepa: 0, conf: 0, pose: 0 },
+    parentId: m.parent_id || null,
+    createdAt: m.created_at ? new Date(m.created_at).getTime() : Date.now(),
+    updatedAt: m.updated_at ? new Date(m.updated_at).getTime() : Date.now(),
+}));
+
 export const useMinutes = () => {
     const [minutes, setMinutes] = useState([]);
+    const [hasMoreMinutes, setHasMoreMinutes] = useState(true);
+    const [loadingMinutes, setLoadingMinutes] = useState(false);
+    const offsetRef = useRef(0);
 
-    const fetchMinutes = async () => {
-        const { data, error } = await supabase.from('minutes').select('*').order('updated_at', { ascending: false });
-        if (!error) {
-            // Mapping : DB 'lines' -> Frontend 'tables'
-            // Mapping : DB snake_case -> Frontend camelCase for dates
-            const formatted = data.map(m => ({
-                ...m,
-                tables: m.lines || [],
-                budgetSnapshot: m.budget_snapshot || { prepa: 0, conf: 0, pose: 0 },
-                parentId: m.parent_id || null,
-                createdAt: m.created_at ? new Date(m.created_at).getTime() : Date.now(),
-                updatedAt: m.updated_at ? new Date(m.updated_at).getTime() : Date.now(),
-            }));
-            setMinutes(formatted);
+    const fetchMinutes = async (reset = false) => {
+        if (loadingMinutes) return;
+        setLoadingMinutes(true);
+        const from = reset ? 0 : offsetRef.current;
+        const to = from + MINUTES_PAGE_SIZE - 1;
+        const { data, error } = await supabase
+            .from('minutes')
+            .select('*')
+            .order('updated_at', { ascending: false })
+            .range(from, to);
+        if (!error && data) {
+            const formatted = formatMinutes(data);
+            setMinutes(prev => reset ? formatted : [...prev, ...formatted]);
+            offsetRef.current = reset ? data.length : offsetRef.current + data.length;
+            setHasMoreMinutes(data.length === MINUTES_PAGE_SIZE);
         }
+        setLoadingMinutes(false);
     };
 
-    useEffect(() => { fetchMinutes(); }, []);
+    useEffect(() => { fetchMinutes(true); }, []);
 
     const updateMinute = async (id, updates) => {
         const dbUpdates = { ...updates };
@@ -241,7 +257,16 @@ export const useMinutes = () => {
         }
     };
 
-    return { minutes, addMinute, updateMinute, deleteMinute, refreshMinutes: fetchMinutes };
+    return {
+        minutes,
+        addMinute,
+        updateMinute,
+        deleteMinute,
+        refreshMinutes: () => fetchMinutes(true),
+        loadMoreMinutes: () => fetchMinutes(false),
+        hasMoreMinutes,
+        loadingMinutes,
+    };
 };
 
 // --- CATALOG (BIBLIOTHEQUE) ---

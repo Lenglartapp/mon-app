@@ -86,7 +86,7 @@ function stringToColor(string) {
   return color;
 }
 
-export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, onDelete, onUpdate, onBack }) {
+export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, onDelete, onUpdate, onBack, loadMore, hasMore, loadingMore }) {
   const { currentUser, users } = useAuth?.() || { currentUser: { name: "—" }, users: [] };
   const { settings: globalSettings } = useAppSettings();
   const { catalog } = useCatalog();
@@ -826,6 +826,31 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
             </tbody>
           </table>
         </div>
+
+        {/* Bouton Charger plus */}
+        {hasMore && (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '24px 0' }}>
+            <button
+              onClick={loadMore}
+              disabled={loadingMore}
+              style={{
+                background: loadingMore ? '#f3f4f6' : 'white',
+                border: '1px solid #e5e7eb',
+                borderRadius: 8,
+                padding: '10px 24px',
+                cursor: loadingMore ? 'default' : 'pointer',
+                fontWeight: 600,
+                fontSize: 14,
+                color: loadingMore ? '#9ca3af' : '#374151',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+              }}
+            >
+              {loadingMore ? 'Chargement…' : 'Charger plus'}
+            </button>
+          </div>
+        )}
       </div>
       {
         newMinOpen && (
