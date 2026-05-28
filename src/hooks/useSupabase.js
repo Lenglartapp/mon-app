@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { db } from '../lib/offlineDb';
 import { queueMutation } from '../lib/syncQueue';
