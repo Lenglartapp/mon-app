@@ -216,13 +216,30 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
     // UTILISATION DE LOCAL_LINES À LA PLACE DE MINUTE.LINES
     const rawSource = localLines || [];
 
+    // Produit par défaut pour les lignes orphelines (sans produit),
+    // basé sur le premier module actif dans l'ordre naturel.
+    const m = minute?.modules;
+    const orphanProduit =
+      (!m || m.rideau !== false) ? "Rideau" :
+      m.store ? "Store Enrouleur" :
+      m.store_bateau ? "Store Bateau" :
+      m.coussins ? "Coussins" :
+      m.cache_sommier ? "Cache-Sommier" :
+      m.plaid ? "Plaid" :
+      m.tenture_murale ? "Tenture Murale" :
+      m.mobilier ? "Tête de Lit" : "Rideau";
+
     // 2. Identify potential schema targets AND deduplicate IDs
     const seenIds = new Set();
 
     return rawSource.map(row => {
+      // Auto-fix des lignes sans produit : on leur assigne le produit du premier module actif.
+      // Elles apparaissent dans le bon tableau et reçoivent un produit définitif au prochain save.
+      const safeRow = row.produit ? row : { ...row, produit: orphanProduit };
+
       // Determine schema for recompute
       let targetSchema = schema;
-      const p = String(row.produit || "").toLowerCase();
+      const p = String(safeRow.produit || "").toLowerCase();
       if (p === 'autre dépense') targetSchema = EXTRA_DEPENSES_SCHEMA;
       else if (p === 'déplacement') targetSchema = CHIFFRAGE_SCHEMA_DEP;
       else if (/store|canishade/i.test(p)) targetSchema = STORES_CLASSIQUES_SCHEMA;
@@ -235,16 +252,16 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
       // else: produit inconnu → on laisse le schéma de base (schema prop)
 
       // Ensure valid ID & Deduplicate
-      let safeId = row.id;
+      let safeId = safeRow.id;
       if (!safeId || seenIds.has(safeId)) {
         safeId = uid(); // Regenerate if missing or duplicate
       }
       seenIds.add(safeId);
 
-      const uniqueRow = { ...row, id: safeId };
+      const uniqueRow = { ...safeRow, id: safeId };
       return recomputeRow(uniqueRow, targetSchema, extendedCtx);
     });
-  }, [localLines, schema, extendedCtx]); // Depend on localLines
+  }, [localLines, schema, extendedCtx, minute?.modules]); // Depend on localLines
   rowsRef.current = rows;
 
 

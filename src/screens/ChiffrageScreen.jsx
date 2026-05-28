@@ -219,7 +219,7 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onBack, onOpen
       else if (/plaid|chemin de lit/i.test(prod)) caPlaid += total;
       else if (/tenture/i.test(prod)) caTenture += total;
       else if (/t[êe]te|mobilier/i.test(prod)) caMobilier += total;
-      else if (prod.includes("rideau") || prod.includes("voilage")) caRideaux += total;
+      else if (prod.includes("rideau") || prod.includes("voilage") || !prod) caRideaux += total;
       else caDivers += total;
     }
 
