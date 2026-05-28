@@ -16,8 +16,16 @@ import { DataGrid } from '@mui/x-data-grid';
 import { frFR } from '@mui/x-data-grid/locales';
 import { calculateProfitability } from '../lib/financial/profitabilityCalculator';
 import { useAppSettings, useCatalog } from "../hooks/useSupabase";
-import { computeFormulas } from "../lib/formulas/compute";
+import { recomputeRow } from "../lib/formulas/recomputeRow";
 import { CHIFFRAGE_SCHEMA } from "../lib/schemas/chiffrage";
+import { RIDEAUX_SCHEMA } from "../lib/schemas/chiffrage/rideaux";
+import { STORES_CLASSIQUES_SCHEMA } from "../lib/schemas/chiffrage/stores_classiques";
+import { STORES_BATEAUX_SCHEMA } from "../lib/schemas/chiffrage/stores_bateaux";
+import { COUSSINS_SCHEMA } from "../lib/schemas/chiffrage/coussins";
+import { CACHE_SOMMIER_SCHEMA } from "../lib/schemas/chiffrage/cache_sommier";
+import { PLAID_SCHEMA } from "../lib/schemas/chiffrage/plaid";
+import { TENTURE_MURALE_SCHEMA } from "../lib/schemas/chiffrage/tenture_murale";
+import { MOBILIER_SCHEMA } from "../lib/schemas/chiffrage/mobilier";
 
 // CONSTANTES & HELPERS
 const SEARCH_FIELDS = [
@@ -231,8 +239,20 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
       catalog: catalog || []
     };
 
-    // Compute Rows
-    const computedRows = computeFormulas(m.lines || [], CHIFFRAGE_SCHEMA, formulaCtx);
+    // Compute Rows — même sélection de schéma par produit que ChiffrageScreen/MinuteEditor
+    const computedRows = (m.lines || []).map(row => {
+      const p = String(row.produit || "").toLowerCase();
+      let targetSchema = CHIFFRAGE_SCHEMA;
+      if (/bateau|velum|vélum/i.test(p)) targetSchema = STORES_BATEAUX_SCHEMA;
+      else if (/store|canishade/i.test(p)) targetSchema = STORES_CLASSIQUES_SCHEMA;
+      else if (/coussin/i.test(p)) targetSchema = COUSSINS_SCHEMA;
+      else if (/cache-sommier/i.test(p)) targetSchema = CACHE_SOMMIER_SCHEMA;
+      else if (/plaid|chemin de lit/i.test(p)) targetSchema = PLAID_SCHEMA;
+      else if (/tenture/i.test(p)) targetSchema = TENTURE_MURALE_SCHEMA;
+      else if (/t[êe]te|mobilier/i.test(p)) targetSchema = MOBILIER_SCHEMA;
+      else if (/rideau|voilage/i.test(p) || !p) targetSchema = RIDEAUX_SCHEMA;
+      return recomputeRow(row, targetSchema, formulaCtx);
+    });
 
     // 2. Calculate KPIs using computed rows
     const kpiData = calculateProfitability(computedRows || [], m.deplacements || [], m.extraDepenses || []);
