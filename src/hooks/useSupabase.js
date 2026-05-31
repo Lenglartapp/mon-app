@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { db } from '../lib/offlineDb';
 import { queueMutation } from '../lib/syncQueue';
+import { calculateProfitability } from '../lib/financial/profitabilityCalculator';
 
 // --- PROJETS ---
 export const useProjects = () => {
@@ -266,6 +267,30 @@ export const useMinutes = () => {
         if (updates.tables) {
             dbUpdates.lines = updates.tables;
             delete dbUpdates.tables;
+        }
+
+        // --- KPI CENTRALISÉ (Étape 1) ---
+        // Dès que les lignes / déplacements / dépenses changent — quel que soit le
+        // chemin d'édition (grille, panneau détail, import, taux) — on recalcule et
+        // on persiste ca_total + marges. Garantit que la liste des chiffrages reste
+        // toujours cohérente avec les prix_total, sans cache périmé.
+        const touchesLines = 'lines' in updates || 'tables' in updates
+            || 'deplacements' in updates || 'extraDepenses' in updates;
+        if (touchesLines) {
+            const cur = minutes.find(m => m.id === id) || {};
+            const lines  = dbUpdates.lines !== undefined ? dbUpdates.lines : (cur.lines || []);
+            const deps   = 'deplacements'  in updates ? (updates.deplacements  || []) : (cur.deplacements  || []);
+            const extras = 'extraDepenses' in updates ? (updates.extraDepenses || []) : (cur.extraDepenses || []);
+            const { kpis } = calculateProfitability(lines, deps, extras);
+            const computed = {
+                ca_total:  kpis.ca_total            || 0,
+                marge_eur: kpis.contribution        || 0,
+                marge_pct: kpis.contribution_pct    || 0,
+                renta_hh:  kpis.contribution_horaire || 0,
+            };
+            Object.assign(dbUpdates, computed);
+            // aligne aussi le state local optimiste (mêmes valeurs que la BDD)
+            updates = { ...updates, ...computed };
         }
 
         // Mapping BudgetSnapshot -> budget_snapshot

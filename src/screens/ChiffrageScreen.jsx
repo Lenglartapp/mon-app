@@ -258,6 +258,33 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onBack, onOpen
     if (onUpdate && minute?.id) onUpdate(minute.id, patch);
   }, [canEdit, onUpdate, minute?.id]);
 
+  // --- HEAL-ON-OPEN (Étape 1b) ---
+  // Le détail recalcule les prix en direct à l'ouverture (catalogue/taux actuels).
+  // Si le ca_total stocké en BDD diverge de ce recalcul (minute non rééditée depuis
+  // une dérive de prix), on resynchronise le cache pour que la liste des chiffrages
+  // affiche EXACTEMENT le même montant que le CA TOTAL du détail.
+  // Le timer se ré-arme à chaque changement de `rows` → il ne se déclenche qu'une
+  // fois les calculs stabilisés (catalogue chargé), évitant toute écriture transitoire.
+  const healTimerRef = React.useRef(null);
+  React.useEffect(() => {
+    if (!minute?.id || !canEdit) return undefined;
+    if (healTimerRef.current) clearTimeout(healTimerRef.current);
+    healTimerRef.current = setTimeout(() => {
+      const { kpis } = calculateProfitability(rows || [], depRows || [], extraRows || []);
+      const storedCa = Math.round(Number(minute.ca_total || 0));
+      const freshCa = Math.round(Number(kpis.ca_total || 0));
+      if (Math.abs(storedCa - freshCa) >= 1) {
+        updateMinute({
+          ca_total:  freshCa,
+          marge_eur: kpis.contribution        || 0,
+          marge_pct: kpis.contribution_pct    || 0,
+          renta_hh:  kpis.contribution_horaire || 0,
+        });
+      }
+    }, 1500);
+    return () => { if (healTimerRef.current) clearTimeout(healTimerRef.current); };
+  }, [minute?.id, minute?.ca_total, rows, depRows, extraRows, canEdit, updateMinute]);
+
   // Local status for optimistic UI
   const [localStatus, setLocalStatus] = React.useState(minute?.status || "DRAFT");
 
@@ -644,20 +671,12 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onBack, onOpen
                 // Lire m.settings ici provoquerait un écrasement des settings
                 // par une closure stale de performSave dans MinuteEditor.
 
-                // KPIs précalculés — stockés en BDD pour un affichage instantané dans la liste.
-                const cachedCaTotal = newLines.reduce((s, r) => s + toNum(r.prix_total), 0)
-                                    + newDeps.reduce((s, r) => s + toNum(r.prix_total), 0);
-
-                const { kpis } = calculateProfitability(newLines, newDeps, newExtras);
-
+                // Le ca_total + marges sont recalculés et persistés de façon centralisée
+                // dans updateMinute (hook useMinutes) dès que lines/deplacements changent.
                 updateMinute({
                   lines: newLines,
                   extraDepenses: newExtras,
                   deplacements: newDeps,
-                  ca_total:  cachedCaTotal,
-                  marge_eur: kpis.contribution        || 0,
-                  marge_pct: kpis.contribution_pct    || 0,
-                  renta_hh:  kpis.contribution_horaire || 0,
                   name: m.name,
                   notes: m.notes,
                   status: m.status,
