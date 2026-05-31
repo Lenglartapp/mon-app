@@ -15,7 +15,7 @@ import { SmartFilterBar } from "../components/ui/SmartFilterBar.jsx";
 import { DataGrid } from '@mui/x-data-grid';
 import { frFR } from '@mui/x-data-grid/locales';
 import { calculateProfitability } from '../lib/financial/profitabilityCalculator';
-import { useAppSettings, useCatalog, useMinutesQuery, fetchMinuteById } from "../hooks/useSupabase";
+import { useAppSettings, useCatalog } from "../hooks/useSupabase";
 
 // CONSTANTES & HELPERS
 const SEARCH_FIELDS = [
@@ -86,7 +86,7 @@ function stringToColor(string) {
   return color;
 }
 
-export default function ChiffrageRoot({ onCreate, onOpenMinute, onDelete, onUpdate, onBack }) {
+export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, onDelete, onUpdate, onBack }) {
   const { currentUser, users } = useAuth?.() || { currentUser: { name: "—" }, users: [] };
   const { settings: globalSettings } = useAppSettings();
   const { catalog } = useCatalog();
@@ -110,10 +110,9 @@ export default function ChiffrageRoot({ onCreate, onOpenMinute, onDelete, onUpda
 
   const handleStatusClose = () => setStatusMenu({ anchor: null, minuteId: null });
 
-  const handleStatusSelect = async (status) => {
+  const handleStatusSelect = (status) => {
     if (statusMenu.minuteId && onUpdate) {
-      await onUpdate(statusMenu.minuteId, { status });
-      refresh();
+      onUpdate(statusMenu.minuteId, { status });
     }
     handleStatusClose();
   };
@@ -125,10 +124,9 @@ export default function ChiffrageRoot({ onCreate, onOpenMinute, onDelete, onUpda
 
   const handleOwnerClose = () => setOwnerMenu({ anchor: null, minuteId: null });
 
-  const handleOwnerSelect = async (ownerName) => {
+  const handleOwnerSelect = (ownerName) => {
     if (ownerMenu.minuteId && onUpdate) {
-      await onUpdate(ownerMenu.minuteId, { owner: ownerName });
-      refresh();
+      onUpdate(ownerMenu.minuteId, { owner: ownerName });
     }
     handleOwnerClose();
   };
@@ -201,57 +199,8 @@ export default function ChiffrageRoot({ onCreate, onOpenMinute, onDelete, onUpda
 
   const [showArchived, setShowArchived] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState(new Set());
-
-  // Dérive les paramètres de la requête serveur depuis l'état UI des filtres.
-  const queryOptions = useMemo(() => {
-    const userName = currentUser?.name || null;
-    const isMyMinutes = activeFilters.some(f => f.id === 'my_minutes');
-
-    const textFilter = activeFilters.find(f => f.matchType === 'contains');
-    // Quand la recherche porte sur le champ "statut", on convertit le label FR en clés DB
-    let searchText = null;
-    let statusSearch = null;
-    if (textFilter) {
-      if (textFilter.field === 'status') {
-        statusSearch = Object.entries(STATUS_OPTIONS)
-          .filter(([k, v]) => v.label.toLowerCase().includes(textFilter.value.toLowerCase()) || k.toLowerCase().includes(textFilter.value.toLowerCase()))
-          .map(([k]) => k);
-      } else {
-        searchText = { field: textFilter.field, value: textFilter.value };
-      }
-    }
-
-    const ownerFilters = activeFilters
-      .filter(f => f.field === 'owner' && f.id !== 'my_minutes' && f.matchType !== 'contains' && f.matchType !== 'advanced')
-      .map(f => f.value);
-
-    const statusFilters = activeFilters
-      .filter(f => f.field === 'status' && f.matchType !== 'contains' && f.matchType !== 'advanced')
-      .map(f => f.value);
-
-    const conditions = activeFilters
-      .filter(f => f.matchType === 'advanced')
-      .map(f => ({ field: f.filterField, operator: f.operator, value: f.value, value2: f.value2 || '' }));
-
-    const sortFieldMap = {
-      ca_ht: 'ca_total', marge_pct: 'marge_pct', marge_eur: 'marge_eur',
-      renta_hh: 'renta_hh', updatedAt: 'updated_at', createdAt: 'created_at',
-    };
-
-    return {
-      myMinutesOwner: isMyMinutes ? userName : null,
-      searchText,
-      statusSearch: statusSearch?.length > 0 ? statusSearch : null,
-      ownerFilters,
-      statusFilters,
-      showArchived,
-      conditions,
-      sortField: sortFieldMap[sortConfig.key] || 'updated_at',
-      sortAscending: sortConfig.direction === 'asc',
-    };
-  }, [activeFilters, currentUser?.name, showArchived, sortConfig]);
-
-  const { results, loading: loadingQuery, hasMore, loadMore, refresh } = useMinutesQuery(queryOptions);
+  // Pagination client-side (les données sont déjà en mémoire → instantané)
+  const [visibleCount, setVisibleCount] = useState(50);
 
   const toggleGroup = (parentId) => {
     setExpandedGroups(prev => {
@@ -292,8 +241,8 @@ export default function ChiffrageRoot({ onCreate, onOpenMinute, onDelete, onUpda
     };
   };
 
-  // Les résultats de useMinutesQuery sont déjà filtrés et triés côté serveur.
-  const displayList = useMemo(() => results.map(norm), [results]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Normalise toutes les minutes en mémoire (pas de requête réseau).
+  const list = useMemo(() => (minutes || []).map(norm), [minutes]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const removeFilter = (id) => setActiveFilters(prev => prev.filter(f => f.id !== id));
   const addFilter = (filter) => setActiveFilters(prev => {
@@ -333,6 +282,88 @@ export default function ChiffrageRoot({ onCreate, onOpenMinute, onDelete, onUpda
     setShowAdvancedPanel(false);
   };
 
+  // Filtrage + tri 100% côté client (données déjà en mémoire → instantané).
+  const filteredList = useMemo(() => {
+    let res = list;
+
+    // "Mes chiffrages"
+    if (activeFilters.some(f => f.id === 'my_minutes')) {
+      const userName = currentUser?.name || currentUser?.displayName || currentUser?.email || "";
+      if (userName) {
+        const user = userName.toLowerCase();
+        res = res.filter(m => {
+          const owner = (m.owner || "").toLowerCase();
+          return owner.includes(user) || user.includes(owner) || !m.owner;
+        });
+      }
+    }
+
+    // Filtres de champ — OR au sein d'un même champ, AND entre champs
+    const fieldFilters = activeFilters.filter(f => f.field && f.id !== 'my_minutes' && f.matchType !== 'advanced');
+    if (fieldFilters.length > 0) {
+      const grouped = fieldFilters.reduce((acc, f) => {
+        (acc[f.field] = acc[f.field] || []).push(f);
+        return acc;
+      }, {});
+      Object.keys(grouped).forEach(field => {
+        res = res.filter(m => grouped[field].some(f => {
+          if (f.matchType === 'contains') {
+            if (f.field === 'all') {
+              return [m.name, m.client, m.owner, m.notes].some(x => String(x || '').toLowerCase().includes(f.value.toLowerCase()));
+            }
+            if (f.field === 'status') {
+              return (STATUS_OPTIONS[m.status]?.label || '').toLowerCase().includes(f.value.toLowerCase());
+            }
+            return String(m[f.field] || '').toLowerCase().includes(f.value.toLowerCase());
+          }
+          return String(m[field] || '') === String(f.value);
+        }));
+      });
+    }
+
+    // Conditions avancées (toutes AND)
+    const advancedConds = activeFilters.filter(f => f.matchType === 'advanced');
+    if (advancedConds.length > 0) {
+      res = res.filter(m => advancedConds.every(f => {
+        const mVal = m[f.filterField];
+        const v1 = Number(f.value);
+        const v2 = Number(f.value2 || 0);
+        switch (f.operator) {
+          case 'gt':      return mVal > v1;
+          case 'gte':     return mVal >= v1;
+          case 'lt':      return mVal < v1;
+          case 'lte':     return mVal <= v1;
+          case 'eq':      return Math.abs(mVal - v1) < 0.5;
+          case 'between': return mVal >= Math.min(v1, v2) && mVal <= Math.max(v1, v2);
+          default:        return true;
+        }
+      }));
+    }
+
+    // Archives vs actifs
+    if (showArchived) {
+      res = res.filter(m => ['LOST', 'ORDER_COMPLETED'].includes(m.status));
+    } else {
+      res = res.filter(m => !['LOST', 'ORDER_COMPLETED'].includes(m.status));
+    }
+
+    // Tri
+    if (sortConfig.key) {
+      res = [...res].sort((a, b) => {
+        const valA = a[sortConfig.key];
+        const valB = b[sortConfig.key];
+        if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+
+    return res;
+  }, [list, activeFilters, currentUser, sortConfig, showArchived]);
+
+  // Tranche visible (pagination client-side)
+  const displayList = useMemo(() => filteredList.slice(0, visibleCount), [filteredList, visibleCount]);
+  const hasMore = filteredList.length > visibleCount;
 
   const handleCreateMinute = async () => {
     const { charge, projet, client, deliveryDate, note, status, modules } = newMin;
@@ -393,13 +424,11 @@ export default function ChiffrageRoot({ onCreate, onOpenMinute, onDelete, onUpda
     }
   };
 
-  const duplicate = async (id) => {
-    // Récupère les données complètes (avec les lignes) pour la duplication
-    const src = await fetchMinuteById(id);
+  const duplicate = (id) => {
+    const src = minutes.find(x => x.id === id);
     if (!src) return;
     const rootParentId = src.parentId || src.id;
-    // Compter les variantes existantes depuis les résultats actuels
-    const siblingCount = results.filter(m => (m.parentId || m.id) === rootParentId && m.id !== rootParentId).length;
+    const siblingCount = minutes.filter(m => (m.parentId || m.id) === rootParentId && m.id !== rootParentId).length;
     const newVersion = siblingCount + 2;
     const copy = {
       ...src,
@@ -411,18 +440,12 @@ export default function ChiffrageRoot({ onCreate, onOpenMinute, onDelete, onUpda
       updatedAt: Date.now(),
       status: "DRAFT",
     };
-    if (onCreate) {
-      await onCreate(copy);
-      refresh();
-    }
+    if (onCreate) onCreate(copy);
   };
 
-  const removeOne = async (id) => {
+  const removeOne = (id) => {
     if (window.confirm("Voulez-vous vraiment supprimer ce chiffrage ? Cette action est irréversible.")) {
-      if (onDelete) {
-        await onDelete(id);
-        refresh();
-      }
+      if (onDelete) onDelete(id);
     }
   };
 
@@ -790,16 +813,6 @@ export default function ChiffrageRoot({ onCreate, onOpenMinute, onDelete, onUpda
 
                 const rows = [...parents.map(p => renderRow(p, false)), ...orphans.map(o => renderRow(o, true))];
 
-                if (loadingQuery && rows.length === 0) {
-                  return (
-                    <tr>
-                      <td colSpan={showKPIs ? 10 : 7} style={{ padding: 40, textAlign: 'center', color: '#9CA3AF' }}>
-                        Chargement…
-                      </td>
-                    </tr>
-                  );
-                }
-
                 return rows.length > 0 ? rows : (
                   <tr>
                     <td colSpan={showKPIs ? 10 : 7} style={{ padding: 40, textAlign: 'center', color: '#9CA3AF' }}>
@@ -813,27 +826,26 @@ export default function ChiffrageRoot({ onCreate, onOpenMinute, onDelete, onUpda
           </table>
         </div>
 
-        {/* Charger plus — utilise les mêmes filtres serveur que la page courante */}
+        {/* Charger plus — tranche client-side, instantané (données déjà en mémoire) */}
         {hasMore && (
           <div style={{ display: 'flex', justifyContent: 'center', padding: '24px 0' }}>
             <button
-              onClick={loadMore}
-              disabled={loadingQuery}
+              onClick={() => setVisibleCount(c => c + 50)}
               style={{
-                background: loadingQuery ? '#f3f4f6' : 'white',
+                background: 'white',
                 border: '1px solid #e5e7eb',
                 borderRadius: 8,
                 padding: '10px 24px',
-                cursor: loadingQuery ? 'default' : 'pointer',
+                cursor: 'pointer',
                 fontWeight: 600,
                 fontSize: 14,
-                color: loadingQuery ? '#9ca3af' : '#374151',
+                color: '#374151',
                 display: 'flex',
                 alignItems: 'center',
                 gap: 8,
               }}
             >
-              {loadingQuery ? 'Chargement…' : 'Charger plus'}
+              Charger plus ({filteredList.length - visibleCount} restants)
             </button>
           </div>
         )}

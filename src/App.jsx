@@ -390,6 +390,7 @@ function AppShell() {
 
       {screen === "chiffrageRoot" && (
         <ChiffrageRoot
+          minutes={cleanMinutes}
           onCreate={addMinute}
           onDelete={deleteMinute}
           onUpdate={updateMinute}
