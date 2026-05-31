@@ -397,7 +397,7 @@ export default function EtiquettesRideauxPrintPortal({ rows, projectName, onClos
         @media print {
           #etq-rideaux-print-root {
             display: block !important;
-            position: fixed;
+            position: absolute;
             top: 0; left: 0;
             width: 210mm;
             background: white;
