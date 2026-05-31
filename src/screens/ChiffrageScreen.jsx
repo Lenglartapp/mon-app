@@ -21,6 +21,7 @@ import { useAuth } from "../auth";
 import { can } from "../lib/authz";
 import { useNotifications } from "../contexts/NotificationContext";
 import { useAppSettings, useCatalog, useCatalogRail } from "../hooks/useSupabase";
+import { calculateProfitability } from '../lib/financial/profitabilityCalculator';
 
 import MinuteHistoryDialog from "../components/MinuteHistoryDialog";
 import RecalibrationModal from "../components/RecalibrationModal";
@@ -256,6 +257,33 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onBack, onOpen
     if (!canEdit) return;
     if (onUpdate && minute?.id) onUpdate(minute.id, patch);
   }, [canEdit, onUpdate, minute?.id]);
+
+  // --- HEAL-ON-OPEN (Étape 1b) ---
+  // Le détail recalcule les prix en direct à l'ouverture (catalogue/taux actuels).
+  // Si le ca_total stocké en BDD diverge de ce recalcul (minute non rééditée depuis
+  // une dérive de prix), on resynchronise le cache pour que la liste des chiffrages
+  // affiche EXACTEMENT le même montant que le CA TOTAL du détail.
+  // Le timer se ré-arme à chaque changement de `rows` → il ne se déclenche qu'une
+  // fois les calculs stabilisés (catalogue chargé), évitant toute écriture transitoire.
+  const healTimerRef = React.useRef(null);
+  React.useEffect(() => {
+    if (!minute?.id || !canEdit) return undefined;
+    if (healTimerRef.current) clearTimeout(healTimerRef.current);
+    healTimerRef.current = setTimeout(() => {
+      const { kpis } = calculateProfitability(rows || [], depRows || [], extraRows || []);
+      const storedCa = Math.round(Number(minute.ca_total || 0));
+      const freshCa = Math.round(Number(kpis.ca_total || 0));
+      if (Math.abs(storedCa - freshCa) >= 1) {
+        updateMinute({
+          ca_total:  freshCa,
+          marge_eur: kpis.contribution        || 0,
+          marge_pct: kpis.contribution_pct    || 0,
+          renta_hh:  kpis.contribution_horaire || 0,
+        });
+      }
+    }, 1500);
+    return () => { if (healTimerRef.current) clearTimeout(healTimerRef.current); };
+  }, [minute?.id, minute?.ca_total, rows, depRows, extraRows, canEdit, updateMinute]);
 
   // Local status for optimistic UI
   const [localStatus, setLocalStatus] = React.useState(minute?.status || "DRAFT");
@@ -643,16 +671,12 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onBack, onOpen
                 // Lire m.settings ici provoquerait un écrasement des settings
                 // par une closure stale de performSave dans MinuteEditor.
 
-                // CA précalculé : somme des prix_total déjà calculés par MinuteEditor.
-                // Stocké en BDD pour que la liste des chiffrages puisse l'afficher sans recalculer.
-                const cachedCaTotal = newLines.reduce((s, r) => s + toNum(r.prix_total), 0)
-                                    + newDeps.reduce((s, r) => s + toNum(r.prix_total), 0);
-
+                // Le ca_total + marges sont recalculés et persistés de façon centralisée
+                // dans updateMinute (hook useMinutes) dès que lines/deplacements changent.
                 updateMinute({
                   lines: newLines,
                   extraDepenses: newExtras,
                   deplacements: newDeps,
-                  ca_total: cachedCaTotal,
                   name: m.name,
                   notes: m.notes,
                   status: m.status,

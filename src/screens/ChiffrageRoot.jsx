@@ -16,16 +16,6 @@ import { DataGrid } from '@mui/x-data-grid';
 import { frFR } from '@mui/x-data-grid/locales';
 import { calculateProfitability } from '../lib/financial/profitabilityCalculator';
 import { useAppSettings, useCatalog } from "../hooks/useSupabase";
-import { recomputeRow } from "../lib/formulas/recomputeRow";
-import { CHIFFRAGE_SCHEMA } from "../lib/schemas/chiffrage";
-import { RIDEAUX_SCHEMA } from "../lib/schemas/chiffrage/rideaux";
-import { STORES_CLASSIQUES_SCHEMA } from "../lib/schemas/chiffrage/stores_classiques";
-import { STORES_BATEAUX_SCHEMA } from "../lib/schemas/chiffrage/stores_bateaux";
-import { COUSSINS_SCHEMA } from "../lib/schemas/chiffrage/coussins";
-import { CACHE_SOMMIER_SCHEMA } from "../lib/schemas/chiffrage/cache_sommier";
-import { PLAID_SCHEMA } from "../lib/schemas/chiffrage/plaid";
-import { TENTURE_MURALE_SCHEMA } from "../lib/schemas/chiffrage/tenture_murale";
-import { MOBILIER_SCHEMA } from "../lib/schemas/chiffrage/mobilier";
 
 // CONSTANTES & HELPERS
 const SEARCH_FIELDS = [
@@ -209,6 +199,8 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
 
   const [showArchived, setShowArchived] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState(new Set());
+  // Pagination client-side (les données sont déjà en mémoire → instantané)
+  const [visibleCount, setVisibleCount] = useState(50);
 
   const toggleGroup = (parentId) => {
     setExpandedGroups(prev => {
@@ -219,44 +211,12 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
   };
 
   const norm = (m) => {
-    // 1. Recompute Lines (Logic duplicated from ChiffrageScreen for consistency)
-    const paramsMap = {};
-    (m.params || []).forEach((p) => { if (p?.name) paramsMap[p.name] = p?.value; });
-
-    let baseCA = 0;
-    (m.lines || []).forEach(r => baseCA += toNum(r.prix_total));
-    (m.deplacements || []).forEach(r => baseCA += toNum(r.prix_total));
-
-    const defaults = { taux_horaire: 135, prix_nuit: 180, prix_repas: 25, vatRate: 20 };
-    const globalSelect = globalSettings ? { ...globalSettings, taux_horaire: globalSettings.hourlyRate ?? globalSettings.taux_horaire } : {};
-    const local = m.settings || {};
-    const effectiveSettings = { ...defaults, ...globalSelect, ...local };
-
-    const formulaCtx = {
-      paramsMap,
-      totalCA: baseCA,
-      settings: effectiveSettings,
-      catalog: catalog || []
-    };
-
-    // Compute Rows — même sélection de schéma par produit que ChiffrageScreen/MinuteEditor
-    const computedRows = (m.lines || []).map(row => {
-      const p = String(row.produit || "").toLowerCase();
-      let targetSchema = CHIFFRAGE_SCHEMA;
-      if (/bateau|velum|vélum/i.test(p)) targetSchema = STORES_BATEAUX_SCHEMA;
-      else if (/store|canishade/i.test(p)) targetSchema = STORES_CLASSIQUES_SCHEMA;
-      else if (/coussin/i.test(p)) targetSchema = COUSSINS_SCHEMA;
-      else if (/cache-sommier/i.test(p)) targetSchema = CACHE_SOMMIER_SCHEMA;
-      else if (/plaid|chemin de lit/i.test(p)) targetSchema = PLAID_SCHEMA;
-      else if (/tenture/i.test(p)) targetSchema = TENTURE_MURALE_SCHEMA;
-      else if (/t[êe]te|mobilier/i.test(p)) targetSchema = MOBILIER_SCHEMA;
-      else if (/rideau|voilage/i.test(p) || !p) targetSchema = RIDEAUX_SCHEMA;
-      return recomputeRow(row, targetSchema, formulaCtx);
-    });
-
-    // 2. Calculate KPIs using computed rows
-    const kpiData = calculateProfitability(computedRows || [], m.deplacements || [], m.extraDepenses || []);
-    const kpis = kpiData.kpis;
+    // Utilise les KPIs précalculés stockés en BDD quand disponibles.
+    // Fallback sur calculateProfitability pour les anciennes minutes non encore migrées.
+    const needsCalc = !m.marge_pct && !m.marge_eur && !m.renta_hh;
+    const kpis = needsCalc
+      ? calculateProfitability(m.lines || [], m.deplacements || [], m.extraDepenses || []).kpis
+      : {};
 
     return {
       id: m.id,
@@ -271,23 +231,18 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
       deplacements: m.deplacements || [],
       createdAt: m.createdAt || Date.now(),
       updatedAt: m.updatedAt || Date.now(),
-      owner: m.owner || currentUser?.name || "—",
+      owner: m.owner || "—",
       status: m.status || "DRAFT",
       modules: m.modules,
-      // KPIs — priorité à la valeur précalculée stockée en BDD (ca_total),
-      // fallback sur le recalcul pour les anciennes minutes qui n'ont pas encore ce champ.
-      ca_ht: m.ca_total > 0 ? m.ca_total : (kpis.ca_total || 0),
-      marge_eur: kpis.contribution || 0, // Contribution displayed as Marge EUR
-      marge_pct: kpis.contribution_pct || 0, // Contribution % displayed as Marge %
-      renta_hh: kpis.contribution_horaire || 0,
+      ca_ht:    m.ca_total  > 0 ? m.ca_total  : (kpis.ca_total            || 0),
+      marge_eur: m.marge_eur > 0 ? m.marge_eur : (kpis.contribution        || 0),
+      marge_pct: m.marge_pct > 0 ? m.marge_pct : (kpis.contribution_pct    || 0),
+      renta_hh:  m.renta_hh  > 0 ? m.renta_hh  : (kpis.contribution_horaire || 0),
     };
   };
 
-  const list = useMemo(() => {
-    // Recalculate only if we have settings (avoid double calc on mount if settings not loaded yet, or just calc)
-    // Actually safe to calc with defaults
-    return (minutes || []).map(norm).sort((a, b) => b.updatedAt - a.updatedAt);
-  }, [minutes, globalSettings, catalog]); // Dependency on Settings
+  // Normalise toutes les minutes en mémoire (pas de requête réseau).
+  const list = useMemo(() => (minutes || []).map(norm), [minutes]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const removeFilter = (id) => setActiveFilters(prev => prev.filter(f => f.id !== id));
   const addFilter = (filter) => setActiveFilters(prev => {
@@ -327,29 +282,29 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
     setShowAdvancedPanel(false);
   };
 
+  // Filtrage + tri 100% côté client (données déjà en mémoire → instantané).
   const filteredList = useMemo(() => {
     let res = list;
+
+    // "Mes chiffrages"
     if (activeFilters.some(f => f.id === 'my_minutes')) {
       const userName = currentUser?.name || currentUser?.displayName || currentUser?.email || "";
       if (userName) {
+        const user = userName.toLowerCase();
         res = res.filter(m => {
           const owner = (m.owner || "").toLowerCase();
-          const user = userName.toLowerCase();
           return owner.includes(user) || user.includes(owner) || !m.owner;
         });
       }
     }
 
-    // Field filters — OR within same field, AND across fields
-    // matchType 'contains' = substring (from search bar), else = exact match (from filter menus)
+    // Filtres de champ — OR au sein d'un même champ, AND entre champs
     const fieldFilters = activeFilters.filter(f => f.field && f.id !== 'my_minutes' && f.matchType !== 'advanced');
     if (fieldFilters.length > 0) {
       const grouped = fieldFilters.reduce((acc, f) => {
-        if (!acc[f.field]) acc[f.field] = [];
-        acc[f.field].push(f);
+        (acc[f.field] = acc[f.field] || []).push(f);
         return acc;
       }, {});
-
       Object.keys(grouped).forEach(field => {
         res = res.filter(m => grouped[field].some(f => {
           if (f.matchType === 'contains') {
@@ -366,7 +321,7 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
       });
     }
 
-    // Conditions avancées (chips créés depuis le constructeur) — toutes AND
+    // Conditions avancées (toutes AND)
     const advancedConds = activeFilters.filter(f => f.matchType === 'advanced');
     if (advancedConds.length > 0) {
       res = res.filter(m => advancedConds.every(f => {
@@ -385,20 +340,18 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
       }));
     }
 
+    // Archives vs actifs
     if (showArchived) {
-      // Show ONLY Archived (Lost/Completed)
       res = res.filter(m => ['LOST', 'ORDER_COMPLETED'].includes(m.status));
     } else {
-      // Show ONLY Active (Not Lost/Completed)
       res = res.filter(m => !['LOST', 'ORDER_COMPLETED'].includes(m.status));
     }
 
-    // Apply Sort
+    // Tri
     if (sortConfig.key) {
-      res = [...res].sort((a, b) => { // Copy to avoid mutating
+      res = [...res].sort((a, b) => {
         const valA = a[sortConfig.key];
         const valB = b[sortConfig.key];
-
         if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
         if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
         return 0;
@@ -407,6 +360,10 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
 
     return res;
   }, [list, activeFilters, currentUser, sortConfig, showArchived]);
+
+  // Tranche visible (pagination client-side)
+  const displayList = useMemo(() => filteredList.slice(0, visibleCount), [filteredList, visibleCount]);
+  const hasMore = filteredList.length > visibleCount;
 
   const handleCreateMinute = async () => {
     const { charge, projet, client, deliveryDate, note, status, modules } = newMin;
@@ -470,15 +427,13 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
   const duplicate = (id) => {
     const src = minutes.find(x => x.id === id);
     if (!src) return;
-    // Le parent est toujours la racine : si src est déjà une variante, on pointe vers son parent
     const rootParentId = src.parentId || src.id;
-    // Compter les variantes existantes pour nommer la copie
     const siblingCount = minutes.filter(m => (m.parentId || m.id) === rootParentId && m.id !== rootParentId).length;
-    const newVersion = siblingCount + 2; // v2, v3, etc.
+    const newVersion = siblingCount + 2;
     const copy = {
       ...src,
       id: uid(),
-      name: src.name.replace(/ — v\d+.*$/, ''), // Retire un suffixe de version précédent
+      name: src.name.replace(/ — v\d+.*$/, ''),
       version: newVersion,
       parentId: rootParentId,
       createdAt: Date.now(),
@@ -727,9 +682,9 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
             </thead>
             <tbody>
               {(() => {
-                // Séparation parents / enfants
-                const parents = filteredList.filter(m => !m.parentId);
-                const childrenMap = filteredList.reduce((acc, m) => {
+                // Séparation parents / enfants dans la page courante
+                const parents = displayList.filter(m => !m.parentId);
+                const childrenMap = displayList.reduce((acc, m) => {
                   if (m.parentId) {
                     if (!acc[m.parentId]) acc[m.parentId] = [];
                     acc[m.parentId].push(m);
@@ -737,9 +692,9 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
                   return acc;
                 }, {});
 
-                // Orphelins : variantes dont le parent n'est pas dans filteredList (ex: parent archivé)
+                // Orphelins : variantes dont le parent n'est pas dans la page courante
                 const visibleParentIds = new Set(parents.map(p => p.id));
-                const orphans = filteredList.filter(m => m.parentId && !visibleParentIds.has(m.parentId));
+                const orphans = displayList.filter(m => m.parentId && !visibleParentIds.has(m.parentId));
 
                 const renderRow = (m, isChild = false) => {
                   const statusInfo = STATUS_OPTIONS[m.status] || STATUS_OPTIONS.DRAFT;
@@ -870,6 +825,30 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
             </tbody>
           </table>
         </div>
+
+        {/* Charger plus — tranche client-side, instantané (données déjà en mémoire) */}
+        {hasMore && (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '24px 0' }}>
+            <button
+              onClick={() => setVisibleCount(c => c + 50)}
+              style={{
+                background: 'white',
+                border: '1px solid #e5e7eb',
+                borderRadius: 8,
+                padding: '10px 24px',
+                cursor: 'pointer',
+                fontWeight: 600,
+                fontSize: 14,
+                color: '#374151',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+              }}
+            >
+              Charger plus ({filteredList.length - visibleCount} restants)
+            </button>
+          </div>
+        )}
       </div>
       {
         newMinOpen && (
