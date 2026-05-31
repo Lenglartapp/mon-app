@@ -7,6 +7,7 @@ import MinuteGrid from "../components/MinuteGrid.jsx"; // Replaces DataTable
 import DashboardTiles from "../components/DashboardTiles.jsx";
 import ProjectActivityFeed from "../components/ProjectActivityFeed.jsx";
 import EtiquettesSection from "../components/EtiquettesSection.jsx";
+import BPPPrintPortal from "../components/print/BPPPrintPortal.jsx";
 import MinutesScreen from "./MinutesScreen.jsx";
 import LineDetailPanel from "../components/LineDetailPanel";
 import StockInventoryTab from "../components/modules/Stocks/StockInventoryTab.jsx";
@@ -26,7 +27,7 @@ import { MOBILIER_PROD_SCHEMA } from "../lib/schemas/production/mobilier";
 import { AUTRES_PROD_SCHEMA } from "../lib/schemas/autres";
 import { uid } from "../lib/utils/uid"; // Import uid
 
-import { Search, Filter, Layers3, Star, FlaskConical, Image as ImageIcon, Pin, Edit2, FileText, BookOpen } from "lucide-react";
+import { Search, Filter, Layers3, Star, FlaskConical, Image as ImageIcon, Pin, Edit2, FileText, BookOpen, Printer } from "lucide-react";
 import ProjectMaterialsPanel from "../components/ProjectMaterialsPanel";
 import AddressAutocomplete from "../components/AddressAutocomplete"; // Added FileText
 import { Dialog, DialogTitle, DialogContent, TextField, DialogActions, Button, Collapse, IconButton } from "@mui/material";
@@ -87,6 +88,45 @@ const getVisibilityModel = (viewKey, tableKey, schema) => {
     }
   });
   return model;
+};
+
+// Colonnes à exclure de l'impression BPP (cases à cocher, boutons, photos…)
+const BPP_PRINT_EXCLUDED_TYPES = new Set(['checkbox', 'button', 'photo', 'image']);
+// Doit correspondre au préfixe utilisé par MinuteGrid pour persister l'état des colonnes
+const AG_GRID_STATE_PREFIX = 'ag_grid_state_v1_';
+
+const isPrintableCol = (col) =>
+  col &&
+  !['sel', 'detail'].includes(col.key) &&
+  !BPP_PRINT_EXCLUDED_TYPES.has(col.type) &&
+  !/photo|croquis/i.test(col.key);
+
+// Construit les colonnes à imprimer pour une section BPP.
+// Priorité à l'état COURANT des colonnes (ce que l'utilisateur voit/masque,
+// persisté par MinuteGrid dans localStorage), sinon visibilité par défaut.
+const buildBppPrintColumns = (schema, tableKey, gridKey) => {
+  const byKey = new Map((schema || []).map(c => [c.key, c]));
+
+  // 1. État courant des colonnes (ordre + visibilité réels à l'écran)
+  try {
+    const raw = localStorage.getItem(`${AG_GRID_STATE_PREFIX}${gridKey}`);
+    if (raw) {
+      const colState = JSON.parse(raw)?.columnState;
+      if (Array.isArray(colState) && colState.length > 0) {
+        return colState
+          .filter(cs => !cs.hide)
+          .map(cs => byKey.get(cs.colId))
+          .filter(isPrintableCol)
+          .map(col => ({ key: col.key, label: col.label || col.key }));
+      }
+    }
+  } catch (_) { /* fallback ci-dessous */ }
+
+  // 2. Fallback : visibilité par défaut de la vue BPP
+  const vm = getVisibilityModel('bpp', tableKey, schema);
+  return (schema || [])
+    .filter(col => vm[col.key] && isPrintableCol(col))
+    .map(col => ({ key: col.key, label: col.label || col.key }));
 };
 
 import { PROJECT_STATUS_OPTIONS } from "../lib/constants/projectStatus";
@@ -422,6 +462,35 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
     bpfTentureMurale:   rowsTentureMurale.filter(r => !isSousTraite(r)),
     bpfAutreConfection: rowsAutreConfection.filter(r => !isSousTraite(r)),
   }), [rowsRideaux, rowsStoresBateaux, rowsCoussins, rowsPlaid, rowsMobilier, rowsCacheSommier, rowsTentureMurale, rowsAutreConfection]);
+
+  // --- IMPRESSION BPP (A3 paysage, fidèle à l'écran) ---
+  const [showBppPrint, setShowBppPrint] = useState(false);
+  const [bppPrintSections, setBppPrintSections] = useState([]);
+
+  const hasAnyBppRows = [rowsRideaux, rowsStores, rowsStoresBateaux, rowsTentureMurale, rowsMobilier]
+    .some(a => (a || []).length > 0);
+
+  // Calcule les sections à imprimer AU CLIC (lit l'état courant des colonnes).
+  const handleOpenBppPrint = () => {
+    const cfg = [
+      { title: 'BPP Rideaux (Préparation Mécanismes)',          rows: rowsRideaux,       schema: RIDEAUX_PROD_SCHEMA,        tableKey: 'rideaux' },
+      { title: 'BPP Stores Négoce (Préparation Mécanismes)',    rows: rowsStores,        schema: STORES_PROD_SCHEMA,         tableKey: 'stores' },
+      { title: 'BPP Stores Bateaux / Velum (Préparation Mécanismes)', rows: rowsStoresBateaux, schema: STORES_BATEAUX_PROD_SCHEMA, tableKey: 'stores_bateaux' },
+      { title: 'BPP Tenture Murale',                            rows: rowsTentureMurale, schema: TENTURE_MURALE_PROD_SCHEMA,  tableKey: 'tenture_murale' },
+      { title: 'BPP Mobilier / Tête de Lit',                    rows: rowsMobilier,      schema: MOBILIER_PROD_SCHEMA,       tableKey: 'mobilier' },
+    ];
+    const sections = cfg
+      .filter(s => (s.rows || []).length > 0)
+      .map(s => ({
+        title: s.title,
+        rows: s.rows,
+        columns: buildBppPrintColumns(s.schema, s.tableKey, `bpp_${s.tableKey}`),
+      }))
+      .filter(s => s.columns.length > 0);
+    if (sections.length === 0) return;
+    setBppPrintSections(sections);
+    setShowBppPrint(true);
+  };
 
   const recomputeAll = (arr) => (arr || []).map(r => recomputeRow(r, schema));
 
@@ -1557,6 +1626,23 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
 
       {stage === "bpp" && (
         <>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '0 0 12px' }}>
+            <button
+              onClick={handleOpenBppPrint}
+              disabled={!hasAnyBppRows}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                background: !hasAnyBppRows ? '#E5E7EB' : '#1E2447',
+                color: !hasAnyBppRows ? '#9CA3AF' : '#fff',
+                border: 'none', borderRadius: 8, padding: '10px 18px',
+                fontWeight: 600, fontSize: 14,
+                cursor: !hasAnyBppRows ? 'not-allowed' : 'pointer',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+              }}
+            >
+              <Printer size={18} /> Imprimer le BPP (A3)
+            </button>
+          </div>
           {rowsRideaux.length > 0 && (
             <SectionPanel
               title="BPP Rideaux (Préparation Mécanismes)"
@@ -1677,6 +1763,15 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
             </SectionPanel>
           )}
         </>
+      )}
+
+      {showBppPrint && (
+        <BPPPrintPortal
+          sections={bppPrintSections}
+          projectName={project?.name}
+          manager={project?.manager}
+          onClose={() => setShowBppPrint(false)}
+        />
       )}
 
       {openedRow && (
