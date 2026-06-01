@@ -77,6 +77,7 @@ const PERMISSIONS = {
     "planning.manage_team": false,
 
     "production.edit": true,
+    "project.create": true,
 
     "inventory.view": true,
     "inventory.edit": true,

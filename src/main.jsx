@@ -24,7 +24,25 @@ window.addEventListener("unhandledrejection", (e) => {
 
 // ====== Service Worker Registration for PWA (géré par vite-plugin-pwa) ======
 import { registerSW } from 'virtual:pwa-register';
-registerSW({ immediate: true });
+
+const isLocalhost = ['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname);
+
+if (isLocalhost) {
+  // En dev/local : on NE veut jamais de service worker. On désinstalle tout SW
+  // résiduel (d'un ancien build / preview) et on vide ses caches, sinon il sert
+  // du code périmé et casse le hot-reload. → le bug du cache ne peut plus revenir.
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations()
+      .then((regs) => regs.forEach((r) => r.unregister()))
+      .catch(() => {});
+  }
+  if (window.caches?.keys) {
+    caches.keys().then((keys) => keys.forEach((k) => caches.delete(k))).catch(() => {});
+  }
+} else {
+  // En production uniquement : enregistrement normal du SW (mode hors-ligne).
+  registerSW({ immediate: true });
+}
 
 // ====== Montage ======
 ReactDOM.createRoot(document.getElementById("root")).render(

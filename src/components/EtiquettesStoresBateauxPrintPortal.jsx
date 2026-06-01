@@ -333,7 +333,7 @@ export default function EtiquettesStoresBateauxPrintPortal({ rows, projectName, 
         @media print {
           #etq-stores-bateaux-print-root {
             display: block !important;
-            position: fixed;
+            position: absolute;
             top: 0; left: 0;
             width: 210mm;
             background: white;
