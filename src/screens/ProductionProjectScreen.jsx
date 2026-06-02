@@ -102,6 +102,15 @@ const isPrintableCol = (col) =>
   !BPP_PRINT_EXCLUDED_TYPES.has(col.type) &&
   !/photo|croquis/i.test(col.key);
 
+// Convertit une colonne de schéma en colonne d'impression.
+// On conserve le valueGetter : les champs CALCULÉS (ex: Nb Glisseurs) ne sont pas
+// stockés sur la ligne, ils sont calculés à la volée → il faut exécuter le getter.
+const toPrintCol = (col) => ({
+  key: col.key,
+  label: col.label || col.key,
+  valueGetter: typeof col.valueGetter === 'function' ? col.valueGetter : null,
+});
+
 // Construit les colonnes à imprimer pour une section BPP.
 // Priorité à l'état COURANT des colonnes (ce que l'utilisateur voit/masque,
 // persisté par MinuteGrid dans localStorage), sinon visibilité par défaut.
@@ -118,7 +127,7 @@ const buildBppPrintColumns = (schema, tableKey, gridKey) => {
           .filter(cs => !cs.hide)
           .map(cs => byKey.get(cs.colId))
           .filter(isPrintableCol)
-          .map(col => ({ key: col.key, label: col.label || col.key }));
+          .map(toPrintCol);
       }
     }
   } catch (_) { /* fallback ci-dessous */ }
@@ -127,7 +136,7 @@ const buildBppPrintColumns = (schema, tableKey, gridKey) => {
   const vm = getVisibilityModel('bpp', tableKey, schema);
   return (schema || [])
     .filter(col => vm[col.key] && isPrintableCol(col))
-    .map(col => ({ key: col.key, label: col.label || col.key }));
+    .map(toPrintCol);
 };
 
 import { PROJECT_STATUS_OPTIONS } from "../lib/constants/projectStatus";
