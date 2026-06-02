@@ -17,6 +17,15 @@ const fmtCell = (v) => {
   return String(v);
 };
 
+// Valeur d'une cellule : pour les champs calculés (valueGetter), on exécute le
+// getter — sinon la valeur stockée est vide. Sinon, lecture directe.
+const cellValue = (col, row) => {
+  if (col.valueGetter) {
+    try { return col.valueGetter(null, row); } catch (_) { return ''; }
+  }
+  return row[col.key];
+};
+
 export default function BPPPrintPortal({ sections = [], projectName, manager, onClose }) {
   const printable = (sections || []).filter(s => s.rows?.length > 0 && s.columns?.length > 0);
   const hasContent = printable.length > 0;
@@ -109,7 +118,7 @@ export default function BPPPrintPortal({ sections = [], projectName, manager, on
                         padding: '2pt 3pt',
                         verticalAlign: 'top',
                       }}>
-                        {fmtCell(row[col.key])}
+                        {fmtCell(cellValue(col, row))}
                       </td>
                     ))}
                   </tr>
