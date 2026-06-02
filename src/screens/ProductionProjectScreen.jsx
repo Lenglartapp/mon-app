@@ -16,6 +16,7 @@ import { computeFormulas, preserveManualAfterCompute } from "../lib/formulas/com
 import { SCHEMA_64 } from "../lib/schemas/production.js";
 import { STAGES, DEFAULT_VIEWS } from "../lib/constants/views.js"; // Import DEFAULT_VIEWS
 import { recomputeRow } from "../lib/formulas/recomputeRow";
+import { computeProjectHours } from "../lib/projectMetrics";
 import { RIDEAUX_PROD_SCHEMA } from "../lib/schemas/production/rideaux";
 import { STORES_PROD_SCHEMA } from "../lib/schemas/production/stores_classiques";
 import { STORES_BATEAUX_PROD_SCHEMA } from "../lib/schemas/production/stores_bateaux";
@@ -266,44 +267,10 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
   const seeChiffrage = can(currentUser, "chiffrage.view");
 
   // --- CALCUL REALISÉ (Temps Réel) ---
+  // Source unique partagée avec l'Assistant Programmation (lib/projectMetrics).
   const realized = useMemo(() => {
-    const counts = { prepa: 0, conf: 0, pose: 0 };
-    if (!project || !events) return counts;
-
-    // Base importée (override pour projets repris en cours)
-    const imp = project.consumed_import || {};
-    counts.prepa += Number(imp.prepa) || 0;
-    counts.conf  += Number(imp.conf)  || 0;
-    counts.pose  += Number(imp.pose)  || 0;
-
-    const projEvents = events.filter(e =>
-      e.meta?.projectId === project.id &&
-      e.meta?.status === 'validated'
-    );
-
-    projEvents.forEach(evt => {
-      const start = new Date(evt.meta?.start);
-      const end = new Date(evt.meta?.end);
-      const rawMinutes = differenceInMinutes(end, start);
-
-      // Règle 8h/j : si plus de 5h consécutives, on déduit 1h de pause déjeuner
-      const netMinutes = rawMinutes > 300 ? rawMinutes - 60 : rawMinutes;
-      const hours = Math.max(0, netMinutes / 60);
-
-      // Categorisation stricte
-      const type = (evt.type || "").toLowerCase();
-
-      if (type === 'rdv' || type === 'prepa' || type === 'metrage') {
-        counts.prepa += hours;
-      } else if (type === 'atelier' || type === 'conf' || type === 'confection') {
-        counts.conf += hours;
-      } else if (type === 'chantier' || type === 'pose' || type === 'installation') {
-        counts.pose += hours;
-      }
-      // Les autres types ne sont PAS comptabilisés (ex: congés, autre...)
-    });
-
-    return counts;
+    if (!project || !events) return { prepa: 0, conf: 0, pose: 0 };
+    return computeProjectHours(project, events).consumed;
   }, [events, project]);
 
   const [budgetOpen, setBudgetOpen] = useState(false);

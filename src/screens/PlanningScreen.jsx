@@ -1152,7 +1152,53 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
 
     return (
         <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: '#FAF5EE' }}>
-            {/* DEBUG ADMIN BUTTON */}
+            {/* Header module : titre + pastille (même rythme que Performance/Inventaire/Logistique) */}
+            <div style={{ padding: '24px 24px 0' }}>
+                <div style={{ marginBottom: 24 }}>
+                    {onBack && (
+                        <button onClick={onBack} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6B7280', fontWeight: 600, fontSize: 13, marginBottom: 12, padding: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
+                            ← Retour
+                        </button>
+                    )}
+                    <h1 style={{ fontSize: 32, fontWeight: 800, color: '#111827', margin: 0, letterSpacing: '-0.5px' }}>Planning</h1>
+                    <p style={{ fontSize: 14, color: '#6B7280', margin: '4px 0 0' }}>Planification des équipes et de la charge de production</p>
+                </div>
+
+                {canViewAssistant && (
+                    <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 24 }}>
+                        <div style={{
+                            background: 'white', borderRadius: 9999, padding: 4, display: 'flex', gap: 4,
+                            boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03)',
+                            border: '1px solid rgba(0,0,0,0.05)',
+                        }}>
+                            {[
+                                { key: null, label: 'Planning' },
+                                { key: 'programmation', label: 'Programmation' },
+                                { key: 'capacite', label: 'Capacité' },
+                            ].map(seg => {
+                                const active = (assistantMode || null) === seg.key;
+                                return (
+                                    <button
+                                        key={seg.label}
+                                        onClick={() => setAssistantMode(seg.key)}
+                                        style={{
+                                            padding: '8px 24px', borderRadius: 9999, fontSize: 14, fontWeight: 500,
+                                            border: 'none', cursor: 'pointer', transition: 'all 0.15s',
+                                            background: active ? '#1E2447' : 'transparent',
+                                            color: active ? 'white' : '#4B5563',
+                                        }}
+                                    >
+                                        {seg.label}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {/* Barre d'outils calendrier : uniquement sur la vue Planning */}
+            {assistantMode === null && (
             <PlanningTopBar
                 view={view}
                 onViewChange={(v) => { setView(v); if (v === 'custom') setCustomRange(null); }}
@@ -1169,15 +1215,13 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                 activeFilters={activeFilters}
                 onAddFilter={(f) => setActiveFilters(prev => prev.find(x => x.id === f.id) ? prev : [...prev, f])}
                 onRemoveFilter={(id) => setActiveFilters(prev => prev.filter(x => x.id !== id))}
-                assistantMode={assistantMode}
-                onSetAssistantMode={setAssistantMode}
                 myViewMode={myViewMode}
                 onToggleMyView={handleToggleMyView}
                 onDownloadTemplate={canEdit ? handleDownloadTemplate : undefined}
                 onImport={canEdit ? handleImport : undefined}
                 canManageTeam={canManageTeam}
-                canViewAssistant={canViewAssistant}
             />
+            )}
 
             <EventModal
                 isOpen={isModalOpen}

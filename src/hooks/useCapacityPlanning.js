@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { differenceInMinutes, isAfter, parseISO } from 'date-fns';
+import { computeProjectHours, calculateProjectStats } from '../lib/projectMetrics';
 
 /**
  * Calcul la charge planifiée vs budget pour chaque projet.
@@ -35,73 +36,67 @@ export function useCapacityPlanning(projects, events, capacityConfig = {}) {
 
         // --- 2. CALCUL PAR PROJET ---
         const projectStats = projects.map(proj => {
-            // 1. Budget Vendu
-            const budget = proj.budget || { prepa: 0, conf: 0, pose: 0 };
-            const totalSold = (budget.prepa || 0) + (budget.conf || 0) + (budget.pose || 0);
+            // Heures par service — SOURCE UNIQUE partagée avec le dossier (projectMetrics)
+            const hours = computeProjectHours(proj, events);
+            const sum = (o) => Math.round((o.prepa || 0) + (o.conf || 0) + (o.pose || 0));
 
-            // 2. Planifié (Somme des events du projet)
-            const projEvents = events.filter(e => e.meta?.projectId === proj.id && e.type !== 'absence');
-            let totalConsumed = 0;
-            let totalFuture = 0;
+            const totalSold = sum(hours.budget);
+            const totalConsumed = sum(hours.consumed);
+            const totalFuture = sum(hours.planned);
+            const remainingBudget = totalSold - totalConsumed;
+
+            // Avancement réel — MÊME calcul que le dashboard du dossier
+            const advancement = calculateProjectStats(proj.rows || []);
+
+            // Date du dernier événement (pour le retard)
             let lastEventDate = null;
-            const now = new Date();
-
-            projEvents.forEach(evt => {
-                const start = new Date(evt.meta?.start || evt.date);
+            events.forEach(evt => {
+                if (evt.meta?.projectId !== proj.id || evt.type === 'absence') return;
                 const end = new Date(evt.meta?.end || evt.date);
-
-                // Calcul Net (Règle 5h -> -1h pause)
-                const rawMinutes = differenceInMinutes(end, start);
-                const netMinutes = rawMinutes > 300 ? rawMinutes - 60 : rawMinutes;
-                const hours = Math.max(0, netMinutes / 60);
-
-                if (isAfter(end, now)) {
-                    totalFuture += hours;
-                } else {
-                    totalConsumed += hours;
-                }
-
-                // Tracking date max pour retard
-                if (!lastEventDate || isAfter(end, lastEventDate)) {
-                    lastEventDate = end;
-                }
+                if (!lastEventDate || isAfter(end, lastEventDate)) lastEventDate = end;
             });
 
-            // 3. Statut (Legacy, peut-être moins utile si on enlève la colonne état)
+            // Statut planning (alerte capacité / retard)
             let status = 'ok';
             const totalScheduled = totalConsumed + totalFuture;
             if (totalScheduled > totalSold && totalSold > 0) status = 'warning';
-
-            // Check Retard Deadline (si projet a une due date)
-            if (proj.deadline && lastEventDate) {
-                if (isAfter(lastEventDate, new Date(proj.deadline))) {
-                    status = 'late';
-                }
+            if (proj.deadline && lastEventDate && isAfter(lastEventDate, new Date(proj.deadline))) {
+                status = 'late';
             }
 
-            // Reste à faire (Legacy computation kept for reference if needed, but we use precise fields now)
-            const remainingBudget = totalSold - totalConsumed;
+            // Détail par service (budget / consommé / planifié / restant), arrondi
+            const byService = {};
+            ['prepa', 'conf', 'pose'].forEach(s => {
+                byService[s] = {
+                    budget: Math.round(hours.budget[s] || 0),
+                    consumed: Math.round(hours.consumed[s] || 0),
+                    planned: Math.round(hours.planned[s] || 0),
+                    remaining: Math.round((hours.budget[s] || 0) - (hours.consumed[s] || 0)),
+                };
+            });
 
             return {
                 id: proj.id,
                 name: proj.name,
                 manager: proj.manager,
                 deadline: proj.deadline,
-                totalSold: Math.round(totalSold),
-                totalConsumed: Math.round(totalConsumed),
-                totalFuture: Math.round(totalFuture),
-                remainingBudget: Math.round(remainingBudget),
+                totalSold,
+                totalConsumed,
+                totalFuture,
+                remainingBudget,
+                byService,
+                advancement, // { pctCotes, pctPrepa, pctConf, pctPose, cotesTotal, raw } ou null
                 lastEventDate,
-                schedulerStatus: status, // Renamed computed status to avoid collision
+                schedulerStatus: status,
                 projectStatus: proj.status || 'TODO'
             };
         }).sort((a, b) => {
             // Tri par urgence (Retard > Warning > Reste à faire décroissant)
-            if (a.status === 'late') return -1;
-            if (b.status === 'late') return 1;
-            if (a.status === 'warning') return -1;
-            if (b.status === 'warning') return 1;
-            return b.remaining - a.remaining;
+            if (a.schedulerStatus === 'late' && b.schedulerStatus !== 'late') return -1;
+            if (b.schedulerStatus === 'late' && a.schedulerStatus !== 'late') return 1;
+            if (a.schedulerStatus === 'warning' && b.schedulerStatus !== 'warning') return -1;
+            if (b.schedulerStatus === 'warning' && a.schedulerStatus !== 'warning') return 1;
+            return b.remainingBudget - a.remainingBudget;
         });
 
         return { projectStats, absenceHoursByGroup };
