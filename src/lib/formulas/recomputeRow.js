@@ -196,6 +196,8 @@ export function recomputeRow(row, schema, ctx = {}) {
     if (p1.found) {
       next.pa_tissu1 = next.ml_tissu1 * (p1.pa || 0);
       next.pv_tissu1 = next.ml_tissu1 * (p1.pv || 0);
+    } else {
+      next.pa_tissu1 = 0; next.pv_tissu1 = 0; // tissu vidé → coût remis à 0
     }
 
     // Tissu 2
@@ -205,6 +207,8 @@ export function recomputeRow(row, schema, ctx = {}) {
     if (p2.found) {
       next.pa_tissu2 = next.ml_tissu2 * (p2.pa || 0);
       next.pv_tissu2 = next.ml_tissu2 * (p2.pv || 0);
+    } else {
+      next.pa_tissu2 = 0; next.pv_tissu2 = 0;
     }
 
     // Doublure
@@ -214,6 +218,8 @@ export function recomputeRow(row, schema, ctx = {}) {
     if (pD.found) {
       next.pa_doublure = next.ml_doublure * (pD.pa || 0);
       next.pv_doublure = next.ml_doublure * (pD.pv || 0);
+    } else {
+      next.pa_doublure = 0; next.pv_doublure = 0;
     }
 
     // Interdoublure
@@ -223,6 +229,8 @@ export function recomputeRow(row, schema, ctx = {}) {
     if (pI.found) {
       next.pa_interdoublure = next.ml_interdoublure * (pI.pa || 0);
       next.pv_interdoublure = next.ml_interdoublure * (pI.pv || 0);
+    } else {
+      next.pa_interdoublure = 0; next.pv_interdoublure = 0;
     }
 
     // Passementerie
@@ -245,6 +253,8 @@ export function recomputeRow(row, schema, ctx = {}) {
     if (pP1.found) {
       next.pa_pass1 = next.ml_pass1 * (pP1.pa || 0);
       next.pv_pass1 = next.ml_pass1 * (pP1.pv || 0);
+    } else {
+      next.pa_pass1 = 0; next.pv_pass1 = 0;
     }
 
     next.ml_pass2 = roundStep05(calcPassML(next.application_passementerie2) / 100);
@@ -252,6 +262,8 @@ export function recomputeRow(row, schema, ctx = {}) {
     if (pP2.found) {
       next.pa_pass2 = next.ml_pass2 * (pP2.pa || 0);
       next.pv_pass2 = next.ml_pass2 * (pP2.pv || 0);
+    } else {
+      next.pa_pass2 = 0; next.pv_pass2 = 0;
     }
 
     // Mecanisme
@@ -299,6 +311,8 @@ export function recomputeRow(row, schema, ctx = {}) {
     if (pTF1.found) {
       next.pa_toile_finition_1 = NVL(next.ml_toile_finition_1) * (pTF1.pa || 0);
       next.pv_toile_finition_1 = NVL(next.ml_toile_finition_1) * (pTF1.pv || 0);
+    } else {
+      next.pa_toile_finition_1 = 0; next.pv_toile_finition_1 = 0;
     }
 
     // Doublure (ML is manual for stores)
@@ -306,6 +320,8 @@ export function recomputeRow(row, schema, ctx = {}) {
     if (pD.found) {
       next.pa_doublure = NVL(next.ml_doublure) * (pD.pa || 0);
       next.pv_doublure = NVL(next.ml_doublure) * (pD.pv || 0);
+    } else {
+      next.pa_doublure = 0; next.pv_doublure = 0;
     }
 
     const isBateau = /bateau|velum|vélum/i.test(next.produit || "");
@@ -334,6 +350,8 @@ export function recomputeRow(row, schema, ctx = {}) {
         next.pa_tissu_1 = NVL(next.ml_tissu_1) * (pT1.pa || 0);
         next.pv_tissu_1 = NVL(next.ml_tissu_1) * (pT1.pv || 0);
       }
+    } else {
+      next.pa_tissu_1 = 0; next.pv_tissu_1 = 0; // tissu vidé → coût remis à 0
     }
     fillFromCatalog('tissu_2', { laize_tissu_2: 'laize' });
     if (next.tissu_2) {
@@ -342,6 +360,8 @@ export function recomputeRow(row, schema, ctx = {}) {
         next.pa_tissu_2 = NVL(next.ml_tissu_2) * (pT2.pa || 0);
         next.pv_tissu_2 = NVL(next.ml_tissu_2) * (pT2.pv || 0);
       }
+    } else {
+      next.pa_tissu_2 = 0; next.pv_tissu_2 = 0;
     }
 
     // B. Passementerie
@@ -352,6 +372,8 @@ export function recomputeRow(row, schema, ctx = {}) {
         next.pa_pass_1 = NVL(next.ml_pass_1) * (pP1D.pa || 0);
         next.pv_pass_1 = NVL(next.ml_pass_1) * (pP1D.pv || 0);
       }
+    } else {
+      next.pa_pass_1 = 0; next.pv_pass_1 = 0;
     }
     fillFromCatalog('passementerie_2', {});
     if (next.passementerie_2) {
@@ -360,6 +382,8 @@ export function recomputeRow(row, schema, ctx = {}) {
         next.pa_pass_2 = NVL(next.ml_pass_2) * (pP2D.pa || 0);
         next.pv_pass_2 = NVL(next.ml_pass_2) * (pP2D.pv || 0);
       }
+    } else {
+      next.pa_pass_2 = 0; next.pv_pass_2 = 0;
     }
 
     // C. Interior / Mechanism (Shared) — per-unit costs, quantite applied at total level
@@ -369,6 +393,8 @@ export function recomputeRow(row, schema, ctx = {}) {
         next.pa_interieur = (pInt.pa || 0);
         next.pv_interieur = (pInt.pv || 0);
       }
+    } else {
+      next.pa_interieur = 0; next.pv_interieur = 0;
     }
     if (next.mecanisme_fourniture && NVL(next.pa_mecanisme) === 0) {
       const pMF = getPrice(next.mecanisme_fourniture);
@@ -386,6 +412,8 @@ export function recomputeRow(row, schema, ctx = {}) {
         next.pa_molleton = NVL(next.ml_molleton) * (pMoll.pa || 0);
         next.pv_molleton = NVL(next.ml_molleton) * (pMoll.pv || 0);
       }
+    } else {
+      next.pa_molleton = 0; next.pv_molleton = 0;
     }
 
     // D. Baguettes (NEW for Tenture)
@@ -396,6 +424,8 @@ export function recomputeRow(row, schema, ctx = {}) {
         next.pa_baguette_1 = NVL(next.ml_baguette_1) * (pB1.pa || 0);
         next.pv_baguette_1 = NVL(next.ml_baguette_1) * (pB1.pv || 0);
       }
+    } else {
+      next.pa_baguette_1 = 0; next.pv_baguette_1 = 0;
     }
     fillFromCatalog('baguette_2', {});
     if (next.baguette_2) {
@@ -404,6 +434,8 @@ export function recomputeRow(row, schema, ctx = {}) {
         next.pa_baguette_2 = NVL(next.ml_baguette_2) * (pB2.pa || 0);
         next.pv_baguette_2 = NVL(next.ml_baguette_2) * (pB2.pv || 0);
       }
+    } else {
+      next.pa_baguette_2 = 0; next.pv_baguette_2 = 0;
     }
   } else if (!isRideau && !isStore) {
     // --- 11. GENERIC OTHERS ---
@@ -414,6 +446,8 @@ export function recomputeRow(row, schema, ctx = {}) {
         next.pa_tissu_1 = NVL(next.ml_tissu_1) * (pT1.pa || 0);
         next.pv_tissu_1 = NVL(next.ml_tissu_1) * (pT1.pv || 0);
       }
+    } else {
+      next.pa_tissu_1 = 0; next.pv_tissu_1 = 0;
     }
   }
 
