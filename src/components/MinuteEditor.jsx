@@ -488,15 +488,19 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
     return catalog.filter(item => item.category === 'Rail').map(item => item.name);
   }, [catalog]);
 
-  // Détection des doublons (zone, pièce) — réactif sur localLines (source directe)
+  // Détection des doublons (zone, pièce, PRODUIT) — réactif sur localLines (source directe).
+  // Le produit fait partie de la clé : un Rideau et un Voilage au même endroit
+  // (même zone + même pièce) sont légitimes et ne doivent PAS déclencher d'alerte.
   const pieceConflicts = React.useMemo(() => {
     const seen = new Map();
     const found = [];
     for (const r of localLines) {
       if (!r.piece) continue;
-      const key = `${(r.zone || '').trim().toLowerCase()}|${(r.piece || '').trim().toLowerCase()}`;
+      const produit = (r.produit || '').trim().toLowerCase();
+      const key = `${(r.zone || '').trim().toLowerCase()}|${(r.piece || '').trim().toLowerCase()}|${produit}`;
       if (seen.has(key)) {
-        const label = r.zone ? `"${r.piece}" (${r.zone})` : `"${r.piece}"`;
+        const base = r.zone ? `"${r.piece}" (${r.zone})` : `"${r.piece}"`;
+        const label = r.produit ? `${base} — ${r.produit}` : base;
         if (!found.some(f => f.key === key)) found.push({ key, label });
       } else {
         seen.set(key, true);
