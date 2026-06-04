@@ -8,7 +8,7 @@ import { schemaToGridCols } from '../lib/utils/schemaToGridCols.jsx';
 import { recomputeRow } from '../lib/formulas/recomputeRow';
 import { generateRowLogs } from '../lib/utils/logUtils';
 import { uid } from '../lib/utils/uid';
-import { Plus, Trash2, Columns, Layers, Edit2, Filter } from 'lucide-react';
+import { Plus, Trash2, Columns, Layers, Edit2, Filter, FileSpreadsheet } from 'lucide-react';
 import FilterPanel, { isConditionActive, evaluateCondition } from './FilterPanel';
 import { getDefaultMatieres } from '../lib/constants/matiereGroups';
 import { useAuth } from '../auth';
@@ -558,6 +558,23 @@ function MinuteGrid({
         setSelectedRows(rows);
     }, []);
 
+    // Export Excel (natif AG Grid Enterprise) — lignes cochées + colonnes visibles
+    const handleExportExcel = useCallback(() => {
+        const api = gridRef.current?.api;
+        if (!api) return;
+        // Colonnes affichées, hors colonnes techniques (case, bouton détail, photos)
+        const columnKeys = api.getAllDisplayedColumns()
+            .map(c => c.getColId())
+            .filter(colId => !['sel', 'detail'].includes(colId) && !/photo|croquis/i.test(colId));
+        const safeName = String(title || 'export').replace(/[^\w\-À-ÿ ]+/g, '').trim() || 'export';
+        api.exportDataAsExcel({
+            onlySelected: true,
+            columnKeys,
+            fileName: `${safeName}.xlsx`,
+            sheetName: safeName.slice(0, 28),
+        });
+    }, [title]);
+
     // ── Mise à jour en masse ──
     const [showBulkUpdate, setShowBulkUpdate] = useState(false);
     const [bulkField, setBulkField] = useState('');
@@ -1049,6 +1066,11 @@ function MinuteGrid({
                 {selectedCount > 0 && !readOnly && (
                     <button onClick={handleDeleteRows} style={{ cursor: 'pointer', padding: '5px 10px', background: '#ef4444', color: 'white', border: 'none', borderRadius: 4, display: 'flex', alignItems: 'center', gap: 5, fontSize: 12 }}>
                         <Trash2 size={14} /> Supprimer ({selectedCount})
+                    </button>
+                )}
+                {selectedCount > 0 && (
+                    <button onClick={handleExportExcel} style={{ cursor: 'pointer', padding: '5px 10px', background: '#16a34a', color: 'white', border: 'none', borderRadius: 4, display: 'flex', alignItems: 'center', gap: 5, fontSize: 12 }}>
+                        <FileSpreadsheet size={14} /> Export Excel ({selectedCount})
                     </button>
                 )}
                 {selectedCount > 0 && !readOnly && bulkStatutCols.length > 0 && (
