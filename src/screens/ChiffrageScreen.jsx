@@ -155,6 +155,8 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onBack, onOpen
     if (paramsMap.taux_horaire != null) fromParams.taux_horaire = Number(paramsMap.taux_horaire);
     if (paramsMap.prix_nuit != null) fromParams.prix_nuit = Number(paramsMap.prix_nuit);
     if (paramsMap.prix_repas != null) fromParams.prix_repas = Number(paramsMap.prix_repas);
+    if (paramsMap.coef_sous_traitance != null) fromParams.coef_sous_traitance = Number(paramsMap.coef_sous_traitance);
+    if (paramsMap.commission_rate != null) fromParams.commission_rate = Number(paramsMap.commission_rate);
     const effectiveSettings = { ...defaults, ...global, ...local, ...fromParams };
 
     // Priorité : catalog per-minute (bibliothèque d'achat de la minute) > catalog global
@@ -706,7 +708,12 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onBack, onOpen
           onUpdateCommission={(rate) => {
             const newSettings = { ...formulaCtx.settings, commission_rate: rate };
             setLocalSettings(newSettings); // Optimistic UI
-            updateMinute({ settings: newSettings });
+            // Persiste dans params (colonne fiable) comme les autres réglages
+            const updatedParams = [...(minute?.params || [])];
+            const idx = updatedParams.findIndex(p => p.name === 'commission_rate');
+            if (idx >= 0) updatedParams[idx] = { ...updatedParams[idx], value: Number(rate) };
+            else updatedParams.push({ name: 'commission_rate', value: Number(rate) });
+            updateMinute({ params: updatedParams });
           }}
         />
       )}
@@ -721,7 +728,7 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onBack, onOpen
           setLocalSettings({ ...localSettings, ...newSettings }); // Optimistic UI
 
           // Sauvegarder dans params (colonne fiable, toujours présente)
-          const paramKeys = ["taux_horaire", "prix_nuit", "prix_repas"];
+          const paramKeys = ["taux_horaire", "prix_nuit", "prix_repas", "coef_sous_traitance"];
           const hasParamChange = paramKeys.some(k => newSettings[k] != null);
           if (hasParamChange) {
             const currentParams = minute?.params || [];
