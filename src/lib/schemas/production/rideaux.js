@@ -203,7 +203,7 @@ export const RIDEAUX_PROD_SCHEMA = [
     { key: "detail", label: "Détail", type: "button", width: 130 }, // Keep existing UI trigger
     { key: "zone", label: "Zone", type: "text", width: 120, editable: true },
     { key: "piece", label: "Pièce", type: "text", width: 120, editable: true },
-    { key: "produit", label: "Produit", type: "select", options: ["Rideau", "Voilage", "Store Bateau", "Autres"], width: 125, editable: true },
+    { key: "produit", label: "Produit", type: "select", options: ["Rideau", "Voilage"], width: 125, editable: true },
     { key: "type_confection", label: "Type Conf.", type: "select", options: ["Pli Flamand", "Pli Creux", "Pli Plat", "Tripli", "Wave 80", "Wave 60", "Pli Couteau", "Pli Rabattu Cousu", "A Plat"], width: 150, editable: true },
     { key: "hauteur_renfort_tete", label: "H/Renfort Têtes", type: "text", width: 155, editable: true },
     { key: "paire_ou_un_seul_pan", label: "Paire ou un Pan", type: "select", options: ["Paire", "Un seul pan", "Un seul pan (Rapatriement Droit)", "Un seul pan (Rapatriement Gauche)"], width: 260, editable: true },
@@ -257,7 +257,7 @@ export const RIDEAUX_PROD_SCHEMA = [
         valueGetter: (v, r) => getters.reste_les(getRow(v, r))
     },
     { key: "v_ourlets_de_cotes", label: "Ourlets Côtés", type: "number", width: 130, editable: true },
-    { key: "piquage_ourlet", label: "Piquage Ourlet", type: "select", options: ["Apparent", "Invisible"], width: 145, editable: true },
+    { key: "piquage_ourlet", label: "Piquage Ourlet", type: "select", options: ["Apparent", "Invisible", "Surfil + Invisible", "Double + Invisible"], width: 145, editable: true },
 
 
     // C. Hauteurs & Coupe
@@ -493,7 +493,6 @@ export const RIDEAUX_PROD_SCHEMA = [
     { key: "hauteur_corniere_elastique", label: "H. Cornière / Élastique (cm)", type: "number", width: 200, editable: true },
     { key: "etiquette_lavage", label: "Etiq. Lavage", type: "select", options: ["Oui", "Non"], width: 125, editable: true },
     { key: "etiquette_lenglart", label: "Etiq. Lenglart", type: "select", options: ["Oui", "Non"], width: 130, editable: true, defaultValue: "Oui" },
-    { key: "schema", label: "Modèle", type: "croquis", width: 110 }, // PRESERVED COMPONENT
     { key: "type_mecanisme", label: "Type Méca", type: "text", width: 130, editable: true },
     { key: "modele_mecanisme", label: "Modèle Méca", type: "text", width: 150, editable: true },
     { key: "couleur_mecanisme", label: "Couleur Méca", type: "text", width: 140, editable: true },
