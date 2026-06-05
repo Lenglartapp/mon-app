@@ -92,7 +92,7 @@ const PRODUCT_SHEETS = [
       c('largeur',                     'Largeur (cm)',            'number',   14),
       calc('largeur_finie',            'L. Finie',                12),
       c('v_ourlets_de_cotes',          'Ourlets Côtés',           'number',   14),
-      c('piquage_ourlet',              'Piquage Ourlet',          'select',   16, { options: ['Apparent', 'Invisible'] }),
+      c('piquage_ourlet',              'Piquage Ourlet',          'select',   16, { options: ['Apparent', 'Invisible', 'Surfil + Invisible', 'Double + Invisible'] }),
       calc('a_plat',                   'À Plat',                  12),
       c('hspf_droite',                 'HSPF Droit',              'number',   13),
       c('hspf_milieu',                 'HSPF Milieu',             'number',   14),
