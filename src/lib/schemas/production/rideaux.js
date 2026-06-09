@@ -64,7 +64,7 @@ const getters = {
         } else {
             val = L * coeff;
         }
-        return round1(val);
+        return Math.ceil(val);
     },
 
     a_plat: (row) => {
@@ -80,7 +80,7 @@ const getters = {
         } else {
             val = (lFinie * ampleur) + (vOurlets * 2);
         }
-        return round1(val);
+        return Math.ceil(val);
     },
 
     hauteur_finie_droite: (row) => {
@@ -249,7 +249,7 @@ export const RIDEAUX_PROD_SCHEMA = [
     },
     {
         key: "reste_les",
-        label: "Reste Lés (cm)",
+        label: "Apiècement cm",
         type: "number",
         width: 130,
         readOnly: true,

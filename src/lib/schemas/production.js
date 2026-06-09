@@ -60,7 +60,7 @@ const getters = {
     } else {
       val = L * coeff;
     }
-    return round1(val);
+    return Math.ceil(val);
   },
 
   a_plat: (row) => {
@@ -80,7 +80,7 @@ const getters = {
     } else {
       val = (lFinie * ampleur) + (vOurlets * 2);
     }
-    return round1(val);
+    return Math.ceil(val);
   },
 
   hauteur_finie_droite: (row) => {

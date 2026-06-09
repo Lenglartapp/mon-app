@@ -18,19 +18,34 @@ const v = (row, key, fallback = "—") => {
 };
 
 // Cellule print
-function PCell({ label, value, span = 1, accent = false }) {
+function PCell({ label, value, span = 1, accent = false, plusAfter = false }) {
   return (
     <div style={{
       gridColumn: `span ${span}`,
-      borderRight: "0.4pt solid #CBD5E1",
+      borderRight: plusAfter ? "none" : "0.4pt solid #CBD5E1",
       borderBottom: "0.4pt solid #CBD5E1",
       padding: "1.5pt 3pt",
       display: "flex",
       flexDirection: "column",
       gap: 0,
-      overflow: "hidden",
+      overflow: plusAfter ? "visible" : "hidden",
       minWidth: 0,
+      position: "relative",
     }}>
+      {plusAfter && (
+        <span style={{
+          position: "absolute",
+          right: 4,
+          top: "50%",
+          transform: "translateY(-50%)",
+          fontSize: "10pt",
+          fontWeight: 300,
+          color: "#CBD5E1",
+          lineHeight: 1,
+          zIndex: 2,
+          pointerEvents: "none",
+        }}>+</span>
+      )}
       <span style={{
         fontSize: "4pt",
         fontWeight: 600,
@@ -210,8 +225,8 @@ function PrintLabel({ row, projectName, index, total }) {
         {/* Dimensions */}
         <PSectionTitle>Dimensions</PSectionTitle>
         <PRow cols={6}>
-          {show("nombre_les")    && <PCell label="Nb lés" value={v(row, "nombre_les")} />}
-          {show("reste_les")     && <PCell label="Reste Lés (cm)" value={v(row, "reste_les")} />}
+          {show("nombre_les")    && <PCell label="Nb lés" value={v(row, "nombre_les")} plusAfter={show("reste_les")} />}
+          {show("reste_les")     && <PCell label="Apiècement cm" value={v(row, "reste_les")} />}
           {show("a_plat")        && <PCell label="À Plat" value={v(row, "a_plat")} />}
           {show("largeur_finie") && <PCell label="L. Finie" value={v(row, "largeur_finie")} />}
           {show("retour_gauche") && <PCell label="Retour G" value={v(row, "retour_gauche")} />}

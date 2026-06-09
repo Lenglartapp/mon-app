@@ -332,12 +332,12 @@ export const STORES_BATEAUX_PROD_SCHEMA = [
 export const STORES_BATEAUX_GETTERS = {
     largeur_finie: (row) => {
         const l = Number(row?.largeur) || 0;
-        return Math.round((l + 1) * 10) / 10;
+        return Math.ceil(l + 1);
     },
     a_plat: (row) => {
         const L = Number(row?.largeur) || 0;
         const ourlet = Number(row?.ourlet_de_cote) || 0;
-        return Math.round(((L + 1) + ourlet * 2) * 10) / 10;
+        return Math.ceil((L + 1) + ourlet * 2);
     },
     hauteur_coupe: (row) => {
         const hFinie = Number(row?.hauteur_finie) || 0;
