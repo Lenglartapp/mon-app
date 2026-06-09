@@ -12,6 +12,7 @@ import { Plus, Trash2, Columns, Layers, Edit2, Filter, FileSpreadsheet } from 'l
 import FilterPanel, { isConditionActive, evaluateCondition } from './FilterPanel';
 import { getDefaultMatieres } from '../lib/constants/matiereGroups';
 import { useAuth } from '../auth';
+import { useSharedGridState } from '../lib/hooks/useSharedGridState';
 
 const STORAGE_PREFIX = 'ag_grid_state_v1_';
 const GRID_STATE_VERSION = 5; // à incrémenter si le calcul des largeurs change
@@ -225,25 +226,13 @@ function MinuteGrid({
     const localMatieresRef = useRef(localMatieres);
     localMatieresRef.current = localMatieres;
 
-    // État local méca et conf — persisté en localStorage par gridKey
-    const [localMeca, setLocalMeca] = useState(() => {
-        if (gridKey && mecaGroups.length > 0) {
-            try {
-                const saved = JSON.parse(localStorage.getItem(`${gridKey}_meca`) || 'null');
-                if (saved) return saved;
-            } catch {}
-        }
-        return Object.fromEntries(mecaGroups.map(g => [g.id, initialVisibilityModel[g.fields[0]] !== false]));
-    });
-    const [localConf, setLocalConf] = useState(() => {
-        if (gridKey && confGroups.length > 0) {
-            try {
-                const saved = JSON.parse(localStorage.getItem(`${gridKey}_conf`) || 'null');
-                if (saved) return saved;
-            } catch {}
-        }
-        return Object.fromEntries(confGroups.map(g => [g.id, initialVisibilityModel[g.fields[0]] !== false]));
-    });
+    // État local méca et conf — initialisés depuis les defaults, mis à jour par sharedState après chargement Supabase
+    const [localMeca, setLocalMeca] = useState(() =>
+        Object.fromEntries(mecaGroups.map(g => [g.id, initialVisibilityModel[g.fields[0]] !== false]))
+    );
+    const [localConf, setLocalConf] = useState(() =>
+        Object.fromEntries(confGroups.map(g => [g.id, initialVisibilityModel[g.fields[0]] !== false]))
+    );
     const localMecaRef = useRef(localMeca);
     localMecaRef.current = localMeca;
     const localConfRef = useRef(localConf);
@@ -269,51 +258,80 @@ function MinuteGrid({
         return `${STORAGE_PREFIX}${title || 'default'}`;
     }, [gridKey, projectId, minuteId, title]);
 
+    // Clé Supabase (sans le préfixe localStorage)
+    const supabaseGridKey = gridId.replace(STORAGE_PREFIX, '');
+    const { data: sharedState, loaded: sharedStateLoaded, save: saveSharedState } = useSharedGridState(supabaseGridKey);
+    const sharedStateRef = useRef(null);
+    sharedStateRef.current = sharedState;
+
+    // Largeurs stables — initialisées une seule fois au chargement Supabase pour éviter la boucle infinie
+    // (columnDefs ne doit pas dépendre de sharedState directement, sinon chaque save recompute les cols)
+    const [initialWidths, setInitialWidths] = useState({});
+    useEffect(() => {
+        if (sharedStateLoaded && sharedState?.widths) {
+            setInitialWidths(sharedState.widths);
+        }
+    }, [sharedStateLoaded]); // intentionnellement sans sharedState dans les deps
+
     // Persistance : restauration au démarrage
     // Les largeurs viennent de columnDefs (baked depuis schema + _widths localStorage).
     // On restaure ici uniquement l'ordre. La visibilité est toujours pilotée par
     // initialVisibilityModel (prioritaire) ou le localStorage si pas de modèle défini.
-    const onGridReady = useCallback((params) => {
+    // Applique l'état partagé Supabase à la grille (appelé après chargement async)
+    const applySharedState = useCallback((api, state) => {
         const hasVisibilityModel = initialVisibilityModel && Object.keys(initialVisibilityModel).length > 0;
+        const { columnState, v } = state ?? {};
 
-        try {
-            const saved = localStorage.getItem(gridId);
-            if (saved) {
-                const { columnState, v } = JSON.parse(saved);
-                if (columnState && v === GRID_STATE_VERSION) {
-                    if (hasVisibilityModel) {
-                        // Restaurer uniquement l'ordre des colonnes, pas la visibilité
-                        params.api.applyColumnState({
-                            state: columnState.map(cs => ({ colId: cs.colId, pinned: cs.pinned })),
-                            applyOrder: true,
-                        });
-                    } else {
-                        // Pas de modèle imposé : restaurer ordre + visibilité depuis localStorage
-                        params.api.applyColumnState({
-                            state: columnState.map(cs => ({ colId: cs.colId, hide: cs.hide, pinned: cs.pinned })),
-                            applyOrder: true,
-                        });
-                        const visMap = {};
-                        columnState.forEach(cs => { if (cs.colId) visMap[cs.colId] = !cs.hide; });
-                        setColVisibility(visMap);
-                        return;
-                    }
-                }
-            }
-        } catch (_) { /* ignore */ }
-
-        if (hasVisibilityModel) {
+        if (columnState && v === GRID_STATE_VERSION) {
+            // Toujours restaurer visibilité + ordre depuis l'état sauvegardé (override sur initialVisibilityModel)
+            api.applyColumnState({
+                state: columnState.map(cs => ({ colId: cs.colId, hide: cs.hide, pinned: cs.pinned })),
+                applyOrder: true,
+            });
+            const visMap = {};
+            columnState.forEach(cs => { if (cs.colId) visMap[cs.colId] = !cs.hide; });
+            setColVisibility(visMap);
+        } else if (hasVisibilityModel) {
             const stateToApply = Object.entries(initialVisibilityModel)
                 .filter(([, visible]) => !visible)
                 .map(([field]) => ({ colId: field, hide: true }));
-            if (stateToApply.length > 0) {
-                params.api.applyColumnState({ state: stateToApply });
-            }
+            if (stateToApply.length > 0) api.applyColumnState({ state: stateToApply });
             setColVisibility(initialVisibilityModel);
         }
 
-        // Appliquer les matières sauvegardées (override par-dessus initialVisibilityModel)
+        // Meca et conf depuis l'état partagé
+        const savedMeca = state?.meca;
+        const savedConf = state?.conf;
+        if (savedMeca && mecaGroups?.length > 0) {
+            setLocalMeca(savedMeca);
+            const mecaState = [];
+            mecaGroups.forEach(group => {
+                const isActive = savedMeca[group.id] !== false;
+                group.fields.forEach(field => mecaState.push({ colId: field, hide: !isActive }));
+            });
+            api.applyColumnState({ state: mecaState });
+        }
+        if (savedConf && confGroups?.length > 0) {
+            setLocalConf(savedConf);
+            const confState = [];
+            confGroups.forEach(group => {
+                const isActive = savedConf[group.id] !== false;
+                group.fields.forEach(field => confState.push({ colId: field, hide: !isActive }));
+            });
+            api.applyColumnState({ state: confState });
+        }
+    }, [initialVisibilityModel, mecaGroups, confGroups]);
+
+    const onGridReady = useCallback((params) => {
         isGridReadyRef.current = true;
+
+        // Si Supabase a déjà répondu, on applique directement
+        if (sharedStateRef.current !== null || sharedStateLoaded) {
+            applySharedState(params.api, sharedStateRef.current);
+        }
+        // Sinon, le useEffect ci-dessous prendra le relais dès que loaded=true
+
+        // Appliquer les matières sauvegardées (override par-dessus initialVisibilityModel)
         if (matiereGroups?.length > 0) {
             const currentMatieres = localMatieresRef.current;
             const matiereState = [];
@@ -345,13 +363,21 @@ function MinuteGrid({
         }
     }, [gridId, initialVisibilityModel, matiereGroups, mecaGroups, confGroups]);
 
-    // Charger les agrégations sauvegardées
+    // Appliquer l'état partagé quand Supabase répond après que la grille est prête.
+    // On utilise sharedStateRef (pas sharedState) pour ne déclencher qu'une fois au chargement
+    // et éviter la boucle infinie (chaque save mettrait à jour sharedState → re-apply → re-save…)
     useEffect(() => {
-        try {
-            const saved = localStorage.getItem(`${gridId}_agg`);
-            if (saved) setColAggregations(JSON.parse(saved));
-        } catch { /* ignore */ }
-    }, [gridId]);
+        if (!sharedStateLoaded) return;
+        const api = gridRef.current?.api;
+        if (!api || !isGridReadyRef.current) return;
+        applySharedState(api, sharedStateRef.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [sharedStateLoaded]); // intentionnellement sans sharedState dans les deps
+
+    // Charger les agrégations sauvegardées depuis sharedState
+    useEffect(() => {
+        if (sharedState?.agg) setColAggregations(sharedState.agg);
+    }, [sharedState]);
 
     // Efface la sélection de cellules quand l'utilisateur clique hors du tableau
     useEffect(() => {
@@ -394,18 +420,16 @@ function MinuteGrid({
     const onAggregationChange = useCallback((field, aggType) => {
         setColAggregations(prev => {
             const next = { ...prev, [field]: aggType };
-            try { localStorage.setItem(`${gridId}_agg`, JSON.stringify(next)); } catch { /* ignore */ }
+            saveSharedState({ agg: next });
             return next;
         });
-    }, [gridId]);
+    }, [saveSharedState]);
 
-    // Persistance : sauvegarde
+    // Persistance : sauvegarde dans Supabase (partagée)
     const saveColumnState = useCallback((api) => {
-        try {
-            const columnState = api.getColumnState();
-            localStorage.setItem(gridId, JSON.stringify({ columnState, v: GRID_STATE_VERSION }));
-        } catch (_) { /* ignore */ }
-    }, [gridId]);
+        const columnState = api.getColumnState();
+        saveSharedState({ columnState, v: GRID_STATE_VERSION });
+    }, [saveSharedState]);
 
     // Sync activeMatieres prop → état local + AG Grid (chargement async Supabase)
     useEffect(() => {
@@ -448,10 +472,10 @@ function MinuteGrid({
         saveColumnState(api);
         setLocalMeca(prev => {
             const next = { ...prev, [groupId]: active };
-            if (gridKey) { try { localStorage.setItem(`${gridKey}_meca`, JSON.stringify(next)); } catch {} }
+            saveSharedState({ meca: next });
             return next;
         });
-    }, [mecaGroups, saveColumnState, gridKey]);
+    }, [mecaGroups, saveColumnState, saveSharedState]);
 
     const handleToggleConf = useCallback((groupId, active) => {
         const api = gridRef.current?.api;
@@ -461,10 +485,10 @@ function MinuteGrid({
         saveColumnState(api);
         setLocalConf(prev => {
             const next = { ...prev, [groupId]: active };
-            if (gridKey) { try { localStorage.setItem(`${gridKey}_conf`, JSON.stringify(next)); } catch {} }
+            saveSharedState({ conf: next });
             return next;
         });
-    }, [confGroups, saveColumnState, gridKey]);
+    }, [confGroups, saveColumnState, saveSharedState]);
 
     const onColumnResized = useCallback((params) => {
         if (!params.column) return;
@@ -472,13 +496,9 @@ function MinuteGrid({
         const name = params.column.getColDef().headerName || params.column.getColId();
         setResizeInfo(params.finished ? null : { name, width });
         if (params.finished) {
-            // Sauvegarder le override de largeur séparément (clé _widths)
             const colId = params.column.getColId();
-            try {
-                const current = JSON.parse(localStorage.getItem(`${gridId}_widths`) || '{}');
-                current[colId] = width;
-                localStorage.setItem(`${gridId}_widths`, JSON.stringify(current));
-            } catch { /* ignore */ }
+            const currentWidths = sharedStateRef.current?.widths ?? {};
+            saveSharedState({ widths: { ...currentWidths, [colId]: width } });
             saveColumnState(params.api);
         }
     }, [gridId, saveColumnState]);
@@ -676,10 +696,7 @@ function MinuteGrid({
     // Les largeurs sont baked directement dans les colDefs depuis le schéma + overrides _widths.
     // Cela évite tout problème de timing avec initialWidth / applyColumnState.
     const columnDefs = useMemo(() => {
-        let savedWidths = {};
-        try {
-            savedWidths = JSON.parse(localStorage.getItem(`${gridId}_widths`) || '{}');
-        } catch { /* ignore */ }
+        const savedWidths = initialWidths;
 
         const canEditLinks = ['admin', 'sales', 'ordo', 'op'].includes(resolvedUser?.role?.toLowerCase());
         const cols = schemaToGridCols(
