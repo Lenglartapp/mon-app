@@ -393,8 +393,8 @@ export const SCHEMA_64 = [
   // G. Suivi & Statuts
   { key: "type_pose", label: "Type Pose", type: "text", width: 130, editable: true },
   { key: "heures_confection", label: "H. Conf.", type: "number", width: 115, editable: true },
-  { key: "statut_pose", label: "Statut Pose", type: "select", options: ['Non démarré', 'Méca posé', 'Accroché', 'Terminé', 'Reprise'], width: 155, editable: true },
-  { key: "statut_prepa", label: "Statut Prépa", type: "select", options: ['Non démarré', 'En cours', 'Terminé'], width: 150, editable: true },
+  { key: "statut_pose",  label: "Statut Pose",  type: "select", options: ['Non démarré', 'Méca posé', 'Accroché', 'Terminé', 'Reprise'], width: 155, readOnly: (row) => /coussin|plaid|cache.sommier/i.test(String(row?.produit || '')) },
+  { key: "statut_prepa", label: "Statut Prépa", type: "select", options: ['Non démarré', 'En cours', 'Terminé'], width: 150, readOnly: (row) => /coussin|plaid|cache.sommier/i.test(String(row?.produit || '')) },
   { key: "statut_conf", label: "Statut Conf", type: "select", options: ['Non démarré', 'En cours', 'Terminé'], optionsFn: (row) => getStatutConfOptions(row?.produit), readOnly: (row) => { if (hasStatutConf(row?.produit)) return false; if (hasConditionalConf(row?.produit)) return !(Number(row?.heures_confection) > 0); return true; }, width: 150, editable: true },
   // PRESERVED COMPONENTS
   { key: "schema_principe", label: "Schéma Principe", type: "photo", width: 150 }, // NEW

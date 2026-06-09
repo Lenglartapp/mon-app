@@ -50,10 +50,55 @@ const COTES_WEIGHTS = {
 const getCotesWeight = (statut) => COTES_WEIGHTS[statut] ?? 0;
 const isSubjectToCotes = (row) => /rideau|voilage|store/i.test(String(row?.produit || ''));
 
-export const calculateProjectStats = (rows) => {
+// Coussins, plaids, cache-sommiers → confection uniquement, pas de prépa ni pose
+const isSubjectToPrepaAndPose = (row) => !/coussin|plaid|cache.sommier/i.test(String(row?.produit || ''));
+
+// ─── Résumé ST pour une tuile (conf ou pose) ────────────────────────────────
+// Retourne une string lisible ex: "Voilages sous-traités" / "Voilages R+2 sous-traités"
+const buildStSummary = (stRows) => {
+  if (!stRows.length) return null;
+  // Grouper par produit
+  const byProduct = {};
+  stRows.forEach(r => {
+    const prod = String(r.produit || '').trim();
+    if (!byProduct[prod]) byProduct[prod] = [];
+    byProduct[prod].push(r);
+  });
+  const parts = [];
+  Object.entries(byProduct).forEach(([prod, productRows]) => {
+    const label = prod ? prod + 's' : 'Articles'; // "Voilage" → "Voilages"
+    parts.push(label + ' sous-traités');
+  });
+  return parts.join(' · ');
+};
+
+// Détermine le mode d'une tuile service (conf ou pose)
+// mode: 'normal' | 'all_st' | 'mix_st' | 'not_applicable'
+const getServiceMode = (budgetHours, stRows, internalRows) => {
+  const hasBudget = budgetHours > 0;
+  const hasST = stRows.length > 0;
+  if (!hasBudget && !hasST) return 'not_applicable';
+  if (!hasBudget && hasST)  return 'all_st';
+  if (hasBudget && hasST)   return 'mix_st';
+  return 'normal';
+};
+
+// % d'avancement pour les lignes sous-traitées (Non démarré=0, En cours=50, Terminé=100)
+const pctFromStRows = (stRows, statusField) => {
+  if (!stRows.length) return 0;
+  const sum = stRows.reduce((acc, r) => {
+    const s = r[statusField] || 'Non démarré';
+    return acc + (s === 'Terminé' ? 1 : s === 'En cours' ? 0.5 : 0);
+  }, 0);
+  return Math.round((sum / stRows.length) * 100);
+};
+
+export const calculateProjectStats = (rows, budget = {}) => {
   if (!Array.isArray(rows) || rows.length === 0) return null;
   const total = rows.length;
-  let cotesWeightSum = 0, cotesTotal = 0, prepaOk = 0, poseOk = 0;
+  let cotesWeightSum = 0, cotesTotal = 0;
+  let prepaOk = 0, prepaTotal = 0;
+  let poseOk = 0, poseTotal = 0;
   let weightedConfSum = 0, totalConfHours = 0, confBinaryOk = 0;
 
   rows.forEach(r => {
@@ -61,8 +106,12 @@ export const calculateProjectStats = (rows) => {
       cotesWeightSum += getCotesWeight(r.statut_cotes);
       cotesTotal++;
     }
-    if (r.statut_prepa === 'Terminé') prepaOk++;
-    if (r.statut_pose === 'Terminé') poseOk++;
+    if (isSubjectToPrepaAndPose(r)) {
+      prepaTotal++;
+      poseTotal++;
+      if (r.statut_prepa === 'Terminé') prepaOk++;
+      if (r.statut_pose === 'Terminé') poseOk++;
+    }
 
     if (r.realise_par === 'Sous-Traitant') return;
 
@@ -83,16 +132,46 @@ export const calculateProjectStats = (rows) => {
     pctConf = itemsWithoutHours > 0 ? Math.round((confBinaryOk / itemsWithoutHours) * 100) : 0;
   }
 
+  // ── Modes conf / pose ──────────────────────────────────────────────────────
+  const stConfRows = rows.filter(r => (parseFloat(r.st_conf_pa) || 0) > 0);
+  const stPoseRows = rows.filter(r => (parseFloat(r.st_pose_pa) || 0) > 0);
+  const internalConfRows = rows.filter(r => !((parseFloat(r.st_conf_pa) || 0) > 0));
+  const internalPoseRows = rows.filter(r => !((parseFloat(r.st_pose_pa) || 0) > 0));
+
+  const confMode = getServiceMode(budget.conf || 0, stConfRows, internalConfRows);
+  const poseMode = getServiceMode(budget.pose || 0, stPoseRows, internalPoseRows);
+
+  // Pour all_st : % basé sur statuts ST (Non démarré/En cours/Terminé)
+  const pctConfST = pctFromStRows(stConfRows, 'statut_conf');
+  const pctPoseST = pctFromStRows(stPoseRows, 'statut_pose');
+
+  // % final conf selon mode
+  const pctConfFinal = confMode === 'all_st' ? pctConfST
+    : confMode === 'mix_st' ? Math.round((pctConf + pctConfST) / 2)
+    : confMode === 'not_applicable' ? null
+    : pctConf;
+
+  // % final pose selon mode
+  const pctPoseBase = poseTotal > 0 ? Math.round((poseOk / poseTotal) * 100) : 0;
+  const pctPoseFinal = poseMode === 'all_st' ? pctPoseST
+    : poseMode === 'mix_st' ? Math.round((pctPoseBase + pctPoseST) / 2)
+    : poseMode === 'not_applicable' ? null
+    : poseTotal > 0 ? Math.round((poseOk / poseTotal) * 100) : null;
+
   return {
     total,
     cotesTotal,
     pctCotes: cotesTotal > 0 ? Math.round((cotesWeightSum / cotesTotal) * 100) : null,
-    pctPrepa: Math.round((prepaOk / total) * 100),
-    pctConf,
-    pctPose: Math.round((poseOk / total) * 100),
+    pctPrepa: prepaTotal > 0 ? Math.round((prepaOk / prepaTotal) * 100) : null,
+    pctConf: pctConfFinal,
+    pctPose: pctPoseFinal,
+    confMode, poseMode,
+    stConfSummary: buildStSummary(stConfRows),
+    stPoseSummary: buildStSummary(stPoseRows),
     raw: {
       cotesValidees: rows.filter(r => r.statut_cotes === 'Validé par chef de projet').length,
-      prepaOk, poseOk,
+      prepaOk, prepaTotal,
+      poseOk, poseTotal,
       confHouresDone: Math.round(weightedConfSum),
       confHouresTotal: Math.round(totalConfHours),
     },
