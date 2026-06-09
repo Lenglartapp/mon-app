@@ -111,7 +111,9 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
       }
     });
 
-    if (!showArchived) {
+    if (showArchived) {
+      res = res.filter(p => p.status === 'ARCHIVED');
+    } else {
       res = res.filter(p => p.status !== 'ARCHIVED');
     }
 
