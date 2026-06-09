@@ -28,7 +28,7 @@ export const ETIQUETTE_RIDEAUX_FIELDS = [
   { key: "doublure_finition_bas",label: "Doubl. fin. bas",    section: "Ourlets & Bas" },
   // Dimensions
   { key: "nombre_les",           label: "Nb lés",             section: "Dimensions" },
-  { key: "reste_les",            label: "Reste Lés (cm)",     section: "Dimensions" },
+  { key: "reste_les",            label: "Apiècement cm",      section: "Dimensions" },
   { key: "a_plat",               label: "À Plat",             section: "Dimensions" },
   { key: "largeur_finie",        label: "L. Finie",           section: "Dimensions" },
   { key: "retour_gauche",        label: "Retour G",           section: "Dimensions" },
@@ -73,7 +73,7 @@ const v = (row, key, fallback = "—") => {
 };
 
 // ─── Sous-composants affichage ────────────────────────────────────────────────
-function Cell({ label, value, accent = false, span = 1 }) {
+function Cell({ label, value, accent = false, span = 1, plusAfter = false }) {
   return (
     <div style={{
       gridColumn: `span ${span}`,
@@ -81,7 +81,18 @@ function Cell({ label, value, accent = false, span = 1 }) {
       borderRight: "1px solid #E5E7EB",
       borderBottom: "1px solid #E5E7EB",
       display: "flex", flexDirection: "column", gap: 1, minWidth: 0,
+      position: "relative",
     }}>
+      {plusAfter && (
+        <span style={{
+          position: "absolute", right: -9, top: "50%", transform: "translateY(-50%)",
+          zIndex: 2, background: "#2563eb", color: "white",
+          fontSize: 9, fontWeight: 800, lineHeight: 1,
+          width: 14, height: 14, borderRadius: "50%",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          boxShadow: "0 0 0 1.5px white",
+        }}>+</span>
+      )}
       <span style={{
         fontSize: 9, fontWeight: 600, letterSpacing: "0.05em",
         textTransform: "uppercase", color: "#9CA3AF", lineHeight: 1,
@@ -383,8 +394,8 @@ export default function EtiquetteRideauxCard({ row, projectName, index, total, o
           <SectionTitle>Dimensions</SectionTitle>
           {(show("nombre_les") || show("reste_les") || show("a_plat") || show("largeur_finie") || show("retour_gauche") || show("retour_droit")) && (
             <Row cols={6}>
-              {show("nombre_les")    && <Cell label="Nb lés" value={v(row, "nombre_les")} />}
-              {show("reste_les")     && <Cell label="Reste Lés (cm)" value={v(row, "reste_les")} />}
+              {show("nombre_les")    && <Cell label="Nb lés" value={v(row, "nombre_les")} plusAfter={show("reste_les")} />}
+              {show("reste_les")     && <Cell label="Apiècement cm" value={v(row, "reste_les")} />}
               {show("a_plat")        && <Cell label="À Plat" value={v(row, "a_plat")} />}
               {show("largeur_finie") && <Cell label="L. Finie" value={v(row, "largeur_finie")} />}
               {show("retour_gauche") && <Cell label="Retour G" value={v(row, "retour_gauche")} />}
