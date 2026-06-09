@@ -1113,7 +1113,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
               <h3 style={{ fontSize: 16, fontWeight: 700, margin: '0 0 16px', color: '#111827', display: 'flex', alignItems: 'center', gap: 8 }}>
                 📊 Avancement
               </h3>
-              <DashboardTiles rows={rows} projectHours={{ conf: 0, pose: 0 }} isMobile={isMobile} />
+              <DashboardTiles rows={rows} budget={project?.budget || {}} isMobile={isMobile} />
             </div>
           </div>
 

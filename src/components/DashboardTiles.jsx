@@ -2,8 +2,8 @@ import React, { useMemo } from "react";
 import { Activity, Ruler, Scissors, Hammer, Clock } from "lucide-react";
 import { calculateProjectStats } from "../lib/projectMetrics";
 
-export default function DashboardTiles({ rows, isMobile = false }) {
-  const stats = useMemo(() => calculateProjectStats(rows), [rows]);
+export default function DashboardTiles({ rows, budget = {}, isMobile = false }) {
+  const stats = useMemo(() => calculateProjectStats(rows, budget), [rows, budget]);
 
   const tileStyle = (bg, color) => ({
     background: bg, color: color, borderRadius: 16, padding: "20px",
@@ -31,23 +31,51 @@ export default function DashboardTiles({ rows, isMobile = false }) {
       </div>
       <div style={tileStyle("#F5F3FF", "#5B21B6")}>
         <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, display: 'flex', gap: 6 }}><Activity size={16} /> Préparation</div>
-        <div><div style={valStyle}>{stats.pctPrepa}%</div><div style={subStyle}>{stats.raw.prepaOk}/{stats.total} terminées</div></div>
+        <div><div style={valStyle}>{stats.pctPrepa}%</div><div style={subStyle}>{stats.raw.prepaOk}/{stats.raw.prepaTotal} terminées</div></div>
       </div>
-      <div style={tileStyle("#FDF2F8", "#9D174D")}>
-        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, display: 'flex', gap: 6 }}><Scissors size={16} /> Confection</div>
-        <div>
-          <div style={valStyle}>{stats.pctConf}%</div>
-          <div style={subStyle}>
-            {stats.raw.confHouresTotal > 0
-              ? `${stats.raw.confHouresDone}h / ${stats.raw.confHouresTotal}h`
-              : `${stats.raw.confHouresDone}/${stats.total} terminées`}
+      {/* Tuile Confection */}
+      {stats.confMode === 'not_applicable'
+        ? <div style={tileStyle("#F3F4F6", "#9CA3AF")}>
+            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, display: 'flex', gap: 6 }}><Scissors size={16} /> Confection</div>
+            <div><div style={{ ...valStyle, fontSize: 16 }}>Non applicable</div></div>
           </div>
-        </div>
-      </div>
-      <div style={tileStyle("#ECFDF5", "#065F46")}>
-        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, display: 'flex', gap: 6 }}><Hammer size={16} /> Pose</div>
-        <div><div style={valStyle}>{stats.pctPose}%</div><div style={subStyle}>{stats.raw.poseOk}/{stats.total} installées</div></div>
-      </div>
+        : <div style={tileStyle("#FDF2F8", "#9D174D")}>
+            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, display: 'flex', gap: 6 }}><Scissors size={16} /> Confection</div>
+            <div>
+              <div style={valStyle}>{stats.pctConf}%</div>
+              <div style={subStyle}>
+                {stats.raw.confHouresTotal > 0
+                  ? `${stats.raw.confHouresDone}h / ${stats.raw.confHouresTotal}h`
+                  : stats.confMode === 'all_st' ? 'Sous-traité'
+                  : `${stats.raw.confHouresDone}/${stats.total} terminées`}
+              </div>
+              {(stats.confMode === 'all_st' || stats.confMode === 'mix_st') && stats.stConfSummary && (
+                <div style={{ fontSize: 10, marginTop: 4, opacity: 0.65, fontStyle: 'italic' }}>{stats.stConfSummary}</div>
+              )}
+            </div>
+          </div>
+      }
+
+      {/* Tuile Pose */}
+      {stats.poseMode === 'not_applicable'
+        ? <div style={tileStyle("#F3F4F6", "#9CA3AF")}>
+            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, display: 'flex', gap: 6 }}><Hammer size={16} /> Pose</div>
+            <div><div style={{ ...valStyle, fontSize: 13, fontWeight: 600, lineHeight: 1.4 }}>Installation non réalisée par nos soins</div></div>
+          </div>
+        : <div style={tileStyle("#ECFDF5", "#065F46")}>
+            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, display: 'flex', gap: 6 }}><Hammer size={16} /> Pose</div>
+            <div>
+              <div style={valStyle}>{stats.pctPose}%</div>
+              <div style={subStyle}>
+                {stats.poseMode === 'all_st' ? 'Sous-traité'
+                  : `${stats.raw.poseOk}/${stats.raw.poseTotal} installées`}
+              </div>
+              {(stats.poseMode === 'all_st' || stats.poseMode === 'mix_st') && stats.stPoseSummary && (
+                <div style={{ fontSize: 10, marginTop: 4, opacity: 0.65, fontStyle: 'italic' }}>{stats.stPoseSummary}</div>
+              )}
+            </div>
+          </div>
+      }
 
     </div>
   );
