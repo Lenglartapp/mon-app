@@ -185,6 +185,24 @@ const PERMISSIONS = {
   },
 };
 
+// ORDO_CONF : mêmes droits qu'ORDO, mais compté comme ressource confection
+// (productive, planifiable). Ex : Delphine — accès/permissions d'ordo + planning.
+PERMISSIONS.ordo_conf = { ...PERMISSIONS.ordo };
+
+// Mapping rôle -> groupe de production (ressource planning).
+// Renvoie null si le rôle n'est pas une ressource planifiable.
+const PRODUCTION_GROUP_BY_ROLE = {
+  conf: 'conf',
+  prepa: 'prepa',
+  pose: 'pose',
+  ordo_conf: 'conf',
+};
+
+export function productionGroup(userOrRole) {
+  const r = (typeof userOrRole === 'string' ? userOrRole : userOrRole?.role || '').toLowerCase();
+  return PRODUCTION_GROUP_BY_ROLE[r] || null;
+}
+
 export function can(user, action) {
   if (!user || !user.role) return false;
 

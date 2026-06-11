@@ -86,35 +86,49 @@ const BacklogCreationModal = ({ isOpen, onClose, onSave, onDelete, projects, eve
 
         const budgetSold = selectedProject.budget?.conf || 0;
 
-        // Filter events for this project (excluding Backlog items to avoid double counting if not dispatched?)
-        // Wait, Backlog items ARE the budget allocation. 
-        // Real Consumed = Dispatched (assigned to real people).
-        // Backlog items = Planned Allocation.
-        // User asked to see "Actualisé avec les temps consommés".
-        // Let's assume Consumed = Real Assigned Events.
-
-        const projectEvents = events.filter(e =>
+        // CONFECTION UNIQUEMENT : on ignore pose, prépa, absences et les buckets backlog.
+        // (Ce programme semaine concerne l'atelier confection.)
+        const confEvents = events.filter(e =>
             e.meta?.projectId === selectedProject.id &&
-            e.resourceId !== 'backlog_confection' && // Exclude backlog buckets
-            e.type !== 'absence'
+            e.type === 'conf' &&
+            e.resourceId !== 'backlog_confection'
         );
 
-        let consumedHours = 0;
-        projectEvents.forEach(e => {
+        // Heures réelles d'un créneau : durationHours exclut déjà la pause déjeuner ;
+        // en repli, on déduit l'heure de pause de la durée brute.
+        const eventHours = (e) => {
+            if (e.meta?.durationHours != null) return e.meta.durationHours;
             const start = new Date(e.meta?.start || e.date);
             const end = new Date(e.meta?.end || e.date);
-            consumedHours += differenceInMinutes(end, start) / 60;
-        });
+            let mins = differenceInMinutes(end, start);
+            const lunchStart = new Date(start); lunchStart.setHours(12, 0, 0, 0);
+            const lunchEnd = new Date(start); lunchEnd.setHours(13, 0, 0, 0);
+            if (start < lunchStart && end > lunchEnd) mins -= 60;
+            return Math.max(0, mins) / 60;
+        };
 
-        // Current Week Planned (in Backlog or Assigned)
-        // Just for info, maybe?
+        // Planifié = à faire (pending) ; Consommé = réalisé (validé), figé.
+        let plannedHours = 0;
+        let consumedHours = 0;
+        confEvents.forEach(e => {
+            const h = eventHours(e);
+            if (e.meta?.status === 'validated') consumedHours += h;
+            else plannedHours += h;
+        });
 
         return {
             sold: budgetSold,
-            consumed: Math.round(consumedHours),
-            remaining: Math.round(budgetSold - consumedHours)
+            planned: plannedHours,
+            consumed: consumedHours,
+            remaining: budgetSold - plannedHours - consumedHours
         };
     }, [selectedProject, events]);
+
+    // Affiche les heures avec au plus 1 décimale (7,8 reste 7,8 ; 78 reste 78)
+    const fmtH = (n) => {
+        const r = Math.round(n * 10) / 10;
+        return `${r}`.replace('.', ',');
+    };
 
     const handleSubmit = () => {
         if (!selectedProject || !hours) return;
@@ -199,16 +213,20 @@ const BacklogCreationModal = ({ isOpen, onClose, onSave, onDelete, projects, eve
                         <div style={S.statsBox}>
                             <div style={S.statRow}>
                                 <span>Budget Vendu (Confection) :</span>
-                                <span style={S.statValue}>{projectStats.sold}h</span>
+                                <span style={S.statValue}>{fmtH(projectStats.sold)}h</span>
                             </div>
                             <div style={S.statRow}>
-                                <span>Déjà Planifié / Consommé :</span>
-                                <span style={{ ...S.statValue, color: '#EA580C' }}>{projectStats.consumed}h</span>
+                                <span>Déjà Planifié (à faire) :</span>
+                                <span style={{ ...S.statValue, color: '#EA580C' }}>{fmtH(projectStats.planned)}h</span>
+                            </div>
+                            <div style={S.statRow}>
+                                <span>Déjà Consommé (réalisé) :</span>
+                                <span style={{ ...S.statValue, color: '#6B7280' }}>{fmtH(projectStats.consumed)}h</span>
                             </div>
                             <div style={{ ...S.statRow, marginTop: 8, paddingTop: 8, borderTop: '1px dashed #D1D5DB' }}>
                                 <span>Reste à Planifier :</span>
                                 <span style={{ ...S.statValue, color: projectStats.remaining < 0 ? '#EF4444' : '#10B981' }}>
-                                    {projectStats.remaining}h
+                                    {fmtH(projectStats.remaining)}h
                                 </span>
                             </div>
                         </div>

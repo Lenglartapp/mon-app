@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { ChevronDown, ChevronRight as ChevronRightIcon, CheckCircle, X, Plus as PlusIcon } from 'lucide-react';
 import { format, isSameDay, startOfMonth, startOfDay, endOfMonth, eachDayOfInterval, isWeekend, differenceInMinutes, addDays, parseISO, getHours, getMinutes, getISOWeek, addWeeks, startOfWeek, endOfWeek } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { PLANNING_COLORS, getProjectColor, ROW_HEIGHT, PROGRAMME_ROW_HEIGHT, HEADER_HEIGHT_1, HEADER_HEIGHT_2, TOTAL_WORK_MINUTES, WORK_START_HOUR, WORK_END_HOUR } from './constants';
+import { PLANNING_COLORS, getProjectColor, ROW_HEIGHT, PROGRAMME_ROW_HEIGHT, HEADER_HEIGHT_1, HEADER_HEIGHT_2, TOTAL_WORK_MINUTES, WORK_START_HOUR, WORK_END_HOUR, DEFAULT_DAILY_HOURS, ATELIER_HOURS_PER_DAY, dailyHoursForGroup } from './constants';
 import { uid } from '../../lib/utils/uid';
 
 // --- STICKY CELLS ---
@@ -63,8 +63,8 @@ const PlanningGrid = ({
                 return ta < tb ? -1 : ta > tb ? 1 : 0;
             });
 
-            const totalDh = sorted.reduce((sum, e) => sum + (e.meta?.durationHours ?? 8), 0);
-            const baseDh = Math.max(8, totalDh); // 8h = largeur de référence d'une journée
+            const totalDh = sorted.reduce((sum, e) => sum + (e.meta?.durationHours ?? ATELIER_HOURS_PER_DAY), 0);
+            const baseDh = Math.max(ATELIER_HOURS_PER_DAY, totalDh); // 7,8h = largeur de référence d'une journée atelier
 
             return (
                 <div key="hour-mode-wrapper" style={{
@@ -72,7 +72,7 @@ const PlanningGrid = ({
                     display: 'flex', gap: 2, overflow: 'hidden'
                 }}>
                     {sorted.map(evt => {
-                        const dh = evt.meta?.durationHours ?? 8;
+                        const dh = evt.meta?.durationHours ?? ATELIER_HOURS_PER_DAY;
                         const widthPct = (dh / baseDh) * 100;
                         const evtStyle = getProjectColor(evt.meta?.projectId) || PLANNING_COLORS[evt.type] || PLANNING_COLORS.default;
                         const isValidated = evt.meta?.status === 'validated';
@@ -111,9 +111,11 @@ const PlanningGrid = ({
                                 <div style={{ fontSize: 11, fontWeight: isValidated ? 700 : 500, color: evtStyle.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                     {evt.title}
                                 </div>
-                                <div style={{ fontSize: 10, color: evtStyle.text, opacity: 0.7 }}>
-                                    {dh}h
-                                </div>
+                                {evt.meta?.description && (
+                                    <div style={{ fontSize: 10, fontStyle: 'italic', color: evtStyle.text, opacity: 0.65, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                        {evt.meta.description.split('\n')[0]}
+                                    </div>
+                                )}
                                 {isValidated && (
                                     <CheckCircle size={10} color={evtStyle.text} style={{ position: 'absolute', bottom: 2, right: 2 }} />
                                 )}
@@ -125,7 +127,34 @@ const PlanningGrid = ({
         }
 
         // --- MODE STANDARD : pose, absences, backlog ---
-        return dayEvents.map(evt => {
+        // Empilement des créneaux qui se chevauchent dans le temps : chaque créneau
+        // reçoit une "lane" (rangée) au sein de son groupe de chevauchement, pour
+        // qu'aucun créneau n'en masque un autre.
+        const slotMinutes = (e) => {
+            if (!e.meta?.start || !e.meta?.end) return [0, TOTAL_WORK_MINUTES];
+            const s = new Date(e.meta.start);
+            const en = new Date(e.meta.end);
+            const sMin = Math.max(0, getHours(s) * 60 + getMinutes(s) - WORK_START_HOUR * 60);
+            const eMin = Math.max(sMin + 1, Math.min(TOTAL_WORK_MINUTES, getHours(en) * 60 + getMinutes(en) - WORK_START_HOUR * 60));
+            return [sMin, eMin];
+        };
+        const sortedDayEvents = [...dayEvents].sort((a, b) => slotMinutes(a)[0] - slotMinutes(b)[0] || slotMinutes(b)[1] - slotMinutes(a)[1]);
+        const eventLayout = new Map(); // evt.id -> { lane, cluster }
+        const clusterLaneCounts = [];
+        let laneEnds = [];
+        let clusterEnd = -1;
+        sortedDayEvents.forEach(e => {
+            const [s, en] = slotMinutes(e);
+            if (s >= clusterEnd) { laneEnds = []; clusterLaneCounts.push(0); }
+            clusterEnd = Math.max(clusterEnd, en);
+            let lane = laneEnds.findIndex(end => end <= s);
+            if (lane === -1) { lane = laneEnds.length; laneEnds.push(en); } else { laneEnds[lane] = en; }
+            const cluster = clusterLaneCounts.length - 1;
+            clusterLaneCounts[cluster] = Math.max(clusterLaneCounts[cluster], laneEnds.length);
+            eventLayout.set(e.id, { lane, cluster });
+        });
+
+        return sortedDayEvents.map(evt => {
             const style = evt.type === 'absence'
                 ? PLANNING_COLORS.absence
                 : (getProjectColor(evt.meta?.projectId) || PLANNING_COLORS[evt.type] || PLANNING_COLORS.default);
@@ -234,6 +263,9 @@ const PlanningGrid = ({
                 </div>
             );
 
+            const { lane = 0, cluster = 0 } = eventLayout.get(evt.id) || {};
+            const laneCount = clusterLaneCounts[cluster] || 1;
+
             return (
                 <div key={evt.id} draggable={!readOnly && !isBacklog}
                     onMouseEnter={() => onHoverEvent && onHoverEvent(evt.id)}
@@ -242,7 +274,9 @@ const PlanningGrid = ({
                     onClick={(e) => { e.stopPropagation(); onEventClick(evt); }}
                     title={isBacklog ? `ID:${evt.id} | Enfants:${childEvents.length} | Backlog: ${plannedHours}h / ${totalHours}h planifié` : `${evt.title} (${labelTime})`}
                     style={{
-                        position: 'absolute', top: 4, bottom: 4,
+                        position: 'absolute',
+                        top: `calc(${(lane / laneCount) * 100}% + 3px)`,
+                        height: `calc(${100 / laneCount}% - 6px)`,
                         left: `${leftPercent}%`,
                         width: `${widthPercent}%`,
                         backgroundColor: isBacklog ? '#FFF1F2' : style.bg,
@@ -263,8 +297,21 @@ const PlanningGrid = ({
                     }}
                 >
                     {isBacklog ? renderBacklogContent() : (
-                        <div style={{ fontSize: 11, fontWeight: fontWeight, color: style.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            {evt.title}
+                        <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', height: '100%', gap: 1, overflow: 'hidden' }}>
+                            <div style={{ fontSize: 11, fontWeight: fontWeight, color: style.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flexShrink: 0 }}>
+                                {evt.title}
+                            </div>
+                            {/* Heures début-fin : uniquement pour la pose (conf/prepa raisonnent en durée) */}
+                            {evt.meta?.start && evt.meta?.end && evt.type !== 'conf' && evt.type !== 'prepa' && (
+                                <div style={{ fontSize: 10, fontWeight: 500, color: style.text, opacity: 0.75, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flexShrink: 0 }}>
+                                    {labelTime}
+                                </div>
+                            )}
+                            {evt.meta?.description && (
+                                <div style={{ fontSize: 10, fontStyle: 'italic', color: style.text, opacity: 0.65, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flexShrink: 0 }}>
+                                    {evt.meta.description.split('\n')[0]}
+                                </div>
+                            )}
                         </div>
                     )}
                     {!isBacklog && isValidated && (
@@ -317,10 +364,34 @@ const PlanningGrid = ({
                             ))}
 
                             {/* Events */}
-                            {Object.values(filteredGroups).flatMap(g => g.members).map(member => {
-                                const dayEvents = events.filter(e => e.resourceId === member.id && isSameDay(parseISO(e.date), col));
+                            {(() => {
+                                const colEvents = Object.values(filteredGroups).flatMap(g => g.members)
+                                    .flatMap(member => events.filter(e => e.resourceId === member.id && isSameDay(parseISO(e.date), col)));
 
-                                return dayEvents.map(evt => {
+                                // Répartition en colonnes (lanes) des créneaux qui se chevauchent
+                                const vSlot = (e) => {
+                                    const s = new Date(e.meta?.start || e.date);
+                                    const en = new Date(e.meta?.end || e.date);
+                                    const sMin = getHours(s) * 60 + getMinutes(s);
+                                    return [sMin, Math.max(sMin + 15, getHours(en) * 60 + getMinutes(en))];
+                                };
+                                const sortedColEvents = [...colEvents].sort((a, b) => vSlot(a)[0] - vSlot(b)[0] || vSlot(b)[1] - vSlot(a)[1]);
+                                const vLayout = new Map();
+                                const vClusterLanes = [];
+                                let vLaneEnds = [];
+                                let vClusterEnd = -1;
+                                sortedColEvents.forEach(e => {
+                                    const [s, en] = vSlot(e);
+                                    if (s >= vClusterEnd) { vLaneEnds = []; vClusterLanes.push(0); }
+                                    vClusterEnd = Math.max(vClusterEnd, en);
+                                    let lane = vLaneEnds.findIndex(end => end <= s);
+                                    if (lane === -1) { lane = vLaneEnds.length; vLaneEnds.push(en); } else { vLaneEnds[lane] = en; }
+                                    const cluster = vClusterLanes.length - 1;
+                                    vClusterLanes[cluster] = Math.max(vClusterLanes[cluster], vLaneEnds.length);
+                                    vLayout.set(e.id, { lane, cluster });
+                                });
+
+                                return sortedColEvents.map(evt => {
                                     const style = evt.type === 'absence'
                                         ? PLANNING_COLORS.absence
                                         : (getProjectColor(evt.meta?.projectId) || PLANNING_COLORS[evt.type] || PLANNING_COLORS.default);
@@ -333,6 +404,8 @@ const PlanningGrid = ({
 
                                     const top = Math.max(0, sMinutes - startWorkMinutes);
                                     const duration = Math.max(15, eMinutes - sMinutes);
+                                    const { lane = 0, cluster = 0 } = vLayout.get(evt.id) || {};
+                                    const laneCount = vClusterLanes[cluster] || 1;
 
                                     return (
                                         <div key={evt.id}
@@ -341,7 +414,8 @@ const PlanningGrid = ({
                                                 position: 'absolute',
                                                 top: top,
                                                 height: duration,
-                                                left: 4, right: 4,
+                                                left: `calc(${(lane / laneCount) * 100}% + 4px)`,
+                                                width: `calc(${100 / laneCount}% - 8px)`,
                                                 background: style.bg,
                                                 border: `1px solid ${style.border}`,
                                                 borderLeft: `4px solid ${style.border}`,
@@ -361,7 +435,7 @@ const PlanningGrid = ({
                                         </div>
                                     );
                                 });
-                            })}
+                            })()}
                         </div>
                     ))}
                 </div>
@@ -370,6 +444,16 @@ const PlanningGrid = ({
     }
 
     // --- UTILS CALCULATION ---
+    // Heures contractuelles/jour par membre : 7,8h atelier (conf/prepa), 8h ailleurs
+    const memberDailyHours = useMemo(() => {
+        const map = {};
+        Object.entries(filteredGroups).forEach(([key, group]) => {
+            const h = dailyHoursForGroup(key);
+            group.members.forEach(m => { map[m.id] = h; });
+        });
+        return map;
+    }, [filteredGroups]);
+
     const getStats = (memberIds, dateRange, allEvents) => {
         let totalAbsenceHours = 0;
         let totalLoadHours = 0;
@@ -393,8 +477,11 @@ const PlanningGrid = ({
             }
             // For this column (Day or Month), capacity is:
             // EXCLUDE BACKLOG FROM CAPACITY
-            const realMembersCount = memberIds.filter(id => id !== 'backlog_confection').length;
-            theoreticalCapacity += realMembersCount * 8 * workDaysCount;
+            // Somme des heures contractuelles/jour de chaque membre (7,8h atelier, 8h pose)
+            const dailyCapacity = memberIds
+                .filter(id => id !== 'backlog_confection')
+                .reduce((sum, id) => sum + (memberDailyHours[id] ?? DEFAULT_DAILY_HOURS), 0);
+            theoreticalCapacity += dailyCapacity * workDaysCount;
         });
 
         activeMemberCount = memberIds.length;
@@ -454,6 +541,12 @@ const PlanningGrid = ({
         return { load: totalLoadHours, cap: realCapacity, percent };
     };
 
+    // Affiche les heures avec au plus 1 décimale (7,8 reste 7,8, 78 reste 78)
+    const fmtHours = (n) => {
+        const r = Math.round(n * 10) / 10;
+        return Number.isInteger(r) ? `${r}` : `${r}`.replace('.', ',');
+    };
+
     // Helper to render a Gauge Cell
     const renderGaugeCell = (load, cap, percent, keyPrefix) => {
         let barColor = '#10B981';
@@ -472,7 +565,7 @@ const PlanningGrid = ({
                 padding: '0 8px'
             }}>
                 <div style={{ fontSize: 10, fontWeight: 700, color: '#374151', marginBottom: 4, display: 'flex', justifyContent: 'space-between' }}>
-                    <span>{Math.round(load)}h <span style={{ color: '#9CA3AF', fontWeight: 400 }}>/ {Math.round(cap)}h</span></span>
+                    <span>{fmtHours(load)}h <span style={{ color: '#9CA3AF', fontWeight: 400 }}>/ {fmtHours(cap)}h</span></span>
                 </div>
                 <div style={{ width: '100%', height: 6, background: 'rgba(0,0,0,0.05)', borderRadius: 3, overflow: 'hidden' }}>
                     <div style={{ width: `${Math.min(percent, 100)}%`, height: '100%', background: barColor, transition: 'width 0.3s ease' }} />
@@ -899,6 +992,11 @@ const PlanningGrid = ({
                                                                                 <div style={{ fontSize: 11, fontWeight: 600, color: '#9F1239', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                                                                     {evt.title}
                                                                                 </div>
+                                                                                {evt.meta?.description && (
+                                                                                    <div style={{ fontSize: 9, fontStyle: 'italic', color: '#9F1239', opacity: 0.7, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: 1 }}>
+                                                                                        {evt.meta.description.split('\n')[0]}
+                                                                                    </div>
+                                                                                )}
                                                                                 <div style={{ height: 4, background: '#F3F4F6', borderRadius: 2, marginTop: 4, overflow: 'hidden' }}>
                                                                                     <div style={{ width: `${Math.min(progressPercent, 100)}%`, height: '100%', background: '#10B981' }} />
                                                                                 </div>

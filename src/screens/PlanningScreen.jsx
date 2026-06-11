@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useAuth } from '../auth';
 import {
     format, startOfWeek, addDays, getHours, isSameDay, startOfMonth, endOfMonth, eachDayOfInterval,
@@ -9,7 +9,7 @@ import {
 } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useCapacityPlanning } from '../hooks/useCapacityPlanning';
-import { can } from '../lib/authz';
+import { can, productionGroup } from '../lib/authz';
 import { uid } from '../lib/utils/uid';
 import { supabase } from '../lib/supabaseClient';
 import { INITIAL_GROUPS_CONFIG, WORK_START_HOUR, WORK_END_HOUR, TOTAL_WORK_MINUTES } from '../components/planning/constants';
@@ -450,7 +450,10 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
         const todayStr = format(new Date(), 'yyyy-MM-dd');
 
         localUsers.forEach(u => {
-            if (u.role && config[u.role]) {
+            // Le service planning dépend du groupe de production (pas du rôle brut) :
+            // ex. ordo_conf → confection, tout en gardant ses permissions d'ordo.
+            const groupKey = productionGroup(u.role);
+            if (groupKey && config[groupKey]) {
                 const isInterim = u.first_name?.startsWith('Interim') || u.is_interim;
                 if (isInterim) {
                     const activeMission = missions.find(m => {
@@ -460,7 +463,7 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                         if (!mStart) return false;
                         return mStart <= todayStr && (!mEnd || mEnd >= '2099' || mEnd >= todayStr);
                     });
-                    config[u.role].members.push({
+                    config[groupKey].members.push({
                         ...u,
                         _isInterim: true,
                         _hasActiveMission: !!activeMission,
@@ -468,9 +471,27 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                         last_name: activeMission ? '' : (u.last_name || ''),
                     });
                 } else {
-                    config[u.role].members.push(u);
+                    config[groupKey].members.push(u);
                 }
             }
+        });
+
+        // Ordre d'affichage personnalisé par groupe (par prénom).
+        // Les membres nommés sont placés en tête dans cet ordre ; les autres suivent
+        // dans leur ordre naturel. Le backlog "Programme semaine" reste toujours en tête.
+        const RESOURCE_ORDER = {
+            conf: ['Delphine'],                              // Delphine avant Catherine, etc.
+            pose: ['Guillaume', 'Alain', 'Samuel', 'Hamed'],
+        };
+        const orderIndex = (member, key) => {
+            if (member.id === 'backlog_confection') return -1;
+            const order = RESOURCE_ORDER[key] || [];
+            const idx = order.findIndex(n => n.toLowerCase() === (member.first_name || '').toLowerCase());
+            return idx === -1 ? order.length : idx;
+        };
+        Object.keys(config).forEach(key => {
+            if (!RESOURCE_ORDER[key]) return;
+            config[key].members.sort((a, b) => orderIndex(a, key) - orderIndex(b, key));
         });
 
         return config;
@@ -598,17 +619,18 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
         let newEvents = localEvents;
 
         // PERSISTENCE: Suppression ancienne version (si édition)
-        if (eventData.id) {
+        if (eventData.id || eventData.seriesId) {
             const eventsToDelete = localEvents.filter(e =>
                 e.id === eventData.id ||
-                (eventData.meta?.seriesId && e.meta?.seriesId === eventData.meta?.seriesId)
+                (eventData.seriesId && e.meta?.seriesId === eventData.seriesId)
             );
             eventsToDelete.forEach(e => {
                 if (onDeleteEventProp) onDeleteEventProp(e.id);
             });
 
             // Filtre local
-            newEvents = newEvents.filter(e => e.id !== eventData.id && e.meta?.seriesId !== eventData.meta?.seriesId);
+            const deletedIds = new Set(eventsToDelete.map(e => e.id));
+            newEvents = newEvents.filter(e => !deletedIds.has(e.id));
         }
 
         const days = eachDayOfInterval({ start: parseISO(eventData.startDate), end: parseISO(eventData.endDate) });
@@ -1149,12 +1171,26 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
         setResizingEvent(startState);
     };
 
+    // Mesure du bloc sticky (pastilles + barre d'outils) pour dimensionner la zone
+    // du tableau à 100vh moins ce bloc : une fois le bandeau de titre scrollé,
+    // le tableau occupe tout l'écran restant.
+    const stickyHeaderRef = useRef(null);
+    const [stickyHeaderHeight, setStickyHeaderHeight] = useState(0);
+    useEffect(() => {
+        const el = stickyHeaderRef.current;
+        if (!el) return;
+        const measure = () => setStickyHeaderHeight(el.getBoundingClientRect().height);
+        measure();
+        const ro = new ResizeObserver(measure);
+        ro.observe(el);
+        return () => ro.disconnect();
+    }, []);
 
     return (
-        <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: '#FAF5EE' }}>
-            {/* Header module : titre + pastille (même rythme que Performance/Inventaire/Logistique) */}
-            <div style={{ padding: '24px 24px 0' }}>
-                <div style={{ marginBottom: 24 }}>
+        <div style={{ height: '100vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', background: '#FAF5EE' }}>
+            {/* Bandeau de titre : défile normalement et disparaît au scroll */}
+            <div style={{ padding: '24px 24px 0', flexShrink: 0 }}>
+                <div style={{ marginBottom: 16 }}>
                     {onBack && (
                         <button onClick={onBack} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6B7280', fontWeight: 600, fontSize: 13, marginBottom: 12, padding: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
                             ← Retour
@@ -1163,9 +1199,12 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                     <h1 style={{ fontSize: 32, fontWeight: 800, color: '#111827', margin: 0, letterSpacing: '-0.5px' }}>Planning</h1>
                     <p style={{ fontSize: 14, color: '#6B7280', margin: '4px 0 0' }}>Planification des équipes et de la charge de production</p>
                 </div>
+            </div>
 
+            {/* Bloc sticky : pastilles de navigation + barre d'outils, toujours visibles au scroll */}
+            <div ref={stickyHeaderRef} style={{ position: 'sticky', top: 0, zIndex: 70, background: '#FAF5EE', flexShrink: 0 }}>
                 {canViewAssistant && (
-                    <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 24 }}>
+                    <div style={{ display: 'flex', justifyContent: 'center', padding: '8px 24px 12px' }}>
                         <div style={{
                             background: 'white', borderRadius: 9999, padding: 4, display: 'flex', gap: 4,
                             boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03)',
@@ -1195,7 +1234,6 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                         </div>
                     </div>
                 )}
-            </div>
 
             {/* Barre d'outils calendrier : uniquement sur la vue Planning */}
             {assistantMode === null && (
@@ -1222,6 +1260,7 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                 canManageTeam={canManageTeam}
             />
             )}
+            </div>
 
             <EventModal
                 isOpen={isModalOpen}
@@ -1230,6 +1269,7 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                 onValidate={handleValidateEvent}
                 onDelete={handleDeleteEvent}
                 projects={projects}
+                events={localEvents}
                 eventToEdit={editingEvent}
                 initialData={initialModalData}
                 currentUser={currentUser}
@@ -1333,6 +1373,9 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                 onUpdateContractEnd={handleUpdateContractEnd}
             />
 
+            {/* Zone de contenu : 100vh moins le bloc sticky, pour que le tableau
+                profite de tout l'écran une fois le bandeau de titre scrollé */}
+            <div style={{ height: `calc(100vh - ${stickyHeaderHeight}px)`, flexShrink: 0, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
             {assistantMode === 'programmation' ? (
                 <AssistantView stats={stats} onUpdateProject={onUpdateProject} />
             ) : assistantMode === 'capacite' ? (
@@ -1374,6 +1417,7 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                     isVertical={myViewMode}
                 />
             )}
+            </div>
         </div>
     );
 }
