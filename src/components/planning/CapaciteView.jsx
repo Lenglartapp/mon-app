@@ -7,6 +7,7 @@ import {
     ResponsiveContainer, ReferenceLine, Legend,
 } from 'recharts';
 import { useAuth } from '../../auth';
+import { productionGroup } from '../../lib/authz';
 
 const WORK_HOURS_PER_DAY = 9;
 
@@ -35,7 +36,8 @@ const CapaciteView = ({ localUsers, localEvents }) => {
     ), [localEvents]);
 
     const filteredUsers = useMemo(() =>
-        localUsers.filter(u => selectedWorkshops.includes(u.role)),
+        // Groupe de production (ex. ordo_conf compté en confection)
+        localUsers.filter(u => selectedWorkshops.includes(productionGroup(u.role))),
         [localUsers, selectedWorkshops]
     );
 

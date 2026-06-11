@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { X, Calendar as CalendarIcon, Settings, UserPlus } from 'lucide-react';
 import { format } from 'date-fns';
+import { productionGroup } from '../../lib/authz';
 
 const GROUP_LABELS = { prepa: 'Préparation', conf: 'Atelier Confection', pose: 'Équipes de Pose' };
 
@@ -49,9 +50,9 @@ const ResourcePanel = ({
     const todayStr = format(new Date(), 'yyyy-MM-dd');
 
     const groupedUsers = {
-        prepa: users.filter(u => u.role === 'prepa'),
-        conf: users.filter(u => u.role === 'conf'),
-        pose: users.filter(u => u.role === 'pose'),
+        prepa: users.filter(u => productionGroup(u.role) === 'prepa'),
+        conf: users.filter(u => productionGroup(u.role) === 'conf'),
+        pose: users.filter(u => productionGroup(u.role) === 'pose'),
     };
 
     const getActiveMission = (userId) =>

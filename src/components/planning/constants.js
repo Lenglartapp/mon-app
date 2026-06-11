@@ -72,3 +72,11 @@ export const HEADER_HEIGHT_2 = 40;
 export const WORK_START_HOUR = 8; // 8h00
 export const WORK_END_HOUR = 17;   // 17h00
 export const TOTAL_WORK_MINUTES = (WORK_END_HOUR - WORK_START_HOUR) * 60; // 9h = 540 min
+
+// Temps contractuel travaillé par jour et par personne
+export const DEFAULT_DAILY_HOURS = 8;      // Pose et défaut
+export const ATELIER_HOURS_PER_DAY = 7.8;  // Confection & préparation (atelier)
+
+// Heures contractuelles par jour selon le service
+export const dailyHoursForGroup = (groupKey) =>
+    (groupKey === 'conf' || groupKey === 'prepa') ? ATELIER_HOURS_PER_DAY : DEFAULT_DAILY_HOURS;

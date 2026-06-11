@@ -1,8 +1,9 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { X, Briefcase, Check, Calendar as CalendarIcon, Clock, ArrowRight, User, ChevronDown, Trash2, CheckCircle } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, differenceInMinutes } from 'date-fns';
+import { ATELIER_HOURS_PER_DAY } from './constants';
 
-const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = [], eventToEdit, initialData, currentUser, groupsConfig, readOnly = false }) => {
+const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = [], events = [], eventToEdit, initialData, currentUser, groupsConfig, readOnly = false }) => {
     // États Formulaire
     const [projectSearch, setProjectSearch] = useState('');
     const [selectedProject, setSelectedProject] = useState(null);
@@ -20,7 +21,7 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
     const [endTime, setEndTime] = useState('17:00');
 
     // Mode durée (conf/prepa)
-    const [durationHours, setDurationHours] = useState(8);
+    const [durationHours, setDurationHours] = useState(ATELIER_HOURS_PER_DAY);
 
     // Aplatir la liste des membres pour l'affichage
     const allMembers = useMemo(() => [
@@ -46,6 +47,47 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
         });
     }, [selectedResources, allMembers, eventToEdit, initialData]);
 
+    // Service de la ressource sélectionnée (pour cibler le bon budget)
+    const selectedGroup = useMemo(() => {
+        const resId = selectedResources[0] || eventToEdit?.resourceId || initialData?.resourceId;
+        if (!resId) return null;
+        return allMembers.find(x => x.id === resId)?.group || null;
+    }, [selectedResources, allMembers, eventToEdit, initialData]);
+
+    // Synthèse budget POSE pour le projet sélectionné (vendu / planifié / consommé / reste)
+    const poseStats = useMemo(() => {
+        if (selectedGroup !== 'pose' || !selectedProject?.id) return null;
+        const budgetSold = selectedProject.budget?.pose || 0;
+
+        // POSE UNIQUEMENT (pas conf/prépa/absence)
+        const poseEvents = events.filter(e =>
+            e.meta?.projectId === selectedProject.id && e.type === 'pose'
+        );
+
+        // Heures réelles hors pause déjeuner
+        const eventHours = (e) => {
+            const start = new Date(e.meta?.start || e.date);
+            const end = new Date(e.meta?.end || e.date);
+            let mins = differenceInMinutes(end, start);
+            const lunchStart = new Date(start); lunchStart.setHours(12, 0, 0, 0);
+            const lunchEnd = new Date(start); lunchEnd.setHours(13, 0, 0, 0);
+            if (start < lunchStart && end > lunchEnd) mins -= 60;
+            return Math.max(0, mins) / 60;
+        };
+
+        // Planifié = à faire (pending) ; Consommé = réalisé (validé)
+        let planned = 0, consumed = 0;
+        poseEvents.forEach(e => {
+            const h = eventHours(e);
+            if (e.meta?.status === 'validated') consumed += h;
+            else planned += h;
+        });
+
+        return { sold: budgetSold, planned, consumed, remaining: budgetSold - planned - consumed };
+    }, [selectedGroup, selectedProject, events]);
+
+    const fmtH = (n) => `${Math.round(n * 10) / 10}`.replace('.', ',');
+
     useEffect(() => {
         if (isOpen) {
             if (eventToEdit) {
@@ -60,7 +102,7 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
                 setEndDate(format(endDateObj, 'yyyy-MM-dd'));
                 setEndTime(format(endDateObj, 'HH:mm'));
                 setDescription(eventToEdit.meta?.description || '');
-                setDurationHours(eventToEdit.meta?.durationHours ?? 8);
+                setDurationHours(eventToEdit.meta?.durationHours ?? ATELIER_HOURS_PER_DAY);
             } else if (initialData) {
                 // Mode Création (Clic Cellule)
                 setProjectSearch('');
@@ -71,7 +113,7 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
                 setStartTime('08:00');
                 setEndTime('17:00');
                 setDescription('');
-                setDurationHours(8);
+                setDurationHours(ATELIER_HOURS_PER_DAY);
             } else {
                 // Mode Création (Bouton Nouveau)
                 setProjectSearch('');
@@ -82,7 +124,7 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
                 setStartTime('08:00');
                 setEndTime('17:00');
                 setDescription('');
-                setDurationHours(8);
+                setDurationHours(ATELIER_HOURS_PER_DAY);
             }
         }
     }, [isOpen, eventToEdit, initialData]);
@@ -106,6 +148,7 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
         if (titleToSave && selectedResources.length > 0) {
             onSave({
                 id: eventToEdit?.id, // Passe l'ID si édition
+                seriesId: eventToEdit?.meta?.seriesId, // Permet de remplacer toute la série, pas juste le 1er jour
                 title: titleToSave,
                 projectId: selectedProject?.id || null,
                 resourceIds: selectedResources,
@@ -113,7 +156,7 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
                 startTime,
                 endDate: endDate,
                 endTime,
-                durationHours: isHourMode ? parseFloat(durationHours) || 8 : null,
+                durationHours: isHourMode ? parseFloat(durationHours) || ATELIER_HOURS_PER_DAY : null,
                 description,
                 status: eventToEdit?.meta?.status || 'pending', // Preserves status or defaults to pending
                 type: allMembers.find(m => m.id === selectedResources[0])?.group || 'default'
@@ -188,6 +231,28 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
                                     )}
                                 </div>
                             )}
+
+                            {/* SYNTHÈSE BUDGET POSE */}
+                            {poseStats && (
+                                <div style={{ backgroundColor: '#F3F4F6', borderRadius: 8, padding: 12, marginTop: 12, fontSize: 13, color: '#4B5563', border: '1px solid #E5E7EB' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                                        <span>Budget Vendu (Pose) :</span>
+                                        <span style={{ fontWeight: 600, color: '#111827' }}>{fmtH(poseStats.sold)}h</span>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                                        <span>Déjà Planifié (à faire) :</span>
+                                        <span style={{ fontWeight: 600, color: '#EA580C' }}>{fmtH(poseStats.planned)}h</span>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                        <span>Déjà Consommé (réalisé) :</span>
+                                        <span style={{ fontWeight: 600, color: '#6B7280' }}>{fmtH(poseStats.consumed)}h</span>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, paddingTop: 8, borderTop: '1px dashed #D1D5DB' }}>
+                                        <span>Reste à Planifier :</span>
+                                        <span style={{ fontWeight: 600, color: poseStats.remaining < 0 ? '#EF4444' : '#10B981' }}>{fmtH(poseStats.remaining)}h</span>
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         {/* 2. DATES & HEURES / DURÉE */}
@@ -227,7 +292,7 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
                                         <Clock size={16} color="#6B7280" style={{ flexShrink: 0 }} />
                                         <input
                                             type="number"
-                                            min="0.5" max="8" step="0.5"
+                                            min="0.5" max="8" step="0.1"
                                             value={durationHours}
                                             onChange={e => setDurationHours(e.target.value)}
                                             style={{ ...dateTimeInputStyle, width: 48, textAlign: 'center' }}
