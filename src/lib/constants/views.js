@@ -119,7 +119,7 @@ export const DEFAULT_VIEWS = {
       "v_ourlets_de_cotes", "hspf_droite", "hspf_milieu", "hspf_gauche", "statut_cotes",
       "valeur_deduction", "finition_bas",
       "hauteur_finie_droite", "hauteur_finie_milieu", "hauteur_finie_gauche",
-      "hauteur_coupe", "hauteur_coupe_motif", "hauteur_coupe_doublure",
+      "hauteur_coupe", "nb_raccords_motifs", "hauteur_coupe_motif", "hauteur_coupe_doublure",
       "nombre_les", "piquage_ourlets_du_bas", "doublure_finition_bas",
       "finition_champs", "poids", "onglets", "bride",
       "type_crochets", "point_chausson",
