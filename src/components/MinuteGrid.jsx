@@ -282,6 +282,15 @@ function MinuteGrid({
         const hasVisibilityModel = initialVisibilityModel && Object.keys(initialVisibilityModel).length > 0;
         const { columnState, v } = state ?? {};
 
+        // Restaurer les largeurs sauvegardées. initialWidth (dans columnDefs) ne s'applique qu'à
+        // la création des colonnes, or Supabase répond en asynchrone après ce point : on applique
+        // donc les largeurs ici via applyColumnState.
+        if (state?.widths && Object.keys(state.widths).length > 0) {
+            api.applyColumnState({
+                state: Object.entries(state.widths).map(([colId, width]) => ({ colId, width })),
+            });
+        }
+
         if (columnState && v === GRID_STATE_VERSION) {
             // Toujours restaurer visibilité + ordre depuis l'état sauvegardé (override sur initialVisibilityModel)
             api.applyColumnState({
@@ -712,8 +721,12 @@ function MinuteGrid({
             const w = savedWidths[col.field] ?? schemaWidth;
             return {
                 ...col,
-                width: w,
-                initialWidth: undefined,
+                // initialWidth (et non width) : la largeur n'est posée qu'à la création de la colonne.
+                // Utiliser `width` (propriété managée) la ré-appliquerait à chaque recompute des
+                // columnDefs et écraserait le resize de l'utilisateur (bug du « retour à la largeur initiale »).
+                // Les largeurs sauvegardées sont restaurées après coup via applyColumnState (chargement async Supabase).
+                width: undefined,
+                initialWidth: w,
                 headerClass: () => activeFilterFieldsRef.current.has(col.field) ? 'filter-col-active' : '',
             };
         });
@@ -732,7 +745,7 @@ function MinuteGrid({
         const expeditionCol = {
             field: 'statut_expedition',
             headerName: 'Expédition',
-            width: savedWidths['statut_expedition'] ?? 170,
+            initialWidth: savedWidths['statut_expedition'] ?? 170,
             editable: !readOnly,
             cellEditor: 'agSelectCellEditor',
             cellEditorParams: { values: ALL_EXPEDITION_STATUTS },

@@ -21,7 +21,6 @@ const toNum = (v) => {
 const round1 = (v) => Math.round(v * 10) / 10;
 
 // Round to nearest 0.05 (for ML in metres)
-const roundStep05 = (v) => Math.round(v / 0.05) * 0.05;
 
 // ML tissu : calcul selon orientation (laize vs hauteur_coupe)
 // aPlat, laize, hCoupe, hCoupeMotif en cm → résultat en m
@@ -29,11 +28,11 @@ const calcML = (aPlat, laize, hCoupe, hCoupeMotif) => {
     if (!laize || laize <= 0 || !aPlat || aPlat <= 0) return 0;
     if (laize >= hCoupe) {
         // Horizontal (tissu couché)
-        return roundStep05(aPlat / 100);
+        return aPlat / 100;
     }
     // Vertical
     const nbLes = Math.ceil(aPlat / laize);
-    return roundStep05((nbLes * hCoupeMotif) / 100);
+    return (nbLes * hCoupeMotif) / 100;
 };
 
 // ML passementerie selon application (I/U/L/-)
@@ -47,7 +46,7 @@ const calcPassML = (app, aPlat, hCoupe, isPaire) => {
     else if (app === 'L') res = hCoupe + L_Pan;
     else if (app === '-') res = L_Pan;
     else return 0;
-    return roundStep05((isPaire ? res * 2 : res) / 100);
+    return (isPaire ? res * 2 : res) / 100;
 };
 
 // Helper for complex calculations

@@ -367,6 +367,18 @@ export function schemaToGridCols(
       };
     }
 
+    // Affichage : limite à 2 décimales max (sans forcer de zéros inutiles).
+    // Display-only — n'altère pas la valeur réelle stockée/utilisée dans les calculs.
+    if ((col.type === 'number' || col.type === 'formula') && !col.valueFormatter && !gridCol.valueFormatter) {
+      gridCol.valueFormatter = (params) => {
+        const value = params.value;
+        if (value === null || value === undefined || value === '') return '';
+        const n = Number(value);
+        if (isNaN(n)) return String(value);
+        return String(Math.round(n * 100) / 100);
+      };
+    }
+
     // --- Éditeur numérique (test diagnostic : agTextCellEditor natif AG Grid) ---
     // FormulaEditCell remplacé temporairement pour isoler le bug d'édition.
     // getValue() de FormulaEditCell n'était jamais appelé par AG Grid v35.
