@@ -12,7 +12,7 @@ import { useCapacityPlanning } from '../hooks/useCapacityPlanning';
 import { can, productionGroup } from '../lib/authz';
 import { uid } from '../lib/utils/uid';
 import { supabase } from '../lib/supabaseClient';
-import { INITIAL_GROUPS_CONFIG, WORK_START_HOUR, WORK_END_HOUR, TOTAL_WORK_MINUTES } from '../components/planning/constants';
+import { INITIAL_GROUPS_CONFIG, WORK_START_HOUR, WORK_END_HOUR, TOTAL_WORK_MINUTES, memberContractOverlaps } from '../components/planning/constants';
 import EventModal from '../components/planning/EventModal';
 import ResourcePanel from '../components/planning/ResourcePanel';
 import PlanningTopBar from '../components/planning/PlanningTopBar';
@@ -45,12 +45,15 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
     };
 
     // Handler pour ajouter un nouveau membre d'équipe
-    const handleAddMember = async (role, firstName, lastName) => {
+    const handleAddMember = async (role, firstName, lastName, contract = {}) => {
         const newMember = {
             id: uid(),
             first_name: firstName,
             last_name: lastName || null,
             role,
+            contract_type: contract.type || 'CDI',
+            contract_start_date: contract.start || null,
+            contract_end_date: contract.end || null,
         };
         const { data, error } = await supabase.from('profiles').insert([newMember]).select().single();
         if (error) {
@@ -66,18 +69,71 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
         setLocalUsers(prev => [...prev, mapped]);
     };
 
-    // Handler pour paramétrer la fin de contrat
-    const handleUpdateContractEnd = async (userId, date) => {
-        const { error } = await supabase
-            .from('profiles')
-            .update({ contract_end_date: date || null })
-            .eq('id', userId);
+    // Réactiver un membre archivé (intérimaire qui revient) : on garde son profil
+    // et son historique, on lève l'archivage et on applique le nouveau contrat.
+    const handleReactivateMember = async (userId, contract = {}) => {
+        const patch = {
+            archived_at: null,
+            contract_type: contract.type || 'Intérim',
+            contract_start_date: contract.start || null,
+            contract_end_date: contract.end || null,
+        };
+        const { error } = await supabase.from('profiles').update(patch).eq('id', userId);
         if (error) {
-            console.error('Erreur fin de contrat:', error);
+            console.error('Erreur réactivation membre:', error);
+            alert(`Erreur lors de la réactivation : ${error.message}`);
+            return;
+        }
+        setLocalUsers(prev => prev.map(u => u.id === userId ? { ...u, ...patch } : u));
+    };
+
+    // Mise à jour du contrat d'un membre (type + dates) — renouvellement, prolongation…
+    const handleUpdateContract = async (userId, contract = {}) => {
+        const patch = {
+            contract_type: contract.type,
+            contract_start_date: contract.start || null,
+            contract_end_date: contract.end || null,
+        };
+        const { error } = await supabase.from('profiles').update(patch).eq('id', userId);
+        if (error) {
+            console.error('Erreur maj contrat:', error);
             alert(`Erreur : ${error.message}`);
             return;
         }
-        setLocalUsers(prev => prev.map(u => u.id === userId ? { ...u, contract_end_date: date || null } : u));
+        setLocalUsers(prev => prev.map(u => u.id === userId ? { ...u, ...patch } : u));
+    };
+
+    // Handler pour supprimer / archiver un membre d'équipe.
+    // - Si le membre a des créneaux VALIDÉS (réalisés) → archivage (données passées conservées).
+    // - Sinon → suppression nette (le profil + ses créneaux planifiés non réalisés).
+    const handleDeleteMember = async (user) => {
+        const name = `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'ce membre';
+        const memberEvents = localEvents.filter(e => e.resourceId === user.id);
+        const hasValidated = memberEvents.some(e => e.meta?.status === 'validated');
+
+        if (hasValidated) {
+            if (!window.confirm(`${name} a des créneaux déjà réalisés.\n\nIl sera ARCHIVÉ : son historique reste visible sur les semaines passées, mais il n'apparaîtra plus sur les semaines à venir.\n\nContinuer ?`)) return;
+            const archived_at = new Date().toISOString();
+            const { error } = await supabase.from('profiles').update({ archived_at }).eq('id', user.id);
+            if (error) {
+                console.error('Erreur archivage membre:', error);
+                alert(`Erreur lors de l'archivage : ${error.message}`);
+                return;
+            }
+            setLocalUsers(prev => prev.map(u => u.id === user.id ? { ...u, archived_at } : u));
+        } else {
+            if (!window.confirm(`Supprimer ${name} ?\n\nSes éventuels créneaux planifiés (non réalisés) seront aussi retirés. Cette action est définitive.`)) return;
+            // Retirer ses créneaux planifiés
+            memberEvents.forEach(e => { if (onDeleteEventProp) onDeleteEventProp(e.id); });
+            setLocalEvents(prev => prev.filter(e => e.resourceId !== user.id));
+            const { error } = await supabase.from('profiles').delete().eq('id', user.id);
+            if (error) {
+                console.error('Erreur suppression membre:', error);
+                alert(`Erreur lors de la suppression : ${error.message}`);
+                return;
+            }
+            setLocalUsers(prev => prev.filter(u => u.id !== user.id));
+        }
     };
 
     const [currentDate, setCurrentDate] = useState(new Date());
@@ -432,8 +488,7 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
     // --- RECHERCHE MULTI-CRITÈRES ---
     const [activeFilters, setActiveFilters] = useState([]);
 
-    // --- MISSIONS / FERMETURES (must be before groupsConfig) ---
-    const missions = useMemo(() => localEvents.filter(e => e.type === 'mission'), [localEvents]);
+    // --- FERMETURES ANNUELLES ---
     const closures = useMemo(() => localEvents.filter(e => e.type === 'closure'), [localEvents]);
     const planningEvents = useMemo(() => localEvents.filter(e => e.type !== 'mission' && e.type !== 'closure'), [localEvents]);
 
@@ -447,32 +502,12 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
             pose: { ...INITIAL_GROUPS_CONFIG.pose, members: [...INITIAL_GROUPS_CONFIG.pose.members] }
         };
 
-        const todayStr = format(new Date(), 'yyyy-MM-dd');
-
         localUsers.forEach(u => {
             // Le service planning dépend du groupe de production (pas du rôle brut) :
             // ex. ordo_conf → confection, tout en gardant ses permissions d'ordo.
             const groupKey = productionGroup(u.role);
             if (groupKey && config[groupKey]) {
-                const isInterim = u.first_name?.startsWith('Interim') || u.is_interim;
-                if (isInterim) {
-                    const activeMission = missions.find(m => {
-                        if (m.resourceId !== u.id || m.type !== 'mission' || m.meta?.status === 'ended') return false;
-                        const mStart = m.meta?.start ? format(new Date(m.meta.start), 'yyyy-MM-dd') : null;
-                        const mEnd   = m.meta?.end   ? format(new Date(m.meta.end),   'yyyy-MM-dd') : null;
-                        if (!mStart) return false;
-                        return mStart <= todayStr && (!mEnd || mEnd >= '2099' || mEnd >= todayStr);
-                    });
-                    config[groupKey].members.push({
-                        ...u,
-                        _isInterim: true,
-                        _hasActiveMission: !!activeMission,
-                        first_name: activeMission ? activeMission.title : u.first_name,
-                        last_name: activeMission ? '' : (u.last_name || ''),
-                    });
-                } else {
-                    config[groupKey].members.push(u);
-                }
+                config[groupKey].members.push(u);
             }
         });
 
@@ -495,20 +530,40 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
         });
 
         return config;
-    }, [localUsers, missions]);
+    }, [localUsers]);
+
+    // Période actuellement affichée (en chaînes 'yyyy-MM-dd'), pour décider
+    // de la visibilité des membres archivés (visibles seulement sur leurs semaines passées).
+    const visibleRange = useMemo(() => {
+        let start = currentDate, end = currentDate;
+        if (view === 'week') { start = startOfWeek(currentDate, { weekStartsOn: 1 }); end = addDays(start, 6); }
+        else if (view === 'twoweeks') { start = startOfWeek(currentDate, { weekStartsOn: 1 }); end = addDays(start, 13); }
+        else if (view === 'month') { start = startOfMonth(currentDate); end = endOfMonth(currentDate); }
+        else if (view === 'quarter') { start = startOfQuarter(currentDate); end = endOfQuarter(currentDate); }
+        else if (view === 'year') { start = startOfYear(currentDate); end = endOfYear(currentDate); }
+        else if (view === 'custom' && customRange) { start = customRange.start; end = customRange.end; }
+        return { start: format(start, 'yyyy-MM-dd'), end: format(end, 'yyyy-MM-dd') };
+    }, [view, currentDate, customRange]);
 
     // --- FILTRAGE DES RESSOURCES MASQUÉES ET FINS DE CONTRAT ---
     const visibleGroupsConfig = useMemo(() => {
         const config = JSON.parse(JSON.stringify(groupsConfig));
         Object.keys(config).forEach(key => {
-            config[key].members = config[key].members.filter(m =>
-                !hiddenResources.includes(m.id) &&
-                !(m._isInterim && !m._hasActiveMission) &&
-                !(m.contract_end_date && m.contract_end_date <= format(new Date(), 'yyyy-MM-dd'))
-            );
+            config[key].members = config[key].members.filter(m => {
+                if (m.id === 'backlog_confection') return true; // ressource virtuelle, toujours visible
+                if (hiddenResources.includes(m.id)) return false;
+                // Présent si sa fenêtre de contrat chevauche la période affichée…
+                if (memberContractOverlaps(m, visibleRange.start, visibleRange.end)) return true;
+                // …ou (archivé / contrat terminé) s'il a un créneau dans la période → historique conservé
+                return localEvents.some(e => {
+                    if (e.resourceId !== m.id) return false;
+                    const d = e.date || (e.meta?.start ? e.meta.start.slice(0, 10) : null);
+                    return d && d >= visibleRange.start && d <= visibleRange.end;
+                });
+            });
         });
         return config;
-    }, [groupsConfig, hiddenResources]);
+    }, [groupsConfig, hiddenResources, localEvents, visibleRange]);
 
 
     // --- MODE ASSISTANT ---
@@ -813,45 +868,6 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
         } catch (e) {
             console.error("Erreur création absence", e);
         }
-    };
-
-    // --- MISSIONS (INTÉRIM) ---
-    const handleCreateMission = (userId, realName, startDate, endDate) => {
-        const evt = {
-            id: uid(),
-            resourceId: userId,
-            date: startDate,
-            title: realName,
-            type: 'mission',
-            meta: {
-                start: new Date(startDate).toISOString(),
-                end: endDate ? new Date(endDate).toISOString() : new Date('2099-12-31').toISOString(),
-                status: 'active',
-                seriesId: uid(),
-            },
-        };
-        setLocalEvents(prev => [...prev, evt]);
-        if (onUpdateEvent) onUpdateEvent(evt);
-    };
-
-    const handleUpdateMissionEnd = (missionId, newEndDate) => {
-        const newEnd = newEndDate ? new Date(newEndDate).toISOString() : new Date('2099-12-31').toISOString();
-        setLocalEvents(prev => prev.map(e => e.id === missionId
-            ? { ...e, meta: { ...e.meta, end: newEnd } }
-            : e
-        ));
-        const mission = localEvents.find(e => e.id === missionId);
-        if (mission && onUpdateEvent) onUpdateEvent({ ...mission, meta: { ...mission.meta, end: newEnd } });
-    };
-
-    const handleEndMission = (missionId) => {
-        const today = format(new Date(), 'yyyy-MM-dd');
-        setLocalEvents(prev => prev.map(e => e.id === missionId
-            ? { ...e, meta: { ...e.meta, end: new Date(today).toISOString(), status: 'ended' } }
-            : e
-        ));
-        const mission = localEvents.find(e => e.id === missionId);
-        if (mission && onUpdateEvent) onUpdateEvent({ ...mission, meta: { ...mission.meta, end: new Date(today).toISOString(), status: 'ended' } });
     };
 
     // --- FERMETURES ANNUELLES ---
@@ -1362,15 +1378,14 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                 onClose={() => setShowResourcePanel(false)}
                 users={localUsers}
                 onAddAbsence={handleAddAbsence}
-                missions={missions}
                 closures={closures}
-                onCreateMission={handleCreateMission}
-                onEndMission={handleEndMission}
-                onUpdateMissionEnd={handleUpdateMissionEnd}
+                archivedUsers={localUsers.filter(u => u.archived_at)}
                 onAddClosure={handleAddClosure}
                 onDeleteClosure={handleDeleteClosure}
                 onAddMember={handleAddMember}
-                onUpdateContractEnd={handleUpdateContractEnd}
+                onReactivateMember={handleReactivateMember}
+                onUpdateContract={handleUpdateContract}
+                onDeleteMember={handleDeleteMember}
             />
 
             {/* Zone de contenu : 100vh moins le bloc sticky, pour que le tableau

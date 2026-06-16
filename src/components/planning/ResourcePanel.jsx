@@ -1,17 +1,23 @@
 import { useState } from 'react';
-import { X, Calendar as CalendarIcon, Settings, UserPlus } from 'lucide-react';
+import { X, Calendar as CalendarIcon, Settings, UserPlus, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { productionGroup } from '../../lib/authz';
+import { CONTRACT_TYPES } from './constants';
 
 const GROUP_LABELS = { prepa: 'Préparation', conf: 'Atelier Confection', pose: 'Équipes de Pose' };
+
+const CONTRACT_BADGE = {
+    CDI:      { bg: '#EFF6FF', color: '#1D4ED8', border: '#BFDBFE' },
+    CDD:      { bg: '#F5F3FF', color: '#6D28D9', border: '#DDD6FE' },
+    'Intérim': { bg: '#FEF3C7', color: '#B45309', border: '#FCD34D' },
+};
 
 const ResourcePanel = ({
     isOpen, onClose,
     users, onAddAbsence,
-    missions = [], closures = [],
-    onCreateMission, onEndMission, onUpdateMissionEnd,
+    closures = [], archivedUsers = [],
     onAddClosure, onDeleteClosure,
-    onAddMember, onUpdateContractEnd,
+    onAddMember, onReactivateMember, onUpdateContract, onDeleteMember,
 }) => {
     // --- Absence state ---
     const [selectedUserForAbsence, setSelectedUserForAbsence] = useState(null);
@@ -22,47 +28,36 @@ const ResourcePanel = ({
     const [absEnd, setAbsEnd] = useState(format(new Date(), 'yyyy-MM-dd'));
     const [absEndTime, setAbsEndTime] = useState('17:00');
 
-    // --- Mission state ---
-    const [creatingMissionFor, setCreatingMissionFor] = useState(null);
-    const [missionRealName, setMissionRealName] = useState('');
-    const [missionStart, setMissionStart] = useState(format(new Date(), 'yyyy-MM-dd'));
-    const [missionEnd, setMissionEnd] = useState('');
-    const [editingEndFor, setEditingEndFor] = useState(null);
-    const [editingEndDate, setEditingEndDate] = useState('');
-
     // --- Closure state ---
     const [showClosureForm, setShowClosureForm] = useState(false);
     const [closureLabel, setClosureLabel] = useState('');
     const [closureStart, setClosureStart] = useState(format(new Date(), 'yyyy-MM-dd'));
     const [closureEnd, setClosureEnd] = useState(format(new Date(), 'yyyy-MM-dd'));
 
-    // --- Contract settings state ---
+    // --- Contract settings state (édition sur la fiche) ---
     const [contractSettingsFor, setContractSettingsFor] = useState(null);
-    const [contractEndDate, setContractEndDate] = useState('');
+    const [editType, setEditType] = useState('CDI');
+    const [editStart, setEditStart] = useState('');
+    const [editEnd, setEditEnd] = useState('');
 
     // --- Add member state ---
     const [addingMemberFor, setAddingMemberFor] = useState(null);
     const [newMemberFirstName, setNewMemberFirstName] = useState('');
     const [newMemberLastName, setNewMemberLastName] = useState('');
+    const [newMemberContract, setNewMemberContract] = useState('CDI');
+    const [newMemberStart, setNewMemberStart] = useState('');
+    const [newMemberEnd, setNewMemberEnd] = useState('');
+    const [rehireId, setRehireId] = useState(''); // id d'un archivé à reprendre
 
     if (!isOpen) return null;
 
-    const todayStr = format(new Date(), 'yyyy-MM-dd');
-
+    // On masque les membres archivés de la liste de gestion (ils restent en base + historique planning)
+    const activeUsers = users.filter(u => !u.archived_at);
     const groupedUsers = {
-        prepa: users.filter(u => productionGroup(u.role) === 'prepa'),
-        conf: users.filter(u => productionGroup(u.role) === 'conf'),
-        pose: users.filter(u => productionGroup(u.role) === 'pose'),
+        prepa: activeUsers.filter(u => productionGroup(u.role) === 'prepa'),
+        conf: activeUsers.filter(u => productionGroup(u.role) === 'conf'),
+        pose: activeUsers.filter(u => productionGroup(u.role) === 'pose'),
     };
-
-    const getActiveMission = (userId) =>
-        missions.find(m => {
-            if (m.resourceId !== userId || m.type !== 'mission' || m.meta?.status === 'ended') return false;
-            const mStart = m.meta?.start ? format(new Date(m.meta.start), 'yyyy-MM-dd') : null;
-            const mEnd   = m.meta?.end   ? format(new Date(m.meta.end),   'yyyy-MM-dd') : null;
-            if (!mStart) return false;
-            return mStart <= todayStr && (!mEnd || mEnd >= '2099' || mEnd >= todayStr);
-        });
 
     // ── Handlers ──
 
@@ -83,15 +78,6 @@ const ResourcePanel = ({
         setAbsEndTime('17:00');
     };
 
-    const handleStartMission = () => {
-        if (!missionRealName.trim() || !creatingMissionFor) return;
-        onCreateMission(creatingMissionFor, missionRealName.trim(), missionStart, missionEnd || null);
-        setCreatingMissionFor(null);
-        setMissionRealName('');
-        setMissionStart(format(new Date(), 'yyyy-MM-dd'));
-        setMissionEnd('');
-    };
-
     const handleAddClosure = () => {
         if (!closureLabel.trim()) return;
         onAddClosure(closureLabel.trim(), closureStart, closureEnd);
@@ -101,19 +87,47 @@ const ResourcePanel = ({
         setClosureEnd(format(new Date(), 'yyyy-MM-dd'));
     };
 
-    const handleSaveContractEnd = (userId) => {
-        onUpdateContractEnd(userId, contractEndDate || null);
-        setContractSettingsFor(null);
-        setContractEndDate('');
+    const openContractSettings = (user) => {
+        if (contractSettingsFor === user.id) {
+            setContractSettingsFor(null);
+            return;
+        }
+        setContractSettingsFor(user.id);
+        setEditType(user.contract_type || 'CDI');
+        setEditStart(user.contract_start_date || '');
+        setEditEnd(user.contract_end_date || '');
     };
 
-    const handleAddMember = () => {
-        if (!newMemberFirstName.trim() || !addingMemberFor) return;
-        onAddMember(addingMemberFor, newMemberFirstName.trim(), newMemberLastName.trim());
+    const handleSaveContract = (userId) => {
+        onUpdateContract(userId, { type: editType, start: editStart || null, end: editEnd || null });
+        setContractSettingsFor(null);
+    };
+
+    const resetAddMember = () => {
         setAddingMemberFor(null);
         setNewMemberFirstName('');
         setNewMemberLastName('');
+        setNewMemberContract('CDI');
+        setNewMemberStart('');
+        setNewMemberEnd('');
+        setRehireId('');
     };
+
+    const handleAddMember = () => {
+        if (!addingMemberFor) return;
+        const contract = { type: newMemberContract, start: newMemberStart || null, end: newMemberEnd || null };
+        if (rehireId) {
+            // Reprise d'un archivé : on réactive son profil existant (historique conservé)
+            onReactivateMember(rehireId, contract);
+        } else {
+            if (!newMemberFirstName.trim()) return;
+            onAddMember(addingMemberFor, newMemberFirstName.trim(), newMemberLastName.trim(), contract);
+        }
+        resetAddMember();
+    };
+
+    // Archivés repérables pour ce groupe (reprise d'intérimaires qui reviennent)
+    const archivedForGroup = (role) => archivedUsers.filter(u => productionGroup(u.role) === role);
 
     // ── Absence form inline ──
 
@@ -190,15 +204,12 @@ const ResourcePanel = ({
     // ── Member card ──
 
     const renderMember = (user) => {
-        const isInterim = user.first_name?.startsWith('Interim') || user.is_interim;
-        const activeMission = isInterim ? getActiveMission(user.id) : null;
-        const isCreating = creatingMissionFor === user.id;
-        const hasContractEnd = !!user.contract_end_date;
         const isContractSettings = contractSettingsFor === user.id;
-
-        const displayName = activeMission
-            ? activeMission.title
-            : `${user.first_name || ''} ${user.last_name || ''}`.trim();
+        const displayName = `${user.first_name || ''} ${user.last_name || ''}`.trim();
+        const contractType = user.contract_type || 'CDI';
+        const badge = CONTRACT_BADGE[contractType] || CONTRACT_BADGE.CDI;
+        const hasContractEnd = !!user.contract_end_date;
+        const fmtD = (d) => format(new Date(d), 'dd/MM/yy');
 
         return (
             <div key={user.id} style={{
@@ -210,9 +221,7 @@ const ResourcePanel = ({
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         <div style={{
                             width: 32, height: 32, borderRadius: '50%', display: 'grid', placeItems: 'center',
-                            fontWeight: 700, fontSize: 13,
-                            background: activeMission ? '#FEF3C7' : isInterim ? '#FEF9C3' : '#DBEAFE',
-                            color: activeMission ? '#D97706' : isInterim ? '#D97706' : '#1E40AF',
+                            fontWeight: 700, fontSize: 13, background: badge.bg, color: badge.color,
                         }}>
                             {displayName[0]?.toUpperCase() || '?'}
                         </div>
@@ -221,25 +230,23 @@ const ResourcePanel = ({
                                 <span style={{ fontWeight: 600, fontSize: 13, color: '#374151' }}>{displayName}</span>
                                 <span style={{
                                     fontSize: 9, padding: '1px 5px', borderRadius: 4, fontWeight: 700,
-                                    background: isInterim ? (activeMission ? '#FEF3C7' : '#F3F4F6') : '#EFF6FF',
-                                    color: isInterim ? (activeMission ? '#B45309' : '#6B7280') : '#1D4ED8',
-                                    border: `1px solid ${isInterim ? (activeMission ? '#FCD34D' : '#E5E7EB') : '#BFDBFE'}`,
+                                    background: badge.bg, color: badge.color, border: `1px solid ${badge.border}`,
                                 }}>
-                                    {isInterim ? (activeMission ? 'EN MISSION' : 'DISPONIBLE') : 'CDI'}
+                                    {contractType}
                                 </span>
                                 {hasContractEnd && (
                                     <span style={{
                                         fontSize: 9, padding: '1px 5px', borderRadius: 4, fontWeight: 700,
                                         background: '#FEF2F2', color: '#991B1B', border: '1px solid #FECACA',
                                     }}>
-                                        fin {format(new Date(user.contract_end_date), 'dd/MM/yy')}
+                                        fin {fmtD(user.contract_end_date)}
                                     </span>
                                 )}
                             </div>
-                            {isInterim && activeMission && (
+                            {(user.contract_start_date || user.contract_end_date) && (
                                 <div style={{ fontSize: 10, color: '#9CA3AF', marginTop: 1 }}>
-                                    Slot {user.first_name} · {format(new Date(activeMission.meta?.start), 'dd/MM')}
-                                    {activeMission.meta?.end && !activeMission.meta.end.startsWith('2099') ? ` → ${format(new Date(activeMission.meta.end), 'dd/MM')}` : ' → en cours'}
+                                    {user.contract_start_date ? `du ${fmtD(user.contract_start_date)}` : ''}
+                                    {user.contract_end_date ? ` au ${fmtD(user.contract_end_date)}` : (user.contract_start_date ? ' → en cours' : '')}
                                 </div>
                             )}
                         </div>
@@ -255,136 +262,68 @@ const ResourcePanel = ({
                             <CalendarIcon size={13} />
                         </button>
 
-                        {!isInterim && (
-                            <button
-                                onClick={() => {
-                                    if (contractSettingsFor === user.id) {
-                                        setContractSettingsFor(null);
-                                        setContractEndDate('');
-                                    } else {
-                                        setContractSettingsFor(user.id);
-                                        setContractEndDate(user.contract_end_date || '');
-                                    }
-                                }}
-                                title="Paramètres contrat"
-                                style={{
-                                    padding: 5, borderRadius: 5,
-                                    border: `1px solid ${hasContractEnd ? '#FECACA' : '#E5E7EB'}`,
-                                    background: hasContractEnd ? '#FEF2F2' : 'white',
-                                    cursor: 'pointer',
-                                    color: hasContractEnd ? '#EF4444' : '#6B7280',
-                                }}
-                            >
-                                <Settings size={13} />
-                            </button>
-                        )}
+                        <button
+                            onClick={() => openContractSettings(user)}
+                            title="Contrat (type & dates)"
+                            style={{
+                                padding: 5, borderRadius: 5,
+                                border: `1px solid ${hasContractEnd ? '#FECACA' : '#E5E7EB'}`,
+                                background: hasContractEnd ? '#FEF2F2' : 'white',
+                                cursor: 'pointer', color: hasContractEnd ? '#EF4444' : '#6B7280',
+                            }}
+                        >
+                            <Settings size={13} />
+                        </button>
 
-                        {isInterim && !activeMission && !isCreating && (
+                        {onDeleteMember && (
                             <button
-                                onClick={() => { setCreatingMissionFor(user.id); setMissionStart(format(new Date(), 'yyyy-MM-dd')); }}
-                                style={{ padding: '4px 8px', borderRadius: 5, border: 'none', background: '#F59E0B', color: 'white', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}
+                                onClick={() => onDeleteMember(user)}
+                                title="Supprimer (ou archiver si des créneaux sont déjà réalisés)"
+                                style={{ padding: 5, borderRadius: 5, border: '1px solid #FECACA', background: '#FEF2F2', cursor: 'pointer', color: '#EF4444' }}
                             >
-                                + Mission
+                                <Trash2 size={13} />
                             </button>
-                        )}
-                        {isInterim && activeMission && (
-                            <>
-                                <button
-                                    onClick={() => {
-                                        setEditingEndFor(activeMission.id);
-                                        const currentEnd = activeMission.meta?.end;
-                                        setEditingEndDate(currentEnd && !currentEnd.startsWith('2099') ? format(new Date(currentEnd), 'yyyy-MM-dd') : '');
-                                    }}
-                                    style={{ padding: '4px 8px', borderRadius: 5, border: '1px solid #D1D5DB', background: 'white', color: '#374151', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}
-                                >
-                                    Modifier fin
-                                </button>
-                                <button
-                                    onClick={() => onEndMission(activeMission.id)}
-                                    style={{ padding: '4px 8px', borderRadius: 5, border: '1px solid #FCD34D', background: 'white', color: '#92400E', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}
-                                >
-                                    Terminer
-                                </button>
-                            </>
                         )}
                     </div>
                 </div>
 
-                {/* Paramètres contrat */}
-                {!isInterim && isContractSettings && (
+                {/* Paramètres contrat : type + dates */}
+                {isContractSettings && (
                     <div style={{ marginTop: 10, padding: 10, background: '#F9FAFB', borderRadius: 6, border: '1px solid #E5E7EB' }}>
-                        <div style={{ fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 8 }}>Paramètres contrat</div>
-                        <div style={{ display: 'flex', gap: 6, alignItems: 'flex-end' }}>
-                            <div style={{ flex: 1 }}>
-                                <label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: '#6B7280', marginBottom: 2 }}>Fin de contrat (vide = aucune)</label>
-                                <input type="date" value={contractEndDate} onChange={e => setContractEndDate(e.target.value)}
-                                    style={{ width: '100%', padding: '5px 6px', fontSize: 11, borderRadius: 4, border: '1px solid #D1D5DB' }} />
-                            </div>
-                            <button onClick={() => { setContractSettingsFor(null); setContractEndDate(''); }}
-                                style={{ padding: '5px 10px', border: '1px solid #D1D5DB', borderRadius: 4, background: 'white', fontSize: 11, cursor: 'pointer' }}>
-                                Annuler
-                            </button>
-                            <button onClick={() => handleSaveContractEnd(user.id)}
-                                style={{ padding: '5px 10px', border: 'none', borderRadius: 4, background: '#111827', color: 'white', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
-                                Valider
-                            </button>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 8 }}>Contrat</div>
+                        <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+                            {CONTRACT_TYPES.map(ct => (
+                                <button key={ct} type="button" onClick={() => setEditType(ct)}
+                                    style={{
+                                        flex: 1, padding: '5px 0', borderRadius: 4, fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                                        border: `1px solid ${editType === ct ? '#111827' : '#D1D5DB'}`,
+                                        background: editType === ct ? '#111827' : 'white',
+                                        color: editType === ct ? 'white' : '#374151',
+                                    }}>
+                                    {ct}
+                                </button>
+                            ))}
                         </div>
-                    </div>
-                )}
-
-                {/* Modifier fin de mission */}
-                {isInterim && activeMission && editingEndFor === activeMission.id && (
-                    <div style={{ marginTop: 10, padding: 10, background: '#F9FAFB', borderRadius: 6, border: '1px solid #E5E7EB' }}>
-                        <div style={{ fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 8 }}>Modifier la date de fin</div>
-                        <div style={{ display: 'flex', gap: 6, alignItems: 'flex-end' }}>
-                            <div style={{ flex: 1 }}>
-                                <label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: '#6B7280', marginBottom: 2 }}>Nouvelle fin (vide = en cours)</label>
-                                <input type="date" value={editingEndDate} onChange={e => setEditingEndDate(e.target.value)}
-                                    style={{ width: '100%', padding: '5px 6px', fontSize: 11, borderRadius: 4, border: '1px solid #D1D5DB' }} />
-                            </div>
-                            <button onClick={() => setEditingEndFor(null)}
-                                style={{ padding: '5px 10px', border: '1px solid #D1D5DB', borderRadius: 4, background: 'white', fontSize: 11, cursor: 'pointer' }}>
-                                Annuler
-                            </button>
-                            <button onClick={() => { onUpdateMissionEnd(activeMission.id, editingEndDate || null); setEditingEndFor(null); }}
-                                style={{ padding: '5px 10px', border: 'none', borderRadius: 4, background: '#111827', color: 'white', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
-                                Valider
-                            </button>
-                        </div>
-                    </div>
-                )}
-
-                {/* Création de mission */}
-                {isCreating && (
-                    <div style={{ marginTop: 10, padding: 10, background: '#FFFBEB', borderRadius: 6, border: '1px solid #FCD34D' }}>
-                        <div style={{ fontSize: 11, fontWeight: 700, color: '#92400E', marginBottom: 8 }}>Nouvelle mission</div>
-                        <input
-                            value={missionRealName}
-                            onChange={e => setMissionRealName(e.target.value)}
-                            placeholder="Prénom Nom de la personne"
-                            autoFocus
-                            style={{ width: '100%', padding: '6px 8px', fontSize: 12, borderRadius: 4, border: '1px solid #FCD34D', marginBottom: 7, boxSizing: 'border-box' }}
-                        />
                         <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
                             <div style={{ flex: 1 }}>
-                                <label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: '#92400E', marginBottom: 2 }}>Début</label>
-                                <input type="date" value={missionStart} onChange={e => setMissionStart(e.target.value)}
-                                    style={{ width: '100%', padding: '5px 6px', fontSize: 11, borderRadius: 4, border: '1px solid #FCD34D' }} />
+                                <label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: '#6B7280', marginBottom: 2 }}>Début (optionnel)</label>
+                                <input type="date" value={editStart} onChange={e => setEditStart(e.target.value)}
+                                    style={{ width: '100%', padding: '5px 6px', fontSize: 11, borderRadius: 4, border: '1px solid #D1D5DB' }} />
                             </div>
                             <div style={{ flex: 1 }}>
-                                <label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: '#92400E', marginBottom: 2 }}>Fin (optionnel)</label>
-                                <input type="date" value={missionEnd} onChange={e => setMissionEnd(e.target.value)}
-                                    style={{ width: '100%', padding: '5px 6px', fontSize: 11, borderRadius: 4, border: '1px solid #FCD34D' }} />
+                                <label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: '#6B7280', marginBottom: 2 }}>Fin (vide = aucune)</label>
+                                <input type="date" value={editEnd} onChange={e => setEditEnd(e.target.value)}
+                                    style={{ width: '100%', padding: '5px 6px', fontSize: 11, borderRadius: 4, border: '1px solid #D1D5DB' }} />
                             </div>
                         </div>
-                        <div style={{ display: 'flex', gap: 6 }}>
-                            <button onClick={() => setCreatingMissionFor(null)}
-                                style={{ flex: 1, padding: '5px 0', border: '1px solid #D1D5DB', borderRadius: 4, background: 'white', fontSize: 11, cursor: 'pointer' }}>
+                        <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                            <button onClick={() => setContractSettingsFor(null)}
+                                style={{ padding: '5px 10px', border: '1px solid #D1D5DB', borderRadius: 4, background: 'white', fontSize: 11, cursor: 'pointer' }}>
                                 Annuler
                             </button>
-                            <button onClick={handleStartMission} disabled={!missionRealName.trim()}
-                                style={{ flex: 1, padding: '5px 0', border: 'none', borderRadius: 4, background: missionRealName.trim() ? '#F59E0B' : '#E5E7EB', color: missionRealName.trim() ? 'white' : '#9CA3AF', fontSize: 11, fontWeight: 600, cursor: missionRealName.trim() ? 'pointer' : 'not-allowed' }}>
-                                Démarrer
+                            <button onClick={() => handleSaveContract(user.id)}
+                                style={{ padding: '5px 10px', border: 'none', borderRadius: 4, background: '#111827', color: 'white', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
+                                Valider
                             </button>
                         </div>
                     </div>
@@ -437,35 +376,95 @@ const ResourcePanel = ({
                                     <div style={{ fontSize: 11, fontWeight: 700, color: '#166534', marginBottom: 8 }}>
                                         Nouveau membre — {GROUP_LABELS[role]}
                                     </div>
-                                    <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
-                                        <input
-                                            value={newMemberFirstName}
-                                            onChange={e => setNewMemberFirstName(e.target.value)}
-                                            placeholder="Prénom *"
-                                            autoFocus
-                                            style={{ flex: 1, padding: '6px 8px', fontSize: 12, borderRadius: 4, border: '1px solid #BBF7D0', boxSizing: 'border-box' }}
-                                        />
-                                        <input
-                                            value={newMemberLastName}
-                                            onChange={e => setNewMemberLastName(e.target.value)}
-                                            placeholder="Nom"
-                                            style={{ flex: 1, padding: '6px 8px', fontSize: 12, borderRadius: 4, border: '1px solid #BBF7D0', boxSizing: 'border-box' }}
-                                        />
+
+                                    {/* Reprise d'une personne archivée (intérimaire qui revient) */}
+                                    {archivedForGroup(role).length > 0 && (
+                                        <div style={{ marginBottom: 8 }}>
+                                            <label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: '#166534', marginBottom: 4 }}>Reprendre une personne archivée</label>
+                                            <select value={rehireId} onChange={e => setRehireId(e.target.value)}
+                                                style={{ width: '100%', padding: '6px 8px', fontSize: 12, borderRadius: 4, border: '1px solid #BBF7D0', background: 'white', boxSizing: 'border-box' }}>
+                                                <option value="">— Nouvelle personne —</option>
+                                                {archivedForGroup(role).map(a => (
+                                                    <option key={a.id} value={a.id}>
+                                                        {`${a.first_name || ''} ${a.last_name || ''}`.trim()}{a.contract_type ? ` (${a.contract_type})` : ''}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    )}
+
+                                    {/* Nom : uniquement pour une nouvelle personne */}
+                                    {!rehireId && (
+                                        <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+                                            <input
+                                                value={newMemberFirstName}
+                                                onChange={e => setNewMemberFirstName(e.target.value)}
+                                                placeholder="Prénom *"
+                                                autoFocus
+                                                style={{ flex: 1, padding: '6px 8px', fontSize: 12, borderRadius: 4, border: '1px solid #BBF7D0', boxSizing: 'border-box' }}
+                                            />
+                                            <input
+                                                value={newMemberLastName}
+                                                onChange={e => setNewMemberLastName(e.target.value)}
+                                                placeholder="Nom"
+                                                style={{ flex: 1, padding: '6px 8px', fontSize: 12, borderRadius: 4, border: '1px solid #BBF7D0', boxSizing: 'border-box' }}
+                                            />
+                                        </div>
+                                    )}
+
+                                    <div style={{ marginBottom: 8 }}>
+                                        <label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: '#166534', marginBottom: 4 }}>Type de contrat</label>
+                                        <div style={{ display: 'flex', gap: 6 }}>
+                                            {CONTRACT_TYPES.map(ct => (
+                                                <button
+                                                    key={ct}
+                                                    type="button"
+                                                    onClick={() => setNewMemberContract(ct)}
+                                                    style={{
+                                                        flex: 1, padding: '5px 0', borderRadius: 4, fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                                                        border: `1px solid ${newMemberContract === ct ? '#16A34A' : '#BBF7D0'}`,
+                                                        background: newMemberContract === ct ? '#16A34A' : 'white',
+                                                        color: newMemberContract === ct ? 'white' : '#166534',
+                                                    }}
+                                                >
+                                                    {ct}
+                                                </button>
+                                            ))}
+                                        </div>
                                     </div>
+
+                                    <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+                                        <div style={{ flex: 1 }}>
+                                            <label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: '#166534', marginBottom: 4 }}>Début (optionnel)</label>
+                                            <input type="date" value={newMemberStart} onChange={e => setNewMemberStart(e.target.value)}
+                                                style={{ width: '100%', padding: '5px 6px', fontSize: 11, borderRadius: 4, border: '1px solid #BBF7D0', boxSizing: 'border-box' }} />
+                                        </div>
+                                        <div style={{ flex: 1 }}>
+                                            <label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: '#166534', marginBottom: 4 }}>Fin (optionnel)</label>
+                                            <input type="date" value={newMemberEnd} onChange={e => setNewMemberEnd(e.target.value)}
+                                                style={{ width: '100%', padding: '5px 6px', fontSize: 11, borderRadius: 4, border: '1px solid #BBF7D0', boxSizing: 'border-box' }} />
+                                        </div>
+                                    </div>
+
                                     <div style={{ display: 'flex', gap: 6 }}>
-                                        <button onClick={() => { setAddingMemberFor(null); setNewMemberFirstName(''); setNewMemberLastName(''); }}
+                                        <button onClick={resetAddMember}
                                             style={{ flex: 1, padding: '5px 0', border: '1px solid #D1D5DB', borderRadius: 4, background: 'white', fontSize: 11, cursor: 'pointer' }}>
                                             Annuler
                                         </button>
-                                        <button onClick={handleAddMember} disabled={!newMemberFirstName.trim()}
-                                            style={{ flex: 1, padding: '5px 0', border: 'none', borderRadius: 4, background: newMemberFirstName.trim() ? '#16A34A' : '#E5E7EB', color: newMemberFirstName.trim() ? 'white' : '#9CA3AF', fontSize: 11, fontWeight: 600, cursor: newMemberFirstName.trim() ? 'pointer' : 'not-allowed' }}>
-                                            Ajouter
-                                        </button>
+                                        {(() => {
+                                            const ready = !!rehireId || !!newMemberFirstName.trim();
+                                            return (
+                                                <button onClick={handleAddMember} disabled={!ready}
+                                                    style={{ flex: 1, padding: '5px 0', border: 'none', borderRadius: 4, background: ready ? '#16A34A' : '#E5E7EB', color: ready ? 'white' : '#9CA3AF', fontSize: 11, fontWeight: 600, cursor: ready ? 'pointer' : 'not-allowed' }}>
+                                                    {rehireId ? 'Reprendre' : 'Ajouter'}
+                                                </button>
+                                            );
+                                        })()}
                                     </div>
                                 </div>
                             ) : (
                                 <button
-                                    onClick={() => { setAddingMemberFor(role); setNewMemberFirstName(''); setNewMemberLastName(''); }}
+                                    onClick={() => { resetAddMember(); setAddingMemberFor(role); }}
                                     style={{ width: '100%', padding: '7px 0', border: '1px dashed #D1D5DB', borderRadius: 6, background: 'transparent', color: '#9CA3AF', fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}
                                 >
                                     <UserPlus size={12} /> Ajouter un membre
