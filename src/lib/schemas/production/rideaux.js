@@ -21,7 +21,6 @@ const toNum = (v) => {
 const round1 = (v) => Math.round(v * 10) / 10;
 
 // Round to nearest 0.05 (for ML in metres)
-const roundStep05 = (v) => Math.round(v / 0.05) * 0.05;
 
 // ML tissu : calcul selon orientation (laize vs hauteur_coupe)
 // aPlat, laize, hCoupe, hCoupeMotif en cm → résultat en m
@@ -29,11 +28,11 @@ const calcML = (aPlat, laize, hCoupe, hCoupeMotif) => {
     if (!laize || laize <= 0 || !aPlat || aPlat <= 0) return 0;
     if (laize >= hCoupe) {
         // Horizontal (tissu couché)
-        return roundStep05(aPlat / 100);
+        return aPlat / 100;
     }
     // Vertical
     const nbLes = Math.ceil(aPlat / laize);
-    return roundStep05((nbLes * hCoupeMotif) / 100);
+    return (nbLes * hCoupeMotif) / 100;
 };
 
 // ML passementerie selon application (I/U/L/-)
@@ -47,7 +46,7 @@ const calcPassML = (app, aPlat, hCoupe, isPaire) => {
     else if (app === 'L') res = hCoupe + L_Pan;
     else if (app === '-') res = L_Pan;
     else return 0;
-    return roundStep05((isPaire ? res * 2 : res) / 100);
+    return (isPaire ? res * 2 : res) / 100;
 };
 
 // Helper for complex calculations
@@ -116,6 +115,12 @@ const getters = {
             return round1(aPlat);
         }
         return round1(hFinie + 50);
+    },
+
+    nb_raccords_motifs: (row) => {
+        const hCoupe = getters.hauteur_coupe(row);
+        const rV = toNum(row.raccord_v_tissu1);
+        return rV > 0 ? Math.ceil(hCoupe / rV) : 0;
     },
 
     hauteur_coupe_motif: (row) => {
@@ -189,6 +194,7 @@ export const RIDEAUX_GETTERS = {
     hauteur_finie_milieu:  getters.hauteur_finie_milieu,
     hauteur_finie_gauche:  getters.hauteur_finie_gauche,
     hauteur_coupe:         getters.hauteur_coupe,
+    nb_raccords_motifs:    getters.nb_raccords_motifs,
     hauteur_coupe_motif:   getters.hauteur_coupe_motif,
     hauteur_coupe_doublure:getters.hauteur_coupe_doublure,
     nombre_les:            getters.nombre_les,
@@ -309,6 +315,15 @@ export const RIDEAUX_PROD_SCHEMA = [
         readOnly: true,
         tooltip: "Si laize > H_finie + 50 cm : utilise la valeur À Plat (tissu couché). Sinon : H_finie + 50 cm de marge de coupe",
         valueGetter: (v, r) => getters.hauteur_coupe(getRow(v, r))
+    },
+    {
+        key: "nb_raccords_motifs",
+        label: "Nb Raccords Motifs",
+        type: "number",
+        width: 155,
+        readOnly: true,
+        tooltip: "Nombre de raccords motif : ceil(H. Coupe ÷ Raccord V T1). Zéro si pas de raccord.",
+        valueGetter: (v, r) => getters.nb_raccords_motifs(getRow(v, r))
     },
     {
         key: "hauteur_coupe_motif",

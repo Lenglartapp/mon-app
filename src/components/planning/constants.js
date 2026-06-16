@@ -80,3 +80,28 @@ export const ATELIER_HOURS_PER_DAY = 7.8;  // Confection & préparation (atelier
 // Heures contractuelles par jour selon le service
 export const dailyHoursForGroup = (groupKey) =>
     (groupKey === 'conf' || groupKey === 'prepa') ? ATELIER_HOURS_PER_DAY : DEFAULT_DAILY_HOURS;
+
+// --- CONTRATS (CDI / CDD / Intérim) ---
+export const CONTRACT_TYPES = ['CDI', 'CDD', 'Intérim'];
+
+// Date de fin effective d'un membre : fin de contrat, ou date d'archivage si archivé.
+export const memberEndDate = (m) =>
+    m.contract_end_date || (m.archived_at ? String(m.archived_at).slice(0, 10) : null);
+
+// Le membre est-il présent (sous contrat, non archivé) un jour donné 'yyyy-MM-dd' ?
+export const isMemberActiveOnDay = (m, dayStr) => {
+    const start = m.contract_start_date;
+    const end = memberEndDate(m);
+    if (start && dayStr < start) return false;
+    if (end && dayStr > end) return false;
+    return true;
+};
+
+// La fenêtre de contrat du membre chevauche-t-elle la période [rangeStart, rangeEnd] ?
+export const memberContractOverlaps = (m, rangeStart, rangeEnd) => {
+    const start = m.contract_start_date;
+    const end = memberEndDate(m);
+    if (start && start > rangeEnd) return false;
+    if (end && end < rangeStart) return false;
+    return true;
+};

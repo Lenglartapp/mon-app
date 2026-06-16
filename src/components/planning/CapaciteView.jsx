@@ -8,6 +8,7 @@ import {
 } from 'recharts';
 import { useAuth } from '../../auth';
 import { productionGroup } from '../../lib/authz';
+import { isMemberActiveOnDay } from './constants';
 
 const WORK_HOURS_PER_DAY = 9;
 
@@ -27,7 +28,6 @@ const CapaciteView = ({ localUsers, localEvents }) => {
     const [rangeEnd,   setRangeEnd]   = useState(format(addMonths(today, 2), 'yyyy-MM-dd'));
     const [selectedWeekData, setSelectedWeekData] = useState(null);
 
-    const missions      = useMemo(() => localEvents.filter(e => e.type === 'mission'),  [localEvents]);
     const closures      = useMemo(() => localEvents.filter(e => e.type === 'closure'),  [localEvents]);
     const absences      = useMemo(() => localEvents.filter(e => e.type === 'absence'),  [localEvents]);
     const planningEvts  = useMemo(() => localEvents.filter(e =>
@@ -48,17 +48,6 @@ const CapaciteView = ({ localUsers, localEvents }) => {
         return eachWeekOfInterval({ start: s, end: e }, { weekStartsOn: 1 });
     }, [rangeStart, rangeEnd]);
 
-    const isInterimActiveOnDay = (user, dayStr) => {
-        if (!(user.first_name?.startsWith('Interim') || user.is_interim)) return true;
-        return missions.some(m =>
-            m.resourceId === user.id &&
-            m.type === 'mission' &&
-            m.meta?.status !== 'ended' &&
-            format(new Date(m.meta.start), 'yyyy-MM-dd') <= dayStr &&
-            (format(new Date(m.meta.end), 'yyyy-MM-dd') >= '2099' ||
-             format(new Date(m.meta.end), 'yyyy-MM-dd') >= dayStr)
-        );
-    };
 
     const isClosureOnDay = (dayStr) =>
         closures.some(c =>
@@ -94,7 +83,7 @@ const CapaciteView = ({ localUsers, localEvents }) => {
                 workDays.forEach(day => {
                     const dayStr = format(day, 'yyyy-MM-dd');
                     if (isClosureOnDay(dayStr)) return;
-                    if (!isInterimActiveOnDay(user, dayStr)) return;
+                    if (!isMemberActiveOnDay(user, dayStr)) return; // hors contrat / archivé
                     const absH = absenceHoursOnDay(user.id, dayStr);
                     capaHours += Math.max(0, WORK_HOURS_PER_DAY - absH);
                 });
@@ -132,7 +121,7 @@ const CapaciteView = ({ localUsers, localEvents }) => {
                 projects: Object.values(projectMap).sort((a, b) => b.hours - a.hours),
             };
         });
-    }, [weeks, filteredUsers, planningEvts, missions, closures, absences]);
+    }, [weeks, filteredUsers, planningEvts, closures, absences]);
 
     const toggleWorkshop = (ws) => {
         setSelectedWorkshops(prev =>
