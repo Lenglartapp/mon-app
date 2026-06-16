@@ -117,6 +117,12 @@ const getters = {
         return round1(hFinie + 50);
     },
 
+    nb_raccords_motifs: (row) => {
+        const hCoupe = getters.hauteur_coupe(row);
+        const rV = toNum(row.raccord_v_tissu1);
+        return rV > 0 ? Math.ceil(hCoupe / rV) : 0;
+    },
+
     hauteur_coupe_motif: (row) => {
         const hCoupe = getters.hauteur_coupe(row);
         const rV = toNum(row.raccord_v_tissu1);
@@ -188,6 +194,7 @@ export const RIDEAUX_GETTERS = {
     hauteur_finie_milieu:  getters.hauteur_finie_milieu,
     hauteur_finie_gauche:  getters.hauteur_finie_gauche,
     hauteur_coupe:         getters.hauteur_coupe,
+    nb_raccords_motifs:    getters.nb_raccords_motifs,
     hauteur_coupe_motif:   getters.hauteur_coupe_motif,
     hauteur_coupe_doublure:getters.hauteur_coupe_doublure,
     nombre_les:            getters.nombre_les,
@@ -308,6 +315,15 @@ export const RIDEAUX_PROD_SCHEMA = [
         readOnly: true,
         tooltip: "Si laize > H_finie + 50 cm : utilise la valeur À Plat (tissu couché). Sinon : H_finie + 50 cm de marge de coupe",
         valueGetter: (v, r) => getters.hauteur_coupe(getRow(v, r))
+    },
+    {
+        key: "nb_raccords_motifs",
+        label: "Nb Raccords Motifs",
+        type: "number",
+        width: 155,
+        readOnly: true,
+        tooltip: "Nombre de raccords motif : ceil(H. Coupe ÷ Raccord V T1). Zéro si pas de raccord.",
+        valueGetter: (v, r) => getters.nb_raccords_motifs(getRow(v, r))
     },
     {
         key: "hauteur_coupe_motif",
