@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import FormulaEditCell from '../../components/FormulaEditCell';
 import GridPhotoCell from '../../components/ui/GridPhotoCell';
 import GridSketchCell from '../../components/ui/GridSketchCell';
@@ -11,7 +11,7 @@ import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import LinkIcon from '@mui/icons-material/Link';
 import Chip from '@mui/material/Chip';
-import { Type, Hash, Calendar, CheckSquare, Image as ImageIcon, PenTool, ChevronDown } from 'lucide-react';
+import { Type, Hash, Calendar, CheckSquare, Image as ImageIcon, PenTool, ChevronDown, Filter as FilterIcon, MoreVertical } from 'lucide-react';
 
 // Formateur EUR créé une seule fois au niveau module (Intl.NumberFormat est coûteux à instancier)
 const EUR_FORMATTER = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' });
@@ -134,9 +134,31 @@ const getColumnIcon = (col) => {
 
 // Composant Header AG Grid — affiche icône + label
 function AgColumnHeader(props) {
-  const { displayName, column } = props;
-  const icon = column?.getColDef?.()?.context?._headerIcon;
-  const tooltip = column?.getColDef?.()?.headerTooltip;
+  const { displayName, column, showColumnMenu, showFilter, enableFilterButton } = props;
+  const colDef = column?.getColDef?.();
+  const icon = colDef?.context?._headerIcon;
+  const tooltip = colDef?.headerTooltip;
+
+  // Boutons filtre + menu — le header custom doit les rendre lui-même
+  const filterBtnRef = useRef(null);
+  const menuBtnRef = useRef(null);
+  const [filterActive, setFilterActive] = useState(() => column?.isFilterActive?.() || false);
+  useEffect(() => {
+    if (!column) return;
+    const update = () => setFilterActive(column.isFilterActive());
+    column.addEventListener('filterActiveChanged', update);
+    return () => column.removeEventListener('filterActiveChanged', update);
+  }, [column]);
+
+  const filterable = enableFilterButton && colDef?.filter !== false && !!showFilter;
+  const openFilter = (e) => {
+    e.stopPropagation();
+    if (showFilter && filterBtnRef.current) showFilter(filterBtnRef.current);
+  };
+  const openMenu = (e) => {
+    e.stopPropagation();
+    if (showColumnMenu && menuBtnRef.current) showColumnMenu(menuBtnRef.current);
+  };
 
   const label = (
     <span style={{ fontWeight: 600, color: '#374151', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', paddingTop: '2px', fontSize: '13px', flex: 1 }}>
@@ -156,6 +178,26 @@ function AgColumnHeader(props) {
           {label}
         </Tooltip>
       ) : label}
+      {showColumnMenu && (
+        <span
+          ref={menuBtnRef}
+          onClick={openMenu}
+          title="Options de colonne (tri, épingler, regrouper…)"
+          style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', flexShrink: 0, color: '#9ca3af' }}
+        >
+          <MoreVertical size={13} />
+        </span>
+      )}
+      {filterable && (
+        <span
+          ref={filterBtnRef}
+          onClick={openFilter}
+          title="Filtrer cette colonne"
+          style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', flexShrink: 0, color: filterActive ? '#2563eb' : '#9ca3af' }}
+        >
+          <FilterIcon size={13} fill={filterActive ? '#2563eb' : 'none'} />
+        </span>
+      )}
     </div>
   );
 }
@@ -473,6 +515,15 @@ export function schemaToGridCols(
       };
       gridCol.sortable = false;
       gridCol.editable = false;
+    }
+
+    // Set Filter (Excel-like) : actif sur les colonnes de données, désactivé sur les
+    // colonnes d'action (boutons, cases, photos, croquis). filter:agSetColumnFilter
+    // est posé dans defaultColDef ; ici on coupe juste les colonnes non pertinentes.
+    const NON_FILTERABLE_TYPES = new Set(['button', 'checkbox', 'photo', 'croquis']);
+    if (NON_FILTERABLE_TYPES.has(col.type) || col.key === 'sel' || col.key === 'detail') {
+      gridCol.filter = false;
+      gridCol.suppressHeaderMenuButton = true;
     }
 
     return gridCol;

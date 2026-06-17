@@ -8,6 +8,7 @@ import { schemaToGridCols } from '../lib/utils/schemaToGridCols.jsx';
 import { recomputeRow } from '../lib/formulas/recomputeRow';
 import { generateRowLogs } from '../lib/utils/logUtils';
 import { uid } from '../lib/utils/uid';
+import { createDecentreePair, PAIRE_DECENTREE, DECENTREE_PARENT_ONLY_TECH } from '../lib/utils/pairDecentree';
 import { Plus, Trash2, Columns, Layers, Edit2, Filter, FileSpreadsheet } from 'lucide-react';
 import FilterPanel, { isConditionActive, evaluateCondition } from './FilterPanel';
 import { getDefaultMatieres } from '../lib/constants/matiereGroups';
@@ -19,6 +20,11 @@ const GRID_STATE_VERSION = 5; // à incrémenter si le calcul des largeurs chang
 
 
 const AG_GRID_LOCALE_FR = {
+    // Regroupement (panneau « Regrouper par »)
+    rowGroupColumnsEmptyMessage: 'Glissez un champ ici pour regrouper',
+    group: 'Groupe',
+    expandAll: 'Tout déplier',
+    collapseAll: 'Tout replier',
     // Filtres — conditions
     contains: 'Contient',
     notContains: 'Ne contient pas',
@@ -197,6 +203,7 @@ function MinuteGrid({
     mecaGroups = [],
     confGroups = [],
     showExpeditionCol = false,
+    enableDecentree = false, // active l'éclatement « Paire décentrée » (production rideaux uniquement)
 }) {
     const gridRef = useRef(null);
     const gridContainerRef = useRef(null);
@@ -217,6 +224,56 @@ function MinuteGrid({
     const [filterPanelOpen, setFilterPanelOpen] = useState(false);
     const filterConditionsRef = useRef([]);
     filterConditionsRef.current = filterConditions;
+
+    // ── Paire décentrée : état déplié/replié (par pair_id) ───────────────────
+    const collapsedPairsRef = useRef(new Set());
+    const toggleDecentree = useCallback((pairId) => {
+        const set = collapsedPairsRef.current;
+        if (set.has(pairId)) set.delete(pairId); else set.add(pairId);
+        const api = gridRef.current?.api;
+        if (api) {
+            api.onFilterChanged();             // masque/affiche les enfants repliés
+            api.refreshCells({ force: true }); // met à jour la flèche du chevron
+        }
+    }, []);
+    const toggleDecentreeRef = useRef(toggleDecentree);
+    toggleDecentreeRef.current = toggleDecentree;
+
+    // Renderer de la colonne identité (zone) : chevron sur le parent, indentation sur les enfants
+    const decentreeZoneRenderer = useCallback((params) => {
+        const row = params.data || {};
+        const val = params.value == null ? '' : params.value;
+        if (row.pair_role === 'parent') {
+            const collapsed = collapsedPairsRef.current.has(row.pair_id);
+            return React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 6 } },
+                React.createElement('span', {
+                    onClick: (e) => { e.stopPropagation(); toggleDecentreeRef.current(row.pair_id); },
+                    style: { cursor: 'pointer', userSelect: 'none', fontSize: 11, color: '#6b7280', width: 12, textAlign: 'center', display: 'inline-block' },
+                    title: collapsed ? 'Déplier la paire' : 'Replier la paire',
+                }, collapsed ? '▶' : '▼'),
+                React.createElement('span', { style: { fontWeight: 600 } }, val),
+            );
+        }
+        if (row.pair_role === 'left' || row.pair_role === 'right') {
+            return React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 6, paddingLeft: 16, color: '#6b7280' } },
+                React.createElement('span', { style: { fontSize: 10 } }, row.pair_role === 'left' ? '↳ Gauche' : '↳ Droite'),
+                React.createElement('span', null, val),
+            );
+        }
+        return val;
+    }, []);
+
+    // Colonnes techniques du rail (largeur méca, nb glisseurs) : « voir parent » sur les enfants
+    const decentreeParentOnlyRenderer = useCallback((params) => {
+        const role = params.data?.pair_role;
+        if (role === 'left' || role === 'right') {
+            return React.createElement('span', {
+                style: { color: '#9ca3af', fontStyle: 'italic', fontSize: 11 },
+                title: 'Donnée portée par la ligne parent',
+            }, 'voir parent');
+        }
+        return params.valueFormatted != null ? params.valueFormatted : (params.value == null ? '' : params.value);
+    }, []);
     const activeFilterFieldsRef = useRef(new Set());
 
     // État local des matières (source de vérité pour le panneau Configuration)
@@ -294,7 +351,8 @@ function MinuteGrid({
         if (columnState && v === GRID_STATE_VERSION) {
             // Toujours restaurer visibilité + ordre depuis l'état sauvegardé (override sur initialVisibilityModel)
             api.applyColumnState({
-                state: columnState.map(cs => ({ colId: cs.colId, hide: cs.hide, pinned: cs.pinned })),
+                // rowGroupIndex : restaure aussi le regroupement (colonnes glissées dans le panneau)
+                state: columnState.map(cs => ({ colId: cs.colId, hide: cs.hide, pinned: cs.pinned, rowGroupIndex: cs.rowGroupIndex })),
                 applyOrder: true,
             });
             const visMap = {};
@@ -520,6 +578,11 @@ function MinuteGrid({
         if (params.finished) saveColumnState(params.api);
     }, [saveColumnState]);
 
+    // Persiste le regroupement (colonnes glissées dans le panneau de regroupement)
+    const onColumnRowGroupChanged = useCallback((params) => {
+        saveColumnState(params.api);
+    }, [saveColumnState]);
+
     // Ouvrir le panneau de détail
     const handleOpenDetail = useCallback((row) => {
         if (onRowClick) onRowClick(row.id);
@@ -575,7 +638,16 @@ function MinuteGrid({
         const api = gridRef.current?.api;
         if (!api) return;
         const selectedIds = new Set(api.getSelectedRows().map(r => r.id));
-        const newRows = rowsRef.current.filter(r => !selectedIds.has(r.id));
+        // Cascade : si on supprime un parent décentré, on supprime aussi ses 2 enfants
+        const deletedParentPairs = new Set(
+            rowsRef.current
+                .filter(r => selectedIds.has(r.id) && r.pair_role === 'parent')
+                .map(r => r.pair_id)
+        );
+        const newRows = rowsRef.current.filter(r =>
+            !selectedIds.has(r.id) &&
+            !(r.pair_role && r.pair_role !== 'parent' && deletedParentPairs.has(r.pair_id))
+        );
         onRowsChange(newRows);
         setSelectedCount(0);
         setSelectedRows([]);
@@ -719,6 +791,10 @@ function MinuteGrid({
         const withWidths = cols.map(col => {
             const schemaWidth = col.initialWidth ?? col.width ?? 120;
             const w = savedWidths[col.field] ?? schemaWidth;
+            // Agrégation des lignes de groupe : réutilise le réglage par colonne (colAggregations)
+            // qui pilote déjà la ligne de totaux, pour rester cohérent.
+            const aggType = colAggregations[col.field];
+            const aggFunc = ['sum', 'avg', 'min', 'max', 'count'].includes(aggType) ? aggType : undefined;
             return {
                 ...col,
                 // initialWidth (et non width) : la largeur n'est posée qu'à la création de la colonne.
@@ -727,6 +803,11 @@ function MinuteGrid({
                 // Les largeurs sauvegardées sont restaurées après coup via applyColumnState (chargement async Supabase).
                 width: undefined,
                 initialWidth: w,
+                aggFunc,
+                // Chevron déplier/replier + indentation sur la colonne identité (paire décentrée)
+                ...(enableDecentree && col.field === 'zone' ? { cellRenderer: decentreeZoneRenderer } : {}),
+                // « voir parent » sur les colonnes techniques du rail pour les lignes enfants
+                ...(enableDecentree && DECENTREE_PARENT_ONLY_TECH.includes(col.field) ? { cellRenderer: decentreeParentOnlyRenderer } : {}),
                 headerClass: () => activeFilterFieldsRef.current.has(col.field) ? 'filter-col-active' : '',
             };
         });
@@ -766,13 +847,19 @@ function MinuteGrid({
         }
 
         return showExpeditionCol ? [...withWidths, expeditionCol] : withWidths;
-    }, [schema, enableCellFormulas, handleOpenDetail, catalog, railOptions, handlePhotoChange, handleLinkUpdate, onDuplicateRow, hideCroquis, readOnly, title, isMobile, gridId, showExpeditionCol, resolvedUser]);
+    }, [schema, enableCellFormulas, handleOpenDetail, catalog, railOptions, handlePhotoChange, handleLinkUpdate, onDuplicateRow, hideCroquis, readOnly, title, isMobile, gridId, showExpeditionCol, resolvedUser, colAggregations, enableDecentree, decentreeZoneRenderer, decentreeParentOnlyRenderer]);
 
     const isExternalFilterPresent = useCallback(() => {
-        return filterConditionsRef.current.some(isConditionActive);
+        return filterConditionsRef.current.some(isConditionActive) || collapsedPairsRef.current.size > 0;
     }, []);
 
     const doesExternalFilterPass = useCallback((node) => {
+        const row = node.data;
+        // Masquer les enfants d'une paire décentrée repliée
+        if (row && (row.pair_role === 'left' || row.pair_role === 'right')
+            && collapsedPairsRef.current.has(row.pair_id)) {
+            return false;
+        }
         const conditions = filterConditionsRef.current.filter(isConditionActive);
         if (conditions.length === 0) return true;
         let result = evaluateCondition(conditions[0], node.data);
@@ -787,8 +874,21 @@ function MinuteGrid({
     const defaultColDef = useMemo(() => ({
         resizable: true,
         sortable: true,
-        filter: false,
+        // Set Filter (Excel-like) : liste de valeurs cochables + recherche, dans chaque colonne.
+        // L'entonnoir (showFilter) ouvre le filtre ; le menu ⋮ (showColumnMenu) garde tri/pin/groupe.
+        // Les colonnes d'action (boutons/cases) sont coupées dans schemaToGridCols.
+        filter: 'agSetColumnFilter',
         minWidth: 60,
+        enableRowGroup: true, // permet de glisser n'importe quelle colonne dans le panneau de regroupement
+    }), []);
+
+    // Colonne de regroupement (affichée à gauche quand on regroupe), avec compteur (n)
+    const autoGroupColumnDef = useMemo(() => ({
+        headerName: 'Groupe',
+        minWidth: 250,
+        pinned: 'left',
+        resizable: true,
+        cellRendererParams: { suppressCount: false },
     }), []);
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -803,6 +903,24 @@ function MinuteGrid({
         const changedKey = params.colDef.field;
         const oldVal = params.oldValue;
         const newVal = params.newValue;
+
+        // ── Éclatement « Paire décentrée » ───────────────────────────────────
+        // Quand on passe une ligne normale à « Paire décentrée », on la remplace
+        // par un parent (localisation + rail) + 2 enfants vides (pan gauche/droit).
+        if (enableDecentree && changedKey === 'paire_ou_un_seul_pan'
+            && newVal === PAIRE_DECENTREE && !params.data?.pair_role) {
+            const source = { ...params.data, paire_ou_un_seul_pan: newVal };
+            const triplet = createDecentreePair(source, schema).map(r => {
+                try { return recomputeRow(r, schema, formulaCtx); } catch { return r; }
+            });
+            const next = [];
+            (rowsRef.current || []).forEach(r => {
+                if (String(r.id) === String(params.data.id)) next.push(...triplet);
+                else next.push(r);
+            });
+            onRowsChangeRef.current(next);
+            return;
+        }
 
 
         // Avec getRowId, AG Grid ne mute PAS params.data — la nouvelle valeur est dans params.newValue.
@@ -944,7 +1062,7 @@ function MinuteGrid({
         } catch (e) {
             console.error('Erreur calcul', e);
         }
-    }, [schema, formulaCtx, catalog, resolvedUser, enableCellFormulas]);
+    }, [schema, formulaCtx, catalog, resolvedUser, enableCellFormulas, enableDecentree]);
 
     // Valide la valeur avant de l'appliquer via clipboard/fill.
     // Pour les selects, rejette toute valeur absente des options autorisées.
@@ -1425,11 +1543,19 @@ function MinuteGrid({
                     pinnedBottomRowData={pinnedBottomRowData}
                     columnDefs={columnDefs}
                     defaultColDef={defaultColDef}
+                    autoGroupColumnDef={autoGroupColumnDef}
+                    rowGroupPanelShow="always"
+                    groupDefaultExpanded={0}
+                    suppressAggFuncInHeader={true}
+                    onColumnRowGroupChanged={onColumnRowGroupChanged}
                     context={{ colAggregations, onAggregationChange }}
                     getRowStyle={(params) => {
                         if (params.node.rowPinned === 'bottom') {
                             return { background: '#f0fdf4', borderTop: '2px solid #10b981' };
                         }
+                        const role = params.data?.pair_role;
+                        if (role === 'parent') return { background: '#eef2ff', fontWeight: 600 };
+                        if (role === 'left' || role === 'right') return { background: '#f8fafc' };
                     }}
                     quickFilterText={quickFilter}
                     getRowId={(params) => String(params.data.id)}
