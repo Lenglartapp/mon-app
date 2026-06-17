@@ -575,8 +575,26 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
         return r;
       });
 
-    setRows(updatedAllRows);
-    if (project?.id) debouncedSave(project.id, updatedAllRows);
+    // Lignes AJOUTÉES (présentes dans le nouveau sous-ensemble mais pas dans allRows) :
+    // ex. les 2 enfants d'une « paire décentrée » créés via onCellValueChanged.
+    // On les insère juste après leur parent (sinon handleSubsetChange les perdrait).
+    const prevIds = new Set(allRows.map(r => r.id));
+    const addedRows = newSubsetRows.filter(r => !prevIds.has(r.id));
+    let finalRows = updatedAllRows;
+    if (addedRows.length > 0) {
+      finalRows = [];
+      updatedAllRows.forEach(r => {
+        finalRows.push(r);
+        if (r.pair_role === 'parent') {
+          addedRows.filter(a => a.pair_id === r.pair_id).forEach(a => finalRows.push(a));
+        }
+      });
+      const placed = new Set(finalRows.map(r => r.id));
+      addedRows.forEach(a => { if (!placed.has(a.id)) finalRows.push(a); });
+    }
+
+    setRows(finalRows);
+    if (project?.id) debouncedSave(project.id, finalRows);
   }, [canEditProd, schema, currentUser?.name, debouncedSave, project?.id]);
 
   const mergeChildRowsFor = (tableKey) => {
@@ -1236,6 +1254,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                 onDuplicateRow={handleDuplicateRow}
                 catalog={projectMaterials}
                 projectId={project?.id}
+                enableDecentree={true}
                 gridKey="pv_rideaux"
                 onRowClick={(id) => setOpenedRowId(id)}
                 isMobile={isMobile}
@@ -1425,6 +1444,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                   onDuplicateRow={handleDuplicateRow}
                   catalog={projectMaterials}
                 projectId={project?.id}
+                  enableDecentree={true}
                   gridKey="bpf_rideaux"
                   onRowClick={(id) => setOpenedRowId(id)}
                   isMobile={isMobile}
@@ -1636,6 +1656,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                   onDuplicateRow={handleDuplicateRow}
                   catalog={projectMaterials}
                 projectId={project?.id}
+                  enableDecentree={true}
                   gridKey="bpp_rideaux"
                   onRowClick={(id) => setOpenedRowId(id)}
                   isMobile={isMobile}

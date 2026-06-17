@@ -1,6 +1,7 @@
 // src/lib/schemas/chiffrage.js
 // Schéma STRICT pour l'éditeur de minutes (Rideaux)
 // Basé sur la "Matrice de Champs" utilisateur (Ordre 1 à 75)
+import { PAIRE_OPTIONS_BASE } from "../utils/pairDecentree";
 
 export const CHIFFRAGE_SCHEMA = [
   // 1 = Checkbox (Native DataGrid)
@@ -16,7 +17,7 @@ export const CHIFFRAGE_SCHEMA = [
   // 6
   { key: "type_confection", label: "Confection", type: "select", options: ["Pli Flamand", "Pli Creux", "Pli Plat", "Tripli", "Wave 80", "Wave 60", "Pli Couteau", "Pli Rabattu Cousu", "A Plat"], width: 140 },
   // 7
-  { key: "paire_ou_un_seul_pan", label: "Paire ou un Pan", type: "select", options: ["Paire", "Un seul pan", "Un seul pan (Rapatriement Droit)", "Un seul pan (Rapatriement Gauche)"], width: 180 },
+  { key: "paire_ou_un_seul_pan", label: "Paire ou un Pan", type: "select", options: PAIRE_OPTIONS_BASE, width: 180 },
   // 8
   { key: "ampleur", label: "Ampleur", type: "number", precision: 2, width: 80, defaultValue: 0 },
   // 9

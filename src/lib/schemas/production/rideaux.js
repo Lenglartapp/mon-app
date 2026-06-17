@@ -1,5 +1,6 @@
 // src/lib/schemas/production/rideaux.js
 import React from 'react';
+import { PAIRE_OPTIONS_BASE, paireOptionsForRow, PAIRE_DECENTREE } from '../../utils/pairDecentree';
 
 // Helper to safely extract row from valueGetter args (MUI V5 vs V6 compat)
 const getRow = (a, b) => {
@@ -212,7 +213,7 @@ export const RIDEAUX_PROD_SCHEMA = [
     { key: "produit", label: "Produit", type: "select", options: ["Rideau", "Voilage"], width: 125, editable: true },
     { key: "type_confection", label: "Type Conf.", type: "select", options: ["Pli Flamand", "Pli Creux", "Pli Plat", "Tripli", "Wave 80", "Wave 60", "Pli Couteau", "Pli Rabattu Cousu", "A Plat"], width: 150, editable: true },
     { key: "hauteur_renfort_tete", label: "H/Renfort Têtes", type: "text", width: 155, editable: true },
-    { key: "paire_ou_un_seul_pan", label: "Paire ou un Pan", type: "select", options: ["Paire", "Un seul pan", "Un seul pan (Rapatriement Droit)", "Un seul pan (Rapatriement Gauche)"], width: 260, editable: true },
+    { key: "paire_ou_un_seul_pan", label: "Paire ou un Pan", type: "select", options: PAIRE_OPTIONS_BASE, optionsFn: paireOptionsForRow, width: 260, editable: true },
     { key: "largeur_gorge", label: "Largeur Gorge (cm)", type: "number", width: 155, editable: true },
     { key: "profondeur_gorge", label: "Profondeur Gorge (cm)", type: "number", width: 175, editable: true },
     { key: "ampleur", label: "Ampleur", type: "number", width: 110, editable: true },
@@ -463,7 +464,7 @@ export const RIDEAUX_PROD_SCHEMA = [
         tooltip: "ML Pass. 1 selon application : I = 1 côté | U = périmètre | L = 3 côtés | - = largeur seule",
         valueGetter: (v, r) => {
             const row = getRow(v, r);
-            const isPaire = (row.paire_ou_un_seul_pan || "").startsWith("Paire");
+            const isPaire = (row.paire_ou_un_seul_pan || "").startsWith("Paire") && row.paire_ou_un_seul_pan !== PAIRE_DECENTREE;
             return calcPassML(row.application_passementerie1, getters.a_plat(row), getters.hauteur_coupe(row), isPaire);
         }
     },
@@ -478,7 +479,7 @@ export const RIDEAUX_PROD_SCHEMA = [
         tooltip: "ML Pass. 2 selon application : I = 1 côté | U = périmètre | L = 3 côtés | - = largeur seule",
         valueGetter: (v, r) => {
             const row = getRow(v, r);
-            const isPaire = (row.paire_ou_un_seul_pan || "").startsWith("Paire");
+            const isPaire = (row.paire_ou_un_seul_pan || "").startsWith("Paire") && row.paire_ou_un_seul_pan !== PAIRE_DECENTREE;
             return calcPassML(row.application_passementerie2, getters.a_plat(row), getters.hauteur_coupe(row), isPaire);
         }
     },
