@@ -256,7 +256,7 @@ export const RIDEAUX_PROD_SCHEMA = [
     },
     {
         key: "reste_les",
-        label: "Apiècement cm",
+        label: "Appiècement cm",
         type: "number",
         width: 130,
         readOnly: true,
@@ -508,7 +508,7 @@ export const RIDEAUX_PROD_SCHEMA = [
     { key: "type_retours", label: "Type Retours", type: "select", options: ['Élastique', 'Velcro', 'Piton'], width: 130, editable: true },
     { key: "hauteur_corniere_elastique", label: "H. Cornière / Élastique (cm)", type: "number", width: 200, editable: true },
     { key: "etiquette_lavage", label: "Etiq. Lavage", type: "select", options: ["Oui", "Non"], width: 125, editable: true },
-    { key: "etiquette_lenglart", label: "Etiq. Lenglart", type: "select", options: ["Oui", "Non"], width: 130, editable: true, defaultValue: "Oui" },
+    { key: "etiquette_lenglart", label: "Etiq. Lenglart", type: "select", options: ["Non", "Ne pas laver", "Lavage à 30°", "Voilage"], width: 130, editable: true, defaultValue: "Non" },
     { key: "type_mecanisme", label: "Type Méca", type: "text", width: 130, editable: true },
     { key: "modele_mecanisme", label: "Modèle Méca", type: "text", width: 150, editable: true },
     { key: "couleur_mecanisme", label: "Couleur Méca", type: "text", width: 140, editable: true },

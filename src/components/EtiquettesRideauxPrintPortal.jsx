@@ -113,7 +113,6 @@ function PrintLabel({ row, projectName, index, total }) {
 
   const zone = v(row, "zone", "Zone ?");
   const piece = v(row, "piece", "Pièce ?");
-  const heuresConf = v(row, "heures_confection", "—");
   const statutCotes = v(row, "statut_cotes", "—");
   const schemaArr = Array.isArray(row?.schema) ? row.schema : [];
   const schemaImg = schemaArr[0]?.url || (typeof row?.schema === 'string' ? row.schema : null)
@@ -157,11 +156,6 @@ function PrintLabel({ row, projectName, index, total }) {
           <div style={{ fontSize: "5.5pt", fontWeight: 600, color: hdr.textMuted, lineHeight: 1.1 }}>
             {v(row, "produit")}
           </div>
-        </div>
-        {/* H. Conf. */}
-        <div style={{ textAlign: "right" }}>
-          <div style={{ fontSize: "4pt", color: hdr.textMuted, textTransform: "uppercase", letterSpacing: "0.05em" }}>H. Conf.</div>
-          <div style={{ fontSize: "9pt", fontWeight: 700, color: hdr.textMain }}>{heuresConf}h</div>
         </div>
         {/* Badge n° */}
         <div style={{
@@ -226,7 +220,7 @@ function PrintLabel({ row, projectName, index, total }) {
         <PSectionTitle>Dimensions</PSectionTitle>
         <PRow cols={6}>
           {show("nombre_les")    && <PCell label="Nb lés" value={v(row, "nombre_les")} plusAfter={show("reste_les")} />}
-          {show("reste_les")     && <PCell label="Apiècement cm" value={v(row, "reste_les")} />}
+          {show("reste_les")     && <PCell label="Appiècement cm" value={v(row, "reste_les")} />}
           {show("a_plat")        && <PCell label="À Plat" value={v(row, "a_plat")} />}
           {show("largeur_finie") && <PCell label="L. Finie" value={v(row, "largeur_finie")} />}
           {show("retour_gauche") && <PCell label="Retour G" value={v(row, "retour_gauche")} />}
@@ -252,6 +246,7 @@ function PrintLabel({ row, projectName, index, total }) {
         <PRow cols={3}>
           {show("type_mecanisme")  && <PCell label="Type Méca" value={v(row, "type_mecanisme")} />}
           {show("modele_mecanisme")&& <PCell label="Modèle Méca" value={v(row, "modele_mecanisme")} />}
+          {show("meca_couvert")    && <PCell label="Méca Couvert" value={v(row, "meca_couvert")} />}
           {show("type_croisement") && <PCell label="Type Croisement" value={v(row, "type_croisement")} />}
         </PRow>
 

@@ -96,7 +96,6 @@ function PrintLabel({ row, projectName, index, total }) {
 
   const zone = v(row, "zone", "Zone ?");
   const piece = v(row, "piece", "Pièce ?");
-  const heuresConf = v(row, "heures_confection", "—");
   const statutCotes = v(row, "statut_cotes", "—");
   const isStatutWarn = statutCotes && !["Définitive", "Validé par chef de projet"].includes(statutCotes);
 
@@ -139,10 +138,6 @@ function PrintLabel({ row, projectName, index, total }) {
           <div style={{ fontSize: "7pt", fontWeight: 600, color: hdr.textMuted, marginTop: "1pt" }}>
             {v(row, "produit")}
           </div>
-        </div>
-        <div style={{ textAlign: "right" }}>
-          <div style={{ fontSize: "4pt", color: hdr.textMuted, textTransform: "uppercase", letterSpacing: "0.05em" }}>H. Conf.</div>
-          <div style={{ fontSize: "9pt", fontWeight: 700, color: hdr.textMain }}>{heuresConf}h</div>
         </div>
         <div style={{
           fontSize: "6pt", fontWeight: 600, color: hdr.badgeText,

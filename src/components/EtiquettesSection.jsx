@@ -424,11 +424,7 @@ function ColorPanel({ rows, onApply, onClose }) {
             <div style={{ fontSize: 15, fontWeight: 800, color: hdr.textMain, marginTop: 1 }}>{previewZone} — Chambre</div>
             <div style={{ fontSize: 11, color: hdr.textMuted, marginTop: 1 }}>Rideau</div>
           </div>
-          <div style={{ marginLeft: "auto", textAlign: "right" }}>
-            <div style={{ fontSize: 9, color: hdr.textMuted, textTransform: "uppercase" }}>H. Conf.</div>
-            <div style={{ fontSize: 16, fontWeight: 800, color: hdr.textMain }}>4h</div>
-          </div>
-          <div style={{ fontSize: 11, fontWeight: 600, color: hdr.badgeText, background: hdr.badgeBg, borderRadius: 5, padding: "3px 8px" }}>1/8</div>
+          <div style={{ marginLeft: "auto", fontSize: 11, fontWeight: 600, color: hdr.badgeText, background: hdr.badgeBg, borderRadius: 5, padding: "3px 8px" }}>1/8</div>
         </div>
 
         {/* Palette */}
