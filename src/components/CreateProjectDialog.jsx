@@ -27,6 +27,7 @@ export default function CreateProjectDialog({
     onClose,
     onCreateBlank,
     onCreateFromMinute,
+    onLoadMinuteDetail,
     minutes = [],
     prodSchema
 }) {
@@ -45,6 +46,10 @@ export default function CreateProjectDialog({
 
     // -- IMPORT STATE --
     const [selectedMinute, setSelectedMinute] = useState(null);
+    // PERF — La liste des minutes est légère (sans `lines`). On charge le détail complet
+    // de la minute choisie pour disposer de ses ouvrages au moment de créer le projet.
+    const [selectedFull, setSelectedFull] = useState(null);
+    const [loadingMinute, setLoadingMinute] = useState(false);
     const [deliveryDate, setDeliveryDate] = useState("");
 
     // -- EMPLACEMENT & LOGISTIQUE --
@@ -58,6 +63,7 @@ export default function CreateProjectDialog({
             setTab(minutes.length > 0 ? 0 : 1);
             setProjectName("");
             setSelectedMinute(null);
+            setSelectedFull(null);
             setDeliveryDate("");
             setLocation("");
             setInterventionType("livraison");
@@ -95,12 +101,33 @@ export default function CreateProjectDialog({
         });
     };
 
-    const handleImport = () => {
+    // Charge le détail complet d'une minute à la sélection (pour ses ouvrages).
+    const handleSelectMinute = async (m) => {
+        setSelectedMinute(m);
+        setSelectedFull(null);
+        if (!m) return;
+        // Si la minute possède déjà ses lignes (rare avec la liste légère), inutile de recharger.
+        if (Array.isArray(m.lines) && m.lines.length > 0) { setSelectedFull(m); return; }
+        if (!onLoadMinuteDetail || !m.id) { setSelectedFull(m); return; }
+        setLoadingMinute(true);
+        const full = await onLoadMinuteDetail(m.id);
+        setSelectedFull(full || m);
+        setLoadingMinute(false);
+    };
+
+    const handleImport = async () => {
         if (!selectedMinute) return;
+        // Garantit qu'on a bien le détail complet (lignes) avant de créer le projet.
+        let full = selectedFull;
+        if (!full) {
+            full = (onLoadMinuteDetail && selectedMinute.id)
+                ? (await onLoadMinuteDetail(selectedMinute.id)) || selectedMinute
+                : selectedMinute;
+        }
         onCreateFromMinute({
-            name: selectedMinute.name || "Projet Importé",
-            rows: selectedMinute.lines || [],
-            meta: selectedMinute,
+            name: full.name || "Projet Importé",
+            rows: full.lines || [],
+            meta: full,
             deliveryDate,
             ...logistique,
         });
@@ -135,7 +162,7 @@ export default function CreateProjectDialog({
                         options={minutes}
                         getOptionLabel={(m) => `${m.name || "Sans nom"} (${m.client || "Client ?"})`}
                         value={selectedMinute}
-                        onChange={(e, v) => setSelectedMinute(v)}
+                        onChange={(e, v) => handleSelectMinute(v)}
                         renderInput={(params) => <TextField {...params} label="Rechercher une minute..." placeholder="Tapez le nom..." autoFocus />}
                         renderOption={(props, option) => (
                             <li {...props}>
@@ -163,7 +190,7 @@ export default function CreateProjectDialog({
                         <Box sx={{ mt: 2, p: 2, bgcolor: '#f9fafb', borderRadius: 2, border: '1px solid #e5e7eb' }}>
                             <Typography variant="caption" fontWeight={700} color="text.secondary" display="block">RÉSUMÉ</Typography>
                             <Typography variant="body2"><strong>Client :</strong> {selectedMinute.client || "—"}</Typography>
-                            <Typography variant="body2"><strong>Lignes :</strong> {(selectedMinute.lines || []).length} ouvrages</Typography>
+                            <Typography variant="body2"><strong>Lignes :</strong> {loadingMinute ? "chargement…" : `${((selectedFull || selectedMinute).lines || []).length} ouvrages`}</Typography>
                         </Box>
                     )}
                 </TabPanel>
@@ -290,9 +317,9 @@ export default function CreateProjectDialog({
                     <Button
                         variant="contained"
                         onClick={handleImport}
-                        disabled={!selectedMinute || !deliveryDate}
+                        disabled={!selectedMinute || !deliveryDate || loadingMinute}
                     >
-                        Importer le projet
+                        {loadingMinute ? "Chargement…" : "Importer le projet"}
                     </Button>
                 ) : (
                     <Button

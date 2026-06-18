@@ -103,8 +103,8 @@ function AppShell() {
   const { currentUser } = useAuth();
 
   // --- 1. CHARGEMENT DONNÉES (Supabase) ---
-  const { projects, addProject, updateProject, deleteProject, refreshProjects } = useProjects();
-  const { minutes, addMinute, updateMinute, deleteMinute } = useMinutes();
+  const { projects, addProject, updateProject, deleteProject, refreshProjects, loadProjectDetail, loadAllProjects } = useProjects();
+  const { minutes, addMinute, updateMinute, deleteMinute, loadMinuteDetail, loadAllMinutes } = useMinutes();
   const { events: planningEvents, updateEvent, deleteEvent } = useEvents();
   const { inventory, movements, addMovement, bulkUpdateInventory } = useStocks();
 
@@ -177,15 +177,36 @@ function AppShell() {
 
   // Résolution différée du projet (attend que cleanProjects soit chargé)
   // pendingProjectId est un short ID (8 hex chars), on cherche par startsWith
+  const resolvingProjectRef = useRef(null);
   useEffect(() => {
     if (!pendingProjectId || !cleanProjects.length) return;
     const project = cleanProjects.find(p => p.id.toLowerCase().startsWith(pendingProjectId.toLowerCase()));
-    if (project) {
-      setCurrentProject(project);
+    if (!project) return;
+    // PERF — La liste est légère (sans `rows`). On charge le projet COMPLET avant
+    // d'afficher l'écran de production → jamais de rendu avec des lignes vides.
+    // Guard par ref : loadProjectDetail fusionne dans cleanProjects (dépendance de cet
+    // effet) → on déduplique par id pour éviter tout double chargement.
+    if (resolvingProjectRef.current === project.id) return;
+    resolvingProjectRef.current = project.id;
+    loadProjectDetail(project.id).then(full => {
+      setCurrentProject(full || project);
       setScreen("project");
       setPendingProjectId(null);
-    }
-  }, [pendingProjectId, cleanProjects]);
+      resolvingProjectRef.current = null;
+    });
+  }, [pendingProjectId, cleanProjects, loadProjectDetail]);
+
+  // PERF — Chargement complet À LA DEMANDE pour les écrans qui agrègent l'ensemble des
+  // lignes (impossible avec la liste légère). Idempotent + mis en cache côté hook, donc
+  // la latence n'est payée qu'une fois, et JAMAIS sur les écrans Droitfil (chiffrage/projets).
+  //   • inventaire/stocks : index tissus (minutes + projets) + autocomplete mouvements
+  //   • planning          : capacité (projets)
+  //   • logistique        : lignes du projet sélectionné + comptage par projet
+  useEffect(() => {
+    if (screen === "inventory") { loadAllMinutes(); loadAllProjects(); }
+    else if (screen === "planning" || screen === "logistique") { loadAllProjects(); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [screen]);
 
   // Command Palette
   const cmdRef = useRef();
@@ -384,6 +405,7 @@ function AppShell() {
           onOpenProject={(p) => navigate(`/production/${p.id.slice(0,8)}-${slugify(p.name)}`)}
           minutes={can(currentUser, "chiffrage.view") ? cleanMinutes : []}
           onUpdateMinute={updateMinute}
+          onLoadMinuteDetail={loadMinuteDetail}
           onBack={() => navigate("/")}
         />
       )}
@@ -408,6 +430,7 @@ function AppShell() {
           minutes={cleanMinutes}
           onUpdate={updateMinute}
           onCreate={addMinute}
+          onLoadMinuteDetail={loadMinuteDetail}
           onBack={() => navigate("/chiffrage")}
           onOpenMinute={(id) => {
             const m = cleanMinutes.find(m => String(m.id) === String(id));
