@@ -83,7 +83,7 @@ const MemoizedDashboardSummary = React.memo(DashboardSummary);
 const MemoizedShoppingListScreen = React.memo(ShoppingListScreen);
 const MemoizedMoulinetteView = React.memo(MoulinetteView);
 
-function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onBack, onOpenMinute, highlightRowId }) {
+function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDetail, onBack, onOpenMinute, highlightRowId }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [localRowId, setLocalRowId] = React.useState(null);
@@ -112,6 +112,29 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onBack, onOpen
     () => (minutes || []).find((m) => m.id.toLowerCase().startsWith(String(minuteId).toLowerCase())),
     [minutes, minuteId]
   );
+
+  // PERF — La liste des chiffrages est légère (sans `lines`/`deplacements`/`params`…).
+  // À l'ouverture, on charge la minute COMPLÈTE par son id et on la fusionne dans la
+  // liste globale (via onLoadMinuteDetail). `detailLoadedId` indique quelle minute a
+  // bien reçu son détail complet → utilisé pour neutraliser le "heal-on-open" tant que
+  // les lignes ne sont pas chargées (sinon il réécrirait ca_total à 0).
+  const [detailLoadedId, setDetailLoadedId] = React.useState(null);
+  // Guard par ref (et non `cancelled`) : loadMinuteDetail fusionne le détail dans la
+  // liste globale → re-render → cet effet se relancerait. Le ref évite tout double
+  // chargement (et toute boucle) en dédupliquant par id de minute.
+  const requestedDetailRef = React.useRef(null);
+  React.useEffect(() => {
+    if (!minute?.id || !onLoadMinuteDetail) return;
+    if (detailLoadedId === minute.id) return;
+    if (requestedDetailRef.current === minute.id) return; // déjà en cours pour cette minute
+    requestedDetailRef.current = minute.id;
+    onLoadMinuteDetail(minute.id).then((full) => {
+      // Ne marquer "prêt" qu'en cas de succès : sinon le heal-on-open écraserait
+      // ca_total/marges à 0 sur des lignes encore vides.
+      if (full) setDetailLoadedId(minute.id);
+    });
+  }, [minute?.id, detailLoadedId, onLoadMinuteDetail]);
+  const detailReady = detailLoadedId === minute?.id;
 
   const [schema, setSchema] = React.useState(CHIFFRAGE_SCHEMA);
 
@@ -270,6 +293,9 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onBack, onOpen
   const healTimerRef = React.useRef(null);
   React.useEffect(() => {
     if (!minute?.id || !canEdit) return undefined;
+    // Ne jamais "soigner" tant que le détail complet n'est pas chargé : `rows` serait
+    // vide et on écraserait ca_total/marges à 0.
+    if (!detailReady) return undefined;
     if (healTimerRef.current) clearTimeout(healTimerRef.current);
     healTimerRef.current = setTimeout(() => {
       const { kpis } = calculateProfitability(rows || [], depRows || [], extraRows || []);
@@ -285,7 +311,7 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onBack, onOpen
       }
     }, 1500);
     return () => { if (healTimerRef.current) clearTimeout(healTimerRef.current); };
-  }, [minute?.id, minute?.ca_total, rows, depRows, extraRows, canEdit, updateMinute]);
+  }, [minute?.id, minute?.ca_total, rows, depRows, extraRows, canEdit, updateMinute, detailReady]);
 
   // Local status for optimistic UI
   const [localStatus, setLocalStatus] = React.useState(minute?.status || "DRAFT");

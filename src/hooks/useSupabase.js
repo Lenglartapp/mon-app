@@ -1,19 +1,46 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { db } from '../lib/offlineDb';
 import { queueMutation } from '../lib/syncQueue';
 import { calculateProfitability } from '../lib/financial/profitabilityCalculator';
 
 // --- PROJETS ---
+// PERF — Liste blanche des colonnes LÉGÈRES pour la LISTE des projets.
+// On exclut volontairement la colonne `rows` (et `materials`, `wall`, `documents`…)
+// qui contiennent le gros du JSON (lignes de production, photos, fil d'activité).
+// ⚠️ NE JAMAIS faire `select('*')` pour une liste : chaque champ ajouté dans `rows`
+// regonflerait la requête et ferait réapparaître la latence. Pour le détail complet,
+// utiliser loadProjectDetail(id) ci-dessous.
+const PROJECT_LIST_COLUMNS = 'id,name,manager,status,notes,budget,deadline,due,created_at,updated_at,source_minute_id';
+
 export const useProjects = () => {
     const [projects, setProjects] = useState([]);
     const [loading, setLoading] = useState(true);
 
     const fetchProjects = async () => {
-        const { data, error } = await supabase
+        // 0. Affichage INSTANTANÉ depuis le cache local (stale-while-revalidate).
+        try {
+            const cached = await db.projects.toArray();
+            if (cached.length > 0) setProjects(cached);
+        } catch { /* ignore */ }
+
+        // 1. Tentative rapide : colonnes légères uniquement.
+        let { data, error } = await supabase
             .from('projects')
-            .select('*')
+            .select(PROJECT_LIST_COLUMNS)
             .order('updated_at', { ascending: false });
+
+        // 2. Repli sûr : si une colonne n'existe pas (dérive de schéma), on ne casse
+        //    jamais l'app — on retombe sur select('*'). Le warn permet de repérer la
+        //    colonne fautive et de réparer la liste blanche.
+        if (error) {
+            console.warn('[useProjects] select léger échoué, repli sur select(*) :', error.message);
+            ({ data, error } = await supabase
+                .from('projects')
+                .select('*')
+                .order('updated_at', { ascending: false }));
+        }
+
         if (!error && data) {
             setProjects(data);
             db.projects.bulkPut(data).catch(() => {});
@@ -23,6 +50,43 @@ export const useProjects = () => {
             if (cached.length > 0) setProjects(cached);
         }
         setLoading(false);
+    };
+
+    // Charge le projet COMPLET (avec `rows` et tout le JSON lourd) à l'ouverture,
+    // puis le fusionne dans la liste en mémoire. La liste reste légère ; seul le
+    // projet ouvert porte ses données lourdes.
+    const loadProjectDetail = async (id) => {
+        const { data, error } = await supabase
+            .from('projects')
+            .select('*')
+            .eq('id', id)
+            .single();
+        if (error || !data) {
+            console.error('[useProjects] loadProjectDetail échoué :', error?.message);
+            return null;
+        }
+        setProjects(prev => prev.map(p => p.id === id ? { ...p, ...data } : p));
+        db.projects.put(data).catch(() => {});
+        return data;
+    };
+
+    // Charge TOUS les projets COMPLETS (avec `rows`) en une fois. Réservé aux écrans
+    // qui agrègent l'ensemble des lignes (Planning capacité, Stocks/Inventaire, Logistique).
+    // Idempotent (ne recharge pas si déjà fait), avec option force.
+    const fullProjectsLoadedRef = useRef(false);
+    const loadAllProjects = async (force = false) => {
+        if (fullProjectsLoadedRef.current && !force) return;
+        fullProjectsLoadedRef.current = true;
+        const { data, error } = await supabase
+            .from('projects')
+            .select('*')
+            .order('updated_at', { ascending: false });
+        if (!error && data) {
+            setProjects(data);
+            db.projects.bulkPut(data).catch(() => {});
+        } else {
+            fullProjectsLoadedRef.current = false; // autorise un nouvel essai
+        }
     };
 
     useEffect(() => { fetchProjects(); }, []);
@@ -123,7 +187,7 @@ export const useProjects = () => {
         await supabase.from('projects').delete().eq('id', id);
     };
 
-    return { projects, loading, addProject, updateProject, deleteProject, refreshProjects: fetchProjects };
+    return { projects, loading, addProject, updateProject, deleteProject, refreshProjects: fetchProjects, loadProjectDetail, loadAllProjects };
 };
 
 // --- MINUTES (CHIFFRAGE) ---
@@ -136,17 +200,76 @@ const formatMinutes = (data) => data.map(m => ({
     updatedAt: m.updated_at ? new Date(m.updated_at).getTime() : Date.now(),
 }));
 
+// PERF — Liste blanche des colonnes LÉGÈRES pour la LISTE des chiffrages.
+// On exclut les gros blobs JSONB : lines, deplacements, params, extras/extraDepenses,
+// catalog (bibliothèque par minute), matieres, settings, budget_snapshot, modules
+// (qui contient l'historique des statuts et grossit). La liste n'affiche que des KPI
+// déjà précalculés en base (ca_total, marge_*…).
+// ⚠️ NE JAMAIS faire `select('*')` ici. Détail complet → loadMinuteDetail(id).
+const MINUTE_LIST_COLUMNS = 'id,name,client,status,version,notes,owner,delivery_date,parent_id,ca_total,marge_eur,marge_pct,renta_hh,created_at,updated_at';
+
 export const useMinutes = () => {
     const [minutes, setMinutes] = useState([]);
 
     const fetchMinutes = async () => {
+        // 0. Affichage INSTANTANÉ depuis le cache local (stale-while-revalidate).
+        //    Sans ça, les chiffrages n'apparaissaient pas tout de suite (ex. Cmd+K)
+        //    car ils attendaient le réseau, contrairement aux projets déjà cachés.
+        try {
+            const cached = await db.minutes.toArray();
+            if (cached.length > 0) setMinutes(formatMinutes(cached));
+        } catch { /* table absente / ancien schéma : on ignore */ }
+
+        // 1. Tentative rapide : colonnes légères uniquement.
+        let { data, error } = await supabase
+            .from('minutes')
+            .select(MINUTE_LIST_COLUMNS)
+            .order('updated_at', { ascending: false });
+
+        // 2. Repli sûr si dérive de schéma (colonne manquante) → select('*').
+        if (error) {
+            console.warn('[useMinutes] select léger échoué, repli sur select(*) :', error.message);
+            ({ data, error } = await supabase
+                .from('minutes')
+                .select('*')
+                .order('updated_at', { ascending: false }));
+        }
+
+        if (!error && data) {
+            setMinutes(formatMinutes(data));
+            db.minutes.clear().then(() => db.minutes.bulkPut(data)).catch(() => {});
+        }
+    };
+
+    // Charge la minute COMPLÈTE (lines, deplacements, params, catalog…) à l'ouverture
+    // et la fusionne dans la liste en mémoire. Retourne la minute formatée (ou null).
+    const loadMinuteDetail = async (id) => {
+        const { data, error } = await supabase
+            .from('minutes')
+            .select('*')
+            .eq('id', id)
+            .single();
+        if (error || !data) {
+            console.error('[useMinutes] loadMinuteDetail échoué :', error?.message);
+            return null;
+        }
+        const [full] = formatMinutes([data]);
+        setMinutes(prev => prev.map(m => m.id === id ? { ...m, ...full } : m));
+        return full;
+    };
+
+    // Charge TOUTES les minutes COMPLÈTES (avec `lines`/`deplacements`) en une fois.
+    // Réservé aux écrans qui agrègent l'ensemble (Stocks/Inventaire : index tissus).
+    const fullMinutesLoadedRef = useRef(false);
+    const loadAllMinutes = async (force = false) => {
+        if (fullMinutesLoadedRef.current && !force) return;
+        fullMinutesLoadedRef.current = true;
         const { data, error } = await supabase
             .from('minutes')
             .select('*')
             .order('updated_at', { ascending: false });
-        if (!error && data) {
-            setMinutes(formatMinutes(data));
-        }
+        if (!error && data) setMinutes(formatMinutes(data));
+        else fullMinutesLoadedRef.current = false; // autorise un nouvel essai
     };
 
     useEffect(() => { fetchMinutes(); }, []);
@@ -198,6 +321,25 @@ export const useMinutes = () => {
         if ('parentId' in updates) {
             dbUpdates.parent_id = updates.parentId || null;
             delete dbUpdates.parentId;
+        }
+
+        // GARDE-FOU base64 — ne jamais persister les photos `pending` (data:base64) :
+        // elles sont des placeholders locaux remplacés par une URL Storage après sync.
+        // Sans ça, des images base64 s'accumulent dans `lines` et alourdissent le détail.
+        // (Symétrique au nettoyage déjà présent dans updateProject.)
+        for (const key of ['lines', 'deplacements', 'extraDepenses']) {
+            if (Array.isArray(dbUpdates[key])) {
+                dbUpdates[key] = dbUpdates[key].map(row => {
+                    if (!row || typeof row !== 'object') return row;
+                    const cleanRow = { ...row };
+                    for (const f of Object.keys(cleanRow)) {
+                        if (Array.isArray(cleanRow[f]) && cleanRow[f].some(p => p?.pending)) {
+                            cleanRow[f] = cleanRow[f].filter(p => !p?.pending);
+                        }
+                    }
+                    return cleanRow;
+                });
+            }
         }
 
         // --- RELIABILITY FIX: Wait for DB first ---
@@ -274,29 +416,46 @@ export const useMinutes = () => {
         updateMinute,
         deleteMinute,
         refreshMinutes: fetchMinutes,
+        loadMinuteDetail,
+        loadAllMinutes,
     };
 };
 
 // --- CATALOG (BIBLIOTHEQUE) ---
-export const useCatalog = () => {
-    const [catalog, setCatalog] = useState([]);
-    const [loading, setLoading] = useState(true);
+// PERF — Cache module-level : le catalogue est une donnée de RÉFÉRENCE quasi statique,
+// inutile de la recharger à chaque montage (ChiffrageRoot, ChiffrageScreen, CatalogManager…).
+// On mémorise le résultat ET la requête en vol pour dédupliquer les appels concurrents.
+let _catalogCache = null;
+let _catalogPromise = null;
+const fetchCatalogOnce = (force = false) => {
+    if (!force && _catalogCache) return Promise.resolve(_catalogCache);
+    if (!force && _catalogPromise) return _catalogPromise;
+    _catalogPromise = supabase.from('catalog').select('*').order('name').then(({ data, error }) => {
+        if (error) { _catalogPromise = null; throw error; }
+        // Postgres lowercases column names (buyprice/sellprice) → remap to camelCase
+        const formatted = (data || []).map(item => ({
+            ...item,
+            price: Number(item.price || 0),
+            buyPrice: Number(item.buyprice ?? item.buyPrice ?? item.buy_price ?? 0),
+            sellPrice: Number(item.sellprice ?? item.sellPrice ?? item.sell_price ?? 0),
+        }));
+        _catalogCache = formatted;
+        _catalogPromise = null;
+        return formatted;
+    });
+    return _catalogPromise;
+};
 
-    const fetchCatalog = async () => {
+export const useCatalog = () => {
+    const [catalog, setCatalog] = useState(_catalogCache || []);
+    const [loading, setLoading] = useState(!_catalogCache);
+
+    const fetchCatalog = async (force = false) => {
         setLoading(true);
-        // Supabase Select
-        const { data, error } = await supabase.from('catalog').select('*').order('name');
-        if (!error) {
-            // Ensure numeric values are numbers
-            // Postgres lowercases column names (buyprice/sellprice) → remap to camelCase
-            const formatted = (data || []).map(item => ({
-                ...item,
-                price: Number(item.price || 0),
-                buyPrice: Number(item.buyprice ?? item.buyPrice ?? item.buy_price ?? 0),
-                sellPrice: Number(item.sellprice ?? item.sellPrice ?? item.sell_price ?? 0),
-            }));
+        try {
+            const formatted = await fetchCatalogOnce(force);
             setCatalog(formatted);
-        } else {
+        } catch (error) {
             console.error("Erreur fetch catalog:", error);
         }
         setLoading(false);
@@ -314,6 +473,7 @@ export const useCatalog = () => {
 
         if (data && data[0]) {
             setCatalog(prev => [...prev, data[0]]);
+            if (_catalogCache) _catalogCache = [..._catalogCache, data[0]]; // garde le cache cohérent
             return data[0];
         }
         if (error) console.error("Erreur add item:", error);
@@ -324,6 +484,7 @@ export const useCatalog = () => {
         const { error } = await supabase.from('catalog').update(updates).eq('id', id);
         if (!error) {
             setCatalog(prev => prev.map(i => i.id === id ? { ...i, ...updates } : i));
+            if (_catalogCache) _catalogCache = _catalogCache.map(i => i.id === id ? { ...i, ...updates } : i);
         } else {
             console.error("Erreur update item:", error);
         }
@@ -333,33 +494,50 @@ export const useCatalog = () => {
         const { error } = await supabase.from('catalog').delete().eq('id', id);
         if (!error) {
             setCatalog(prev => prev.filter(i => i.id !== id));
+            if (_catalogCache) _catalogCache = _catalogCache.filter(i => i.id !== id);
         } else {
             console.error("Erreur delete item:", error);
         }
     };
 
-    return { catalog, loading, addItem, updateItem, deleteItem, refreshCatalog: fetchCatalog };
+    // refreshCatalog force le rechargement réseau (invalide le cache).
+    return { catalog, loading, addItem, updateItem, deleteItem, refreshCatalog: () => fetchCatalog(true) };
 };
 
 // --- CATALOG RAIL (GLOBAL LECTURE/ECRITURE POUR LES ADMINS) ---
+// PERF — Cache module-level (cf. useCatalog) : donnée de référence, ne pas recharger
+// à chaque ouverture de chiffrage.
+let _railCache = null;
+let _railPromise = null;
+const fetchRailsOnce = (force = false) => {
+    if (!force && _railCache) return Promise.resolve(_railCache);
+    if (!force && _railPromise) return _railPromise;
+    _railPromise = supabase.from('catalog_rail').select('*').order('name').then(({ data, error }) => {
+        if (error) { _railPromise = null; throw error; }
+        const formatted = (data || []).map(item => ({
+            ...item,
+            // Postgres renvoie les noms de colonnes non quotés en minuscules (buyprice, sellprice)
+            buyPrice: Number(item.buyprice ?? item.buyPrice ?? 0),
+            sellPrice: Number(item.sellprice ?? item.sellPrice ?? 0),
+            coef: Number(item.coef ?? 2),
+        }));
+        _railCache = formatted;
+        _railPromise = null;
+        return formatted;
+    });
+    return _railPromise;
+};
+
 export const useCatalogRail = () => {
-    const [catalogRails, setCatalogRails] = useState([]);
-    const [loadingRails, setLoadingRails] = useState(true);
+    const [catalogRails, setCatalogRails] = useState(_railCache || []);
+    const [loadingRails, setLoadingRails] = useState(!_railCache);
 
-    const fetchCatalogRails = async () => {
+    const fetchCatalogRails = async (force = false) => {
         setLoadingRails(true);
-        const { data, error } = await supabase.from('catalog_rail').select('*').order('name');
-
-        if (!error) {
-            const formatted = (data || []).map(item => ({
-                ...item,
-                // Postgres renvoie les noms de colonnes non quotés en minuscules (buyprice, sellprice)
-                buyPrice: Number(item.buyprice ?? item.buyPrice ?? 0),
-                sellPrice: Number(item.sellprice ?? item.sellPrice ?? 0),
-                coef: Number(item.coef ?? 2),
-            }));
+        try {
+            const formatted = await fetchRailsOnce(force);
             setCatalogRails(formatted);
-        } else {
+        } catch (error) {
             console.error("Erreur fetch catalog_rail:", error);
         }
         setLoadingRails(false);
@@ -392,6 +570,7 @@ export const useCatalogRail = () => {
                 sellPrice: Number(returnedItem.sellprice ?? returnedItem.sellPrice ?? 0),
             };
             setCatalogRails(prev => [...prev, formattedItem]);
+            if (_railCache) _railCache = [..._railCache, formattedItem];
             return formattedItem;
         }
         if (error) console.error("Erreur add rail:", error);
@@ -412,6 +591,7 @@ export const useCatalogRail = () => {
         const { error } = await supabase.from('catalog_rail').update(payload).eq('id', id);
         if (!error) {
             setCatalogRails(prev => prev.map(i => i.id === id ? { ...i, ...updates } : i));
+            if (_railCache) _railCache = _railCache.map(i => i.id === id ? { ...i, ...updates } : i);
         } else {
             console.error("Erreur update rail:", error);
         }
@@ -421,21 +601,25 @@ export const useCatalogRail = () => {
         const { error } = await supabase.from('catalog_rail').delete().eq('id', id);
         if (!error) {
             setCatalogRails(prev => prev.filter(i => i.id !== id));
+            if (_railCache) _railCache = _railCache.filter(i => i.id !== id);
         } else {
             console.error("Erreur delete rail:", error);
         }
     };
 
-    return { catalogRails, loadingRails, addRail, updateRail, deleteRail, refreshCatalogRails: fetchCatalogRails };
+    return { catalogRails, loadingRails, addRail, updateRail, deleteRail, refreshCatalogRails: () => fetchCatalogRails(true) };
 };
 
 // --- APP SETTINGS (GLOBAL CONFIG) ---
-export const useAppSettings = () => {
-    const [settings, setSettings] = useState({ hourlyRate: 135, vatRate: 20, prix_nuit: 180, prix_repas: 25, coef_sous_traitance: 2 });
-    const [loading, setLoading] = useState(true);
-
-    const fetchSettings = async () => {
-        setLoading(true);
+// PERF — Cache module-level : config globale rechargée jusqu'ici à chaque montage
+// (ChiffrageRoot + ChiffrageScreen). Donnée de référence → un seul fetch partagé.
+const DEFAULT_SETTINGS = { hourlyRate: 135, vatRate: 20, prix_nuit: 180, prix_repas: 25, coef_sous_traitance: 2 };
+let _settingsCache = null;
+let _settingsPromise = null;
+const fetchSettingsOnce = (force = false) => {
+    if (!force && _settingsCache) return Promise.resolve(_settingsCache);
+    if (!force && _settingsPromise) return _settingsPromise;
+    _settingsPromise = (async () => {
         let { data, error } = await supabase
             .from('app_settings')
             .select('*')
@@ -444,32 +628,41 @@ export const useAppSettings = () => {
 
         if (error && error.code === 'PGRST116') {
             // Row not found, create it with defaults
-            const defaultPayload = {
-                id: 'global_config',
-                taux_horaire_default: 135,
-                frais_hotel_default: 180
-                // Add other fields if DB supports them, otherwise they are null
-            };
-            const { data: newData, error: insertError } = await supabase
+            const defaultPayload = { id: 'global_config', taux_horaire_default: 135, frais_hotel_default: 180 };
+            const { data: newData } = await supabase
                 .from('app_settings')
                 .insert([defaultPayload])
                 .select()
                 .single();
-
             if (newData) data = newData;
         }
 
-        if (data) {
-            setSettings({
-                // Mapping DB Columns -> keys used in App
-                hourlyRate: data.taux_horaire_default ?? 135,
-                taux_horaire: data.taux_horaire_default ?? 135, // Alias
-                prix_nuit: data.frais_hotel_default ?? 180,
-                // Assuming these cols exist or fallback
-                vatRate: data.tva_default ?? 20,
-                prix_repas: data.frais_repas_default ?? 25,
-                coef_sous_traitance: data.coef_marge_st_default ?? 2
-            });
+        const mapped = data ? {
+            hourlyRate: data.taux_horaire_default ?? 135,
+            taux_horaire: data.taux_horaire_default ?? 135, // Alias
+            prix_nuit: data.frais_hotel_default ?? 180,
+            vatRate: data.tva_default ?? 20,
+            prix_repas: data.frais_repas_default ?? 25,
+            coef_sous_traitance: data.coef_marge_st_default ?? 2,
+        } : { ...DEFAULT_SETTINGS };
+        _settingsCache = mapped;
+        _settingsPromise = null;
+        return mapped;
+    })();
+    return _settingsPromise;
+};
+
+export const useAppSettings = () => {
+    const [settings, setSettings] = useState(_settingsCache || DEFAULT_SETTINGS);
+    const [loading, setLoading] = useState(!_settingsCache);
+
+    const fetchSettings = async (force = false) => {
+        setLoading(true);
+        try {
+            const mapped = await fetchSettingsOnce(force);
+            setSettings(mapped);
+        } catch (e) {
+            console.error("Erreur fetch settings:", e);
         }
         setLoading(false);
     };
@@ -479,6 +672,7 @@ export const useAppSettings = () => {
     const updateSettings = async (newSettings) => {
         // Optimistic
         setSettings(newSettings);
+        _settingsCache = newSettings; // garde le cache cohérent pour les prochains montages
 
         // Map App Keys -> DB Columns
         const dbPayload = {

@@ -84,6 +84,32 @@ const CommandPalette = React.forwardRef(function CommandPalette(
     ? minutes.filter(m => m.status !== 'ORDER_COMPLETED')
     : [];
 
+  // Liste UNIFIÉE projets + chiffrages : cmdk trie par pertinence au sein d'un même
+  // groupe. En les fusionnant, le meilleur match remonte en premier QUEL QUE SOIT le
+  // type (avant : 2 groupes séparés → tout projet passait avant tout chiffrage).
+  // Le `value` (texte recherché) ne contient que nom + champs utiles, sans mot parasite,
+  // pour ne pas fausser le score.
+  const results = [
+    ...visibleProjects.map(p => ({
+      kind: 'project',
+      id: p.id,
+      label: p.name || 'Sans nom',
+      sub: [p.manager, p.location].filter(Boolean).join(' · '),
+      status: p.status,
+      value: `${p.name || ''} ${p.manager || ''} ${p.location || ''}`.trim(),
+      onSelect: () => navigate(`/production/${p.id.slice(0, 8)}-${slugify(p.name)}`),
+    })),
+    ...visibleMinutes.map(m => ({
+      kind: 'minute',
+      id: m.id,
+      label: m.name || 'Sans nom',
+      sub: m.client || '',
+      status: null,
+      value: `${m.name || ''} ${m.client || ''}`.trim(),
+      onSelect: () => navigate(`/chiffrage/${String(m.id).slice(0, 8)}-${slugify(m.name)}`),
+    })),
+  ];
+
   const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/i.test(navigator.platform);
   const shortcut = isMac ? '⌘K' : 'Ctrl+K';
 
@@ -117,48 +143,31 @@ const CommandPalette = React.forwardRef(function CommandPalette(
           })}
         </Command.Group>
 
-        {/* Projets */}
-        {visibleProjects.length > 0 && (
-          <Command.Group heading={`Projets (${visibleProjects.length})`}>
-            {visibleProjects.map(p => (
+        {/* Résultats unifiés (projets + chiffrages) triés par pertinence */}
+        {results.length > 0 && (
+          <Command.Group heading={`Résultats (${results.length})`}>
+            {results.map(item => (
               <Command.Item
-                key={`prod-${p.id}`}
-                value={`${p.name} ${p.manager || ''} ${p.location || ''} projet production`}
-                onSelect={() => run(() => navigate(`/production/${p.id.slice(0, 8)}-${slugify(p.name)}`))}
+                key={`${item.kind}-${item.id}`}
+                value={item.value}
+                onSelect={() => run(item.onSelect)}
               >
-                <Layers size={15} className="cmdk-item-icon" />
-                <span className="cmdk-item-label">{p.name}</span>
-                {p.status && (
+                {item.kind === 'project'
+                  ? <Layers size={15} className="cmdk-item-icon" />
+                  : <FileText size={15} className="cmdk-item-icon" />}
+                <span className="cmdk-item-label">{item.label}</span>
+                {item.sub && <span className="cmdk-item-badge">{item.sub}</span>}
+                {item.kind === 'project' && item.status && (
                   <span className="cmdk-item-badge" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                     <span style={{
                       width: 6, height: 6, borderRadius: '50%',
-                      background: STATUS_DOT[p.status] || '#9CA3AF',
+                      background: STATUS_DOT[item.status] || '#9CA3AF',
                       flexShrink: 0,
                     }} />
-                    {STATUS_LABEL[p.status] || p.status}
+                    {STATUS_LABEL[item.status] || item.status}
                   </span>
                 )}
-                <span className="cmdk-item-kbd">Production</span>
-              </Command.Item>
-            ))}
-          </Command.Group>
-        )}
-
-        {/* Chiffrages */}
-        {visibleMinutes.length > 0 && (
-          <Command.Group heading={`Chiffrages (${visibleMinutes.length})`}>
-            {visibleMinutes.map(m => (
-              <Command.Item
-                key={`min-${m.id}`}
-                value={`${m.name} ${m.client || ''} chiffrage devis`}
-                onSelect={() => run(() => navigate(`/chiffrage/${String(m.id).slice(0, 8)}-${slugify(m.name)}`))}
-              >
-                <FileText size={15} className="cmdk-item-icon" />
-                <span className="cmdk-item-label">{m.name}</span>
-                {m.client && (
-                  <span className="cmdk-item-badge">{m.client}</span>
-                )}
-                <span className="cmdk-item-kbd">Ouvrir</span>
+                <span className="cmdk-item-kbd">{item.kind === 'project' ? 'Production' : 'Ouvrir'}</span>
               </Command.Item>
             ))}
           </Command.Group>

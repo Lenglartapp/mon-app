@@ -38,7 +38,7 @@ const PROJECT_FILTER_SCHEMA = [
   { key: 'pose',    label: 'Heures Pose',         type: 'number' },
 ];
 
-export function ProjectListScreen({ projects, setProjects, onOpenProject, minutes = [], onCreate, onDelete, onUpdateProject, onUpdateMinute, onBack }) {
+export function ProjectListScreen({ projects, setProjects, onOpenProject, minutes = [], onCreate, onDelete, onUpdateProject, onUpdateMinute, onLoadMinuteDetail, onBack }) {
   const [showCreate, setShowCreate] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const list = Array.isArray(projects) ? projects : [];
@@ -595,6 +595,7 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
             open={showCreate}
             onClose={() => setShowCreate(false)}
             minutes={canSeeChiffrage ? (Array.isArray(minutes) ? minutes : []) : []}
+            onLoadMinuteDetail={onLoadMinuteDetail}
             prodSchema={SCHEMA_64}
             onCreateFromMinute={async (payload) => {
               const { name, rows, meta, deliveryDate, location, intervention_type, expedition_type } = payload || {};
