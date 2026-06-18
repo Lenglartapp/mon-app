@@ -48,10 +48,15 @@ const COTES_WEIGHTS = {
 };
 
 const getCotesWeight = (statut) => COTES_WEIGHTS[statut] ?? 0;
-const isSubjectToCotes = (row) => /rideau|voilage|store/i.test(String(row?.produit || ''));
+// Paire décentrée : le parent (rail) ne compte pas pour les cotes (ce sont les enfants/rideaux qui sont mesurés)
+const isSubjectToCotes = (row) =>
+  row?.pair_role !== 'parent' && /rideau|voilage|store/i.test(String(row?.produit || ''));
 
 // Coussins, plaids, cache-sommiers → confection uniquement, pas de prépa ni pose
-const isSubjectToPrepaAndPose = (row) => !/coussin|plaid|cache.sommier/i.test(String(row?.produit || ''));
+// Paire décentrée : la prépa/pose (le rail) est portée par le PARENT — les 2 enfants ne comptent pas.
+const isSubjectToPrepaAndPose = (row) =>
+  row?.pair_role !== 'left' && row?.pair_role !== 'right' &&
+  !/coussin|plaid|cache.sommier/i.test(String(row?.produit || ''));
 
 // ─── Résumé ST pour une tuile (conf ou pose) ────────────────────────────────
 // Retourne une string lisible ex: "Voilages sous-traités" / "Voilages R+2 sous-traités"
@@ -114,6 +119,8 @@ export const calculateProjectStats = (rows, budget = {}) => {
     }
 
     if (r.realise_par === 'Sous-Traitant') return;
+    // Paire décentrée : le parent (rail) ne porte pas de confection → exclu du comptage conf
+    if (r.pair_role === 'parent') return;
 
     const hours = parseFloat(r.heures_confection) || 0;
     if (hours > 0) {
@@ -128,7 +135,7 @@ export const calculateProjectStats = (rows, budget = {}) => {
   if (totalConfHours > 0) {
     pctConf = Math.round((weightedConfSum / totalConfHours) * 100);
   } else {
-    const itemsWithoutHours = rows.filter(r => r.realise_par !== 'Sous-Traitant' && !(parseFloat(r.heures_confection) > 0)).length;
+    const itemsWithoutHours = rows.filter(r => r.realise_par !== 'Sous-Traitant' && r.pair_role !== 'parent' && !(parseFloat(r.heures_confection) > 0)).length;
     pctConf = itemsWithoutHours > 0 ? Math.round((confBinaryOk / itemsWithoutHours) * 100) : 0;
   }
 

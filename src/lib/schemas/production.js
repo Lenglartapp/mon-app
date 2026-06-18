@@ -346,7 +346,7 @@ export const SCHEMA_64 = [
   { key: "retour_droit", label: "Retour D", type: "number", width: 110, editable: true },
   { key: "type_retours", label: "Type Retours", type: "select", options: ['Élastique', 'Velcro'], width: 130, editable: true },
   { key: "etiquette_lavage", label: "Etiq. Lavage", type: "select", options: ["Oui", "Non"], width: 125, editable: true },
-  { key: "etiquette_lenglart", label: "Etiq. Lenglart", type: "select", options: ["Oui", "Non"], width: 130, editable: true, defaultValue: "Oui" },
+  { key: "etiquette_lenglart", label: "Etiq. Lenglart", type: "select", options: ["Non", "Ne pas laver", "Lavage à 30°", "Voilage"], width: 130, editable: true, defaultValue: "Non" },
   { key: "type_mecanisme", label: "Type Méca", type: "text", width: 130, editable: true },
   { key: "modele_mecanisme", label: "Modèle Méca", type: "text", width: 150, editable: true },
   { key: "couleur_mecanisme", label: "Couleur Méca", type: "text", width: 140, editable: true },

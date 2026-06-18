@@ -140,7 +140,7 @@ const PRODUCT_SHEETS = [
       c('type_retours',                'Type Retours',            'select',   14, { options: ['Élastique', 'Velcro', 'Piton'] }),
       c('hauteur_corniere_elastique',  'H. Cornière / Élastique', 'number',   22),
       c('etiquette_lavage',            'Etiq. Lavage',            'select',   14, { options: OUI_NON }),
-      c('etiquette_lenglart',          'Etiq. Lenglart',          'select',   15, { options: OUI_NON }),
+      c('etiquette_lenglart',          'Etiq. Lenglart',          'select',   15, { options: ['Non', 'Ne pas laver', 'Lavage à 30°', 'Voilage'] }),
       c('type_mecanisme',              'Type Méca',               'text',     16),
       c('modele_mecanisme',            'Modèle Méca',             'text',     16),
       c('couleur_mecanisme',           'Couleur Méca',            'text',     16),

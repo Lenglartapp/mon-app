@@ -28,7 +28,7 @@ export const ETIQUETTE_RIDEAUX_FIELDS = [
   { key: "doublure_finition_bas",label: "Doubl. fin. bas",    section: "Ourlets & Bas" },
   // Dimensions
   { key: "nombre_les",           label: "Nb lés",             section: "Dimensions" },
-  { key: "reste_les",            label: "Apiècement cm",      section: "Dimensions" },
+  { key: "reste_les",            label: "Appiècement cm",      section: "Dimensions" },
   { key: "a_plat",               label: "À Plat",             section: "Dimensions" },
   { key: "largeur_finie",        label: "L. Finie",           section: "Dimensions" },
   { key: "retour_gauche",        label: "Retour G",           section: "Dimensions" },
@@ -44,6 +44,7 @@ export const ETIQUETTE_RIDEAUX_FIELDS = [
   // Mécanisme
   { key: "type_mecanisme",       label: "Type Méca",          section: "Mécanisme" },
   { key: "modele_mecanisme",     label: "Modèle Méca",        section: "Mécanisme" },
+  { key: "meca_couvert",         label: "Méca Couvert",       section: "Mécanisme" },
   { key: "type_croisement",      label: "Type Croisement",    section: "Mécanisme" },
   // Matériaux
   { key: "tissu_deco1",          label: "Tissu 1",            section: "Matériaux" },
@@ -272,7 +273,6 @@ export default function EtiquetteRideauxCard({ row, projectName, index, total, o
   const zone = v(row, "zone", "Zone ?");
   const piece = v(row, "piece", "Pièce ?");
   const produit = v(row, "produit", "—");
-  const heuresConf = v(row, "heures_confection", "—");
   const statutCotes = v(row, "statut_cotes", "—");
 
   const schemaArr = Array.isArray(row?.schema) ? row.schema : [];
@@ -322,10 +322,6 @@ export default function EtiquetteRideauxCard({ row, projectName, index, total, o
             {zone} — {piece}
           </div>
           <div style={{ fontSize: 12, color: hdr.textMuted, marginTop: 2 }}>{produit}</div>
-        </div>
-        <div style={{ textAlign: "right" }}>
-          <div style={{ fontSize: 10, color: hdr.textMuted, textTransform: "uppercase", letterSpacing: "0.05em" }}>H. Conf.</div>
-          <div style={{ fontSize: 20, fontWeight: 800, color: hdr.textMain }}>{heuresConf}h</div>
         </div>
         {total != null && (
           <div style={{
@@ -395,7 +391,7 @@ export default function EtiquetteRideauxCard({ row, projectName, index, total, o
           {(show("nombre_les") || show("reste_les") || show("a_plat") || show("largeur_finie") || show("retour_gauche") || show("retour_droit")) && (
             <Row cols={6}>
               {show("nombre_les")    && <Cell label="Nb lés" value={v(row, "nombre_les")} plusAfter={show("reste_les")} />}
-              {show("reste_les")     && <Cell label="Apiècement cm" value={v(row, "reste_les")} />}
+              {show("reste_les")     && <Cell label="Appiècement cm" value={v(row, "reste_les")} />}
               {show("a_plat")        && <Cell label="À Plat" value={v(row, "a_plat")} />}
               {show("largeur_finie") && <Cell label="L. Finie" value={v(row, "largeur_finie")} />}
               {show("retour_gauche") && <Cell label="Retour G" value={v(row, "retour_gauche")} />}
@@ -425,10 +421,11 @@ export default function EtiquetteRideauxCard({ row, projectName, index, total, o
 
           {/* Mécanisme */}
           <SectionTitle>Mécanisme</SectionTitle>
-          {(show("type_mecanisme") || show("modele_mecanisme") || show("type_croisement")) && (
+          {(show("type_mecanisme") || show("modele_mecanisme") || show("meca_couvert") || show("type_croisement")) && (
             <Row cols={3}>
               {show("type_mecanisme")  && <Cell label="Type Méca" value={v(row, "type_mecanisme")} />}
               {show("modele_mecanisme")&& <Cell label="Modèle Méca" value={v(row, "modele_mecanisme")} />}
+              {show("meca_couvert")    && <Cell label="Méca Couvert" value={v(row, "meca_couvert")} />}
               {show("type_croisement") && <Cell label="Type Croisement" value={v(row, "type_croisement")} />}
             </Row>
           )}

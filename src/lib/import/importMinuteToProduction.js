@@ -1,6 +1,7 @@
 // src/lib/import/importMinuteToProduction.js
 import { uid } from "../utils/uid";
 import { computeFormulas } from "../formulas/compute";
+import { createDecentreePair, PAIRE_DECENTREE } from "../utils/pairDecentree";
 
 // 1) renvoie l'ensemble des keys communes (même nom) entre 2 schémas
 export function getSharedKeys(minuteSchema, prodSchema) {
@@ -33,8 +34,15 @@ export function importMinuteToProduction(minute, minuteSchema, prodSchema, exist
   if (!minute || !Array.isArray(minute.rows)) return existingRows || [];
   const shared = getSharedKeys(minuteSchema, prodSchema);
 
-  // copie stricte des champs communs
-  const imported = minute.rows.map(r => mapMinuteRowToProdRow(r, shared));
+  // copie stricte des champs communs.
+  // Une ligne « Paire décentrée » est éclatée en parent + 2 enfants vides.
+  const imported = minute.rows.flatMap(r => {
+    const prodRow = mapMinuteRowToProdRow(r, shared);
+    if (prodRow.paire_ou_un_seul_pan === PAIRE_DECENTREE) {
+      return createDecentreePair(prodRow, prodSchema);
+    }
+    return [prodRow];
+  });
 
   // concat + recalcul formules côté Production
   const merged = [ ...(existingRows || []), ...imported ];

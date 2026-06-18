@@ -240,7 +240,6 @@ export default function EtiquetteStoresBateauxCard({ row, projectName, index, to
   const zone = v(row, "zone", "Zone ?");
   const piece = v(row, "piece", "Pièce ?");
   const produit = v(row, "produit", "—");
-  const heuresConf = v(row, "heures_confection", "—");
   const statutCotes = v(row, "statut_cotes", "—");
 
   // Croquis intervalle (type photo = tableau [{id, url, ...}])
@@ -289,10 +288,6 @@ export default function EtiquetteStoresBateauxCard({ row, projectName, index, to
             {zone} — {piece}
           </div>
           <div style={{ fontSize: 12, color: hdr.textMuted, marginTop: 2 }}>{produit}</div>
-        </div>
-        <div style={{ textAlign: "right" }}>
-          <div style={{ fontSize: 10, color: hdr.textMuted, textTransform: "uppercase", letterSpacing: "0.05em" }}>H. Conf.</div>
-          <div style={{ fontSize: 20, fontWeight: 800, color: hdr.textMain }}>{heuresConf}h</div>
         </div>
         {total != null && (
           <div style={{
