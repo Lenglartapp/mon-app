@@ -514,6 +514,23 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
   if (!canView) return <div style={S.contentWrap}>Accès refusé</div>;
   if (!minute) return <div style={S.contentWrap}>Minute introuvable</div>;
 
+  // SÉCURITÉ DONNÉES (critique) : tant que le détail complet (lignes) n'est pas chargé,
+  // on NE rend PAS l'éditeur. Sinon MinuteEditor monterait avec des lignes vides, sa
+  // protection "tableau vide" serait désactivée (compteur init à 0) et un flush/save
+  // pourrait écraser le devis par du vide au moindre re-rendu. On affiche un loader.
+  if (!detailReady) {
+    return (
+      <div style={S.contentWide}>
+        <button onClick={onBack} style={{ background: 'none', border: 'none', color: '#6B7280', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, padding: 0, fontSize: 13, fontWeight: 500, marginTop: 8 }}>← Retour</button>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '50vh', gap: 12, color: '#6B7280' }}>
+          <div style={{ width: 28, height: 28, border: '3px solid #E5E7EB', borderTopColor: '#1E2447', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+          <div style={{ fontSize: 15, fontWeight: 600, color: '#111827' }}>{minute?.name || 'Chiffrage'}</div>
+          <div style={{ fontSize: 13 }}>Chargement du chiffrage…</div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={S.contentWide}>
       {/* Header */}

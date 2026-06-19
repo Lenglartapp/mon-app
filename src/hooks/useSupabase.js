@@ -281,6 +281,21 @@ export const useMinutes = () => {
             delete dbUpdates.tables;
         }
 
+        // ⛔️ SÉCURITÉ DONNÉES (anti-perte) — filet de sécurité ultime :
+        // NE JAMAIS écraser des lignes/déplacements/dépenses NON VIDES par un tableau VIDE.
+        // Protège contre un save accidentel (ex. éditeur monté avant le chargement complet).
+        // Si un jour il faut vraiment vider un devis, le faire via une action dédiée explicite.
+        const curForGuard = minutes.find(m => m.id === id);
+        for (const key of ['lines', 'deplacements', 'extraDepenses']) {
+            if (Array.isArray(dbUpdates[key]) && dbUpdates[key].length === 0) {
+                const prev = curForGuard?.[key];
+                if (Array.isArray(prev) && prev.length > 0) {
+                    console.warn(`[updateMinute] BLOQUÉ : écrasement de ${key} (${prev.length} → 0) refusé sur ${id}`);
+                    delete dbUpdates[key];
+                }
+            }
+        }
+
         // --- KPI CENTRALISÉ (Étape 1) ---
         // Dès que les lignes / déplacements / dépenses changent — quel que soit le
         // chemin d'édition (grille, panneau détail, import, taux) — on recalcule et
