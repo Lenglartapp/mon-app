@@ -36,7 +36,7 @@ export const ETIQUETTE_RIDEAUX_FIELDS = [
   { key: "hauteur_finie_gauche", label: "H. Finie G",         section: "Dimensions" },
   { key: "hauteur_finie_milieu", label: "H. Finie M",         section: "Dimensions" },
   { key: "hauteur_finie_droite", label: "H. Finie D",         section: "Dimensions" },
-  { key: "nombre_glisseur",      label: "Nb glisseurs",       section: "Dimensions" },
+  { key: "nb_crochets_par_pan",  label: "Nb crochets / pan",  section: "Dimensions" },
   { key: "statut_cotes",         label: "Statut côtes",       section: "Dimensions" },
   { key: "hauteur_coupe",        label: "H. Coupe T1",        section: "Dimensions" },
   { key: "hauteur_coupe_motif",  label: "H. Coupe motif",     section: "Dimensions" },
@@ -405,9 +405,9 @@ export default function EtiquetteRideauxCard({ row, projectName, index, total, o
               {show("hauteur_finie_droite") && <Cell label="H. Finie D" value={v(row, "hauteur_finie_droite")} />}
             </Row>
           )}
-          {(show("nombre_glisseur") || show("statut_cotes")) && (
+          {(show("nb_crochets_par_pan") || show("statut_cotes")) && (
             <Row cols={2}>
-              {show("nombre_glisseur") && <Cell label="Nb glisseurs" value={v(row, "nombre_glisseur")} />}
+              {show("nb_crochets_par_pan") && <Cell label="Nb crochets / pan" value={v(row, "nb_crochets_par_pan")} />}
               {show("statut_cotes")    && <Cell label="Statut côtes" value={statutCotes} accent={isStatutWarn} />}
             </Row>
           )}

@@ -21,6 +21,7 @@ export const RAP_DROIT = "Un seul pan (Rapatriement Droit)";
 export const PAIRE_OPTIONS_BASE = [
     "Paire",
     "Un seul pan",
+    "Pan libre",
     RAP_DROIT,
     RAP_GAUCHE,
     PAIRE_DECENTREE,

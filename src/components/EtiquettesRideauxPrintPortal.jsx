@@ -232,7 +232,7 @@ function PrintLabel({ row, projectName, index, total }) {
           {show("hauteur_finie_droite") && <PCell label="H. Fin. D" value={v(row, "hauteur_finie_droite")} />}
         </PRow>
         <PRow cols={4}>
-          {show("nombre_glisseur")     && <PCell label="Nb glisseurs" value={v(row, "nombre_glisseur")} />}
+          {show("nb_crochets_par_pan") && <PCell label="Nb crochets / pan" value={v(row, "nb_crochets_par_pan")} />}
           {show("statut_cotes")        && <PCell label="Statut côtes" value={statutCotes} accent={isStatutWarn} />}
           {show("hauteur_coupe")       && <PCell label="H. Coupe T1" value={v(row, "hauteur_coupe")} />}
           {show("hauteur_coupe_motif") && <PCell label="H. Coupe motif" value={v(row, "hauteur_coupe_motif")} />}
