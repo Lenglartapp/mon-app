@@ -1,10 +1,13 @@
 import React from 'react';
+import { RIDEAUX_GETTERS } from '../../lib/schemas/production/rideaux';
 
 // Helper for display
 const val = (v, suffix = '') => (v ? `${v}${suffix}` : '');
 const bool = (v) => (v ? 'OUI' : 'NON');
 
 export default function BPFRideauCard({ row, project, index, total }) {
+    // Nb crochets par pan : recalculé ici pour ne pas dépendre de la matérialisation de la row
+    const nbCrochetsParPan = RIDEAUX_GETTERS.nb_crochets_par_pan(row);
     // Styles
     const S = {
         container: {
@@ -90,7 +93,11 @@ export default function BPFRideauCard({ row, project, index, total }) {
                             <div>{row.type_pose || '-'}</div>
                             <div style={{ color: 'green', fontWeight: 'bold' }}>{row.type_confection}</div>
                             <div style={{ fontSize: '7pt' }}>Tête: {row.renfort_tetes || '-'} / {row.hauteur_tetes || '-'}</div>
-                            <div style={{ fontSize: '7pt' }}>Crochets: {row.type_crochets || '-'}</div>
+                            <div style={{ fontSize: '7pt' }}>
+                                Crochets: {row.type_crochets || '-'}
+                                <span style={{ ...S.redLabel, marginLeft: 4 }}>Nb/pan: {nbCrochetsParPan}</span>
+                            </div>
+                            <div style={{ fontSize: '7pt' }}>Cache moteur: {bool(String(row.cache_moteur || '').toLowerCase() === 'oui')}</div>
                         </td>
                         {/* Croquis (Rowspan 2) */}
                         <td style={S.td} rowSpan={2}>

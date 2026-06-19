@@ -21,6 +21,28 @@ const toNum = (v) => {
 // Round to 1 decimal place
 const round1 = (v) => Math.round(v * 10) / 10;
 
+// « Un seul pan » (toutes variantes) ET « Pan libre » comptent comme un pan unique
+// pour les calculs de dimensions (largeur finie, à plat, …).
+const isSinglePan = (row) => {
+    const a = row.paire_ou_un_seul_pan || "";
+    const b = row.pair_un || "";
+    return a.startsWith("Un seul pan") || b.startsWith("Un seul pan") || a === "Pan libre" || b === "Pan libre";
+};
+
+// Pattes de croisement : libellés du select + nombre de crochets ajoutés à la
+// formule "Nb Crochets par pan" lorsqu'une patte est sélectionnée.
+export const PATTE_CROISEMENT_CROCHETS = {
+    "KS Master Carrier": 2,
+    "NDL 20 Projekt": 2,
+    "FMS Underlap": 2,
+    "FMS Overlap": 2,
+    "CCS/FMS Master Carrier": 2,
+    "Easyflex master carrier 90": 2,
+    "Helicopter": 2,
+    "ELEKTRO": 3,
+};
+export const PATTE_CROISEMENT_OPTIONS = ["", ...Object.keys(PATTE_CROISEMENT_CROCHETS)];
+
 // Round to nearest 0.05 (for ML in metres)
 
 // ML tissu : calcul selon orientation (laize vs hauteur_coupe)
@@ -56,7 +78,7 @@ const getters = {
         const L = toNum(row.largeur);
         const croisement = toNum(row.croisement);
         const coeff = L >= 200 ? 1.06 : 1.10;
-        const isOnePanel = (row.paire_ou_un_seul_pan || "").startsWith("Un seul pan") || (row.pair_un || "").startsWith("Un seul pan");
+        const isOnePanel = isSinglePan(row);
 
         let val = 0;
         if (!isOnePanel) {
@@ -72,14 +94,18 @@ const getters = {
         const ampleur = toNum(row.ampleur) || 1;
         const vOurlets = toNum(row.v_ourlets_de_cotes || row.val_ourlet_cote);
 
-        let val = 0;
-        const isOnePanel = (row.paire_ou_un_seul_pan || "").startsWith("Un seul pan") || (row.pair_un || "").startsWith("Un seul pan");
+        // Retour : on retient la plus grande des deux valeurs gauche / droite.
+        const retourMax = Math.max(toNum(row.retour_gauche), toNum(row.retour_droit));
 
-        if (!isOnePanel) {
-            val = (lFinie * ampleur) + (vOurlets * 4);
-        } else {
-            val = (lFinie * ampleur) + (vOurlets * 2);
-        }
+        // Plus de distinction pan unique / paire : toujours 4 × ourlet côté…
+        // …sauf si le rideau est DOUBLÉ : on remplace 4 × ourlet par
+        // 2 × finition chant + 2 × finition retour.
+        const isDouble = !!String(row.doublure || "").trim();
+        const ourletPart = isDouble
+            ? (2 * toNum(row.finition_champs)) + (2 * toNum(row.finition_retour))
+            : (4 * vOurlets);
+
+        const val = (lFinie * ampleur) + ourletPart + retourMax;
         return Math.ceil(val);
     },
 
@@ -106,8 +132,9 @@ const getters = {
 
     hauteur_coupe: (row) => {
         const hFinieD = getters.hauteur_finie_droite(row);
+        const hFinieM = getters.hauteur_finie_milieu(row);
         const hFinieG = getters.hauteur_finie_gauche(row);
-        const hFinie = Math.max(hFinieD, hFinieG);
+        const hFinie = Math.max(hFinieD, hFinieM, hFinieG);
 
         const laize = toNum(row.laize_tissu1 || row.laize_tissu_deco1);
         const aPlat = getters.a_plat(row);
@@ -115,7 +142,8 @@ const getters = {
         if (laize > (hFinie + 50)) {
             return round1(aPlat);
         }
-        return round1(hFinie + 50);
+        const piquageBas = toNum(row.piquage_ourlets_du_bas || row.ourlet_bas);
+        return round1(hFinie + 50 + piquageBas);
     },
 
     nb_raccords_motifs: (row) => {
@@ -156,34 +184,58 @@ const getters = {
         return round1(fraction * laize);
     },
 
+    // Nb Glisseurs PAR PAN : base par pan (sans × 2 paire) + 1 si « Pan libre ».
     nb_glisseurs: (row) => {
         const lFinie = getters.largeur_finie(row);
         if (!lFinie) return 0;
 
         let divider = 10;
         const typeConf = (row.type_confection || "").toLowerCase();
-
-        if (typeConf.includes("wave 60")) {
-            divider = 6;
-        } else if (typeConf.includes("wave 80")) {
-            divider = 8;
-        }
+        if (typeConf.includes("wave 60")) divider = 6;
+        else if (typeConf.includes("wave 80")) divider = 8;
 
         const roundToEven = (num) => {
             const ceil = Math.ceil(num);
             return (ceil % 2 === 0) ? ceil : ceil + 1;
         };
 
-        const rawVal = (lFinie / divider) + 2;
-        const glidersPerPanel = roundToEven(rawVal);
+        // Base PAR PAN, arrondie au pair supérieur (pas de × 2 paire).
+        let total = roundToEven((lFinie / divider) + 2);
 
-        const isOnePanel = (row.paire_ou_un_seul_pan || "").startsWith("Un seul pan") || (row.pair_un || "").startsWith("Un seul pan");
+        // + 1 si « Pan libre »
+        if ((row.paire_ou_un_seul_pan || "") === "Pan libre") total += 1;
 
-        if (isOnePanel) {
-            return glidersPerPanel;
-        } else {
-            return glidersPerPanel * 2;
-        }
+        return total;
+    },
+
+    nb_crochets_par_pan: (row) => {
+        const lFinie = getters.largeur_finie(row);
+        if (!lFinie) return 0;
+
+        let divider = 10;
+        const typeConf = (row.type_confection || "").toLowerCase();
+        if (typeConf.includes("wave 60")) divider = 6;
+        else if (typeConf.includes("wave 80")) divider = 8;
+
+        const roundToEven = (num) => {
+            const ceil = Math.ceil(num);
+            return (ceil % 2 === 0) ? ceil : ceil + 1;
+        };
+
+        // Base : formule glisseurs PAR PAN (sans le × 2 de la paire), arrondie au pair sup.
+        let total = roundToEven((lFinie / divider) + 2);
+
+        // + 2 si cache moteur = "oui"
+        if (String(row.cache_moteur || "").toLowerCase() === "oui") total += 2;
+
+        // + 1 si au moins un retour est rempli (gauche ou droit) — reste +1 même si les deux
+        if (toNum(row.retour_gauche) > 0 || toNum(row.retour_droit) > 0) total += 1;
+
+        // + valeur de la patte de croisement sélectionnée (0 si aucune)
+        total += PATTE_CROISEMENT_CROCHETS[row.patte_de_croisement] || 0;
+
+        // Le total n'est PAS ré-arrondi : il peut être impair.
+        return total;
     }
 };
 
@@ -201,6 +253,7 @@ export const RIDEAUX_GETTERS = {
     nombre_les:            getters.nombre_les,
     reste_les:             getters.reste_les,
     nombre_glisseur:       getters.nb_glisseurs,
+    nb_crochets_par_pan:   getters.nb_crochets_par_pan,
 };
 
 
@@ -368,6 +421,7 @@ export const RIDEAUX_PROD_SCHEMA = [
     { key: "piquage_ourlets_bas_doublure", label: "Piq. Bas Doubl.", type: "number", width: 145, editable: true },
     { key: "doublure_finition_bas", label: "Doubl. Fin. Bas", type: "number", width: 145, editable: true },
     { key: "finition_champs", label: "Fin. Chant", type: "number", width: 120, editable: true },
+    { key: "finition_retour", label: "Fin. Retour", type: "number", width: 120, editable: true, tooltip: "Rideau doublé : l'À Plat utilise 2 × Fin. Chant + 2 × Fin. Retour (au lieu de 4 × ourlet côté)." },
     { key: "poids", label: "Poids", type: "select", options: ["Oui", "Non"], width: 90, editable: true },
 
     // Onglets: Non / Régulier / Irrégulier
@@ -503,6 +557,17 @@ export const RIDEAUX_PROD_SCHEMA = [
         editable: true
     },
 
+    // Patte de Croisement (NEW) — alimente la formule "Nb Crochets par pan"
+    {
+        key: "patte_de_croisement",
+        label: "Patte de Croisement",
+        type: "select",
+        options: PATTE_CROISEMENT_OPTIONS,
+        width: 220,
+        editable: true,
+        tooltip: "Référence de patte de croisement. Ajoute des crochets au calcul \"Nb Crochets par pan\" (ELEKTRO : +3, autres : +2)."
+    },
+
     { key: "retour_gauche", label: "Retour G", type: "number", width: 110, editable: true },
     { key: "retour_droit", label: "Retour D", type: "number", width: 110, editable: true },
     { key: "type_retours", label: "Type Retours", type: "select", options: ['Élastique', 'Velcro', 'Piton'], width: 130, editable: true },
@@ -513,6 +578,7 @@ export const RIDEAUX_PROD_SCHEMA = [
     { key: "modele_mecanisme", label: "Modèle Méca", type: "text", width: 150, editable: true },
     { key: "couleur_mecanisme", label: "Couleur Méca", type: "text", width: 140, editable: true },
     { key: "meca_couvert", label: "Méca Couvert", type: "select", options: ["Couvert", "Mi-Couvert", "Découvert"], width: 135, editable: true },
+    { key: "cache_moteur", label: "Cache Moteur", type: "select", options: ["non", "oui"], width: 125, editable: true, defaultValue: "non", tooltip: "Si \"oui\" : +2 crochets dans le calcul \"Nb Crochets par pan\"." },
 
     // Type de Commande (NEW)
     {
@@ -532,12 +598,22 @@ export const RIDEAUX_PROD_SCHEMA = [
 
     {
         key: "nombre_glisseur",
-        label: "Nb Glisseurs",
+        label: "Nb Glisseurs par pan",
         type: "number",
-        width: 120,
+        width: 150,
         readOnly: true,
-        tooltip: "Wave 60 : L_finie/6 + 2. Wave 80 : L_finie/8 + 2. Autre : L_finie/10 + 2. Arrondi au pair supérieur. × 2 pour une paire",
+        tooltip: "Base PAR PAN : Wave 60 → L_finie/6 + 2 ; Wave 80 → L_finie/8 + 2 ; autre → L_finie/10 + 2. Arrondi au pair supérieur. + 1 si « Pan libre ». (Pas de × 2 pour une paire.)",
         valueGetter: (v, row) => getters.nb_glisseurs(getRow(v, row))
+    },
+
+    {
+        key: "nb_crochets_par_pan",
+        label: "Nb Crochets / pan",
+        type: "number",
+        width: 145,
+        readOnly: true,
+        tooltip: "Base glisseurs PAR PAN (sans × 2 paire), arrondie au pair sup. + 2 si cache moteur \"oui\" + 1 si un retour rempli + valeur patte de croisement. Total possiblement impair.",
+        valueGetter: (v, row) => getters.nb_crochets_par_pan(getRow(v, row))
     },
 
     { key: "couleur_glisseur", label: "Couleur Glisseur", type: "text", width: 145, editable: true },
