@@ -40,12 +40,12 @@ export const calculateProfitability = (rows = [], depRows = [], extraRows = [], 
         ...(ml !== undefined && { ml })
     });
 
-    const pushMap = (map, label, ml, pa, source) => {
+    const pushMap = (map, label, ml, pa, source, unit) => {
         // Group precisely by the visible label text
         const key = String(label).trim();
         if (!key || key === "undefined") return; // Skip empty
 
-        if (!map.has(key)) map.set(key, { label: key, ml: 0, pa: 0, sources: [] });
+        if (!map.has(key)) map.set(key, { label: key, ml: 0, pa: 0, ...(unit ? { unit } : {}), sources: [] });
         const item = map.get(key);
         item.ml += ml;
         item.pa += pa;
@@ -110,18 +110,27 @@ export const calculateProfitability = (rows = [], depRows = [], extraRows = [], 
                 pushMap(mapStores, bateauName, q, val, getSource(r, q, val));
             }
         } else {
-            // RAILS, TRINGLES, DECOR MECANISMES
+            // RAILS, TRINGLES, DECOR MECANISMES (mécanisme principal)
             const mecaName = r.nom_tringle || r.modele_mecanisme || r.type_mecanisme || r.mecanisme_fourniture;
-            const val = (toNum(r.pa_meca) + toNum(r.pa_mecanisme) + toNum(r.pa_mecanisme_bis)) * q;
+            const val = (toNum(r.pa_meca) + toNum(r.pa_mecanisme)) * q;
 
             if (mecaName && val > 0) {
-                let len = 0;
-                if (r.type_mecanisme === 'Rail' || r.nom_tringle) {
-                    len = (toNum(r.largeur_mecanisme || r.l_mecanisme) / 100) * q;
+                const byMeter = (r.type_mecanisme === 'Rail' || r.nom_tringle);
+                if (byMeter) {
+                    const len = (toNum(r.largeur_mecanisme || r.l_mecanisme) / 100) * q;
+                    pushMap(mapRails, mecaName, len, val, getSource(r, q, val, len), 'm');
                 } else {
-                    len = q;
+                    // Forfait / pièce
+                    pushMap(mapRails, mecaName, q, val, getSource(r, q, val), 'pce');
                 }
-                pushMap(mapRails, mecaName, len, val, getSource(r, q, val, len));
+            }
+
+            // Mécanisme BIS (rideaux) : ligne d'achat DISTINCTE, au forfait (pièces) × quantité.
+            // Capté indépendamment du méca principal (sinon perdu si celui-ci est vide).
+            const valBis = toNum(r.pa_mecanisme_bis) * q;
+            if (valBis > 0) {
+                const bisName = r.mecanisme_bis || 'Méca Bis';
+                pushMap(mapRails, bisName, q, valBis, getSource(r, q, valBis), 'pce');
             }
         }
     });

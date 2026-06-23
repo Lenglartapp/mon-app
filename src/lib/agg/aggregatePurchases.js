@@ -133,6 +133,20 @@ export function aggregatePurchases(rows = []) {
       g.children.push(childFromRow(r, ml));
     }
 
+    // --- RIDEAUX : Mécanisme BIS (forfait, regroupé par référence)
+    // Le champ mecanisme_bis n'existe que sur le schéma rideaux → de facto rideaux uniquement.
+    if (r.mecanisme_bis) {
+      const key = `MECA_BIS|${r.mecanisme_bis}`;
+      const label = `Méca Bis: ${r.mecanisme_bis}`;
+      const g = push(rails, key, { kind: "rail", label, ref: r.mecanisme_bis, pa_field: "pa_mecanisme_bis" });
+      const units = qty; // forfait → unités
+      g.total_ml += units;
+      const costPerUnit = toNum(r.pa_mecanisme_bis);
+      g.total_pa += costPerUnit * qty;
+      g.count++;
+      g.children.push(childFromRow(r, units));
+    }
+
     // --- DECORS: Mecanisme/Fourniture
     if (r.mecanisme_fourniture) {
       const key = `MECA_DEC|${r.mecanisme_fourniture}`;
