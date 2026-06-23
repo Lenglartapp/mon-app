@@ -249,7 +249,7 @@ function DetailGroup({ title, items }) {
                     key={idx}
                     label={item.label}
                     mainValue={nfEur0.format(item.pa)}
-                    subValue={`${nf0.format(item.ml)} ${item.label.includes('Tissu') ? 'ml' : 'm'}`}
+                    subValue={`${nf0.format(item.ml)} ${item.unit || (item.label.includes('Tissu') ? 'ml' : 'm')}`}
                     sources={item.sources}
                 />
             ))}

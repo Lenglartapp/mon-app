@@ -109,6 +109,14 @@ export function aggregatePurchases(minutes = []) {
                 }
             }
 
+            // A-bis. RIDEAUX — Mécanisme BIS (forfait, regroupé par référence)
+            // Le champ mecanisme_bis n'existe que sur le schéma rideaux → de facto rideaux uniquement.
+            if (row.mecanisme_bis) {
+                const name = row.mecanisme_bis;
+                const pa = toNum(row.pa_mecanisme_bis) * qtyRow; // forfait × quantité
+                add(aggs.mecanismes, name, name, qtyRow, pa, { ...baseSource, type: 'Méca Bis', detail: name });
+            }
+
             // B. DECORS (Mecanisme Fourniture)
             if (row.mecanisme_fourniture) {
                 const name = row.mecanisme_fourniture;
