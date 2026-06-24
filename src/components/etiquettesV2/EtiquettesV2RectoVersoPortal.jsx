@@ -1,25 +1,54 @@
 // src/components/etiquettesV2/EtiquettesV2RectoVersoPortal.jsx
-// Impression étiquettes rideaux — format atelier validé (Claude Design).
-// 2 étiquettes par page A4 ; RECTO = données (5 colonnes fixes), VERSO = croquis.
-// Pages générées en alternance recto/verso par paire → impression recto-verso
-// (reliure bord long). Chaque étiquette occupe un demi-cadre fixe : le trait de
-// découpe tombe au même endroit recto et verso, donc le croquis se retrouve pile
-// derrière sa fiche après découpe.
+// Impression étiquettes rideaux — format atelier (design validé, v3).
+// 2 étiquettes par page A4 ; RECTO = données (grille 4 colonnes, sections par
+// étape d'atelier COUPE / OURLETS / PRÉPARATION / FINITION TÊTE), VERSO = croquis.
+// Pages alternées recto/verso par paire → duplex reliure bord long ; chaque
+// étiquette occupe un demi-cadre fixe pour aligner la découpe des deux côtés.
 //
-// Lisibilité d'abord : l'échelle du texte de la grille s'ajuste par étiquette
-// pour remplir le demi-cadre SANS jamais déborder (rien n'est coupé).
+// Lisibilité : la valeur est plus grosse que le libellé ; l'échelle s'ajuste par
+// étiquette pour remplir le demi-cadre sans jamais déborder (rien coupé).
 import React, { useLayoutEffect, useState } from "react";
 import ReactDOM from "react-dom";
-import { ETIQUETTE_RIDEAUX_FIELDS } from "../EtiquetteRideauxCard.jsx";
 import { RIDEAUX_GETTERS } from "../../lib/schemas/production/rideaux.js";
 import { DEFAULT_HEADER_COLOR, getHeaderStyles, getContrastColor } from "../../lib/etiquetteColors.js";
 
 // ── Géométrie page (A4 @ 96 dpi ≈ 794 × 1123 px) ────────────────────────────
-// Hauteur de page FIXE en mm (= @page A4) + marge de sécurité : garantit que
-// 2 étiquettes tiennent sur UNE feuille (sinon la 2ᵉ déborde au px près).
 const PAGE_W = 794, PAGE_PAD = 24, CUT_H = 16;
 const SLOT_H = 505; // demi-cadre par étiquette (2×505 + 16 + 48 = 1074 < 1123)
-const SCALE_MIN = 0.8, SCALE_BASE = 1.25;
+const SCALE_MIN = 0.8, SCALE_BASE = 1.4; // valeur-plus-grosse, échelle de base du design
+const PAN_COLOR = "#7ec850";
+
+// ── Disposition de l'étiquette : sections par étape d'atelier ────────────────
+// Chaque champ : [clé, libellé]. Ordre = disposition imprimée (grille 4 colonnes).
+// Pour COUPE, Pass. 1 / Pass. 2 occupent les 2 cellules libres (lignes doublure & inter).
+export const RIDEAUX_V2_SECTIONS = [
+  { name: "COUPE", fields: [
+    ["tissu_deco1", "Tissu 1"], ["laize_tissu1", "Laize T1"], ["hauteur_coupe", "H. Coupe T1"], ["hauteur_coupe_motif", "H. Coupe Motif T1"],
+    ["tissu_deco2", "Tissu 2"], ["laize_tissu2", "Laize T2"], ["hauteur_coupe_t2", "H. Coupe T2"], ["hauteur_coupe_motif_t2", "H. Coupe Motif T2"],
+    ["doublure", "Doublure"], ["laize_doublure", "Laize Doubl."], ["hauteur_coupe_doublure", "H. Coupe Doubl."], ["passementerie1", "Pass. 1"],
+    ["inter_doublure", "Interdoublure"], ["laize_inter", "Laize Inter."], ["hauteur_coupe_inter", "H. Coupe Inter."], ["passementerie2", "Pass. 2"],
+    ["nombre_les", "Nb Lés"], ["reste_les", "Appiècement cm"], ["ampleur", "Ampleur"], ["a_plat", "À plat"],
+  ]},
+  { name: "OURLETS", fields: [
+    ["piquage_ourlets_du_bas", "OB Tissu"], ["v_ourlets_de_cotes", "Ourlets de côté"], ["piquage_ourlet", "Piquage ourlet"], ["onglets", "Onglets"],
+    ["piquage_ourlets_bas_doublure", "OB Doublure"], ["deduction_doublure", "Déd. Doublure"], ["doublure_finition_bas", "Doubl. fin. bas"],
+    ["etiquette_lenglart", "Étiq. Lenglart"], ["poids", "Poids"],
+  ]},
+  { name: "PRÉPARATION", fields: [
+    ["type_confection", "Type Confection"], ["hauteur_renfort_tete", "H. Renfort Tête"], ["finition_bas", "Cassant / Rasant"], ["finition_champs", "Finition Chant"],
+    ["type_mecanisme", "Type Méca"], ["modele_mecanisme", "Modèle Méca"], ["meca_couvert", "Méca Couvert"], ["type_croisement", "Type Croisement"],
+    ["hauteur_finie_gauche", "H. Finie G"], ["hauteur_finie_milieu", "H. Finie M"], ["hauteur_finie_droite", "H. Finie D"],
+  ]},
+  { name: "FINITION TÊTE", fields: [
+    ["retour_gauche", "Retour G"], ["largeur_finie", "L. Finie"], ["retour_droit", "Retour D"], ["etiquette_lavage", "Étiq. Lavage"],
+    ["type_crochets", "Crochets"], ["nombre_glisseur", "Nb Glisseurs"], ["bride", "Bride"], ["point_chausson", "Pt. Chausson"],
+  ]},
+];
+
+// Liste plate des champs pour le menu « Champs » (toggles, mêmes clés).
+export const RIDEAUX_V2_FIELDS = RIDEAUX_V2_SECTIONS.flatMap(
+  (s) => s.fields.map(([key, label]) => ({ key, label, section: s.name }))
+);
 
 // ── Valeur d'un champ (getter de schéma sinon brut) ─────────────────────────
 const v = (row, key, fallback = "—") => {
@@ -35,34 +64,29 @@ const getCroquis = (row) => {
 };
 const isHidden = (row, key) =>
   Array.isArray(row?.etiquette_hidden_fields) && row.etiquette_hidden_fields.includes(key);
-// Commentaire affiché : bascule active ET valeur présente
-const showComment = (row) => !isHidden(row, "commentaire") && !!(v(row, "commentaire_confection", "")).trim() && v(row, "commentaire_confection", "") !== "—";
-// Verso voulu : bascule croquis active ET croquis présent
+const showComment = (row) =>
+  !isHidden(row, "commentaire") && v(row, "commentaire_confection", "") !== "—" && !!v(row, "commentaire_confection", "").trim();
 const wantsVerso = (row) => !isHidden(row, "croquis") && !!getCroquis(row);
 
-// Sections visibles (hors champs masqués), ordre du référentiel
+// Sections visibles (hors champs masqués)
 function visibleSections(row) {
-  const hidden = new Set(Array.isArray(row?.etiquette_hidden_fields) ? row.etiquette_hidden_fields : []);
-  const bySection = [];
-  for (const f of ETIQUETTE_RIDEAUX_FIELDS) {
-    if (hidden.has(f.key)) continue;
-    let grp = bySection.find(g => g.name === f.section);
-    if (!grp) { grp = { name: f.section, fields: [] }; bySection.push(grp); }
-    grp.fields.push(f);
-  }
-  return bySection;
+  return RIDEAUX_V2_SECTIONS
+    .map((s) => ({ name: s.name, fields: s.fields.filter(([key]) => !isHidden(row, key)) }))
+    .filter((s) => s.fields.length > 0);
 }
 
 // ── Bandeau d'en-tête (commun recto/verso) ──────────────────────────────────
 function Header({ row, projectName, index, total }) {
   const hdr = getHeaderStyles(row?.etiquette_header_color || DEFAULT_HEADER_COLOR);
   const isDark = getContrastColor(hdr.bg) === "#FFFFFF";
-  const boxBorder = isDark ? "rgba(255,255,255,.35)" : "rgba(0,0,0,.2)";
+  const boxBorder = isDark ? "rgba(255,255,255,.35)" : "rgba(0,0,0,.22)";
   const lbl = { fontSize: 7, fontWeight: 700, letterSpacing: ".08em", opacity: .6, whiteSpace: "nowrap" };
   const val = { fontSize: 11, fontWeight: 600, lineHeight: 1.1 };
   const comment = v(row, "commentaire_confection", "");
   const hasComment = showComment(row);
   const verso = wantsVerso(row);
+  const pan = v(row, "paire_ou_un_seul_pan", "");
+  const hasPan = pan && pan !== "—";
 
   return (
     <div data-hid style={{ background: hdr.bg, color: hdr.textMain, padding: "8px 14px" }}>
@@ -75,6 +99,11 @@ function Header({ row, projectName, index, total }) {
           <span style={val}>{v(row, "zone", "—")}</span>
           <span style={{ ...lbl, alignSelf: "center" }}>PIÈCE :</span>
           <span style={val}>{v(row, "piece", "—")}</span>
+          {hasPan && (
+            <span style={{ gridColumn: "1 / -1", fontSize: 14, fontWeight: 700, lineHeight: 1.15, color: PAN_COLOR, marginTop: 3, textTransform: "uppercase" }}>
+              {pan}
+            </span>
+          )}
         </div>
         <div style={{ display: "flex", alignItems: "baseline", gap: 8, flex: "0 0 auto" }}>
           <span style={lbl}>PRODUIT :</span>
@@ -103,10 +132,11 @@ function Header({ row, projectName, index, total }) {
   );
 }
 
-// ── RECTO : données en grille 5 colonnes fixes ──────────────────────────────
+// ── RECTO : données en grille 4 colonnes fixes ──────────────────────────────
 export function RectoLabel({ row, projectName, index, total, scale }) {
   const sections = visibleSections(row);
-  const labelPx = 10 * scale, valuePx = 8 * scale;
+  const labelPx = Math.round(8 * scale);    // libellé (gris) — plus petit
+  const valuePx = Math.round(10.5 * scale); // valeur (noir) — plus grosse
 
   return (
     <div style={{ height: SLOT_H, overflow: "hidden", display: "flex", flexDirection: "column" }}>
@@ -114,30 +144,33 @@ export function RectoLabel({ row, projectName, index, total, scale }) {
       <div data-fid style={{ marginTop: 4 }}>
         {sections.map((sec) => (
           <div key={sec.name}>
-            <div style={{ fontSize: 7.5, fontWeight: 700, letterSpacing: ".1em", color: "#6a6a6a", padding: "1px 0", marginTop: 3, borderBottom: "1px solid #cfcfcf" }}>
-              {sec.name.toUpperCase()}
+            <div style={{ fontSize: 7.5, fontWeight: 700, letterSpacing: ".1em", color: "#6a6a6a", padding: 0, marginTop: 2, borderBottom: "1px solid #cfcfcf" }}>
+              {sec.name}
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", borderTop: "1px solid #ededed", borderLeft: "1px solid #ededed" }}>
-              {sec.fields.map((f) => {
-                const value = v(row, f.key);
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", borderTop: "1px solid #ededed", borderLeft: "1px solid #ededed" }}>
+              {sec.fields.map(([key, label]) => {
+                const value = v(row, key);
                 const isBool = value === "Oui" || value === "Non";
-                const cellBase = { borderRight: "1px solid #ededed", borderBottom: "1px solid #ededed", padding: "1px 8px", minHeight: 17, display: "flex", flexDirection: "column", justifyContent: "center" };
-                const kStyle = { fontSize: labelPx, fontWeight: 600, letterSpacing: ".01em", color: "#8a8a8a", lineHeight: 1.05, textTransform: "uppercase" };
-                const vStyle = { fontSize: valuePx, fontWeight: 700, color: "#111", lineHeight: 1.05 };
-                if (isBool) {
-                  return (
-                    <div key={f.key} style={cellBase}>
+                const plusAfter = key === "nombre_les";
+                const cellBase = { position: "relative", borderRight: "1px solid #ededed", borderBottom: "1px solid #ededed", padding: "0 8px", minHeight: 14, display: "flex", flexDirection: "column", justifyContent: "center" };
+                const kStyle = { fontSize: labelPx, fontWeight: 600, letterSpacing: ".01em", color: "#8a8a8a", lineHeight: 1.0 };
+                const vStyle = { fontSize: valuePx, fontWeight: 700, color: "#111", lineHeight: 1.0 };
+                return (
+                  <div key={key} style={cellBase}>
+                    {plusAfter && (
+                      <div style={{ position: "absolute", right: 0, top: "50%", transform: "translate(50%, -50%)", width: 15, height: 15, borderRadius: "50%", background: "#fff", border: "1px solid #c4c4c4", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "#444", lineHeight: 1, zIndex: 2 }}>+</div>
+                    )}
+                    {isBool ? (
                       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 6 }}>
-                        <span style={{ ...kStyle, lineHeight: 1.1 }}>{f.label}</span>
+                        <span style={kStyle}>{label}</span>
                         <span style={vStyle}>{value}</span>
                       </div>
-                    </div>
-                  );
-                }
-                return (
-                  <div key={f.key} style={cellBase}>
-                    <div style={kStyle}>{f.label}</div>
-                    <div style={vStyle}>{value}</div>
+                    ) : (
+                      <>
+                        <div style={kStyle}>{label}</div>
+                        <div style={vStyle}>{value}</div>
+                      </>
+                    )}
                   </div>
                 );
               })}
@@ -159,7 +192,7 @@ export function VersoLabel({ row, projectName, index, total }) {
         background: croquis ? "#fff" : "repeating-linear-gradient(45deg,#fafafa 0 10px,#fff 10px 20px)" }}>
         {croquis
           ? <img src={croquis} alt="Croquis atelier" style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", padding: 8 }} />
-          : <span style={{ color: "#c4c4c4", fontStyle: "italic", fontSize: 12 }}>— aucun croquis —</span>}
+          : <span style={{ color: "#c4c4c4", fontStyle: "italic", fontSize: 12 }}>— croquis atelier —</span>}
       </div>
     </div>
   );
@@ -185,7 +218,7 @@ export default function EtiquettesV2RectoVersoPortal({ rows, projectName, onClos
   const list = rows || [];
   const [scales, setScales] = useState(null); // rowId → échelle ; null tant que non mesuré
 
-  // 1) mesurer (au rendu de base, échelle 1) puis calculer l'échelle qui remplit le cadre
+  // 1) mesurer (rendu de base, échelle 1) puis calculer l'échelle qui remplit le cadre
   useLayoutEffect(() => {
     if (scales) return;
     const next = {};
@@ -195,12 +228,10 @@ export default function EtiquettesV2RectoVersoPortal({ rows, projectName, onClos
       const headerH = headerEl ? headerEl.offsetHeight : 90;
       const fieldsH = fieldsEl ? fieldsEl.scrollHeight : 1;
       const avail = SLOT_H - headerH - 6;
-      // fieldsH est mesuré au rendu de base (échelle 1, cf. `scale ?? 1`).
-      // On vise à remplir `avail` sans déborder → marge de sécurité 0.97.
       let s = SCALE_BASE;
       if (fieldsH > 0) s = (avail / fieldsH) * 0.97;
-      // plafonné à l'échelle validée (1.25) : on ne fait que rétrécir si besoin,
-      // jamais grossir au-delà du rendu approuvé par l'atelier.
+      // plafonné à l'échelle de base : on ne fait que rétrécir si une étiquette
+      // est trop dense, jamais grossir au-delà du rendu validé.
       next[i] = Math.max(SCALE_MIN, Math.min(SCALE_BASE, s));
     });
     setScales(next);
@@ -216,30 +247,21 @@ export default function EtiquettesV2RectoVersoPortal({ rows, projectName, onClos
   const portal = document.getElementById("etq-rideaux-print-root");
   if (!portal) return null;
 
-  // paires → pages alternées recto / verso
   const pairs = [];
   for (let i = 0; i < list.length; i += 2) pairs.push([i, i + 1]);
-  // Aucune étiquette n'a de croquis → on ne génère aucune page verso (cas fréquent)
-  const anyVerso = list.some(wantsVerso);
+  const anyVerso = list.some(wantsVerso); // aucun croquis → aucune page verso
 
-  const labelWrap = (i, node) => (
-    <div key={i} data-row-idx={i}>{node}</div>
-  );
+  const labelWrap = (i, node) => <div key={i} data-row-idx={i}>{node}</div>;
 
   return ReactDOM.createPortal(
     <>
       <style>{`
-        /* Hors écran mais avec layout réel : permet la mesure d'ajustement
-           sans afficher le portail à l'utilisateur (display:none donnerait
-           des hauteurs nulles). */
         #etq-rideaux-print-root {
           position: absolute; left: -100000px; top: 0;
           width: ${PAGE_W}px; background: #fff;
         }
         @media print {
-          #etq-rideaux-print-root {
-            left: 0; z-index: 99999;
-          }
+          #etq-rideaux-print-root { left: 0; z-index: 99999; }
           @page { size: A4 portrait; margin: 0; }
         }
       `}</style>

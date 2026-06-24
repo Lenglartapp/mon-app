@@ -169,6 +169,42 @@ const getters = {
         return hFinie + 50;
     },
 
+    // H. Coupe T2 : même logique que hauteur_coupe, mais sur la laize du tissu 2.
+    // Vide ("") si aucun tissu 2 renseigné (pas de tissu_deco2 ni de laize_tissu2).
+    hauteur_coupe_t2: (row) => {
+        if (!String(row.tissu_deco2 || "").trim() && !toNum(row.laize_tissu2)) return "";
+        const hFinie = Math.max(
+            getters.hauteur_finie_droite(row),
+            getters.hauteur_finie_milieu(row),
+            getters.hauteur_finie_gauche(row)
+        );
+        const laize = toNum(row.laize_tissu2);
+        const aPlat = getters.a_plat(row);
+        if (laize > (hFinie + 50)) return round1(aPlat);
+        const piquageBas = toNum(row.piquage_ourlets_du_bas || row.ourlet_bas);
+        return round1(hFinie + 50 + piquageBas);
+    },
+
+    // H. Coupe Motif T2 : H. Coupe T2 arrondie au raccord vertical du tissu 2.
+    hauteur_coupe_motif_t2: (row) => {
+        const hCoupe = getters.hauteur_coupe_t2(row);
+        if (hCoupe === "" || hCoupe == null) return "";
+        const rV = toNum(row.raccord_v_tissu2);
+        if (rV > 0) return Math.ceil(hCoupe / rV) * rV;
+        return hCoupe;
+    },
+
+    // H. Coupe Inter. : même logique que hauteur_coupe_doublure, mais sur la laize inter.
+    // Vide ("") si aucune interdoublure renseignée.
+    hauteur_coupe_inter: (row) => {
+        if (!String(row.inter_doublure || "").trim() && !toNum(row.laize_inter)) return "";
+        const hFinie = Math.max(getters.hauteur_finie_droite(row), getters.hauteur_finie_gauche(row));
+        const laizeI = toNum(row.laize_inter);
+        const aPlat = getters.a_plat(row);
+        if (laizeI > (hFinie + 50)) return aPlat;
+        return hFinie + 50;
+    },
+
     nombre_les: (row) => {
         const aPlat = getters.a_plat(row);
         const laize = toNum(row.laize_tissu1);
@@ -249,7 +285,10 @@ export const RIDEAUX_GETTERS = {
     hauteur_coupe:         getters.hauteur_coupe,
     nb_raccords_motifs:    getters.nb_raccords_motifs,
     hauteur_coupe_motif:   getters.hauteur_coupe_motif,
+    hauteur_coupe_t2:      getters.hauteur_coupe_t2,
+    hauteur_coupe_motif_t2:getters.hauteur_coupe_motif_t2,
     hauteur_coupe_doublure:getters.hauteur_coupe_doublure,
+    hauteur_coupe_inter:   getters.hauteur_coupe_inter,
     nombre_les:            getters.nombre_les,
     reste_les:             getters.reste_les,
     nombre_glisseur:       getters.nb_glisseurs,
@@ -363,11 +402,11 @@ export const RIDEAUX_PROD_SCHEMA = [
     },
     {
         key: "hauteur_coupe",
-        label: "H. Coupe",
+        label: "H. Coupe T1",
         type: "number",
         width: 120,
         readOnly: true,
-        tooltip: "Si laize > H_finie + 50 cm : utilise la valeur À Plat (tissu couché). Sinon : H_finie + 50 cm de marge de coupe",
+        tooltip: "Si laize T1 > H_finie + 50 cm : utilise la valeur À Plat (tissu couché). Sinon : H_finie + 50 cm de marge de coupe",
         valueGetter: (v, r) => getters.hauteur_coupe(getRow(v, r))
     },
     {
@@ -381,11 +420,11 @@ export const RIDEAUX_PROD_SCHEMA = [
     },
     {
         key: "hauteur_coupe_motif",
-        label: "H. Coupe Motif",
+        label: "H. Coupe Motif T1",
         type: "number",
-        width: 140,
+        width: 150,
         readOnly: true,
-        tooltip: "H. Coupe arrondie au raccord motif vertical supérieur : ceil(H_coupe ÷ raccord_V) × raccord_V",
+        tooltip: "H. Coupe T1 arrondie au raccord motif vertical supérieur : ceil(H_coupe ÷ raccord_V T1) × raccord_V T1",
         valueGetter: (v, r) => {
             const row = getRow(v, r);
             const hCoupe = getters.hauteur_coupe(row);
@@ -393,6 +432,24 @@ export const RIDEAUX_PROD_SCHEMA = [
             if (rV > 0) return Math.ceil(hCoupe / rV) * rV;
             return hCoupe;
         }
+    },
+    {
+        key: "hauteur_coupe_t2",
+        label: "H. Coupe T2",
+        type: "number",
+        width: 120,
+        readOnly: true,
+        tooltip: "Même logique que H. Coupe T1, basée sur la laize du tissu 2. Vide s'il n'y a pas de tissu 2.",
+        valueGetter: (v, r) => getters.hauteur_coupe_t2(getRow(v, r))
+    },
+    {
+        key: "hauteur_coupe_motif_t2",
+        label: "H. Coupe Motif T2",
+        type: "number",
+        width: 150,
+        readOnly: true,
+        tooltip: "H. Coupe T2 arrondie au raccord motif vertical du tissu 2 : ceil(H_coupe T2 ÷ raccord_V T2) × raccord_V T2",
+        valueGetter: (v, r) => getters.hauteur_coupe_motif_t2(getRow(v, r))
     },
     {
         key: "hauteur_coupe_doublure",
@@ -412,6 +469,15 @@ export const RIDEAUX_PROD_SCHEMA = [
             if (laizeD > (hFinie + 50)) return aPlat;
             return hFinie + 50;
         }
+    },
+    {
+        key: "hauteur_coupe_inter",
+        label: "H. Coupe Inter.",
+        type: "number",
+        width: 150,
+        readOnly: true,
+        tooltip: "Même logique que H. Coupe Doubl., basée sur la laize de l'interdoublure. Vide s'il n'y a pas d'interdoublure.",
+        valueGetter: (v, r) => getters.hauteur_coupe_inter(getRow(v, r))
     },
 
     { key: "deduction_doublure", label: "Déd. Doublure", type: "number", width: 140, editable: true },
