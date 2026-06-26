@@ -563,7 +563,7 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
                 <input
                   type="date"
                   value={minute?.delivery_date || minute?.deliveryDate || ""}
-                  onChange={(e) => updateMinute({ delivery_date: e.target.value })}
+                  onChange={(e) => updateMinute({ delivery_date: e.target.value || null })}
                   style={{ border: '1px solid #E5E7EB', borderRadius: 4, padding: '4px 8px', fontSize: 13, color: '#374151', background: 'white', outline: 'none' }}
                 />
               ) : (
