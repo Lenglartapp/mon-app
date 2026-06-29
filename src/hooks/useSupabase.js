@@ -4,6 +4,20 @@ import { db } from '../lib/offlineDb';
 import { queueMutation } from '../lib/syncQueue';
 import { calculateProfitability } from '../lib/financial/profitabilityCalculator';
 
+// PERF / RÉSILIENCE — Ne PAS escalader vers `select('*')` quand l'erreur est un simple
+// échec RÉSEAU (base injoignable / hors ligne). Dans ce cas, le serveur ne répond pas :
+// renvoyer une requête PLUS lourde (`select('*')` qui ramène tout le JSONB) ne fait
+// qu'aggraver la saturation. Le repli `select('*')` n'a de sens que pour une vraie
+// DÉRIVE DE SCHÉMA (colonne manquante dans la liste blanche) — détectée ici.
+const isSchemaDriftError = (error) => {
+    if (!error) return false;
+    if (error.code === '42703' || error.code === 'PGRST204') return true; // undefined column / schema cache
+    const msg = String(error.message || '').toLowerCase();
+    // Un échec réseau ressemble à "failed to fetch" / "networkerror" / "load failed" : on l'EXCLUT.
+    if (msg.includes('failed to fetch') || msg.includes('networkerror') || msg.includes('load failed')) return false;
+    return /does not exist|could not find|schema cache|column/.test(msg);
+};
+
 // --- PROJETS ---
 // PERF — Liste blanche des colonnes LÉGÈRES pour la LISTE des projets.
 // On exclut volontairement la colonne `rows` (et `materials`, `wall`, `documents`…)
@@ -33,8 +47,8 @@ export const useProjects = () => {
         // 2. Repli sûr : si une colonne n'existe pas (dérive de schéma), on ne casse
         //    jamais l'app — on retombe sur select('*'). Le warn permet de repérer la
         //    colonne fautive et de réparer la liste blanche.
-        if (error) {
-            console.warn('[useProjects] select léger échoué, repli sur select(*) :', error.message);
+        if (error && isSchemaDriftError(error)) {
+            console.warn('[useProjects] select léger échoué (dérive schéma), repli sur select(*) :', error.message);
             ({ data, error } = await supabase
                 .from('projects')
                 .select('*')
@@ -211,6 +225,39 @@ const MINUTE_LIST_COLUMNS = 'id,name,client,status,version,notes,owner,delivery_
 export const useMinutes = () => {
     const [minutes, setMinutes] = useState([]);
 
+    // 🔒 COALESCENCE DES ÉCRITURES (anti-verrous Postgres) :
+    //   inFlightMinuteRef = ids dont un UPDATE est EN COURS (pour ne pas en lancer un 2ᵉ
+    //     en parallèle sur la MÊME ligne → c'est ce qui provoquait les ShareLock/timeouts).
+    //   pendingMinuteRef  = id -> dernier payload à écrire (les états intermédiaires
+    //     périmés sont fusionnés/écrasés : on n'écrit QUE le plus récent).
+    const inFlightMinuteRef = useRef(new Set());
+    const pendingMinuteRef = useRef(new Map());
+
+    // Écrivain sérialisé : tant qu'il reste un payload en attente pour cet id, on l'écrit,
+    // un seul à la fois. Jamais deux UPDATE concurrents sur la même ligne `minutes`.
+    const flushMinuteWrites = async (id) => {
+        if (inFlightMinuteRef.current.has(id)) return; // déjà en train d'écrire cet id
+        inFlightMinuteRef.current.add(id);
+        try {
+            while (pendingMinuteRef.current.has(id)) {
+                const payload = pendingMinuteRef.current.get(id);
+                pendingMinuteRef.current.delete(id);
+                const { error } = await supabase.from('minutes').update(payload).eq('id', id);
+                if (error) {
+                    console.error('Erreur update minute:', error);
+                    // On NE PERD PAS l'écriture : on la re-fusionne (en laissant les
+                    // éventuels champs plus récents arrivés entre-temps gagner) et on
+                    // s'arrête — elle repartira au prochain edit (ou au flush de démontage).
+                    const newer = pendingMinuteRef.current.get(id);
+                    pendingMinuteRef.current.set(id, { ...payload, ...(newer || {}) });
+                    break;
+                }
+            }
+        } finally {
+            inFlightMinuteRef.current.delete(id);
+        }
+    };
+
     const fetchMinutes = async () => {
         // 0. Affichage INSTANTANÉ depuis le cache local (stale-while-revalidate).
         //    Sans ça, les chiffrages n'apparaissaient pas tout de suite (ex. Cmd+K)
@@ -227,8 +274,8 @@ export const useMinutes = () => {
             .order('updated_at', { ascending: false });
 
         // 2. Repli sûr si dérive de schéma (colonne manquante) → select('*').
-        if (error) {
-            console.warn('[useMinutes] select léger échoué, repli sur select(*) :', error.message);
+        if (error && isSchemaDriftError(error)) {
+            console.warn('[useMinutes] select léger échoué (dérive schéma), repli sur select(*) :', error.message);
             ({ data, error } = await supabase
                 .from('minutes')
                 .select('*')
@@ -357,18 +404,23 @@ export const useMinutes = () => {
             }
         }
 
-        // --- RELIABILITY FIX: Wait for DB first ---
-        const { error } = await supabase.from('minutes').update(dbUpdates).eq('id', id);
-
-        if (error) {
-            console.error("Erreur update minute:", error);
-            // On ne met PAS à jour le state local si erreur
-            return;
+        // GARDE-FOU DATES — Postgres (timestamp/timestamptz/date) REFUSE la chaîne vide ""
+        // (erreur 22007 "invalid input syntax"). On convertit "" -> null avant l'écriture.
+        for (const dateKey of ['delivery_date', 'created_at', 'updated_at']) {
+            if (dbUpdates[dateKey] === '') dbUpdates[dateKey] = null;
         }
 
-        // Success: Update local state to reflect changes
-        // Note: For perfect sync we could re-fetch, but merging updates is usually fine if no other data changed.
+        // 1. State local OPTIMISTE immédiat (l'UI reste fluide pendant que l'écriture
+        //    DB est sérialisée en arrière-plan).
         setMinutes(prev => prev.map(m => m.id === id ? { ...m, ...updates } : m));
+
+        // 2. Écriture DB COALESCÉE : on enregistre le dernier payload pour cet id (fusionné
+        //    avec un éventuel payload déjà en attente), puis on déclenche l'écrivain
+        //    sérialisé. S'il tourne déjà pour cet id, il prendra ce payload à son tour —
+        //    AUCUN deuxième UPDATE concurrent n'est lancé sur la même ligne.
+        const merged = { ...(pendingMinuteRef.current.get(id) || {}), ...dbUpdates };
+        pendingMinuteRef.current.set(id, merged);
+        flushMinuteWrites(id);
     };
 
     const addMinute = async (minute) => {
@@ -445,15 +497,20 @@ let _catalogPromise = null;
 const fetchCatalogOnce = (force = false) => {
     if (!force && _catalogCache) return Promise.resolve(_catalogCache);
     if (!force && _catalogPromise) return _catalogPromise;
-    _catalogPromise = supabase.from('catalog').select('*').order('name').then(({ data, error }) => {
+    // ⚠️ Tri CÔTÉ CLIENT (et non `.order('name')`) : la table `catalog` en prod n'a pas
+    // forcément de colonne `name` → `.order('name')` renvoyait `column catalog.name does not
+    // exist` (42703) et faisait échouer TOUT le chargement du catalogue. Le tri tolérant
+    // ci-dessous fonctionne quel que soit le nom réel de la colonne (name/nom/libelle…).
+    _catalogPromise = supabase.from('catalog').select('*').then(({ data, error }) => {
         if (error) { _catalogPromise = null; throw error; }
         // Postgres lowercases column names (buyprice/sellprice) → remap to camelCase
+        const nameOf = (it) => String(it?.name ?? it?.nom ?? it?.libelle ?? it?.label ?? it?.product ?? '');
         const formatted = (data || []).map(item => ({
             ...item,
             price: Number(item.price || 0),
             buyPrice: Number(item.buyprice ?? item.buyPrice ?? item.buy_price ?? 0),
             sellPrice: Number(item.sellprice ?? item.sellPrice ?? item.sell_price ?? 0),
-        }));
+        })).sort((a, b) => nameOf(a).localeCompare(nameOf(b), 'fr', { sensitivity: 'base' }));
         _catalogCache = formatted;
         _catalogPromise = null;
         return formatted;
@@ -763,8 +820,9 @@ export const useEvents = () => {
             id: String(event.id),
             resource_id: event.resourceId || event.resource_id,
             project_id: event.meta?.projectId || event.project_id || null,
-            start_time: event.meta?.start || event.start_time,
-            end_time: event.meta?.end || event.end_time,
+            // "" -> null : Postgres refuse la chaîne vide sur un timestamptz (erreur 22007).
+            start_time: event.meta?.start || event.start_time || null,
+            end_time: event.meta?.end || event.end_time || null,
             type: event.type,
             title: event.title,
             meta: event.meta

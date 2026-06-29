@@ -56,7 +56,8 @@ export const useShipments = () => {
     // ── CRUD Expéditions ────────────────────────────────────────────────────
     const createShipment = async (fields) => {
         const reference = fields.reference?.trim() || nextReference(shipments);
-        const payload = { ...fields, reference, statut: 'Brouillon' };
+        // "" -> null : Postgres refuse la chaîne vide sur une colonne date (erreur 22007).
+        const payload = { ...fields, reference, statut: 'Brouillon', date_expedition: fields.date_expedition || null };
         const { data, error } = await supabase.from('expeditions').insert([payload]).select();
         if (!error && data?.[0]) {
             setShipments(prev => [data[0], ...prev]);
@@ -66,9 +67,13 @@ export const useShipments = () => {
     };
 
     const updateShipment = async (id, updates) => {
+        // "" -> null sur la date (Postgres refuse la chaîne vide : erreur 22007).
+        const safe = ('date_expedition' in updates)
+            ? { ...updates, date_expedition: updates.date_expedition || null }
+            : updates;
         const { error } = await supabase
             .from('expeditions')
-            .update({ ...updates, updated_at: new Date().toISOString() })
+            .update({ ...safe, updated_at: new Date().toISOString() })
             .eq('id', id);
         if (!error) setShipments(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s));
     };

@@ -5,13 +5,13 @@ import { Print, FilterList, ViewColumn } from "@mui/icons-material";
 import { useLocalStorage } from "../lib/hooks/useLocalStorage.js";
 import FilterPanel from "./FilterPanel.jsx";
 import EtiquetteCard from "./EtiquetteCard.jsx";
-import EtiquetteRideauxCard, { ETIQUETTE_RIDEAUX_FIELDS } from "./EtiquetteRideauxCard.jsx";
+import EtiquetteRideauxCard from "./EtiquetteRideauxCard.jsx";
 import EtiquetteStoresBateauxCard, { ETIQUETTE_STORES_BATEAUX_FIELDS } from "./EtiquetteStoresBateauxCard.jsx";
 import ColumnSelectorMenu from "./ui/ColumnSelectorMenu.jsx";
 import PrintableLabelsContainer from "./PrintableLabelsContainer.jsx";
 import BPFPrintPortal from "./print/BPFPrintPortal.jsx";
-import EtiquettesRideauxPrintPortal from "./EtiquettesRideauxPrintPortal.jsx";
 import EtiquettesStoresBateauxPrintPortal from "./EtiquettesStoresBateauxPrintPortal.jsx";
+import EtiquettesV2RectoVersoPortal, { RIDEAUX_V2_FIELDS } from "./etiquettesV2/EtiquettesV2RectoVersoPortal.jsx";
 import {
   ETIQUETTE_COLOR_PALETTE,
   DEFAULT_HEADER_COLOR,
@@ -21,6 +21,13 @@ import {
 
 // CONSTANTES
 const PAGE_SIZE = 9;
+
+// Bascules supplémentaires du Format atelier (V2 rideaux) : commentaire + croquis.
+// Mêmes clés que celles lues par le portail V2 (etiquette_hidden_fields).
+const ETQ_V2_EXTRA_FIELDS = [
+  { key: "commentaire", label: "Commentaire (en-tête)", section: "En-tête & verso" },
+  { key: "croquis",     label: "Croquis (verso)",       section: "En-tête & verso" },
+];
 
 // Clé unique pour un ouvrage
 const ouvrageKey = (r) => `${r.zone || ""}||${r.piece || ""}`;
@@ -619,7 +626,11 @@ export default function EtiquettesSection({
   }, [rows, filters, selectedOuvrages]);
 
   // Champs masqués en commun sur les étiquettes filtrées (pour init du panel bulk)
-  const etqFields = isRideaux ? ETIQUETTE_RIDEAUX_FIELDS : isStoresBateaux ? ETIQUETTE_STORES_BATEAUX_FIELDS : [];
+  // En mode Format atelier (rideaux), on ajoute deux bascules : commentaire (en-tête)
+  // et croquis (verso) — par défaut affichés (mécanisme opt-out via etiquette_hidden_fields).
+  const etqFields = isRideaux
+    ? [...RIDEAUX_V2_FIELDS, ...ETQ_V2_EXTRA_FIELDS]
+    : isStoresBateaux ? ETIQUETTE_STORES_BATEAUX_FIELDS : [];
   const bulkCommonHidden = React.useMemo(() => {
     if ((!isRideaux && !isStoresBateaux) || filteredRows.length === 0) return [];
     const allKeys = etqFields.map(f => f.key);
@@ -979,9 +990,9 @@ export default function EtiquettesSection({
         />
       )}
 
-      {/* PORTAL IMPRESSION ÉTIQUETTES RIDEAUX */}
+      {/* PORTAL IMPRESSION ÉTIQUETTES RIDEAUX — Format atelier (recto/verso, 2/page) */}
       {showBPFPortal && isRideaux && (
-        <EtiquettesRideauxPrintPortal
+        <EtiquettesV2RectoVersoPortal
           rows={filteredRows}
           projectName={projectName}
           onClose={() => setShowBPFPortal(false)}
