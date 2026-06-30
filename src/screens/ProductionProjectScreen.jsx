@@ -431,11 +431,13 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
   } = useMemo(() => ({
     bpfRideaux:         rowsRideaux.filter(r => !isSousTraite(r)),
     bpfStoresBateaux:   rowsStoresBateaux.filter(r => !isSousTraite(r)),
-    bpfCoussins:        rowsCoussins.filter(r => !isSousTraite(r)),
-    bpfPlaid:           rowsPlaid.filter(r => !isSousTraite(r)),
-    bpfMobilier:        rowsMobilier.filter(r => !isSousTraite(r)),
-    bpfCacheSommier:    rowsCacheSommier.filter(r => !isSousTraite(r)),
-    bpfTentureMurale:   rowsTentureMurale.filter(r => !isSousTraite(r)),
+    // Décors : on garde les lignes sous-traitées visibles dans le BPF
+    // (pour renseigner les tissus et exporter le tableau au sous-traitant).
+    bpfCoussins:        rowsCoussins,
+    bpfPlaid:           rowsPlaid,
+    bpfMobilier:        rowsMobilier,
+    bpfCacheSommier:    rowsCacheSommier,
+    bpfTentureMurale:   rowsTentureMurale,
     bpfAutreConfection: rowsAutreConfection.filter(r => !isSousTraite(r)),
   }), [rowsRideaux, rowsStoresBateaux, rowsCoussins, rowsPlaid, rowsMobilier, rowsCacheSommier, rowsTentureMurale, rowsAutreConfection]);
 
@@ -1484,7 +1486,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
             >
                 <MinuteGrid
                   rows={bpfCoussins}
-                  onRowsChange={(nr) => handleSubsetChange(nr, /coussin/i, r => /coussin/i.test(String(r.produit || "")) && !isSousTraite(r))}
+                  onRowsChange={(nr) => handleSubsetChange(nr, /coussin/i)}
                   schema={COUSSINS_PROD_SCHEMA}
                   initialVisibilityModel={getVisibilityModel('bpf', 'coussins', COUSSINS_PROD_SCHEMA)}
                   enableCellFormulas={true}
@@ -1508,7 +1510,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
             >
                 <MinuteGrid
                   rows={bpfCacheSommier}
-                  onRowsChange={(nr) => handleSubsetChange(nr, /cache-sommier/i, r => /cache-sommier/i.test(String(r.produit || "")) && !isSousTraite(r))}
+                  onRowsChange={(nr) => handleSubsetChange(nr, /cache-sommier/i)}
                   schema={CACHE_SOMMIER_PROD_SCHEMA}
                   initialVisibilityModel={getVisibilityModel('bpf', 'cache_sommier', CACHE_SOMMIER_PROD_SCHEMA)}
                   enableCellFormulas={true}
@@ -1532,7 +1534,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
             >
                 <MinuteGrid
                   rows={bpfPlaid}
-                  onRowsChange={(nr) => handleSubsetChange(nr, /plaid/i, r => /plaid/i.test(String(r.produit || "")) && !isSousTraite(r))}
+                  onRowsChange={(nr) => handleSubsetChange(nr, /plaid/i)}
                   schema={PLAID_PROD_SCHEMA}
                   initialVisibilityModel={getVisibilityModel('bpf', 'plaid', PLAID_PROD_SCHEMA)}
                   enableCellFormulas={true}
@@ -1556,7 +1558,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
             >
                 <MinuteGrid
                   rows={bpfMobilier}
-                  onRowsChange={(nr) => handleSubsetChange(nr, /tête de lit|mobilier/i, r => /tête de lit|mobilier/i.test(String(r.produit || "")) && !isSousTraite(r))}
+                  onRowsChange={(nr) => handleSubsetChange(nr, /tête de lit|mobilier/i)}
                   schema={MOBILIER_PROD_SCHEMA}
                   initialVisibilityModel={getVisibilityModel('bpf', 'mobilier', MOBILIER_PROD_SCHEMA)}
                   enableCellFormulas={true}
@@ -1580,7 +1582,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
             >
                 <MinuteGrid
                   rows={bpfTentureMurale}
-                  onRowsChange={(nr) => handleSubsetChange(nr, /tenture murale/i, r => /tenture murale/i.test(String(r.produit || "")) && !isSousTraite(r))}
+                  onRowsChange={(nr) => handleSubsetChange(nr, /tenture murale/i)}
                   schema={TENTURE_MURALE_PROD_SCHEMA}
                   initialVisibilityModel={getVisibilityModel('bpf', 'tenture_murale', TENTURE_MURALE_PROD_SCHEMA)}
                   enableCellFormulas={true}
