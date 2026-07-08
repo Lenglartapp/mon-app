@@ -81,6 +81,12 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
 
   // --- STATE LOCAL & DEBOUNCE ---
   const [localLines, setLocalLines] = React.useState(minute?.lines || []);
+  // Ref TOUJOURS à jour des lignes locales. Sert à ré-attacher les lignes FRAÎCHES
+  // lors des changements "annexes" (réglages / modules / catalogue) : sans ça, ces
+  // renvois repartaient avec la copie PÉRIMÉE de `minute.lines` (le prop accuse le
+  // retard du debounce de 1 s) et ÉCRASAIENT la saisie en cours (clobbering → voilage perdu).
+  const localLinesRef = React.useRef(localLines);
+  React.useEffect(() => { localLinesRef.current = localLines; }, [localLines]);
   const [moduleMenuAnchor, setModuleMenuAnchor] = React.useState(null);
   const [deleteConfirmKey, setDeleteConfirmKey] = React.useState(null);
 
@@ -141,6 +147,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
   const triggerUpdate = React.useCallback((newLines) => {
     // 1. Update UI Immediately
     setLocalLines(newLines);
+    localLinesRef.current = newLines; // garde la ref synchrone (avant même le re-render)
     pendingLinesRef.current = newLines; // Store for flush
 
     // 2. Clear previous timer
@@ -193,8 +200,9 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
     else if ((!minute?.catalog || minute.catalog.length === 0) && formulaCtx?.catalog?.length > 0 && catalog.length <= 3) {
       // On initialise le catalogue local du devis avec les données fraîches de Supabase
       setCatalog(formulaCtx.catalog);
-      // Et on le sauvegarde explicitement dans CE devis pour le détacher du global
-      onChangeMinute?.({ ...minute, catalog: formulaCtx.catalog, updatedAt: Date.now() });
+      // Et on le sauvegarde explicitement dans CE devis pour le détacher du global.
+      // `lines: localLinesRef.current` → ne jamais écraser une saisie en cours (clobbering).
+      onChangeMinute?.({ ...minute, lines: localLinesRef.current, catalog: formulaCtx.catalog, updatedAt: Date.now() });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [minute?.catalog, formulaCtx?.catalog, onChangeMinute]);
@@ -289,7 +297,8 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
   };
 
   const handleSettingsChange = (newSettings) => {
-    onChangeMinute?.({ ...minute, settings: newSettings, updatedAt: Date.now() });
+    // lines: localLinesRef.current → ré-attache la saisie fraîche (anti-clobbering).
+    onChangeMinute?.({ ...minute, lines: localLinesRef.current, settings: newSettings, updatedAt: Date.now() });
   };
 
   // Persistance des matières sélectionnées — localStorage keyed par minuteId
@@ -1008,6 +1017,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
 
                   onChangeMinute?.({
                     ...minute,
+                    lines: localLinesRef.current, // anti-clobbering : saisie fraîche
                     modules: { ...mods, [m.key]: true, order: newOrder },
                     updatedAt: Date.now()
                   });
@@ -1050,6 +1060,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
                   const key = deleteConfirmKey;
                   onChangeMinute?.({
                     ...minute,
+                    lines: localLinesRef.current, // anti-clobbering : saisie fraîche
                     modules: { ...mods, [key]: false },
                     updatedAt: Date.now(),
                   });
