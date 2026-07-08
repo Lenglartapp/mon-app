@@ -1,5 +1,6 @@
 import { db } from './offlineDb';
 import { supabase } from './supabaseClient';
+import { updateStrippingPhantomColumns } from './schemaDrift';
 
 /**
  * Enfile une mutation UPDATE pour envoi ultérieur.
@@ -47,7 +48,14 @@ export const drainQueue = async () => {
   let failed = 0;
 
   for (const { table, record_id, payload, ids } of grouped.values()) {
-    const { error } = await supabase.from(table).update(payload).eq('id', record_id);
+    // AUTO-RÉPARATION : si la base rejette une colonne inexistante (dérive de schéma,
+    // ex. `pinned_ids` fusionnée dans le payload), on la retire et on rejoue — pour que
+    // le reste (surtout `rows`) finisse par être écrit. Sans ça, une colonne fantôme
+    // bloquait la mutation en boucle et emportait `rows` avec elle (perte de données).
+    const { error, dropped } = await updateStrippingPhantomColumns(supabase, table, record_id, payload);
+    if (dropped.length > 0) {
+      console.warn(`[drainQueue] colonne(s) fantôme(s) retirée(s) [${table}/${record_id}] : ${dropped.join(', ')}`);
+    }
     if (!error) {
       await db.pending_mutations.bulkDelete(ids);
       synced++;

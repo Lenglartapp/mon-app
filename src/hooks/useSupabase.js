@@ -3,20 +3,14 @@ import { supabase } from '../lib/supabaseClient';
 import { db } from '../lib/offlineDb';
 import { queueMutation } from '../lib/syncQueue';
 import { calculateProfitability } from '../lib/financial/profitabilityCalculator';
+import { isSchemaDriftError, updateStrippingPhantomColumns } from '../lib/schemaDrift';
 
 // PERF / RÉSILIENCE — Ne PAS escalader vers `select('*')` quand l'erreur est un simple
 // échec RÉSEAU (base injoignable / hors ligne). Dans ce cas, le serveur ne répond pas :
 // renvoyer une requête PLUS lourde (`select('*')` qui ramène tout le JSONB) ne fait
 // qu'aggraver la saturation. Le repli `select('*')` n'a de sens que pour une vraie
-// DÉRIVE DE SCHÉMA (colonne manquante dans la liste blanche) — détectée ici.
-const isSchemaDriftError = (error) => {
-    if (!error) return false;
-    if (error.code === '42703' || error.code === 'PGRST204') return true; // undefined column / schema cache
-    const msg = String(error.message || '').toLowerCase();
-    // Un échec réseau ressemble à "failed to fetch" / "networkerror" / "load failed" : on l'EXCLUT.
-    if (msg.includes('failed to fetch') || msg.includes('networkerror') || msg.includes('load failed')) return false;
-    return /does not exist|could not find|schema cache|column/.test(msg);
-};
+// DÉRIVE DE SCHÉMA (colonne manquante dans la liste blanche) — détectée par
+// isSchemaDriftError (voir ../lib/schemaDrift).
 
 // --- PROJETS ---
 // PERF — Liste blanche des colonnes LÉGÈRES pour la LISTE des projets.
@@ -79,6 +73,8 @@ export const useProjects = () => {
             console.error('[useProjects] loadProjectDetail échoué :', error?.message);
             return null;
         }
+        // Mapping DB -> Frontend : la colonne `pinned_ids` est lue en `pinnedIds`.
+        if ('pinned_ids' in data) data.pinnedIds = data.pinned_ids || [];
         setProjects(prev => prev.map(p => p.id === id ? { ...p, ...data } : p));
         db.projects.put(data).catch(() => {});
         return data;
@@ -96,6 +92,8 @@ export const useProjects = () => {
             .select('*')
             .order('updated_at', { ascending: false });
         if (!error && data) {
+            // Mapping DB -> Frontend : `pinned_ids` lue en `pinnedIds`.
+            data.forEach(p => { if ('pinned_ids' in p) p.pinnedIds = p.pinned_ids || []; });
             setProjects(data);
             db.projects.bulkPut(data).catch(() => {});
         } else {
@@ -175,6 +173,11 @@ export const useProjects = () => {
             dbUpdates.source_minute_id = updates.sourceMinuteId;
             delete dbUpdates.sourceMinuteId;
         }
+        // Épingles du fil d'activité : la colonne DB s'appelle `pinned_ids`.
+        if ('pinnedIds' in dbUpdates) {
+            dbUpdates.pinned_ids = dbUpdates.pinnedIds;
+            delete dbUpdates.pinnedIds;
+        }
 
         // 4. Nettoyer les photos pending (base64) des rows avant envoi à Supabase
         if (dbUpdates.rows) {
@@ -189,10 +192,21 @@ export const useProjects = () => {
             });
         }
 
-        // 5. Envoi Supabase ; si hors ligne → enfile pour sync ultérieure
-        const { error } = await supabase.from('projects').update(dbUpdates).eq('id', id);
-        if (error) {
-            queueMutation('projects', id, dbUpdates).catch(() => {});
+        // 5. Envoi Supabase. AUTO-RÉPARATION : si une colonne n'existe pas en base
+        //    (dérive de schéma, ex. `pinned_ids` pas encore créée), on la RETIRE et on
+        //    rejoue — pour que le reste (surtout `rows`) soit bien sauvegardé. Sans ça,
+        //    une seule colonne fantôme ferait rejeter TOUTE la sauvegarde (perte de données).
+        const { error, dropped, body } = await updateStrippingPhantomColumns(supabase, 'projects', id, dbUpdates);
+        if (dropped.length > 0) {
+            console.warn(`[updateProject] colonne(s) absente(s) en base ignorée(s) : ${dropped.join(', ')} — le reste a été sauvegardé.`);
+        }
+        // Erreur RÉSEAU/hors-ligne → file d'attente (avec le payload déjà nettoyé des
+        // colonnes fantômes, pour ne jamais empoisonner les futures sauvegardes par fusion).
+        // Une dérive de schéma résiduelle n'est JAMAIS enfilée (elle échouerait en boucle).
+        if (error && !isSchemaDriftError(error)) {
+            queueMutation('projects', id, body).catch(() => {});
+        } else if (error) {
+            console.error(`[updateProject] sauvegarde rejetée (dérive schéma persistante), non mise en file : ${error.message}`);
         }
     };
 
