@@ -3,7 +3,7 @@ import { Paper, Typography, Divider, Box } from '@mui/material';
 
 export default React.memo(function DashboardSummary({ recap, nf, activeModules }) {
     // Default modules if undefined (safeguard)
-    const mods = activeModules || { rideau: true, store: true, decor: true, autre_confection: true };
+    const mods = activeModules || { rideau: true, store: true, decor: true };
 
     // Items configuration for easier mapping
     const rawItems = [

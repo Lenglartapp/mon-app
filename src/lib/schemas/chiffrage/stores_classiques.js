@@ -25,7 +25,7 @@ export const STORES_CLASSIQUES_SCHEMA = [
         key: "produit",
         label: "Produit",
         type: "select",
-        options: ['Store Enrouleur', 'Store Vénitien', 'Store Bande Verticale', 'Store Canishade', 'Store Coffre', 'Autre'],
+        options: ['Store Enrouleur', 'Store Vénitien', 'Store Bande Verticale', 'Store Canishade', 'Store Coffre'],
         width: 160
     },
 
