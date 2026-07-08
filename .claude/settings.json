@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(wc -l /Users/aristidelenglart/Documents/GitHub/mon-app/src/components/*.jsx)",
+      "Read(//Users/aristidelenglart/Documents/GitHub/mon-app/**)",
+      "Bash(ls -lh /Users/aristidelenglart/Documents/GitHub/mon-app/src/*.zip /Users/aristidelenglart/Documents/GitHub/mon-app/src/*.zip)",
+      "Bash(find /Users/aristidelenglart/Documents/GitHub/mon-app/src -name *.js -path */utils/* -o -name *utils*.js -o -name *Util*.js)",
+      "Bash(grep -n \"import.*@mui\\\\|ag-grid\\\\|recharts\" /Users/aristidelenglart/Documents/GitHub/mon-app/src/*.jsx /Users/aristidelenglart/Documents/GitHub/mon-app/src/**/*.jsx)",
+      "Bash(npm install:*)",
+      "Bash(git rm:*)",
+      "Bash(grep -l \"filter.*\\\\.filter\\\\|deletedIds\\\\|oldSubset\" /Users/aristidelenglart/Documents/GitHub/mon-app/src/screens/*.jsx)",
+      "Bash(grep -h \"ALTER TABLE.*minutes\\\\|ADD COLUMN.*minutes\\\\|minutes.*ADD\" /Users/aristidelenglart/Documents/GitHub/mon-app/supabase_*.sql)",
+      "Bash(grep -rn \"modules\\\\|settings\\\\|catalog\\\\|extra_dep\\\\|owner\\\\|budget_snap\" /Users/aristidelenglart/Documents/GitHub/mon-app/supabase_*.sql)",
+      "Bash(find /Users/aristidelenglart/Documents/GitHub/mon-app/src -type f \\\\\\(-name *.js -o -name *.jsx \\\\\\))",
+      "Bash(grep -B2 -A2 'statut_conf.*readOnly\\\\|readOnly.*statut_conf' /Users/aristidelenglart/Documents/GitHub/mon-app/src/lib/schemas/production/*.js)",
+      "Bash(grep -rn \"statut_conf\" /Users/aristidelenglart/Documents/GitHub/mon-app/src/lib/schemas/*.js)",
+      "Bash(node --input-type=module --eval ':*)",
+      "Bash(grep -n \"type_commande\\\\|StormOS\\\\|storm\\\\|Storm\\\\|SLIM\\\\|SwiftStorm\" /Users/aristidelenglart/Documents/GitHub/mon-app/src/lib/schemas/production/*.js /Users/aristidelenglart/Documents/GitHub/mon-app/src/lib/schemas/chiffrage/*.js /Users/aristidelenglart/Documents/GitHub/mon-app/src/lib/schemas/*.js)",
+      "Bash(grep -n \"type_commande\" /Users/aristidelenglart/Documents/GitHub/mon-app/src/lib/schemas/chiffrage/*.js /Users/aristidelenglart/Documents/GitHub/mon-app/src/lib/schemas/*.js)",
+      "Bash(grep -E \"\\\\.\\(jsx?|tsx?\\)$\")"
+    ]
+  }
+}

@@ -135,3 +135,16 @@ dist
 .yarn/install-state.gz
 .pnp.*
 .vercel
+
+# Éditeur / outillage local (perso machine)
+.vscode/
+.agents/
+skills-lock.json
+
+# Config Claude Code : on versionne settings.json + launch.json,
+# on ignore la partie perso à la machine + les skills (liens symboliques locaux)
+.claude/settings.local.json
+.claude/skills/
+
+# Brouillons / maquettes mises "au parking" (non branchées à l'app)
+.parking/
