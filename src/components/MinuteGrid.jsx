@@ -1542,6 +1542,7 @@ function MinuteGrid({
                     cellSelection={readOnly ? false : { handle: { mode: 'fill' } }}
                     pinnedBottomRowData={pinnedBottomRowData}
                     columnDefs={columnDefs}
+                    maintainColumnOrder={true}
                     defaultColDef={defaultColDef}
                     autoGroupColumnDef={autoGroupColumnDef}
                     rowGroupPanelShow="always"
