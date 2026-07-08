@@ -394,7 +394,6 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
     else if (key === 'plaid') targetSchema = PLAID_SCHEMA;
     else if (key === 'tenture_murale') targetSchema = TENTURE_MURALE_SCHEMA;
     else if (key === 'mobilier') targetSchema = MOBILIER_SCHEMA;
-    else if (key === 'autre_confection') targetSchema = EXTRA_DEPENSES_SCHEMA;
 
     // Fusion + recalcul des formules
     const next = [...others, ...normalizedChild];

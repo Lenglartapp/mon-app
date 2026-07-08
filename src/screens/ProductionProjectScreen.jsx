@@ -25,7 +25,6 @@ import { CACHE_SOMMIER_PROD_SCHEMA } from "../lib/schemas/production/cache_sommi
 import { PLAID_PROD_SCHEMA } from "../lib/schemas/production/plaid";
 import { TENTURE_MURALE_PROD_SCHEMA } from "../lib/schemas/production/tenture_murale";
 import { MOBILIER_PROD_SCHEMA } from "../lib/schemas/production/mobilier";
-import { AUTRES_PROD_SCHEMA } from "../lib/schemas/autres";
 import { uid } from "../lib/utils/uid"; // Import uid
 
 import { Search, Filter, Layers3, Star, FlaskConical, Image as ImageIcon, Pin, Edit2, FileText, BookOpen, Printer } from "lucide-react";
@@ -409,7 +408,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
   // Sous-ensembles memoïsés — recalculés uniquement quand filteredRows change
   const {
     rowsRideaux, rowsStores, rowsStoresBateaux, rowsCoussins,
-    rowsPlaid, rowsMobilier, rowsCacheSommier, rowsTentureMurale, rowsAutreConfection
+    rowsPlaid, rowsMobilier, rowsCacheSommier, rowsTentureMurale
   } = useMemo(() => ({
     rowsRideaux:        filteredRows.filter((r) => /rideau|voilage/i.test(String(r.produit || ""))),
     rowsStores:         filteredRows.filter((r) => r.produit && /store/i.test(String(r.produit)) && !/bateau|velum/i.test(String(r.produit))),
@@ -419,7 +418,6 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
     rowsMobilier:       filteredRows.filter((r) => /tête de lit|mobilier/i.test(String(r.produit || ""))),
     rowsCacheSommier:   filteredRows.filter((r) => /cache-sommier/i.test(String(r.produit || ""))),
     rowsTentureMurale:  filteredRows.filter((r) => /tenture murale/i.test(String(r.produit || ""))),
-    rowsAutreConfection: filteredRows.filter(r => r.section === 'autre'),
   }), [filteredRows]);
 
   // Filtre sous-traitance : exclu du BPF et des étiquettes
@@ -427,7 +425,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
 
   const {
     bpfRideaux, bpfStoresBateaux, bpfCoussins,
-    bpfPlaid, bpfMobilier, bpfCacheSommier, bpfTentureMurale, bpfAutreConfection
+    bpfPlaid, bpfMobilier, bpfCacheSommier, bpfTentureMurale
   } = useMemo(() => ({
     bpfRideaux:         rowsRideaux.filter(r => !isSousTraite(r)),
     bpfStoresBateaux:   rowsStoresBateaux.filter(r => !isSousTraite(r)),
@@ -438,8 +436,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
     bpfMobilier:        rowsMobilier,
     bpfCacheSommier:    rowsCacheSommier,
     bpfTentureMurale:   rowsTentureMurale,
-    bpfAutreConfection: rowsAutreConfection.filter(r => !isSousTraite(r)),
-  }), [rowsRideaux, rowsStoresBateaux, rowsCoussins, rowsPlaid, rowsMobilier, rowsCacheSommier, rowsTentureMurale, rowsAutreConfection]);
+  }), [rowsRideaux, rowsStoresBateaux, rowsCoussins, rowsPlaid, rowsMobilier, rowsCacheSommier, rowsTentureMurale]);
 
   // --- IMPRESSION BPP (A3 paysage, fidèle à l'écran) ---
   const [showBppPrint, setShowBppPrint] = useState(false);
@@ -606,9 +603,6 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
     if (tableKey === "stores") {
       return (nr) => handleSubsetChange(nr, null, (r) => r.produit && /store/i.test(String(r.produit)) && !/bateau|velum/i.test(String(r.produit)));
     }
-    if (tableKey === "autre_confection") {
-      return (nr) => handleSubsetChange(nr, null, (r) => r.section === 'autre');
-    }
     // Sécurité : tableKey inconnu → ne jamais appeler handleSubsetChange avec une regex par défaut
     // qui pourrait supprimer des données non ciblées.
     console.error(`mergeChildRowsFor: tableKey inconnu "${tableKey}" — aucune action effectuée.`);
@@ -651,8 +645,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
   const handleAddRow = (produitType = "Rideau") => {
     const newRow = {
       id: uid(),
-      produit: produitType === "Autre" ? "" : produitType, // Empty default for Autre
-      section: produitType === "Autre" ? "autre" : undefined, // Tag for Autre
+      produit: produitType,
       pair_un: "Paire",
       ampleur: 1.8,
       largeur: 100,
@@ -1591,29 +1584,6 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                   catalog={projectMaterials}
                 projectId={project?.id}
                   gridKey="bpf_tenture_murale"
-                  onRowClick={(id) => setOpenedRowId(id)}
-                  isMobile={isMobile}
-                />
-            </SectionPanel>
-          )}
-
-          {bpfAutreConfection.length > 0 && (
-            <SectionPanel
-              title="BPF Autre (Confection sur mesure)"
-              count={bpfAutreConfection.length}
-              expanded={isPanelExpanded('bpf_autres')}
-              onToggle={() => togglePanel('bpf_autres')}
-            >
-                <MinuteGrid
-                  rows={bpfAutreConfection}
-                  onRowsChange={mergeChildRowsFor("autre_confection")}
-                  schema={AUTRES_PROD_SCHEMA}
-                  enableCellFormulas={true}
-                  onAdd={() => handleAddRow("Autre")}
-                  onDuplicateRow={handleDuplicateRow}
-                  catalog={projectMaterials}
-                projectId={project?.id}
-                  gridKey="bpf_autres"
                   onRowClick={(id) => setOpenedRowId(id)}
                   isMobile={isMobile}
                 />
