@@ -12,7 +12,7 @@ import { useCapacityPlanning } from '../hooks/useCapacityPlanning';
 import { can, productionGroup } from '../lib/authz';
 import { uid } from '../lib/utils/uid';
 import { supabase } from '../lib/supabaseClient';
-import { INITIAL_GROUPS_CONFIG, WORK_START_HOUR, WORK_END_HOUR, TOTAL_WORK_MINUTES, memberContractOverlaps } from '../components/planning/constants';
+import { INITIAL_GROUPS_CONFIG, WORK_START_HOUR, WORK_END_HOUR, TOTAL_WORK_MINUTES, ATELIER_HOURS_PER_DAY, memberContractOverlaps } from '../components/planning/constants';
 import EventModal from '../components/planning/EventModal';
 import ResourcePanel from '../components/planning/ResourcePanel';
 import PlanningTopBar from '../components/planning/PlanningTopBar';
@@ -21,6 +21,74 @@ import AssistantView from '../components/planning/AssistantView';
 import CapaciteView from '../components/planning/CapaciteView';
 import BacklogCreationModal from '../components/planning/BacklogCreationModal';
 import { generatePlanningTemplate, processPlanningImport } from '../lib/utils/planningExcelUtils';
+
+// --- Helpers atelier : durée <-> créneau (pause déjeuner 12h-13h) ---
+
+// Heure de fin à partir d'une durée en heures, en sautant la pause déjeuner.
+const computeEndFromDuration = (dayDate, dh) => {
+    let remaining = dh * 60; // minutes
+    let currentMin = 8 * 60; // 8h00
+
+    // Bloc matin : 8h00 – 12h00 = 240 min
+    const morningMins = Math.min(remaining, 240);
+    currentMin += morningMins;
+    remaining -= morningMins;
+
+    if (remaining > 0) {
+        // Sauter la pause déjeuner → 13h00
+        currentMin = 13 * 60 + remaining;
+    }
+
+    const h = Math.floor(currentMin / 60);
+    const m = Math.round(currentMin % 60);
+    const endD = new Date(dayDate);
+    endD.setHours(h, m, 0, 0);
+    return endD;
+};
+
+// Durée d'un créneau en heures : durationHours si présent, sinon dérivée de start/end (moins déjeuner).
+const eventDurationHours = (evt) => {
+    if (evt?.meta?.durationHours != null) return Number(evt.meta.durationHours) || 0;
+    const s = new Date(evt?.meta?.start || evt?.date);
+    const e = new Date(evt?.meta?.end || evt?.date);
+    let mins = differenceInMinutes(e, s);
+    const lStart = new Date(s); lStart.setHours(12, 0, 0, 0);
+    const lEnd = new Date(s); lEnd.setHours(13, 0, 0, 0);
+    if (s < lStart && e > lEnd) mins -= 60;
+    return Math.max(0, mins / 60);
+};
+
+// Rééquilibre les créneaux atelier NON validés d'une case (personne × jour × type) :
+// chacun reçoit (7,8h − somme des heures validées) / (nb de non validés).
+// Les validés sont figés. Renvoie uniquement les events modifiés (à persister).
+const rebalanceAtelierDay = (resourceId, dateStr, type, pool) => {
+    const bucket = pool.filter(e =>
+        e.resourceId === resourceId && e.date === dateStr && e.type === type
+    );
+    const pending = bucket.filter(e => e.meta?.status !== 'validated');
+    if (pending.length === 0) return [];
+
+    const validatedHours = bucket
+        .filter(e => e.meta?.status === 'validated')
+        .reduce((acc, e) => acc + eventDurationHours(e), 0);
+
+    const remaining = Math.max(0, ATELIER_HOURS_PER_DAY - validatedHours);
+    const per = remaining / pending.length;
+
+    const dayDate = parseISO(dateStr);
+    const startD = new Date(dayDate); startD.setHours(8, 0, 0, 0);
+    const endD = computeEndFromDuration(dayDate, per);
+
+    return pending.map(e => ({
+        ...e,
+        meta: {
+            ...e.meta,
+            durationHours: per,
+            start: startD.toISOString(),
+            end: endD.toISOString(),
+        },
+    }));
+};
 
 export default function PlanningScreen({ projects, events: initialEvents, onUpdateEvent, onDeleteEvent: onDeleteEventProp, onUpdateProject, onBack }) {
     const { users: authUsers, currentUser } = useAuth();
@@ -691,29 +759,6 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
         const days = eachDayOfInterval({ start: parseISO(eventData.startDate), end: parseISO(eventData.endDate) });
         const createdEvents = [];
 
-        // Helper : calcule l'heure de fin à partir d'une durée en heures (en sautant la pause déjeuner 12-13)
-        const computeEndFromDuration = (dayDate, dh) => {
-            let remaining = dh * 60; // en minutes
-            let currentMin = 8 * 60; // 8h00
-
-            // Bloc matin : 8h00 – 12h00 = 240 min
-            const morningMins = Math.min(remaining, 240);
-            currentMin += morningMins;
-            remaining -= morningMins;
-
-            if (remaining > 0) {
-                // Sauter la pause déjeuner → 13h00
-                currentMin = 13 * 60;
-                currentMin += remaining;
-            }
-
-            const h = Math.floor(currentMin / 60);
-            const m = currentMin % 60;
-            const endD = new Date(dayDate);
-            endD.setHours(h, m, 0, 0);
-            return endD;
-        };
-
         const isHourMode = eventData.durationHours != null && ['conf', 'prepa'].includes(eventData.type);
 
         // Un seriesId par ressource : les jours d'une même personne sont groupés,
@@ -771,8 +816,19 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
     };
 
     const handleDeleteEvent = (evt) => {
-        setLocalEvents(prev => prev.filter(e => e.id !== evt.id));
+        const nextPool = localEvents.filter(e => e.id !== evt.id);
         if (onDeleteEventProp) onDeleteEventProp(evt.id);
+
+        // Si c'était un créneau atelier confection : rééquilibrer les non-validés
+        // restants de la case (personne × jour) sur le temps restant.
+        if (evt.type === 'conf' && evt.resourceId && evt.resourceId !== 'backlog_confection' && evt.date) {
+            const rebalanced = rebalanceAtelierDay(evt.resourceId, evt.date, 'conf', nextPool);
+            const byId = new Map(rebalanced.map(e => [e.id, e]));
+            setLocalEvents(nextPool.map(e => byId.get(e.id) || e));
+            rebalanced.forEach(e => { if (onUpdateEvent) onUpdateEvent(e); });
+        } else {
+            setLocalEvents(nextPool);
+        }
     };
 
     const handleInlineDeleteEvent = (evt) => {
@@ -904,62 +960,47 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
 
         // --- BACKLOG LOGIC : COPIE (Master -> Child) ---
         if (draggedEvent.resourceId === 'backlog_confection') {
-            // On ne déplace pas le backlog, on crée une copie (enfant)
-            const defaultDuration = 8; // Default proposition
-            const input = window.prompt("Combien d'heures voulez-vous planifier pour ce créneau ?", defaultDuration);
-
-            if (!input) return; // Cancelled
-            const hours = parseFloat(input.replace(',', '.'));
-            if (isNaN(hours) || hours <= 0) {
-                alert("Durée invalide");
-                return;
-            }
-
-            // Create Child Event
-            const newStartDate = new Date(date);
-            newStartDate.setHours(8, 0, 0, 0); // Force 08:00
-
-            // End date based on hours (simple logic for now: add hours to start)
-            // Handling breaks (12-13) or overnight is complex here, 
-            // but handleResizeMove.addWorkMinutes handles it. 
-            // For now simplified: 
-            let endHour = 8 + hours;
-            let minutes = 0;
-            if (Math.floor(endHour) !== endHour) {
-                minutes = (endHour - Math.floor(endHour)) * 60;
-                endHour = Math.floor(endHour);
-            }
-
-            // Simple break handling: if crosses 12:00, add 1h
-            if (endHour > 12 || (endHour === 12 && minutes > 0)) {
-                endHour += 1;
-            }
-
-            const newEndDate = new Date(newStartDate);
-            newEndDate.setHours(endHour, minutes, 0, 0);
+            // On ne déplace pas le backlog : on crée une copie (enfant) qui cale
+            // directement une journée sur la personne cible, puis on rééquilibre les
+            // créneaux non validés de la case (personne × jour) à parts égales du
+            // temps restant (7,8h − heures déjà validées).
+            const dateStr = format(date, 'yyyy-MM-dd');
+            const startD = new Date(date); startD.setHours(8, 0, 0, 0);
+            const endD = computeEndFromDuration(date, ATELIER_HOURS_PER_DAY);
 
             const newEvent = {
                 ...draggedEvent,
                 id: uid(), // New ID
                 resourceId: resourceId, // Target resource
-                date: format(newStartDate, 'yyyy-MM-dd'),
-                type: draggedEvent.type, // Keep type
+                date: dateStr,
+                // Créneau de confection planifié sur une personne → type 'conf' :
+                // déclenche le rendu "côte à côte" (MODE DURÉE) et compte dans la
+                // charge atelier. (Le master backlog est lui de type 'default'.)
+                type: 'conf',
                 title: draggedEvent.title,
                 meta: {
                     ...draggedEvent.meta,
-                    start: newStartDate.toISOString(),
-                    end: newEndDate.toISOString(),
+                    start: startD.toISOString(),
+                    end: endD.toISOString(),
+                    durationHours: ATELIER_HOURS_PER_DAY, // sera ajusté par le rééquilibrage
                     status: 'pending', // Reset status
                     parent_backlog_id: String(draggedEvent.id), // LINK TO MASTER (Force String)
-                    seriesId: null // Break series from master if any
+                    seriesId: null, // Break series from master if any
+                    isBacklogMaster: false, // l'enfant n'est PAS un master (clic → modale event)
+                    budgetHours: undefined, // volume propre au master uniquement
+                    createdAt: new Date().toISOString(),
                 }
             };
 
-            // Optimistic UI
-            setLocalEvents(prev => [...prev, newEvent]);
+            // Ajout + rééquilibrage des non-validés de la case (personne × jour × type)
+            const pool = [...localEvents, newEvent];
+            const rebalanced = rebalanceAtelierDay(resourceId, dateStr, 'conf', pool);
+            const byId = new Map(rebalanced.map(e => [e.id, e]));
 
-            // Persist
-            if (onUpdateEvent) onUpdateEvent(newEvent);
+            setLocalEvents(pool.map(e => byId.get(e.id) || e));
+
+            // Persist : le nouvel event + tous les créneaux non validés recalculés
+            rebalanced.forEach(e => { if (onUpdateEvent) onUpdateEvent(e); });
 
             setDraggedEvent(null);
             return;
@@ -971,50 +1012,54 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
         const oldDate = parseISO(draggedEvent.date);
         const diffDays = differenceInDays(date, oldDate);
 
+        // La source de vérité en base est meta.start / meta.end (colonnes start_time /
+        // end_time). On décale donc AUSSI ces datetimes du même nombre de jours (heure
+        // préservée), sinon le déplacement n'est ni persisté ni reflété dans la modale.
+        const shiftISO = (iso) => iso ? addDays(new Date(iso), diffDays).toISOString() : iso;
+
         // Si série
         if (draggedEvent.meta?.seriesId) {
+            const buildUpdated = (evt) => {
+                const newDate = addDays(parseISO(evt.date), diffDays);
+                return {
+                    ...evt,
+                    date: format(newDate, 'yyyy-MM-dd'),
+                    resourceId: resourceId,
+                    meta: {
+                        ...evt.meta,
+                        start: shiftISO(evt.meta?.start),
+                        end: shiftISO(evt.meta?.end),
+                    },
+                };
+            };
+
             // Local Update
-            setLocalEvents(prev => prev.map(evt => {
-                if (evt.meta?.seriesId === draggedEvent.meta.seriesId) {
-                    const newDate = addDays(parseISO(evt.date), diffDays);
-                    const newDateStr = format(newDate, 'yyyy-MM-dd');
-                    const updated = {
-                        ...evt,
-                        date: newDateStr,
-                        resourceId: resourceId
-                    };
-                    // PERSIST (side effect inside map... dirty but works for this block)
-                    // Better to loop separately or rely on setLocalEvents triggering something? No.
-                    // We must call onUpdateEvent.
-                    return updated;
-                }
-                return evt;
-            }));
+            setLocalEvents(prev => prev.map(evt =>
+                evt.meta?.seriesId === draggedEvent.meta.seriesId ? buildUpdated(evt) : evt
+            ));
 
             // PERSIST LOOP
             const seriesEvents = localEvents.filter(e => e.meta?.seriesId === draggedEvent.meta.seriesId);
             seriesEvents.forEach(evt => {
-                const newDate = addDays(parseISO(evt.date), diffDays);
-                const updated = {
-                    ...evt,
-                    date: format(newDate, 'yyyy-MM-dd'),
-                    resourceId: resourceId
-                };
-                if (onUpdateEvent) onUpdateEvent(updated);
+                if (onUpdateEvent) onUpdateEvent(buildUpdated(evt));
             });
 
         } else {
             // Single event
             const newDateStr = format(date, 'yyyy-MM-dd');
-            const updated = { ...draggedEvent, date: newDateStr, resourceId: resourceId };
+            const updated = {
+                ...draggedEvent,
+                date: newDateStr,
+                resourceId: resourceId,
+                meta: {
+                    ...draggedEvent.meta,
+                    start: shiftISO(draggedEvent.meta?.start),
+                    end: shiftISO(draggedEvent.meta?.end),
+                },
+            };
 
             // Local
-            setLocalEvents(prev => prev.map(evt => {
-                if (evt.id === draggedEvent.id) {
-                    return updated;
-                }
-                return evt;
-            }));
+            setLocalEvents(prev => prev.map(evt => evt.id === draggedEvent.id ? updated : evt));
 
             // PERSIST
             if (onUpdateEvent) onUpdateEvent(updated);
@@ -1179,8 +1224,8 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
     const getCellContent = (col) => {
         if (view === 'year') return format(col, 'MMM', { locale: fr });
         if (view === 'quarter' || view === 'month') return format(col, 'd');
-        if (view === 'twoweeks') return format(col, 'EE d', { locale: fr });
-        return format(col, 'EE d', { locale: fr });
+        if (view === 'twoweeks') return format(col, 'EE d MMM', { locale: fr });
+        return format(col, 'EE d MMM', { locale: fr });
     };
 
     const handleResizeStart = (startState) => {
@@ -1405,12 +1450,17 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                     expandedGroups={expandedGroups}
                     onToggleGroup={(key) => setExpandedGroups(prev => {
                         if (key === 'conf') {
-                            // 0 → 1 → 2 → 0 : replié → programme → équipe complète → replié
-                            const next = prev[key] === 0 ? 1 : prev[key] === 1 ? 2 : 0;
-                            return { ...prev, [key]: next };
+                            // Entête : replié ↔ Programme semaine (0 ↔ 1).
+                            // Le "par personne" (niveau 2) se pilote via le chevron de la
+                            // ligne Programme semaine (onToggleMembers).
+                            return { ...prev, [key]: prev[key] > 0 ? 0 : 1 };
                         }
                         return { ...prev, [key]: prev[key] === 0 ? 2 : 0 };
                     })}
+                    onToggleMembers={(key) => setExpandedGroups(prev => (
+                        // Ligne Programme semaine : Programme seul ↔ par personne (1 ↔ 2)
+                        { ...prev, [key]: prev[key] >= 2 ? 1 : 2 }
+                    ))}
                     events={filteredEvents}
                     hiddenResources={hiddenResources}
                     onCellClick={handleCellClick}
