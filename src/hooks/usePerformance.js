@@ -101,6 +101,11 @@ export function usePerformanceActions() {
 
   const updateAction = async (id, updates) => {
     const payload = { ...updates, updated_at: new Date().toISOString() };
+    // GARDE-FOU DATES — Postgres (date/timestamptz) REFUSE la chaîne vide "" (erreur 22007).
+    // Vider le champ date d'une action existante renvoie "" : on convertit "" -> null.
+    for (const dateKey of ['date_cible', 'created_at', 'updated_at']) {
+      if (payload[dateKey] === '') payload[dateKey] = null;
+    }
     const { data, error } = await supabase
       .from('performance_actions')
       .update(payload)
