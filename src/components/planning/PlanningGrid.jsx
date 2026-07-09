@@ -24,7 +24,7 @@ const StickyCorner = ({ children, style }) => (
 
 const PlanningGrid = ({
     days, columns: gridCols, superHeaders, view,
-    filteredGroups, expandedGroups, onToggleGroup,
+    filteredGroups, expandedGroups, onToggleGroup, onToggleMembers,
     events, hiddenResources,
     onCellClick, onEventClick, onDeleteEvent, onUpdateEvent,
     onDragStart, onDragOver, onDrop,
@@ -629,7 +629,20 @@ const PlanningGrid = ({
                                 .map(member => (
                                     <React.Fragment key={member.id}>
                                         <StickyLeftCell style={{ paddingLeft: 42, color: member.id === 'backlog_confection' ? '#BE123C' : '#4B5563', fontWeight: member.id === 'backlog_confection' ? 700 : 500, display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: member.id === 'backlog_confection' ? PROGRAMME_ROW_HEIGHT : ROW_HEIGHT }}>
-                                            <span>{member.id === 'backlog_confection' ? 'Programme semaine' : `${member.first_name} ${member.last_name?.charAt(0)}.`}</span>
+                                            {member.id === 'backlog_confection' ? (
+                                                <span style={{ display: 'flex', alignItems: 'center' }}>
+                                                    <span
+                                                        onClick={(e) => { e.stopPropagation(); onToggleMembers?.(key); }}
+                                                        title={expandedGroups[key] >= 2 ? 'Masquer la répartition par personne' : 'Afficher la répartition par personne'}
+                                                        style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer', marginRight: 6 }}
+                                                    >
+                                                        {expandedGroups[key] >= 2 ? <ChevronDown size={13} /> : <ChevronRightIcon size={13} />}
+                                                    </span>
+                                                    Programme semaine
+                                                </span>
+                                            ) : (
+                                                <span>{`${member.first_name} ${member.last_name?.charAt(0)}.`}</span>
+                                            )}
 
                                             {member.id === 'backlog_confection' && (() => {
                                                 // Calculate Total Backlog Hours for this view
@@ -852,6 +865,10 @@ const PlanningGrid = ({
                                                                                     e.stopPropagation();
                                                                                     e.dataTransfer.setData('text/plain', evt.id);
                                                                                     e.dataTransfer.setData('type', 'backlog-sort');
+                                                                                    // Renseigne draggedEvent → permet de déposer
+                                                                                    // sur une cellule personne pour planifier
+                                                                                    // (branche backlog de handleDrop).
+                                                                                    onDragStart?.(e, evt);
                                                                                 }}
                                                                                 onDragOver={(e) => {
                                                                                     e.preventDefault();
