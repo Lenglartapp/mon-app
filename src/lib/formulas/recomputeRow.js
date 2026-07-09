@@ -324,6 +324,22 @@ export function recomputeRow(row, schema, ctx = {}) {
       next.pa_doublure = 0; next.pv_doublure = 0;
     }
 
+    // Passementerie 1 & 2 (ML manuel pour les stores, PA/PV depuis le catalogue)
+    const pP1 = getPrice(next.passementerie1);
+    if (pP1.found) {
+      next.pa_pass1 = NVL(next.ml_pass1) * (pP1.pa || 0);
+      next.pv_pass1 = NVL(next.ml_pass1) * (pP1.pv || 0);
+    } else {
+      next.pa_pass1 = 0; next.pv_pass1 = 0;
+    }
+    const pP2 = getPrice(next.passementerie2);
+    if (pP2.found) {
+      next.pa_pass2 = NVL(next.ml_pass2) * (pP2.pa || 0);
+      next.pv_pass2 = NVL(next.ml_pass2) * (pP2.pv || 0);
+    } else {
+      next.pa_pass2 = 0; next.pv_pass2 = 0;
+    }
+
     const isBateau = /bateau|velum|vélum/i.test(next.produit || "");
     if (isBateau) {
       // For Store Bateau/Velum, mecanisme_fourniture is used for the mechanism
