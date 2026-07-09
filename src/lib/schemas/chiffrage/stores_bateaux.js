@@ -62,6 +62,21 @@ export const STORES_BATEAUX_SCHEMA = [
     // pv_doublure (number) : PV Doubl.
     { key: "pv_doublure", label: "PV Doubl.", type: "number", width: 140 },
 
+    // --- Passementerie 1 (réf. sourcée dans la biblio Passementerie ; ML manuel, PA/PV calculés) ---
+    { key: "passementerie1", label: "Passement. 1", type: "catalog_item", category: "Passementerie", width: 150 },
+    // Application : indicatif (n'entre pas dans le calcul pour l'instant) — "|  |" ou "U"
+    { key: "application_passementerie1", label: "App. P1", type: "select", options: ["", "|  |", "U"], width: 100 },
+    { key: "ml_pass1", label: "ML Pass 1", type: "number", width: 120 },
+    { key: "pa_pass1", label: "PA Pass 1", type: "number", width: 110 },
+    { key: "pv_pass1", label: "PV Pass 1", type: "number", width: 110 },
+
+    // --- Passementerie 2 ---
+    { key: "passementerie2", label: "Passement. 2", type: "catalog_item", category: "Passementerie", width: 150 },
+    { key: "application_passementerie2", label: "App. P2", type: "select", options: ["", "|  |", "U"], width: 100 },
+    { key: "ml_pass2", label: "ML Pass 2", type: "number", width: 120 },
+    { key: "pa_pass2", label: "PA Pass 2", type: "number", width: 110 },
+    { key: "pv_pass2", label: "PV Pass 2", type: "number", width: 110 },
+
     // mecanisme_store (text/catalog) : Meca store
     { key: "mecanisme_store", label: "Méca Store", type: "catalog_item", category: "Store,Stores,Mecanisme Store", width: 150 },
 

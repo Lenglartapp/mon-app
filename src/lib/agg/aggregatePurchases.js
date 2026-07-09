@@ -104,6 +104,28 @@ export function aggregatePurchases(rows = []) {
       g.children.push(childFromRow(r, ml));
     }
 
+    // --- RIDEAUX / STORES: Passementerie 1 & 2 (clés sans underscore)
+    if (r.passementerie1 && toNum(r.ml_pass1) > 0) {
+      const key = `PASS|${r.passementerie1}`;
+      const label = `Passementerie: ${r.passementerie1}`;
+      const g = push(tissus, key, { kind: "tissu", label, ref: r.passementerie1, pa_field: "pa_pass1" });
+      const ml = toNum(r.ml_pass1) * qty;
+      g.total_ml += ml;
+      g.total_pa += toNum(r.pa_pass1) * qty;
+      g.count++;
+      g.children.push(childFromRow(r, ml));
+    }
+    if (r.passementerie2 && toNum(r.ml_pass2) > 0) {
+      const key = `PASS|${r.passementerie2}`;
+      const label = `Passementerie: ${r.passementerie2}`;
+      const g = push(tissus, key, { kind: "tissu", label, ref: r.passementerie2, pa_field: "pa_pass2" });
+      const ml = toNum(r.ml_pass2) * qty;
+      g.total_ml += ml;
+      g.total_pa += toNum(r.pa_pass2) * qty;
+      g.count++;
+      g.children.push(childFromRow(r, ml));
+    }
+
     // --- DOUBLURE
     if (r.doublure && toNum(r.ml_doublure) > 0) {
       const key = `DOUBLURE|${r.doublure}`;

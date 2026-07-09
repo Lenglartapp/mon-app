@@ -97,13 +97,15 @@ const getters = {
         // Retour : on retient la plus grande des deux valeurs gauche / droite.
         const retourMax = Math.max(toNum(row.retour_gauche), toNum(row.retour_droit));
 
-        // Plus de distinction pan unique / paire : toujours 4 × ourlet côté…
-        // …sauf si le rideau est DOUBLÉ : on remplace 4 × ourlet par
-        // 2 × finition chant + 2 × finition retour.
-        const isDouble = !!String(row.doublure || "").trim();
-        const ourletPart = isDouble
-            ? (2 * toNum(row.finition_champs)) + (2 * toNum(row.finition_retour))
-            : (4 * vOurlets);
+        // Plus de distinction pan unique / paire : deux côtés, chacun pesant 2×.
+        // Chaque côté utilise sa finition si elle est renseignée (> 0),
+        // sinon il retombe sur l'ourlet côté.
+        // → Fin. Chant / Fin. Retour vides   : 4 × ourlet côté
+        // → Fin. Chant renseignée            : 2 × Fin. Chant  + 2 × ourlet côté
+        // → Fin. Retour renseignée           : 2 × ourlet côté + 2 × Fin. Retour
+        // → les deux renseignées             : 2 × Fin. Chant  + 2 × Fin. Retour
+        const side = (fin) => (toNum(fin) > 0 ? toNum(fin) : vOurlets);
+        const ourletPart = (2 * side(row.finition_champs)) + (2 * side(row.finition_retour));
 
         const val = (lFinie * ampleur) + ourletPart + retourMax;
         return Math.ceil(val);
@@ -213,9 +215,18 @@ const getters = {
     },
 
     reste_les: (row) => {
-        const aPlat = getters.a_plat(row);
         const laize = toNum(row.laize_tissu1);
         if (laize <= 0) return 0;
+
+        // Si le rideau rentre dans la laize (hauteur finie max + 50 < laize T1),
+        // on coupe dans le sens de la laize : pas de lés à jointer → pas d'appiècement.
+        const hFinieMax = Math.max(
+            getters.hauteur_finie_droite(row),
+            getters.hauteur_finie_gauche(row)
+        );
+        if ((hFinieMax + 50) < laize) return "";
+
+        const aPlat = getters.a_plat(row);
         const fraction = (aPlat / laize) - Math.floor(aPlat / laize);
         return round1(fraction * laize);
     },
@@ -328,7 +339,7 @@ export const RIDEAUX_PROD_SCHEMA = [
         type: "number",
         width: 110,
         readOnly: true,
-        tooltip: "Tissu à plat avant confection. Paire : (L_finie × ampleur) + 4 × ourlets côtés. Pan unique : (L_finie × ampleur) + 2 × ourlets côtés",
+        tooltip: "Tissu à plat avant confection : (L_finie × ampleur) + 4 × ourlets côtés, puis + retour max (G/D). Si Fin. Chant est renseignée elle remplace l'ourlet d'un côté (2 × Fin. Chant), de même Fin. Retour pour l'autre côté (2 × Fin. Retour).",
         valueGetter: (v, r) => getters.a_plat(getRow(v, r))
     },
     {
@@ -352,7 +363,7 @@ export const RIDEAUX_PROD_SCHEMA = [
         type: "number",
         width: 130,
         readOnly: true,
-        tooltip: "Partie fractionnaire × laize T1 : reste de tissu après les lés entiers",
+        tooltip: "Partie fractionnaire × laize T1 : reste de tissu après les lés entiers. Vide si le rideau rentre dans la laize (hauteur finie max + 50 cm < laize T1) : coupe dans le sens de la laize, pas d'appiècement.",
         valueGetter: (v, r) => getters.reste_les(getRow(v, r))
     },
     { key: "v_ourlets_de_cotes", label: "Ourlets Côtés", type: "number", width: 130, editable: true },
@@ -495,8 +506,8 @@ export const RIDEAUX_PROD_SCHEMA = [
 
     { key: "bride", label: "Bride", type: "select", options: ["Oui", "Non"], width: 90, editable: true },
 
-    // Crochets: Américain / Escargot
-    { key: "type_crochets", label: "Crochets", type: "select", options: ['Crochet Américain', 'Crochet Escargot'], width: 165, editable: true },
+    // Crochets: Américain / Escargot (plastique/métal) / Agrafe à coudre
+    { key: "type_crochets", label: "Crochets", type: "select", options: ['Crochet américain', 'Crochet escargot plastique', 'Crochet escargot métal', 'Agrafe à coudre'], width: 165, editable: true },
 
     // Point Chausson: Oui / Non
     { key: "point_chausson", label: "Point Chausson", type: "select", options: ["Oui", "Non"], width: 140, editable: true },
