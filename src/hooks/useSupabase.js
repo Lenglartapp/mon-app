@@ -164,6 +164,13 @@ export const useProjects = () => {
         if (updates.updatedAt) dbUpdates.updated_at = new Date(updates.updatedAt).toISOString();
         if (updates.createdAt) dbUpdates.created_at = new Date(updates.createdAt).toISOString();
 
+        // GARDE-FOU DATES — Postgres (timestamptz/date) REFUSE la chaîne vide ""
+        // (erreur 22007 "invalid input syntax"). Quand l'utilisateur vide un champ date
+        // (ex. deadline), l'<input type="date"> renvoie "" : on convertit "" -> null.
+        for (const dateKey of ['deadline', 'due', 'created_at', 'updated_at']) {
+            if (dbUpdates[dateKey] === '') dbUpdates[dateKey] = null;
+        }
+
         // Nettoyage des clés JS (due est une vraie colonne DB, on ne la supprime pas)
         delete dbUpdates.updatedAt;
         delete dbUpdates.createdAt;
