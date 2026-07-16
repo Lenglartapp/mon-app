@@ -321,6 +321,56 @@ function MinuteGrid({
     const sharedStateRef = useRef(null);
     sharedStateRef.current = sharedState;
 
+    // ── Redimensionnement vertical du tableau (poignée en bas) ──────────────
+    // manualHeight = null  → mode auto inchangé (domLayout autoHeight, montre tout).
+    // manualHeight = px    → hauteur fixe + scroll interne (bascule au premier drag).
+    const heightStorageKey = `${gridId}_height`;
+    const [manualHeight, setManualHeight] = useState(() => {
+        try {
+            const raw = localStorage.getItem(`${gridId}_height`);
+            const n = raw == null ? null : parseInt(raw, 10);
+            return Number.isFinite(n) ? n : null;
+        } catch { return null; }
+    });
+    const resizeStateRef = useRef(null);
+
+    const onResizeMouseMove = useCallback((e) => {
+        const st = resizeStateRef.current;
+        if (!st) return;
+        const next = Math.max(60, st.startHeight + (e.clientY - st.startY));
+        st.currentHeight = next;
+        setManualHeight(next);
+    }, []);
+
+    const onResizeMouseUp = useCallback(() => {
+        const st = resizeStateRef.current;
+        resizeStateRef.current = null;
+        document.removeEventListener('mousemove', onResizeMouseMove);
+        document.removeEventListener('mouseup', onResizeMouseUp);
+        document.body.style.userSelect = '';
+        document.body.style.cursor = '';
+        if (st) {
+            try { localStorage.setItem(heightStorageKey, String(Math.round(st.currentHeight))); } catch { /* ignore */ }
+        }
+    }, [onResizeMouseMove, heightStorageKey]);
+
+    const onResizeHandleMouseDown = useCallback((e) => {
+        e.preventDefault();
+        const startHeight = gridContainerRef.current
+            ? gridContainerRef.current.offsetHeight
+            : (manualHeight ?? 300);
+        resizeStateRef.current = { startY: e.clientY, startHeight, currentHeight: startHeight };
+        document.addEventListener('mousemove', onResizeMouseMove);
+        document.addEventListener('mouseup', onResizeMouseUp);
+        document.body.style.userSelect = 'none';
+        document.body.style.cursor = 'ns-resize';
+    }, [manualHeight, onResizeMouseMove, onResizeMouseUp]);
+
+    const resetManualHeight = useCallback(() => {
+        setManualHeight(null);
+        try { localStorage.removeItem(heightStorageKey); } catch { /* ignore */ }
+    }, [heightStorageKey]);
+
     // Largeurs stables — initialisées une seule fois au chargement Supabase pour éviter la boucle infinie
     // (columnDefs ne doit pas dépendre de sharedState directement, sinon chaque save recompute les cols)
     const [initialWidths, setInitialWidths] = useState({});
@@ -1049,13 +1099,9 @@ function MinuteGrid({
                     flushScheduledRef.current = false;
                     const updates = { ...pendingRowUpdatesRef.current };
                     pendingRowUpdatesRef.current = {};
-                    const api = gridRef.current?.api;
-                    if (!api) return;
-                    const newAllRows = [];
-                    api.forEachNode(node => {
-                        if (!node.rowPinned)
-                            newAllRows.push(updates[String(node.data.id)] ?? node.data);
-                    });
+                    const newAllRows = (rowsRef.current || []).map(
+                        r => updates[String(r.id)] ?? r
+                    );
                     onRowsChangeRef.current(newAllRows);
                 });
             }
@@ -1085,6 +1131,10 @@ function MinuteGrid({
     }, []);
 
     const isLargeGrid = rows.length > 100;
+
+    // Hauteur effective : manuelle si l'utilisateur a tiré la poignée, sinon comportement historique.
+    const effectiveHeight = manualHeight != null ? manualHeight : (isLargeGrid ? 600 : undefined);
+    const useFixedLayout = manualHeight != null || isLargeGrid;
 
     // Ligne de totaux interactive (valeurs calculées selon colAggregations)
     const pinnedBottomRowData = useMemo(() => {
@@ -1534,8 +1584,9 @@ function MinuteGrid({
                 </>
             )}
 
-            {/* AG Grid */}
-            <div ref={gridContainerRef} className="ag-theme-alpine" style={{ width: '100%', height: isLargeGrid ? 600 : undefined }}>
+            {/* AG Grid + poignée de redimensionnement vertical */}
+            <div style={{ position: 'relative' }}>
+            <div ref={gridContainerRef} className="ag-theme-alpine" style={{ width: '100%', height: effectiveHeight }}>
                 <AgGridReact
                     ref={gridRef}
                     rowData={rows}
@@ -1561,7 +1612,7 @@ function MinuteGrid({
                     quickFilterText={quickFilter}
                     getRowId={(params) => String(params.data.id)}
                     suppressColumnVirtualisation={true}
-                    domLayout={isLargeGrid ? 'normal' : 'autoHeight'}
+                    domLayout={useFixedLayout ? 'normal' : 'autoHeight'}
                     rowHeight={48}
                     rowSelection={{
                         mode: 'multiRow',
@@ -1584,6 +1635,27 @@ function MinuteGrid({
                     animateRows={false}
                     stopEditingWhenCellsLoseFocus
                 />
+            </div>
+            {/* Poignée : glisser pour régler la hauteur, double-clic pour revenir en auto */}
+            <div
+                onMouseDown={onResizeHandleMouseDown}
+                onDoubleClick={resetManualHeight}
+                title="Glisser pour ajuster la hauteur — double-clic pour revenir en automatique"
+                style={{
+                    height: 12,
+                    marginTop: 2,
+                    cursor: 'ns-resize',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: 4,
+                    background: manualHeight != null ? '#ecfdf5' : 'transparent',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = '#e2e8f0'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = manualHeight != null ? '#ecfdf5' : 'transparent'; }}
+            >
+                <div style={{ width: 44, height: 4, borderRadius: 2, background: '#94a3b8' }} />
+            </div>
             </div>
         </div>
     );
