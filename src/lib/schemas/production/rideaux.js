@@ -231,6 +231,41 @@ const getters = {
         return round1(fraction * laize);
     },
 
+    // Appiècement T2 / Doublure / Interdoublure : même formule que reste_les (T1),
+    // mais sur la laize du tissu concerné. Vide ("") si le tissu n'est pas renseigné.
+    reste_les_t2: (row) => {
+        if (!String(row.tissu_deco2 || "").trim() && !toNum(row.laize_tissu2)) return "";
+        const laize = toNum(row.laize_tissu2);
+        if (laize <= 0) return "";
+        const hFinieMax = Math.max(getters.hauteur_finie_droite(row), getters.hauteur_finie_gauche(row));
+        if ((hFinieMax + 50) < laize) return "";
+        const aPlat = getters.a_plat(row);
+        const fraction = (aPlat / laize) - Math.floor(aPlat / laize);
+        return round1(fraction * laize);
+    },
+
+    reste_les_doublure: (row) => {
+        if (!String(row.doublure || "").trim() && !toNum(row.laize_doublure)) return "";
+        const laize = toNum(row.laize_doublure);
+        if (laize <= 0) return "";
+        const hFinieMax = Math.max(getters.hauteur_finie_droite(row), getters.hauteur_finie_gauche(row));
+        if ((hFinieMax + 50) < laize) return "";
+        const aPlat = getters.a_plat(row);
+        const fraction = (aPlat / laize) - Math.floor(aPlat / laize);
+        return round1(fraction * laize);
+    },
+
+    reste_les_inter: (row) => {
+        if (!String(row.inter_doublure || "").trim() && !toNum(row.laize_inter)) return "";
+        const laize = toNum(row.laize_inter);
+        if (laize <= 0) return "";
+        const hFinieMax = Math.max(getters.hauteur_finie_droite(row), getters.hauteur_finie_gauche(row));
+        if ((hFinieMax + 50) < laize) return "";
+        const aPlat = getters.a_plat(row);
+        const fraction = (aPlat / laize) - Math.floor(aPlat / laize);
+        return round1(fraction * laize);
+    },
+
     // Nb Glisseurs PAR PAN : base par pan (sans × 2 paire) + 1 si « Pan libre ».
     nb_glisseurs: (row) => {
         const lFinie = getters.largeur_finie(row);
@@ -302,6 +337,9 @@ export const RIDEAUX_GETTERS = {
     hauteur_coupe_inter:   getters.hauteur_coupe_inter,
     nombre_les:            getters.nombre_les,
     reste_les:             getters.reste_les,
+    reste_les_t2:          getters.reste_les_t2,
+    reste_les_doublure:    getters.reste_les_doublure,
+    reste_les_inter:       getters.reste_les_inter,
     nombre_glisseur:       getters.nb_glisseurs,
     nb_crochets_par_pan:   getters.nb_crochets_par_pan,
 };
@@ -547,6 +585,15 @@ export const RIDEAUX_PROD_SCHEMA = [
             return calcML(getters.a_plat(row), toNum(row.laize_tissu2), hC, hC);
         }
     },
+    {
+        key: "reste_les_t2",
+        label: "Appiècement T2 cm",
+        type: "number",
+        width: 140,
+        readOnly: true,
+        tooltip: "Reste de tissu après les lés entiers, sur la laize du tissu 2. Vide s'il n'y a pas de tissu 2, ou si le rideau rentre dans la laize (hauteur finie max + 50 cm < laize T2).",
+        valueGetter: (v, r) => getters.reste_les_t2(getRow(v, r))
+    },
     { key: "doublure", label: "Doublure", type: "text", width: 160, editable: true },
     { key: "laize_doublure", label: "Laize D.", type: "number", width: 110, editable: true },
     {
@@ -569,6 +616,15 @@ export const RIDEAUX_PROD_SCHEMA = [
             return calcML(getters.a_plat(row), toNum(row.laize_doublure), hCD, hCD);
         }
     },
+    {
+        key: "reste_les_doublure",
+        label: "Appiècement Doublure cm",
+        type: "number",
+        width: 160,
+        readOnly: true,
+        tooltip: "Reste de tissu après les lés entiers, sur la laize de doublure. Vide s'il n'y a pas de doublure, ou si le rideau rentre dans la laize (hauteur finie max + 50 cm < laize doublure).",
+        valueGetter: (v, r) => getters.reste_les_doublure(getRow(v, r))
+    },
     { key: "inter_doublure", label: "Interdoublure", type: "text", width: 160 },
     { key: "laize_inter", label: "Laize Interdoublure", type: "number", width: 175 },
     {
@@ -583,6 +639,15 @@ export const RIDEAUX_PROD_SCHEMA = [
             const hC = getters.hauteur_coupe(row);
             return calcML(getters.a_plat(row), toNum(row.laize_inter), hC, hC);
         }
+    },
+    {
+        key: "reste_les_inter",
+        label: "Appiècement Inter. cm",
+        type: "number",
+        width: 150,
+        readOnly: true,
+        tooltip: "Reste de tissu après les lés entiers, sur la laize d'interdoublure. Vide s'il n'y a pas d'interdoublure, ou si le rideau rentre dans la laize (hauteur finie max + 50 cm < laize inter).",
+        valueGetter: (v, r) => getters.reste_les_inter(getRow(v, r))
     },
     { key: "passementerie1", label: "Pass. 1", type: "text", width: 160, editable: true },
     { key: "application_passementerie1", label: "Appli Pass. 1", type: "select", options: ["I", "U", "L", "-"], width: 140, editable: true },
