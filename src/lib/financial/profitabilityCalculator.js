@@ -1,3 +1,5 @@
+import { aggregatePurchaseChapters, ST_LABELS } from '../purchases/chapters';
+
 export const calculateProfitability = (rows = [], depRows = [], extraRows = [], commissionRate = 3.5) => {
     // Helper to safely convert to number
     const toNum = (v) => {
@@ -19,130 +21,16 @@ export const calculateProfitability = (rows = [], depRows = [], extraRows = [], 
     // —————————————————————————————————————————————————————————
     // 2. ACHATS FIXES (B) - Matières uniquement
     // —————————————————————————————————————————————————————————
+    // Chapitrage délégué au module partagé avec la liste d'achats (lib/purchases/chapters).
+    const chapters = aggregatePurchaseChapters(rows);
     const achatsFixesDetails = {
-        tissus: [],
-        rails: [],
-        stores: [], // NEW
-        total: 0
+        tissus: chapters.tissus,
+        passementerie: chapters.passementerie,
+        rails: chapters.rails,
+        stores: chapters.stores,
+        total: chapters.total,
     };
-
-    const mapTissus = new Map();
-    const mapRails = new Map();
-    const mapStores = new Map(); // NEW
-
-    // Helper to generate source info
-    const getSource = (r, qty, price, ml) => ({
-        minute: r.produit || "Inconnu",
-        zone: r.zone || "-",
-        piece: r.piece || "-",
-        quantite: qty,
-        price: price,
-        ...(ml !== undefined && { ml })
-    });
-
-    const pushMap = (map, label, ml, pa, source, unit) => {
-        // Group precisely by the visible label text
-        const key = String(label).trim();
-        if (!key || key === "undefined") return; // Skip empty
-
-        if (!map.has(key)) map.set(key, { label: key, ml: 0, pa: 0, ...(unit ? { unit } : {}), sources: [] });
-        const item = map.get(key);
-        item.ml += ml;
-        item.pa += pa;
-        if (source) item.sources.push(source);
-    };
-
-    rows.forEach(r => {
-        const q = qty(r);
-
-        // --- TISSUS (Shared) ---
-        if (r.tissu_1) {
-            pushMap(mapTissus, r.tissu_1, toNum(r.ml_tissu_1) * q, toNum(r.pa_tissu_1) * q, getSource(r, q, toNum(r.pa_tissu_1) * q, toNum(r.ml_tissu_1) * q));
-        }
-        if (r.tissu_2) {
-            pushMap(mapTissus, r.tissu_2, toNum(r.ml_tissu_2) * q, toNum(r.pa_tissu_2) * q, getSource(r, q, toNum(r.pa_tissu_2) * q, toNum(r.ml_tissu_2) * q));
-        }
-        if (r.passementerie_1) {
-            pushMap(mapTissus, r.passementerie_1, toNum(r.ml_pass_1) * q, toNum(r.pa_pass_1) * q, getSource(r, q, toNum(r.pa_pass_1) * q, toNum(r.ml_pass_1) * q));
-        }
-        if (r.tissu_deco1) {
-            pushMap(mapTissus, r.tissu_deco1, toNum(r.ml_tissu1) * q, toNum(r.pa_tissu1) * q, getSource(r, q, toNum(r.pa_tissu1) * q, toNum(r.ml_tissu1) * q));
-        }
-        if (r.toile_finition_1) {
-            pushMap(mapTissus, r.toile_finition_1, toNum(r.ml_toile_finition_1) * q, toNum(r.pa_toile_finition_1) * q, getSource(r, q, toNum(r.pa_toile_finition_1) * q, toNum(r.ml_toile_finition_1) * q));
-        }
-        if (r.tissu_deco2) {
-            pushMap(mapTissus, r.tissu_deco2, toNum(r.ml_tissu2) * q, toNum(r.pa_tissu2) * q, getSource(r, q, toNum(r.pa_tissu2) * q, toNum(r.ml_tissu2) * q));
-        }
-        if (r.doublure) {
-            pushMap(mapTissus, r.doublure, toNum(r.ml_doublure) * q, toNum(r.pa_doublure) * q, getSource(r, q, toNum(r.pa_doublure) * q, toNum(r.ml_doublure) * q));
-        }
-        if (r.interdoublure) {
-            pushMap(mapTissus, r.interdoublure, toNum(r.ml_interdoublure) * q, toNum(r.pa_interdoublure) * q, getSource(r, q, toNum(r.pa_interdoublure) * q, toNum(r.ml_interdoublure) * q));
-        }
-        if (r.passementerie1) {
-            pushMap(mapTissus, r.passementerie1, toNum(r.ml_pass1) * q, toNum(r.pa_pass1) * q, getSource(r, q, toNum(r.pa_pass1) * q, toNum(r.ml_pass1) * q));
-        }
-        if (r.passementerie2) {
-            pushMap(mapTissus, r.passementerie2, toNum(r.ml_pass2) * q, toNum(r.pa_pass2) * q, getSource(r, q, toNum(r.pa_pass2) * q, toNum(r.ml_pass2) * q));
-        }
-
-        // --- RAILS & STORES ---
-        const prodStr = String(r.produit || "");
-        const isBateau = /bateau|vélum|velum/i.test(prodStr);
-        const isStore = (/store|canishade/i.test(prodStr) || /^autre$/i.test(prodStr)) && !isBateau;
-
-        if (isStore) {
-            // STORES (Enrouleurs, Californiens, etc.)
-            const storeName = r.mecanisme_store || r.modele_mecanisme || r.nom_tringle;
-            const paStoreNum = toNum(r.pa_mecanisme_store) > 0 ? toNum(r.pa_mecanisme_store) : (toNum(r.pa_meca) + toNum(r.pa_mecanisme) + toNum(r.pa_mecanisme_bis));
-            const val = paStoreNum * q;
-            if (storeName && val > 0) {
-                pushMap(mapStores, storeName, q, val, getSource(r, q, val));
-            }
-        } else if (isBateau) {
-            // STORES BATEAUX
-            const bateauName = r.mecanisme_store || r.modele_mecanisme || r.nom_tringle;
-            const val = (toNum(r.pa_mecanisme_store) > 0
-                ? toNum(r.pa_mecanisme_store)
-                : (toNum(r.pa_meca) + toNum(r.pa_mecanisme) + toNum(r.pa_mecanisme_bis))) * q;
-            if (bateauName && val > 0) {
-                pushMap(mapStores, bateauName, q, val, getSource(r, q, val));
-            }
-        } else {
-            // RAILS, TRINGLES, DECOR MECANISMES (mécanisme principal)
-            const mecaName = r.nom_tringle || r.modele_mecanisme || r.type_mecanisme || r.mecanisme_fourniture;
-            const val = (toNum(r.pa_meca) + toNum(r.pa_mecanisme)) * q;
-
-            if (mecaName && val > 0) {
-                const byMeter = (r.type_mecanisme === 'Rail' || r.nom_tringle);
-                if (byMeter) {
-                    const len = (toNum(r.largeur_mecanisme || r.l_mecanisme) / 100) * q;
-                    pushMap(mapRails, mecaName, len, val, getSource(r, q, val, len), 'm');
-                } else {
-                    // Forfait / pièce
-                    pushMap(mapRails, mecaName, q, val, getSource(r, q, val), 'pce');
-                }
-            }
-
-            // Mécanisme BIS (rideaux) : ligne d'achat DISTINCTE, au forfait (pièces) × quantité.
-            // Capté indépendamment du méca principal (sinon perdu si celui-ci est vide).
-            const valBis = toNum(r.pa_mecanisme_bis) * q;
-            if (valBis > 0) {
-                const bisName = r.mecanisme_bis || 'Méca Bis';
-                pushMap(mapRails, bisName, q, valBis, getSource(r, q, valBis), 'pce');
-            }
-        }
-    });
-
-    // Convert Maps
-    achatsFixesDetails.tissus = Array.from(mapTissus.values()).sort((a, b) => a.label.localeCompare(b.label, "fr", { numeric: true }));
-    achatsFixesDetails.rails = Array.from(mapRails.values()).sort((a, b) => a.label.localeCompare(b.label, "fr", { numeric: true }));
-    achatsFixesDetails.stores = Array.from(mapStores.values()).sort((a, b) => a.label.localeCompare(b.label, "fr", { numeric: true }));
-
-    const sumPA = (arr) => arr.reduce((acc, item) => acc + item.pa, 0);
-    const totalAchatsFixes = sumPA(achatsFixesDetails.tissus) + sumPA(achatsFixesDetails.rails) + sumPA(achatsFixesDetails.stores);
-    achatsFixesDetails.total = totalAchatsFixes;
+    const totalAchatsFixes = chapters.total;
 
     // —————————————————————————————————————————————————————————
     // 3. CHARGES VARIABLES (D)
@@ -155,20 +43,13 @@ export const calculateProfitability = (rows = [], depRows = [], extraRows = [], 
         autres: { total: 0, sources: [] }
     };
 
-    // 3.1 Sous-traitance
-    rows.forEach(r => {
-        const q = qty(r);
-        const stp = toNum(r.st_pose_pa) * q; // Strict key st_pose_pa
-        if (stp > 0) {
-            chargesAgg.st_pose.total += stp;
-            chargesAgg.st_pose.sources.push(getSource(r, q, stp));
-        }
-        const stc = toNum(r.st_conf_pa) * q; // Strict key st_conf_pa
-        if (stc > 0) {
-            chargesAgg.st_conf.total += stc;
-            chargesAgg.st_conf.sources.push(getSource(r, q, stc));
-        }
-    });
+    // 3.1 Sous-traitance — agrégée par le module partagé, comme la liste d'achats.
+    // Elle reste une charge variable ici : ce n'est pas un achat matière.
+    const stItem = (label) => chapters.sous_traitance.find(i => i.label === label);
+    for (const [key, label] of [['st_pose', ST_LABELS.pose], ['st_conf', ST_LABELS.confection]]) {
+        const item = stItem(label);
+        if (item) chargesAgg[key] = { total: item.pa, sources: item.sources };
+    }
 
     // 3.2 Deplacements (COSTS ONLY: Nuits + Repas + Billets)
     depRows.forEach(r => {
