@@ -401,3 +401,7 @@ export const SCHEMA_64 = [
   { key: "photos_sur_site", label: "Photos Site", type: "photo", width: 150 },
   { key: "croquis", label: "Croquis Atelier", type: "croquis", width: 150 },
 ];
+
+// Marqueur de module : lu par recomputeRow pour appliquer les règles propres à la
+// Production (ex. Largeur et L. Méca indépendantes) sans toucher au chiffrage.
+Object.defineProperty(SCHEMA_64, 'module', { value: 'production' });

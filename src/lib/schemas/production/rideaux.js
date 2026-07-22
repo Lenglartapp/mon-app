@@ -790,3 +790,7 @@ export const RIDEAUX_PROD_SCHEMA = [
     { key: "schema_principe", label: "Schéma Principe", type: "photo", width: 150 },
     { key: "photos_sur_site", label: "Photo sur site", type: "photo", width: 150 },
 ];
+
+// Marqueur de module : lu par recomputeRow pour appliquer les règles propres à la
+// Production (ex. Largeur et L. Méca indépendantes) sans toucher au chiffrage.
+Object.defineProperty(RIDEAUX_PROD_SCHEMA, 'module', { value: 'production' });

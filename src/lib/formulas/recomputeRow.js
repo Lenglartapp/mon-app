@@ -21,6 +21,11 @@ function applyRecalCoef(next) {
   return next;
 }
 
+// Les schémas du module Production portent un marqueur `module` (posé à leur
+// définition, cf. src/lib/schemas/production*). Il permet de faire diverger une
+// règle entre Production et Chiffrage/Minutes sans dupliquer tout le calcul.
+const isProduction = (schema, ctx) => schema?.module === 'production' || ctx?.module === 'production';
+
 // --- CORE RECOMPUTE FUNCTION ---
 export function recomputeRow(row, schema, ctx = {}) {
   const next = { ...row };
@@ -139,7 +144,17 @@ export function recomputeRow(row, schema, ctx = {}) {
     fillFromCatalog('interdoublure', { laize_interdoublure: 'laize' });
 
     // B. Geometry
-    if (!next.largeur && next.largeur_mecanisme) next.largeur = next.largeur_mecanisme;
+    // En PRODUCTION, Largeur et L. Méca sont deux saisies INDÉPENDANTES : le rideau peut
+    // être plus large que le rail (et inversement). On n'amorce donc la largeur depuis le
+    // rail que si elle n'a jamais été renseignée (clé absente : ligne importée) ; une
+    // largeur effacée ou remise à 0 doit le rester, sinon elle « revient » à la valeur du
+    // rail à chaque recalcul.
+    // En CHIFFRAGE/MINUTES, on garde le pré-remplissage historique : toute largeur vide
+    // ou nulle reprend la largeur du rail.
+    const largeurAAmorcer = isProduction(schema, ctx)
+      ? next.largeur === undefined
+      : !next.largeur;
+    if (largeurAAmorcer && next.largeur_mecanisme) next.largeur = next.largeur_mecanisme;
     const L = NVL(next.largeur);
     const H = NVL(next.hauteur);
     const Ampleur = NVL(next.ampleur, 0);
