@@ -101,23 +101,35 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
     }
 
     // Filtres texte (champ spécifique ou tous les champs)
+    // Le statut est stocké en interne (TODO, IN_PROGRESS…) mais affiché traduit :
+    // on cherche donc à la fois dans le code et dans le libellé, sinon taper
+    // « en cours » ne remonte jamais rien.
+    const fieldText = (p, field) => field === 'status'
+      ? `${p.status || ''} ${PROJECT_STATUS_OPTIONS[p?.status]?.label || ''}`
+      : String(p[field] ?? '');
     const textFilters = activeFilters.filter(f => f.id !== 'my_projects' && f.value);
     textFilters.forEach(f => {
       const q = f.value.toLowerCase();
       if (f.field === 'all') {
-        res = res.filter(p => [p.name, p.manager, p.status, p.notes].some(x => String(x || "").toLowerCase().includes(q)));
+        res = res.filter(p => ['name', 'manager', 'status', 'notes'].some(k => fieldText(p, k).toLowerCase().includes(q)));
       } else {
-        res = res.filter(p => String(p[f.field] || "").toLowerCase().includes(q));
+        res = res.filter(p => fieldText(p, f.field).toLowerCase().includes(q));
       }
     });
 
+    const activeConditions = filterConditions.filter(isConditionActive);
+
+    // Les archivés sont masqués par défaut — sauf si l'utilisateur filtre
+    // explicitement sur le statut (sinon « Statut est Archivé » ne remonte rien).
+    const filtreStatutExplicite =
+      activeConditions.some(c => c.field === 'status') ||
+      textFilters.some(f => f.field === 'status');
     if (showArchived) {
       res = res.filter(p => p.status === 'ARCHIVED');
-    } else {
+    } else if (!filtreStatutExplicite) {
       res = res.filter(p => p.status !== 'ARCHIVED');
     }
 
-    const activeConditions = filterConditions.filter(isConditionActive);
     if (activeConditions.length > 0) {
       res = res.filter(p => {
         const flat = { ...p, prepa: p.budget?.prepa || 0, conf: p.budget?.conf || 0, pose: p.budget?.pose || 0 };

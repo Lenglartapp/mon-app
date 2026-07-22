@@ -10,6 +10,18 @@ export function getFieldType(col) {
     return 'text';
 }
 
+// Options d'un champ, normalisées en { value, label }.
+// Deux formats coexistent dans les schémas : liste de chaînes (["Oui", "Non"])
+// et liste d'objets ([{ value: 'IN_PROGRESS', label: 'En cours' }]).
+function getColOptions(col) {
+    if (!Array.isArray(col?.options)) return [];
+    return col.options
+        .map(o => (o && typeof o === 'object')
+            ? { value: String(o.value ?? ''), label: String(o.label ?? o.value ?? '') }
+            : { value: String(o ?? ''), label: String(o ?? '') })
+        .filter(o => o.value !== '');
+}
+
 export function getOperatorsForCol(col) {
     const type = getFieldType(col);
     if (type === 'number') return [
@@ -188,6 +200,7 @@ export default function FilterPanel({ schema, conditions, onChange, filters, set
                 const col = filterableFields.find(f => f.key === cond.field);
                 const operators = getOperatorsForCol(col);
                 const showValue = needsValue(cond.operator);
+                const colOptions = getColOptions(col);
 
                 return (
                     <div key={cond.id} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
@@ -223,13 +236,29 @@ export default function FilterPanel({ schema, conditions, onChange, filters, set
                         </select>
 
                         {showValue ? (
-                            <input
-                                type={getFieldType(col) === 'number' ? 'number' : 'text'}
-                                placeholder="Saisir une valeur"
-                                value={cond.value}
-                                onChange={e => update(cond.id, { value: e.target.value })}
-                                style={{ flex: 1, padding: '4px 8px', border: '1px solid #d1d5db', borderRadius: 4, fontSize: 13, outline: 'none', minWidth: 80 }}
-                            />
+                            colOptions.length > 0 ? (
+                                // Champ à options : on propose la liste au lieu d'une saisie libre.
+                                // La valeur stockée est la valeur interne (ex. IN_PROGRESS), pas le
+                                // libellé affiché — sans ça, la comparaison ne tombe jamais juste.
+                                <select
+                                    value={cond.value}
+                                    onChange={e => update(cond.id, { value: e.target.value })}
+                                    style={{ flex: 1, padding: '4px 6px', border: '1px solid #d1d5db', borderRadius: 4, fontSize: 13, outline: 'none', minWidth: 80, background: 'white' }}
+                                >
+                                    <option value="">— Choisir une valeur —</option>
+                                    {colOptions.map(o => (
+                                        <option key={o.value} value={o.value}>{o.label}</option>
+                                    ))}
+                                </select>
+                            ) : (
+                                <input
+                                    type={getFieldType(col) === 'number' ? 'number' : 'text'}
+                                    placeholder="Saisir une valeur"
+                                    value={cond.value}
+                                    onChange={e => update(cond.id, { value: e.target.value })}
+                                    style={{ flex: 1, padding: '4px 8px', border: '1px solid #d1d5db', borderRadius: 4, fontSize: 13, outline: 'none', minWidth: 80 }}
+                                />
+                            )
                         ) : (
                             <div style={{ flex: 1 }} />
                         )}
