@@ -792,12 +792,44 @@ export const useAppSettings = () => {
 };
 
 // --- PLANNING ---
+
+// Supabase plafonne toute requête à 1000 lignes (`max-rows`) et TRONQUE en silence :
+// pas d'erreur, pas d'avertissement. Au-delà du seuil, les créneaux excédentaires
+// n'étaient jamais lus — ils existaient en base mais disparaissaient de l'écran au
+// rafraîchissement, en frappant en priorité les plus récemment créés (sans ORDER BY,
+// Postgres renvoie grosso modo l'ordre d'insertion, donc les nouveaux sont coupés).
+// On lit donc par tranches jusqu'à épuisement, avec un tri explicite : la pagination
+// n'est fiable que si l'ordre est total et stable d'une requête à l'autre, d'où le
+// second critère `id` qui départage deux créneaux créés dans la même milliseconde.
+const EVENTS_PAGE_SIZE = 1000;
+const MAX_EVENT_PAGES = 50; // garde-fou : jamais de boucle infinie sur réponse inattendue
+
+const fetchAllEvents = async () => {
+    const all = [];
+    for (let page = 0; page < MAX_EVENT_PAGES; page++) {
+        const from = page * EVENTS_PAGE_SIZE;
+        const { data, error } = await supabase
+            .from('events')
+            .select('*')
+            .order('created_at', { ascending: true })
+            .order('id', { ascending: true })
+            .range(from, from + EVENTS_PAGE_SIZE - 1);
+
+        if (error) return { data: null, error };
+        all.push(...(data || []));
+        // Tranche incomplète = dernière tranche.
+        if (!data || data.length < EVENTS_PAGE_SIZE) return { data: all, error: null };
+    }
+    console.warn(`[useEvents] plafond de ${MAX_EVENT_PAGES} tranches atteint : le planning est peut-être incomplet.`);
+    return { data: all, error: null };
+};
+
 export const useEvents = () => {
     const [events, setEvents] = useState([]);
 
     useEffect(() => {
         const fetchEvents = async () => {
-            const { data, error } = await supabase.from('events').select('*');
+            const { data, error } = await fetchAllEvents();
 
             if (!error && data) {
                 // MAPPING INVERSE : DB (Snake) -> Frontend (Camel)
