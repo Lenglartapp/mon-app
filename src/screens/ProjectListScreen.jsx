@@ -26,6 +26,7 @@ import { uid } from "../lib/utils/uid";
 import { extractMaterialsFromLines } from "../lib/data/demo";
 
 import { PROJECT_STATUS_OPTIONS } from "../lib/constants/projectStatus";
+import { isInternalProject } from "../lib/planning/internalProject";
 
 const PROJECT_FILTER_SCHEMA = [
   { key: 'name',    label: 'Nom du projet',      type: 'text' },
@@ -453,6 +454,10 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
               {filteredProjects.map((p, idx) => {
                 const statusOpt = PROJECT_STATUS_OPTIONS[p?.status] || PROJECT_STATUS_OPTIONS.TODO;
                 const budget = p.budget || { prepa: 0, conf: 0, pose: 0 };
+                // Dossier interne : ni responsable, ni livraison, ni budget vendu.
+                // Afficher des champs éditables vides laisserait croire qu'il manque
+                // une saisie — on neutralise plutôt les colonnes qui n'ont pas de sens.
+                const internal = isInternalProject(p);
 
                 return (
                   <tr key={p?.id || idx} className="project-row" style={{ borderBottom: '1px solid #F3F4F6', transition: 'background 0.1s' }} onClick={() => onOpenProject?.(p)} onMouseEnter={(e) => e.currentTarget.style.background = '#F9FAFB'} onMouseLeave={(e) => e.currentTarget.style.background = 'white'}>
@@ -464,6 +469,7 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
 
                     {/* RESPONSABLE */}
                     <td style={{ padding: '12px 16px' }} onClick={(e) => e.stopPropagation()}>
+                      {internal ? <span style={{ color: '#D1D5DB', fontSize: 13 }}>—</span> : (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <Avatar sx={{ width: 24, height: 24, fontSize: 10, bgcolor: stringToColor(p?.manager || "?") }}>{(p?.manager?.[0] || "?").toUpperCase()}</Avatar>
                         <select
@@ -486,6 +492,7 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
                           )}
                         </select>
                       </div>
+                      )}
                     </td>
 
                     {/* STATUT */}
@@ -494,6 +501,11 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
                         <select
                           value={p?.status || "TODO"}
                           onChange={(e) => handleUpdate(p.id, { status: e.target.value })}
+                          // Le dossier interne ne doit jamais pouvoir être archivé par
+                          // mégarde : il recueille du temps en continu et disparaîtrait
+                          // de la liste, avec tout son historique de chapitres.
+                          disabled={internal}
+                          title={internal ? "Le dossier interne reste toujours actif" : undefined}
                           style={{
                             appearance: 'none',
                             padding: "6px 12px 6px 24px",
@@ -526,6 +538,7 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
 
                     {/* LIVRAISON */}
                     <td style={{ padding: '12px 16px' }} onClick={(e) => e.stopPropagation()}>
+                      {internal ? <span style={{ color: '#D1D5DB', fontSize: 13 }}>—</span> : (
                       <input
                         type="date"
                         value={p?.deadline ? p.deadline.split('T')[0] : ""}
@@ -540,6 +553,7 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
                           outline: 'none'
                         }}
                       />
+                      )}
                     </td>
 
                     {/* CREATION */}
@@ -548,9 +562,9 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
                     </td>
 
                     {/* BUDGETS */}
-                    <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, color: '#374151' }}>{budget.prepa || 0} h</td>
-                    <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, color: '#374151' }}>{budget.conf || 0} h</td>
-                    <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, color: '#374151' }}>{budget.pose || 0} h</td>
+                    <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, color: internal ? '#D1D5DB' : '#374151' }}>{internal ? '—' : `${budget.prepa || 0} h`}</td>
+                    <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, color: internal ? '#D1D5DB' : '#374151' }}>{internal ? '—' : `${budget.conf || 0} h`}</td>
+                    <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, color: internal ? '#D1D5DB' : '#374151' }}>{internal ? '—' : `${budget.pose || 0} h`}</td>
 
                     {/* ACTIONS */}
                     <td style={{ padding: '12px 16px' }} onClick={(e) => e.stopPropagation()}>

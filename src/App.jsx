@@ -21,6 +21,8 @@ import StocksModule from "./components/modules/Stocks/StocksModule";
 import { can } from "./lib/authz";
 import LoginScreen from "./screens/LoginScreen";
 import PlanningScreen from "./screens/PlanningScreen";
+import InternalProjectScreen from "./screens/InternalProjectScreen.jsx";
+import { isInternalProject } from "./lib/planning/internalProject";
 import LogistiqueScreen from "./screens/LogistiqueScreen";
 import PerformanceScreen from "./screens/PerformanceScreen";
 import { useProjects, useMinutes, useEvents, useStocks } from './hooks/useSupabase';
@@ -440,7 +442,21 @@ function AppShell() {
         />
       )}
 
-      {screen === "project" && currentProject && (
+      {/* Le dossier interne n'a ni ouvrages, ni BPF, ni prise de cotes : l'écran de
+          production n'afficherait que des onglets vides. Il a le sien, réduit au suivi
+          des heures par chapitre et au transfert vers un vrai dossier. */}
+      {screen === "project" && currentProject && isInternalProject(cleanProjects.find(p => String(p.id) === String(currentProject.id)) || currentProject) && (
+        <InternalProjectScreen
+          project={cleanProjects.find(p => String(p.id) === String(currentProject.id)) || currentProject}
+          projects={cleanProjects}
+          events={planningEvents}
+          onUpdateProject={handleUpdateProject}
+          onUpdateEvent={updateEvent}
+          onBack={() => navigate("/production")}
+        />
+      )}
+
+      {screen === "project" && currentProject && !isInternalProject(cleanProjects.find(p => String(p.id) === String(currentProject.id)) || currentProject) && (
         <ProductionProjectScreen
           inventory={inventory}
           project={cleanProjects.find(p => String(p.id) === String(currentProject.id)) || currentProject}
@@ -474,6 +490,7 @@ function AppShell() {
           onUpdateEvent={updateEvent}
           onDeleteEvent={(id) => deleteEvent(id)}
           onUpdateProject={handleUpdateProject}
+          onCreateProject={addProject}
           onBack={() => navigate("/")}
         />
       )}

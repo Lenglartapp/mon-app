@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { differenceInMinutes, parseISO, isSameWeek } from 'date-fns';
 import { X, Briefcase, Calculator } from 'lucide-react';
+import { INTERNAL_PROJECT_NAME, isInternalProject, findInternalProject, getActiveChapters, normalizeChapter } from '../../lib/planning/internalProject';
 
 const S = {
     overlay: {
@@ -130,13 +131,34 @@ const BacklogCreationModal = ({ isOpen, onClose, onSave, onDelete, projects, eve
         return `${r}`.replace('.', ',');
     };
 
+    // Dossier interne : le libellé devient le CHAPITRE, et il est obligatoire — c'est lui
+    // qui porte le suivi des heures hors dossier (cf. lib/planning/internalProject).
+    const internalProject = findInternalProject(projects);
+    const showInternalOption = !filteredProjects.some(isInternalProject);
+    const isInternalSelected = isInternalProject(selectedProject);
+    const chapterSuggestions = getActiveChapters(internalProject)
+        .filter(c => !customLabel || c.name.toLowerCase().includes(customLabel.toLowerCase()))
+        .slice(0, 8);
+
+    const selectInternal = () => {
+        // Créé à l'enregistrement s'il n'existe pas encore.
+        setSelectedProject(internalProject || { id: null, name: INTERNAL_PROJECT_NAME, config: { isInternal: true } });
+        setSearch(INTERNAL_PROJECT_NAME);
+        setShowSuggestions(false);
+        setCustomLabel('');
+    };
+
+    const canSubmit = !!selectedProject && !!hours && (!isInternalSelected || !!normalizeChapter(customLabel));
+
     const handleSubmit = () => {
-        if (!selectedProject || !hours) return;
+        if (!canSubmit) return;
 
         onSave({
             id: eventToEdit?.id, // Pass ID if editing
             projectId: selectedProject.id,
-            title: customLabel || selectedProject.name,
+            title: isInternalSelected ? normalizeChapter(customLabel) : (customLabel || selectedProject.name),
+            internalChapter: isInternalSelected ? normalizeChapter(customLabel) : null,
+            isInternal: isInternalSelected,
             hours: parseFloat(hours),
             comment: comment
         });
@@ -180,7 +202,8 @@ const BacklogCreationModal = ({ isOpen, onClose, onSave, onDelete, projects, eve
                             }}
                             onFocus={() => setShowSuggestions(true)}
                         />
-                        {showSuggestions && filteredProjects.length > 0 && (
+                        {/* Le repli « interne » doit rester atteignable même quand la recherche ne donne rien */}
+                        {showSuggestions && (filteredProjects.length > 0 || showInternalOption) && (
                             <div style={{
                                 position: 'absolute', top: '100%', left: 0, right: 0,
                                 backgroundColor: 'white', border: '1px solid #E5E7EB',
@@ -204,6 +227,15 @@ const BacklogCreationModal = ({ isOpen, onClose, onSave, onDelete, projects, eve
                                         <div style={{ fontSize: 12, color: '#6B7280' }}>{p.code}</div>
                                     </div>
                                 ))}
+                                {showInternalOption && (
+                                    <div
+                                        onClick={selectInternal}
+                                        style={{ padding: '8px 12px', cursor: 'pointer', borderTop: '1px solid #E5E7EB', background: '#FEFCE8' }}
+                                    >
+                                        <div style={{ fontWeight: 600, color: '#111827' }}>{INTERNAL_PROJECT_NAME}</div>
+                                        <div style={{ fontSize: 12, color: '#6B7280' }}>Prototype, étude… — temps hors dossier</div>
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
@@ -249,13 +281,19 @@ const BacklogCreationModal = ({ isOpen, onClose, onSave, onDelete, projects, eve
                 {/* 3. OPTIONAL FIELDS */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                     <div style={S.section}>
-                        <label style={S.label}>Libellé (Optionnel)</label>
+                        <label style={S.label}>{isInternalSelected ? 'Chapitre' : 'Libellé (Optionnel)'}</label>
                         <input
                             style={S.input}
-                            placeholder="Ex: RDC, Finitions..."
+                            placeholder={isInternalSelected ? 'Ex: prototype bambou, Fab Lab' : 'Ex: RDC, Finitions...'}
                             value={customLabel}
                             onChange={e => setCustomLabel(e.target.value)}
+                            list={isInternalSelected ? 'chapitres-internes' : undefined}
                         />
+                        {isInternalSelected && (
+                            <datalist id="chapitres-internes">
+                                {chapterSuggestions.map(c => <option key={c.name} value={c.name} />)}
+                            </datalist>
+                        )}
                     </div>
                 </div>
 
@@ -284,9 +322,10 @@ const BacklogCreationModal = ({ isOpen, onClose, onSave, onDelete, projects, eve
                     <div style={{ display: 'flex', gap: 12 }}>
                         <button style={{ ...S.btnParams, ...S.btnCancel }} onClick={onClose}>Annuler</button>
                         <button
-                            style={{ ...S.btnParams, ...S.btnSubmit, opacity: (!selectedProject || !hours) ? 0.5 : 1 }}
+                            style={{ ...S.btnParams, ...S.btnSubmit, opacity: canSubmit ? 1 : 0.5 }}
                             onClick={handleSubmit}
-                            disabled={!selectedProject || !hours}
+                            disabled={!canSubmit}
+                            title={!canSubmit && isInternalSelected ? 'Renseignez le chapitre' : undefined}
                         >
                             {eventToEdit ? 'Mettre à jour' : 'Ajouter au programme'}
                         </button>

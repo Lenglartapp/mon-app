@@ -20,6 +20,7 @@ import PlanningGrid from '../components/planning/PlanningGrid';
 import AssistantView from '../components/planning/AssistantView';
 import CapaciteView from '../components/planning/CapaciteView';
 import BacklogCreationModal from '../components/planning/BacklogCreationModal';
+import { findInternalProject, buildInternalProject, configWithChapter } from '../lib/planning/internalProject';
 import { generatePlanningTemplate, processPlanningImport } from '../lib/utils/planningExcelUtils';
 
 // --- Helpers atelier : durée <-> créneau (pause déjeuner 12h-13h) ---
@@ -90,7 +91,7 @@ const rebalanceAtelierDay = (resourceId, dateStr, type, pool) => {
     }));
 };
 
-export default function PlanningScreen({ projects, events: initialEvents, onUpdateEvent, onDeleteEvent: onDeleteEventProp, onUpdateProject, onBack }) {
+export default function PlanningScreen({ projects, events: initialEvents, onUpdateEvent, onDeleteEvent: onDeleteEventProp, onUpdateProject, onCreateProject, onBack }) {
     const { users: authUsers, currentUser } = useAuth();
     const canEdit = can(currentUser, 'planning.edit');
     const showGauges = can(currentUser, 'planning.view_gauges');
@@ -738,8 +739,44 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
 
     // --- HANDLERS ÉVÉNEMENTS ---
 
-    const handleSaveEvent = (eventData) => {
+    // Dossier interne : créé à la toute première utilisation (personne n'a à le créer à la
+    // main), puis on y enregistre le chapitre s'il est nouveau — c'est ce qui alimentera
+    // les suggestions et, plus tard, le suivi par chapitre.
+    // Renvoie l'id du dossier à rattacher au créneau, ou null si la création a échoué :
+    // dans ce cas on préfère ne rien enregistrer plutôt que de recréer un créneau orphelin.
+    const ensureInternalProject = async (chapterName) => {
+        let internal = findInternalProject(projects);
+
+        if (!internal) {
+            if (!onCreateProject) {
+                console.error('[planning] création du dossier interne impossible (droits insuffisants ?)');
+                return null;
+            }
+            const payload = buildInternalProject();
+            const { data, error } = (await onCreateProject(payload)) || {};
+            if (error) {
+                console.error('[planning] création du dossier interne échouée :', error.message);
+                alert(`Impossible de créer le dossier interne : ${error.message}`);
+                return null;
+            }
+            internal = data?.[0] || payload;
+        }
+
+        const nextConfig = configWithChapter(internal, chapterName);
+        if (nextConfig && onUpdateProject) onUpdateProject(internal.id, { config: nextConfig });
+
+        return internal.id;
+    };
+
+    const handleSaveEvent = async (eventData) => {
         let newEvents = localEvents;
+
+        // Créneau interne : on résout (ou crée) le dossier avant de poser quoi que ce soit.
+        let projectId = eventData.projectId;
+        if (eventData.isInternal) {
+            projectId = await ensureInternalProject(eventData.internalChapter);
+            if (!projectId) return;
+        }
 
         // PERSISTENCE: Suppression ancienne version (si édition)
         if (eventData.id || eventData.seriesId) {
@@ -798,7 +835,8 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                         start: startD.toISOString(),
                         end: endD.toISOString(),
                         description: eventData.description,
-                        projectId: eventData.projectId,
+                        projectId: projectId,
+                        internalChapter: eventData.internalChapter || null,
                         seriesId: seriesId,
                         assigned_name: assignedName,
                         status: eventData.status || 'pending',
@@ -1082,8 +1120,15 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
         setIsModalOpen(true);
     };
 
-    const handleSaveBacklog = (data) => {
-        // data: { id?, projectId, title, hours, comment }
+    const handleSaveBacklog = async (data) => {
+        // data: { id?, projectId, title, hours, comment, isInternal?, internalChapter? }
+
+        // Interne : résout (ou crée) le dossier et enregistre le chapitre avant de poser la carte.
+        let projectId = data.projectId;
+        if (data.isInternal) {
+            projectId = await ensureInternalProject(data.internalChapter);
+            if (!projectId) return;
+        }
 
         if (data.id) {
             // UPDATE EXISTING
@@ -1092,7 +1137,8 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                 title: data.title,
                 meta: {
                     ...e.meta,
-                    projectId: data.projectId,
+                    projectId: projectId,
+                    internalChapter: data.internalChapter || null,
                     budgetHours: data.hours,
                     description: data.comment
                 }
@@ -1123,7 +1169,8 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                 type: 'default',
                 date: format(backlogDate, 'yyyy-MM-dd'),
                 meta: {
-                    projectId: data.projectId,
+                    projectId: projectId,
+                    internalChapter: data.internalChapter || null,
                     start: startD.toISOString(),
                     end: endD.toISOString(),
                     budgetHours: data.hours,
