@@ -51,6 +51,9 @@ const PERMISSIONS = {
     "planning.view_gauges": true,
     "planning.view_assistant": true,
     "planning.manage_team": true,
+    // Redistribuer des heures internes vers un dossier : déplace du temps RÉALISÉ
+    // d'un dossier à un autre, réservé à l'ordo et à l'admin.
+    "planning.transfer_internal": true,
 
     "production.edit": true,
 

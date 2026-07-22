@@ -2,12 +2,19 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { X, Briefcase, Check, Calendar as CalendarIcon, Clock, ArrowRight, User, ChevronDown, Trash2, CheckCircle } from 'lucide-react';
 import { format, differenceInMinutes } from 'date-fns';
 import { ATELIER_HOURS_PER_DAY } from './constants';
+import {
+    INTERNAL_PROJECT_NAME, isInternalProject, findInternalProject,
+    getActiveChapters, normalizeChapter,
+} from '../../lib/planning/internalProject';
 
 const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = [], events = [], eventToEdit, initialData, currentUser, groupsConfig, readOnly = false }) => {
     // États Formulaire
     const [projectSearch, setProjectSearch] = useState('');
     const [selectedProject, setSelectedProject] = useState(null);
     const [showProjectList, setShowProjectList] = useState(false);
+    // Chapitre : uniquement quand le dossier interne est sélectionné
+    const [chapter, setChapter] = useState('');
+    const [showChapterList, setShowChapterList] = useState(false);
 
     // Multi-Ressources
     const [selectedResources, setSelectedResources] = useState([]);
@@ -92,8 +99,13 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
         if (isOpen) {
             if (eventToEdit) {
                 // Mode Édition
-                setProjectSearch(eventToEdit.title || '');
-                setSelectedProject(projects.find(p => p.id === eventToEdit.meta?.projectId) || { name: eventToEdit.title });
+                const editedProject = projects.find(p => p.id === eventToEdit.meta?.projectId) || null;
+                // Créneaux d'avant la refonte : pas de dossier, juste un titre libre. On
+                // affiche le titre pour ne rien perdre, mais l'enregistrement redemandera
+                // un dossier — c'est l'occasion de les régulariser un par un.
+                setProjectSearch(editedProject ? editedProject.name : (eventToEdit.title || ''));
+                setSelectedProject(editedProject);
+                setChapter(eventToEdit.meta?.internalChapter || '');
                 setSelectedResources([eventToEdit.resourceId]);
                 const startDateObj = new Date(eventToEdit.meta?.start || eventToEdit.date);
                 const endDateObj = new Date(eventToEdit.meta?.end || eventToEdit.date);
@@ -107,6 +119,7 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
                 // Mode Création (Clic Cellule)
                 setProjectSearch('');
                 setSelectedProject(null);
+                setChapter('');
                 setSelectedResources([initialData.resourceId]);
                 setStartDate(initialData.date);
                 setEndDate(initialData.date);
@@ -118,6 +131,7 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
                 // Mode Création (Bouton Nouveau)
                 setProjectSearch('');
                 setSelectedProject(null);
+                setChapter('');
                 setSelectedResources([]);
                 setStartDate(format(new Date(), 'yyyy-MM-dd'));
                 setEndDate(format(new Date(), 'yyyy-MM-dd'));
@@ -134,6 +148,26 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
         (p.id && p.id.toString().includes(projectSearch))
     );
 
+    // Le dossier interne est TOUJOURS proposé, même quand la recherche ne donne rien :
+    // c'est la porte de sortie qui remplace l'ancienne saisie libre (laquelle produisait
+    // des créneaux orphelins, invisibles de tout suivi).
+    const internalProject = findInternalProject(projects);
+    const showInternalOption = !filteredProjects.some(isInternalProject);
+    const isInternalSelected = isInternalProject(selectedProject);
+    const chapterSuggestions = useMemo(() => {
+        const q = normalizeChapter(chapter).toLowerCase();
+        return getActiveChapters(internalProject)
+            .filter(c => !q || c.name.toLowerCase().includes(q))
+            .slice(0, 8);
+    }, [internalProject, chapter]);
+
+    const selectInternal = () => {
+        // Si le dossier n'existe pas encore, il sera créé à l'enregistrement.
+        setSelectedProject(internalProject || { id: null, name: INTERNAL_PROJECT_NAME, config: { isInternal: true } });
+        setProjectSearch(INTERNAL_PROJECT_NAME);
+        setShowProjectList(false);
+    };
+
     const toggleResource = (resId) => {
         if (selectedResources.includes(resId)) {
             setSelectedResources(selectedResources.filter(id => id !== resId));
@@ -142,14 +176,24 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
         }
     };
 
-    const handleSubmit = () => {
-        const titleToSave = selectedProject ? selectedProject.name : projectSearch;
+    // Un créneau doit être rattaché à un dossier — réel ou interne. Plus de titre libre :
+    // c'est ce qui a produit les créneaux orphelins (« Autre », noms tapés à la main),
+    // impossibles à rattacher a posteriori à quoi que ce soit.
+    const canSubmit = !!selectedProject
+        && selectedResources.length > 0
+        && (!isInternalSelected || !!normalizeChapter(chapter));
 
-        if (titleToSave && selectedResources.length > 0) {
+    const handleSubmit = () => {
+        if (canSubmit) {
+            // Sur l'interne, le créneau porte le nom du chapitre : c'est ce que l'atelier
+            // doit lire sur le planning (« prototype bambou », pas « Interne Lenglart »).
+            const titleToSave = isInternalSelected ? normalizeChapter(chapter) : selectedProject.name;
             onSave({
                 id: eventToEdit?.id, // Passe l'ID si édition
                 seriesId: eventToEdit?.meta?.seriesId, // Permet de remplacer toute la série, pas juste le 1er jour
                 title: titleToSave,
+                internalChapter: isInternalSelected ? normalizeChapter(chapter) : null,
+                isInternal: isInternalSelected,
                 projectId: selectedProject?.id || null,
                 resourceIds: selectedResources,
                 startDate,
@@ -227,7 +271,49 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
                                             <span style={{ fontSize: 12, color: '#9CA3AF', background: '#F3F4F6', padding: '2px 6px', borderRadius: 4 }}>#{p.id.toString().slice(-4)}</span>
                                         </div>
                                     )) : (
-                                        <div style={{ padding: 12, fontSize: 13, color: '#9CA3AF' }}>Aucun projet trouvé.</div>
+                                        <div style={{ padding: 12, fontSize: 13, color: '#9CA3AF' }}>Aucun dossier à ce nom.</div>
+                                    )}
+                                    {/* Repli : temps qui n'appartient à aucun dossier client */}
+                                    {showInternalOption && (
+                                        <div
+                                            onClick={selectInternal}
+                                            style={{ padding: '10px 12px', fontSize: 14, cursor: 'pointer', borderTop: '1px solid #E5E7EB', background: '#FEFCE8' }}
+                                        >
+                                            <div style={{ fontWeight: 600, color: '#111827' }}>{INTERNAL_PROJECT_NAME}</div>
+                                            <div style={{ fontSize: 12, color: '#6B7280', marginTop: 2 }}>
+                                                Prototype, étude, cotes anticipées… — temps hors dossier
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* CHAPITRE — obligatoire sur le dossier interne, c'est lui qui porte le suivi */}
+                            {isInternalSelected && (
+                                <div style={{ marginTop: 12, position: 'relative' }}>
+                                    <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 8, color: '#374151' }}>
+                                        Chapitre <span style={{ color: '#9CA3AF', fontWeight: 400 }}>— ex. prototype bambou, Fab Lab</span>
+                                    </label>
+                                    <input
+                                        value={chapter}
+                                        onChange={e => { setChapter(e.target.value); setShowChapterList(true); }}
+                                        onFocus={() => setShowChapterList(true)}
+                                        onBlur={() => setTimeout(() => setShowChapterList(false), 150)}
+                                        placeholder="Nom du chapitre"
+                                        style={{ width: '100%', border: '1px solid #E5E7EB', borderRadius: 8, padding: '10px 12px', fontSize: 14, color: '#111827', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }}
+                                    />
+                                    {showChapterList && chapterSuggestions.length > 0 && (
+                                        <div style={{ position: 'absolute', width: '100%', maxHeight: 180, overflowY: 'auto', background: 'white', border: '1px solid #E5E7EB', borderRadius: 8, marginTop: 4, zIndex: 20, boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}>
+                                            {chapterSuggestions.map(c => (
+                                                <div
+                                                    key={c.name}
+                                                    onMouseDown={() => { setChapter(c.name); setShowChapterList(false); }}
+                                                    style={{ padding: '9px 12px', fontSize: 14, cursor: 'pointer', borderBottom: '1px solid #F9FAFB', color: '#111827' }}
+                                                >
+                                                    {c.name}
+                                                </div>
+                                            ))}
+                                        </div>
                                     )}
                                 </div>
                             )}
@@ -417,7 +503,12 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
 
                     <button onClick={onClose} style={{ padding: '10px 20px', borderRadius: 8, border: '1px solid #D1D5DB', background: 'white', fontWeight: 600, color: '#374151', cursor: 'pointer', fontSize: 14 }}>{readOnly ? 'Fermer' : 'Annuler'}</button>
                     {!readOnly && (
-                        <button onClick={handleSubmit} style={{ padding: '10px 24px', borderRadius: 8, border: 'none', background: '#111827', color: 'white', fontWeight: 600, cursor: 'pointer', fontSize: 14, boxShadow: '0 1px 2px rgba(0,0,0,0.1)' }}>
+                        <button
+                            onClick={handleSubmit}
+                            disabled={!canSubmit}
+                            title={!canSubmit ? (isInternalSelected ? 'Renseignez le chapitre' : 'Choisissez un dossier et une ressource') : undefined}
+                            style={{ padding: '10px 24px', borderRadius: 8, border: 'none', background: '#111827', color: 'white', fontWeight: 600, cursor: canSubmit ? 'pointer' : 'not-allowed', opacity: canSubmit ? 1 : 0.45, fontSize: 14, boxShadow: '0 1px 2px rgba(0,0,0,0.1)' }}
+                        >
                             {eventToEdit ? 'Enregistrer' : 'Planifier'}
                         </button>
                     )}

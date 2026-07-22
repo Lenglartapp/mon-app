@@ -202,7 +202,7 @@ export const serviceOfEventType = (type) => {
 };
 
 // Heures nettes d'un événement (règle pause déjeuner)
-const netHoursOfEvent = (evt) => {
+export const netHoursOfEvent = (evt) => {
   const start = new Date(evt.meta?.start || evt.date);
   const end = new Date(evt.meta?.end || evt.date);
   const rawMinutes = differenceInMinutes(end, start);
