@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { calculateProfitability, calculateTargetCA } from '../../../lib/financial/profitabilityCalculator';
+import { PURCHASE_CHAPTERS, ST_LABELS, sumPA } from '../../../lib/purchases/chapters';
 import ProfitabilitySimulatorModal from './ProfitabilitySimulatorModal';
 import { COLORS, S } from '../../../lib/constants/ui';
 
@@ -35,9 +36,9 @@ export default function MoulinetteView({ rows, depRows, extraRows, commissionRat
                     amount={data.achats_fixes_details.total}
                     defaultOpen={true}
                 >
-                    <DetailGroup title="Tissus & Doublures" items={data.achats_fixes_details.tissus} />
-                    <DetailGroup title="Rails & Mécanismes" items={data.achats_fixes_details.rails} />
-                    <DetailGroup title="STORES" items={data.achats_fixes_details.stores} />
+                    {PURCHASE_CHAPTERS.map(ch => (
+                        <DetailGroup key={ch.key} title={ch.label} items={data.achats_fixes_details[ch.key]} />
+                    ))}
                 </ExpandableCard>
 
                 {/* SECTION 2: CHARGES VARIABLES */}
@@ -220,14 +221,13 @@ function DrillDownRow({ label, mainValue, subValue, sources, type = 'price' }) {
                                         {src.minute} <span style={{ opacity: 0.5 }}>({src.piece || '-'}/{src.zone || '-'})</span>
                                     </td>
                                     <td style={{ textAlign: 'right', padding: '2px 0', color: '#6b7280' }}>
-                                        {/* ML, Qty or Hours */}
-                                        {src.ml != null ? `${nf0.format(src.ml)} m` : src.quantite ? `${src.quantite}u` : null}
+                                        {/* Achats : quantité dans l'unité de la ligne (ml ou u). Heures : brut. */}
+                                        {src.unit ? `${nf0.format(src.qty)} ${src.unit}` : null}
                                         {src.hours && `${src.hours}h`}
                                     </td>
                                     <td style={{ textAlign: 'right', padding: '2px 0', fontWeight: 500 }}>
-                                        {/* Price or Hours */}
+                                        {src.pa !== undefined && nfEur0.format(src.pa)}
                                         {src.price !== undefined && nfEur0.format(src.price)}
-                                        {src.hours !== undefined && ''}
                                     </td>
                                 </tr>
                             ))}
@@ -239,17 +239,23 @@ function DrillDownRow({ label, mainValue, subValue, sources, type = 'price' }) {
     );
 }
 
-function DetailGroup({ title, items }) {
-    if (!items || items.length === 0) return null;
+// Un chapitre reste affiché même vide, avec un total à 0 : la structure ne bouge pas
+// d'un chiffrage à l'autre.
+function DetailGroup({ title, items = [] }) {
     return (
         <div style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', color: '#9ca3af', marginBottom: 8 }}>{title}</div>
-            {items.map((item, idx) => (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', color: '#9ca3af' }}>{title}</div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#6b7280' }}>{nfEur0.format(sumPA(items))}</div>
+            </div>
+            {items.length === 0 ? (
+                <div style={{ fontSize: 13, color: '#9ca3af', fontStyle: 'italic' }}>Aucun achat dans ce chapitre.</div>
+            ) : items.map((item, idx) => (
                 <DrillDownRow
                     key={idx}
                     label={item.label}
                     mainValue={nfEur0.format(item.pa)}
-                    subValue={`${nf0.format(item.ml)} ${item.unit || (item.label.includes('Tissu') ? 'ml' : 'm')}`}
+                    subValue={`${nf0.format(item.qty)} ${item.unit}`}
                     sources={item.sources}
                 />
             ))}
@@ -259,15 +265,15 @@ function DetailGroup({ title, items }) {
 
 function ChargesTable({ details, commissionRate, onUpdateCommission }) {
     const raw = details._details; // Access the detailed object with sources
+    // Tous les chapitres restent affichés, même à 0 : la structure ne bouge pas
+    // d'un chiffrage à l'autre.
     const items = [
         { label: 'Déplacements', ...raw.deplacements },
-        { label: 'Sous-traitance Pose', ...raw.st_pose },
-        { label: 'Sous-traitance Confection', ...raw.st_conf },
+        { label: ST_LABELS.pose, ...raw.st_pose },
+        { label: ST_LABELS.confection, ...raw.st_conf },
         { label: 'Commission Commerciale', isCommission: true, ...raw.commissions },
         { label: 'Autres Extras', ...raw.autres },
-    ].filter(r => r.total > 0 || r.isCommission);
-
-    if (items.length === 0) return <div style={{ color: '#9ca3af', fontStyle: 'italic' }}>Aucune charge variable.</div>;
+    ];
 
     return (
         <div>

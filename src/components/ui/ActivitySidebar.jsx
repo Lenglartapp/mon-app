@@ -16,11 +16,17 @@ import NotificationsIcon from '@mui/icons-material/Notifications';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
+import Tooltip from '@mui/material/Tooltip';
+import FormatBoldIcon from '@mui/icons-material/FormatBold';
+import FormatItalicIcon from '@mui/icons-material/FormatItalic';
+import FormatUnderlinedIcon from '@mui/icons-material/FormatUnderlined';
+import StrikethroughSIcon from '@mui/icons-material/StrikethroughS';
 
 import { useNotifications } from '../../contexts/NotificationContext';
 import { useAuth } from '../../auth';
 import { supabase } from '../../lib/supabaseClient'; // <--- Import Supabase
 import ImageLightbox from './ImageLightbox'; // <--- Lightbox
+import { renderRichText } from '../../lib/utils/richText.jsx';
 
 // --- HELPERS ---
 
@@ -49,6 +55,15 @@ function formatRelativeTime(dateStr) {
     if (diff < 86400) return `Il y a ${Math.floor(diff / 3600)} h`;
     return date.toLocaleDateString();
 }
+
+// Boutons de la barre de mise en forme du champ commentaire.
+// La marque insérée correspond à celle interprétée à l'affichage (INLINE_MARKS).
+const FORMAT_BUTTONS = [
+    { mark: '**', title: 'Gras (Cmd/Ctrl + B)', Icon: FormatBoldIcon },
+    { mark: '_', title: 'Italique (Cmd/Ctrl + I)', Icon: FormatItalicIcon },
+    { mark: '__', title: 'Souligné (Cmd/Ctrl + U)', Icon: FormatUnderlinedIcon },
+    { mark: '~~', title: 'Barré', Icon: StrikethroughSIcon },
+];
 
 // --- SUB-COMPONENTS ---
 
@@ -123,7 +138,34 @@ const CommentInputForm = React.memo(({ onSend, onSendWithImage, users = [] }) =>
         }
     };
 
+    // Encadre la sélection avec une marque (**gras**, ~~barré~~…). Si rien n'est
+    // sélectionné, insère les deux marques et place le curseur entre les deux.
+    // Le champ est non contrôlé : on écrit dans le DOM et on tient hasText à jour.
+    const applyMark = useCallback((mark) => {
+        const input = inputRef.current;
+        if (!input) return;
+        const { selectionStart: start, selectionEnd: end, value } = input;
+        const selected = value.slice(start, end);
+        input.value = value.slice(0, start) + mark + selected + mark + value.slice(end);
+
+        const caret = start + mark.length;
+        input.focus();
+        input.setSelectionRange(caret, caret + selected.length);
+
+        const isNotEmpty = input.value.trim().length > 0;
+        if (isNotEmpty !== hasText) setHasText(isNotEmpty);
+    }, [hasText]);
+
     const handleKeyDown = (e) => {
+        // Raccourcis habituels : Cmd/Ctrl + B / I / U
+        if (e.metaKey || e.ctrlKey) {
+            const shortcut = { b: '**', i: '_', u: '__' }[e.key.toLowerCase()];
+            if (shortcut) {
+                e.preventDefault();
+                applyMark(shortcut);
+                return;
+            }
+        }
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
             handleSendClick();
@@ -207,6 +249,22 @@ const CommentInputForm = React.memo(({ onSend, onSendWithImage, users = [] }) =>
                     </IconButton>
                 </Box>
             )}
+
+            {/* Barre de mise en forme — encadre la sélection avec la marque correspondante */}
+            <Box sx={{ display: 'flex', gap: 0.25, alignItems: 'center', mb: 0.5 }}>
+                {FORMAT_BUTTONS.map((btn) => (
+                    <Tooltip key={btn.mark} title={btn.title} enterDelay={400}>
+                        <IconButton
+                            size="small"
+                            onMouseDown={(e) => e.preventDefault()} // garde le focus (et la sélection) dans le champ
+                            onClick={() => applyMark(btn.mark)}
+                            sx={{ width: 26, height: 26, color: '#6B7280', '&:hover': { color: '#111827', bgcolor: '#F3F4F6' } }}
+                        >
+                            <btn.Icon sx={{ fontSize: 15 }} />
+                        </IconButton>
+                    </Tooltip>
+                ))}
+            </Box>
 
             <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-end', bgcolor: '#F3F4F6', borderRadius: 2, p: '8px 12px' }}>
                 <TextField
@@ -344,32 +402,6 @@ const LogItem = React.memo(({ act }) => {
     );
 });
 
-const processMessageText = (text) => {
-    if (!text) return "";
-    const parts = text.split(/(@\w+)/g);
-    return parts.map((part, i) => {
-        if (part.startsWith('@')) {
-            return (
-                <Chip
-                    key={i}
-                    label={part}
-                    size="small"
-                    sx={{
-                        height: 20,
-                        fontSize: 11,
-                        bgcolor: '#DBEAFE',
-                        color: '#1E40AF',
-                        fontWeight: 600,
-                        mx: 0.2,
-                        '& .MuiChip-label': { px: 0.5 }
-                    }}
-                />
-            );
-        }
-        return part;
-    });
-};
-
 const MessageItem = React.memo(({ act, isMe }) => {
     const authorName = act.author || act.user || "Utilisateur";
     const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -436,14 +468,17 @@ const MessageItem = React.memo(({ act, isMe }) => {
                                     )}
                                 </Box>
                                 {act.caption && (
-                                    <Typography variant="body2" sx={{ fontSize: 13, lineHeight: 1.6, color: '#1F2937' }}>
-                                        {processMessageText(act.caption)}
+                                    <Typography variant="body2" sx={{ fontSize: 13, lineHeight: 1.6, color: '#1F2937', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                                        {renderRichText(act.caption)}
                                     </Typography>
                                 )}
                             </Box>
                         ) : (
-                            <Typography variant="body2" sx={{ fontSize: 13, lineHeight: 1.6, color: '#1F2937' }}>
-                                {processMessageText(content || act.text)}
+                            // pre-wrap : conserve les retours à la ligne, espaces et
+                            // indentations tels qu'ils ont été saisis (ils étaient déjà
+                            // stockés, seul l'affichage les écrasait).
+                            <Typography variant="body2" sx={{ fontSize: 13, lineHeight: 1.6, color: '#1F2937', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                                {renderRichText(content || act.text)}
                             </Typography>
                         )}
                     </Box>

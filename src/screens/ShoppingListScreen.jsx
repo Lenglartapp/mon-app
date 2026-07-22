@@ -13,42 +13,45 @@ import {
     Chip
 } from '@mui/material';
 import { ChevronDown, Download } from 'lucide-react';
-import { aggregatePurchases } from '../lib/utils/aggregatePurchases';
+import { aggregatePurchaseChapters, PURCHASE_CHAPTERS, sumPA } from '../lib/purchases/chapters';
 import { COLORS, S } from '../lib/constants/ui';
 
 const formatPrice = (p) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(p);
+const formatQty = (q) => Number(q).toLocaleString('fr-FR', { maximumFractionDigits: 2 });
 
 export default function ShoppingListScreen({ minutes = [] }) {
-    const { tissus, rails, mecanismes, sous_traitance } = useMemo(() => aggregatePurchases(minutes), [minutes]);
+    // Le chapitrage est partagé avec la moulinette (lib/purchases/chapters) : les deux
+    // écrans doivent ventiler les achats exactement pareil.
+    const chapters = useMemo(() => aggregatePurchaseChapters(
+        minutes.flatMap(m => (m.lines || []).map(l => ({ ...l, _minute: m.name })))
+    ), [minutes]);
 
     const exportCSV = () => {
         // Generate CSV content
-        const header = ['Type', 'Article', 'Total Qty', 'Unité', 'Total HT', 'Zone', 'Pièce', 'Produit', 'Détail', 'Qté Ligne'];
+        const header = ['Chapitre', 'Article', 'Total Qté', 'Unité', 'Total HT', 'Zone', 'Pièce', 'Produit', 'Détail', 'Qté Ligne'];
         const rows = [];
 
-        const addRows = (category, items, unit) => {
+        const addRows = (chapter, items) => {
             items.forEach(item => {
                 item.sources.forEach(src => {
                     rows.push([
-                        category,
+                        chapter,
                         item.label,
-                        item.total_qty.toString().replace('.', ','),
-                        unit,
-                        item.total_pa.toString().replace('.', ','),
+                        String(item.qty).replace('.', ','),
+                        item.unit,
+                        String(item.pa).replace('.', ','),
                         src.zone,
                         src.piece,
                         src.produit,
                         src.detail || '',
-                        src.quantite_ligne.toString().replace('.', ',')
+                        String(src.qty).replace('.', ',')
                     ]);
                 });
             });
         };
 
-        addRows('Tissu', tissus, 'ml');
-        addRows('Rail', rails, 'ml');
-        addRows('Mécanisme', mecanismes, 'u');
-        addRows('Sous-traitance', sous_traitance, 'intervention');
+        PURCHASE_CHAPTERS.forEach(ch => addRows(ch.label, chapters[ch.key]));
+        addRows('Sous-traitance', chapters.sous_traitance);
 
         const csvContent = [
             header.join(';'),
@@ -65,15 +68,21 @@ export default function ShoppingListScreen({ minutes = [] }) {
         document.body.removeChild(link);
     };
 
-    const Section = ({ title, items, unit }) => (
+    // Un chapitre reste affiché même vide, avec un total à 0.
+    const Section = ({ title, items }) => (
         <div style={{ ...S.modernCard, padding: 24, marginBottom: 24 }}>
-            <Typography variant="h6" sx={{ mb: 3, fontWeight: 700, fontSize: 16, color: '#374151', textTransform: 'uppercase' }}>
-                {title}
-            </Typography>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', mb: 3 }}>
+                <Typography variant="h6" sx={{ fontWeight: 700, fontSize: 16, color: '#374151', textTransform: 'uppercase' }}>
+                    {title}
+                </Typography>
+                <Typography sx={{ fontWeight: 700, fontSize: 15, color: '#166534' }}>
+                    {formatPrice(sumPA(items))}
+                </Typography>
+            </Box>
 
             {items.length === 0 ? (
                 <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
-                    Aucun article dans cette section.
+                    Aucun article dans ce chapitre.
                 </Typography>
             ) : (
                 items.map((item, idx) => (
@@ -82,14 +91,16 @@ export default function ShoppingListScreen({ minutes = [] }) {
                             <Box sx={{ display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'space-between', pr: 2 }}>
                                 <Typography sx={{ fontWeight: 600 }}>{item.label}</Typography>
                                 <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+                                    {/* L'unité est portée par la ligne, pas par le chapitre : un même
+                                        chapitre mélange des articles au mètre et à l'unité. */}
                                     <Chip
-                                        label={`Total : ${Number(item.total_qty).toLocaleString('fr-FR', { maximumFractionDigits: 2 })} ${unit}`}
+                                        label={`Total : ${formatQty(item.qty)} ${item.unit}`}
                                         size="small"
                                         color="primary"
                                         variant="outlined"
                                     />
                                     <Chip
-                                        label={`Coût : ${formatPrice(item.total_pa)}`}
+                                        label={`Coût : ${formatPrice(item.pa)}`}
                                         size="small"
                                         color="default"
                                         variant="outlined"
@@ -108,7 +119,7 @@ export default function ShoppingListScreen({ minutes = [] }) {
                                         <TableCell>Pièce</TableCell>
                                         <TableCell>Produit</TableCell>
                                         <TableCell>Détail / Dimensions</TableCell>
-                                        <TableCell align="right">Qté ({unit})</TableCell>
+                                        <TableCell align="right">Qté ({item.unit})</TableCell>
                                         <TableCell align="right">Coût (€)</TableCell>
                                     </TableRow>
                                 </TableHead>
@@ -121,10 +132,10 @@ export default function ShoppingListScreen({ minutes = [] }) {
                                             <TableCell>{src.produit}</TableCell>
                                             <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>{src.detail}</TableCell>
                                             <TableCell align="right" sx={{ fontWeight: 500 }}>
-                                                {Number(src.quantite_ligne).toLocaleString('fr-FR', { maximumFractionDigits: 2 })}
+                                                {formatQty(src.qty)}
                                             </TableCell>
                                             <TableCell align="right" sx={{ fontWeight: 500 }}>
-                                                {formatPrice(src.cout_ligne)}
+                                                {formatPrice(src.pa)}
                                             </TableCell>
                                         </TableRow>
                                     ))}
@@ -159,10 +170,10 @@ export default function ShoppingListScreen({ minutes = [] }) {
                 </button>
             </Box>
 
-            <Section title="Tissus & Confection" items={tissus} unit="ml" />
-            <Section title="Rails (au mètre linéaire)" items={rails} unit="ml" />
-            <Section title="Mécanismes & Stores (à l'unité)" items={mecanismes} unit="u" />
-            <Section title="Sous-traitance (Pose & Confection)" items={sous_traitance} unit="intervention" />
+            {PURCHASE_CHAPTERS.map(ch => (
+                <Section key={ch.key} title={ch.label} items={chapters[ch.key]} />
+            ))}
+            <Section title="Sous-traitance (Pose & Confection)" items={chapters.sous_traitance} />
         </Box >
     );
 }

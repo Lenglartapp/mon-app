@@ -14,6 +14,7 @@ export const ETIQUETTE_RIDEAUX_FIELDS = [
   { key: "onglets",              label: "Onglets",            section: "Confection" },
   { key: "bride",                label: "Bride",              section: "Confection" },
   { key: "type_crochets",        label: "Crochets",           section: "Confection" },
+  { key: "ruflette",             label: "Ruflette",           section: "Confection" },
   { key: "point_chausson",       label: "Pt. chausson",       section: "Confection" },
   { key: "etiquette_lavage",     label: "Étiq. lavage",       section: "Confection" },
   { key: "etiquette_lenglart",   label: "Étiq. Lenglart",     section: "Confection" },
@@ -346,13 +347,14 @@ export default function EtiquetteRideauxCard({ row, projectName, index, total, o
             {show("paire_ou_un_seul_pan") && <Cell label="Paire / Pan" value={v(row, "paire_ou_un_seul_pan")} />}
             {show("ampleur")              && <Cell label="Ampleur" value={v(row, "ampleur")} />}
           </Row>
-          {(show("hauteur_renfort_tete") || show("poids") || show("onglets") || show("bride") || show("type_crochets") || show("point_chausson")) && (
-            <Row cols={6} bg="#F9FAFB">
+          {(show("hauteur_renfort_tete") || show("poids") || show("onglets") || show("bride") || show("type_crochets") || show("ruflette") || show("point_chausson")) && (
+            <Row cols={7} bg="#F9FAFB">
               {show("hauteur_renfort_tete") && <Cell label="H. Renfort tête" value={v(row, "hauteur_renfort_tete")} />}
               {show("poids")               && <Cell label="Poids" value={v(row, "poids")} />}
               {show("onglets")             && <Cell label="Onglets" value={v(row, "onglets")} />}
               {show("bride")               && <Cell label="Bride" value={v(row, "bride")} />}
               {show("type_crochets")       && <Cell label="Crochets" value={v(row, "type_crochets")} />}
+              {show("ruflette")            && <Cell label="Ruflette" value={v(row, "ruflette")} />}
               {show("point_chausson")      && <Cell label="Pt. chausson" value={v(row, "point_chausson")} />}
             </Row>
           )}

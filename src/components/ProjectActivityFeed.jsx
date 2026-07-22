@@ -5,6 +5,7 @@ import { formatDistanceToNow, format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { COLORS } from '../lib/constants/ui';
 import ImageLightbox from './ui/ImageLightbox'; // <--- IMPORT LIGHTBOX
+import { renderRichText } from '../lib/utils/richText.jsx';
 
 const FILTERS = [
     { key: 'all', label: 'Tout' },
@@ -169,7 +170,8 @@ export default function ProjectActivityFeed({ rows, wall, pinnedIds, onTogglePin
                         )}
                     </div>
 
-                    {evt.text && <div style={{ fontSize: 14, color: '#1F2937', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{evt.text}</div>}
+                    {/* Même rendu que le fil du détail de ligne : mentions + mise en forme légère */}
+                    {evt.text && <div style={{ fontSize: 14, color: '#1F2937', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{renderRichText(evt.text)}</div>}
                     {evt.details && (
                         <div style={{ fontSize: 13, color: '#4B5563', marginTop: 2 }}>
                             Modif <b>{evt.details.field}</b> : <span style={{ textDecoration: 'line-through', color: '#EF4444' }}>{evt.details.old}</span> <ArrowRight size={12} style={{ margin: '0 4px', verticalAlign: 'middle' }} /> <span style={{ fontWeight: 600, color: '#10B981' }}>{evt.details.new}</span>

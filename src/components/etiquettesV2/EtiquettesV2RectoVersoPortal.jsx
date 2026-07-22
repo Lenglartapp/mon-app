@@ -41,7 +41,8 @@ export const RIDEAUX_V2_SECTIONS = [
   ]},
   { name: "FINITION TÊTE", fields: [
     ["retour_gauche", "Retour G"], ["largeur_finie", "L. Finie"], ["retour_droit", "Retour D"], ["etiquette_lavage", "Étiq. Lavage"],
-    ["type_crochets", "Crochets"], ["nombre_glisseur", "Nb Glisseurs"], ["bride", "Bride"], ["point_chausson", "Pt. Chausson"],
+    ["type_crochets", "Crochets"], ["ruflette", "Ruflette"], ["nombre_glisseur", "Nb Glisseurs"], ["bride", "Bride"],
+    ["point_chausson", "Pt. Chausson"],
   ]},
 ];
 

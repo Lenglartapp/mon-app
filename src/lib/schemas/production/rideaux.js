@@ -545,10 +545,16 @@ export const RIDEAUX_PROD_SCHEMA = [
     { key: "bride", label: "Bride", type: "select", options: ["Oui", "Non"], width: 90, editable: true },
 
     // Crochets: Américain / Escargot (plastique/métal) / Agrafe à coudre
-    { key: "type_crochets", label: "Crochets", type: "select", options: ['Crochet américain', 'Crochet escargot plastique', 'Crochet escargot métal', 'Agrafe à coudre'], width: 165, editable: true },
+    { key: "type_crochets", label: "Crochets", type: "select", options: ['Crochet américain', 'Crochet américain + Ruban', 'Crochet escargot plastique', 'Crochet escargot métal', 'Agrafe à coudre'], width: 165, editable: true },
+
+    // Ruflette : système de tête cousu en atelier (visible uniquement sur le BPF)
+    { key: "ruflette", label: "Ruflette", type: "select", options: ['Wave en Y', 'Ruflette Blanche', 'Wave Forest assemblées'], width: 175, editable: true },
 
     // Point Chausson: Oui / Non
     { key: "point_chausson", label: "Point Chausson", type: "select", options: ["Oui", "Non"], width: 140, editable: true },
+
+    // Emballage : conditionnement de sortie d'atelier (visible uniquement sur le BPF)
+    { key: "emballage", label: "Emballage", type: "select", options: ['Gaine', 'Gaine + Carton', 'Préfold + Gaine', 'Préfold + Gaine + Carton'], width: 200, editable: true },
 
     // E. Matériaux
     { key: "tissu_deco1", label: "Tissu 1", type: "text", width: 160, editable: true },
@@ -784,3 +790,7 @@ export const RIDEAUX_PROD_SCHEMA = [
     { key: "schema_principe", label: "Schéma Principe", type: "photo", width: 150 },
     { key: "photos_sur_site", label: "Photo sur site", type: "photo", width: 150 },
 ];
+
+// Marqueur de module : lu par recomputeRow pour appliquer les règles propres à la
+// Production (ex. Largeur et L. Méca indépendantes) sans toucher au chiffrage.
+Object.defineProperty(RIDEAUX_PROD_SCHEMA, 'module', { value: 'production' });
