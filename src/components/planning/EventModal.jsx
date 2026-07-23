@@ -148,11 +148,16 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
         (p.id && p.id.toString().includes(projectSearch))
     );
 
-    // Le dossier interne est TOUJOURS proposé, même quand la recherche ne donne rien :
-    // c'est la porte de sortie qui remplace l'ancienne saisie libre (laquelle produisait
-    // des créneaux orphelins, invisibles de tout suivi).
+    // Absence (Congés / RTT / Maladie) en cours d'édition : ce n'est PAS un travail
+    // rattachable à un dossier. On ne lui propose donc pas le dossier interne, on ne lui
+    // impose pas de dossier, et on préserve son type à l'enregistrement (sinon il
+    // deviendrait un créneau du service de la personne).
+    const isAbsence = eventToEdit?.type === 'absence';
+
+    // Le dossier interne est TOUJOURS proposé quand la recherche ne donne rien (sauf pour
+    // une absence) : c'est la porte de sortie qui remplace l'ancienne saisie libre.
     const internalProject = findInternalProject(projects);
-    const showInternalOption = !filteredProjects.some(isInternalProject);
+    const showInternalOption = !isAbsence && !filteredProjects.some(isInternalProject);
     const isInternalSelected = isInternalProject(selectedProject);
     const chapterSuggestions = useMemo(() => {
         const q = normalizeChapter(chapter).toLowerCase();
@@ -179,12 +184,33 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
     // Un créneau doit être rattaché à un dossier — réel ou interne. Plus de titre libre :
     // c'est ce qui a produit les créneaux orphelins (« Autre », noms tapés à la main),
     // impossibles à rattacher a posteriori à quoi que ce soit.
-    const canSubmit = !!selectedProject
-        && selectedResources.length > 0
-        && (!isInternalSelected || !!normalizeChapter(chapter));
+    // Une absence n'a pas de dossier : seules les ressources et les dates comptent.
+    const canSubmit = selectedResources.length > 0
+        && (isAbsence || (!!selectedProject && (!isInternalSelected || !!normalizeChapter(chapter))));
 
     const handleSubmit = () => {
         if (canSubmit) {
+            if (isAbsence) {
+                // On préserve tout ce qui fait l'absence : son type, son libellé et son
+                // sous-type (Congés/RTT/Maladie, porté par meta.type et lu par la grille).
+                onSave({
+                    id: eventToEdit?.id,
+                    seriesId: eventToEdit?.meta?.seriesId,
+                    title: eventToEdit.title,
+                    type: 'absence',
+                    absenceSubtype: eventToEdit.meta?.type || eventToEdit.title,
+                    projectId: null,
+                    internalChapter: null,
+                    isInternal: false,
+                    resourceIds: selectedResources,
+                    startDate, startTime, endDate, endTime,
+                    durationHours: null,
+                    description,
+                    status: eventToEdit?.meta?.status || 'validated',
+                });
+                onClose();
+                return;
+            }
             // Sur l'interne, le créneau porte le nom du chapitre : c'est ce que l'atelier
             // doit lire sur le planning (« prototype bambou », pas « Interne Lenglart »).
             const titleToSave = isInternalSelected ? normalizeChapter(chapter) : selectedProject.name;
@@ -244,9 +270,17 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
                 <fieldset disabled={readOnly} style={{ border: 'none', padding: 0, margin: 0, minInlineSize: 'auto', display: 'contents' }}>
                     <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 24 }}>
 
-                        {/* 1. PROJET */}
+                        {/* 1. PROJET (ou type d'absence si on édite un congé/RTT/maladie) */}
                         <div>
-                            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 8, color: '#374151' }}>Projet / Client</label>
+                            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 8, color: '#374151' }}>
+                                {isAbsence ? "Type d'absence" : 'Projet / Client'}
+                            </label>
+                            {isAbsence ? (
+                                <div style={{ display: 'flex', alignItems: 'center', border: '1px solid #E5E7EB', borderRadius: 8, padding: '10px 12px', background: '#F9FAFB', color: '#374151', fontSize: 14 }}>
+                                    <Briefcase size={18} color="#9CA3AF" style={{ marginRight: 10 }} />
+                                    {eventToEdit?.title || eventToEdit?.meta?.type || 'Absence'}
+                                </div>
+                            ) : (
                             <div style={{ position: 'relative', display: 'flex', alignItems: 'center', border: '1px solid #E5E7EB', borderRadius: 8, padding: '10px 12px', background: 'white', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
                                 <Briefcase size={18} color="#9CA3AF" style={{ marginRight: 10 }} />
                                 <input
@@ -259,6 +293,7 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
                                 />
                                 {selectedProject && <Check size={18} color="#10B981" />}
                             </div>
+                            )}
                             {showProjectList && projectSearch.length > 0 && !selectedProject && (
                                 <div style={{ position: 'absolute', width: '100%', maxHeight: 200, overflowY: 'auto', background: 'white', border: '1px solid #E5E7EB', borderRadius: 8, marginTop: 4, zIndex: 20, boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}>
                                     {filteredProjects.length > 0 ? filteredProjects.map(p => (
@@ -483,7 +518,10 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
 
                 {/* Footer */}
                 <div style={{ padding: '20px 24px', background: '#F9FAFB', borderTop: '1px solid #F3F4F6', display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
-                    {eventToEdit && onDelete && (eventToEdit.meta?.status !== 'validated' || currentUser?.role === 'admin') && !readOnly && (
+                    {/* Une absence est toujours « validée » par nature : le garde-fou
+                        « seul l'admin supprime un créneau validé » (pensé pour le travail
+                        confirmé) ne doit pas empêcher l'ordo de retirer un congé/RTT/maladie. */}
+                    {eventToEdit && onDelete && (isAbsence || eventToEdit.meta?.status !== 'validated' || currentUser?.role === 'admin') && !readOnly && (
                         <button
                             onClick={() => { if (window.confirm('Supprimer ce créneau ?')) { onDelete(eventToEdit); onClose(); } }}
                             style={{ marginRight: 'auto', padding: '10px 16px', borderRadius: 8, border: '1px solid #fee2e2', background: '#fef2f2', color: '#ef4444', fontWeight: 600, cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}

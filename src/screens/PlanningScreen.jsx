@@ -840,6 +840,9 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                         seriesId: seriesId,
                         assigned_name: assignedName,
                         status: eventData.status || 'pending',
+                        // Absence : on reconduit le sous-type (Congés/RTT/Maladie), lu par
+                        // la grille pour l'affichage. Sans ça, l'édition le perdrait.
+                        ...(eventData.type === 'absence' && { type: eventData.absenceSubtype }),
                         ...(isHourMode && { durationHours: eventData.durationHours, createdAt: new Date().toISOString() })
                     }
                 };
