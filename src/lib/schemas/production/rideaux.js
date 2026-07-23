@@ -29,6 +29,12 @@ const isSinglePan = (row) => {
     return a.startsWith("Un seul pan") || b.startsWith("Un seul pan") || a === "Pan libre" || b === "Pan libre";
 };
 
+// Nombre de pans à confectionner. « Largeur finie » et « À plat » décrivent UN pan
+// (pour une paire, la largeur est divisée par deux) : tout ce qui se consomme réellement
+// — métrage tissu, nombre de lés — doit donc être compté deux fois sur une paire.
+// L'appiècement, lui, reste une donnée de coupe par pan.
+const pansOf = (row) => (isSinglePan(row) ? 1 : 2);
+
 // Pattes de croisement : libellés du select + nombre de crochets ajoutés à la
 // formule "Nb Crochets par pan" lorsqu'une patte est sélectionnée.
 export const PATTE_CROISEMENT_CROCHETS = {
@@ -47,15 +53,16 @@ export const PATTE_CROISEMENT_OPTIONS = ["", ...Object.keys(PATTE_CROISEMENT_CRO
 
 // ML tissu : calcul selon orientation (laize vs hauteur_coupe)
 // aPlat, laize, hCoupe, hCoupeMotif en cm → résultat en m
-const calcML = (aPlat, laize, hCoupe, hCoupeMotif) => {
+const calcML = (aPlat, laize, hCoupe, hCoupeMotif, pans = 1) => {
     if (!laize || laize <= 0 || !aPlat || aPlat <= 0) return 0;
     if (laize >= hCoupe) {
-        // Horizontal (tissu couché)
-        return aPlat / 100;
+        // Horizontal (tissu couché) : la longueur suit l'à plat, deux fois pour une paire.
+        return (aPlat / 100) * pans;
     }
-    // Vertical
+    // Vertical : les lés ne se partagent pas entre deux pans, on coupe donc
+    // ceil(à plat / laize) lés PAR pan.
     const nbLes = Math.ceil(aPlat / laize);
-    return (nbLes * hCoupeMotif) / 100;
+    return ((nbLes * hCoupeMotif) / 100) * pans;
 };
 
 // ML passementerie selon application (I/U/L/-)
@@ -211,7 +218,9 @@ const getters = {
         const aPlat = getters.a_plat(row);
         const laize = toNum(row.laize_tissu1);
         if (laize <= 0) return 0;
-        return Math.max(1, Math.floor(aPlat / laize));
+        // Lés ENTIERS par pan (la fraction restante est portée par « Appiècement »),
+        // puis × 2 sur une paire : il faut bien couper ces lés deux fois.
+        return Math.max(1, Math.floor(aPlat / laize)) * pansOf(row);
     },
 
     reste_les: (row) => {
@@ -386,7 +395,7 @@ export const RIDEAUX_PROD_SCHEMA = [
         type: "number",
         width: 100,
         readOnly: true,
-        tooltip: "Nombre de lés entiers : À Plat ÷ laize tissu 1, arrondi à l'inférieur (minimum 1)",
+        tooltip: "Nombre de lés entiers : À Plat ÷ laize tissu 1, arrondi à l'inférieur (minimum 1), par pan — doublé sur une paire.",
         valueGetter: (v, r) => {
             const row = getRow(v, r);
             const aPlat = getters.a_plat(row);
@@ -401,7 +410,7 @@ export const RIDEAUX_PROD_SCHEMA = [
         type: "number",
         width: 130,
         readOnly: true,
-        tooltip: "Partie fractionnaire × laize T1 : reste de tissu après les lés entiers. Vide si le rideau rentre dans la laize (hauteur finie max + 50 cm < laize T1) : coupe dans le sens de la laize, pas d'appiècement.",
+        tooltip: "Partie fractionnaire × laize T1 : reste de tissu après les lés entiers, pour UN pan (non doublé sur une paire). Vide si le rideau rentre dans la laize (hauteur finie max + 50 cm < laize T1) : coupe dans le sens de la laize, pas d'appiècement.",
         valueGetter: (v, r) => getters.reste_les(getRow(v, r))
     },
     { key: "v_ourlets_de_cotes", label: "Ourlets Côtés", type: "number", width: 130, editable: true },
@@ -567,11 +576,12 @@ export const RIDEAUX_PROD_SCHEMA = [
         type: "number",
         width: 100,
         readOnly: true,
-        tooltip: "ML Tissu 1 calculé depuis les cotes BPF. Horizontal si laize ≥ H.Coupe : À Plat ÷ 100. Vertical : Nb lés × H.Coupe Motif ÷ 100",
+        tooltip: "ML Tissu 1 calculé depuis les cotes BPF. Horizontal si laize ≥ H.Coupe : À Plat ÷ 100. Vertical : Nb lés × H.Coupe Motif ÷ 100. Une paire compte deux pans : le résultat est doublé (l'À Plat, lui, décrit un seul pan).",
         valueGetter: (v, r) => {
             const row = getRow(v, r);
             return calcML(getters.a_plat(row), toNum(row.laize_tissu1), getters.hauteur_coupe(row),
-                (() => { const hC = getters.hauteur_coupe(row); const rV = toNum(row.raccord_v_tissu1); return rV > 0 ? Math.ceil(hC / rV) * rV : hC; })());
+                (() => { const hC = getters.hauteur_coupe(row); const rV = toNum(row.raccord_v_tissu1); return rV > 0 ? Math.ceil(hC / rV) * rV : hC; })(),
+                pansOf(row));
         }
     },
     { key: "tissu_deco2", label: "Tissu 2", type: "text", width: 160, editable: true },
@@ -584,11 +594,11 @@ export const RIDEAUX_PROD_SCHEMA = [
         type: "number",
         width: 100,
         readOnly: true,
-        tooltip: "ML Tissu 2 calculé depuis les cotes BPF (tissu uni, sans raccord motif)",
+        tooltip: "ML Tissu 2 calculé depuis les cotes BPF (tissu uni, sans raccord motif). Une paire compte deux pans : le résultat est doublé (l'À Plat, lui, décrit un seul pan).",
         valueGetter: (v, r) => {
             const row = getRow(v, r);
             const hC = getters.hauteur_coupe(row);
-            return calcML(getters.a_plat(row), toNum(row.laize_tissu2), hC, hC);
+            return calcML(getters.a_plat(row), toNum(row.laize_tissu2), hC, hC, pansOf(row));
         }
     },
     {
@@ -608,7 +618,7 @@ export const RIDEAUX_PROD_SCHEMA = [
         type: "number",
         width: 110,
         readOnly: true,
-        tooltip: "ML Doublure calculé depuis les cotes BPF (utilise H.Coupe Doublure)",
+        tooltip: "ML Doublure calculé depuis les cotes BPF (utilise H.Coupe Doublure). Une paire compte deux pans : le résultat est doublé (l'À Plat, lui, décrit un seul pan).",
         valueGetter: (v, r) => {
             const row = getRow(v, r);
             const hCD = (() => {
@@ -619,7 +629,7 @@ export const RIDEAUX_PROD_SCHEMA = [
                 const aPlat = getters.a_plat(row);
                 return laizeD > (hFinie + 50) ? aPlat : hFinie + 50;
             })();
-            return calcML(getters.a_plat(row), toNum(row.laize_doublure), hCD, hCD);
+            return calcML(getters.a_plat(row), toNum(row.laize_doublure), hCD, hCD, pansOf(row));
         }
     },
     {
@@ -639,11 +649,11 @@ export const RIDEAUX_PROD_SCHEMA = [
         type: "number",
         width: 120,
         readOnly: true,
-        tooltip: "ML Interdoublure calculé depuis les cotes BPF",
+        tooltip: "ML Interdoublure calculé depuis les cotes BPF. Une paire compte deux pans : le résultat est doublé (l'À Plat, lui, décrit un seul pan).",
         valueGetter: (v, r) => {
             const row = getRow(v, r);
             const hC = getters.hauteur_coupe(row);
-            return calcML(getters.a_plat(row), toNum(row.laize_inter), hC, hC);
+            return calcML(getters.a_plat(row), toNum(row.laize_inter), hC, hC, pansOf(row));
         }
     },
     {
