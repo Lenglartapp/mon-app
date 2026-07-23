@@ -49,6 +49,11 @@ const renderMentions = (text, keyPrefix) => {
 
 // Rend récursivement la marque qui apparaît le plus tôt, puis ce qui l'entoure :
 // les imbrications (**gras avec _italique_ dedans**) fonctionnent sans cas dédié.
+// Retire les marques pour un aperçu en texte brut (ex. 1re ligne sur une carte) :
+// « **urgent** » → « urgent ». Approximatif mais suffisant pour un aperçu.
+export const stripMarks = (text) =>
+    String(text || '').replace(/(\*\*|__|~~|_)(.+?)\1/g, '$2');
+
 export function renderRichText(text, keyPrefix = 'r') {
     if (!text) return "";
 
