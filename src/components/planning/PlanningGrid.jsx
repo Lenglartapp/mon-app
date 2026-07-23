@@ -4,6 +4,7 @@ import { format, isSameDay, startOfMonth, startOfDay, endOfMonth, eachDayOfInter
 import { fr } from 'date-fns/locale';
 import { PLANNING_COLORS, getProjectColor, ROW_HEIGHT, PROGRAMME_ROW_HEIGHT, HEADER_HEIGHT_1, HEADER_HEIGHT_2, TOTAL_WORK_MINUTES, WORK_START_HOUR, WORK_END_HOUR, DEFAULT_DAILY_HOURS, ATELIER_HOURS_PER_DAY, dailyHoursForGroup } from './constants';
 import { uid } from '../../lib/utils/uid';
+import { stripMarks } from '../../lib/utils/richText';
 
 // --- STICKY CELLS ---
 const StickyLeftCell = ({ children, bg = 'white', borderBottom = true, onClick, style }) => (
@@ -804,8 +805,8 @@ const PlanningGrid = ({
                                                                 {/* Bin Header */}
                                                                 <div style={{
                                                                     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                                                                    padding: '2px 8px', background: 'rgba(255,255,255,0.5)', borderBottom: '1px dashed #FECDD3',
-                                                                    fontSize: 10, fontWeight: 700, color: '#9F1239', height: 20
+                                                                    padding: '3px 10px', background: 'rgba(255,255,255,0.5)', borderBottom: '1px dashed #FECDD3',
+                                                                    fontSize: 11, fontWeight: 700, color: '#9F1239', height: 24
                                                                 }}>
                                                                     <span>SEM {weekNum}</span>
                                                                     <span style={{ color: isOverloaded ? '#EF4444' : '#9F1239' }}>
@@ -887,7 +888,6 @@ const PlanningGrid = ({
                                                                                     e.preventDefault();
                                                                                     e.stopPropagation();
                                                                                     const currentDragPos = dragTarget?.pos; // Capture before clearing
-                                                                                    console.log('DROP DEBUG', { id: evt.id, pos: currentDragPos, dragTarget });
                                                                                     setDragTarget(null);
 
                                                                                     const type = e.dataTransfer.getData('type');
@@ -976,13 +976,13 @@ const PlanningGrid = ({
                                                                                 }}
                                                                                 onClick={(e) => { e.stopPropagation(); onEventClick(evt); }}
                                                                                 style={{
-                                                                                    minWidth: 140,
-                                                                                    maxWidth: 160,
+                                                                                    minWidth: 170,
+                                                                                    maxWidth: 190,
                                                                                     height: 'calc(100% - 4px)',
                                                                                     background: 'white',
                                                                                     border: '1px solid #FECDD3',
                                                                                     borderRadius: 4,
-                                                                                    padding: 4,
+                                                                                    padding: 6,
                                                                                     display: 'flex',
                                                                                     flexDirection: 'column',
                                                                                     justifyContent: 'center',
@@ -1006,12 +1006,12 @@ const PlanningGrid = ({
                                                                                         pointerEvents: 'none'
                                                                                     }} />
                                                                                 )}
-                                                                                <div style={{ fontSize: 11, fontWeight: 600, color: '#9F1239', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                                                <div style={{ fontSize: 12.5, fontWeight: 700, color: '#9F1239', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                                                                     {evt.title}
                                                                                 </div>
                                                                                 {evt.meta?.description && (
-                                                                                    <div style={{ fontSize: 9, fontStyle: 'italic', color: '#9F1239', opacity: 0.7, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: 1 }}>
-                                                                                        {evt.meta.description.split('\n')[0]}
+                                                                                    <div style={{ fontSize: 10.5, fontStyle: 'italic', color: '#9F1239', opacity: 0.75, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: 2 }}>
+                                                                                        {stripMarks(evt.meta.description.split('\n')[0])}
                                                                                     </div>
                                                                                 )}
                                                                                 <div style={{ height: 4, background: '#F3F4F6', borderRadius: 2, marginTop: 4, overflow: 'hidden' }}>

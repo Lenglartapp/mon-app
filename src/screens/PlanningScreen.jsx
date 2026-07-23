@@ -840,6 +840,9 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                         seriesId: seriesId,
                         assigned_name: assignedName,
                         status: eventData.status || 'pending',
+                        // Absence : on reconduit le sous-type (Congés/RTT/Maladie), lu par
+                        // la grille pour l'affichage. Sans ça, l'édition le perdrait.
+                        ...(eventData.type === 'absence' && { type: eventData.absenceSubtype }),
                         ...(isHourMode && { durationHours: eventData.durationHours, createdAt: new Date().toISOString() })
                     }
                 };
@@ -1121,7 +1124,7 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
     };
 
     const handleSaveBacklog = async (data) => {
-        // data: { id?, projectId, title, hours, comment, isInternal?, internalChapter? }
+        // data: { id?, projectId, title, hours, comment, weekStart?, isInternal?, internalChapter? }
 
         // Interne : résout (ou crée) le dossier et enregistre le chapitre avant de poser la carte.
         let projectId = data.projectId;
@@ -1130,17 +1133,28 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
             if (!projectId) return;
         }
 
+        // Semaine choisie → lundi 8h / vendredi 17h. C'est ce couple start/end qui
+        // range le bloc dans le bon bac hebdo de la grille (décalage inclus).
+        const weekBounds = (mondayISO) => {
+            const startD = new Date(mondayISO); startD.setHours(8, 0, 0, 0);
+            const endD = addDays(startD, 4); endD.setHours(17, 0, 0, 0);
+            return { start: startD.toISOString(), end: endD.toISOString(), date: format(startD, 'yyyy-MM-dd') };
+        };
+
         if (data.id) {
             // UPDATE EXISTING
+            const bounds = data.weekStart ? weekBounds(data.weekStart) : null;
             const updater = e => ({
                 ...e,
                 title: data.title,
+                ...(bounds && { date: bounds.date }),
                 meta: {
                     ...e.meta,
                     projectId: projectId,
                     internalChapter: data.internalChapter || null,
                     budgetHours: data.hours,
-                    description: data.comment
+                    description: data.comment,
+                    ...(bounds && { start: bounds.start, end: bounds.end }),
                 }
             });
 
@@ -1152,27 +1166,23 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
             if (evt && onUpdateEvent) onUpdateEvent(updater(evt));
 
         } else {
-            // CREATE NEW
-            if (!backlogDate) return;
-
-            const startW = startOfWeek(backlogDate, { weekStartsOn: 1 });
-            const startD = new Date(startW);
-            startD.setHours(8, 0, 0, 0); // Lundi 8h
-
-            const endD = addDays(startD, 4); // Vendredi
-            endD.setHours(17, 0, 0, 0); // 17h
+            // CREATE NEW — la semaine vient du sélecteur (repli sur la cellule cliquée).
+            const mondayISO = data.weekStart
+                || (backlogDate ? format(startOfWeek(backlogDate, { weekStartsOn: 1 }), 'yyyy-MM-dd') : null);
+            if (!mondayISO) return;
+            const bounds = weekBounds(mondayISO);
 
             const newEvent = {
                 id: uid(),
                 resourceId: 'backlog_confection',
                 title: data.title,
                 type: 'default',
-                date: format(backlogDate, 'yyyy-MM-dd'),
+                date: bounds.date,
                 meta: {
                     projectId: projectId,
                     internalChapter: data.internalChapter || null,
-                    start: startD.toISOString(),
-                    end: endD.toISOString(),
+                    start: bounds.start,
+                    end: bounds.end,
                     budgetHours: data.hours,
                     description: data.comment,
                     status: 'pending',

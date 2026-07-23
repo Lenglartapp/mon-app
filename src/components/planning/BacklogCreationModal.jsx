@@ -1,7 +1,28 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { differenceInMinutes, parseISO, isSameWeek } from 'date-fns';
-import { X, Briefcase, Calculator } from 'lucide-react';
+import { differenceInMinutes, startOfWeek, addWeeks, addDays, getISOWeek, format } from 'date-fns';
+import { fr } from 'date-fns/locale';
+import { X, Briefcase } from 'lucide-react';
 import { INTERNAL_PROJECT_NAME, isInternalProject, findInternalProject, getActiveChapters, normalizeChapter } from '../../lib/planning/internalProject';
+import RichTextArea from '../ui/RichTextArea';
+
+// Semaines proposées dans le sélecteur : de 4 semaines avant à 1 an après la semaine de
+// référence, pour pouvoir déporter loin. Chaque option affiche le n° ISO ET les dates
+// (lun → ven) car on ne connaît pas toujours les dates d'un numéro de semaine par cœur.
+const WEEKS_BACK = 4;
+const WEEKS_FORWARD = 52;
+const WEEK_OPTIONS = (refMonday) => {
+    const base = startOfWeek(refMonday, { weekStartsOn: 1 });
+    return Array.from({ length: WEEKS_BACK + 1 + WEEKS_FORWARD }, (_, i) => {
+        const monday = addWeeks(base, i - WEEKS_BACK);
+        const friday = addDays(monday, 4);
+        const key = format(monday, 'yyyy-MM-dd');
+        // Année ajoutée quand on sort de l'année en cours, pour lever l'ambiguïté sur un an.
+        const sameYear = monday.getFullYear() === base.getFullYear();
+        const dateFmt = sameYear ? 'd MMM' : 'd MMM yyyy';
+        const label = `S${getISOWeek(monday)} · ${format(monday, dateFmt, { locale: fr })} → ${format(friday, dateFmt, { locale: fr })}`;
+        return { key, label };
+    });
+};
 
 const S = {
     overlay: {
@@ -9,7 +30,8 @@ const S = {
         backgroundColor: 'rgba(0, 0, 0, 0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
     },
     modal: {
-        backgroundColor: 'white', borderRadius: 12, padding: 24, width: 500, maxWidth: '90%',
+        backgroundColor: 'white', borderRadius: 12, padding: 24, width: 620, maxWidth: '92%',
+        maxHeight: '90vh', overflowY: 'auto',
         boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
     },
     header: {
@@ -44,6 +66,8 @@ const BacklogCreationModal = ({ isOpen, onClose, onSave, onDelete, projects, eve
     const [hours, setHours] = useState('');
     const [customLabel, setCustomLabel] = useState('');
     const [comment, setComment] = useState('');
+    // Semaine du bloc (lundi, format yyyy-MM-dd) — modifiable pour décaler le programme.
+    const [weekStart, setWeekStart] = useState('');
 
     // UI STATE
     const [showSuggestions, setShowSuggestions] = useState(false);
@@ -52,6 +76,9 @@ const BacklogCreationModal = ({ isOpen, onClose, onSave, onDelete, projects, eve
     // RESET OR POPULATE ON OPEN
     useEffect(() => {
         if (isOpen) {
+            const refDate = eventToEdit?.meta?.start ? new Date(eventToEdit.meta.start) : (currentWeekStart || new Date());
+            setWeekStart(format(startOfWeek(refDate, { weekStartsOn: 1 }), 'yyyy-MM-dd'));
+
             if (eventToEdit) {
                 // EDIT MODE
                 const proj = projects.find(p => p.id === eventToEdit.meta?.projectId);
@@ -70,7 +97,21 @@ const BacklogCreationModal = ({ isOpen, onClose, onSave, onDelete, projects, eve
             }
             setShowSuggestions(false);
         }
-    }, [isOpen, eventToEdit, projects]);
+    }, [isOpen, eventToEdit, projects, currentWeekStart]);
+
+    // Fenêtre de semaines centrée sur la semaine du bloc édité (sinon sur la semaine
+    // affichée). On garantit que la semaine actuellement choisie figure toujours dans la
+    // liste, même si on édite un bloc très éloigné.
+    const weekOptions = useMemo(() => {
+        const ref = eventToEdit?.meta?.start ? new Date(eventToEdit.meta.start) : (currentWeekStart || new Date());
+        const opts = WEEK_OPTIONS(ref);
+        if (weekStart && !opts.some(o => o.key === weekStart)) {
+            const monday = new Date(weekStart);
+            const friday = addDays(monday, 4);
+            opts.unshift({ key: weekStart, label: `S${getISOWeek(monday)} · ${format(monday, 'd MMM', { locale: fr })} → ${format(friday, 'd MMM', { locale: fr })}` });
+        }
+        return opts;
+    }, [eventToEdit, currentWeekStart, weekStart]);
 
     // FILTER PROJECTS
     const filteredProjects = useMemo(() => {
@@ -160,7 +201,8 @@ const BacklogCreationModal = ({ isOpen, onClose, onSave, onDelete, projects, eve
             internalChapter: isInternalSelected ? normalizeChapter(customLabel) : null,
             isInternal: isInternalSelected,
             hours: parseFloat(hours),
-            comment: comment
+            comment: comment,
+            weekStart, // lundi de la semaine choisie (yyyy-MM-dd) → décale le bloc
         });
         onClose();
     };
@@ -265,17 +307,28 @@ const BacklogCreationModal = ({ isOpen, onClose, onSave, onDelete, projects, eve
                     )}
                 </div>
 
-                {/* 2. HOURS */}
-                <div style={S.section}>
-                    <label style={S.label}>Volume d'Heures pour cette semaine</label>
-                    <input
-                        type="number"
-                        style={S.input}
-                        placeholder="Ex: 40"
-                        value={hours}
-                        onChange={e => setHours(e.target.value)}
-                        autoFocus
-                    />
+                {/* 2. SEMAINE + VOLUME */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                    <div style={S.section}>
+                        <label style={S.label}>Semaine</label>
+                        <select
+                            style={{ ...S.input, cursor: 'pointer' }}
+                            value={weekStart}
+                            onChange={e => setWeekStart(e.target.value)}
+                        >
+                            {weekOptions.map(o => <option key={o.key} value={o.key}>{o.label}</option>)}
+                        </select>
+                    </div>
+                    <div style={S.section}>
+                        <label style={S.label}>Volume d'heures (semaine)</label>
+                        <input
+                            type="number"
+                            style={S.input}
+                            placeholder="Ex: 40"
+                            value={hours}
+                            onChange={e => setHours(e.target.value)}
+                        />
+                    </div>
                 </div>
 
                 {/* 3. OPTIONAL FIELDS */}
@@ -299,11 +352,12 @@ const BacklogCreationModal = ({ isOpen, onClose, onSave, onDelete, projects, eve
 
                 <div style={S.section}>
                     <label style={S.label}>Commentaire pour l'équipe (Optionnel)</label>
-                    <textarea
-                        style={{ ...S.input, minHeight: 60, resize: 'vertical' }}
-                        placeholder="Instructions particulières..."
+                    <RichTextArea
                         value={comment}
-                        onChange={e => setComment(e.target.value)}
+                        onChange={setComment}
+                        placeholder="Instructions particulières… (gras, italique, souligné, barré)"
+                        minHeight={120}
+                        textareaStyle={{ ...S.input, fontFamily: 'inherit' }}
                     />
                 </div>
 

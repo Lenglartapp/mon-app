@@ -519,8 +519,12 @@ function MinuteGrid({
             const cellEl = params.event?.target?.closest('[comp-id]') || params.event?.target;
             const rect = cellEl?.getBoundingClientRect?.();
             const x = rect ? rect.left : params.event.clientX;
-            const y = rect ? rect.bottom + 4 : params.event.clientY + 4;
-            setAggMenu({ field, x, y });
+            // On mémorise le haut ET le bas de la cellule : la ligne de totaux est en bas
+            // de grille, donc quand la grille touche le bas de l'écran (dernier tableau,
+            // scrollé), le menu doit s'ouvrir VERS LE HAUT pour ne pas être coupé.
+            const cellTop = rect ? rect.top : params.event.clientY;
+            const cellBottom = rect ? rect.bottom : params.event.clientY;
+            setAggMenu({ field, x, cellTop, cellBottom });
             return;
         }
 
@@ -1136,22 +1140,41 @@ function MinuteGrid({
     const effectiveHeight = manualHeight != null ? manualHeight : (isLargeGrid ? 600 : undefined);
     const useFixedLayout = manualHeight != null || isLargeGrid;
 
-    // Ligne de totaux interactive (valeurs calculées selon colAggregations)
+    // Ligne de totaux interactive (valeurs calculées selon colAggregations).
+    // filterVersion est incrémenté à chaque onFilterChanged d'AG Grid pour recalculer
+    // les totaux quand l'utilisateur filtre via les entonnoirs de colonne.
+    const [filterVersion, setFilterVersion] = useState(0);
     const pinnedBottomRowData = useMemo(() => {
+        void filterVersion; // dépendance volontaire : force le recalcul après un filtrage AG Grid
         if (rows.length === 0) return [];
-        // Filtrer les lignes selon les conditions actives (cohérent avec doesExternalFilterPass)
-        const activeConditions = filterConditions.filter(isConditionActive);
-        const filteredRows = activeConditions.length === 0
-            ? rows
-            : rows.filter(r => {
-                let result = evaluateCondition(activeConditions[0], r);
-                for (let i = 1; i < activeConditions.length; i++) {
-                    const cond = activeConditions[i];
-                    const condResult = evaluateCondition(cond, r);
-                    result = cond.logic === 'ou' ? result || condResult : result && condResult;
-                }
-                return result;
+
+        // On agrège sur les lignes qui survivent à TOUS les filtres : les entonnoirs
+        // natifs par colonne ET le panneau « Filtrer » (branché via doesExternalFilterPass).
+        // forEachNodeAfterFilter reflète les deux ; on ne récupère que les IDs et on relit
+        // les valeurs dans `rows` pour ne jamais dépendre de données de nœud périmées.
+        const api = gridRef.current?.api;
+        let filteredRows;
+        if (api && isGridReadyRef.current) {
+            const passIds = new Set();
+            api.forEachNodeAfterFilter(node => {
+                if (!node.group && node.data && !node.rowPinned) passIds.add(node.data.id);
             });
+            filteredRows = rows.filter(r => passIds.has(r.id));
+        } else {
+            // Repli avant que la grille soit prête : panneau « Filtrer » seul.
+            const activeConditions = filterConditions.filter(isConditionActive);
+            filteredRows = activeConditions.length === 0
+                ? rows
+                : rows.filter(r => {
+                    let result = evaluateCondition(activeConditions[0], r);
+                    for (let i = 1; i < activeConditions.length; i++) {
+                        const cond = activeConditions[i];
+                        const condResult = evaluateCondition(cond, r);
+                        result = cond.logic === 'ou' ? result || condResult : result && condResult;
+                    }
+                    return result;
+                });
+        }
         const totals = { _isPinnedTotal: true };
         schema.forEach(col => {
             // Exclure les types clairement non-numériques
@@ -1169,7 +1192,7 @@ function MinuteGrid({
             if (result !== null) totals[col.key] = result;
         });
         return [totals];
-    }, [rows, schema, colAggregations, filterConditions]);
+    }, [rows, schema, colAggregations, filterConditions, filterVersion]);
 
     // Vue mobile (cards)
     if (isMobile) {
@@ -1556,8 +1579,19 @@ function MinuteGrid({
             {aggMenu && (
                 <>
                     <div style={{ position: 'fixed', inset: 0, zIndex: 9998 }} onClick={() => setAggMenu(null)} />
+                    {(() => {
+                    // Hauteur = en-tête + une ligne par option ; on bascule vers le haut
+                    // s'il n'y a pas la place en dessous, et on rentre le menu dans l'écran.
+                    const MENU_H = 40 + AGG_OPTIONS.length * 36;
+                    const MENU_W = 160;
+                    const openUp = aggMenu.cellBottom + 4 + MENU_H > window.innerHeight;
+                    const top = openUp
+                        ? Math.max(8, aggMenu.cellTop - 4 - MENU_H)
+                        : aggMenu.cellBottom + 4;
+                    const left = Math.max(8, Math.min(aggMenu.x, window.innerWidth - MENU_W - 8));
+                    return (
                     <div style={{
-                        position: 'fixed', left: aggMenu.x, top: aggMenu.y,
+                        position: 'fixed', left, top,
                         background: 'white', border: '1px solid #e5e7eb', borderRadius: 6,
                         boxShadow: '0 4px 16px rgba(0,0,0,0.15)', zIndex: 9999,
                         minWidth: 150, overflow: 'hidden',
@@ -1581,6 +1615,8 @@ function MinuteGrid({
                             );
                         })}
                     </div>
+                    );
+                    })()}
                 </>
             )}
 
@@ -1623,6 +1659,7 @@ function MinuteGrid({
                     onSelectionChanged={onSelectionChanged}
                     onCellClicked={onCellClicked}
                     onCellValueChanged={onCellValueChanged}
+                    onFilterChanged={() => setFilterVersion(v => v + 1)}
                     processCellFromClipboard={processCellFromClipboard}
                     onGridReady={onGridReady}
                     onColumnResized={onColumnResized}
