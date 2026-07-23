@@ -57,6 +57,20 @@ const AssistantView = ({ stats, onUpdateProject }) => {
     const [sortConfig, setSortConfig] = useState({ key: 'remainingBudget', direction: 'asc' });
     const [expanded, setExpanded] = useState(() => new Set());
 
+    // La barre de filtres reste épinglée en haut ; l'en-tête du tableau se colle
+    // juste en dessous. On mesure sa hauteur (elle varie si les filtres passent à la
+    // ligne sur écran étroit) pour caler le « top » du thead pile sous elle.
+    const filterBarRef = useRef(null);
+    const [filterBarH, setFilterBarH] = useState(78);
+    useEffect(() => {
+        const el = filterBarRef.current;
+        if (!el || typeof ResizeObserver === 'undefined') return;
+        const ro = new ResizeObserver(() => setFilterBarH(el.offsetHeight));
+        ro.observe(el);
+        setFilterBarH(el.offsetHeight);
+        return () => ro.disconnect();
+    }, []);
+
     // --- FILTRES ---
     const [activeFilters, setActiveFilters] = useState([{ id: 'hide_archived', label: 'Hors archivés', field: 'hide_archived' }]);
     const [statusOpen, setStatusOpen] = useState(false);
@@ -207,7 +221,10 @@ const AssistantView = ({ stats, onUpdateProject }) => {
         </div>
     );
 
-    const th = { padding: '12px 16px', fontSize: 12, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', userSelect: 'none' };
+    // sticky top = hauteur de la barre de filtres, pour que l'en-tête se cale pile
+    // dessous. Fond opaque obligatoire (sinon les lignes défileraient au travers) et
+    // z-index sous les menus déroulants des filtres (z 200).
+    const th = { padding: '12px 16px', fontSize: 12, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', userSelect: 'none', position: 'sticky', top: filterBarH, background: '#F9FAFB', borderBottom: '1px solid #E5E7EB', zIndex: 20 };
     const tdNum = { padding: '8px 16px', textAlign: 'right', fontSize: 13 };
     const iconBtn = (active) => ({
         display: 'flex', alignItems: 'center', gap: 6, height: 38, padding: '0 12px', borderRadius: 8, cursor: 'pointer',
@@ -234,9 +251,10 @@ const AssistantView = ({ stats, onUpdateProject }) => {
     const inputStyle = { width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid #E5E7EB', fontSize: 13, outline: 'none', boxSizing: 'border-box' };
 
     return (
-        <div style={{ flex: 1, padding: 24, overflowY: 'auto' }}>
-            {/* BARRE DE FILTRES */}
-            <div style={{ maxWidth: 1100, margin: '0 auto 16px', display: 'flex', gap: 8, alignItems: 'center' }}>
+        <div style={{ flex: 1, overflowY: 'auto', position: 'relative' }}>
+            {/* BARRE DE FILTRES — épinglée en haut du scroll (recherche + statut + avancés) */}
+            <div ref={filterBarRef} style={{ position: 'sticky', top: 0, zIndex: 30, background: '#FAF5EE', padding: '24px 24px 16px' }}>
+            <div style={{ maxWidth: 1100, margin: '0 auto', display: 'flex', gap: 8, alignItems: 'center' }}>
                 <SmartFilterBar
                     fields={SEARCH_FIELDS}
                     activeFilters={activeFilters}
@@ -321,19 +339,25 @@ const AssistantView = ({ stats, onUpdateProject }) => {
                     )}
                 </div>
             </div>
+            </div>
 
-            <div style={{ maxWidth: 1100, margin: '0 auto', background: 'white', borderRadius: 12, border: '1px solid #E5E7EB', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
+            {/* overflow visible (au lieu de hidden) : sinon la carte deviendrait le
+                conteneur de défilement du thead collant et le figerait dans la carte.
+                Même gabarit que la barre de filtres (padding 24 + inner maxWidth 1100
+                centré) pour que les deux soient parfaitement alignés. */}
+            <div style={{ padding: '0 24px 24px' }}>
+            <div style={{ maxWidth: 1100, margin: '0 auto', background: 'white', borderRadius: 12, border: '1px solid #E5E7EB', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', overflow: 'visible' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                    <thead style={{ background: '#F9FAFB', borderBottom: '1px solid #E5E7EB' }}>
+                    <thead style={{ background: '#F9FAFB' }}>
                         <tr>
-                            <th style={{ ...th, textAlign: 'left' }}>Nom du Dossier</th>
+                            <th style={{ ...th, textAlign: 'left', borderTopLeftRadius: 12 }}>Nom du Dossier</th>
                             <th style={{ ...th, textAlign: 'left' }}><SortLabel label="Deadline" sortKey="deadline" align="flex-start" /></th>
                             <th style={{ ...th, textAlign: 'center' }}><SortLabel label="Statut" sortKey="projectStatus" align="center" /></th>
                             <th style={{ ...th, textAlign: 'center' }}>Avancement</th>
                             <th style={{ ...th, textAlign: 'right' }}><SortLabel label="Budget (h)" sortKey="totalSold" /></th>
                             <th style={{ ...th, textAlign: 'right' }}><SortLabel label="Conso. (h)" sortKey="totalConsumed" /></th>
                             <th style={{ ...th, textAlign: 'right' }}><SortLabel label="Restant (h)" sortKey="remainingBudget" /></th>
-                            <th style={{ ...th, textAlign: 'right' }}><SortLabel label="Planifié (h)" sortKey="totalFuture" /></th>
+                            <th style={{ ...th, textAlign: 'right', borderTopRightRadius: 12 }}><SortLabel label="Planifié (h)" sortKey="totalFuture" /></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -400,6 +424,7 @@ const AssistantView = ({ stats, onUpdateProject }) => {
                         )}
                     </tbody>
                 </table>
+            </div>
             </div>
         </div>
     );
