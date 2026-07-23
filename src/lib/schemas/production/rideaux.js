@@ -282,6 +282,7 @@ const getters = {
 
         let divider = 10;
         const typeConf = (row.type_confection || "").toLowerCase();
+        const isWave = typeConf.includes("wave 60") || typeConf.includes("wave 80");
         if (typeConf.includes("wave 60")) divider = 6;
         else if (typeConf.includes("wave 80")) divider = 8;
 
@@ -291,7 +292,9 @@ const getters = {
         };
 
         // Base PAR PAN, arrondie au pair supérieur (pas de × 2 paire).
-        let total = roundToEven((lFinie / divider) + 2);
+        // Wave : L_finie / diviseur seul (l'atelier a constaté que le « + 2 » donnait
+        // trop de glisseurs). Autres confections : on garde le « + 2 » historique.
+        let total = roundToEven(isWave ? (lFinie / divider) : (lFinie / divider) + 2);
 
         // + 1 si « Pan libre »
         if ((row.paire_ou_un_seul_pan || "") === "Pan libre") total += 1;
@@ -760,7 +763,7 @@ export const RIDEAUX_PROD_SCHEMA = [
         type: "number",
         width: 150,
         readOnly: true,
-        tooltip: "Base PAR PAN : Wave 60 → L_finie/6 + 2 ; Wave 80 → L_finie/8 + 2 ; autre → L_finie/10 + 2. Arrondi au pair supérieur. + 1 si « Pan libre ». (Pas de × 2 pour une paire.)",
+        tooltip: "Base PAR PAN : Wave 60 → L_finie/6 ; Wave 80 → L_finie/8 ; autre → L_finie/10 + 2. Arrondi au pair supérieur. + 1 si « Pan libre ». (Pas de × 2 pour une paire.)",
         valueGetter: (v, row) => getters.nb_glisseurs(getRow(v, row))
     },
 
