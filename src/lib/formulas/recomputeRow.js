@@ -282,15 +282,22 @@ export function recomputeRow(row, schema, ctx = {}) {
     }
 
     // Mecanisme
+    next.pv_mecanisme_auto = false; // repère de verrouillage du PV (recalculé ci-dessous)
     if (next.type_mecanisme === 'Sans Méca') {
       next.modele_mecanisme = '';
       next.pa_mecanisme = 0;
       next.pv_mecanisme = 0;
-    } else
-    // Only calculation if it's a 'Rail' AND billed per ml (not per piece)
-    if (next.type_mecanisme === 'Rail') {
-      const railItem = catalog.find(i => i.name === next.modele_mecanisme);
-      if (railItem?.unit !== 'pce') {
+    } else {
+      // Le mode (pièce vs ml) dépend du MODÈLE choisi, pas du type Rail/Tringle.
+      const mecaItem = catalog.find(i => i.name === next.modele_mecanisme);
+      if (mecaItem?.unit === 'pce') {
+        // À la pièce : PA saisi à la main dans le tableau, PV = PA × marge (coef de la
+        // biblio, 2 par défaut). Le PV devient auto → verrouillé (pv_mecanisme_auto).
+        const coef = Number(mecaItem.coef) || 2;
+        next.pv_mecanisme = Math.round(NVL(next.pa_mecanisme) * coef * 100) / 100;
+        next.pv_mecanisme_auto = true;
+      } else if (next.type_mecanisme === 'Rail') {
+        // Rail facturé au ml : PA et PV depuis la largeur méca × prix catalogue.
         const pM = getPrice(next.modele_mecanisme);
         const wM = NVL(next.largeur_mecanisme) / 100;
         if (pM.found) {
@@ -298,7 +305,7 @@ export function recomputeRow(row, schema, ctx = {}) {
           next.pv_mecanisme = wM * (pM.pv || 0);
         }
       }
-      // unit === 'pce' → PA/PV saisis manuellement dans le tableau, on ne touche pas
+      // Autres (ex. Tringle au ml) : PA/PV restent saisis à la main.
     }
   }
 
@@ -312,12 +319,20 @@ export function recomputeRow(row, schema, ctx = {}) {
 
     // Sync Mecanisme Store
     const itemMecaStore = catalog.find(i => i.name === next.mecanisme_store);
+    next.pv_mecanisme_store_auto = false;
     if (itemMecaStore) {
-      if (next.pa_mecanisme_store === undefined || next.pa_mecanisme_store === 0) { // Only fill if not manually set
-        next.pa_mecanisme_store = itemMecaStore.buyPrice || itemMecaStore.pa || 0;
-      }
-      if (next.pv_mecanisme_store === undefined || next.pv_mecanisme_store === 0) { // Only fill if not manually set
-        next.pv_mecanisme_store = itemMecaStore.sellPrice || itemMecaStore.pv || 0;
+      if (itemMecaStore.unit === 'pce') {
+        // À la pièce : PA saisi à la main, PV = PA × marge (coef biblio, 2 par défaut).
+        const coef = Number(itemMecaStore.coef) || 2;
+        next.pv_mecanisme_store = Math.round(NVL(next.pa_mecanisme_store) * coef * 100) / 100;
+        next.pv_mecanisme_store_auto = true;
+      } else {
+        if (next.pa_mecanisme_store === undefined || next.pa_mecanisme_store === 0) { // Only fill if not manually set
+          next.pa_mecanisme_store = itemMecaStore.buyPrice || itemMecaStore.pa || 0;
+        }
+        if (next.pv_mecanisme_store === undefined || next.pv_mecanisme_store === 0) { // Only fill if not manually set
+          next.pv_mecanisme_store = itemMecaStore.sellPrice || itemMecaStore.pv || 0;
+        }
       }
     }
 
@@ -427,11 +442,20 @@ export function recomputeRow(row, schema, ctx = {}) {
     } else {
       next.pa_interieur = 0; next.pv_interieur = 0;
     }
-    if (next.mecanisme_fourniture && NVL(next.pa_mecanisme) === 0) {
-      const pMF = getPrice(next.mecanisme_fourniture);
-      if (pMF.found) {
-        next.pa_mecanisme = (pMF.pa || 0);
-        next.pv_mecanisme = (pMF.pv || 0);
+    next.pv_mecanisme_auto = false;
+    if (next.mecanisme_fourniture) {
+      const itemMF = catalog.find(i => i.name === next.mecanisme_fourniture);
+      if (itemMF?.unit === 'pce') {
+        // À la pièce : PA saisi à la main, PV = PA × marge (coef biblio, 2 par défaut).
+        const coef = Number(itemMF.coef) || 2;
+        next.pv_mecanisme = Math.round(NVL(next.pa_mecanisme) * coef * 100) / 100;
+        next.pv_mecanisme_auto = true;
+      } else if (NVL(next.pa_mecanisme) === 0) {
+        const pMF = getPrice(next.mecanisme_fourniture);
+        if (pMF.found) {
+          next.pa_mecanisme = (pMF.pa || 0);
+          next.pv_mecanisme = (pMF.pv || 0);
+        }
       }
     }
 

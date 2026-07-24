@@ -430,6 +430,8 @@ export const RIDEAUX_PROD_SCHEMA = [
     },
     { key: "v_ourlets_de_cotes", label: "Ourlets Côtés", type: "number", width: 130, editable: true },
     { key: "piquage_ourlet", label: "Piquage Ourlet", type: "select", options: ["Apparent", "Invisible", "Surfil + Invisible", "Double + Invisible"], width: 145, editable: true },
+    // Piquage Raccord : type de couture pour les raccords de lés (à côté de Piquage Ourlet)
+    { key: "piquage_raccord", label: "Piquage Raccord", type: "select", options: ['Couture anglaise', 'Couture à la française', 'Couture ouverte', 'Surfilage', 'Couture anglaise + Surpiqûre', 'Couture bourdon', 'Plate + surfilage', 'Plate + bourdon'], width: 200, editable: true },
 
 
     // C. Hauteurs & Coupe
