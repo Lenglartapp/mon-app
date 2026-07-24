@@ -1496,7 +1496,7 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
             {assistantMode === 'programmation' ? (
                 <AssistantView stats={stats} onUpdateProject={onUpdateProject} />
             ) : assistantMode === 'capacite' ? (
-                <CapaciteView localUsers={localUsers} localEvents={localEvents} />
+                <CapaciteView localUsers={localUsers} localEvents={localEvents} projects={projects} />
             ) : (
                 <PlanningGrid
                     days={columns}
