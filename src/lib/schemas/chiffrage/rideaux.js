@@ -126,7 +126,7 @@ export const RIDEAUX_SCHEMA = [
     // 59
     { key: "pa_mecanisme", label: "PA Méca", type: "number", width: 135, readOnly: (row) => row.type_mecanisme === 'Sans Méca' },
     // 60
-    { key: "pv_mecanisme", label: "PV Méca", type: "number", width: 135, readOnly: (row) => row.type_mecanisme === 'Sans Méca' },
+    { key: "pv_mecanisme", label: "PV Méca", type: "number", width: 135, readOnly: (row) => row.type_mecanisme === 'Sans Méca' || row.pv_mecanisme_auto === true },
 
     // 60b
     { key: "mecanisme_bis", label: "Méca Bis", type: "catalog_item", category: "Rail", width: 135 },

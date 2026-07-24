@@ -42,7 +42,7 @@ export const STORES_CLASSIQUES_SCHEMA = [
     { key: "pa_mecanisme_store", label: "PA Méca", type: "number", width: 140 },
 
     // pv_mecanisme_store (number) : PV Méca
-    { key: "pv_mecanisme_store", label: "PV Méca", type: "number", width: 140 },
+    { key: "pv_mecanisme_store", label: "PV Méca", type: "number", width: 140, readOnly: (row) => row.pv_mecanisme_store_auto === true },
 
     // heures_prepa (number) : H. Prépa
     { key: "heures_prepa", label: "H. Prépa", type: "number", width: 135 },

@@ -68,7 +68,8 @@ export const MOBILIER_SCHEMA = [
 
     createCol('mecanisme_fourniture', 'Mécanisme', 180, 'catalog_item', { category: 'Rail' }),
     createCol('pa_mecanisme', 'PA Méca.', 135, 'number'),
-    createCol('pv_mecanisme', 'PV Méca.', 135, 'number'),
+    // PV verrouillé quand le mécanisme est « à la pièce » (PV = PA × marge auto).
+    createCol('pv_mecanisme', 'PV Méca.', 135, 'number', { editable: ({ row }) => row?.pv_mecanisme_auto !== true }),
 
     createCol('heures_prepa', 'H. Prépa', 135, 'number'),
     createCol('pv_prepa', 'PV Prépa', 136, 'number'),
