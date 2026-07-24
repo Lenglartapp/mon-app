@@ -21,6 +21,18 @@ const toNum = (v) => {
 // Round to 1 decimal place
 const round1 = (v) => Math.round(v * 10) / 10;
 
+// Arrondi à l'entier PAIR supérieur (ex. 4,1 → 6 ; 4,0 → 4). Utilisé par la largeur
+// finie Wave et par les crochets.
+const arrondiSupPaire = (num) => {
+    const c = Math.ceil(num);
+    return (c % 2 === 0) ? c : c + 1;
+};
+
+// Plus petit entier pair STRICTEMENT supérieur à num (ex. 20,0 → 22 ; 20,1 → 22 ;
+// 19,9 → 20). Contrairement à arrondiSupPaire, un nombre déjà pair est quand même monté
+// de 2 — consigne atelier pour le nombre de glisseurs.
+const pairStrictSup = (num) => Math.floor(num / 2) * 2 + 2;
+
 // « Un seul pan » (toutes variantes) ET « Pan libre » comptent comme un pan unique
 // pour les calculs de dimensions (largeur finie, à plat, …).
 const isSinglePan = (row) => {
@@ -84,15 +96,26 @@ const getters = {
     largeur_finie: (row) => {
         const L = toNum(row.largeur);
         const croisement = toNum(row.croisement);
-        const coeff = L >= 200 ? 1.06 : 1.10;
         const isOnePanel = isSinglePan(row);
+        // Largeur d'UN pan avant coeff : L entier pour un pan unique, L/2 pour une paire.
+        const largeurPan = isOnePanel ? L : L / 2;
 
-        let val = 0;
-        if (!isOnePanel) {
-            val = (L / 2 * coeff) + croisement;
-        } else {
-            val = L * coeff;
+        const typeConf = (row.type_confection || "").toLowerCase();
+        const isWave = typeConf.includes("wave 60") || typeConf.includes("wave 80");
+
+        if (isWave) {
+            // Wave : largeur finie d'un pan = ArrondiSupPaire(largeurPan × coeff ÷ div) × div,
+            // pour tomber sur un nombre pair de vagues. Le 200 est inclus dans « < 200 » → 1,10.
+            const coeff = L <= 200 ? 1.10 : 1.06;
+            const div = typeConf.includes("wave 60") ? 6 : 8;
+            const wavePan = arrondiSupPaire((largeurPan * coeff) / div) * div;
+            // Paire : on ajoute le croisement par-dessus (comme les autres confections).
+            return Math.ceil(isOnePanel ? wavePan : wavePan + croisement);
         }
+
+        // Autres confections : formule historique inchangée (200 → 1,06).
+        const coeff = L >= 200 ? 1.06 : 1.10;
+        const val = isOnePanel ? (L * coeff) : ((L / 2 * coeff) + croisement);
         return Math.ceil(val);
     },
 
@@ -286,15 +309,11 @@ const getters = {
         if (typeConf.includes("wave 60")) divider = 6;
         else if (typeConf.includes("wave 80")) divider = 8;
 
-        const roundToEven = (num) => {
-            const ceil = Math.ceil(num);
-            return (ceil % 2 === 0) ? ceil : ceil + 1;
-        };
-
-        // Base PAR PAN, arrondie au pair supérieur (pas de × 2 paire).
-        // Wave : L_finie / diviseur seul (l'atelier a constaté que le « + 2 » donnait
-        // trop de glisseurs). Autres confections : on garde le « + 2 » historique.
-        let total = roundToEven(isWave ? (lFinie / divider) : (lFinie / divider) + 2);
+        // Base PAR PAN, montée au pair STRICTEMENT supérieur (même un entier pair est
+        // bumpé de 2 — consigne atelier). Pas de × 2 paire.
+        // Wave : L_finie / diviseur seul (le « + 2 » donnait trop de glisseurs).
+        // Autres confections : on garde le « + 2 » historique.
+        let total = pairStrictSup(isWave ? (lFinie / divider) : (lFinie / divider) + 2);
 
         // + 1 si « Pan libre »
         if ((row.paire_ou_un_seul_pan || "") === "Pan libre") total += 1;
@@ -303,21 +322,14 @@ const getters = {
     },
 
     nb_crochets_par_pan: (row) => {
-        const lFinie = getters.largeur_finie(row);
-        if (!lFinie) return 0;
+        const glisseurs = getters.nb_glisseurs(row);
+        if (!glisseurs) return 0;
 
-        let divider = 10;
         const typeConf = (row.type_confection || "").toLowerCase();
-        if (typeConf.includes("wave 60")) divider = 6;
-        else if (typeConf.includes("wave 80")) divider = 8;
+        const isWave = typeConf.includes("wave 60") || typeConf.includes("wave 80");
 
-        const roundToEven = (num) => {
-            const ceil = Math.ceil(num);
-            return (ceil % 2 === 0) ? ceil : ceil + 1;
-        };
-
-        // Base : formule glisseurs PAR PAN (sans le × 2 de la paire), arrondie au pair sup.
-        let total = roundToEven((lFinie / divider) + 2);
+        // Base : Wave → autant de crochets que de glisseurs ; sinon → glisseurs + 1.
+        let total = isWave ? glisseurs : glisseurs + 1;
 
         // + 2 si cache moteur = "oui"
         if (String(row.cache_moteur || "").toLowerCase() === "oui") total += 2;
@@ -325,7 +337,7 @@ const getters = {
         // + 1 si au moins un retour est rempli (gauche ou droit) — reste +1 même si les deux
         if (toNum(row.retour_gauche) > 0 || toNum(row.retour_droit) > 0) total += 1;
 
-        // + valeur de la patte de croisement sélectionnée (0 si aucune)
+        // + valeur de la patte de croisement sélectionnée (2 ou 3 ; 0 si aucune)
         total += PATTE_CROISEMENT_CROCHETS[row.patte_de_croisement] || 0;
 
         // Le total n'est PAS ré-arrondi : il peut être impair.
@@ -773,7 +785,7 @@ export const RIDEAUX_PROD_SCHEMA = [
         type: "number",
         width: 145,
         readOnly: true,
-        tooltip: "Base glisseurs PAR PAN (sans × 2 paire), arrondie au pair sup. + 2 si cache moteur \"oui\" + 1 si un retour rempli + valeur patte de croisement. Total possiblement impair.",
+        tooltip: "Base : Wave → = Nb glisseurs/pan ; sinon → Nb glisseurs/pan + 1. Puis + 2 si cache moteur \"oui\", + 1 si un retour rempli, + valeur patte de croisement (2 ou 3). Total possiblement impair.",
         valueGetter: (v, row) => getters.nb_crochets_par_pan(getRow(v, row))
     },
 
