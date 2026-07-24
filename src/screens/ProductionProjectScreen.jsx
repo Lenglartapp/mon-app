@@ -18,6 +18,7 @@ import { STAGES, DEFAULT_VIEWS } from "../lib/constants/views.js"; // Import DEF
 import { recomputeRow } from "../lib/formulas/recomputeRow";
 import { computeProjectHours } from "../lib/projectMetrics";
 import { RIDEAUX_PROD_SCHEMA } from "../lib/schemas/production/rideaux";
+import { RIDEAUX_PROD_MATIERE_GROUPS } from "../lib/constants/matiereGroups";
 import { STORES_PROD_SCHEMA } from "../lib/schemas/production/stores_classiques";
 import { STORES_BATEAUX_PROD_SCHEMA } from "../lib/schemas/production/stores_bateaux";
 import { COUSSINS_PROD_SCHEMA } from "../lib/schemas/production/coussins";
@@ -1251,6 +1252,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                 projectId={project?.id}
                 enableDecentree={true}
                 gridKey="pv_rideaux"
+                resetViewLabel="vue prise de cotes"
                 onRowClick={(id) => setOpenedRowId(id)}
                 isMobile={isMobile}
               />
@@ -1441,6 +1443,9 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                 projectId={project?.id}
                   enableDecentree={true}
                   gridKey="bpf_rideaux"
+                  matiereGroups={RIDEAUX_PROD_MATIERE_GROUPS}
+                  matieresInPanel={true}
+                  resetViewLabel="vue BPF"
                   onRowClick={(id) => setOpenedRowId(id)}
                   isMobile={isMobile}
                 />
@@ -1630,6 +1635,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                 projectId={project?.id}
                   enableDecentree={true}
                   gridKey="bpp_rideaux"
+                  resetViewLabel="vue BPP"
                   onRowClick={(id) => setOpenedRowId(id)}
                   isMobile={isMobile}
                 />
