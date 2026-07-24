@@ -1519,6 +1519,7 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                         { ...prev, [key]: prev[key] >= 2 ? 1 : 2 }
                     ))}
                     events={filteredEvents}
+                    projects={projects}
                     hiddenResources={hiddenResources}
                     onCellClick={handleCellClick}
                     onEventClick={handleEventClick}
