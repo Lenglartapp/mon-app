@@ -4,6 +4,20 @@
 // fields[] = liste des clés de colonnes qui composent ce bloc matière.
 // L'ordre des groupes détermine l'ordre d'affichage dans le bouton Matières.
 
+// Groupes matière côté PRODUCTION (BPF rideaux). Contrairement au chiffrage, pas de
+// colonnes de prix (PA/PV) : à la place, chaque matière embarque ses cotes propres —
+// hauteur de coupe et appiècement (qui existent en version T1 / T2 / doublure / inter).
+// Les finitions de doublure (déduction, piquage bas, doubl. fin. bas) restent hors du
+// groupe : ce sont des détails de confection, pas la matière elle-même.
+export const RIDEAUX_PROD_MATIERE_GROUPS = [
+    { id: 'tissu1',         label: 'Tissu 1',         fields: ['tissu_deco1', 'laize_tissu1', 'raccord_v_tissu1', 'raccord_h_tissu1', 'hauteur_coupe', 'nb_raccords_motifs', 'hauteur_coupe_motif', 'ml_tissu1', 'reste_les'] },
+    { id: 'tissu2',         label: 'Tissu 2',         fields: ['tissu_deco2', 'laize_tissu2', 'raccord_v_tissu2', 'raccord_h_tissu2', 'hauteur_coupe_t2', 'hauteur_coupe_motif_t2', 'ml_tissu2', 'reste_les_t2'] },
+    { id: 'doublure',       label: 'Doublure',        fields: ['doublure', 'laize_doublure', 'hauteur_coupe_doublure', 'ml_doublure', 'reste_les_doublure'] },
+    { id: 'interdoublure',  label: 'Interdoublure',   fields: ['inter_doublure', 'laize_inter', 'hauteur_coupe_inter', 'ml_inter_doublure', 'reste_les_inter'] },
+    { id: 'passementerie1', label: 'Passementerie 1', fields: ['passementerie1', 'application_passementerie1', 'ml_pass1'] },
+    { id: 'passementerie2', label: 'Passementerie 2', fields: ['passementerie2', 'application_passementerie2', 'ml_pass2'] },
+];
+
 export const RIDEAUX_MATIERE_GROUPS = [
     { id: 'tissu1',         label: 'Tissu 1',         fields: ['tissu_deco1', 'laize_tissu1', 'raccord_v_tissu1', 'raccord_h_tissu1', 'nb_les_tissu1', 'ml_tissu1', 'pa_tissu1', 'pv_tissu1'] },
     { id: 'tissu2',         label: 'Tissu 2',         fields: ['tissu_deco2', 'laize_tissu2', 'raccord_v_tissu2', 'raccord_h_tissu2', 'ml_tissu2', 'pa_tissu2', 'pv_tissu2'] },

@@ -167,6 +167,15 @@ const AG_CUSTOM_CSS = `
   background-color: #dbeafe !important;
   border-bottom: 2px solid #3b82f6 !important;
 }
+/* Surlignage temporaire quand on « saute » sur une colonne depuis le panneau Colonnes */
+@keyframes ag-col-jump-flash {
+  0%, 100% { background-color: transparent; }
+  15%, 55% { background-color: #fde68a; }
+}
+.ag-theme-alpine .ag-header-cell.col-jump-flash {
+  animation: ag-col-jump-flash 1s ease-in-out 2;
+  box-shadow: inset 0 -3px 0 0 #f59e0b;
+}
 `;
 
 // Injecter le CSS une seule fois
@@ -200,6 +209,10 @@ function MinuteGrid({
     matiereGroups = [],
     activeMatieres = null,
     onMatiereChange,
+    // Production : bascules matière DANS le panneau Colonnes (pas de bouton Configuration).
+    matieresInPanel = false,
+    // Libellé du bouton « Réinitialiser <…> » (ex. "vue BPF"). Absent = pas de bouton.
+    resetViewLabel = '',
     mecaGroups = [],
     confGroups = [],
     showExpeditionCol = false,
@@ -578,6 +591,14 @@ function MinuteGrid({
         api.setColumnsVisible(group.fields, active);
         saveColumnState(api);
 
+        // Les cases individuelles du panneau (colVisibility) doivent suivre : sans ça,
+        // basculer une matière laisserait les cases de ses colonnes désynchronisées.
+        setColVisibility(prev => {
+            const next = { ...prev };
+            group.fields.forEach(f => { next[f] = active; });
+            return next;
+        });
+
         setLocalMatieres(prev => {
             const next = { ...prev, [groupId]: active };
             onMatiereChange?.(next);
@@ -827,6 +848,59 @@ function MinuteGrid({
         setColVisibility(prev => ({ ...prev, [colId]: visible }));
     }, [saveColumnState]);
 
+    // Réinitialise à la vue par défaut de l'écran (initialVisibilityModel, fournie par le
+    // parent : BPF, BPP, prise…). Utile après un « Tout afficher » : on revient à la
+    // sélection standard. L'état étant partagé, ça revaut pour tout le monde.
+    const handleResetView = useCallback(() => {
+        const api = gridRef.current?.api;
+        if (!api || !initialVisibilityModel || !Object.keys(initialVisibilityModel).length) return;
+
+        const shown = [], hidden = [], nextVis = {};
+        schema.forEach(col => {
+            if (col.key === 'sel' || col.hidden) return;
+            const visible = initialVisibilityModel[col.key] !== false;
+            (visible ? shown : hidden).push(col.key);
+            nextVis[col.key] = visible;
+        });
+        api.setColumnsVisible(shown, true);
+        api.setColumnsVisible(hidden, false);
+        saveColumnState(api);
+        setColVisibility(nextVis);
+
+        // Remet aussi les bascules matière dans leur état par défaut.
+        if (matiereGroups?.length) {
+            const defMat = getDefaultMatieres(matiereGroups, initialVisibilityModel);
+            setLocalMatieres(defMat);
+            onMatiereChange?.(defMat);
+        }
+        setColPanelOpen(false);
+    }, [initialVisibilityModel, schema, saveColumnState, matiereGroups, onMatiereChange]);
+
+    // Colonne actuellement mise en évidence par un « saut » (double-clic dans le panneau).
+    // Lue par headerClass ; on rafraîchit l'en-tête à l'aller comme au retour.
+    const jumpFlashColRef = useRef(null);
+    const jumpFlashTimerRef = useRef(null);
+    const handleJumpToColumn = useCallback((colId) => {
+        const api = gridRef.current?.api;
+        // Sur une colonne masquée, on ne saute pas : c'est la case qui l'affiche d'abord.
+        if (!api || colVisibility[colId] === false) return;
+
+        setColPanelOpen(false);
+        api.ensureColumnVisible(colId, 'middle'); // défile horizontalement jusqu'à elle
+
+        // Surlignage de l'en-tête (~1 s) + flash des cellules : l'en-tête reste visible
+        // même quand la colonne est pleine de cases vides (cas fréquent en BPF).
+        jumpFlashColRef.current = colId;
+        api.refreshHeader();
+        try { api.flashCells({ columns: [colId], flashDuration: 1000 }); } catch { /* selon version AG Grid */ }
+
+        clearTimeout(jumpFlashTimerRef.current);
+        jumpFlashTimerRef.current = setTimeout(() => {
+            jumpFlashColRef.current = null;
+            gridRef.current?.api?.refreshHeader();
+        }, 2100);
+    }, [colVisibility]);
+
     // Définitions des colonnes
     // Les largeurs sont baked directement dans les colDefs depuis le schéma + overrides _widths.
     // Cela évite tout problème de timing avec initialWidth / applyColumnState.
@@ -862,7 +936,10 @@ function MinuteGrid({
                 ...(enableDecentree && col.field === 'zone' ? { cellRenderer: decentreeZoneRenderer } : {}),
                 // « voir parent » sur les colonnes techniques du rail pour les lignes enfants
                 ...(enableDecentree && DECENTREE_PARENT_ONLY_TECH.includes(col.field) ? { cellRenderer: decentreeParentOnlyRenderer } : {}),
-                headerClass: () => activeFilterFieldsRef.current.has(col.field) ? 'filter-col-active' : '',
+                headerClass: () => [
+                    activeFilterFieldsRef.current.has(col.field) ? 'filter-col-active' : '',
+                    jumpFlashColRef.current === col.field ? 'col-jump-flash' : '',
+                ].filter(Boolean),
             };
         });
 
@@ -1399,8 +1476,10 @@ function MinuteGrid({
                 {filterPanelOpen && (
                     <div style={{ position: 'fixed', inset: 0, zIndex: 1000 }} onClick={() => setFilterPanelOpen(false)} />
                 )}
-                {/* Bouton Configuration (Matières + Méca + Conf) */}
-                {matiereGroups?.length > 0 && (
+                {/* Bouton Configuration (Matières + Méca + Conf) — chiffrage. En production
+                    (matieresInPanel), les matières vivent dans le panneau Colonnes, donc on
+                    ne montre plus ce bouton pour elles. */}
+                {matiereGroups?.length > 0 && !matieresInPanel && (
                     <div style={{ position: 'relative' }}>
                         <button
                             onClick={() => { setMatierePanelOpen(prev => !prev); setColPanelOpen(false); }}
@@ -1527,7 +1606,42 @@ function MinuteGrid({
                                     onClick={e => { e.stopPropagation(); handleToggleAllColumns(false); }}
                                     style={{ flex: 1, padding: '4px 6px', fontSize: 11, cursor: 'pointer', background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: 4, fontWeight: 600 }}
                                 >Tout masquer</button>
+                                {resetViewLabel && (
+                                    <button
+                                        onClick={e => { e.stopPropagation(); handleResetView(); }}
+                                        title="Revenir à la sélection de colonnes standard de cet écran"
+                                        style={{ flex: 1, padding: '4px 6px', fontSize: 11, cursor: 'pointer', background: '#f5f3ff', color: '#6d28d9', border: '1px solid #ddd6fe', borderRadius: 4, fontWeight: 600 }}
+                                    >Réinitialiser {resetViewLabel}</button>
+                                )}
                             </div>
+
+                            {/* Bascules par matière (production) : un clic montre/masque tout un
+                                bloc (tissu, doublure, passementerie…) d'un coup. */}
+                            {matieresInPanel && matiereGroups.length > 0 && (
+                                <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid #f3f4f6' }}>
+                                    <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 6, padding: '0 2px' }}>Matières</div>
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                                        {matiereGroups.map(group => {
+                                            const active = localMatieres[group.id] !== false;
+                                            return (
+                                                <button
+                                                    key={group.id}
+                                                    onClick={e => { e.stopPropagation(); handleToggleMatiere(group.id, !active); }}
+                                                    style={{
+                                                        display: 'flex', alignItems: 'center', gap: 5, padding: '4px 10px', fontSize: 12, cursor: 'pointer', borderRadius: 999, fontWeight: 600,
+                                                        background: active ? '#eff6ff' : 'white',
+                                                        color: active ? '#1d4ed8' : '#9ca3af',
+                                                        border: `1px solid ${active ? '#bfdbfe' : '#e5e7eb'}`,
+                                                    }}
+                                                >
+                                                    <span style={{ width: 7, height: 7, borderRadius: '50%', background: active ? '#2563eb' : '#d1d5db' }} />
+                                                    {group.label}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                         {/* Grille multi-colonnes */}
                         <div style={{ overflowY: 'auto', padding: '8px 12px 12px' }}>
@@ -1543,20 +1657,34 @@ function MinuteGrid({
                                     <div style={{ display: 'grid', gridTemplateColumns: `repeat(${COLS}, 1fr)`, gap: '0 16px' }}>
                                         {columns.map((group, gi) => (
                                             <div key={gi}>
-                                                {group.map(col => (
-                                                    <label key={col.field} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 4px', borderRadius: 4, cursor: 'pointer', fontSize: 13 }}
+                                                {group.map(col => {
+                                                    const shown = colVisibility[col.field] !== false;
+                                                    // Deux gestes DISTINCTS pour éviter tout conflit : la case gère la
+                                                    // visibilité, le libellé gère le saut. Un <label> ferait basculer la
+                                                    // case à chaque clic → un double-clic la masquerait puis la ré-afficherait
+                                                    // (2 réorganisations de grille = le délai constaté). D'où un <div>.
+                                                    return (
+                                                    <div key={col.field} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 4px', borderRadius: 4, fontSize: 13 }}
                                                         onMouseEnter={e => e.currentTarget.style.background = '#f3f4f6'}
                                                         onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                                                     >
                                                         <input
                                                             type="checkbox"
-                                                            checked={colVisibility[col.field] !== false}
+                                                            checked={shown}
                                                             onChange={e => handleToggleColumn(col.field, e.target.checked)}
-                                                            style={{ accentColor: '#2563eb', flexShrink: 0 }}
+                                                            style={{ accentColor: '#2563eb', flexShrink: 0, cursor: 'pointer' }}
+                                                            title="Afficher / masquer la colonne"
                                                         />
-                                                        <span>{col.label}</span>
-                                                    </label>
-                                                ))}
+                                                        {/* Libellé : double-clic = aller à la colonne (si affichée). Grisé et
+                                                            non cliquable quand elle est masquée. */}
+                                                        <span
+                                                            onDoubleClick={() => { if (shown) handleJumpToColumn(col.field); }}
+                                                            title={shown ? 'Double-cliquer pour aller à la colonne' : 'Cocher pour l\'afficher d\'abord'}
+                                                            style={{ flex: 1, color: shown ? '#111827' : '#9ca3af', userSelect: 'none', cursor: shown ? 'pointer' : 'default' }}
+                                                        >{col.label}</span>
+                                                    </div>
+                                                    );
+                                                })}
                                             </div>
                                         ))}
                                     </div>
