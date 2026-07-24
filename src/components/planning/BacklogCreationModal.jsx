@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { differenceInMinutes, startOfWeek, addWeeks, addDays, getISOWeek, format } from 'date-fns';
+import { startOfWeek, addWeeks, addDays, getISOWeek, format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { X, Briefcase } from 'lucide-react';
 import { INTERNAL_PROJECT_NAME, isInternalProject, findInternalProject, getActiveChapters, normalizeChapter } from '../../lib/planning/internalProject';
+import { computeProjectHours } from '../../lib/projectMetrics';
 import RichTextArea from '../ui/RichTextArea';
 
 // Semaines proposées dans le sélecteur : de 4 semaines avant à 1 an après la semaine de
@@ -122,47 +123,23 @@ const BacklogCreationModal = ({ isOpen, onClose, onSave, onDelete, projects, eve
         ).slice(0, 5); // Limit to 5
     }, [projects, search]);
 
-    // CALCULATE STATS
+    // CALCULATE STATS — source unique (computeProjectHours), confection uniquement.
+    //  • Planifié  = ce qui est posé au Programme semaine, cumulé (planned.conf).
+    //  • Consommé  = créneaux confection validés (consumed.conf) — inchangé.
+    //  • Reste à planifier = budget vendu − planifié (peut passer en négatif → rouge).
     const projectStats = useMemo(() => {
         if (!selectedProject) return null;
 
-        const budgetSold = selectedProject.budget?.conf || 0;
-
-        // CONFECTION UNIQUEMENT : on ignore pose, prépa, absences et les buckets backlog.
-        // (Ce programme semaine concerne l'atelier confection.)
-        const confEvents = events.filter(e =>
-            e.meta?.projectId === selectedProject.id &&
-            e.type === 'conf' &&
-            e.resourceId !== 'backlog_confection'
-        );
-
-        // Heures réelles d'un créneau : durationHours exclut déjà la pause déjeuner ;
-        // en repli, on déduit l'heure de pause de la durée brute.
-        const eventHours = (e) => {
-            if (e.meta?.durationHours != null) return e.meta.durationHours;
-            const start = new Date(e.meta?.start || e.date);
-            const end = new Date(e.meta?.end || e.date);
-            let mins = differenceInMinutes(end, start);
-            const lunchStart = new Date(start); lunchStart.setHours(12, 0, 0, 0);
-            const lunchEnd = new Date(start); lunchEnd.setHours(13, 0, 0, 0);
-            if (start < lunchStart && end > lunchEnd) mins -= 60;
-            return Math.max(0, mins) / 60;
-        };
-
-        // Planifié = à faire (pending) ; Consommé = réalisé (validé), figé.
-        let plannedHours = 0;
-        let consumedHours = 0;
-        confEvents.forEach(e => {
-            const h = eventHours(e);
-            if (e.meta?.status === 'validated') consumedHours += h;
-            else plannedHours += h;
-        });
+        const hours = computeProjectHours(selectedProject, events);
+        const sold = hours.budget.conf;
+        const planned = hours.planned.conf;
+        const consumed = hours.consumed.conf;
 
         return {
-            sold: budgetSold,
-            planned: plannedHours,
-            consumed: consumedHours,
-            remaining: budgetSold - plannedHours - consumedHours
+            sold,
+            planned,
+            consumed,
+            remaining: sold - planned,
         };
     }, [selectedProject, events]);
 
@@ -295,7 +272,7 @@ const BacklogCreationModal = ({ isOpen, onClose, onSave, onDelete, projects, eve
                             </div>
                             <div style={S.statRow}>
                                 <span>Déjà Consommé (réalisé) :</span>
-                                <span style={{ ...S.statValue, color: '#6B7280' }}>{fmtH(projectStats.consumed)}h</span>
+                                <span style={{ ...S.statValue, color: projectStats.consumed > projectStats.sold ? '#EF4444' : '#6B7280' }}>{fmtH(projectStats.consumed)}h</span>
                             </div>
                             <div style={{ ...S.statRow, marginTop: 8, paddingTop: 8, borderTop: '1px dashed #D1D5DB' }}>
                                 <span>Reste à Planifier :</span>

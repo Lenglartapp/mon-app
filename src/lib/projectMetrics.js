@@ -235,12 +235,28 @@ export const computeProjectHours = (project, events) => {
   (events || []).forEach(evt => {
     if (evt.meta?.projectId !== project?.id) return;
     if (evt.type === 'absence') return;
+
+    // CONFECTION — le « planifié » vient du PROGRAMME SEMAINE (cartes backlog),
+    // pas de la répartition par personne. Chaque carte porte ses heures dans
+    // meta.budgetHours ; on les cumule (toutes semaines) dans planned.conf.
+    if (evt.resourceId === 'backlog_confection' || evt.meta?.isBacklogMaster) {
+      planned.conf += Number(evt.meta?.budgetHours) || 0;
+      return;
+    }
+
     const svc = serviceOfEventType(evt.type);
     if (!svc) return;
     const h = netHoursOfEvent(evt);
-    // Validé = consommé (réalisé) ; sinon = planifié (programmé non fait)
-    if (evt.meta?.status === 'validated') consumed[svc] += h;
-    else planned[svc] += h;
+
+    if (evt.meta?.status === 'validated') {
+      // Consommé (réalisé) : inchangé, tous services — créneaux validés par personne.
+      consumed[svc] += h;
+    } else if (svc !== 'conf') {
+      // Planifié pose/prépa : inchangé (répartition par personne).
+      // Planifié conf : ignoré ici — il provient du Programme semaine (ci-dessus),
+      // sinon on compterait deux fois les mêmes heures.
+      planned[svc] += h;
+    }
   });
 
   const remaining = {

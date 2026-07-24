@@ -5,6 +5,7 @@ import { fr } from 'date-fns/locale';
 import { PLANNING_COLORS, getProjectColor, ROW_HEIGHT, PROGRAMME_ROW_HEIGHT, HEADER_HEIGHT_1, HEADER_HEIGHT_2, TOTAL_WORK_MINUTES, WORK_START_HOUR, WORK_END_HOUR, DEFAULT_DAILY_HOURS, ATELIER_HOURS_PER_DAY, dailyHoursForGroup } from './constants';
 import { uid } from '../../lib/utils/uid';
 import { stripMarks } from '../../lib/utils/richText';
+import { computeProjectHours } from '../../lib/projectMetrics';
 
 // --- STICKY CELLS ---
 const StickyLeftCell = ({ children, bg = 'white', borderBottom = true, onClick, style }) => (
@@ -26,7 +27,7 @@ const StickyCorner = ({ children, style }) => (
 const PlanningGrid = ({
     days, columns: gridCols, superHeaders, view,
     filteredGroups, expandedGroups, onToggleGroup, onToggleMembers,
-    events, hiddenResources,
+    events, projects = [], hiddenResources,
     onCellClick, onEventClick, onDeleteEvent, onUpdateEvent,
     onDragStart, onDragOver, onDrop,
     hoveredEventId, onHoverEvent,
@@ -164,7 +165,6 @@ const PlanningGrid = ({
             const opacity = isValidated || isBacklog ? 1 : 0.9;
 
             // --- BACKLOG SPECIFIC LOGIC ---
-            let progressPercent = 0;
             let plannedHours = 0;
             let totalHours = 0;
             let childEvents = [];
@@ -227,8 +227,6 @@ const PlanningGrid = ({
                     const masterE = new Date(evt.meta.end);
                     totalHours = Math.round(differenceInMinutes(masterE, masterS) / 60);
                 }
-
-                progressPercent = totalHours > 0 ? (plannedHours / totalHours) * 100 : 0;
             }
 
             const startStr = evt.meta?.start ? format(new Date(evt.meta.start || evt.date), 'HH:mm') : '08:00';
@@ -250,16 +248,23 @@ const PlanningGrid = ({
                 widthPercent = (duration / TOTAL_WORK_MINUTES) * 100;
             }
 
+            // La barre de la carte = avancement de CONSOMMATION du projet sur son budget
+            // vendu (consommé / budget). Rouge dès qu'on dépasse le budget.
+            const cardProg = projectHoursById[evt.meta?.projectId];
+            const cardConsumed = cardProg ? Math.round(cardProg.consumed.conf) : 0;
+            const cardBudget = cardProg ? Math.round(cardProg.budget.conf) : 0;
+            const cardPct = cardBudget > 0 ? (cardConsumed / cardBudget) * 100 : 0;
+
             const renderBacklogContent = () => (
                 <div style={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'center' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
                         <span style={{ fontWeight: 800, fontSize: 11 }}>{evt.title}</span>
-                        <span style={{ fontSize: 10, background: 'rgba(255,255,255,0.8)', padding: '1px 4px', borderRadius: 4 }}>
-                            {plannedHours}h / {totalHours}h
+                        <span style={{ fontSize: 10, background: 'rgba(255,255,255,0.8)', padding: '1px 4px', borderRadius: 4, color: cardPct > 100 ? '#B91C1C' : undefined }}>
+                            {cardConsumed}h / {cardBudget}h
                         </span>
                     </div>
                     <div style={{ width: '100%', height: 6, background: 'rgba(0,0,0,0.1)', borderRadius: 3, overflow: 'hidden' }}>
-                        <div style={{ width: `${Math.min(progressPercent, 100)}%`, background: progressPercent > 100 ? '#EF4444' : '#10B981', height: '100%' }} />
+                        <div style={{ width: `${Math.min(cardPct, 100)}%`, background: cardPct > 100 ? '#EF4444' : '#10B981', height: '100%' }} />
                     </div>
                 </div>
             );
@@ -454,6 +459,14 @@ const PlanningGrid = ({
         });
         return map;
     }, [filteredGroups]);
+
+    // Avancement (consommé / budget) par projet — source unique partagée avec le
+    // dossier. Sert aux barres des cartes du Programme semaine.
+    const projectHoursById = useMemo(() => {
+        const map = {};
+        (projects || []).forEach(p => { map[p.id] = computeProjectHours(p, events); });
+        return map;
+    }, [projects, events]);
 
     const getStats = (memberIds, dateRange, allEvents) => {
         let totalAbsenceHours = 0;
@@ -824,39 +837,13 @@ const PlanningGrid = ({
                                                                     gap: 4
                                                                 }}>
                                                                     {binEvents.map(evt => {
-                                                                        // Reuse progress Logic
-                                                                        let plannedHours = 0;
-                                                                        let totalHours = 0;
-                                                                        if (evt.meta?.budgetHours) totalHours = parseFloat(evt.meta.budgetHours);
-                                                                        else totalHours = Math.round(differenceInMinutes(new Date(evt.meta.end), new Date(evt.meta.start)) / 60);
-
-                                                                        const childEvents = events.filter(e => {
-                                                                            if (e.resourceId === 'backlog_confection') return false;
-
-                                                                            // 1. Date Range Match (Must be within this bin)
-                                                                            const s = new Date(e.meta?.start || e.date);
-                                                                            const end = new Date(e.meta?.end || e.date);
-                                                                            if (s >= binEnd || end <= binStart) return false;
-
-                                                                            // 2. Project/Title Match
-                                                                            let isMatch = false;
-                                                                            if (evt.meta?.projectId && e.meta?.projectId) isMatch = e.meta.projectId === evt.meta.projectId;
-                                                                            else {
-                                                                                const normalize = s => s ? s.toLowerCase().trim() : '';
-                                                                                isMatch = normalize(e.title) === normalize(evt.title);
-                                                                            }
-                                                                            return isMatch;
-                                                                        });
-                                                                        const minutes = childEvents.reduce((acc, child) => {
-                                                                            const s = new Date(child.meta.start);
-                                                                            const e = new Date(child.meta.end);
-                                                                            let d = differenceInMinutes(e, s);
-                                                                            const lStart = new Date(s); lStart.setHours(12, 0, 0, 0);
-                                                                            if (s < lStart && e > lStart) d -= 60;
-                                                                            return acc + Math.max(0, d);
-                                                                        }, 0);
-                                                                        plannedHours = Math.round(minutes / 60);
-                                                                        const progressPercent = totalHours > 0 ? (plannedHours / totalHours) * 100 : 0;
+                                                                        // Barre = consommé / budget vendu du projet (rouge si dépassement).
+                                                                        const binProg = projectHoursById[evt.meta?.projectId];
+                                                                        const binConsumed = binProg ? Math.round(binProg.consumed.conf) : 0;
+                                                                        const binBudget = binProg ? Math.round(binProg.budget.conf) : 0;
+                                                                        const binPct = binBudget > 0 ? (binConsumed / binBudget) * 100 : 0;
+                                                                        // Volume posé par l'ordonnancement sur CETTE semaine (la carte elle-même).
+                                                                        const binWeekPlanned = Number(evt.meta?.budgetHours) || 0;
 
                                                                         return (
                                                                             <div
@@ -1015,10 +1002,13 @@ const PlanningGrid = ({
                                                                                     </div>
                                                                                 )}
                                                                                 <div style={{ height: 4, background: '#F3F4F6', borderRadius: 2, marginTop: 4, overflow: 'hidden' }}>
-                                                                                    <div style={{ width: `${Math.min(progressPercent, 100)}%`, height: '100%', background: '#10B981' }} />
+                                                                                    <div style={{ width: `${Math.min(binPct, 100)}%`, height: '100%', background: binPct > 100 ? '#EF4444' : '#10B981' }} />
                                                                                 </div>
-                                                                                <div style={{ fontSize: 9, color: '#6B7280', textAlign: 'right', marginTop: 2 }}>
-                                                                                    {plannedHours}/{totalHours}h
+                                                                                <div style={{ fontSize: 9, color: binPct > 100 ? '#B91C1C' : '#6B7280', textAlign: 'right', marginTop: 2 }}>
+                                                                                    {binConsumed}/{binBudget}h
+                                                                                </div>
+                                                                                <div style={{ fontSize: 10, fontWeight: 600, color: '#9F1239', marginTop: 3 }}>
+                                                                                    Planifié cette semaine : {fmtHours(binWeekPlanned)}h
                                                                                 </div>
                                                                             </div>
                                                                         );
