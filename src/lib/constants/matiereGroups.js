@@ -16,6 +16,7 @@ export const RIDEAUX_PROD_MATIERE_GROUPS = [
     { id: 'interdoublure',  label: 'Interdoublure',   fields: ['inter_doublure', 'laize_inter', 'hauteur_coupe_inter', 'ml_inter_doublure', 'reste_les_inter'] },
     { id: 'passementerie1', label: 'Passementerie 1', fields: ['passementerie1', 'application_passementerie1', 'ml_pass1'] },
     { id: 'passementerie2', label: 'Passementerie 2', fields: ['passementerie2', 'application_passementerie2', 'ml_pass2'] },
+    { id: 'embrasse',       label: 'Embrasse',        fields: ['embrasse'] },
 ];
 
 export const RIDEAUX_MATIERE_GROUPS = [
@@ -25,6 +26,7 @@ export const RIDEAUX_MATIERE_GROUPS = [
     { id: 'interdoublure',  label: 'Interdoublure',   fields: ['interdoublure', 'laize_interdoublure', 'nb_les_interdoublure', 'ml_interdoublure', 'pa_interdoublure', 'pv_interdoublure'] },
     { id: 'passementerie1', label: 'Passementerie 1', fields: ['passementerie1', 'application_passementerie1', 'ml_pass1', 'pa_pass1', 'pv_pass1'] },
     { id: 'passementerie2', label: 'Passementerie 2', fields: ['passementerie2', 'application_passementerie2', 'ml_pass2', 'pa_pass2', 'pv_pass2'] },
+    { id: 'embrasse',       label: 'Embrasse',        fields: ['embrasse', 'pa_embrasse', 'pv_embrasse'] },
 ];
 
 export const STORES_BATEAUX_MATIERE_GROUPS = [

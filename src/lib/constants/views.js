@@ -128,7 +128,7 @@ export const DEFAULT_VIEWS = {
       "doublure", "laize_doublure", "ml_doublure",
       "inter_doublure", "laize_inter", "ml_inter_doublure",
       "passementerie1", "application_passementerie1", "ml_pass1",
-      "passementerie2", "application_passementerie2", "ml_pass2",
+      "passementerie2", "application_passementerie2", "ml_pass2", "embrasse",
       "croisement", "type_croisement", "retour_gauche", "retour_droit", "type_retours",
       "hauteur_corniere_elastique",
       "etiquette_lavage", "etiquette_lenglart", "schema",

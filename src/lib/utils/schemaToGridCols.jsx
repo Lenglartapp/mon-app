@@ -341,6 +341,10 @@ export function schemaToGridCols(
           }
           return { values: ['', ...subFiltered.map(a => a.name)] };
         };
+      } else if (col.key === 'embrasse') {
+        // Embrasse = passementerie vendue à la pièce → ne lister que les articles 'pce'
+        const embItems = filteredCatalog.filter(a => a.unit === 'pce');
+        gridCol.cellEditorParams = { values: ['', ...embItems.map(a => a.name)] };
       } else {
         gridCol.cellEditorParams = { values: ['', ...filteredCatalog.map(a => a.name)] };
       }
