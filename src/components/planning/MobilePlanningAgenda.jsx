@@ -213,17 +213,21 @@ export default function MobilePlanningAgenda({
                                                 )}
 
                                                 {proj && onOpenPrise && (
-                                                    <button
-                                                        onClick={() => onOpenPrise(proj)}
-                                                        style={{
-                                                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                                                            width: '100%', marginTop: 10, minHeight: 44,
-                                                            background: '#111827', color: 'white', border: 'none', borderRadius: 10,
-                                                            fontSize: 14, fontWeight: 700, cursor: 'pointer',
-                                                        }}
-                                                    >
-                                                        <ClipboardList size={16} /> Ouvrir la prise de cotes
-                                                    </button>
+                                                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
+                                                        <button
+                                                            onClick={() => onOpenPrise(proj)}
+                                                            title="Ouvrir la prise de cotes"
+                                                            aria-label="Ouvrir la prise de cotes"
+                                                            style={{
+                                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                                width: 40, height: 40, flexShrink: 0,
+                                                                background: '#111827', color: 'white', border: 'none', borderRadius: 10,
+                                                                cursor: 'pointer',
+                                                            }}
+                                                        >
+                                                            <ClipboardList size={18} />
+                                                        </button>
+                                                    </div>
                                                 )}
                                             </div>
                                         );
