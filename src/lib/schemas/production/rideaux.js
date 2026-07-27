@@ -712,6 +712,8 @@ export const RIDEAUX_PROD_SCHEMA = [
             return calcPassML(row.application_passementerie2, getters.a_plat(row), getters.hauteur_coupe(row), isPaire);
         }
     },
+    // Embrasse — nom importé depuis le chiffrage (passementerie à la pièce)
+    { key: "embrasse", label: "Embrasse", type: "text", width: 160, editable: true },
 
     // F. Finitions & Logistique Atelier
     { key: "croisement", label: "Croisement", type: "number", width: 120, editable: true },

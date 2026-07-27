@@ -119,6 +119,11 @@ export const RIDEAUX_SCHEMA = [
     // 56
     { key: "pv_pass2", label: "PV Pass 2", type: "number", width: 145 },
 
+    // 56b — Embrasse (passementerie vendue à la pièce)
+    { key: "embrasse", label: "Embrasse", type: "catalog_item", category: "Passementerie", width: 165 },
+    { key: "pa_embrasse", label: "PA Embrasse", type: "number", width: 145 },
+    { key: "pv_embrasse", label: "PV Embrasse", type: "number", width: 145, readOnly: (row) => row.pv_embrasse_auto === true },
+
     // 57
     { key: "type_mecanisme", label: "Type Méca", type: "select", options: ["Rail", "Tringle", "Rail Motorisé", "Sans Méca"], width: 148 },
     // 58

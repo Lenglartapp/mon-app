@@ -307,6 +307,22 @@ export function recomputeRow(row, schema, ctx = {}) {
       }
       // Autres (ex. Tringle au ml) : PA/PV restent saisis à la main.
     }
+
+    // Embrasse (passementerie vendue à la pièce)
+    next.pv_embrasse_auto = false; // repère de verrouillage du PV
+    if (next.embrasse) {
+      const embItem = catalog.find(i => i.name === next.embrasse);
+      if (embItem?.unit === 'pce') {
+        // À la pièce : PA saisi à la main dans le tableau, PV = PA × marge (coef de la
+        // biblio, 2 par défaut). Le PV devient auto → verrouillé (pv_embrasse_auto).
+        const coef = Number(embItem.coef) || 2;
+        next.pv_embrasse = Math.round(NVL(next.pa_embrasse) * coef * 100) / 100;
+        next.pv_embrasse_auto = true;
+      }
+    } else {
+      next.pa_embrasse = 0;
+      next.pv_embrasse = 0;
+    }
   }
 
   if (isStore) {
@@ -529,7 +545,7 @@ export function recomputeRow(row, schema, ctx = {}) {
   const totalPriceComponents =
     NVL(next.pv_tissu1) + NVL(next.pv_tissu2) +
     NVL(next.pv_doublure) + NVL(next.pv_interdoublure) +
-    NVL(next.pv_pass1) + NVL(next.pv_pass2) +
+    NVL(next.pv_pass1) + NVL(next.pv_pass2) + NVL(next.pv_embrasse) +
     NVL(next.pv_mecanisme) + NVL(next.pv_mecanisme_bis) +
     NVL(next.pv_tissu_1) + NVL(next.pv_pass_1) +
     NVL(next.pv_tissu_2) + NVL(next.pv_pass_2) +
