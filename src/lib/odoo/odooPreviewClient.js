@@ -61,3 +61,16 @@ export function fetchOdooPreview(cutoffDate, projects) {
     body: JSON.stringify({ cutoffDate, projects }),
   });
 }
+
+/**
+ * ÉCRIT les temps dans Odoo (feuilles de temps) pour les projets reliés.
+ * confirm:true est envoyé côté serveur (garde-fou d'écriture).
+ * @param {Array} projects [{ id, name, odooProjectId?, hours:{conf,prepa,pose} }]
+ */
+export function syncOdoo(projects, cutoffDate = null) {
+  return callApi('/api/odoo/sync', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ cutoffDate, projects, confirm: true }),
+  });
+}

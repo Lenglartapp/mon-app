@@ -6,7 +6,7 @@ import { VitePWA } from 'vite-plugin-pwa'
 // serveur Vite (npm run dev), en réutilisant les mêmes handlers que sur Vercel.
 // En production, ce plugin ne s'applique pas : ce sont les vraies fonctions Vercel qui répondent.
 function odooApiDevPlugin(env) {
-  const ROUTES = new Set(['ping', 'preview', 'project-status'])
+  const ROUTES = new Set(['ping', 'preview', 'project-status', 'sync'])
   return {
     name: 'odoo-api-dev',
     apply: 'serve',

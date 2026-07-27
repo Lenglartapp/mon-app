@@ -1,9 +1,9 @@
 import React, { useMemo, useState } from "react";
-import { ArrowLeft, RefreshCw, ExternalLink, Info, AlertTriangle } from "lucide-react";
+import { ArrowLeft, RefreshCw, ExternalLink, Info, AlertTriangle, Upload, CheckCircle } from "lucide-react";
 import { COLORS, S } from "../lib/constants/ui";
 import { useLocalStorage } from "../lib/hooks/useLocalStorage";
 import { aggregateConsumed } from "../lib/odoo/aggregateConsumed";
-import { fetchOdooPreview, odooProjectUrl } from "../lib/odoo/odooPreviewClient";
+import { fetchOdooPreview, syncOdoo, odooProjectUrl } from "../lib/odoo/odooPreviewClient";
 
 const todayStr = () => new Date().toISOString().slice(0, 10);
 
@@ -21,6 +21,8 @@ export default function OdooSyncScreen({ events = [], projects = [], onBack }) {
   const [preview, setPreview] = useState(null); // Map id -> statut Odoo
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [syncing, setSyncing] = useState(false);
+  const [syncMsg, setSyncMsg] = useState(null);
 
   // Agrégat du consommé validé (100% local, sans Odoo)
   const rows = useMemo(
@@ -42,6 +44,28 @@ export default function OdooSyncScreen({ events = [], projects = [], onBack }) {
       setPreview(null);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const runSync = async () => {
+    const linkedCount = rows.filter((r) => preview?.get(r.id)?.status === "linked").length;
+    if (linkedCount === 0) {
+      setSyncMsg("Aucun projet relié à synchroniser pour l'instant.");
+      return;
+    }
+    if (!window.confirm(`Écrire les temps dans Odoo pour ${linkedCount} projet(s) relié(s) ? Les autres seront ignorés.`)) return;
+    setSyncing(true);
+    setSyncMsg(null);
+    setError(null);
+    try {
+      const payload = rows.map((r) => ({ id: r.id, name: r.name, hours: r.hours }));
+      const res = await syncOdoo(payload, cutoffDate);
+      setSyncMsg(`Synchronisé : ${res.summary.created} ligne(s) créée(s), ${res.summary.updated} mise(s) à jour, ${res.summary.skipped} projet(s) ignoré(s) (non reliés).`);
+      await runPreview();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setSyncing(false);
     }
   };
 
@@ -112,6 +136,15 @@ export default function OdooSyncScreen({ events = [], projects = [], onBack }) {
             <RefreshCw size={16} className={loading ? "spin" : undefined} />
             {loading ? "Comparaison…" : "Comparer à Odoo"}
           </button>
+          <button
+            onClick={runSync}
+            disabled={!preview || syncing || loading}
+            title={!preview ? "Lance d'abord « Comparer à Odoo »" : "Écrit les temps des projets reliés dans Odoo"}
+            style={{ ...S.smallBtn, display: "flex", alignItems: "center", gap: 8, opacity: !preview || syncing || loading ? 0.5 : 1 }}
+          >
+            <Upload size={16} className={syncing ? "spin" : undefined} />
+            {syncing ? "Synchronisation…" : "Synchroniser vers Odoo"}
+          </button>
           <div style={{ fontSize: 13, color: "#6B7280" }}>
             {rows.length} projet{rows.length > 1 ? "s" : ""} avec du temps · {fmtH(totalHours)} au total
           </div>
@@ -123,6 +156,14 @@ export default function OdooSyncScreen({ events = [], projects = [], onBack }) {
             <Tile label="Reliés" value={summary.linked} dot={STATUS.linked.dot} />
             <Tile label="À confirmer" value={summary.ambiguous} dot={STATUS.ambiguous.dot} />
             <Tile label="En attente / introuvables" value={summary.waiting} dot={STATUS.pending_tasks.dot} />
+          </div>
+        )}
+
+        {/* Message de synchro */}
+        {syncMsg && (
+          <div style={{ display: "flex", gap: 10, alignItems: "flex-start", background: "#ECFDF5", border: "1px solid #A7F3D0", color: "#065F46", borderRadius: 12, padding: "10px 14px", marginBottom: 14 }}>
+            <CheckCircle size={18} style={{ flexShrink: 0, marginTop: 1 }} />
+            <div style={{ fontSize: 13 }}>{syncMsg}</div>
           </div>
         )}
 
