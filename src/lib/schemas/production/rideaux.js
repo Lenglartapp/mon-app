@@ -309,11 +309,12 @@ const getters = {
         if (typeConf.includes("wave 60")) divider = 6;
         else if (typeConf.includes("wave 80")) divider = 8;
 
-        // Base PAR PAN, montée au pair STRICTEMENT supérieur (même un entier pair est
-        // bumpé de 2 — consigne atelier). Pas de × 2 paire.
-        // Wave : L_finie / diviseur seul (le « + 2 » donnait trop de glisseurs).
-        // Autres confections : on garde le « + 2 » historique.
-        let total = pairStrictSup(isWave ? (lFinie / divider) : (lFinie / divider) + 2);
+        // Base PAR PAN. Pas de × 2 pour une paire.
+        // Wave : L_finie / diviseur, monté au pair STRICTEMENT supérieur (consigne atelier).
+        // Autres confections : L_finie / 10 + 2, arrondi à l'entier INFÉRIEUR (pas de pair forcé).
+        let total = isWave
+            ? pairStrictSup(lFinie / divider)
+            : Math.floor(lFinie / divider + 2);
 
         // + 1 si « Pan libre »
         if ((row.paire_ou_un_seul_pan || "") === "Pan libre") total += 1;
