@@ -145,7 +145,7 @@ import { PROJECT_STATUS_OPTIONS } from "../lib/constants/projectStatus";
 import { useViewportWidth } from "../lib/hooks/useViewportWidth";
 
 // 1. SIGNATURE MISE A JOUR
-export function ProductionProjectScreen({ project: propProject, projects, inventory, onBack, onUpdateProjectRows, onUpdateProject, highlightRowId, events = [] }) {
+export function ProductionProjectScreen({ project: propProject, projects, inventory, onBack, onUpdateProjectRows, onUpdateProject, highlightRowId, initialStage, events = [] }) {
   const { projectId: urlProjectId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -165,7 +165,9 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
     return projects.find(p => p && String(p.id) === String(urlProjectId));
   }, [propProject, projects, urlProjectId]);
 
-  const [stage, setStage] = useState("dashboard");
+  const [stage, setStage] = useState(initialStage || "dashboard");
+  // Ouverture ciblée sur un onglet (ex. depuis l'agenda mobile → prise de cotes)
+  useEffect(() => { if (initialStage) setStage(initialStage); }, [initialStage]);
   const [panelsExpanded, setPanelsExpanded] = useState({});
   const isPanelExpanded = (key) => panelsExpanded[key] !== false; // default: expanded
   const togglePanel = (key) => setPanelsExpanded(p => ({ ...p, [key]: !isPanelExpanded(key) }));
