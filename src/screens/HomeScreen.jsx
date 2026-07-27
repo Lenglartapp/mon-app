@@ -92,10 +92,6 @@ export default function HomeScreen({
 
   const { currentUser } = useAuth();
 
-  // DEBUG : Voir ce que le système détecte vraiment
-  const detectedRole = currentUser?.role || "Aucun rôle détecté";
-  console.log("Role actuel:", detectedRole);
-
   const may = {
     chiffrage: can(currentUser, "nav.chiffrage"),
     production: can(currentUser, "nav.production"),

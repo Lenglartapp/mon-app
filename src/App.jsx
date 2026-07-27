@@ -130,6 +130,10 @@ function AppShell() {
     const path = location.pathname;
     const params = new URLSearchParams(location.search);
 
+    // Quitter un deep-link projet annule toute résolution de projet en attente,
+    // pour qu'une résolution tardive ne puisse pas rouvrir le projet (cf. garde anti-course).
+    if (!path.startsWith("/production/")) setPendingProjectId(null);
+
     if (path === "/" || path === "") {
       setScreen("home");
     } else if (path === "/chiffrage") {
@@ -190,11 +194,19 @@ function AppShell() {
     // effet) → on déduplique par id pour éviter tout double chargement.
     if (resolvingProjectRef.current === project.id) return;
     resolvingProjectRef.current = project.id;
+    const targetShortId = pendingProjectId.toLowerCase(); // figé pour la garde anti-course
     loadProjectDetail(project.id).then(full => {
+      resolvingProjectRef.current = null;
+      // GARDE ANTI-COURSE : le chargement complet est asynchrone. Si l'utilisateur a
+      // navigué ailleurs pendant ce temps (ex. clic sur Planning), l'URL courante ne
+      // pointe plus vers ce projet → on N'écrase PAS sa navigation avec l'écran projet.
+      const seg = window.location.pathname.split("/");
+      const stillOnThisProject =
+        seg[1] === "production" && extractShortId(seg[2] || "") === targetShortId;
+      if (!stillOnThisProject) return;
       setCurrentProject(full || project);
       setScreen("project");
       setPendingProjectId(null);
-      resolvingProjectRef.current = null;
     });
   }, [pendingProjectId, cleanProjects, loadProjectDetail]);
 
