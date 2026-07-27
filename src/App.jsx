@@ -25,6 +25,7 @@ import InternalProjectScreen from "./screens/InternalProjectScreen.jsx";
 import { isInternalProject } from "./lib/planning/internalProject";
 import LogistiqueScreen from "./screens/LogistiqueScreen";
 import PerformanceScreen from "./screens/PerformanceScreen";
+import OdooSyncScreen from "./screens/OdooSyncScreen";
 import { useProjects, useMinutes, useEvents, useStocks } from './hooks/useSupabase';
 
 import { useNetworkStatus } from './hooks/useNetworkStatus';
@@ -157,6 +158,8 @@ function AppShell() {
       setScreen("inventory");
     } else if (path === "/performance") {
       setScreen("performance");
+    } else if (path === "/odoo") {
+      setScreen("odoo");
     } else if (path === "/parametres") {
       setScreen("settings");
     }
@@ -173,6 +176,7 @@ function AppShell() {
       logistique:    `Logistique — ${base}`,
       inventory:     `Inventaire — ${base}`,
       performance:   `Performance — ${base}`,
+      odoo:          `Aperçu Odoo — ${base}`,
       settings:      `Paramètres — ${base}`,
     };
     // project et chiffrage gèrent leur propre title dans leurs composants
@@ -218,7 +222,7 @@ function AppShell() {
   //   • logistique        : lignes du projet sélectionné + comptage par projet
   useEffect(() => {
     if (screen === "inventory") { loadAllMinutes(); loadAllProjects(); }
-    else if (screen === "planning" || screen === "logistique") { loadAllProjects(); }
+    else if (screen === "planning" || screen === "logistique" || screen === "odoo") { loadAllProjects(); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [screen]);
 
@@ -517,6 +521,14 @@ function AppShell() {
 
       {screen === "performance" && (
         <PerformanceScreen
+          projects={cleanProjects}
+          events={planningEvents}
+          onBack={() => navigate("/")}
+        />
+      )}
+
+      {screen === "odoo" && (
+        <OdooSyncScreen
           projects={cleanProjects}
           events={planningEvents}
           onBack={() => navigate("/")}

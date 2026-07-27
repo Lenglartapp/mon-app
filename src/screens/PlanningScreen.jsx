@@ -18,6 +18,8 @@ import ResourcePanel from '../components/planning/ResourcePanel';
 import PlanningTopBar from '../components/planning/PlanningTopBar';
 import PlanningGrid from '../components/planning/PlanningGrid';
 import HistoryPanel from '../components/planning/HistoryPanel';
+import MobilePlanningAgenda from '../components/planning/MobilePlanningAgenda';
+import { useViewportWidth } from '../lib/hooks/useViewportWidth';
 import AssistantView from '../components/planning/AssistantView';
 import CapaciteView from '../components/planning/CapaciteView';
 import BacklogCreationModal from '../components/planning/BacklogCreationModal';
@@ -94,6 +96,8 @@ const rebalanceAtelierDay = (resourceId, dateStr, type, pool) => {
 
 export default function PlanningScreen({ projects, events: initialEvents, onUpdateEvent, onDeleteEvent: onDeleteEventProp, onUpdateProject, onCreateProject, onBack }) {
     const { users: authUsers, currentUser } = useAuth();
+    const viewportWidth = useViewportWidth();
+    const isMobile = viewportWidth > 0 && viewportWidth <= 768;
     const canEdit = can(currentUser, 'planning.edit');
     const showGauges = can(currentUser, 'planning.view_gauges');
     const canManageTeam = can(currentUser, 'planning.manage_team');
@@ -1316,6 +1320,21 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
         ro.observe(el);
         return () => ro.disconnect();
     }, []);
+
+    // --- VUE MOBILE (téléphone / PWA) : agenda Pose vertical, lecture seule ---
+    if (isMobile) {
+        return (
+            <MobilePlanningAgenda
+                events={localEvents}
+                projects={projects}
+                users={localUsers}
+                currentUser={currentUser}
+                currentDate={currentDate}
+                onChangeDate={setCurrentDate}
+                onBack={onBack}
+            />
+        );
+    }
 
     return (
         <div style={{ height: '100vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', background: '#FAF5EE' }}>
