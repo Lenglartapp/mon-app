@@ -1,14 +1,23 @@
 import React, { useState } from 'react';
 import GridPhotoCell from './GridPhotoCell';
 import SketchPadModal from './SketchPadModal';
+import { dataUrlToBlob, uploadBlobToStorage } from '../../lib/utils/imageUpload';
 
 export default function GridSketchCell({ value, rowId, field, onSketchUpdate }) {
     const [isModalOpen, setIsModalOpen] = useState(false);
 
-    const handleSaveSketch = (dataUrl) => {
+    const handleSaveSketch = async (dataUrl) => {
+        // Upload du croquis (PNG) vers Storage ; repli base64 inline si hors ligne / échec
+        let url = dataUrl;
+        try {
+            url = await uploadBlobToStorage(dataUrlToBlob(dataUrl), 'croquis', 'png');
+        } catch (e) {
+            console.warn('Upload croquis échoué, conservation en base64 :', e);
+        }
+
         const newSketch = {
             id: Date.now(),
-            url: dataUrl,
+            url,
             timestamp: new Date().toISOString(),
             user: "Aristide LENGLART"
         };

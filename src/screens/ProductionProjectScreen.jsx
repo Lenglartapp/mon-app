@@ -27,6 +27,7 @@ import { PLAID_PROD_SCHEMA } from "../lib/schemas/production/plaid";
 import { TENTURE_MURALE_PROD_SCHEMA } from "../lib/schemas/production/tenture_murale";
 import { MOBILIER_PROD_SCHEMA } from "../lib/schemas/production/mobilier";
 import { uid } from "../lib/utils/uid"; // Import uid
+import { compressAndUpload } from "../lib/utils/imageUpload";
 
 import { Search, Filter, Layers3, Star, FlaskConical, Image as ImageIcon, Pin, Edit2, FileText, BookOpen, Printer } from "lucide-react";
 import ProjectMaterialsPanel from "../components/ProjectMaterialsPanel";
@@ -195,26 +196,6 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
   const [wallImg, setWallImg] = useState(null);
   const [isPinned, setIsPinned] = useState(false);
 
-  const compressImage = (file, maxWidth = 1200, quality = 0.7) => {
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = (event) => {
-        const img = new Image();
-        img.src = event.target.result;
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          let width = img.width, height = img.height;
-          if (width > maxWidth) { height = (height * maxWidth) / width; width = maxWidth; }
-          canvas.width = width; canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0, width, height);
-          resolve(canvas.toDataURL('image/webp', quality));
-        };
-      };
-    });
-  };
-
   const handlePostMessage = async () => {
     if (!wallMsg.trim() && !wallImg) return;
     const newPost = {
@@ -231,10 +212,19 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
     setWallMsg(""); setWallImg(null);
   };
 
+  const [wallUploading, setWallUploading] = useState(false);
   const handleImageSelect = async (e) => {
     if (e.target.files && e.target.files[0]) {
-      const compressed = await compressImage(e.target.files[0]);
-      setWallImg(compressed);
+      try {
+        setWallUploading(true);
+        const url = await compressAndUpload(e.target.files[0], 'wall', { maxPx: 1200 });
+        setWallImg(url);
+      } catch (err) {
+        console.error('Upload photo mur échoué :', err);
+        alert("Erreur lors de l'envoi de la photo.");
+      } finally {
+        setWallUploading(false);
+      }
     }
   };
 
@@ -1149,13 +1139,14 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                 </div>
               )}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
-                <label style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#4B5563', padding: '10px 12px', borderRadius: 6, background: '#F3F4F6' }}>
-                  <ImageIcon size={16} /> Ajouter photo
-                  <input type="file" accept="image/*" hidden onChange={handleImageSelect} />
+                <label style={{ cursor: wallUploading ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#4B5563', padding: '10px 12px', borderRadius: 6, background: '#F3F4F6', opacity: wallUploading ? 0.6 : 1 }}>
+                  <ImageIcon size={16} /> {wallUploading ? 'Envoi…' : 'Ajouter photo'}
+                  <input type="file" accept="image/*" hidden disabled={wallUploading} onChange={handleImageSelect} />
                 </label>
                 <button
                   onClick={handlePostMessage}
-                  style={{ background: '#2563EB', color: 'white', border: 'none', padding: '10px 20px', borderRadius: 6, fontWeight: 600, cursor: 'pointer' }}
+                  disabled={wallUploading}
+                  style={{ background: '#2563EB', color: 'white', border: 'none', padding: '10px 20px', borderRadius: 6, fontWeight: 600, cursor: wallUploading ? 'wait' : 'pointer', opacity: wallUploading ? 0.6 : 1 }}
                 >
                   Publier
                 </button>
