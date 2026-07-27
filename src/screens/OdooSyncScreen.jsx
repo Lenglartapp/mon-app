@@ -4,6 +4,7 @@ import { COLORS, S } from "../lib/constants/ui";
 import { useLocalStorage } from "../lib/hooks/useLocalStorage";
 import { aggregateConsumed } from "../lib/odoo/aggregateConsumed";
 import { fetchOdooPreview, syncOdoo, odooProjectUrl } from "../lib/odoo/odooPreviewClient";
+import { getOdooId, setOdooId } from "../lib/odoo/odooMapping";
 
 const todayStr = () => new Date().toISOString().slice(0, 10);
 
@@ -34,7 +35,7 @@ export default function OdooSyncScreen({ events = [], projects = [], onBack }) {
     setLoading(true);
     setError(null);
     try {
-      const payload = rows.map((r) => ({ id: r.id, name: r.name, hours: r.hours }));
+      const payload = rows.map((r) => ({ id: r.id, name: r.name, hours: r.hours, odooProjectId: getOdooId(r.id) }));
       const res = await fetchOdooPreview(cutoffDate, payload);
       const map = new Map();
       for (const line of res.rows) map.set(line.droitfil.id, line);
@@ -58,7 +59,7 @@ export default function OdooSyncScreen({ events = [], projects = [], onBack }) {
     setSyncMsg(null);
     setError(null);
     try {
-      const payload = rows.map((r) => ({ id: r.id, name: r.name, hours: r.hours }));
+      const payload = rows.map((r) => ({ id: r.id, name: r.name, hours: r.hours, odooProjectId: getOdooId(r.id) }));
       const res = await syncOdoo(payload, cutoffDate);
       setSyncMsg(`Synchronisé : ${res.summary.created} ligne(s) créée(s), ${res.summary.updated} mise(s) à jour, ${res.summary.skipped} projet(s) ignoré(s) (non reliés).`);
       await runPreview();
@@ -67,6 +68,17 @@ export default function OdooSyncScreen({ events = [], projects = [], onBack }) {
     } finally {
       setSyncing(false);
     }
+  };
+
+  const chooseMapping = (droitfilId, odooId) => {
+    setOdooId(droitfilId, odooId);
+    setSyncMsg(null);
+    runPreview();
+  };
+  const resetMapping = (droitfilId) => {
+    setOdooId(droitfilId, null);
+    setSyncMsg(null);
+    runPreview();
   };
 
   // Résumé des statuts (après aperçu)
@@ -214,7 +226,7 @@ export default function OdooSyncScreen({ events = [], projects = [], onBack }) {
                       <td style={{ ...S.td, textAlign: "right" }}>{r.hours.prepa ? fmtH(r.hours.prepa) : "—"}</td>
                       <td style={{ ...S.td, textAlign: "right" }}>{r.hours.pose ? fmtH(r.hours.pose) : "—"}</td>
                       <td style={{ ...S.td, textAlign: "right", fontWeight: 700 }}>{fmtH(r.total)}</td>
-                      <td style={S.td}><StatusCell line={line} hasPreview={!!preview} /></td>
+                      <td style={S.td}><StatusCell line={line} hasPreview={!!preview} droitfilId={r.id} mapped={!!getOdooId(r.id)} onChoose={chooseMapping} onReset={resetMapping} /></td>
                     </tr>
                   );
                 })}
@@ -241,7 +253,7 @@ function Tile({ label, value, dot }) {
   );
 }
 
-function StatusCell({ line, hasPreview }) {
+function StatusCell({ line, hasPreview, droitfilId, mapped, onChoose, onReset }) {
   if (!hasPreview) return <span style={{ color: "#9CA3AF", fontSize: 13 }}>— cliquer « Comparer »</span>;
   if (!line) return <span style={{ color: "#9CA3AF" }}>—</span>;
   const st = STATUS[line.status] || { label: line.status, dot: "#9CA3AF", bg: "#F9FAFB", text: "#374151" };
@@ -253,31 +265,60 @@ function StatusCell({ line, hasPreview }) {
     </span>
   );
 
-  if (line.status === "linked") {
+  const resetLink = mapped ? (
+    <button onClick={() => onReset(droitfilId)} style={{ border: "none", background: "none", color: "#9CA3AF", fontSize: 11, cursor: "pointer", textDecoration: "underline", padding: 0 }}>
+      modifier le lien
+    </button>
+  ) : null;
+
+  if (line.status === "ambiguous") {
     return (
-      <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        {chip}
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          {(line.candidates || []).map((c) => (
+            <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12 }}>
+              <button onClick={() => onChoose(droitfilId, c.id)} style={{ ...S.smallBtn, padding: "2px 8px", fontSize: 12 }}>Choisir</button>
+              <a href={odooProjectUrl(c.id)} target="_blank" rel="noreferrer" style={{ color: "#2563EB", display: "inline-flex", alignItems: "center", gap: 3 }}>
+                #{c.id} <ExternalLink size={11} />
+              </a>
+              <span style={{ color: c.hasTasks ? "#059669" : "#9CA3AF" }}>{c.hasTasks ? "✓ tâches prêtes" : "pas de tâches"}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (line.status === "linked" && line.odooProject) {
+    return (
+      <span style={{ display: "inline-flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
         {chip}
         <a href={odooProjectUrl(line.odooProject.id)} target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 4, color: "#2563EB", fontSize: 12 }}>
           #{line.odooProject.id} <ExternalLink size={12} />
         </a>
+        {resetLink}
       </span>
     );
   }
-  if (line.status === "ambiguous") {
-    return (
-      <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-        {chip}
-        <span style={{ fontSize: 12, color: "#6B7280" }}>{line.candidates.map((c) => `#${c.id}`).join(", ")}</span>
-      </span>
-    );
-  }
+
   if (line.status === "pending_tasks") {
     return (
-      <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+      <span style={{ display: "inline-flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
         {chip}
-        <span style={{ fontSize: 12, color: "#6B7280" }}>tâches non créées (devis ?)</span>
+        <span style={{ fontSize: 12, color: "#6B7280" }}>
+          {line.odooProject ? `#${line.odooProject.id} — ` : ""}tâches non créées (devis ?)
+        </span>
+        {resetLink}
       </span>
     );
   }
-  return chip;
+
+  // not_found
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+      {chip}
+      {resetLink}
+    </span>
+  );
 }

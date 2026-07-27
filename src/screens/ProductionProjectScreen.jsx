@@ -1082,7 +1082,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                   </button>
                 )}
                 <div style={{ marginLeft: 'auto' }}>
-                  <OdooStatusBadge projectName={project?.name} odooProjectId={project?.odoo_project_id} />
+                  <OdooStatusBadge projectName={project?.name} projectId={project?.id} odooProjectId={project?.odoo_project_id} />
                 </div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { ExternalLink } from "lucide-react";
 import { fetchProjectStatus, odooProjectUrl } from "../../lib/odoo/odooPreviewClient";
+import { getOdooId } from "../../lib/odoo/odooMapping";
 
 // Petit encart "Statut Odoo" à poser à droite d'un titre de bloc (ex. Consommation Temps).
 // Interroge /api/odoo/project-status. En dev local (fonctions /api non servies), affiche
@@ -26,21 +27,22 @@ function Chip({ dot, color, label, icon = false, title }) {
   );
 }
 
-export default function OdooStatusBadge({ projectName, odooProjectId = null }) {
+export default function OdooStatusBadge({ projectName, projectId = null, odooProjectId = null }) {
   const [state, setState] = useState({ loading: true });
+  const effectiveOdooId = odooProjectId || getOdooId(projectId);
 
   useEffect(() => {
     let alive = true;
-    if (!projectName && !odooProjectId) {
+    if (!projectName && !effectiveOdooId) {
       setState({ loading: false, unavailable: true });
       return;
     }
     setState({ loading: true });
-    fetchProjectStatus(projectName, odooProjectId)
+    fetchProjectStatus(projectName, effectiveOdooId)
       .then((r) => alive && setState({ loading: false, ...r }))
       .catch(() => alive && setState({ loading: false, unavailable: true }));
     return () => { alive = false; };
-  }, [projectName, odooProjectId]);
+  }, [projectName, effectiveOdooId]);
 
   if (state.loading) return <Chip dot="#D1D5DB" color="#9CA3AF" label="Odoo…" />;
 

@@ -35,7 +35,18 @@ export async function resolveProjectByName(name, odooProjectId = null) {
       ['id', 'name']
     );
     if (matches.length === 0) return { status: 'not_found' };
-    if (matches.length > 1) return { status: 'ambiguous', candidates: matches };
+    if (matches.length > 1) {
+      // Homonymes : enrichir chaque candidat pour aider l'utilisateur à choisir
+      // (a-t-il déjà ses 3 tâches Conf/Prépa/Pose ?).
+      const candidates = [];
+      for (const m of matches) {
+        const taskCount = await execute('project.task', 'search_count', [
+          [['project_id', '=', m.id], ['name', 'in', Object.values(TASK_NAME)]],
+        ]);
+        candidates.push({ ...m, taskCount, hasTasks: taskCount >= 3 });
+      }
+      return { status: 'ambiguous', candidates };
+    }
     project = matches[0];
   }
 
