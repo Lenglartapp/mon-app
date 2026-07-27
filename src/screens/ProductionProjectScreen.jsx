@@ -11,6 +11,7 @@ import BPPPrintPortal from "../components/print/BPPPrintPortal.jsx";
 import MinutesScreen from "./MinutesScreen.jsx";
 import LineDetailPanel from "../components/LineDetailPanel";
 import StockInventoryTab from "../components/modules/Stocks/StockInventoryTab.jsx";
+import OdooStatusBadge from "../components/odoo/OdooStatusBadge.jsx";
 
 import { computeFormulas, preserveManualAfterCompute } from "../lib/formulas/compute";
 import { SCHEMA_64 } from "../lib/schemas/production.js";
@@ -1080,6 +1081,9 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                     <Edit2 size={14} />
                   </button>
                 )}
+                <div style={{ marginLeft: 'auto' }}>
+                  <OdooStatusBadge projectName={project?.name} odooProjectId={project?.odoo_project_id} />
+                </div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
                 {['prepa', 'conf', 'pose'].map(key => {

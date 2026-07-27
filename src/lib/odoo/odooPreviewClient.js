@@ -38,6 +38,18 @@ export function pingOdoo() {
 }
 
 /**
+ * Statut Odoo d'UN projet (pour l'encart dossier).
+ * @param {string} name          nom du projet Droitfil
+ * @param {number|null} odooProjectId  id Odoo déjà mappé (optionnel)
+ */
+export function fetchProjectStatus(name, odooProjectId = null) {
+  const q = new URLSearchParams();
+  if (name) q.set('name', name);
+  if (odooProjectId) q.set('odooProjectId', String(odooProjectId));
+  return callApi(`/api/odoo/project-status?${q.toString()}`, { method: 'GET' });
+}
+
+/**
  * Mode aperçu (dry-run) — envoie les projets agrégés, reçoit les statuts Odoo.
  * @param {string} cutoffDate 'YYYY-MM-DD'
  * @param {Array} projects [{ id, name, odooProjectId?, hours:{conf,prepa,pose} }]
