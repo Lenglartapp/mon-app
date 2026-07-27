@@ -17,6 +17,7 @@ const ROLE_OPTIONS = [
 ];
 
 import { supabase } from "../lib/supabaseClient";
+import { compressAndUpload } from "../lib/utils/imageUpload";
 import { useAppSettings } from "../hooks/useSupabase"; // <-- IMPORT HERE
 
 export default function SettingsScreen({ onBack }) {
@@ -32,6 +33,7 @@ export default function SettingsScreen({ onBack }) {
   const [name, setName] = useState(currentUser?.name || "");
   const [email] = useState(currentUser?.email || "");
   const [avatarUrl, setAvatarUrl] = useState(currentUser?.avatarUrl || "");
+  const [avatarUploading, setAvatarUploading] = useState(false);
 
   // --- GLOBAL SETTINGS ---
   const { settings: dbSettings, updateSettings } = useAppSettings();
@@ -75,11 +77,20 @@ export default function SettingsScreen({ onBack }) {
     }
   };
 
-  const handleAvatarFile = (e) => {
+  const handleAvatarFile = async (e) => {
     const f = e.target.files?.[0];
     if (!f) return;
-    const url = URL.createObjectURL(f);
-    setAvatarUrl(url);
+    try {
+      setAvatarUploading(true);
+      // Upload réel vers Storage (avant : URL blob locale perdue au rechargement)
+      const url = await compressAndUpload(f, 'avatars', { maxPx: 512 });
+      setAvatarUrl(url);
+    } catch (err) {
+      console.error('Upload avatar échoué :', err);
+      alert("Erreur lors de l'envoi de la photo de profil.");
+    } finally {
+      setAvatarUploading(false);
+    }
   };
 
   const roleInfo = ROLE_OPTIONS.find(r => r.value === currentUser?.role) || { label: currentUser?.role, color: '#333' };
@@ -190,7 +201,7 @@ export default function SettingsScreen({ onBack }) {
                       }}
                     >
                       <Camera size={18} />
-                      <input hidden accept="image/*" type="file" onChange={handleAvatarFile} />
+                      <input hidden accept="image/*" type="file" disabled={avatarUploading} onChange={handleAvatarFile} />
                     </IconButton>
                   }
                 >

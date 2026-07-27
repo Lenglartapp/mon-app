@@ -21,6 +21,7 @@ import BlurTextField from './ui/BlurTextField';
 import { useAuth } from '../auth'; // <--- NEW IMPORT
 import { supabase } from '../lib/supabaseClient'; // <--- NEW IMPORT
 import { blobToBase64, queuePhoto } from '../lib/syncQueue';
+import { compressImageToBlob, uploadBlobToStorage } from '../lib/utils/imageUpload';
 
 export default function LineDetailPanel({ open, onClose, row, schema, onRowChange, columnVisibilityModel, minuteId, projectId, currentUser: propUser, authorName: propAuthorName, fullScreen = false, allRows }) {
     // New Sidebar Toggle State
@@ -85,18 +86,12 @@ export default function LineDetailPanel({ open, onClose, row, schema, onRowChang
     const handleAddImage = React.useCallback(async (file, caption) => {
         if (!row || !file) return;
 
+        // Compression (canvas) alignée sur les autres photos ; si elle échoue on garde le fichier brut
+        let uploadBlob = file;
+        try { uploadBlob = await compressImageToBlob(file); } catch { /* garde le fichier brut */ }
+
         try {
-            const fileName = `activity/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.]/g, '')}`;
-
-            const { error: uploadError } = await supabase.storage
-                .from('attachments')
-                .upload(fileName, file);
-
-            if (uploadError) throw uploadError;
-
-            const { data: { publicUrl } } = supabase.storage
-                .from('attachments')
-                .getPublicUrl(fileName);
+            const publicUrl = await uploadBlobToStorage(uploadBlob, 'activity', 'jpg');
 
             const authorName = currentUser?.name || 'Utilisateur';
             const now = new Date().toISOString();
@@ -142,7 +137,7 @@ export default function LineDetailPanel({ open, onClose, row, schema, onRowChang
             if (projectId && row) {
                 try {
                     const localId = `pending_activity_${Date.now()}`;
-                    const base64 = await blobToBase64(file);
+                    const base64 = await blobToBase64(uploadBlob);
                     const authorName = currentUser?.name || 'Utilisateur';
                     const now = new Date().toISOString();
 
