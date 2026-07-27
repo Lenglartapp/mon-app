@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { ChevronLeft, ChevronRight, ChevronDown, Check, User, Download, Upload, FileSpreadsheet } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronDown, Check, User, Download, Upload, FileSpreadsheet, History } from 'lucide-react';
 import { S } from '../../lib/constants/ui';
 import { SmartFilterBar } from '../ui/SmartFilterBar';
 
@@ -50,6 +50,7 @@ const PlanningTopBar = ({
     myViewMode, onToggleMyView,
     onDownloadTemplate, onImport,
     canManageTeam,
+    onToggleHistory, historyOpen,
 }) => {
     const fileInputRef = useRef(null);
     const [showImportMenu, setShowImportMenu] = useState(false);
@@ -124,6 +125,24 @@ const PlanningTopBar = ({
                     placeholder="Projets, ressources, services..."
                 />
             </div>
+
+            {/* Bouton Historique — à côté de la recherche */}
+            {onToggleHistory && (
+                <button
+                    onClick={onToggleHistory}
+                    title="Historique des créneaux par dossier"
+                    style={{
+                        flexShrink: 0, marginLeft: 10,
+                        background: historyOpen ? '#2563EB' : 'white',
+                        color: historyOpen ? 'white' : '#374151',
+                        border: '1px solid #E5E7EB', borderRadius: 6,
+                        padding: '8px 10px', cursor: 'pointer',
+                        display: 'flex', alignItems: 'center',
+                    }}
+                >
+                    <History size={16} />
+                </button>
+            )}
 
             {/* DROITE (flex:1) */}
             <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 12, minWidth: 0 }}>

@@ -17,6 +17,7 @@ import EventModal from '../components/planning/EventModal';
 import ResourcePanel from '../components/planning/ResourcePanel';
 import PlanningTopBar from '../components/planning/PlanningTopBar';
 import PlanningGrid from '../components/planning/PlanningGrid';
+import HistoryPanel from '../components/planning/HistoryPanel';
 import AssistantView from '../components/planning/AssistantView';
 import CapaciteView from '../components/planning/CapaciteView';
 import BacklogCreationModal from '../components/planning/BacklogCreationModal';
@@ -207,6 +208,8 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
 
     const [currentDate, setCurrentDate] = useState(new Date());
     const [view, setView] = useState('week');
+    const [historyOpen, setHistoryOpen] = useState(false);
+    const [historyHighlightProjectId, setHistoryHighlightProjectId] = useState(null);
     const [showWeekends, setShowWeekends] = useState(false);
     const [customRange, setCustomRange] = useState(null);
     // 0 = replié, 1 = programme seulement (conf uniquement), 2 = déplié complet
@@ -551,8 +554,8 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
     }, [resizingEvent, localEvents, showWeekends]);
 
     // --- NAVIGATION TIME ---
-    const navPrev = () => { if (view === 'month') setCurrentDate(d => subMonths(d, 1)); else if (view === 'quarter') setCurrentDate(d => subQuarters(d, 1)); else if (view === 'year') setCurrentDate(d => subYears(d, 1)); else if (view === 'twoweeks') setCurrentDate(d => addDays(d, -14)); else setCurrentDate(d => addDays(d, view === 'day' ? -1 : -7)); };
-    const navNext = () => { if (view === 'month') setCurrentDate(d => addMonths(d, 1)); else if (view === 'quarter') setCurrentDate(d => addQuarters(d, 1)); else if (view === 'year') setCurrentDate(d => addYears(d, 1)); else if (view === 'twoweeks') setCurrentDate(d => addDays(d, 14)); else setCurrentDate(d => addDays(d, view === 'day' ? 1 : 7)); };
+    const navPrev = () => { setHistoryHighlightProjectId(null); if (view === 'month') setCurrentDate(d => subMonths(d, 1)); else if (view === 'quarter') setCurrentDate(d => subQuarters(d, 1)); else if (view === 'year') setCurrentDate(d => subYears(d, 1)); else if (view === 'twoweeks') setCurrentDate(d => addDays(d, -14)); else setCurrentDate(d => addDays(d, view === 'day' ? -1 : -7)); };
+    const navNext = () => { setHistoryHighlightProjectId(null); if (view === 'month') setCurrentDate(d => addMonths(d, 1)); else if (view === 'quarter') setCurrentDate(d => addQuarters(d, 1)); else if (view === 'year') setCurrentDate(d => addYears(d, 1)); else if (view === 'twoweeks') setCurrentDate(d => addDays(d, 14)); else setCurrentDate(d => addDays(d, view === 'day' ? 1 : 7)); };
 
     // --- RECHERCHE MULTI-CRITÈRES ---
     const [activeFilters, setActiveFilters] = useState([]);
@@ -734,6 +737,16 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
             setMyViewMode(false);
             setView('week');
         }
+    };
+
+    // Historique : double-clic sur un créneau passé → retour à sa semaine, projet surligné.
+    const handleHistoryJump = (evt, projectId) => {
+        if (!evt?.date) return;
+        setAssistantMode(null);   // on doit être sur la grille
+        setMyViewMode(false);
+        setView('week');
+        setCurrentDate(parseISO(evt.date));
+        setHistoryHighlightProjectId(projectId || null);
     };
 
 
@@ -1363,7 +1376,7 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                 currentDate={currentDate}
                 onPrev={navPrev}
                 onNext={navNext}
-                onToday={() => setCurrentDate(new Date())}
+                onToday={() => { setHistoryHighlightProjectId(null); setCurrentDate(new Date()); }}
                 customRange={customRange}
                 onCustomRangeChange={(r) => { setCustomRange(r); setView('custom'); }}
                 onNew={() => { if (canEdit) { setEditingEvent(null); setIsModalOpen(true); } }}
@@ -1376,9 +1389,20 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                 onDownloadTemplate={canEdit ? handleDownloadTemplate : undefined}
                 onImport={canEdit ? handleImport : undefined}
                 canManageTeam={canManageTeam}
+                onToggleHistory={() => setHistoryOpen(v => !v)}
+                historyOpen={historyOpen}
             />
             )}
             </div>
+
+            <HistoryPanel
+                isOpen={historyOpen}
+                onClose={() => setHistoryOpen(false)}
+                projects={projects}
+                events={localEvents}
+                users={localUsers}
+                onJump={handleHistoryJump}
+            />
 
             <EventModal
                 isOpen={isModalOpen}
@@ -1520,6 +1544,7 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                     ))}
                     events={filteredEvents}
                     projects={projects}
+                    highlightProjectId={historyHighlightProjectId}
                     hiddenResources={hiddenResources}
                     onCellClick={handleCellClick}
                     onEventClick={handleEventClick}

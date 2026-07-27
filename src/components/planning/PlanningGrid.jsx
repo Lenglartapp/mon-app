@@ -28,6 +28,7 @@ const PlanningGrid = ({
     days, columns: gridCols, superHeaders, view,
     filteredGroups, expandedGroups, onToggleGroup, onToggleMembers,
     events, projects = [], hiddenResources,
+    highlightProjectId = null,
     onCellClick, onEventClick, onDeleteEvent, onUpdateEvent,
     onDragStart, onDragOver, onDrop,
     hoveredEventId, onHoverEvent,
@@ -78,6 +79,7 @@ const PlanningGrid = ({
                         const widthPct = (dh / baseDh) * 100;
                         const evtStyle = getProjectColor(evt.meta?.projectId) || PLANNING_COLORS[evt.type] || PLANNING_COLORS.default;
                         const isValidated = evt.meta?.status === 'validated';
+                        const isHighlighted = highlightProjectId && evt.meta?.projectId === highlightProjectId;
 
                         return (
                             <div
@@ -101,8 +103,11 @@ const PlanningGrid = ({
                                     padding: '2px 4px',
                                     overflow: 'hidden',
                                     cursor: 'grab',
-                                    opacity: isValidated ? 1 : 0.9,
-                                    boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+                                    opacity: isHighlighted ? 1 : (isValidated ? 1 : 0.9),
+                                    outline: isHighlighted ? '2px solid #111827' : 'none',
+                                    outlineOffset: isHighlighted ? '1px' : 0,
+                                    zIndex: isHighlighted ? 5 : 'auto',
+                                    boxShadow: isHighlighted ? '0 0 0 3px rgba(17,24,39,0.15)' : '0 1px 2px rgba(0,0,0,0.1)',
                                     display: 'flex',
                                     flexDirection: 'column',
                                     justifyContent: 'center',
@@ -163,6 +168,7 @@ const PlanningGrid = ({
             const isValidated = evt.meta?.status === 'validated';
             const fontWeight = isBacklog ? 800 : (isValidated ? 700 : 500);
             const opacity = isValidated || isBacklog ? 1 : 0.9;
+            const isHighlighted = highlightProjectId && evt.meta?.projectId === highlightProjectId;
 
             // --- BACKLOG SPECIFIC LOGIC ---
             let plannedHours = 0;
@@ -291,12 +297,14 @@ const PlanningGrid = ({
                         borderBottom: `1px ${!isBacklog && !isValidated ? 'dashed' : 'solid'} ${isBacklog ? '#BE123C' : style.border}`,
                         borderLeft: `4px solid ${isBacklog ? '#BE123C' : style.border}`,
                         borderRadius: 8,
-                        zIndex: evt.meta?.seriesId ? 20 : 10,
+                        zIndex: isHighlighted ? 30 : (evt.meta?.seriesId ? 20 : 10),
                         padding: '2px 4px',
                         overflow: 'hidden',
                         cursor: 'grab',
-                        opacity: opacity,
-                        boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+                        opacity: isHighlighted ? 1 : opacity,
+                        outline: isHighlighted ? '2px solid #111827' : 'none',
+                        outlineOffset: isHighlighted ? '1px' : 0,
+                        boxShadow: isHighlighted ? '0 0 0 3px rgba(17,24,39,0.15)' : '0 1px 2px rgba(0,0,0,0.1)',
                         backgroundImage: isBacklog
                             ? 'repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(190, 18, 60, 0.05) 10px, rgba(190, 18, 60, 0.05) 20px)'
                             : (style.pattern ? 'repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(0,0,0,0.05) 5px, rgba(0,0,0,0.05) 10px)' : 'none')
