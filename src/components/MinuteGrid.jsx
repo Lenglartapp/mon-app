@@ -97,6 +97,25 @@ const AGG_OPTIONS = [
 
 const NON_NUMERIC_TYPES = new Set(['photo', 'croquis', 'checkbox', 'select', 'singleSelect', 'button', 'date', 'datetime']);
 
+// Largeur nécessaire pour afficher un en-tête en entier : texte mesuré (police réelle de
+// l'en-tête) + habillage fixe (icône de type à gauche, icônes menu/filtre à droite,
+// marges de cellule). Sert de largeur PAR DÉFAUT — pas de plancher : on peut rétrécir.
+const HEADER_FONT = '600 13px system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+const HEADER_OVERHEAD = 96;  // icône type + menu + filtre + marges + poignée resize (mesuré ~89, marge incluse)
+const HEADER_FIT_MAX = 320;  // garde-fou contre un libellé anormalement long
+let _measureCtx = null;
+function headerFitWidth(headerName) {
+    let textW;
+    if (typeof document !== 'undefined') {
+        if (!_measureCtx) _measureCtx = document.createElement('canvas').getContext('2d');
+        _measureCtx.font = HEADER_FONT;
+        textW = _measureCtx.measureText(String(headerName || '')).width;
+    } else {
+        textW = String(headerName || '').length * 7; // repli sans DOM
+    }
+    return Math.min(HEADER_FIT_MAX, Math.ceil(textW) + HEADER_OVERHEAD);
+}
+
 function computeAgg(rawValues, type) {
     const nums = rawValues.map(v => Number(v)).filter(n => !isNaN(n) && isFinite(n));
     if (nums.length === 0 || type === 'none') return null;
@@ -876,6 +895,26 @@ function MinuteGrid({
         setColPanelOpen(false);
     }, [initialVisibilityModel, schema, saveColumnState, matiereGroups, onMatiereChange]);
 
+    // Réinitialise les LARGEURS à leur valeur par défaut (auto-ajustée au nom de champ) :
+    // efface les largeurs sauvegardées et ré-applique la largeur par défaut à chaque colonne.
+    // Partagé comme le reste — restaure une vue lisible pour tout le monde.
+    const handleResetWidths = useCallback(() => {
+        const api = gridRef.current?.api;
+        if (!api) return;
+        const state = [];
+        schema.forEach(col => {
+            if (col.key === 'sel' || col.hidden) return;
+            const schemaWidth = col.width ?? col.initialWidth ?? 120;
+            const headerName = col.headerName || col.label || col.key;
+            state.push({ colId: col.key, width: Math.max(schemaWidth, headerFitWidth(headerName)) });
+        });
+        state.push({ colId: 'statut_expedition', width: Math.max(170, headerFitWidth('Expédition')) });
+        api.applyColumnState({ state });
+        setInitialWidths({});                 // le défaut redevient la référence
+        saveSharedState({ widths: {} });      // efface les largeurs partagées
+        setColPanelOpen(false);
+    }, [schema, saveSharedState]);
+
     // Colonne actuellement mise en évidence par un « saut » (double-clic dans le panneau).
     // Lue par headerClass ; on rafraîchit l'en-tête à l'aller comme au retour.
     const jumpFlashColRef = useRef(null);
@@ -918,7 +957,11 @@ function MinuteGrid({
 
         const withWidths = cols.map(col => {
             const schemaWidth = col.initialWidth ?? col.width ?? 120;
-            const w = savedWidths[col.field] ?? schemaWidth;
+            // Largeur par défaut = la plus grande entre celle du schéma (contenu) et celle
+            // qu'il faut pour afficher le nom du champ en entier. Une largeur sauvegardée
+            // (redimensionnement manuel) reste prioritaire.
+            const baseWidth = Math.max(schemaWidth, headerFitWidth(col.headerName));
+            const w = savedWidths[col.field] ?? baseWidth;
             // Agrégation des lignes de groupe : réutilise le réglage par colonne (colAggregations)
             // qui pilote déjà la ligne de totaux, pour rester cohérent.
             const aggType = colAggregations[col.field];
@@ -1614,6 +1657,13 @@ function MinuteGrid({
                                     >Réinitialiser {resetViewLabel}</button>
                                 )}
                             </div>
+                            {/* Réinitialiser les largeurs — bouton séparé : remet chaque colonne
+                                à la largeur auto-ajustée à son nom (efface les redimensionnements). */}
+                            <button
+                                onClick={e => { e.stopPropagation(); handleResetWidths(); }}
+                                title="Remettre toutes les colonnes à la largeur qui affiche leur nom en entier"
+                                style={{ width: '100%', marginTop: 6, padding: '4px 6px', fontSize: 11, cursor: 'pointer', background: '#f8fafc', color: '#334155', border: '1px solid #e2e8f0', borderRadius: 4, fontWeight: 600 }}
+                            >↔ Réinitialiser les largeurs</button>
 
                             {/* Bascules par matière (production) : un clic montre/masque tout un
                                 bloc (tissu, doublure, passementerie…) d'un coup. */}
