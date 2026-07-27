@@ -1,5 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth';
+import { slugify } from '../lib/utils/slugify';
 import {
     format, startOfWeek, addDays, getHours, isSameDay, startOfMonth, endOfMonth, eachDayOfInterval,
     startOfQuarter, endOfQuarter, startOfYear, endOfYear, eachMonthOfInterval,
@@ -96,8 +98,15 @@ const rebalanceAtelierDay = (resourceId, dateStr, type, pool) => {
 
 export default function PlanningScreen({ projects, events: initialEvents, onUpdateEvent, onDeleteEvent: onDeleteEventProp, onUpdateProject, onCreateProject, onBack }) {
     const { users: authUsers, currentUser } = useAuth();
+    const navigate = useNavigate();
     const viewportWidth = useViewportWidth();
     const isMobile = viewportWidth > 0 && viewportWidth <= 768;
+
+    // Depuis l'agenda mobile : ouvrir un dossier directement sur l'onglet Prise de cotes.
+    const handleOpenPrise = (project) => {
+        if (!project?.id) return;
+        navigate(`/production/${project.id.slice(0, 8)}-${slugify(project.name)}?stage=prise`);
+    };
     const canEdit = can(currentUser, 'planning.edit');
     const showGauges = can(currentUser, 'planning.view_gauges');
     const canManageTeam = can(currentUser, 'planning.manage_team');
@@ -1332,6 +1341,7 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                 currentDate={currentDate}
                 onChangeDate={setCurrentDate}
                 onBack={onBack}
+                onOpenPrise={handleOpenPrise}
             />
         );
     }

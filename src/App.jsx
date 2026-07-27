@@ -125,6 +125,7 @@ function AppShell() {
   const [openMinuteId, setOpenMinuteId] = useState(null);
   const [pendingRowId, setPendingRowId] = useState(null);
   const [pendingProjectId, setPendingProjectId] = useState(null);
+  const [pendingStage, setPendingStage] = useState(null);
 
   // URL → State : lit l'URL au chargement et à chaque navigation
   useEffect(() => {
@@ -149,6 +150,7 @@ function AppShell() {
     } else if (path.startsWith("/production/")) {
       const segs = path.split("/");
       setPendingProjectId(extractShortId(segs[2]));
+      setPendingStage(params.get("stage") || null); // onglet initial (ex. ?stage=prise)
       if (segs[3]) setPendingRowId(extractShortId(segs[3]));
     } else if (path === "/planning") {
       setScreen("planning");
@@ -481,6 +483,7 @@ function AppShell() {
           onUpdateProjectRows={handleUpdateProjectRows}
           onUpdateProject={handleUpdateProject}
           highlightRowId={pendingRowId}
+          initialStage={pendingStage}
           events={planningEvents}
         />
       )}

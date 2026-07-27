@@ -1,7 +1,7 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { format, parseISO, startOfWeek, addDays, isSameDay } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, MapPin, User, Users } from 'lucide-react';
+import { ChevronLeft, ChevronRight, MapPin, User, Users, StickyNote, ClipboardList } from 'lucide-react';
 import { PLANNING_COLORS } from './constants';
 
 const POSE = PLANNING_COLORS.pose;
@@ -18,7 +18,7 @@ const mapsUrl = (loc) => `https://www.google.com/maps/search/?api=1&query=${enco
 
 export default function MobilePlanningAgenda({
     events = [], projects = [], users = [], currentUser,
-    currentDate, onChangeDate, onBack,
+    currentDate, onChangeDate, onBack, onOpenPrise,
 }) {
     const [myView, setMyView] = useState(false);
     const dayRefs = useRef({});
@@ -169,6 +169,7 @@ export default function MobilePlanningAgenda({
                                         const isMine = evt.resourceId === currentUser?.id;
                                         const proj = projectMap.get(evt.meta?.projectId);
                                         const location = proj?.location;
+                                        const note = (evt.meta?.description || '').trim();
                                         const time = eventTime(evt);
                                         return (
                                             <div key={evt.id} style={{
@@ -188,7 +189,7 @@ export default function MobilePlanningAgenda({
                                                     {time && <span style={{ flexShrink: 0, fontSize: 12, fontWeight: 700, color: POSE.text, background: POSE.bg, borderRadius: 6, padding: '2px 8px' }}>{time}</span>}
                                                 </div>
 
-                                                <div style={{ fontSize: 14, color: '#1F2937', fontWeight: 600, marginBottom: location ? 4 : 0 }}>
+                                                <div style={{ fontSize: 14, color: '#1F2937', fontWeight: 600, marginBottom: (location || note) ? 4 : 0 }}>
                                                     {evt.title || '(sans dossier)'}
                                                 </div>
 
@@ -202,6 +203,27 @@ export default function MobilePlanningAgenda({
                                                         <MapPin size={14} />
                                                         <span style={{ textDecoration: 'underline' }}>{location}</span>
                                                     </a>
+                                                )}
+
+                                                {note && (
+                                                    <div style={{ display: 'flex', gap: 6, marginTop: 8, background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 8, padding: '8px 10px' }}>
+                                                        <StickyNote size={15} color="#B45309" style={{ flexShrink: 0, marginTop: 1 }} />
+                                                        <span style={{ fontSize: 13, color: '#78350F', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{note}</span>
+                                                    </div>
+                                                )}
+
+                                                {proj && onOpenPrise && (
+                                                    <button
+                                                        onClick={() => onOpenPrise(proj)}
+                                                        style={{
+                                                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                                                            width: '100%', marginTop: 10, minHeight: 44,
+                                                            background: '#111827', color: 'white', border: 'none', borderRadius: 10,
+                                                            fontSize: 14, fontWeight: 700, cursor: 'pointer',
+                                                        }}
+                                                    >
+                                                        <ClipboardList size={16} /> Ouvrir la prise de cotes
+                                                    </button>
                                                 )}
                                             </div>
                                         );
