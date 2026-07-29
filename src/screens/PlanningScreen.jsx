@@ -21,6 +21,7 @@ import PlanningTopBar from '../components/planning/PlanningTopBar';
 import PlanningGrid from '../components/planning/PlanningGrid';
 import HistoryPanel from '../components/planning/HistoryPanel';
 import MobilePlanningAgenda from '../components/planning/MobilePlanningAgenda';
+import BulkValidateModal from '../components/planning/BulkValidateModal';
 import { useViewportWidth } from '../lib/hooks/useViewportWidth';
 import AssistantView from '../components/planning/AssistantView';
 import CapaciteView from '../components/planning/CapaciteView';
@@ -223,6 +224,7 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
     const [view, setView] = useState('week');
     const [historyOpen, setHistoryOpen] = useState(false);
     const [historyHighlightProjectId, setHistoryHighlightProjectId] = useState(null);
+    const [bulkValidateOpen, setBulkValidateOpen] = useState(false);
     const [showWeekends, setShowWeekends] = useState(false);
     const [customRange, setCustomRange] = useState(null);
     // 0 = replié, 1 = programme seulement (conf uniquement), 2 = déplié complet
@@ -953,6 +955,27 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
         }
     };
 
+    // Membres actifs regroupés par service (pour la validation en masse)
+    const membersByService = useMemo(() => {
+        const out = { prepa: [], conf: [], pose: [] };
+        (localUsers || []).forEach(u => {
+            if (u.archived_at) return;
+            const g = productionGroup(u.role);
+            if (out[g]) out[g].push(u);
+        });
+        return out;
+    }, [localUsers]);
+
+    // Validation en masse : passe tous les créneaux fournis en « validé » (local + persistance).
+    // Ne ferme pas la fenêtre : elle affiche son message de succès puis se ferme via onClose.
+    const handleBulkValidate = (list) => {
+        if (list && list.length) {
+            const ids = new Set(list.map(e => e.id));
+            setLocalEvents(prev => prev.map(e => ids.has(e.id) ? { ...e, meta: { ...e.meta, status: 'validated' } } : e));
+            list.forEach(e => { if (onUpdateEvent) onUpdateEvent({ ...e, meta: { ...e.meta, status: 'validated' } }); });
+        }
+    };
+
     const handleAddAbsence = (resourceId, type, startStr, startTime, endStr, endTime) => {
         const startDate = new Date(startStr);
         const endDate = new Date(endStr);
@@ -1420,9 +1443,21 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                 canManageTeam={canManageTeam}
                 onToggleHistory={() => setHistoryOpen(v => !v)}
                 historyOpen={historyOpen}
+                onBulkValidate={canEdit ? () => setBulkValidateOpen(true) : undefined}
             />
             )}
             </div>
+
+            {bulkValidateOpen && (
+                <BulkValidateModal
+                    isOpen
+                    onClose={() => setBulkValidateOpen(false)}
+                    membersByService={membersByService}
+                    events={localEvents}
+                    defaultWeekStart={startOfWeek(currentDate, { weekStartsOn: 1 })}
+                    onConfirm={handleBulkValidate}
+                />
+            )}
 
             <HistoryPanel
                 isOpen={historyOpen}

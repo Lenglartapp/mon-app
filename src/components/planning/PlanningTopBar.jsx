@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { ChevronLeft, ChevronRight, ChevronDown, Check, User, Download, Upload, FileSpreadsheet, History } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronDown, Check, User, Download, Upload, FileSpreadsheet, History, CheckCircle2 } from 'lucide-react';
 import { S } from '../../lib/constants/ui';
 import { SmartFilterBar } from '../ui/SmartFilterBar';
 
@@ -51,6 +51,7 @@ const PlanningTopBar = ({
     onDownloadTemplate, onImport,
     canManageTeam,
     onToggleHistory, historyOpen,
+    onBulkValidate,
 }) => {
     const fileInputRef = useRef(null);
     const [showImportMenu, setShowImportMenu] = useState(false);
@@ -112,6 +113,15 @@ const PlanningTopBar = ({
                             </>
                         )}
                     </div>
+                )}
+                {onBulkValidate && (
+                    <button
+                        onClick={onBulkValidate}
+                        title="Valider en masse les créneaux d'un service sur une période"
+                        style={{ background: 'white', color: '#059669', border: '1px solid #A7F3D0', borderRadius: 6, padding: '8px 16px', fontWeight: 600, fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap' }}
+                    >
+                        <CheckCircle2 size={16} /> Validation
+                    </button>
                 )}
             </div>
 
