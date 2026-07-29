@@ -47,6 +47,35 @@ const isSinglePan = (row) => {
 // L'appiècement, lui, reste une donnée de coupe par pan.
 const pansOf = (row) => (isSinglePan(row) ? 1 : 2);
 
+// ── Helpers Lés / Hauteurs à couper (par tissu, pour une laize donnée) ────────
+// « rentre dans la laize » = hauteur finie max + 50 < laize (on coupe dans le sens
+// de la laize : 1 lé = 1 hauteur).
+const rentreDansLaize = (row, laize) =>
+    (Math.max(getters.hauteur_finie_droite(row), getters.hauteur_finie_gauche(row)) + 50) < laize;
+
+// Nombre de lés ENTIERS d'un tissu, TOTAL (× pans). 1 lé/pan si on rentre dans la laize.
+const lesTotalForLaize = (row, laize) => {
+    if (toNum(laize) <= 0) return 0;
+    const lesParPan = rentreDansLaize(row, laize)
+        ? 1
+        : Math.max(1, Math.floor(getters.a_plat(row) / laize));
+    return lesParPan * pansOf(row);
+};
+
+// Nombre de hauteurs à couper d'un tissu, pour sa laize + son appiècement (par pan).
+//   - pas de tissu / laize ≤ 0        → ""
+//   - rentre dans la laize            → Nb Lés (= 1/pan)
+//   - PAN                             → Nb Lés + 1
+//   - PAIRE & appiècement ≤ laize/2   → Nb Lés + 1
+//   - PAIRE & appiècement > laize/2   → Nb Lés + 2
+const hauteursForLaize = (row, laize, appiecement) => {
+    if (toNum(laize) <= 0) return "";
+    const nbLes = lesTotalForLaize(row, laize);
+    if (rentreDansLaize(row, laize)) return nbLes;
+    if (isSinglePan(row)) return nbLes + 1;
+    return toNum(appiecement) > (laize / 2) ? nbLes + 2 : nbLes + 1;
+};
+
 // Pattes de croisement : libellés du select + nombre de crochets ajoutés à la
 // formule "Nb Crochets par pan" lorsqu'une patte est sélectionnée.
 export const PATTE_CROISEMENT_CROCHETS = {
@@ -181,7 +210,16 @@ const getters = {
     nb_raccords_motifs: (row) => {
         const hCoupe = getters.hauteur_coupe(row);
         const rV = toNum(row.raccord_v_tissu1);
-        return rV > 0 ? Math.ceil(hCoupe / rV) : 0;
+        return rV > 0 ? Math.ceil(hCoupe / rV) + 1 : 0;
+    },
+
+    // Nb Raccords Motifs Tissu 2 : ceil(H.Coupe T2 ÷ Raccord V T2) + 1. Vide si pas de tissu 2.
+    nb_raccords_motifs_t2: (row) => {
+        if (!String(row.tissu_deco2 || "").trim() && !toNum(row.laize_tissu2)) return "";
+        const hCoupe = getters.hauteur_coupe_t2(row);
+        if (hCoupe === "" || hCoupe == null) return "";
+        const rV = toNum(row.raccord_v_tissu2);
+        return rV > 0 ? Math.ceil(hCoupe / rV) + 1 : 0;
     },
 
     hauteur_coupe_motif: (row) => {
@@ -238,12 +276,46 @@ const getters = {
     },
 
     nombre_les: (row) => {
-        const aPlat = getters.a_plat(row);
-        const laize = toNum(row.laize_tissu1);
-        if (laize <= 0) return 0;
         // Lés ENTIERS par pan (la fraction restante est portée par « Appiècement »),
-        // puis × 2 sur une paire : il faut bien couper ces lés deux fois.
-        return Math.max(1, Math.floor(aPlat / laize)) * pansOf(row);
+        // × pans (× 2 sur une paire), et 1/pan si on rentre dans la laize.
+        return lesTotalForLaize(row, toNum(row.laize_tissu1));
+    },
+
+    // Nombre de lés — Tissu 2 / Doublure / Interdoublure (même logique que T1, sur leur
+    // laize). Vide si le tissu n'est pas renseigné.
+    nombre_les_t2: (row) => {
+        if (!String(row.tissu_deco2 || "").trim() && !toNum(row.laize_tissu2)) return "";
+        const laize = toNum(row.laize_tissu2);
+        if (laize <= 0) return "";
+        return lesTotalForLaize(row, laize);
+    },
+    nombre_les_doublure: (row) => {
+        if (!String(row.doublure || "").trim() && !toNum(row.laize_doublure)) return "";
+        const laize = toNum(row.laize_doublure);
+        if (laize <= 0) return "";
+        return lesTotalForLaize(row, laize);
+    },
+    nombre_les_inter: (row) => {
+        if (!String(row.inter_doublure || "").trim() && !toNum(row.laize_inter)) return "";
+        const laize = toNum(row.laize_inter);
+        if (laize <= 0) return "";
+        return lesTotalForLaize(row, laize);
+    },
+
+    // Nombre de hauteurs à couper — par tissu (T1 / T2 / Doublure / Interdoublure).
+    nb_hauteur_a_couper: (row) =>
+        hauteursForLaize(row, toNum(row.laize_tissu1), getters.reste_les(row)),
+    nb_hauteur_a_couper_t2: (row) => {
+        if (!String(row.tissu_deco2 || "").trim() && !toNum(row.laize_tissu2)) return "";
+        return hauteursForLaize(row, toNum(row.laize_tissu2), getters.reste_les_t2(row));
+    },
+    nb_hauteur_a_couper_doublure: (row) => {
+        if (!String(row.doublure || "").trim() && !toNum(row.laize_doublure)) return "";
+        return hauteursForLaize(row, toNum(row.laize_doublure), getters.reste_les_doublure(row));
+    },
+    nb_hauteur_a_couper_inter: (row) => {
+        if (!String(row.inter_doublure || "").trim() && !toNum(row.laize_inter)) return "";
+        return hauteursForLaize(row, toNum(row.laize_inter), getters.reste_les_inter(row));
     },
 
     reste_les: (row) => {
@@ -355,16 +427,24 @@ export const RIDEAUX_GETTERS = {
     hauteur_finie_gauche:  getters.hauteur_finie_gauche,
     hauteur_coupe:         getters.hauteur_coupe,
     nb_raccords_motifs:    getters.nb_raccords_motifs,
+    nb_raccords_motifs_t2: getters.nb_raccords_motifs_t2,
     hauteur_coupe_motif:   getters.hauteur_coupe_motif,
     hauteur_coupe_t2:      getters.hauteur_coupe_t2,
     hauteur_coupe_motif_t2:getters.hauteur_coupe_motif_t2,
     hauteur_coupe_doublure:getters.hauteur_coupe_doublure,
     hauteur_coupe_inter:   getters.hauteur_coupe_inter,
     nombre_les:            getters.nombre_les,
+    nombre_les_t2:         getters.nombre_les_t2,
+    nombre_les_doublure:   getters.nombre_les_doublure,
+    nombre_les_inter:      getters.nombre_les_inter,
     reste_les:             getters.reste_les,
     reste_les_t2:          getters.reste_les_t2,
     reste_les_doublure:    getters.reste_les_doublure,
     reste_les_inter:       getters.reste_les_inter,
+    nb_hauteur_a_couper:          getters.nb_hauteur_a_couper,
+    nb_hauteur_a_couper_t2:       getters.nb_hauteur_a_couper_t2,
+    nb_hauteur_a_couper_doublure: getters.nb_hauteur_a_couper_doublure,
+    nb_hauteur_a_couper_inter:    getters.nb_hauteur_a_couper_inter,
     nombre_glisseur:       getters.nb_glisseurs,
     nb_crochets_par_pan:   getters.nb_crochets_par_pan,
 };
@@ -429,6 +509,15 @@ export const RIDEAUX_PROD_SCHEMA = [
         tooltip: "Partie fractionnaire × laize T1 : reste de tissu après les lés entiers, pour UN pan (non doublé sur une paire). Vide si le rideau rentre dans la laize (hauteur finie max + 50 cm < laize T1) : coupe dans le sens de la laize, pas d'appiècement.",
         valueGetter: (v, r) => getters.reste_les(getRow(v, r))
     },
+    {
+        key: "nb_hauteur_a_couper",
+        label: "Nb Haut. à Couper T1",
+        type: "number",
+        width: 155,
+        readOnly: true,
+        tooltip: "Nombre de hauteurs à couper (T1). Pan = Nb Lés + 1. Paire = Nb Lés + 1 si appiècement ≤ laize/2, sinon + 2. Si le rideau rentre dans la laize : = Nb Lés (1/pan).",
+        valueGetter: (v, r) => getters.nb_hauteur_a_couper(getRow(v, r))
+    },
     { key: "v_ourlets_de_cotes", label: "Ourlets Côtés", type: "number", width: 130, editable: true },
     { key: "piquage_ourlet", label: "Piquage Ourlet", type: "select", options: ["Apparent", "Invisible", "Surfil + Invisible", "Double + Invisible"], width: 145, editable: true },
     // Piquage Raccord : type de couture pour les raccords de lés (à côté de Piquage Ourlet)
@@ -491,8 +580,17 @@ export const RIDEAUX_PROD_SCHEMA = [
         type: "number",
         width: 155,
         readOnly: true,
-        tooltip: "Nombre de raccords motif : ceil(H. Coupe ÷ Raccord V T1). Zéro si pas de raccord.",
+        tooltip: "Nombre de raccords motif T1 : ceil(H. Coupe T1 ÷ Raccord V T1) + 1. Zéro si pas de raccord.",
         valueGetter: (v, r) => getters.nb_raccords_motifs(getRow(v, r))
+    },
+    {
+        key: "nb_raccords_motifs_t2",
+        label: "Nb Raccords Motifs T2",
+        type: "number",
+        width: 165,
+        readOnly: true,
+        tooltip: "Nombre de raccords motif T2 : ceil(H. Coupe T2 ÷ Raccord V T2) + 1. Zéro si pas de raccord, vide si pas de tissu 2.",
+        valueGetter: (v, r) => getters.nb_raccords_motifs_t2(getRow(v, r))
     },
     {
         key: "hauteur_coupe_motif",
@@ -628,6 +726,24 @@ export const RIDEAUX_PROD_SCHEMA = [
         tooltip: "Reste de tissu après les lés entiers, sur la laize du tissu 2. Vide s'il n'y a pas de tissu 2, ou si le rideau rentre dans la laize (hauteur finie max + 50 cm < laize T2).",
         valueGetter: (v, r) => getters.reste_les_t2(getRow(v, r))
     },
+    {
+        key: "nombre_les_t2",
+        label: "Nb Lés T2",
+        type: "number",
+        width: 110,
+        readOnly: true,
+        tooltip: "Nombre de lés (largeurs de tissu 2) à couper. Une paire compte les deux pans (× 2). Vide s'il n'y a pas de tissu 2.",
+        valueGetter: (v, r) => getters.nombre_les_t2(getRow(v, r))
+    },
+    {
+        key: "nb_hauteur_a_couper_t2",
+        label: "Nb Haut. à Couper T2",
+        type: "number",
+        width: 155,
+        readOnly: true,
+        tooltip: "Nombre de hauteurs à couper (T2). Pan = Nb Lés + 1. Paire = Nb Lés + 1 si appiècement ≤ laize/2, sinon + 2. Vide s'il n'y a pas de tissu 2.",
+        valueGetter: (v, r) => getters.nb_hauteur_a_couper_t2(getRow(v, r))
+    },
     { key: "doublure", label: "Doublure", type: "text", width: 160, editable: true },
     { key: "laize_doublure", label: "Laize D.", type: "number", width: 110, editable: true },
     {
@@ -659,6 +775,24 @@ export const RIDEAUX_PROD_SCHEMA = [
         tooltip: "Reste de tissu après les lés entiers, sur la laize de doublure. Vide s'il n'y a pas de doublure, ou si le rideau rentre dans la laize (hauteur finie max + 50 cm < laize doublure).",
         valueGetter: (v, r) => getters.reste_les_doublure(getRow(v, r))
     },
+    {
+        key: "nombre_les_doublure",
+        label: "Nb Lés Doublure",
+        type: "number",
+        width: 130,
+        readOnly: true,
+        tooltip: "Nombre de lés (largeurs de doublure) à couper. Une paire compte les deux pans (× 2). Vide s'il n'y a pas de doublure.",
+        valueGetter: (v, r) => getters.nombre_les_doublure(getRow(v, r))
+    },
+    {
+        key: "nb_hauteur_a_couper_doublure",
+        label: "Nb Haut. à Couper Doublure",
+        type: "number",
+        width: 175,
+        readOnly: true,
+        tooltip: "Nombre de hauteurs à couper (doublure). Pan = Nb Lés + 1. Paire = Nb Lés + 1 si appiècement ≤ laize/2, sinon + 2. Vide s'il n'y a pas de doublure.",
+        valueGetter: (v, r) => getters.nb_hauteur_a_couper_doublure(getRow(v, r))
+    },
     { key: "inter_doublure", label: "Interdoublure", type: "text", width: 160 },
     { key: "laize_inter", label: "Laize Interdoublure", type: "number", width: 175 },
     {
@@ -682,6 +816,24 @@ export const RIDEAUX_PROD_SCHEMA = [
         readOnly: true,
         tooltip: "Reste de tissu après les lés entiers, sur la laize d'interdoublure. Vide s'il n'y a pas d'interdoublure, ou si le rideau rentre dans la laize (hauteur finie max + 50 cm < laize inter).",
         valueGetter: (v, r) => getters.reste_les_inter(getRow(v, r))
+    },
+    {
+        key: "nombre_les_inter",
+        label: "Nb Lés Inter.",
+        type: "number",
+        width: 120,
+        readOnly: true,
+        tooltip: "Nombre de lés (largeurs d'interdoublure) à couper. Une paire compte les deux pans (× 2). Vide s'il n'y a pas d'interdoublure.",
+        valueGetter: (v, r) => getters.nombre_les_inter(getRow(v, r))
+    },
+    {
+        key: "nb_hauteur_a_couper_inter",
+        label: "Nb Haut. à Couper Inter.",
+        type: "number",
+        width: 165,
+        readOnly: true,
+        tooltip: "Nombre de hauteurs à couper (interdoublure). Pan = Nb Lés + 1. Paire = Nb Lés + 1 si appiècement ≤ laize/2, sinon + 2. Vide s'il n'y a pas d'interdoublure.",
+        valueGetter: (v, r) => getters.nb_hauteur_a_couper_inter(getRow(v, r))
     },
     { key: "passementerie1", label: "Pass. 1", type: "text", width: 160, editable: true },
     { key: "application_passementerie1", label: "App Pass 1", type: "select", options: ["I", "U", "L", "-", "Prise de main"], width: 140, editable: true },
