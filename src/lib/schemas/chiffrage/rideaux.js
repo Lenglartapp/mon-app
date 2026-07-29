@@ -100,9 +100,9 @@ export const RIDEAUX_SCHEMA = [
     // 47
     { key: "passementerie1", label: "Passementerie 1", type: "catalog_item", category: "Passementerie", width: 170 },
     // 48
-    { key: "application_passementerie1", label: "App. P1", type: "select", options: ["I", "U", "L", "-"], width: 130 },
+    { key: "application_passementerie1", label: "App Pass 1", type: "select", options: ["I", "U", "L", "-", "Prise de main"], width: 130 },
     // 49
-    { key: "ml_pass1", label: "ML Pass 1", type: "number", width: 140, readOnly: true, tooltip: "ML passementerie 1 selon application : I = À Plat × 2 | U = périmètre | L = 3 côtés" },
+    { key: "ml_pass1", label: "ML Pass 1", type: "number", width: 140, readOnly: (row) => row.application_passementerie1 !== "Prise de main", tooltip: "ML passementerie 1 selon application : I = À Plat × 2 | U = périmètre | L = 3 côtés | Prise de main = saisie manuelle" },
     // 50
     { key: "pa_pass1", label: "PA Pass 1", type: "number", width: 140 },
     // 51
@@ -111,9 +111,9 @@ export const RIDEAUX_SCHEMA = [
     // 52
     { key: "passementerie2", label: "Passementerie 2", type: "catalog_item", category: "Passementerie", width: 170 },
     // 53
-    { key: "application_passementerie2", label: "App. P2", type: "select", options: ["I", "U", "L", "-"], width: 130 },
+    { key: "application_passementerie2", label: "App Pass 2", type: "select", options: ["I", "U", "L", "-", "Prise de main"], width: 130 },
     // 54
-    { key: "ml_pass2", label: "ML Pass 2", type: "number", width: 145, readOnly: true, tooltip: "ML passementerie 2 selon application : I = À Plat × 2 | U = périmètre | L = 3 côtés" },
+    { key: "ml_pass2", label: "ML Pass 2", type: "number", width: 145, readOnly: (row) => row.application_passementerie2 !== "Prise de main", tooltip: "ML passementerie 2 selon application : I = À Plat × 2 | U = périmètre | L = 3 côtés | Prise de main = saisie manuelle" },
     // 55
     { key: "pa_pass2", label: "PA Pass 2", type: "number", width: 145 },
     // 56
