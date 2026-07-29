@@ -684,31 +684,35 @@ export const RIDEAUX_PROD_SCHEMA = [
         valueGetter: (v, r) => getters.reste_les_inter(getRow(v, r))
     },
     { key: "passementerie1", label: "Pass. 1", type: "text", width: 160, editable: true },
-    { key: "application_passementerie1", label: "Appli Pass. 1", type: "select", options: ["I", "U", "L", "-"], width: 140, editable: true },
+    { key: "application_passementerie1", label: "App Pass 1", type: "select", options: ["I", "U", "L", "-", "Prise de main"], width: 140, editable: true },
     {
         key: "ml_pass1",
         label: "ML Pass. 1",
         type: "number",
         width: 110,
-        readOnly: true,
-        tooltip: "ML Pass. 1 selon application : I = 1 côté | U = périmètre | L = 3 côtés | - = largeur seule",
+        readOnly: (row) => row.application_passementerie1 !== "Prise de main",
+        tooltip: "ML Pass. 1 selon application : I = 1 côté | U = périmètre | L = 3 côtés | - = largeur seule | Prise de main = saisie manuelle",
         valueGetter: (v, r) => {
             const row = getRow(v, r);
+            // Prise de main : bande de tissu appliquée → ML saisi à la main (importé du chiffrage
+            // ou ajusté à l'atelier), on renvoie la valeur stockée au lieu de la recalculer.
+            if (row.application_passementerie1 === "Prise de main") return row.ml_pass1;
             const isPaire = (row.paire_ou_un_seul_pan || "").startsWith("Paire") && row.paire_ou_un_seul_pan !== PAIRE_DECENTREE;
             return calcPassML(row.application_passementerie1, getters.a_plat(row), getters.hauteur_coupe(row), isPaire);
         }
     },
     { key: "passementerie2", label: "Pass. 2", type: "text", width: 160, editable: true },
-    { key: "application_passementerie2", label: "Appli Pass. 2", type: "select", options: ["I", "U", "L", "-"], width: 140, editable: true },
+    { key: "application_passementerie2", label: "App Pass 2", type: "select", options: ["I", "U", "L", "-", "Prise de main"], width: 140, editable: true },
     {
         key: "ml_pass2",
         label: "ML Pass. 2",
         type: "number",
         width: 110,
-        readOnly: true,
-        tooltip: "ML Pass. 2 selon application : I = 1 côté | U = périmètre | L = 3 côtés | - = largeur seule",
+        readOnly: (row) => row.application_passementerie2 !== "Prise de main",
+        tooltip: "ML Pass. 2 selon application : I = 1 côté | U = périmètre | L = 3 côtés | - = largeur seule | Prise de main = saisie manuelle",
         valueGetter: (v, r) => {
             const row = getRow(v, r);
+            if (row.application_passementerie2 === "Prise de main") return row.ml_pass2;
             const isPaire = (row.paire_ou_un_seul_pan || "").startsWith("Paire") && row.paire_ou_un_seul_pan !== PAIRE_DECENTREE;
             return calcPassML(row.application_passementerie2, getters.a_plat(row), getters.hauteur_coupe(row), isPaire);
         }

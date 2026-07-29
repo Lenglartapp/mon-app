@@ -263,20 +263,26 @@ export function recomputeRow(row, schema, ctx = {}) {
 
       return isPaire ? (res * 2) : res;
     };
-    next.ml_pass1 = roundStep05(calcPassML(next.application_passementerie1) / 100);
+    // « Prise de main » : ML saisi à la main (bande de tissu appliquée) → on ne le recalcule
+    // pas ; sinon ML dérivé de la géométrie selon l'application (I/U/L/-).
+    if (next.application_passementerie1 !== 'Prise de main') {
+      next.ml_pass1 = roundStep05(calcPassML(next.application_passementerie1) / 100);
+    }
     const pP1 = getPrice(next.passementerie1);
     if (pP1.found) {
-      next.pa_pass1 = next.ml_pass1 * (pP1.pa || 0);
-      next.pv_pass1 = next.ml_pass1 * (pP1.pv || 0);
+      next.pa_pass1 = NVL(next.ml_pass1) * (pP1.pa || 0);
+      next.pv_pass1 = NVL(next.ml_pass1) * (pP1.pv || 0);
     } else {
       next.pa_pass1 = 0; next.pv_pass1 = 0;
     }
 
-    next.ml_pass2 = roundStep05(calcPassML(next.application_passementerie2) / 100);
+    if (next.application_passementerie2 !== 'Prise de main') {
+      next.ml_pass2 = roundStep05(calcPassML(next.application_passementerie2) / 100);
+    }
     const pP2 = getPrice(next.passementerie2);
     if (pP2.found) {
-      next.pa_pass2 = next.ml_pass2 * (pP2.pa || 0);
-      next.pv_pass2 = next.ml_pass2 * (pP2.pv || 0);
+      next.pa_pass2 = NVL(next.ml_pass2) * (pP2.pa || 0);
+      next.pv_pass2 = NVL(next.ml_pass2) * (pP2.pv || 0);
     } else {
       next.pa_pass2 = 0; next.pv_pass2 = 0;
     }
