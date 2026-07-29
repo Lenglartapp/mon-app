@@ -51,6 +51,9 @@ const PERMISSIONS = {
     "planning.view_gauges": true,
     "planning.view_assistant": true,
     "planning.manage_team": true,
+    // Supprimer des créneaux (dont congés/séries) : réservé à l'ordo et à l'admin
+    // (ordo_conf hérite via la copie de ce bloc plus bas).
+    "planning.delete": true,
     // Redistribuer des heures internes vers un dossier : déplace du temps RÉALISÉ
     // d'un dossier à un autre, réservé à l'ordo et à l'admin.
     "planning.transfer_internal": true,
