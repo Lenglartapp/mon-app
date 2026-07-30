@@ -1928,6 +1928,7 @@ function MinuteGrid({
                     onFilterChanged={() => { setFilterVersion(v => v + 1); updateReorderState(); }}
                     onSortChanged={updateReorderState}
                     rowDragManaged={true}
+                    rowDragMultiRow={true}
                     onRowDragEnd={onRowDragEnd}
                     processCellFromClipboard={processCellFromClipboard}
                     onGridReady={onGridReady}
