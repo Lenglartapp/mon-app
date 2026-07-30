@@ -195,6 +195,26 @@ const AG_CUSTOM_CSS = `
   animation: ag-col-jump-flash 1s ease-in-out 2;
   box-shadow: inset 0 -3px 0 0 #f59e0b;
 }
+/* Éditeur catalogue (rich select) : popup élargi + noms complets non tronqués */
+.ag-rich-select {
+  min-width: 340px !important;
+  max-width: 560px;
+}
+.ag-rich-select .ag-rich-select-list {
+  min-width: 100%;
+}
+.ag-rich-select .ag-rich-select-row,
+.ag-rich-select .ag-rich-select-value {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: nowrap;
+}
+/* Fallback pour l'ancien agSelectCellEditor éventuel */
+.ag-theme-alpine .ag-list-item {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: nowrap;
+}
 `;
 
 // Injecter le CSS une seule fois
