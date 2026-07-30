@@ -330,7 +330,10 @@ export function schemaToGridCols(
         }
       }
 
-      gridCol.cellEditor = 'agSelectCellEditor';
+      // Éditeur "rich select" (Enterprise) : affiche le nom COMPLET de la référence
+      // catalogue et permet de taper pour filtrer (listes longues).
+      gridCol.cellEditor = 'agRichSelectCellEditor';
+      const richParams = { allowTyping: true, filterList: true, highlightMatch: true, searchType: 'matchAny' };
 
       if (col.key === 'modele_mecanisme' || col.key === 'mecanisme_bis') {
         gridCol.cellEditorParams = (params) => {
@@ -339,14 +342,14 @@ export function schemaToGridCols(
           if (typeMeca === 'Rail') {
             subFiltered = subFiltered.filter(a => !a.unit || a.unit === 'ml' || a.unit === 'pce');
           }
-          return { values: ['', ...subFiltered.map(a => a.name)] };
+          return { values: ['', ...subFiltered.map(a => a.name)], ...richParams };
         };
       } else if (col.key === 'embrasse') {
         // Embrasse = passementerie vendue à la pièce → ne lister que les articles 'pce'
         const embItems = filteredCatalog.filter(a => a.unit === 'pce');
-        gridCol.cellEditorParams = { values: ['', ...embItems.map(a => a.name)] };
+        gridCol.cellEditorParams = { values: ['', ...embItems.map(a => a.name)], ...richParams };
       } else {
-        gridCol.cellEditorParams = { values: ['', ...filteredCatalog.map(a => a.name)] };
+        gridCol.cellEditorParams = { values: ['', ...filteredCatalog.map(a => a.name)], ...richParams };
       }
     }
 

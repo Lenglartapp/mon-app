@@ -109,6 +109,7 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
         navigate(`/production/${project.id.slice(0, 8)}-${slugify(project.name)}?stage=prise`);
     };
     const canEdit = can(currentUser, 'planning.edit');
+    const canDelete = can(currentUser, 'planning.delete'); // suppression réservée ordo/admin
     const showGauges = can(currentUser, 'planning.view_gauges');
     const canManageTeam = can(currentUser, 'planning.manage_team');
     const canViewAssistant = can(currentUser, 'planning.view_assistant');
@@ -225,6 +226,7 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
     const [historyOpen, setHistoryOpen] = useState(false);
     const [historyHighlightProjectId, setHistoryHighlightProjectId] = useState(null);
     const [bulkValidateOpen, setBulkValidateOpen] = useState(false);
+    const [deleteChoice, setDeleteChoice] = useState(null); // { dayEvent, seriesEvents } pour la pop-up de choix
     const [showWeekends, setShowWeekends] = useState(false);
     const [customRange, setCustomRange] = useState(null);
     // 0 = replié, 1 = programme seulement (conf uniquement), 2 = déplié complet
@@ -900,13 +902,28 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
         }
     };
 
-    const handleInlineDeleteEvent = (evt) => {
-        if (window.confirm('Supprimer ce créneau ?')) {
-            if (evt.meta?.seriesId) {
-                setLocalEvents(prev => prev.filter(e => e.meta?.seriesId !== evt.meta.seriesId));
-            } else {
-                handleDeleteEvent(evt);
-            }
+    // Suppression PERSISTÉE d'une série entière (tous les créneaux d'un même seriesId).
+    // Corrige l'ancien comportement qui ne retirait la série que de l'affichage local.
+    const handleDeleteSeries = (seriesEvents) => {
+        if (!seriesEvents || !seriesEvents.length) return;
+        const ids = new Set(seriesEvents.map(e => e.id));
+        seriesEvents.forEach(e => { if (onDeleteEventProp) onDeleteEventProp(e.id); });
+        setLocalEvents(prev => prev.filter(e => !ids.has(e.id)));
+    };
+
+    // Point d'entrée UNIQUE de suppression (fenêtre + corbeille en ligne).
+    // Si le créneau appartient à une série de plus d'un jour → pop-up de choix
+    // « ce jour / toute la série » ; sinon suppression directe (persistée).
+    const requestDeleteEvent = (evt) => {
+        if (!evt || !canDelete) return; // suppression réservée ordo/admin
+        const seriesId = evt.meta?.seriesId;
+        const seriesEvents = seriesId ? localEvents.filter(e => e.meta?.seriesId === seriesId) : [];
+        // Jour réellement visé : depuis la fenêtre agrégée on récupère le créneau cliqué.
+        const dayEvent = evt.__clickedId ? (localEvents.find(e => e.id === evt.__clickedId) || evt) : evt;
+        if (seriesEvents.length > 1) {
+            setDeleteChoice({ dayEvent, seriesEvents });
+        } else if (window.confirm('Supprimer ce créneau ?')) {
+            handleDeleteEvent(dayEvent);
         }
     };
 
@@ -927,7 +944,8 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                 const last = seriesEvents[seriesEvents.length - 1];
                 const agg = {
                     ...first,
-                    meta: { ...first.meta, end: last.meta.end || last.date }
+                    meta: { ...first.meta, end: last.meta.end || last.date },
+                    __clickedId: evt.id, // créneau réellement cliqué (pour « supprimer ce jour »)
                 };
                 setEditingEvent(agg);
             }
@@ -1459,6 +1477,37 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                 />
             )}
 
+            {deleteChoice && (
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1400, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+                    <div style={{ background: 'white', borderRadius: 14, width: 'min(420px, 92vw)', padding: 24, boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
+                        <div style={{ fontSize: 17, fontWeight: 800, color: '#111827', marginBottom: 8 }}>Supprimer le créneau</div>
+                        <div style={{ fontSize: 14, color: '#4B5563', marginBottom: 22 }}>
+                            Ce créneau fait partie d'une série de <b>{deleteChoice.seriesEvents.length}</b> jours. Que voulez-vous supprimer ?
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                            <button
+                                onClick={() => { handleDeleteEvent(deleteChoice.dayEvent); setDeleteChoice(null); }}
+                                style={{ padding: '11px 16px', borderRadius: 8, border: '1px solid #D1D5DB', background: 'white', color: '#111827', fontWeight: 700, fontSize: 14, cursor: 'pointer', textAlign: 'left' }}
+                            >
+                                Supprimer ce jour uniquement
+                            </button>
+                            <button
+                                onClick={() => { handleDeleteSeries(deleteChoice.seriesEvents); setDeleteChoice(null); }}
+                                style={{ padding: '11px 16px', borderRadius: 8, border: 'none', background: '#EF4444', color: 'white', fontWeight: 700, fontSize: 14, cursor: 'pointer', textAlign: 'left' }}
+                            >
+                                Supprimer toute la série ({deleteChoice.seriesEvents.length} jours)
+                            </button>
+                            <button
+                                onClick={() => setDeleteChoice(null)}
+                                style={{ padding: '10px 16px', borderRadius: 8, border: 'none', background: 'transparent', color: '#6B7280', fontWeight: 600, fontSize: 14, cursor: 'pointer' }}
+                            >
+                                Annuler
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <HistoryPanel
                 isOpen={historyOpen}
                 onClose={() => setHistoryOpen(false)}
@@ -1473,7 +1522,7 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                 onClose={() => { setIsModalOpen(false); setEditingEvent(null); setInitialModalData(null); }}
                 onSave={handleSaveEvent}
                 onValidate={handleValidateEvent}
-                onDelete={handleDeleteEvent}
+                onDelete={requestDeleteEvent}
                 projects={projects}
                 events={localEvents}
                 eventToEdit={editingEvent}
@@ -1481,6 +1530,7 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                 currentUser={currentUser}
                 groupsConfig={visibleGroupsConfig}
                 readOnly={!canEdit}
+                canDelete={canDelete}
             />
 
             {backlogModalOpen && (
@@ -1612,7 +1662,7 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                     hiddenResources={hiddenResources}
                     onCellClick={handleCellClick}
                     onEventClick={handleEventClick}
-                    onDeleteEvent={handleInlineDeleteEvent}
+                    onDeleteEvent={requestDeleteEvent}
                     onUpdateEvent={(updatedEvent) => {
                         setLocalEvents(prev => prev.map(e => e.id === updatedEvent.id ? updatedEvent : e));
                         if (onUpdateEvent) onUpdateEvent(updatedEvent);

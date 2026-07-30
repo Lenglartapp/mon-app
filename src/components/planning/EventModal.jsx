@@ -7,7 +7,7 @@ import {
     getActiveChapters, normalizeChapter,
 } from '../../lib/planning/internalProject';
 
-const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = [], events = [], eventToEdit, initialData, currentUser, groupsConfig, readOnly = false }) => {
+const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = [], events = [], eventToEdit, initialData, currentUser, groupsConfig, readOnly = false, canDelete = false }) => {
     // États Formulaire
     const [projectSearch, setProjectSearch] = useState('');
     const [selectedProject, setSelectedProject] = useState(null);
@@ -521,9 +521,9 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
                     {/* Une absence est toujours « validée » par nature : le garde-fou
                         « seul l'admin supprime un créneau validé » (pensé pour le travail
                         confirmé) ne doit pas empêcher l'ordo de retirer un congé/RTT/maladie. */}
-                    {eventToEdit && onDelete && (isAbsence || eventToEdit.meta?.status !== 'validated' || currentUser?.role === 'admin') && !readOnly && (
+                    {eventToEdit && onDelete && canDelete && (isAbsence || eventToEdit.meta?.status !== 'validated' || currentUser?.role === 'admin') && !readOnly && (
                         <button
-                            onClick={() => { if (window.confirm('Supprimer ce créneau ?')) { onDelete(eventToEdit); onClose(); } }}
+                            onClick={() => { onClose(); onDelete(eventToEdit); }}
                             style={{ marginRight: 'auto', padding: '10px 16px', borderRadius: 8, border: '1px solid #fee2e2', background: '#fef2f2', color: '#ef4444', fontWeight: 600, cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}
                         >
                             <Trash2 size={16} /> Supprimer
