@@ -8,7 +8,7 @@ import { schemaToGridCols } from '../lib/utils/schemaToGridCols.jsx';
 import { recomputeRow } from '../lib/formulas/recomputeRow';
 import { generateRowLogs } from '../lib/utils/logUtils';
 import { uid } from '../lib/utils/uid';
-import { createDecentreePair, PAIRE_DECENTREE, DECENTREE_PARENT_ONLY_TECH } from '../lib/utils/pairDecentree';
+import { createDecentreePair, PAIRE_DECENTREE, DECENTREE_PARENT_ONLY_TECH, orderDecentreeRows } from '../lib/utils/pairDecentree';
 import { Plus, Trash2, Columns, Layers, Edit2, Filter, FileSpreadsheet } from 'lucide-react';
 import FilterPanel, { isConditionActive, evaluateCondition } from './FilterPanel';
 import { getDefaultMatieres } from '../lib/constants/matiereGroups';
@@ -214,6 +214,33 @@ const AG_CUSTOM_CSS = `
   overflow: visible;
   text-overflow: clip;
   white-space: nowrap;
+}
+/* Poignée de déplacement de ligne (façon Airtable) : intégrée à la colonne de
+   sélection. Positionnée en ABSOLU pour ne PAS réserver d'espace (sinon elle
+   décale et tronque la case à cocher). Cachée par défaut, révélée au survol. */
+.ag-theme-alpine .ag-row-drag {
+  position: absolute;
+  left: 3px;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  margin: 0 !important;
+  padding: 0 !important;
+  opacity: 0;
+  transition: opacity .12s ease;
+  cursor: grab;
+  z-index: 2;
+}
+.ag-theme-alpine .ag-row:hover .ag-row-drag {
+  opacity: 0.7;
+}
+.ag-theme-alpine .ag-row-drag:hover {
+  opacity: 1;
+}
+/* Tri / filtre / regroupement actif : réordonnancement désactivé → poignée masquée */
+.ag-theme-alpine.reorder-blocked .ag-row-drag {
+  display: none !important;
 }
 `;
 
@@ -1040,6 +1067,8 @@ function MinuteGrid({
             return showExpeditionCol ? [...base, expeditionCol] : base;
         }
 
+        // Le glisser-déposer de lignes se fait via une poignée intégrée à la colonne
+        // de sélection (voir selectionColumnDef), révélée au survol — pas de colonne dédiée.
         return showExpeditionCol ? [...withWidths, expeditionCol] : withWidths;
     }, [schema, enableCellFormulas, handleOpenDetail, catalog, railOptions, handlePhotoChange, handleLinkUpdate, onDuplicateRow, hideCroquis, readOnly, title, isMobile, gridId, showExpeditionCol, resolvedUser, colAggregations, enableDecentree, decentreeZoneRenderer, decentreeParentOnlyRenderer]);
 
@@ -1063,6 +1092,37 @@ function MinuteGrid({
             result = cond.logic === 'ou' ? result || condResult : result && condResult;
         }
         return result;
+    }, []);
+
+    // ── Réordonnancement de lignes (row drag) ────────────────────────────────
+    // La poignée est masquée (et le drop ignoré) dès qu'un tri, un filtre ou un
+    // regroupement est actif : l'ordre affiché ≠ l'ordre stocké, un drag n'aurait
+    // pas de sens. On réapplique orderDecentreeRows après coup pour que les paires
+    // décentrées (parent + 2 enfants) restent collées et dans l'ordre.
+    const reorderBlockedRef = useRef(false);
+    const [reorderBlocked, setReorderBlocked] = useState(false);
+    const computeReorderBlocked = useCallback(() => {
+        const api = gridRef.current?.api;
+        if (!api) return false;
+        const sorted = (api.getColumnState?.() || []).some(c => c.sort);
+        const grouped = (api.getRowGroupColumns?.() || []).length > 0;
+        const filtered = !!api.isAnyFilterPresent?.();
+        return sorted || grouped || filtered;
+    }, []);
+    const updateReorderState = useCallback(() => {
+        const blocked = computeReorderBlocked();
+        reorderBlockedRef.current = blocked;
+        setReorderBlocked(blocked); // pilote la classe CSS qui masque la poignée
+    }, [computeReorderBlocked]);
+    const onRowDragEnd = useCallback(() => {
+        if (reorderBlockedRef.current) return;
+        const api = gridRef.current?.api;
+        if (!api) return;
+        // En mode managé, AG Grid a déjà réordonné le modèle : on lit le nouvel ordre.
+        const newOrder = [];
+        api.forEachNode((node) => { if (node.data && node.rowPinned == null) newOrder.push(node.data); });
+        if (newOrder.length === 0) return;
+        onRowsChangeRef.current(orderDecentreeRows(newOrder));
     }, []);
 
     const defaultColDef = useMemo(() => ({
@@ -1820,7 +1880,7 @@ function MinuteGrid({
 
             {/* AG Grid + poignée de redimensionnement vertical */}
             <div style={{ position: 'relative' }}>
-            <div ref={gridContainerRef} className="ag-theme-alpine" style={{ width: '100%', height: effectiveHeight }}>
+            <div ref={gridContainerRef} className={`ag-theme-alpine${reorderBlocked ? ' reorder-blocked' : ''}`} style={{ width: '100%', height: effectiveHeight }}>
                 <AgGridReact
                     ref={gridRef}
                     rowData={rows}
@@ -1833,7 +1893,7 @@ function MinuteGrid({
                     rowGroupPanelShow="always"
                     groupDefaultExpanded={0}
                     suppressAggFuncInHeader={true}
-                    onColumnRowGroupChanged={onColumnRowGroupChanged}
+                    onColumnRowGroupChanged={(e) => { onColumnRowGroupChanged?.(e); updateReorderState(); }}
                     context={{ colAggregations, onAggregationChange }}
                     getRowStyle={(params) => {
                         if (params.node.rowPinned === 'bottom') {
@@ -1854,10 +1914,21 @@ function MinuteGrid({
                         checkboxes: !readOnly,
                         headerCheckbox: !readOnly,
                     }}
+                    selectionColumnDef={{
+                        pinned: 'left',
+                        width: 58,
+                        // Poignée de déplacement intégrée à la colonne de sélection
+                        // (révélée au survol via CSS). Pas de colonne dédiée.
+                        rowDrag: (params) => !readOnly && params.node.rowPinned == null,
+                        suppressHeaderMenuButton: true,
+                    }}
                     onSelectionChanged={onSelectionChanged}
                     onCellClicked={onCellClicked}
                     onCellValueChanged={onCellValueChanged}
-                    onFilterChanged={() => setFilterVersion(v => v + 1)}
+                    onFilterChanged={() => { setFilterVersion(v => v + 1); updateReorderState(); }}
+                    onSortChanged={updateReorderState}
+                    rowDragManaged={true}
+                    onRowDragEnd={onRowDragEnd}
                     processCellFromClipboard={processCellFromClipboard}
                     onGridReady={onGridReady}
                     onColumnResized={onColumnResized}
