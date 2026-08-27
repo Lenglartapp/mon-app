@@ -243,6 +243,17 @@ const formatMinutes = (data) => data.map(m => ({
 // ⚠️ NE JAMAIS faire `select('*')` ici. Détail complet → loadMinuteDetail(id).
 const MINUTE_LIST_COLUMNS = 'id,name,client,status,version,notes,owner,delivery_date,parent_id,ca_total,marge_eur,marge_pct,renta_hh,created_at,updated_at';
 
+// 🩹 DÉRIVE DE SCHÉMA — colonnes écrites par le code mais ABSENTES de la table
+// `minutes` (ex. `settings`, `matieres`). PostgREST rejette TOUTE la requête (400
+// PGRST204) dès qu'une seule colonne est inconnue : le taux horaire, le catalogue
+// et les lignes du même payload étaient donc perdus. Pire, l'écriture échouée était
+// remise en file et FUSIONNÉE avec les suivantes → la colonne fantôme empoisonnait
+// toutes les sauvegardes du devis (boucle de 400 en console). On mémorise ici les
+// colonnes fantômes détectées pour les retirer AVANT l'envoi.
+// ⚠️ Ceci est un filet de sécurité : la vraie correction est la migration SQL
+// db/migrations/2026-08-27_add_minutes_settings_matieres.sql.
+const PHANTOM_MINUTE_COLUMNS = new Set();
+
 export const useMinutes = () => {
     const [minutes, setMinutes] = useState([]);
 
@@ -263,14 +274,35 @@ export const useMinutes = () => {
             while (pendingMinuteRef.current.has(id)) {
                 const payload = pendingMinuteRef.current.get(id);
                 pendingMinuteRef.current.delete(id);
-                const { error } = await supabase.from('minutes').update(payload).eq('id', id);
+
+                // Retire d'emblée les colonnes DÉJÀ identifiées comme absentes en base :
+                // sans ça, chaque sauvegarde suivante les réexpédie et se fait rejeter
+                // EN BLOC (on perdait params/catalog/lines au passage).
+                const cleaned = { ...payload };
+                for (const col of PHANTOM_MINUTE_COLUMNS) delete cleaned[col];
+                if (Object.keys(cleaned).length === 0) continue; // plus rien à écrire
+
+                // AUTO-RÉPARATION (même mécanisme que updateProject) : si la base
+                // rejette une colonne inexistante, on la retire et on rejoue pour que
+                // le RESTE du payload soit bien sauvegardé.
+                const { error, dropped, body } = await updateStrippingPhantomColumns(supabase, 'minutes', id, cleaned);
+                if (dropped.length > 0) {
+                    dropped.forEach(col => PHANTOM_MINUTE_COLUMNS.add(col));
+                    console.warn(`[updateMinute] colonne(s) absente(s) en base ignorée(s) : ${dropped.join(', ')} — le reste a été sauvegardé. Jouer la migration SQL correspondante.`);
+                }
+                if (error && isSchemaDriftError(error)) {
+                    // Dérive résiduelle non identifiable : on N'ENFILE PAS ce payload,
+                    // il échouerait en boucle et bloquerait toutes les écritures suivantes.
+                    console.error(`[updateMinute] sauvegarde rejetée (dérive schéma persistante), abandonnée : ${error.message}`);
+                    continue;
+                }
                 if (error) {
                     console.error('Erreur update minute:', error);
                     // On NE PERD PAS l'écriture : on la re-fusionne (en laissant les
                     // éventuels champs plus récents arrivés entre-temps gagner) et on
                     // s'arrête — elle repartira au prochain edit (ou au flush de démontage).
                     const newer = pendingMinuteRef.current.get(id);
-                    pendingMinuteRef.current.set(id, { ...payload, ...(newer || {}) });
+                    pendingMinuteRef.current.set(id, { ...body, ...(newer || {}) });
                     break;
                 }
             }
