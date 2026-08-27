@@ -24,6 +24,7 @@ import { useAppSettings, useCatalog, useCatalogRail } from "../hooks/useSupabase
 import { calculateProfitability } from '../lib/financial/profitabilityCalculator';
 
 import MinuteHistoryDialog from "../components/MinuteHistoryDialog";
+import { buildSettingsLogs, buildCatalogLogs, appendHistory } from "../lib/minuteHistory";
 import RecalibrationModal from "../components/RecalibrationModal";
 import { BookOpen, History, FileUp, SlidersHorizontal, GitBranch } from 'lucide-react';
 import { importGlobalExcel } from "../lib/utils/importGlobalExcel";
@@ -217,6 +218,26 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
   }, [minute?.id, minute?.lines, minute?.deplacements, minute?.extraDepenses, schema, formulaCtx]);
 
   const mods = localModules;
+
+  // ——— JOURNAL BIBLIOTHÈQUE / PARAMÈTRES GLOBAUX ———
+  // Les modifications de la bibliothèque d'articles (ajout, suppression, coef,
+  // prix d'achat…) et des paramètres globaux (taux horaire…) sont journalisées
+  // dans `modules.history`, la MÊME liste que les changements de statut, et
+  // rendues telles quelles par MinuteHistoryDialog (bouton « Historique »).
+  const historyAuthor = currentUser?.name || currentUser?.email || 'Utilisateur';
+
+  // Ref pour que deux journalisations rapprochées ne s'écrasent pas : le prop
+  // `minute.modules` n'est à jour qu'au re-render suivant l'update optimiste.
+  const modulesRef = React.useRef(minute?.modules);
+  React.useEffect(() => { modulesRef.current = minute?.modules; }, [minute?.modules]);
+
+  // Renvoie le nouveau `modules` à joindre au payload, ou null si rien à noter.
+  const pushHistory = React.useCallback((entries) => {
+    if (!entries || entries.length === 0) return null;
+    const next = appendHistory(modulesRef.current, entries);
+    modulesRef.current = next;
+    return next;
+  }, []);
 
   // Recap Logic
   const recap = React.useMemo(() => {
@@ -751,6 +772,9 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
           onUpdateCommission={(rate) => {
             const newSettings = { ...formulaCtx.settings, commission_rate: rate };
             setLocalSettings(newSettings); // Optimistic UI
+
+            const historyModules = pushHistory(buildSettingsLogs(formulaCtx.settings, newSettings, historyAuthor));
+            if (historyModules) updateMinute({ modules: historyModules });
             // Persiste dans params (colonne fiable) comme les autres réglages
             const updatedParams = [...(minute?.params || [])];
             const idx = updatedParams.findIndex(p => p.name === 'commission_rate');
@@ -765,10 +789,20 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
         open={showCatalog}
         onClose={() => setShowCatalog(false)}
         catalog={minute?.catalog || []}
-        onCatalogChange={(newCatalog) => updateMinute({ catalog: newCatalog })}
+        onCatalogChange={(newCatalog) => {
+          const patch = { catalog: newCatalog };
+          const modules = pushHistory(buildCatalogLogs(minute?.catalog || [], newCatalog, historyAuthor));
+          if (modules) patch.modules = modules;
+          updateMinute(patch);
+        }}
         settings={formulaCtx.settings}
         onSettingsChange={(newSettings) => {
           setLocalSettings({ ...localSettings, ...newSettings }); // Optimistic UI
+
+          // Journal : compare aux réglages EFFECTIVEMENT affichés (formulaCtx),
+          // pas au state local, pour refléter ce que l'utilisateur voyait.
+          const historyModules = pushHistory(buildSettingsLogs(formulaCtx.settings, newSettings, historyAuthor));
+          if (historyModules) updateMinute({ modules: historyModules });
 
           // Sauvegarder dans params (colonne fiable, toujours présente)
           const paramKeys = ["taux_horaire", "prix_nuit", "prix_repas", "coef_sous_traitance"];
