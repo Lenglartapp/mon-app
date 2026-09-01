@@ -41,6 +41,12 @@ const isSinglePan = (row) => {
     return a.startsWith("Un seul pan") || b.startsWith("Un seul pan") || a === "Pan libre" || b === "Pan libre";
 };
 
+// « Pan libre » — la valeur peut être portée par l'un OU l'autre des deux noms de
+// champ historiques (`paire_ou_un_seul_pan` sur les lignes récentes, `pair_un` sur
+// les lignes de production plus anciennes), exactement comme dans isSinglePan.
+const isPanLibre = (row) =>
+    (row.paire_ou_un_seul_pan || "") === "Pan libre" || (row.pair_un || "") === "Pan libre";
+
 // Nombre de pans à confectionner. « Largeur finie » et « À plat » décrivent UN pan
 // (pour une paire, la largeur est divisée par deux) : tout ce qui se consomme réellement
 // — métrage tissu, nombre de lés — doit donc être compté deux fois sur une paire.
@@ -365,7 +371,7 @@ const getters = {
         return round1(fraction * laize);
     },
 
-    // Nb Glisseurs PAR PAN : base par pan (sans × 2 paire) + 1 si « Pan libre ».
+    // Nb Glisseurs PAR PAN : base par pan (sans × 2 paire) + 1 si « Pan libre » (hors Wave).
     nb_glisseurs: (row) => {
         const lFinie = getters.largeur_finie(row);
         if (!lFinie) return 0;
@@ -383,8 +389,11 @@ const getters = {
             ? pairStrictSup(lFinie / divider)
             : Math.floor(lFinie / divider + 2);
 
-        // + 1 si « Pan libre »
-        if ((row.paire_ou_un_seul_pan || "") === "Pan libre") total += 1;
+        // + 1 si « Pan libre », mais UNIQUEMENT hors Wave : sur une confection Wave le
+        // nombre de glisseurs doit rester PAIR pour que les vagues se forment, et
+        // pairStrictSup monte déjà au pair strictement supérieur (donc au moins un
+        // glisseur de marge est déjà provisionné).
+        if (isPanLibre(row) && !isWave) total += 1;
 
         return total;
     },
@@ -917,7 +926,7 @@ export const RIDEAUX_PROD_SCHEMA = [
         type: "number",
         width: 150,
         readOnly: true,
-        tooltip: "Base PAR PAN : Wave 60 → L_finie/6 ; Wave 80 → L_finie/8 ; autre → L_finie/10 + 2. Arrondi au pair supérieur. + 1 si « Pan libre ». (Pas de × 2 pour une paire.)",
+        tooltip: "Base PAR PAN : Wave 60 → L_finie/6 ; Wave 80 → L_finie/8, monté au pair strictement supérieur ; autre → L_finie/10 + 2, arrondi à l'entier inférieur. + 1 si « Pan libre », sauf en Wave (la parité des vagues doit être conservée). (Pas de × 2 pour une paire.)",
         valueGetter: (v, row) => getters.nb_glisseurs(getRow(v, row))
     },
 
