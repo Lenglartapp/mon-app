@@ -48,10 +48,21 @@ const isSinglePan = (row) => {
 const pansOf = (row) => (isSinglePan(row) ? 1 : 2);
 
 // ── Helpers Lés / Hauteurs à couper (par tissu, pour une laize donnée) ────────
+// Hauteur finie retenue pour toute décision de coupe : le MAXIMUM des TROIS cotes
+// (droite, MILIEU, gauche). Le milieu était omis à plusieurs endroits : un rideau
+// dont seul le « HSPF Milieu » est renseigné voyait sa hauteur lue comme nulle (voire
+// négative après déduction du rail), donc considéré à tort comme « rentrant dans la
+// laize » — appiècement et nombre de hauteurs à couper faux. Un seul helper partagé
+// pour que la règle ne puisse plus diverger d'un getter à l'autre.
+const hauteurFinieMax = (row) => Math.max(
+    getters.hauteur_finie_droite(row),
+    getters.hauteur_finie_milieu(row),
+    getters.hauteur_finie_gauche(row)
+);
+
 // « rentre dans la laize » = hauteur finie max + 50 < laize (on coupe dans le sens
 // de la laize : 1 lé = 1 hauteur).
-const rentreDansLaize = (row, laize) =>
-    (Math.max(getters.hauteur_finie_droite(row), getters.hauteur_finie_gauche(row)) + 50) < laize;
+const rentreDansLaize = (row, laize) => (hauteurFinieMax(row) + 50) < laize;
 
 // Nombre de lés ENTIERS d'un tissu, TOTAL (× pans). 1 lé/pan si on rentre dans la laize.
 const lesTotalForLaize = (row, laize) => {
@@ -192,10 +203,7 @@ const getters = {
     },
 
     hauteur_coupe: (row) => {
-        const hFinieD = getters.hauteur_finie_droite(row);
-        const hFinieM = getters.hauteur_finie_milieu(row);
-        const hFinieG = getters.hauteur_finie_gauche(row);
-        const hFinie = Math.max(hFinieD, hFinieM, hFinieG);
+        const hFinie = hauteurFinieMax(row);
 
         const laize = toNum(row.laize_tissu1 || row.laize_tissu_deco1);
         const aPlat = getters.a_plat(row);
@@ -230,9 +238,7 @@ const getters = {
     },
 
     hauteur_coupe_doublure: (row) => {
-        const hFinieD = getters.hauteur_finie_droite(row);
-        const hFinieG = getters.hauteur_finie_gauche(row);
-        const hFinie = Math.max(hFinieD, hFinieG);
+        const hFinie = hauteurFinieMax(row);
         const laizeD = toNum(row.laize_doublure);
         const aPlat = getters.a_plat(row);
         if (laizeD > (hFinie + 50)) return aPlat;
@@ -243,11 +249,7 @@ const getters = {
     // Vide ("") si aucun tissu 2 renseigné (pas de tissu_deco2 ni de laize_tissu2).
     hauteur_coupe_t2: (row) => {
         if (!String(row.tissu_deco2 || "").trim() && !toNum(row.laize_tissu2)) return "";
-        const hFinie = Math.max(
-            getters.hauteur_finie_droite(row),
-            getters.hauteur_finie_milieu(row),
-            getters.hauteur_finie_gauche(row)
-        );
+        const hFinie = hauteurFinieMax(row);
         const laize = toNum(row.laize_tissu2);
         const aPlat = getters.a_plat(row);
         if (laize > (hFinie + 50)) return round1(aPlat);
@@ -268,7 +270,7 @@ const getters = {
     // Vide ("") si aucune interdoublure renseignée.
     hauteur_coupe_inter: (row) => {
         if (!String(row.inter_doublure || "").trim() && !toNum(row.laize_inter)) return "";
-        const hFinie = Math.max(getters.hauteur_finie_droite(row), getters.hauteur_finie_gauche(row));
+        const hFinie = hauteurFinieMax(row);
         const laizeI = toNum(row.laize_inter);
         const aPlat = getters.a_plat(row);
         if (laizeI > (hFinie + 50)) return aPlat;
@@ -324,11 +326,7 @@ const getters = {
 
         // Si le rideau rentre dans la laize (hauteur finie max + 50 < laize T1),
         // on coupe dans le sens de la laize : pas de lés à jointer → pas d'appiècement.
-        const hFinieMax = Math.max(
-            getters.hauteur_finie_droite(row),
-            getters.hauteur_finie_gauche(row)
-        );
-        if ((hFinieMax + 50) < laize) return "";
+        if ((hauteurFinieMax(row) + 50) < laize) return "";
 
         const aPlat = getters.a_plat(row);
         const fraction = (aPlat / laize) - Math.floor(aPlat / laize);
@@ -341,8 +339,7 @@ const getters = {
         if (!String(row.tissu_deco2 || "").trim() && !toNum(row.laize_tissu2)) return "";
         const laize = toNum(row.laize_tissu2);
         if (laize <= 0) return "";
-        const hFinieMax = Math.max(getters.hauteur_finie_droite(row), getters.hauteur_finie_gauche(row));
-        if ((hFinieMax + 50) < laize) return "";
+        if ((hauteurFinieMax(row) + 50) < laize) return "";
         const aPlat = getters.a_plat(row);
         const fraction = (aPlat / laize) - Math.floor(aPlat / laize);
         return round1(fraction * laize);
@@ -352,8 +349,7 @@ const getters = {
         if (!String(row.doublure || "").trim() && !toNum(row.laize_doublure)) return "";
         const laize = toNum(row.laize_doublure);
         if (laize <= 0) return "";
-        const hFinieMax = Math.max(getters.hauteur_finie_droite(row), getters.hauteur_finie_gauche(row));
-        if ((hFinieMax + 50) < laize) return "";
+        if ((hauteurFinieMax(row) + 50) < laize) return "";
         const aPlat = getters.a_plat(row);
         const fraction = (aPlat / laize) - Math.floor(aPlat / laize);
         return round1(fraction * laize);
@@ -363,8 +359,7 @@ const getters = {
         if (!String(row.inter_doublure || "").trim() && !toNum(row.laize_inter)) return "";
         const laize = toNum(row.laize_inter);
         if (laize <= 0) return "";
-        const hFinieMax = Math.max(getters.hauteur_finie_droite(row), getters.hauteur_finie_gauche(row));
-        if ((hFinieMax + 50) < laize) return "";
+        if ((hauteurFinieMax(row) + 50) < laize) return "";
         const aPlat = getters.a_plat(row);
         const fraction = (aPlat / laize) - Math.floor(aPlat / laize);
         return round1(fraction * laize);
@@ -632,17 +627,9 @@ export const RIDEAUX_PROD_SCHEMA = [
         width: 150,
         readOnly: true,
         tooltip: "Même logique que H. Coupe mais basée sur la laize de doublure",
-        valueGetter: (v, r) => {
-            const row = getRow(v, r);
-            const hFinieD = getters.hauteur_finie_droite(row);
-            const hFinieG = getters.hauteur_finie_gauche(row);
-            const hFinie = Math.max(hFinieD, hFinieG);
-
-            const laizeD = toNum(row.laize_doublure);
-            const aPlat = getters.a_plat(row);
-            if (laizeD > (hFinie + 50)) return aPlat;
-            return hFinie + 50;
-        }
+        // Délègue au getter : la logique était dupliquée ici, et sa copie avait
+        // divergé (hauteur milieu oubliée).
+        valueGetter: (v, r) => getters.hauteur_coupe_doublure(getRow(v, r))
     },
     {
         key: "hauteur_coupe_inter",
@@ -755,14 +742,8 @@ export const RIDEAUX_PROD_SCHEMA = [
         tooltip: "ML Doublure calculé depuis les cotes BPF (utilise H.Coupe Doublure). Une paire compte deux pans : le résultat est doublé (l'À Plat, lui, décrit un seul pan).",
         valueGetter: (v, r) => {
             const row = getRow(v, r);
-            const hCD = (() => {
-                const hFinieD = getters.hauteur_finie_droite(row);
-                const hFinieG = getters.hauteur_finie_gauche(row);
-                const hFinie = Math.max(hFinieD, hFinieG);
-                const laizeD = toNum(row.laize_doublure);
-                const aPlat = getters.a_plat(row);
-                return laizeD > (hFinie + 50) ? aPlat : hFinie + 50;
-            })();
+            // Délègue au getter (logique auparavant dupliquée ici, sans le milieu).
+            const hCD = getters.hauteur_coupe_doublure(row);
             return calcML(getters.a_plat(row), toNum(row.laize_doublure), hCD, hCD, pansOf(row));
         }
     },
