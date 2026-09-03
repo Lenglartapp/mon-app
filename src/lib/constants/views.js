@@ -120,7 +120,7 @@ export const DEFAULT_VIEWS = {
       "valeur_deduction", "finition_bas",
       "hauteur_finie_droite", "hauteur_finie_milieu", "hauteur_finie_gauche",
       "hauteur_coupe", "nb_raccords_motifs", "hauteur_coupe_motif", "hauteur_coupe_doublure",
-      "nombre_les", "piquage_ourlets_du_bas", "doublure_finition_bas",
+      "nombre_les", "piquage_ourlets_du_bas", "doublure_finition_bas", "finition_oc",
       "finition_champs", "finition_retour", "poids", "onglets", "bride",
       "type_crochets", "ruflette", "point_chausson", "emballage", "piquage_raccord",
       "tissu_deco1", "laize_tissu1", "raccord_v_tissu1", "raccord_h_tissu1", "ml_tissu1",

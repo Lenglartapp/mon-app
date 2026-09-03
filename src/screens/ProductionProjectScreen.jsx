@@ -484,7 +484,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
       { key: 'hspf_gauche', label: 'HSPF Gauche' },
       { key: 'finition_bas', label: 'Cassant / Rasant' },
       { key: 'valeur_deduction', label: 'Val. Déduc.' },
-      { key: 'type_confection', label: 'Type Conf.' },
+      { key: 'type_confection', label: 'Plis' },
       { key: 'tissu_deco1', label: 'Tissu 1' },
       { key: 'tissu_deco2', label: 'Tissu 2' },
       { key: 'doublure', label: 'Doublure' },

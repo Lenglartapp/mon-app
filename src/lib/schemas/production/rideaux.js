@@ -1,4 +1,6 @@
 // src/lib/schemas/production/rideaux.js
+
+import { HAUTEUR_RENFORT_TETE_OPTIONS, FINITION_OURLET_OPTIONS } from '../../constants/rideauxFields';
 import React from 'react';
 import { PAIRE_OPTIONS_BASE, paireOptionsForRow, PAIRE_DECENTREE } from '../../utils/pairDecentree';
 
@@ -461,8 +463,8 @@ export const RIDEAUX_PROD_SCHEMA = [
     { key: "zone", label: "Zone", type: "text", width: 120, editable: true },
     { key: "piece", label: "Pièce", type: "text", width: 120, editable: true },
     { key: "produit", label: "Produit", type: "select", options: ["Rideau", "Voilage"], width: 125, editable: true },
-    { key: "type_confection", label: "Type Conf.", type: "select", options: ["Pli Flamand", "Pli Creux", "Pli Plat", "Tripli", "Wave 80", "Wave 60", "Pli Couteau", "Pli Rabattu Cousu", "A Plat"], width: 150, editable: true },
-    { key: "hauteur_renfort_tete", label: "H/Renfort Têtes", type: "text", width: 155, editable: true },
+    { key: "type_confection", label: "Plis", type: "select", options: ["Pli Flamand", "Pli Creux", "Pli Plat", "Tripli", "Wave 80", "Wave 60", "Pli Couteau", "Pli Rabattu Cousu", "A Plat"], width: 150, editable: true },
+    { key: "hauteur_renfort_tete", label: "Renfort tête", type: "select", options: HAUTEUR_RENFORT_TETE_OPTIONS, width: 155, editable: true },
     { key: "paire_ou_un_seul_pan", label: "Paire ou un Pan", type: "select", options: PAIRE_OPTIONS_BASE, optionsFn: paireOptionsForRow, width: 260, editable: true },
     { key: "largeur_gorge", label: "Largeur Gorge (cm)", type: "number", width: 155, editable: true },
     { key: "profondeur_gorge", label: "Profondeur Gorge (cm)", type: "number", width: 175, editable: true },
@@ -522,8 +524,9 @@ export const RIDEAUX_PROD_SCHEMA = [
         tooltip: "Nombre de hauteurs à couper (T1). Pan = Nb Lés + 1. Paire = Nb Lés + 1 si appiècement ≤ laize/2, sinon + 2. Si le rideau rentre dans la laize : = Nb Lés (1/pan).",
         valueGetter: (v, r) => getters.nb_hauteur_a_couper(getRow(v, r))
     },
-    { key: "v_ourlets_de_cotes", label: "Ourlets Côtés", type: "number", width: 130, editable: true },
-    { key: "piquage_ourlet", label: "Piquage Ourlet", type: "select", options: ["Apparent", "Invisible", "Surfil + Invisible", "Double + Invisible"], width: 145, editable: true },
+    { key: "v_ourlets_de_cotes", label: "OC", type: "number", width: 130, editable: true },
+    { key: "piquage_ourlet", label: "Finition OB", type: "select", options: FINITION_OURLET_OPTIONS, width: 145, editable: true },
+    { key: "finition_oc", label: "Finition OC", type: "select", options: FINITION_OURLET_OPTIONS, width: 145, editable: true },
     // Piquage Raccord : type de couture pour les raccords de lés (à côté de Piquage Ourlet)
     { key: "piquage_raccord", label: "Piquage Raccord", type: "select", options: ['Couture anglaise', 'Couture à la française', 'Couture ouverte', 'Surfilage', 'Couture anglaise + Surpiqûre', 'Couture bourdon', 'Plate + surfilage', 'Plate + bourdon'], width: 200, editable: true },
 
@@ -653,9 +656,9 @@ export const RIDEAUX_PROD_SCHEMA = [
     { key: "deduction_doublure", label: "Déd. Doublure", type: "number", width: 140, editable: true },
 
     // D. Détails Confection
-    { key: "piquage_ourlets_du_bas", label: "Piq. Bas", type: "number", width: 115, editable: true },
-    { key: "piquage_ourlets_bas_doublure", label: "Piq. Bas Doubl.", type: "number", width: 145, editable: true },
-    { key: "doublure_finition_bas", label: "Doubl. Fin. Bas", type: "number", width: 145, editable: true },
+    { key: "piquage_ourlets_du_bas", label: "OB", type: "number", width: 115, editable: true },
+    { key: "piquage_ourlets_bas_doublure", label: "OB Doublure", type: "number", width: 145, editable: true },
+    { key: "doublure_finition_bas", label: "Fin. OB Doublure", type: "number", width: 145, editable: true },
     { key: "finition_champs", label: "Fin. Chant", type: "number", width: 120, editable: true },
     { key: "finition_retour", label: "Fin. Retour", type: "number", width: 120, editable: true, tooltip: "Rideau doublé : l'À Plat utilise 2 × Fin. Chant + 2 × Fin. Retour (au lieu de 4 × ourlet côté)." },
     { key: "poids", label: "Poids", type: "select", options: ["Oui", "Non"], width: 90, editable: true },

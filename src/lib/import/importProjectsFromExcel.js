@@ -1,4 +1,6 @@
 // src/lib/import/importProjectsFromExcel.js
+
+import { HAUTEUR_RENFORT_TETE_OPTIONS, FINITION_OURLET_OPTIONS, LEGACY_HEADER_ALIASES } from '../constants/rideauxFields';
 import readXlsxFile from 'read-excel-file';
 import { uid } from '../utils/uid';
 
@@ -82,8 +84,8 @@ const PRODUCT_SHEETS = [
       c('zone',                        'Zone',                    'text',     16),
       c('piece',                       'Pièce',                   'text',     18),
       c('produit',                     'Produit',                 'select',   16, { options: ['Rideau', 'Voilage'] }),
-      c('type_confection',             'Type Conf.',              'select',   18, { options: ['Pli Flamand', 'Pli Creux', 'Pli Plat', 'Tripli', 'Wave 80', 'Wave 60', 'Pli Couteau', 'Pli Rabattu Cousu', 'A Plat'] }),
-      c('hauteur_renfort_tete',        'H. Renfort Tête',         'text',     16),
+      c('type_confection',             'Plis',              'select',   18, { options: ['Pli Flamand', 'Pli Creux', 'Pli Plat', 'Tripli', 'Wave 80', 'Wave 60', 'Pli Couteau', 'Pli Rabattu Cousu', 'A Plat'] }),
+      c('hauteur_renfort_tete',        'Renfort tête',            'select',   22, { options: HAUTEUR_RENFORT_TETE_OPTIONS }),
       c('paire_ou_un_seul_pan',        'Paire ou Pan',            'select',   20, { options: ['Paire', 'Un seul pan', 'Un seul pan (Rapatriement Droit)', 'Un seul pan (Rapatriement Gauche)'] }),
       c('largeur_gorge',               'Larg. Gorge (cm)',        'number',   16),
       c('profondeur_gorge',            'Prof. Gorge (cm)',        'number',   16),
@@ -91,8 +93,9 @@ const PRODUCT_SHEETS = [
       c('largeur_mecanisme',           'L. Méca (cm)',            'number',   14),
       c('largeur',                     'Largeur (cm)',            'number',   14),
       calc('largeur_finie',            'L. Finie',                12),
-      c('v_ourlets_de_cotes',          'Ourlets Côtés',           'number',   14),
-      c('piquage_ourlet',              'Piquage Ourlet',          'select',   16, { options: ['Apparent', 'Invisible', 'Surfil + Invisible', 'Double + Invisible'] }),
+      c('v_ourlets_de_cotes',          'OC',           'number',   14),
+      c('piquage_ourlet',              'Finition OB',             'select',   26, { options: FINITION_OURLET_OPTIONS }),
+      c('finition_oc',                 'Finition OC',             'select',   26, { options: FINITION_OURLET_OPTIONS }),
       calc('a_plat',                   'À Plat',                  12),
       c('hspf_droite',                 'HSPF Droit',              'number',   13),
       c('hspf_milieu',                 'HSPF Milieu',             'number',   14),
@@ -107,9 +110,9 @@ const PRODUCT_SHEETS = [
       calc('hauteur_coupe_motif',      'H. Coupe Motif',          15),
       calc('hauteur_coupe_doublure',   'H. Coupe Doubl.',         16),
       c('deduction_doublure',          'Déd. Doublure',           'number',   14),
-      c('piquage_ourlets_du_bas',      'Piq. Bas',                'number',   12),
-      c('piquage_ourlets_bas_doublure','Piq. Bas Doubl.',         'number',   16),
-      c('doublure_finition_bas',       'Doubl. Fin. Bas',         'number',   16),
+      c('piquage_ourlets_du_bas',      'OB',                'number',   12),
+      c('piquage_ourlets_bas_doublure','OB Doublure',         'number',   16),
+      c('doublure_finition_bas',       'Fin. OB Doublure',         'number',   16),
       c('finition_champs',             'Fin. Chant',              'number',   13),
       c('poids',                       'Poids',                   'select',   10, { options: OUI_NON }),
       c('onglets',                     'Onglets',                 'select',   14, { options: ['Non', 'Régulier', 'Irrégulier'] }),
@@ -563,7 +566,14 @@ export async function parseProjectsFromExcel(file) {
     // Index colonne par label (insensible à la casse)
     const sheetColIndex = {};
     sheet.columns.forEach(col => {
-      const idx = header.findIndex(h => h.toLowerCase() === col.label.toLowerCase());
+      // Libellé courant d'abord, puis repli sur les anciens en-têtes : les fichiers
+      // déjà remplis par les équipes restent importables après un renommage.
+      const candidates = [col.label, ...(LEGACY_HEADER_ALIASES[col.key] || [])];
+      let idx = -1;
+      for (const candidate of candidates) {
+        idx = header.findIndex(h => h.toLowerCase() === String(candidate).toLowerCase());
+        if (idx >= 0) break;
+      }
       sheetColIndex[col.key] = idx;
     });
 

@@ -6,10 +6,10 @@ import { RIDEAUX_GETTERS } from "../lib/schemas/production/rideaux.js";
 // ─── Champs disponibles sur l'étiquette (ordre + sections) ───────────────────
 export const ETIQUETTE_RIDEAUX_FIELDS = [
   // Confection
-  { key: "type_confection",      label: "Type confection",    section: "Confection" },
+  { key: "type_confection",      label: "Plis",    section: "Confection" },
   { key: "paire_ou_un_seul_pan", label: "Paire / Pan",        section: "Confection" },
   { key: "ampleur",              label: "Ampleur",            section: "Confection" },
-  { key: "hauteur_renfort_tete", label: "H. Renfort tête",    section: "Confection" },
+  { key: "hauteur_renfort_tete", label: "Renfort tête",    section: "Confection" },
   { key: "poids",                label: "Poids",              section: "Confection" },
   { key: "onglets",              label: "Onglets",            section: "Confection" },
   { key: "bride",                label: "Bride",              section: "Confection" },
@@ -19,14 +19,14 @@ export const ETIQUETTE_RIDEAUX_FIELDS = [
   { key: "etiquette_lavage",     label: "Étiq. lavage",       section: "Confection" },
   { key: "etiquette_lenglart",   label: "Étiq. Lenglart",     section: "Confection" },
   // Ourlets & Bas
-  { key: "piquage_ourlets_du_bas",       label: "OB Tissu",         section: "Ourlets & Bas" },
-  { key: "piquage_ourlet",               label: "Piquage ourlet",   section: "Ourlets & Bas" },
+  { key: "piquage_ourlets_du_bas",       label: "OB",         section: "Ourlets & Bas" },
+  { key: "piquage_ourlet",               label: "Finition OB",   section: "Ourlets & Bas" },
   { key: "piquage_ourlets_bas_doublure", label: "OB Doublure",      section: "Ourlets & Bas" },
   { key: "deduction_doublure",           label: "Déd. Doublure",    section: "Ourlets & Bas" },
-  { key: "v_ourlets_de_cotes",   label: "Ourlets de côté",    section: "Ourlets & Bas" },
+  { key: "v_ourlets_de_cotes",   label: "OC",    section: "Ourlets & Bas" },
   { key: "finition_champs",      label: "Finition chant",     section: "Ourlets & Bas" },
   { key: "finition_bas",         label: "Cassant / Rasant",   section: "Ourlets & Bas" },
-  { key: "doublure_finition_bas",label: "Doubl. fin. bas",    section: "Ourlets & Bas" },
+  { key: "doublure_finition_bas",label: "Fin. OB Doublure",    section: "Ourlets & Bas" },
   // Dimensions
   { key: "nombre_les",           label: "Nb lés",             section: "Dimensions" },
   { key: "reste_les",            label: "Appiècement cm",      section: "Dimensions" },
@@ -343,13 +343,13 @@ export default function EtiquetteRideauxCard({ row, projectName, index, total, o
           {/* Confection */}
           <SectionTitle>Confection</SectionTitle>
           <Row cols={3}>
-            {show("type_confection")      && <Cell label="Type confection" value={v(row, "type_confection")} />}
+            {show("type_confection")      && <Cell label="Plis" value={v(row, "type_confection")} />}
             {show("paire_ou_un_seul_pan") && <Cell label="Paire / Pan" value={v(row, "paire_ou_un_seul_pan")} />}
             {show("ampleur")              && <Cell label="Ampleur" value={v(row, "ampleur")} />}
           </Row>
           {(show("hauteur_renfort_tete") || show("poids") || show("onglets") || show("bride") || show("type_crochets") || show("ruflette") || show("point_chausson")) && (
             <Row cols={7} bg="#F9FAFB">
-              {show("hauteur_renfort_tete") && <Cell label="H. Renfort tête" value={v(row, "hauteur_renfort_tete")} />}
+              {show("hauteur_renfort_tete") && <Cell label="Renfort tête" value={v(row, "hauteur_renfort_tete")} />}
               {show("poids")               && <Cell label="Poids" value={v(row, "poids")} />}
               {show("onglets")             && <Cell label="Onglets" value={v(row, "onglets")} />}
               {show("bride")               && <Cell label="Bride" value={v(row, "bride")} />}
@@ -369,8 +369,8 @@ export default function EtiquetteRideauxCard({ row, projectName, index, total, o
           <SectionTitle>Ourlets & Bas</SectionTitle>
           {(show("piquage_ourlets_du_bas") || show("piquage_ourlet") || show("finition_bas")) && (
             <Row cols={3}>
-              {show("piquage_ourlets_du_bas") && <Cell label="OB Tissu" value={v(row, "piquage_ourlets_du_bas")} />}
-              {show("piquage_ourlet")         && <Cell label="Piquage ourlet" value={v(row, "piquage_ourlet")} />}
+              {show("piquage_ourlets_du_bas") && <Cell label="OB" value={v(row, "piquage_ourlets_du_bas")} />}
+              {show("piquage_ourlet")         && <Cell label="Finition OB" value={v(row, "piquage_ourlet")} />}
               {show("finition_bas")           && <Cell label="Cassant / Rasant" value={v(row, "finition_bas")} />}
             </Row>
           )}
@@ -378,12 +378,12 @@ export default function EtiquetteRideauxCard({ row, projectName, index, total, o
             <Row cols={3} bg="#F9FAFB">
               {show("piquage_ourlets_bas_doublure") && <Cell label="OB Doublure" value={v(row, "piquage_ourlets_bas_doublure")} />}
               {show("deduction_doublure")           && <Cell label="Déd. Doublure" value={v(row, "deduction_doublure")} />}
-              {show("doublure_finition_bas")        && <Cell label="Doubl. fin. bas" value={v(row, "doublure_finition_bas")} />}
+              {show("doublure_finition_bas")        && <Cell label="Fin. OB Doublure" value={v(row, "doublure_finition_bas")} />}
             </Row>
           )}
           {(show("v_ourlets_de_cotes") || show("finition_champs")) && (
             <Row cols={3}>
-              {show("v_ourlets_de_cotes") && <Cell label="Ourlets de côté" value={v(row, "v_ourlets_de_cotes")} />}
+              {show("v_ourlets_de_cotes") && <Cell label="OC" value={v(row, "v_ourlets_de_cotes")} />}
               {show("finition_champs")    && <Cell label="Finition chant" value={v(row, "finition_champs")} />}
             </Row>
           )}

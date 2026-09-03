@@ -10,17 +10,42 @@ import { CACHE_SOMMIER_SCHEMA } from '../schemas/chiffrage/cache_sommier';
 import { PLAID_SCHEMA } from '../schemas/chiffrage/plaid';
 import { TENTURE_MURALE_SCHEMA } from '../schemas/chiffrage/tenture_murale';
 import { MOBILIER_SCHEMA } from '../schemas/chiffrage/mobilier';
+import { LEGACY_HEADER_ALIASES } from '../constants/rideauxFields';
 
-const NAME_TO_SCHEMA = {
-  'Rideaux': RIDEAUX_SCHEMA,
-  'Stores': STORES_CLASSIQUES_SCHEMA,
-  'Stores Bateaux': STORES_BATEAUX_SCHEMA,
-  'Coussins': COUSSINS_SCHEMA,
-  'Cache-Sommier': CACHE_SOMMIER_SCHEMA,
-  'Plaid': PLAID_SCHEMA,
-  'Tête de lit': MOBILIER_SCHEMA,
-  'Tenture Murale': TENTURE_MURALE_SCHEMA
+// Onglet Excel -> schéma + produit par défaut des lignes de cet onglet.
+// UNE seule table : le schéma et le libellé de produit étaient auparavant définis
+// dans deux structures parallèles, qui avaient divergé (l'onglet « Tête de lit »
+// injectait `produit: 'Tête de lit'` alors que le select attend `'Tête de Lit'`,
+// d'où une cellule Produit vide sur les lignes importées).
+// Le produit n'est appliqué que si la colonne Produit de la ligne est vide : sur
+// l'onglet Mobilier, l'utilisateur peut choisir Tête de Lit / Siège / Cantonnière
+// ligne par ligne. Les onglets dédiés ci-dessous sont là pour ceux qui préfèrent
+// un onglet par produit.
+const SHEET_CONFIG = {
+  'Rideaux':        { schema: RIDEAUX_SCHEMA,           produit: 'Rideau' },
+  'Stores':         { schema: STORES_CLASSIQUES_SCHEMA, produit: 'Store Enrouleur' },
+  'Stores Bateaux': { schema: STORES_BATEAUX_SCHEMA,    produit: 'Store Bateau' },
+  'Coussins':       { schema: COUSSINS_SCHEMA,          produit: 'Coussins' },
+  'Cache-Sommier':  { schema: CACHE_SOMMIER_SCHEMA,     produit: 'Cache-Sommier' },
+  'Plaid':          { schema: PLAID_SCHEMA,             produit: 'Plaid' },
+  'Tenture Murale': { schema: TENTURE_MURALE_SCHEMA,    produit: 'Tenture Murale' },
+  // Mobilier — « Tête de lit » reste accepté (nom d'onglet historique du modèle).
+  'Tête de lit':    { schema: MOBILIER_SCHEMA,          produit: 'Tête de Lit' },
+  'Mobilier':       { schema: MOBILIER_SCHEMA,          produit: 'Tête de Lit' },
+  'Siège':          { schema: MOBILIER_SCHEMA,          produit: 'Siège' },
+  'Cantonnière':    { schema: MOBILIER_SCHEMA,          produit: 'Cantonnière' },
 };
+
+// Tolérance sur le nom d'onglet : casse, accents et espaces multiples.
+// Excel n'interdit pas « SIEGE » ou « Tete de Lit », qui étaient jusqu'ici ignorés
+// en silence (l'onglet entier passait à la trappe, sans le moindre message).
+const normalizeSheetName = (name) => String(name || '')
+  .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  .toLowerCase().replace(/\s+/g, ' ').trim();
+
+const SHEET_CONFIG_NORMALIZED = Object.fromEntries(
+  Object.entries(SHEET_CONFIG).map(([name, cfg]) => [normalizeSheetName(name), cfg])
+);
 
 export async function importGlobalExcel(file, ctx, catalog = []) {
   try {
@@ -29,9 +54,10 @@ export async function importGlobalExcel(file, ctx, catalog = []) {
 
     for (const sheet of sheets) {
       const sheetName = sheet.name;
-      const targetSchema = NAME_TO_SCHEMA[sheetName];
+      const sheetConfig = SHEET_CONFIG_NORMALIZED[normalizeSheetName(sheetName)];
 
-      if (!targetSchema) continue; // Skip unknown sheets
+      if (!sheetConfig) continue; // Skip unknown sheets
+      const targetSchema = sheetConfig.schema;
 
       const rows = await readXlsxFile(file, { sheet: sheetName });
       if (!rows || rows.length < 2) continue;
@@ -47,6 +73,17 @@ export async function importGlobalExcel(file, ctx, catalog = []) {
         const key = col.key || col.field;
         const labelText = (col.label || col.headerName || key).toLowerCase().trim();
         headerToKey[labelText] = key;
+      });
+      // Repli sur les ANCIENS libellés : sans ça, un renommage d'en-tête rendrait
+      // muets tous les fichiers déjà remplis (colonne ignorée en silence).
+      // Le libellé courant, posé ci-dessus, reste prioritaire.
+      targetSchema.forEach(col => {
+        if (!col) return;
+        const key = col.key || col.field;
+        (LEGACY_HEADER_ALIASES[key] || []).forEach(alias => {
+          const aliasText = alias.toLowerCase().trim();
+          if (!(aliasText in headerToKey)) headerToKey[aliasText] = key;
+        });
       });
 
       const parsedRows = dataRows.map(rowCellValues => {
@@ -64,16 +101,7 @@ export async function importGlobalExcel(file, ctx, catalog = []) {
         });
 
         // Ensure Produit is defined to allow MinuteEditor to route the row
-        if (!rawRow.produit) {
-            if (sheetName === 'Rideaux') rawRow.produit = 'Rideau';
-            if (sheetName === 'Stores') rawRow.produit = 'Store Enrouleur';
-            if (sheetName === 'Stores Bateaux') rawRow.produit = 'Store Bateau';
-            if (sheetName === 'Coussins') rawRow.produit = 'Coussins';
-            if (sheetName === 'Cache-Sommier') rawRow.produit = 'Cache-Sommier';
-            if (sheetName === 'Plaid') rawRow.produit = 'Plaid';
-            if (sheetName === 'Tête de lit') rawRow.produit = 'Tête de lit';
-            if (sheetName === 'Tenture Murale') rawRow.produit = 'Tenture Murale';
-        }
+        if (!rawRow.produit) rawRow.produit = sheetConfig.produit;
 
         // --- CATALOG MATCHING ---
         // Find fields that correspond to catalog items and inject their PA/PV/Width

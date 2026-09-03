@@ -26,6 +26,7 @@ import { CACHE_SOMMIER_SCHEMA } from "../lib/schemas/chiffrage/cache_sommier";
 import { PLAID_SCHEMA } from "../lib/schemas/chiffrage/plaid";
 import { TENTURE_MURALE_SCHEMA } from "../lib/schemas/chiffrage/tenture_murale";
 import { MOBILIER_SCHEMA } from "../lib/schemas/chiffrage/mobilier";
+import { MOBILIER_PRODUIT_RE } from "../lib/constants/productRouting";
 
 // ... (imports remain)
 
@@ -256,7 +257,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
       else if (/cache-sommier/i.test(p)) targetSchema = CACHE_SOMMIER_SCHEMA;
       else if (/plaid|chemin de lit/i.test(p)) targetSchema = PLAID_SCHEMA;
       else if (/tenture/i.test(p)) targetSchema = TENTURE_MURALE_SCHEMA;
-      else if (/t[êe]te|mobilier/i.test(p)) targetSchema = MOBILIER_SCHEMA;
+      else if (MOBILIER_PRODUIT_RE.test(p)) targetSchema = MOBILIER_SCHEMA;
       // else: produit inconnu → on laisse le schéma de base (schema prop)
 
       // Ensure valid ID & Deduplicate
@@ -290,7 +291,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
       else if (/cache-sommier/i.test(p)) targetSchema = CACHE_SOMMIER_SCHEMA;
       else if (/plaid|chemin de lit/i.test(p)) targetSchema = PLAID_SCHEMA;
       else if (/tenture/i.test(p)) targetSchema = TENTURE_MURALE_SCHEMA;
-      else if (/t[êe]te|mobilier/i.test(p)) targetSchema = MOBILIER_SCHEMA;
+      else if (MOBILIER_PRODUIT_RE.test(p)) targetSchema = MOBILIER_SCHEMA;
       return recomputeRow(row, targetSchema, newCtx);
     });
     onChangeMinute?.({ ...minute, catalog: newCatalog, lines: recomputedLines, updatedAt: Date.now() });
@@ -336,7 +337,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
     rowsCacheSommier: rows.filter((r) => /cache-sommier/i.test(String(r.produit || ""))),
     rowsPlaid:        rows.filter((r) => /plaid|chemin de lit/i.test(String(r.produit || ""))),
     rowsTenture:      rows.filter((r) => /tenture/i.test(String(r.produit || ""))),
-    rowsMobilier:     rows.filter((r) => /t[êe]te|mobilier/i.test(String(r.produit || ""))),
+    rowsMobilier:     rows.filter((r) => MOBILIER_PRODUIT_RE.test(String(r.produit || ""))),
     rowsDeplacement:  rows.filter((r) => String(r.produit || "") === "Déplacement"),
     rowsAutre:        rows.filter((r) => String(r.produit || "") === "Autre Dépense"),
   }), [rows]);
@@ -383,7 +384,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
       if (key === "cache_sommier") return /cache-sommier/i.test(p);
       if (key === "plaid") return /plaid|chemin de lit/i.test(p);
       if (key === "tenture_murale") return /tenture/i.test(p);
-      if (key === "mobilier") return /t[êe]te|mobilier/i.test(p);
+      if (key === "mobilier") return MOBILIER_PRODUIT_RE.test(p);
       if (key === "deplacement") return p === "Déplacement";
       if (key === "autre") return p === "Autre Dépense";
       return false;
