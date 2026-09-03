@@ -25,6 +25,7 @@ import { calculateProfitability } from '../lib/financial/profitabilityCalculator
 
 import MinuteHistoryDialog from "../components/MinuteHistoryDialog";
 import { buildSettingsLogs, buildCatalogLogs, appendHistory } from "../lib/minuteHistory";
+import { MOBILIER_PRODUIT_RE } from "../lib/constants/productRouting";
 import RecalibrationModal from "../components/RecalibrationModal";
 import { BookOpen, History, FileUp, SlidersHorizontal, GitBranch } from 'lucide-react';
 import { importGlobalExcel } from "../lib/utils/importGlobalExcel";
@@ -265,7 +266,7 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
       else if (/cache-sommier/i.test(prod)) caCacheSommier += total;
       else if (/plaid|chemin de lit/i.test(prod)) caPlaid += total;
       else if (/tenture/i.test(prod)) caTenture += total;
-      else if (/t[êe]te|mobilier/i.test(prod)) caMobilier += total;
+      else if (MOBILIER_PRODUIT_RE.test(prod)) caMobilier += total;
       else if (prod.includes("rideau") || prod.includes("voilage") || !prod) caRideaux += total;
       else caDivers += total;
     }

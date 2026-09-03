@@ -1,4 +1,6 @@
 // src/lib/schemas/chiffrage/mobilier.js
+
+import { MOBILIER_PRODUITS } from '../../constants/productRouting';
 // Schéma commercial pour le module "Tête de Lit" (Mobilier)
 
 const createCol = (key, label, width, type = 'text', options = {}) => ({
@@ -29,7 +31,7 @@ export const MOBILIER_SCHEMA = [
     createCol('piece', 'Pièce', 120, 'text', autoCap),
 
     createCol('produit', 'Produit', 125, 'singleSelect', {
-        valueOptions: ['Tête de Lit']
+        valueOptions: MOBILIER_PRODUITS
     }),
 
     createCol('largeur', 'Largeur', 130, 'number'),

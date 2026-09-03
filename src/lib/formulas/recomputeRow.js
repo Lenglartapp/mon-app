@@ -1,4 +1,6 @@
 // src/lib/formulas/recomputeRow.js
+
+import { DECOR_PRODUIT_RE } from '../constants/productRouting';
 import { evalFormula } from "./eval.js";
 
 const NVL = (value, fallback = 0) => {
@@ -406,7 +408,7 @@ export function recomputeRow(row, schema, ctx = {}) {
   }
 
   // --- 10. DECOR PRODUCTS (Coussins, Plaids, etc.) ---
-  const isDecor = /coussin|plaid|cache-sommier|mobilier|tenture|t[êe]te/i.test(String(next.produit || ""));
+  const isDecor = DECOR_PRODUIT_RE.test(String(next.produit || ""));
 
   if (isDecor) {
     // A. Fabrics (Underscored keys for Decors)
