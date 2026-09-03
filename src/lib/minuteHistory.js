@@ -97,6 +97,12 @@ const makeEntry = ({ field, from, to, context, author }) => ({
   createdAt: new Date().toISOString(),
 });
 
+/** Entrée d'historique pour un changement de STATUT du devis. */
+export const buildStatusLog = (from, to, author) => ({
+  ...makeEntry({ field: 'Statut', from, to, context: 'Minute', author }),
+  type: 'status', // rendu spécifique (libellés « Validée », « À reprendre »…)
+});
+
 /**
  * Entrées d'historique pour un changement de PARAMÈTRES GLOBAUX.
  * Ne compare que les réglages réellement pilotés par l'écran (pas les defaults
