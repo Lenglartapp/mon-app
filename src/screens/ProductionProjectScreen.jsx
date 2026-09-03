@@ -16,6 +16,7 @@ import OdooStatusBadge from "../components/odoo/OdooStatusBadge.jsx";
 import { computeFormulas, preserveManualAfterCompute } from "../lib/formulas/compute";
 import { SCHEMA_64 } from "../lib/schemas/production.js";
 import { STAGES, DEFAULT_VIEWS } from "../lib/constants/views.js"; // Import DEFAULT_VIEWS
+import { applySchemaDefaults } from "../lib/utils/schemaDefaults.js";
 import { recomputeRow } from "../lib/formulas/recomputeRow";
 import { computeProjectHours } from "../lib/projectMetrics";
 import { RIDEAUX_PROD_SCHEMA } from "../lib/schemas/production/rideaux";
@@ -652,7 +653,10 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
       type_confection: "Wave 80",
       created: Date.now()
     };
-    const computed = recomputeRow(newRow, schema);
+    // Applique les `defaultValue` déclarés dans le schéma du produit (ex. les
+    // étiquettes à « Non »). Ces déclarations existaient mais n'étaient lues nulle part.
+    const withDefaults = applySchemaDefaults(newRow, getSchemaForRow(newRow).schema);
+    const computed = recomputeRow(withDefaults, schema);
 
     const newRows = [...rows, computed];
 

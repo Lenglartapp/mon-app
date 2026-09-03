@@ -1,6 +1,7 @@
 // src/lib/import/importProjectsFromExcel.js
 
 import { HAUTEUR_RENFORT_TETE_OPTIONS, FINITION_OURLET_OPTIONS, LEGACY_HEADER_ALIASES } from '../constants/rideauxFields';
+import { applySchemaDefaults } from '../utils/schemaDefaults';
 import readXlsxFile from 'read-excel-file';
 import { uid } from '../utils/uid';
 
@@ -142,8 +143,12 @@ const PRODUCT_SHEETS = [
       c('retour_droit',                'Retour D',                'number',   12),
       c('type_retours',                'Type Retours',            'select',   14, { options: ['Élastique', 'Velcro', 'Piton'] }),
       c('hauteur_corniere_elastique',  'H. Cornière / Élastique', 'number',   22),
-      c('etiquette_lavage',            'Etiq. Lavage',            'select',   14, { options: OUI_NON }),
-      c('etiquette_lenglart',          'Etiq. Lenglart',          'select',   15, { options: ['Non', 'Ne pas laver', 'Lavage à 30°', 'Voilage'] }),
+      // Intitulés INÉDITS à dessein : « Etiq. Lavage » et « Etiq. Lenglart » ont
+      // changé de sens, les réutiliser tels quels ferait atterrir les colonnes des
+      // anciens fichiers dans le mauvais champ. Les anciens intitulés restent
+      // reconnus via LEGACY_HEADER_ALIASES, vers leur clé d'origine.
+      c('etiquette_lenglart',          'Consigne lavage',         'select',   18, { options: ['Non', 'Ne pas laver', 'Lavage à 30°'] }),
+      c('etiquette_lavage',            'Etiq. Lenglart (Oui/Non)','select',   22, { options: OUI_NON }),
       c('type_mecanisme',              'Type Méca',               'text',     16),
       c('modele_mecanisme',            'Modèle Méca',             'text',     16),
       c('couleur_mecanisme',           'Couleur Méca',            'text',     16),
@@ -198,7 +203,7 @@ const PRODUCT_SHEETS = [
       c('laize_doublure',              'Laize D.',                'number',   12),
       c('largeur_gorge',               'Larg. Gorge (cm)',        'number',   16),
       c('profondeur_gorge',            'Prof. Gorge (cm)',        'number',   16),
-      c('etiquette_lavage',            'Étiq. Lavage',            'select',   14, { options: OUI_NON }),
+      c('etiquette_lavage',            'Étiq. Lavage',            'select',   18, { options: ['Non', 'Ne pas laver', 'Lavage à 30°'] }),
       c('mecanisme_store',             'Méca Store',              'text',     20),
       c('couleur_mecanisme',           'Couleur Méca',            'text',     16),
       c('type_commande',               'Type Commande',           'select',   22, { options: ['Manuelle', 'Télécommande', 'Commande murale', 'Fourni par le client'] }),
@@ -609,7 +614,9 @@ export async function parseProjectsFromExcel(file) {
         }
       });
 
-      productRows.push(rowObj);
+      // Défauts du schéma pour les colonnes laissées vides dans le fichier
+      // (ex. les étiquettes à « Non ») — mêmes valeurs qu'une ligne créée à la main.
+      productRows.push(applySchemaDefaults(rowObj, sheet.columns));
     }
   }
 

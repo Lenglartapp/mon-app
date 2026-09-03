@@ -44,4 +44,10 @@ export const LEGACY_HEADER_ALIASES = {
   doublure_finition_bas:        ["Doubl. Fin. Bas", "Doubl. fin. bas"],
   hauteur_renfort_tete:         ["H/Renfort Têtes", "H. Renfort Tête", "H. Renfort tête"],
   v_ourlets_de_cotes:           ["Ourlets Côtés", "Ourlets de côté"],
+  // Étiquettes : les intitulés « Etiq. Lavage » / « Etiq. Lenglart » ont changé de
+  // SENS (les libellés ont été remis en face du contenu réel). Les colonnes des
+  // anciens fichiers doivent continuer d'atterrir dans leur clé D'ORIGINE — d'où
+  // ces alias, et les intitulés inédits côté modèle Excel (cf. importProjectsFromExcel).
+  etiquette_lavage:             ["Etiq. Lavage"],
+  etiquette_lenglart:           ["Etiq. Lenglart"],
 };

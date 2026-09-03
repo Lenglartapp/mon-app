@@ -17,6 +17,7 @@ import ImportProjectsDialog from "../components/ImportProjectsDialog.jsx";
 import { SCHEMA_64 } from "../lib/schemas/production.js";
 import { computeFormulas } from "../lib/formulas/compute.js";
 import { createBlankProject } from "../lib/import/createBlankProject.js";
+import { applySchemaDefaults } from "../lib/utils/schemaDefaults.js";
 
 import { useAuth } from "../auth";
 
@@ -649,7 +650,10 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
               project.location = location || null;
               project.intervention_type = intervention_type || null;
               project.expedition_type = expedition_type || null;
-              project.rows = computeFormulas(rows || [], SCHEMA_64);
+              // Défauts du schéma (étiquettes à « Non ») sur les lignes reprises du devis :
+              // c'est le chemin de création le plus courant, il doit se comporter comme
+              // l'ajout manuel d'une ligne. Ne remplit que ce qui est absent.
+              project.rows = computeFormulas((rows || []).map(r => applySchemaDefaults(r, SCHEMA_64)), SCHEMA_64);
               project.materials = extractMaterialsFromLines(rows || []);
 
               if (onCreate) {

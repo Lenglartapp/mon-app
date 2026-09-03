@@ -32,7 +32,7 @@ export const RIDEAUX_V2_SECTIONS = [
   { name: "OURLETS", fields: [
     ["piquage_ourlets_du_bas", "OB"], ["v_ourlets_de_cotes", "OC"], ["piquage_ourlet", "Finition OB"], ["onglets", "Onglets"],
     ["piquage_ourlets_bas_doublure", "OB Doublure"], ["deduction_doublure", "Déd. Doublure"], ["doublure_finition_bas", "Fin. OB Doublure"],
-    ["etiquette_lenglart", "Étiq. Lenglart"], ["poids", "Poids"],
+    ["etiquette_lenglart", "Étiq. Lavage"], ["poids", "Poids"],
   ]},
   { name: "PRÉPARATION", fields: [
     ["type_confection", "Plis"], ["hauteur_renfort_tete", "Renfort tête"], ["finition_bas", "Cassant / Rasant"], ["finition_champs", "Finition Chant"],
@@ -40,7 +40,7 @@ export const RIDEAUX_V2_SECTIONS = [
     ["hauteur_finie_gauche", "H. Finie G"], ["hauteur_finie_milieu", "H. Finie M"], ["hauteur_finie_droite", "H. Finie D"],
   ]},
   { name: "FINITION TÊTE", fields: [
-    ["retour_gauche", "Retour G"], ["largeur_finie", "L. Finie"], ["retour_droit", "Retour D"], ["etiquette_lavage", "Étiq. Lavage"],
+    ["retour_gauche", "Retour G"], ["largeur_finie", "L. Finie"], ["retour_droit", "Retour D"], ["etiquette_lavage", "Étiq. Lenglart"],
     ["type_crochets", "Crochets"], ["ruflette", "Ruflette"], ["nombre_glisseur", "Nb Glisseurs"], ["bride", "Bride"],
     ["point_chausson", "Pt. Chausson"],
   ]},
