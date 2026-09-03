@@ -11,6 +11,10 @@ import NotificationsIcon from '@mui/icons-material/Notifications';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import Chip from '@mui/material/Chip';
 import Button from '@mui/material/Button';
+import TextField from '@mui/material/TextField';
+import InputAdornment from '@mui/material/InputAdornment';
+import SearchIcon from '@mui/icons-material/Search';
+import ClearIcon from '@mui/icons-material/Close';
 
 // Helpers
 const stringToColor = (string) => {
@@ -41,13 +45,33 @@ const STATUS_LABELS = {
     IN_PROGRESS: "En cours",
     PENDING_APPROVAL: "À valider",
     REVISE: "À reprendre",
-    VALIDATED: "Validée"
+    VALIDATED: "Validée",
+    ORDERED: "Commande",
+    ORDER_COMPLETED: "Commande terminée",
+    LOST: "Perdu"
 };
 
 const formatValue = (val, type) => {
     if (type === 'status' && STATUS_LABELS[val]) return STATUS_LABELS[val];
     return String(val ?? 'vide');
 };
+
+// Recherche insensible à la casse ET aux accents (« validee » trouve « Validée »).
+const norm = (v) => String(v ?? '')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+
+// Texte indexé d'une entrée : auteur, champ, contexte, valeurs avant/après et
+// commentaire. Les statuts sont indexés sur leur LIBELLÉ (« Validée »), pas sur
+// leur code interne (« VALIDATED »), pour que la recherche parle la langue de l'écran.
+const haystack = (item) => norm([
+    item.author, item.user,
+    item.type === 'status' ? 'Changement de Statut' : item.field,
+    item.context,
+    formatValue(item.from, item.type),
+    formatValue(item.to, item.type),
+    item.text, item.content,
+].filter(Boolean).join(' '));
 
 // PERF — objets `sx` figés hors du composant : recréés à chaque rendu, ils
 // forcent Emotion à re-sérialiser les styles pour CHAQUE entrée de l'historique
@@ -149,9 +173,10 @@ HistoryItem.displayName = 'HistoryItem';
 
 export default function MinuteHistoryDialog({ open, onClose, minute }) {
     const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+    const [query, setQuery] = useState('');
 
     // Repart du haut à chaque ouverture (sinon on rouvre sur 400 entrées rendues).
-    useEffect(() => { if (open) setVisibleCount(PAGE_SIZE); }, [open]);
+    useEffect(() => { if (open) { setVisibleCount(PAGE_SIZE); setQuery(''); } }, [open]);
 
     const sortedActivities = useMemo(() => {
         // PERF — ce dialogue reste monté en permanence dans ChiffrageScreen : sans
@@ -192,9 +217,25 @@ export default function MinuteHistoryDialog({ open, onClose, minute }) {
             .map(x => x.item);
     }, [open, minute]);
 
+    // Index de recherche calculé UNE fois par entrée, pas à chaque frappe.
+    const indexed = useMemo(
+        () => sortedActivities.map(item => ({ item, hay: haystack(item) })),
+        [sortedActivities]
+    );
+
+    // Tous les termes doivent être présents (« audrey coef » = les deux).
+    const filteredActivities = useMemo(() => {
+        const terms = norm(query).split(/\s+/).filter(Boolean);
+        if (terms.length === 0) return sortedActivities;
+        return indexed.filter(({ hay }) => terms.every(t => hay.includes(t))).map(x => x.item);
+    }, [indexed, sortedActivities, query]);
+
+    // Une nouvelle recherche repart de la première page.
+    useEffect(() => { setVisibleCount(PAGE_SIZE); }, [query]);
+
     const visibleActivities = useMemo(
-        () => sortedActivities.slice(0, visibleCount),
-        [sortedActivities, visibleCount]
+        () => filteredActivities.slice(0, visibleCount),
+        [filteredActivities, visibleCount]
     );
 
     return (
@@ -203,29 +244,66 @@ export default function MinuteHistoryDialog({ open, onClose, minute }) {
                 <Typography variant="h6" sx={{ fontWeight: 700 }}>Historique Complet</Typography>
                 <IconButton onClick={onClose}><CloseIcon /></IconButton>
             </DialogTitle>
-            <DialogContent sx={{ bgcolor: '#F9FAFB', p: 3 }}>
+            <DialogContent sx={{ bgcolor: '#F9FAFB', p: 0 }}>
+                {/* Barre de recherche : collée en haut, elle reste visible pendant le défilement. */}
+                <Box sx={{ position: 'sticky', top: 0, zIndex: 1, bgcolor: '#F9FAFB', px: 3, pt: 2, pb: 1.5, borderBottom: '1px solid #E5E7EB' }}>
+                    <TextField
+                        fullWidth
+                        size="small"
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                        placeholder="Rechercher : un auteur, un champ, une valeur, un statut…"
+                        InputProps={{
+                            startAdornment: (
+                                <InputAdornment position="start">
+                                    <SearchIcon sx={{ fontSize: 18, color: '#9CA3AF' }} />
+                                </InputAdornment>
+                            ),
+                            endAdornment: query ? (
+                                <InputAdornment position="end">
+                                    <IconButton size="small" onClick={() => setQuery('')} aria-label="Effacer la recherche">
+                                        <ClearIcon sx={{ fontSize: 16 }} />
+                                    </IconButton>
+                                </InputAdornment>
+                            ) : null,
+                            sx: { bgcolor: 'white', fontSize: 13 },
+                        }}
+                    />
+                    {query && (
+                        <Typography variant="caption" sx={{ display: 'block', mt: 0.75, color: '#6B7280' }}>
+                            {filteredActivities.length} résultat{filteredActivities.length > 1 ? 's' : ''} sur {sortedActivities.length}
+                        </Typography>
+                    )}
+                </Box>
+
+                <Box sx={{ p: 3 }}>
                 {sortedActivities.length === 0 ? (
                     <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', color: '#9CA3AF' }}>
                         Aucune activité enregistrée pour cette minute.
+                    </Box>
+                ) : filteredActivities.length === 0 ? (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 6, color: '#9CA3AF' }}>
+                        Aucune activité ne correspond à « {query} ».
                     </Box>
                 ) : (
                     <>
                         {visibleActivities.map((item, i) => (
                             <HistoryItem key={item.id || i} item={item} />
                         ))}
-                        {visibleCount < sortedActivities.length && (
+                        {visibleCount < filteredActivities.length && (
                             <Box sx={{ display: 'flex', justifyContent: 'center', pb: 1 }}>
                                 <Button
                                     size="small"
                                     onClick={() => setVisibleCount(c => c + PAGE_SIZE)}
                                     sx={{ textTransform: 'none', color: '#374151' }}
                                 >
-                                    Afficher plus ({sortedActivities.length - visibleCount} restantes)
+                                    Afficher plus ({filteredActivities.length - visibleCount} restantes)
                                 </Button>
                             </Box>
                         )}
                     </>
                 )}
+                </Box>
             </DialogContent>
         </Dialog>
     );

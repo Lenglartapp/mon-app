@@ -899,8 +899,15 @@ export const RIDEAUX_PROD_SCHEMA = [
     { key: "retour_droit", label: "Retour D", type: "number", width: 110, editable: true },
     { key: "type_retours", label: "Type Retours", type: "select", options: ['Élastique', 'Velcro', 'Piton'], width: 130, editable: true },
     { key: "hauteur_corniere_elastique", label: "H. Cornière / Élastique (cm)", type: "number", width: 200, editable: true },
-    { key: "etiquette_lavage", label: "Etiq. Lavage", type: "select", options: ["Oui", "Non"], width: 125, editable: true },
-    { key: "etiquette_lenglart", label: "Etiq. Lenglart", type: "select", options: ["Non", "Ne pas laver", "Lavage à 30°", "Voilage"], width: 130, editable: true, defaultValue: "Non" },
+    // ⚠️ LIBELLÉS VOLONTAIREMENT CROISÉS PAR RAPPORT AUX CLÉS.
+    // Historiquement les deux champs avaient été remplis à l'envers : la clé
+    // `etiquette_lenglart` contient les CONSIGNES DE LAVAGE et `etiquette_lavage`
+    // un simple Oui/Non. Plutôt que de migrer 1 310 lignes de production (et de
+    // perdre les valeurs « Voilage »), on remet les LIBELLÉS en face du contenu.
+    // Les clés ne changent JAMAIS : aucune donnée n'est touchée.
+    // → le champ « Étiq. Lavage » de l'atelier = clé `etiquette_lenglart`.
+    { key: "etiquette_lenglart", label: "Etiq. Lavage", type: "select", options: ["Non", "Ne pas laver", "Lavage à 30°"], width: 130, editable: true, defaultValue: "Non" },
+    { key: "etiquette_lavage", label: "Etiq. Lenglart", type: "select", options: ["Oui", "Non"], width: 125, editable: true, defaultValue: "Non" },
     { key: "type_mecanisme", label: "Type Méca", type: "text", width: 130, editable: true },
     { key: "modele_mecanisme", label: "Modèle Méca", type: "text", width: 150, editable: true },
     { key: "couleur_mecanisme", label: "Couleur Méca", type: "text", width: 140, editable: true },

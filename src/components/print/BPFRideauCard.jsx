@@ -85,7 +85,10 @@ export default function BPFRideauCard({ row, project, index, total }) {
                             <div style={{ fontSize: '7pt' }}>"OB" : {row.piquage_ourlets_du_bas || row.ourlet_bas || '-'}</div>
                             <div style={{ fontSize: '7pt' }}>"OC" : {row.v_ourlets_de_cotes || row.ourlet_cote || '-'}</div>
                             <div style={{ fontSize: '7pt', marginTop: 2 }}>Onglet: {bool(row.onglets === 'Oui')} - Poids: {bool(row.poids === 'Oui')}</div>
-                            <div style={{ fontSize: '7pt' }}>Entretien: {bool(row.etiquette_lavage === 'Oui')}</div>
+                            {/* Entretien = une consigne de lavage est posée et vaut autre chose que « Non ».
+                                La consigne vit dans la clé `etiquette_lenglart` (libellée « Étiq. Lavage »
+                                dans l'atelier) — voir production/rideaux.js. */}
+                            <div style={{ fontSize: '7pt' }}>Entretien: {bool(!!row.etiquette_lenglart && row.etiquette_lenglart !== 'Non')}</div>
                         </td>
                         {/* Type Pose */}
                         <td style={S.td}>

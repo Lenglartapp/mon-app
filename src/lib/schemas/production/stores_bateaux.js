@@ -247,7 +247,11 @@ export const STORES_BATEAUX_PROD_SCHEMA = [
     ]),
 
     // EXCLUSIVE PROD FIELDS (Mechanism)
-    { key: "etiquette_lavage", label: "Étiq. Lavage", type: "select", options: ["Oui", "Non"], width: 125 },
+    // Sur les stores bateaux il n'existe qu'UN champ d'étiquette, et il est vide
+    // sur les 33 lignes en base : on y pose directement les consignes de lavage.
+    // (Sur les rideaux, ces consignes vivent dans la clé `etiquette_lenglart` —
+    // voir le commentaire dans production/rideaux.js.)
+    { key: "etiquette_lavage", label: "Étiq. Lavage", type: "select", options: ["Non", "Ne pas laver", "Lavage à 30°"], width: 125, defaultValue: "Non" },
     { key: "mecanisme_store", label: "Méca Store", type: "catalog_item", category: "Store,Stores,Mecanisme Store", width: 180 },
     { key: "couleur_mecanisme", label: "Couleur Méca", type: "text", width: 145 },
     { key: "type_commande", label: "Type Commande", type: "select", options: ["Manuelle", "Télécommande", "Commande murale", "Fourni par le client"], width: 180 },

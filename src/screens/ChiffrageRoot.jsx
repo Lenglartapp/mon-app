@@ -16,6 +16,8 @@ import { DataGrid } from '@mui/x-data-grid';
 import { frFR } from '@mui/x-data-grid/locales';
 import { calculateProfitability } from '../lib/financial/profitabilityCalculator';
 import { useAppSettings, useCatalog } from "../hooks/useSupabase";
+import { supabase } from "../lib/supabaseClient";
+import { buildStatusLog, appendHistory } from "../lib/minuteHistory";
 
 // CONSTANTES & HELPERS
 const SEARCH_FIELDS = [
@@ -110,11 +112,33 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
 
   const handleStatusClose = () => setStatusMenu({ anchor: null, minuteId: null });
 
-  const handleStatusSelect = (status) => {
-    if (statusMenu.minuteId && onUpdate) {
-      onUpdate(statusMenu.minuteId, { status });
-    }
+  const handleStatusSelect = async (status) => {
+    const id = statusMenu.minuteId;
     handleStatusClose();
+    if (!id || !onUpdate) return;
+
+    const from = (minutes || []).find(m => m.id === id)?.status || 'DRAFT';
+    if (from === status) return;
+
+    const patch = { status };
+
+    // JOURNAL — ce changement de statut n'apparaissait nulle part dans
+    // « Historique Complet » : cet écran écrivait le statut sans jamais journaliser.
+    // ⚠️ `modules` n'est PAS chargé dans la liste (colonnes légères, cf.
+    // MINUTE_LIST_COLUMNS) : on le RELIT avant d'y ajouter une entrée, sinon on
+    // écraserait tout l'historique ET les modules actifs du devis.
+    try {
+      const { data, error } = await supabase.from('minutes').select('modules').eq('id', id).single();
+      if (!error) {
+        const author = currentUser?.name || currentUser?.email || 'Utilisateur';
+        patch.modules = appendHistory(data?.modules, [buildStatusLog(from, status, author)]);
+      }
+    } catch {
+      // Lecture impossible (réseau) : on change quand même le statut, sans journal —
+      // mieux vaut une entrée manquante qu'un historique écrasé.
+    }
+
+    onUpdate(id, patch);
   };
 
   const handleOwnerClick = (event, id) => {

@@ -1,6 +1,7 @@
 // src/lib/import/createBlankProject.js
 import { uid } from "../utils/uid";
 import { computeFormulas } from "../formulas/compute";
+import { applySchemaDefaults } from "../utils/schemaDefaults";
 
 function seedRowsFor(type) {
   // on met seulement l'essentiel ; adapte si tu veux préremplir plus
@@ -24,5 +25,7 @@ export function createBlankProject(opts, prodSchema) {
   if (opts?.useCoussins)       rows.push(...seedRowsFor("Coussin"));
   if (opts?.useMobilier)       rows.push(...seedRowsFor("Mobilier"));
   
-  return computeFormulas(rows, prodSchema);
+  // Pré-remplit les champs déclarant un `defaultValue` dans le schéma.
+  const seeded = rows.map(r => applySchemaDefaults(r, prodSchema));
+  return computeFormulas(seeded, prodSchema);
 }

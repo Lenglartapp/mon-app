@@ -24,7 +24,7 @@ import { useAppSettings, useCatalog, useCatalogRail } from "../hooks/useSupabase
 import { calculateProfitability } from '../lib/financial/profitabilityCalculator';
 
 import MinuteHistoryDialog from "../components/MinuteHistoryDialog";
-import { buildSettingsLogs, buildCatalogLogs, appendHistory } from "../lib/minuteHistory";
+import { buildSettingsLogs, buildCatalogLogs, buildStatusLog, appendHistory } from "../lib/minuteHistory";
 import { MOBILIER_PRODUIT_RE } from "../lib/constants/productRouting";
 import RecalibrationModal from "../components/RecalibrationModal";
 import { BookOpen, History, FileUp, SlidersHorizontal, GitBranch } from 'lucide-react';
@@ -355,25 +355,10 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
       // Ensure Author Name is valid
       const safeAuthor = currentUser?.name || currentUser?.email || 'Utilisateur';
 
-      const logEntry = {
-        id: Date.now(),
-        type: 'status',
-        from: oldStatus,
-        to: newStatus,
-        date: Date.now(),
-        createdAt: new Date().toISOString(),
-        author: safeAuthor,
-        context: 'Minute'
-      };
-
-      // Use modules.history for storage (Safer fallback)
-      const currentModules = minute?.modules || { rideau: true, store: true, decor: true };
-      const oldLogs = Array.isArray(currentModules.history) ? currentModules.history : [];
-      const newLogs = [...oldLogs, logEntry];
-
+      // Même mécanique que les autres journalisations (ref à jour + plafond 500).
       const payload = {
         status: newStatus,
-        modules: { ...currentModules, history: newLogs }
+        modules: pushHistory([buildStatusLog(oldStatus, newStatus, safeAuthor)]),
       };
 
       if (newStatus === "VALIDATED") {
@@ -385,6 +370,13 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
     if (newStatus === "VALIDATED") {
       if (confirm("Valider ce devis ?")) performUpdate();
       else setLocalStatus(oldStatus); // Revert
+    } else {
+      // ⚠️ Sans ce `else`, performUpdate() n'était appelé QUE pour « Validée » :
+      // tous les autres changements de statut (En cours, À reprendre, Commande,
+      // Commande terminée, Perdu, À valider, À faire) ne modifiaient que l'état
+      // LOCAL. Ils n'étaient ni enregistrés en base — donc perdus au rechargement —
+      // ni journalisés dans l'historique.
+      performUpdate();
     }
   }, [canEdit, minute, currentUser, recap, updateMinute]);
 

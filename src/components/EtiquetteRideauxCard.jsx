@@ -16,8 +16,9 @@ export const ETIQUETTE_RIDEAUX_FIELDS = [
   { key: "type_crochets",        label: "Crochets",           section: "Confection" },
   { key: "ruflette",             label: "Ruflette",           section: "Confection" },
   { key: "point_chausson",       label: "Pt. chausson",       section: "Confection" },
-  { key: "etiquette_lavage",     label: "Étiq. lavage",       section: "Confection" },
-  { key: "etiquette_lenglart",   label: "Étiq. Lenglart",     section: "Confection" },
+  // Libellés croisés par rapport aux clés : voir production/rideaux.js.
+  { key: "etiquette_lenglart",   label: "Étiq. lavage",       section: "Confection" },
+  { key: "etiquette_lavage",     label: "Étiq. Lenglart",     section: "Confection" },
   // Ourlets & Bas
   { key: "piquage_ourlets_du_bas",       label: "OB",         section: "Ourlets & Bas" },
   { key: "piquage_ourlet",               label: "Finition OB",   section: "Ourlets & Bas" },
@@ -360,8 +361,8 @@ export default function EtiquetteRideauxCard({ row, projectName, index, total, o
           )}
           {(show("etiquette_lavage") || show("etiquette_lenglart")) && (
             <Row cols={3}>
-              {show("etiquette_lavage")   && <Cell label="Étiq. lavage" value={v(row, "etiquette_lavage")} />}
-              {show("etiquette_lenglart") && <Cell label="Étiq. Lenglart" value={v(row, "etiquette_lenglart")} />}
+              {show("etiquette_lenglart") && <Cell label="Étiq. lavage" value={v(row, "etiquette_lenglart")} />}
+              {show("etiquette_lavage")   && <Cell label="Étiq. Lenglart" value={v(row, "etiquette_lavage")} />}
             </Row>
           )}
 
