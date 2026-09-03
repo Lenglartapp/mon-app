@@ -10,6 +10,7 @@ import { CACHE_SOMMIER_SCHEMA } from '../schemas/chiffrage/cache_sommier';
 import { PLAID_SCHEMA } from '../schemas/chiffrage/plaid';
 import { TENTURE_MURALE_SCHEMA } from '../schemas/chiffrage/tenture_murale';
 import { MOBILIER_SCHEMA } from '../schemas/chiffrage/mobilier';
+import { LEGACY_HEADER_ALIASES } from '../constants/rideauxFields';
 
 // Onglet Excel -> schéma + produit par défaut des lignes de cet onglet.
 // UNE seule table : le schéma et le libellé de produit étaient auparavant définis
@@ -73,6 +74,18 @@ export async function importGlobalExcel(file, ctx, catalog = []) {
         const labelText = (col.label || col.headerName || key).toLowerCase().trim();
         headerToKey[labelText] = key;
       });
+      // Repli sur les ANCIENS libellés : sans ça, un renommage d'en-tête rendrait
+      // muets tous les fichiers déjà remplis (colonne ignorée en silence).
+      // Le libellé courant, posé ci-dessus, reste prioritaire.
+      targetSchema.forEach(col => {
+        if (!col) return;
+        const key = col.key || col.field;
+        (LEGACY_HEADER_ALIASES[key] || []).forEach(alias => {
+          const aliasText = alias.toLowerCase().trim();
+          if (!(aliasText in headerToKey)) headerToKey[aliasText] = key;
+        });
+      });
+
       const parsedRows = dataRows.map(rowCellValues => {
         const rawRow = { id: uid() };
 

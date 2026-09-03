@@ -175,8 +175,8 @@ export const SCHEMA_64 = [
   { key: "zone", label: "Zone", type: "text", width: 120, editable: true },
   { key: "piece", label: "Pièce", type: "text", width: 120, editable: true },
   { key: "produit", label: "Produit", type: "select", options: ["Rideau", "Voilage", "Store Bateau", "Autres"], width: 125, editable: false },
-  { key: "type_confection", label: "Type Conf.", type: "select", options: ["Pli Flamand", "Pli Creux", "Pli Plat", "Tripli", "Wave 80", "Wave 60", "Pli Couteau", "Pli Rabattu Cousu", "A Plat"], width: 150, editable: true },
-  { key: "hauteur_renfort_tete", label: "H/Renfort Têtes", type: "text", width: 155, editable: true },
+  { key: "type_confection", label: "Plis", type: "select", options: ["Pli Flamand", "Pli Creux", "Pli Plat", "Tripli", "Wave 80", "Wave 60", "Pli Couteau", "Pli Rabattu Cousu", "A Plat"], width: 150, editable: true },
+  { key: "hauteur_renfort_tete", label: "Renfort tête", type: "text", width: 155, editable: true },
   { key: "paire_ou_un_seul_pan", label: "Paire ou un Pan", type: "select", options: ["Paire", "Un seul pan", "Un seul pan (Rapatriement Droit)", "Un seul pan (Rapatriement Gauche)"], width: 260, editable: true },
   { key: "ampleur", label: "Ampleur", type: "number", width: 110, editable: true },
   { key: "largeur_mecanisme", label: "L. Méca (cm)", type: "number", width: 130, editable: true },
@@ -199,7 +199,7 @@ export const SCHEMA_64 = [
     readOnly: true,
     valueGetter: (v, r) => getters.a_plat(getRow(v, r))
   },
-  { key: "v_ourlets_de_cotes", label: "Ourlets Côtés", type: "number", width: 130, editable: true },
+  { key: "v_ourlets_de_cotes", label: "OC", type: "number", width: 130, editable: true },
 
 
   // C. Hauteurs & Coupe
@@ -289,8 +289,8 @@ export const SCHEMA_64 = [
       return Math.max(1, Math.ceil(aPlat / laize));
     }
   },
-  { key: "piquage_ourlets_du_bas", label: "Piq. Bas", type: "number", width: 115, editable: true },
-  { key: "doublure_finition_bas", label: "Doubl. Fin. Bas", type: "number", width: 145, editable: true },
+  { key: "piquage_ourlets_du_bas", label: "OB", type: "number", width: 115, editable: true },
+  { key: "doublure_finition_bas", label: "Fin. OB Doublure", type: "number", width: 145, editable: true },
   { key: "finition_champs", label: "Fin. Champs", type: "number", width: 120, editable: true },
   { key: "poids", label: "Poids", type: "select", options: ["Oui", "Non"], width: 90, editable: true },
 

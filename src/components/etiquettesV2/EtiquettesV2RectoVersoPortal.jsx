@@ -30,12 +30,12 @@ export const RIDEAUX_V2_SECTIONS = [
     ["nombre_les", "Nb Lés"], ["reste_les", "Appiècement cm"], ["ampleur", "Ampleur"], ["a_plat", "À plat"],
   ]},
   { name: "OURLETS", fields: [
-    ["piquage_ourlets_du_bas", "OB Tissu"], ["v_ourlets_de_cotes", "Ourlets de côté"], ["piquage_ourlet", "Piquage ourlet"], ["onglets", "Onglets"],
-    ["piquage_ourlets_bas_doublure", "OB Doublure"], ["deduction_doublure", "Déd. Doublure"], ["doublure_finition_bas", "Doubl. fin. bas"],
+    ["piquage_ourlets_du_bas", "OB"], ["v_ourlets_de_cotes", "OC"], ["piquage_ourlet", "Finition OB"], ["onglets", "Onglets"],
+    ["piquage_ourlets_bas_doublure", "OB Doublure"], ["deduction_doublure", "Déd. Doublure"], ["doublure_finition_bas", "Fin. OB Doublure"],
     ["etiquette_lenglart", "Étiq. Lenglart"], ["poids", "Poids"],
   ]},
   { name: "PRÉPARATION", fields: [
-    ["type_confection", "Type Confection"], ["hauteur_renfort_tete", "H. Renfort Tête"], ["finition_bas", "Cassant / Rasant"], ["finition_champs", "Finition Chant"],
+    ["type_confection", "Plis"], ["hauteur_renfort_tete", "Renfort tête"], ["finition_bas", "Cassant / Rasant"], ["finition_champs", "Finition Chant"],
     ["type_mecanisme", "Type Méca"], ["modele_mecanisme", "Modèle Méca"], ["meca_couvert", "Méca Couvert"], ["type_croisement", "Type Croisement"],
     ["hauteur_finie_gauche", "H. Finie G"], ["hauteur_finie_milieu", "H. Finie M"], ["hauteur_finie_droite", "H. Finie D"],
   ]},
