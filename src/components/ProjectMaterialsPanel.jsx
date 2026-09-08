@@ -3,7 +3,7 @@ import {
   Dialog, DialogTitle, DialogContent, DialogActions,
   Button, IconButton, TextField, Tooltip,
 } from '@mui/material';
-import { X, Plus, Trash2, Package } from 'lucide-react';
+import { X, Plus, Trash2, Package, Pencil, Check } from 'lucide-react';
 import { uid } from '../lib/utils/uid';
 import { useCatalog, useCatalogRail } from '../hooks/useSupabase';
 
@@ -144,6 +144,60 @@ function CatalogSearch({ globalCatalog, projectMaterials, activeTab, onAdd }) {
 }
 
 // ─── Manual add form ─────────────────────────────────────────────────────────
+// Édition en place d'un article déjà présent dans la matériauthèque.
+// On repart du nom complet (et non de fournisseur/référence/coloris, que les
+// articles importés ne portent pas toujours) pour ne rien perdre à l'édition.
+function EditRow({ material, onSave, onCancel }) {
+  const [form, setForm] = useState({
+    name: material.name || '',
+    width: material.width ?? '',
+    raccord_v: material.raccord_v ?? '',
+    raccord_h: material.raccord_h ?? '',
+  });
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const renamed = form.name.trim() !== (material.name || '').trim();
+
+  const save = () => {
+    const name = form.name.trim();
+    if (!name) return;
+    onSave({
+      ...material,
+      name,
+      width: Number(form.width) || 0,
+      raccord_v: Number(form.raccord_v) || 0,
+      raccord_h: Number(form.raccord_h) || 0,
+      motif: Number(form.raccord_v) > 0 || Number(form.raccord_h) > 0,
+    });
+  };
+
+  return (
+    <div style={{ padding: '10px 12px', background: '#F9FAFB', display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <TextField
+        size="small" label="Nom de l'article" value={form.name}
+        onChange={(e) => set('name', e.target.value)} fullWidth autoFocus
+      />
+      <div style={{ display: 'flex', gap: 8 }}>
+        <TextField size="small" label="Laize (cm)" type="number" value={form.width}
+          onChange={(e) => set('width', e.target.value)} style={{ flex: 1 }} />
+        <TextField size="small" label="Raccord V (cm)" type="number" value={form.raccord_v}
+          onChange={(e) => set('raccord_v', e.target.value)} style={{ flex: 1 }} />
+        <TextField size="small" label="Raccord H (cm)" type="number" value={form.raccord_h}
+          onChange={(e) => set('raccord_h', e.target.value)} style={{ flex: 1 }} />
+      </div>
+      {renamed && (
+        <div style={{ fontSize: 11.5, color: '#92400E', background: '#FEF3C7', border: '1px solid #FDE68A', borderRadius: 6, padding: '6px 9px' }}>
+          Le nom change : les lignes qui utilisent cet article seront mises à jour pour rester liées.
+        </div>
+      )}
+      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+        <Button size="small" onClick={onCancel} style={{ textTransform: 'none', color: '#6B7280' }}>Annuler</Button>
+        <Button size="small" variant="contained" onClick={save} disabled={!form.name.trim()}
+          startIcon={<Check size={14} />} style={{ textTransform: 'none' }}>Enregistrer</Button>
+      </div>
+    </div>
+  );
+}
+
 function ManualForm({ activeTab, onAdd, onCancel }) {
   const [form, setForm] = useState(BLANK_FORM);
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
@@ -216,6 +270,7 @@ export default function ProjectMaterialsPanel({ open, onClose, materials = [], o
   const { catalogRails } = useCatalogRail();
   const [activeTabKey, setActiveTabKey] = useState('Tissu');
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState(null);
 
   const allGlobal = useMemo(() => [...(globalCatalog || []), ...(catalogRails || [])], [globalCatalog, catalogRails]);
   const activeTab = TABS.find(t => t.key === activeTabKey) || TABS[0];
@@ -227,7 +282,18 @@ export default function ProjectMaterialsPanel({ open, onClose, materials = [], o
 
   const handleAdd = (item) => { onMaterialsChange([...materials, item]); setShowForm(false); };
   const handleDelete = (id) => { onMaterialsChange(materials.filter(m => m.id !== id)); };
-  const handleTabChange = (key) => { setActiveTabKey(key); setShowForm(false); };
+
+  // Édition d'un article. La laize et les raccords se propagent d'eux-mêmes aux
+  // lignes au prochain recalcul (fillFromCatalog réécrit ces valeurs sur toute
+  // ligne portant ce nom) — c'est bien ici qu'on corrige une laize, pas à la main
+  // dans le tableau, où la saisie serait écrasée.
+  // Le NOM, lui, est la clé du lien : c'est l'appelant qui doit propager un
+  // renommage sur les lignes (voir applyCatalogRenames).
+  const handleUpdate = (updated) => {
+    onMaterialsChange(materials.map(m => (m.id === updated.id ? updated : m)));
+    setEditingId(null);
+  };
+  const handleTabChange = (key) => { setActiveTabKey(key); setShowForm(false); setEditingId(null); };
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
@@ -276,6 +342,11 @@ export default function ProjectMaterialsPanel({ open, onClose, materials = [], o
           ) : (
             <div style={{ border: '1px solid #E5E7EB', borderRadius: 8, overflow: 'hidden' }}>
               {tabMaterials.map((mat, i) => (
+                editingId === mat.id ? (
+                  <div key={mat.id} style={{ borderBottom: i < tabMaterials.length - 1 ? '1px solid #F3F4F6' : 'none' }}>
+                    <EditRow material={mat} onSave={handleUpdate} onCancel={() => setEditingId(null)} />
+                  </div>
+                ) : (
                 <div
                   key={mat.id}
                   style={{
@@ -296,12 +367,18 @@ export default function ProjectMaterialsPanel({ open, onClose, materials = [], o
                       ].filter(Boolean).join(' · ') || '—'}
                     </div>
                   </div>
+                  <Tooltip title="Modifier">
+                    <IconButton size="small" onClick={() => setEditingId(mat.id)} style={{ color: '#6B7280' }}>
+                      <Pencil size={14} />
+                    </IconButton>
+                  </Tooltip>
                   <Tooltip title="Supprimer">
                     <IconButton size="small" onClick={() => handleDelete(mat.id)} style={{ color: '#EF4444' }}>
                       <Trash2 size={14} />
                     </IconButton>
                   </Tooltip>
                 </div>
+                )
               ))}
             </div>
           )}

@@ -26,6 +26,7 @@ import { calculateProfitability } from '../lib/financial/profitabilityCalculator
 import MinuteHistoryDialog from "../components/MinuteHistoryDialog";
 import { buildSettingsLogs, buildCatalogLogs, buildStatusLog, appendHistory } from "../lib/minuteHistory";
 import { MOBILIER_PRODUIT_RE } from "../lib/constants/productRouting";
+import { applyCatalogRenames } from "../lib/utils/catalogRename";
 import RecalibrationModal from "../components/RecalibrationModal";
 import { BookOpen, History, FileUp, SlidersHorizontal, GitBranch } from 'lucide-react';
 import { importGlobalExcel } from "../lib/utils/importGlobalExcel";
@@ -786,6 +787,22 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
           const patch = { catalog: newCatalog };
           const modules = pushHistory(buildCatalogLogs(minute?.catalog || [], newCatalog, historyAuthor));
           if (modules) patch.modules = modules;
+
+          // Renommer un article coupait le lien avec les lignes qui l'utilisaient :
+          // elles gardaient l'ancien nom et donc, silencieusement, leur ancienne
+          // laize. Le nom est recalculé ici depuis Fournisseur + Référence +
+          // Coloris, donc corriger une simple coquille suffisait à déclencher ça.
+          const prevCatalog = minute?.catalog || [];
+          const rn = applyCatalogRenames(rows, prevCatalog, newCatalog);
+          const rd = applyCatalogRenames(depRows, prevCatalog, newCatalog);
+          const re = applyCatalogRenames(extraRows, prevCatalog, newCatalog);
+          if (rn.changed + rd.changed + re.changed > 0) {
+            setRows(rn.rows); setDepRows(rd.rows); setExtraRows(re.rows);
+            patch.lines = rn.rows;
+            patch.deplacements = rd.rows;
+            patch.extraDepenses = re.rows;
+          }
+
           updateMinute(patch);
         }}
         settings={formulaCtx.settings}
