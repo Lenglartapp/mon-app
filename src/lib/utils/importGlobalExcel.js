@@ -1,4 +1,6 @@
 import readXlsxFile from 'read-excel-file';
+
+import { STORE_CLASSIQUE_DEFAUT } from '../constants/productRouting';
 import { uid } from './uid';
 import { recomputeRow } from '../formulas/recomputeRow';
 
@@ -23,7 +25,7 @@ import { LEGACY_HEADER_ALIASES } from '../constants/rideauxFields';
 // un onglet par produit.
 const SHEET_CONFIG = {
   'Rideaux':        { schema: RIDEAUX_SCHEMA,           produit: 'Rideau' },
-  'Stores':         { schema: STORES_CLASSIQUES_SCHEMA, produit: 'Store Enrouleur' },
+  'Stores':         { schema: STORES_CLASSIQUES_SCHEMA, produit: STORE_CLASSIQUE_DEFAUT },
   'Stores Bateaux': { schema: STORES_BATEAUX_SCHEMA,    produit: 'Store Bateau' },
   'Coussins':       { schema: COUSSINS_SCHEMA,          produit: 'Coussins' },
   'Cache-Sommier':  { schema: CACHE_SOMMIER_SCHEMA,     produit: 'Cache-Sommier' },

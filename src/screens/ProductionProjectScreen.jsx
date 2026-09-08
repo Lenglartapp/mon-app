@@ -17,6 +17,7 @@ import { computeFormulas, preserveManualAfterCompute } from "../lib/formulas/com
 import { SCHEMA_64 } from "../lib/schemas/production.js";
 import { STAGES, DEFAULT_VIEWS } from "../lib/constants/views.js"; // Import DEFAULT_VIEWS
 import { applySchemaDefaults } from "../lib/utils/schemaDefaults.js";
+import { MOBILIER_PRODUIT_RE, STORE_CLASSIQUE_DEFAUT } from "../lib/constants/productRouting.js";
 import { recomputeRow } from "../lib/formulas/recomputeRow";
 import { computeProjectHours } from "../lib/projectMetrics";
 import { RIDEAUX_PROD_SCHEMA } from "../lib/schemas/production/rideaux";
@@ -71,7 +72,7 @@ const getSchemaForRow = (row) => {
   if (/store/i.test(produit))                    return { schema: STORES_PROD_SCHEMA,         tableKey: 'stores' };
   if (/coussin/i.test(produit))                  return { schema: COUSSINS_PROD_SCHEMA,       tableKey: 'coussins' };
   if (/plaid/i.test(produit))                    return { schema: PLAID_PROD_SCHEMA,          tableKey: 'plaid' };
-  if (/tête de lit|mobilier/i.test(produit))     return { schema: MOBILIER_PROD_SCHEMA,       tableKey: 'mobilier' };
+  if (MOBILIER_PRODUIT_RE.test(produit))     return { schema: MOBILIER_PROD_SCHEMA,       tableKey: 'mobilier' };
   if (/cache-sommier/i.test(produit))            return { schema: CACHE_SOMMIER_PROD_SCHEMA,  tableKey: 'cache_sommier' };
   if (/tenture murale/i.test(produit))           return { schema: TENTURE_MURALE_PROD_SCHEMA, tableKey: 'tenture_murale' };
   return { schema: RIDEAUX_PROD_SCHEMA, tableKey: 'rideaux' }; // fallback
@@ -410,7 +411,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
     rowsStoresBateaux:  filteredRows.filter((r) => r.produit && /store (bateau|velum)/i.test(String(r.produit))),
     rowsCoussins:       filteredRows.filter((r) => /coussin/i.test(String(r.produit || ""))),
     rowsPlaid:          filteredRows.filter((r) => /plaid/i.test(String(r.produit || ""))),
-    rowsMobilier:       filteredRows.filter((r) => /tête de lit|mobilier/i.test(String(r.produit || ""))),
+    rowsMobilier:       filteredRows.filter((r) => MOBILIER_PRODUIT_RE.test(String(r.produit || ""))),
     rowsCacheSommier:   filteredRows.filter((r) => /cache-sommier/i.test(String(r.produit || ""))),
     rowsTentureMurale:  filteredRows.filter((r) => /tenture murale/i.test(String(r.produit || ""))),
   }), [filteredRows]);
@@ -1269,7 +1270,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                 schema={STORES_PROD_SCHEMA}
                 enableCellFormulas={true}
                 initialVisibilityModel={getVisibilityModel('prise', 'stores', STORES_PROD_SCHEMA)}
-                onAdd={() => handleAddRow("Store Enrouleur")}
+                onAdd={() => handleAddRow(STORE_CLASSIQUE_DEFAUT)}
                 onDuplicateRow={handleDuplicateRow}
                 catalog={projectMaterials}
                 projectId={project?.id}
@@ -1365,7 +1366,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
               <div style={cardHeaderStyle}>Prise de Cote Mobilier / Tête de Lit</div>
               <MinuteGrid
                 rows={rowsMobilier}
-                onRowsChange={(nr) => handleSubsetChange(nr, /tête de lit|mobilier/i)}
+                onRowsChange={(nr) => handleSubsetChange(nr, MOBILIER_PRODUIT_RE)}
                 schema={MOBILIER_PROD_SCHEMA}
                 enableCellFormulas={true}
                 initialVisibilityModel={getVisibilityModel('prise', 'mobilier', MOBILIER_PROD_SCHEMA)}
@@ -1557,7 +1558,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
             >
                 <MinuteGrid
                   rows={bpfMobilier}
-                  onRowsChange={(nr) => handleSubsetChange(nr, /tête de lit|mobilier/i)}
+                  onRowsChange={(nr) => handleSubsetChange(nr, MOBILIER_PRODUIT_RE)}
                   schema={MOBILIER_PROD_SCHEMA}
                   initialVisibilityModel={getVisibilityModel('bpf', 'mobilier', MOBILIER_PROD_SCHEMA)}
                   enableCellFormulas={true}
@@ -1656,7 +1657,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                   schema={STORES_PROD_SCHEMA}
                   enableCellFormulas={true}
                   initialVisibilityModel={getVisibilityModel('bpp', 'stores', STORES_PROD_SCHEMA)}
-                  onAdd={() => handleAddRow("Store Enrouleur")}
+                  onAdd={() => handleAddRow(STORE_CLASSIQUE_DEFAUT)}
                   onDuplicateRow={handleDuplicateRow}
                   catalog={projectMaterials}
                 projectId={project?.id}
@@ -1724,7 +1725,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
             >
                 <MinuteGrid
                   rows={rowsMobilier}
-                  onRowsChange={(nr) => handleSubsetChange(nr, /tête de lit|mobilier/i)}
+                  onRowsChange={(nr) => handleSubsetChange(nr, MOBILIER_PRODUIT_RE)}
                   schema={MOBILIER_PROD_SCHEMA}
                   enableCellFormulas={true}
                   initialVisibilityModel={getVisibilityModel('bpp', 'mobilier', MOBILIER_PROD_SCHEMA)}

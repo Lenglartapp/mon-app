@@ -26,7 +26,7 @@ import { CACHE_SOMMIER_SCHEMA } from "../lib/schemas/chiffrage/cache_sommier";
 import { PLAID_SCHEMA } from "../lib/schemas/chiffrage/plaid";
 import { TENTURE_MURALE_SCHEMA } from "../lib/schemas/chiffrage/tenture_murale";
 import { MOBILIER_SCHEMA } from "../lib/schemas/chiffrage/mobilier";
-import { MOBILIER_PRODUIT_RE } from "../lib/constants/productRouting";
+import { MOBILIER_PRODUIT_RE, STORE_CLASSIQUE_DEFAUT } from "../lib/constants/productRouting";
 
 // ... (imports remain)
 
@@ -230,7 +230,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
     const m = minute?.modules;
     const orphanProduit =
       (!m || m.rideau !== false) ? "Rideau" :
-      m.store ? "Store Enrouleur" :
+      m.store ? STORE_CLASSIQUE_DEFAUT :
       m.store_bateau ? "Store Bateau" :
       m.coussins ? "Coussins" :
       m.cache_sommier ? "Cache-Sommier" :
@@ -349,7 +349,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
   const ensureProduitFor = (key, r) => {
     if (r?.produit) return r;
     if (key === "rideaux") return { ...r, produit: "Rideau" };
-    if (key === "store") return { ...r, produit: "Store Enrouleur" };
+    if (key === "store") return { ...r, produit: STORE_CLASSIQUE_DEFAUT };
     if (key === "store_bateau") return { ...r, produit: "Store Bateau" };
     if (key === "coussins") return { ...r, produit: "Coussins" };
     if (key === "cache_sommier") return { ...r, produit: "Cache-Sommier" };
@@ -420,7 +420,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
       id: genId(),
       produit: key === "rideaux" ? "Rideau" :
         key === "coussins" ? "Coussins" :
-          key === "store" ? "Store Enrouleur" :
+          key === "store" ? STORE_CLASSIQUE_DEFAUT :
             key === "store_bateau" ? "Store Bateau" :
               key === "cache_sommier" ? "Cache-Sommier" :
                 key === "plaid" ? "Plaid" :

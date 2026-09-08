@@ -2,6 +2,7 @@
 
 import { HAUTEUR_RENFORT_TETE_OPTIONS, FINITION_OURLET_OPTIONS, LEGACY_HEADER_ALIASES } from '../constants/rideauxFields';
 import { applySchemaDefaults } from '../utils/schemaDefaults';
+import { STORES_CLASSIQUES_PRODUITS, STORE_CLASSIQUE_DEFAUT } from '../constants/productRouting';
 import readXlsxFile from 'read-excel-file';
 import { uid } from '../utils/uid';
 
@@ -241,12 +242,12 @@ const PRODUCT_SHEETS = [
   // ── STORES CLASSIQUES ────────────────────────────────────────────────────
   {
     name: 'Stores Classiques',
-    produit: 'Store Enrouleur',
+    produit: STORE_CLASSIQUE_DEFAUT,
     color: 'FF1A5276',
     columns: [
       c('zone',              'Zone',               'text',     16),
       c('piece',             'Pièce',              'text',     18),
-      c('produit',           'Produit',            'select',   20, { options: ['Store Enrouleur', 'Store Vénitien', 'Store Bande Verticale', 'Store Canishade', 'Store Coffre', 'Autre'] }),
+      c('produit',           'Produit',            'select',   24, { options: [...STORES_CLASSIQUES_PRODUITS, 'Autre'] }),
       c('largeur',           'Largeur (cm)',        'number',   14),
       c('hauteur',           'Hauteur (cm)',        'number',   14),
       c('largeur_gorge',     'Larg. Gorge (cm)',    'number',   16),
@@ -262,7 +263,7 @@ const PRODUCT_SHEETS = [
       c('quantite',          'Qté',                 'number',    8),
     ],
     example: {
-      zone: 'Bureau', piece: 'Fenêtre', produit: 'Store Enrouleur',
+      zone: 'Bureau', piece: 'Fenêtre', produit: STORE_CLASSIQUE_DEFAUT,
       largeur: 100, hauteur: 150, cote_manoeuvre: 'Manœuvre droite', quantite: 1,
     },
   },
