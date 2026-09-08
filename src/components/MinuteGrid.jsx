@@ -14,6 +14,7 @@ import FilterPanel, { isConditionActive, evaluateCondition } from './FilterPanel
 import { getDefaultMatieres } from '../lib/constants/matiereGroups';
 import { useAuth } from '../auth';
 import { useSharedGridState } from '../lib/hooks/useSharedGridState';
+import { useUserGridState } from '../lib/hooks/useUserGridState';
 
 const STORAGE_PREFIX = 'ag_grid_state_v1_';
 const GRID_STATE_VERSION = 5; // à incrémenter si le calcul des largeurs change
@@ -386,17 +387,29 @@ function MinuteGrid({
     const onAddRef = useRef(onAdd);
     onAddRef.current = onAdd;
 
-    // ID unique pour la persistance des colonnes
-    const gridId = useMemo(() => {
-        if (gridKey) return `${STORAGE_PREFIX}${gridKey}`;
-        if (projectId) return `${STORAGE_PREFIX}prod_${projectId}_${title || 'grid'}`;
-        if (minuteId) return `${STORAGE_PREFIX}minute_${minuteId}_${title || 'grid'}`;
-        return `${STORAGE_PREFIX}${title || 'default'}`;
+    // Clé de persistance, PORTÉE PAR DOSSIER : masquer une colonne sur un devis ne
+    // doit plus impacter les autres devis. `gridKey` (ex. "chiff_rideaux") identifie
+    // le TYPE de tableau ; on le préfixe par le dossier courant.
+    const scopedGridKey = useMemo(() => {
+        const base = gridKey || title || 'default';
+        if (projectId) return `prod_${projectId}_${base}`;
+        if (minuteId) return `minute_${minuteId}_${base}`;
+        return base; // grille hors dossier (rare) : comportement inchangé
     }, [gridKey, projectId, minuteId, title]);
 
-    // Clé Supabase (sans le préfixe localStorage)
-    const supabaseGridKey = gridId.replace(STORAGE_PREFIX, '');
-    const { data: sharedState, loaded: sharedStateLoaded, save: saveSharedState } = useSharedGridState(supabaseGridKey);
+    // Ancienne clé globale : sert de MODÈLE tant que le dossier n'a pas sa propre
+    // mise en page, pour ne perdre aucun réglage existant lors de la bascule.
+    const templateGridKey = useMemo(() => gridKey || null, [gridKey]);
+
+    const gridId = `${STORAGE_PREFIX}${scopedGridKey}`;
+    const supabaseGridKey = scopedGridKey;
+    const { data: sharedState, loaded: sharedStateLoaded, save: saveSharedState } = useSharedGridState(supabaseGridKey, templateGridKey);
+
+    // Réglages PERSONNELS (filtres de lignes, tri, regroupement) — voir le commentaire
+    // du hook : un filtre partagé masquerait des lignes chez les collègues.
+    const { data: userState, loaded: userStateLoaded, save: saveUserState } = useUserGridState(supabaseGridKey);
+    const userStateRef = useRef(null);
+    userStateRef.current = userState;
     const sharedStateRef = useRef(null);
     sharedStateRef.current = sharedState;
 
@@ -477,23 +490,44 @@ function MinuteGrid({
             });
         }
 
-        if (columnState && v === GRID_STATE_VERSION) {
-            // Toujours restaurer visibilité + ordre depuis l'état sauvegardé (override sur initialVisibilityModel)
-            api.applyColumnState({
-                // rowGroupIndex : restaure aussi le regroupement (colonnes glissées dans le panneau)
-                state: columnState.map(cs => ({ colId: cs.colId, hide: cs.hide, pinned: cs.pinned, rowGroupIndex: cs.rowGroupIndex })),
-                applyOrder: true,
-            });
-            const visMap = {};
-            columnState.forEach(cs => { if (cs.colId) visMap[cs.colId] = !cs.hide; });
-            setColVisibility(visMap);
-        } else if (hasVisibilityModel) {
-            const stateToApply = Object.entries(initialVisibilityModel)
+        // ── PRÉFILTRE DE LA VUE, D'ABORD ──────────────────────────────────────
+        // Les vues BPF / BPP / Prise de cotes / Suivi n'exposent qu'un sous-ensemble
+        // des colonnes : ce qui n'intéresse pas le service n'a pas à s'y trouver.
+        // Auparavant ce préfiltre et l'état enregistré étaient EXCLUSIFS (if/else) :
+        // dès qu'un utilisateur sauvegardait une colonne, le préfiltre n'était plus
+        // appliqué du tout, et une colonne ajoutée PLUS TARD au schéma (absente de
+        // l'état enregistré) apparaissait dans des vues censées l'exclure.
+        // On applique donc toujours le préfiltre en base, puis les réglages
+        // utilisateur par-dessus — ces derniers ne peuvent qu'en masquer davantage
+        // ou réafficher une colonne que la vue autorise.
+        const visMap = {};
+        if (hasVisibilityModel) {
+            const preFilter = Object.entries(initialVisibilityModel)
                 .filter(([, visible]) => !visible)
                 .map(([field]) => ({ colId: field, hide: true }));
-            if (stateToApply.length > 0) api.applyColumnState({ state: stateToApply });
-            setColVisibility(initialVisibilityModel);
+            if (preFilter.length > 0) api.applyColumnState({ state: preFilter });
+            Object.assign(visMap, initialVisibilityModel);
         }
+
+        if (columnState && v === GRID_STATE_VERSION) {
+            // Réglages de l'équipe par-dessus. Une colonne que la vue exclut reste
+            // masquée même si un ancien état enregistré la disait visible.
+            const allowed = (colId) => !hasVisibilityModel || initialVisibilityModel[colId] !== false;
+            api.applyColumnState({
+                // rowGroupIndex volontairement ABSENT : le regroupement est devenu
+                // personnel (userState), il ne doit plus être imposé par l'équipe.
+                state: columnState.map(cs => ({
+                    colId: cs.colId,
+                    hide: allowed(cs.colId) ? cs.hide : true,
+                    pinned: cs.pinned,
+                })),
+                applyOrder: true,
+            });
+            columnState.forEach(cs => {
+                if (cs.colId) visMap[cs.colId] = allowed(cs.colId) ? !cs.hide : false;
+            });
+        }
+        if (Object.keys(visMap).length > 0) setColVisibility(visMap);
 
         // Meca et conf depuis l'état partagé
         const savedMeca = state?.meca;
@@ -525,6 +559,8 @@ function MinuteGrid({
         if (sharedStateRef.current !== null || sharedStateLoaded) {
             applySharedState(params.api, sharedStateRef.current);
         }
+        // Vue personnelle (filtres / tri / regroupement) par-dessus la mise en page.
+        if (userStateRef.current) applyUserState(params.api, userStateRef.current);
         // Sinon, le useEffect ci-dessous prendra le relais dès que loaded=true
 
         // Appliquer les matières sauvegardées (override par-dessus initialVisibilityModel)
@@ -569,6 +605,16 @@ function MinuteGrid({
         applySharedState(api, sharedStateRef.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [sharedStateLoaded]); // intentionnellement sans sharedState dans les deps
+
+    // Idem pour la vue PERSONNELLE (filtres / tri / regroupement) : elle arrive après
+    // la session utilisateur, donc souvent après que la grille soit prête.
+    useEffect(() => {
+        if (!userStateLoaded) return;
+        const api = gridRef.current?.api;
+        if (!api || !isGridReadyRef.current) return;
+        applyUserState(api, userStateRef.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [userStateLoaded]); // volontairement sans userState : sinon chaque save re-applique
 
     // Charger les agrégations sauvegardées depuis sharedState
     useEffect(() => {
@@ -625,11 +671,56 @@ function MinuteGrid({
         });
     }, [saveSharedState]);
 
-    // Persistance : sauvegarde dans Supabase (partagée)
+    // Persistance PARTAGÉE : mise en page seulement (visibilité, ordre, épinglage).
+    // Le tri et le regroupement sont retirés du payload : ils sont personnels.
     const saveColumnState = useCallback((api) => {
-        const columnState = api.getColumnState();
+        const columnState = api.getColumnState()
+            .map(({ colId, hide, pinned, width, flex }) => ({ colId, hide, pinned, width, flex }));
         saveSharedState({ columnState, v: GRID_STATE_VERSION });
     }, [saveSharedState]);
+
+    // ── PERSISTANCE PERSONNELLE : filtres de lignes, tri, regroupement ────────
+    const saveUserView = useCallback((api) => {
+        if (!api) return;
+        const colState = api.getColumnState();
+        saveUserState({
+            filterModel: api.getFilterModel() || {},
+            sort: colState
+                .filter(cs => cs.sort)
+                .map(cs => ({ colId: cs.colId, sort: cs.sort, sortIndex: cs.sortIndex })),
+            rowGroup: colState
+                .filter(cs => cs.rowGroupIndex != null)
+                .map(cs => ({ colId: cs.colId, rowGroupIndex: cs.rowGroupIndex })),
+        });
+    }, [saveUserState]);
+
+    // Restaure la vue personnelle. Appelée à l'ouverture, et de nouveau si Supabase
+    // répond après que la grille soit prête.
+    const applyUserState = useCallback((api, state) => {
+        if (!api || !state) return;
+        const { filterModel, sort, rowGroup } = state;
+        if (rowGroup?.length) {
+            api.applyColumnState({
+                state: rowGroup.map(g => ({ colId: g.colId, rowGroupIndex: g.rowGroupIndex })),
+            });
+        }
+        if (sort?.length) {
+            // Le tri était déjà enregistré auparavant mais JAMAIS réappliqué au retour
+            // sur la page (la restauration ne reprenait que colId/hide/pinned).
+            api.applyColumnState({
+                state: sort.map(x => ({ colId: x.colId, sort: x.sort, sortIndex: x.sortIndex })),
+                defaultState: { sort: null },
+            });
+        }
+        if (filterModel && Object.keys(filterModel).length > 0) {
+            api.setFilterModel(filterModel);
+        }
+    }, []);
+
+    const persistUserView = useCallback((api) => {
+        if (!isGridReadyRef.current) return;
+        saveUserView(api);
+    }, [saveUserView]);
 
     // Sync activeMatieres prop → état local + AG Grid (chargement async Supabase)
     useEffect(() => {
@@ -720,9 +811,10 @@ function MinuteGrid({
     }, [saveColumnState]);
 
     // Persiste le regroupement (colonnes glissées dans le panneau de regroupement)
+    // Le regroupement est un outil d'exploration : personnel, pas imposé à l'équipe.
     const onColumnRowGroupChanged = useCallback((params) => {
-        saveColumnState(params.api);
-    }, [saveColumnState]);
+        persistUserView(params.api);
+    }, [persistUserView]);
 
     // Ouvrir le panneau de détail
     const handleOpenDetail = useCallback((row) => {
@@ -1925,8 +2017,8 @@ function MinuteGrid({
                     onSelectionChanged={onSelectionChanged}
                     onCellClicked={onCellClicked}
                     onCellValueChanged={onCellValueChanged}
-                    onFilterChanged={() => { setFilterVersion(v => v + 1); updateReorderState(); }}
-                    onSortChanged={updateReorderState}
+                    onFilterChanged={(e) => { setFilterVersion(v => v + 1); updateReorderState(); persistUserView(e.api); }}
+                    onSortChanged={(e) => { updateReorderState(); persistUserView(e.api); }}
                     rowDragManaged={true}
                     rowDragMultiRow={true}
                     onRowDragEnd={onRowDragEnd}
