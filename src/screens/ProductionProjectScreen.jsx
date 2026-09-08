@@ -34,6 +34,7 @@ import { compressAndUpload } from "../lib/utils/imageUpload";
 
 import { Search, Filter, Layers3, Star, FlaskConical, Image as ImageIcon, Pin, Edit2, FileText, BookOpen, Printer } from "lucide-react";
 import ProjectMaterialsPanel from "../components/ProjectMaterialsPanel";
+import { applyCatalogRenames } from "../lib/utils/catalogRename";
 import AddressAutocomplete from "../components/AddressAutocomplete"; // Added FileText
 import { Dialog, DialogTitle, DialogContent, TextField, DialogActions, Button, Collapse, IconButton } from "@mui/material";
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -191,9 +192,23 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
 
   const projectMaterials = project?.materials || [];
   const handleMaterialsChange = (newMaterials) => {
-    if (onUpdateProject && project) {
-      onUpdateProject(project.id, { materials: newMaterials });
+    if (!onUpdateProject || !project) return;
+
+    // Un article renommé doit être renommé AUSSI sur les lignes : le lien
+    // article ↔ ligne se fait par le nom, et le laisser divergerait sans erreur —
+    // les lignes garderaient leur ancienne laize indéfiniment.
+    const { rows: renamedRows, changed } = applyCatalogRenames(rowsRef.current || [], projectMaterials, newMaterials);
+    const patch = { materials: newMaterials };
+
+    if (changed > 0) {
+      // Recalcul avec le catalogue à jour : la nouvelle laize/raccord redescend
+      // sur les lignes concernées.
+      const recomputed = renamedRows.map(r => recomputeRow(r, schema, { catalog: newMaterials }));
+      patch.rows = recomputed;
+      setRows(recomputed);
     }
+
+    onUpdateProject(project.id, patch);
   };
 
   // --- LOGIQUE MUR & PHOTOS ---
