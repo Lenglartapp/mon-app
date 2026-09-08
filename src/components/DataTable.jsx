@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+
+import { STORE_CLASSIQUE_DEFAUT } from '../lib/constants/productRouting';
 import { DEFAULT_VIEWS } from "../lib/constants/views";
 import { useActivity } from "../contexts/activity";
 import { useAuth } from "../auth.jsx";
@@ -1576,7 +1578,7 @@ const handleDoubleClickCell = (e, rowIndex, colKey) => {
   // 🔒 Produit par défaut forcé UNIQUEMENT via tableKey (pour matcher le filtre MinuteEditor)
   const defaultProduit =
     tableKey === "rideaux" ? "Rideau"
-  :                          "Store Enrouleur"; // 'stores'
+  :                          STORE_CLASSIQUE_DEFAUT; // 'stores'
 
   const newRow = {
     id: uid(),

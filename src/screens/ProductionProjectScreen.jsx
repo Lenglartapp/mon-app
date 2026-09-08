@@ -17,7 +17,7 @@ import { computeFormulas, preserveManualAfterCompute } from "../lib/formulas/com
 import { SCHEMA_64 } from "../lib/schemas/production.js";
 import { STAGES, DEFAULT_VIEWS } from "../lib/constants/views.js"; // Import DEFAULT_VIEWS
 import { applySchemaDefaults } from "../lib/utils/schemaDefaults.js";
-import { MOBILIER_PRODUIT_RE } from "../lib/constants/productRouting.js";
+import { MOBILIER_PRODUIT_RE, STORE_CLASSIQUE_DEFAUT } from "../lib/constants/productRouting.js";
 import { recomputeRow } from "../lib/formulas/recomputeRow";
 import { computeProjectHours } from "../lib/projectMetrics";
 import { RIDEAUX_PROD_SCHEMA } from "../lib/schemas/production/rideaux";
@@ -1270,7 +1270,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                 schema={STORES_PROD_SCHEMA}
                 enableCellFormulas={true}
                 initialVisibilityModel={getVisibilityModel('prise', 'stores', STORES_PROD_SCHEMA)}
-                onAdd={() => handleAddRow("Store Enrouleur")}
+                onAdd={() => handleAddRow(STORE_CLASSIQUE_DEFAUT)}
                 onDuplicateRow={handleDuplicateRow}
                 catalog={projectMaterials}
                 projectId={project?.id}
@@ -1657,7 +1657,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                   schema={STORES_PROD_SCHEMA}
                   enableCellFormulas={true}
                   initialVisibilityModel={getVisibilityModel('bpp', 'stores', STORES_PROD_SCHEMA)}
-                  onAdd={() => handleAddRow("Store Enrouleur")}
+                  onAdd={() => handleAddRow(STORE_CLASSIQUE_DEFAUT)}
                   onDuplicateRow={handleDuplicateRow}
                   catalog={projectMaterials}
                 projectId={project?.id}

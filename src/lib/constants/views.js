@@ -80,7 +80,7 @@ export const DEFAULT_VIEWS = {
     ],
     stores: [
       "detail", "zone", "piece", "produit",
-      "largeur", "hauteur", "largeur_gorge", "profondeur_gorge",
+      "largeur", "hauteur", "tailles_lames", "largeur_gorge", "profondeur_gorge",
       "mecanisme_store", "cote_manoeuvre", "hauteur_manoeuvre",
       "type_pose", "guidage_coulisse",
       "statut_cotes", "quantite", "photos_sur_site"
@@ -235,7 +235,7 @@ export const DEFAULT_VIEWS = {
     ],
     stores: [
       "detail", "zone", "piece", "produit",
-      "largeur", "hauteur", "largeur_gorge", "profondeur_gorge",
+      "largeur", "hauteur", "tailles_lames", "largeur_gorge", "profondeur_gorge",
       "mecanisme_store", "cote_manoeuvre", "hauteur_manoeuvre",
       "type_pose", "guidage_coulisse",
       "statut_cotes", "statut_prepa", "quantite"

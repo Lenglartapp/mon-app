@@ -1,14 +1,18 @@
 // src/lib/schemas/production/stores_classiques.js
+
 // Schéma atelier pour le module "Stores" (Classiques)
 
-const STORE_BLOCKED_TYPES = [
-    'Store Enrouleur',
-    'Store Vénitien',
-    'Store Bande Verticale',
-    'Store Canishade'
-];
+import { STORES_CLASSIQUES_PRODUITS, STORE_NEGOCE_PRODUITS, VENITIEN_RE } from '../../constants/productRouting';
 
-const isBlocked = (row) => STORE_BLOCKED_TYPES.includes(row?.produit);
+// Négoce (pas de saisie tissu) et vénitiens : listes partagées avec le schéma
+// jumeau, pour qu'elles ne puissent plus diverger. Voir productRouting.js.
+const isBlocked = (row) => STORE_NEGOCE_PRODUITS.includes(row?.produit);
+
+// « Tailles lames » ne concerne que les vénitiens. Une colonne est affichée ou
+// masquée pour TOUT le tableau (pas ligne par ligne) : on la laisse donc visible
+// et on la rend modifiable uniquement sur les vénitiens — même principe que
+// isBlocked ci-dessus, et même rendu pour l'atelier.
+const isNotVenitien = (row) => !VENITIEN_RE.test(String(row?.produit || ''));
 
 const BASE_STORES_CLASSIQUES_SCHEMA = [
     // detail (button) : Détail
@@ -25,7 +29,7 @@ const BASE_STORES_CLASSIQUES_SCHEMA = [
         key: "produit",
         label: "Produit",
         type: "select",
-        options: ['Store Enrouleur', 'Store Vénitien', 'Store Bande Verticale', 'Store Canishade', 'Store Coffre'],
+        options: STORES_CLASSIQUES_PRODUITS,
         width: 160
     },
 
@@ -34,6 +38,9 @@ const BASE_STORES_CLASSIQUES_SCHEMA = [
 
     // hauteur (number) : Hauteur
     { key: "hauteur", label: "Hauteur", type: "number", width: 130 },
+
+    // tailles_lames (number) : réservé aux vénitiens (Bois / Alu)
+    { key: "tailles_lames", label: "Tailles lames", type: "number", width: 140, readOnly: isNotVenitien },
 
     // largeur_gorge (number) : Largeur Gorge
     { key: "largeur_gorge", label: "Largeur Gorge (cm)", type: "number", width: 155 },
@@ -151,6 +158,7 @@ export const STORES_PROD_SCHEMA = [
         'zone', 'piece', 'produit',
         { key: "largeur", width: 130 },
         'hauteur',
+        'tailles_lames',
         'largeur_gorge',
         'profondeur_gorge',
     ]),

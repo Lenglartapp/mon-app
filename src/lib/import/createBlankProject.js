@@ -1,4 +1,6 @@
 // src/lib/import/createBlankProject.js
+
+import { STORE_CLASSIQUE_DEFAUT } from '../constants/productRouting';
 import { uid } from "../utils/uid";
 import { computeFormulas } from "../formulas/compute";
 import { applySchemaDefaults } from "../utils/schemaDefaults";
@@ -17,7 +19,7 @@ function seedRowsFor(type) {
 export function createBlankProject(opts, prodSchema) {
   const rows = [];
   if (opts?.useRideaux)        rows.push(...seedRowsFor("Rideau"));
-  if (opts?.useStoresClassiques) rows.push(...seedRowsFor("Store Enrouleur"));
+  if (opts?.useStoresClassiques) rows.push(...seedRowsFor(STORE_CLASSIQUE_DEFAUT));
   if (opts?.useStoresBateau)   rows.push(...seedRowsFor("Store Bateau"));
   if (opts?.useTentures)       rows.push(...seedRowsFor("Tenture murale"));
   if (opts?.useCacheSommier)   rows.push(...seedRowsFor("Cache-sommier"));
