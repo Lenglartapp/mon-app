@@ -68,14 +68,19 @@ const hauteurFinieMax = (row) => Math.max(
     getters.hauteur_finie_gauche(row)
 );
 
-// « rentre dans la laize » = hauteur finie max + 50 < laize (on coupe dans le sens
-// de la laize : 1 lé = 1 hauteur).
-const rentreDansLaize = (row, laize) => (hauteurFinieMax(row) + 50) < laize;
+// RÈGLE UNIQUE — « rentre dans la laize » : hauteur de coupe ≤ laize (égalité
+// comprise). On coupe alors dans le sens de la laize, 1 lé = 1 hauteur.
+// La hauteur de coupe est passée en paramètre car elle diffère selon le tissu
+// (+ 50 pour le tissu, + 30 pour la doublure). Ce seuil posait auparavant sa
+// propre définition — « hauteur finie + 50 < laize », en strict et sans le
+// piquage du bas — qui contredisait celle du calcul du métrage : sur une même
+// ligne, le compteur de lés et le métrage pouvaient être en désaccord.
+const rentreDansLaize = (hCoupe, laize) => toNum(laize) >= toNum(hCoupe);
 
 // Nombre de lés ENTIERS d'un tissu, TOTAL (× pans). 1 lé/pan si on rentre dans la laize.
-const lesTotalForLaize = (row, laize) => {
+const lesTotalForLaize = (row, laize, hCoupe) => {
     if (toNum(laize) <= 0) return 0;
-    const lesParPan = rentreDansLaize(row, laize)
+    const lesParPan = rentreDansLaize(hCoupe, laize)
         ? 1
         : Math.max(1, Math.floor(getters.a_plat(row) / laize));
     return lesParPan * pansOf(row);
@@ -87,10 +92,10 @@ const lesTotalForLaize = (row, laize) => {
 //   - PAN                             → Nb Lés + 1
 //   - PAIRE & appiècement ≤ laize/2   → Nb Lés + 1
 //   - PAIRE & appiècement > laize/2   → Nb Lés + 2
-const hauteursForLaize = (row, laize, appiecement) => {
+const hauteursForLaize = (row, laize, appiecement, hCoupe) => {
     if (toNum(laize) <= 0) return "";
-    const nbLes = lesTotalForLaize(row, laize);
-    if (rentreDansLaize(row, laize)) return nbLes;
+    const nbLes = lesTotalForLaize(row, laize, hCoupe);
+    if (rentreDansLaize(hCoupe, laize)) return nbLes;
     if (isSinglePan(row)) return nbLes + 1;
     return toNum(appiecement) > (laize / 2) ? nbLes + 2 : nbLes + 1;
 };
@@ -210,17 +215,19 @@ const getters = {
         return round1(H - ded + fBas);
     },
 
+    // ── HAUTEURS DE COUPE ────────────────────────────────────────────────────
+    // Une hauteur de coupe est TOUJOURS une hauteur. Ces quatre getters
+    // renvoyaient l'À PLAT dès que la laize dépassait le seuil : la valeur
+    // changeait de nature, et calcML — qui s'en sert comme d'une hauteur pour
+    // poser le test « laize >= hauteur de coupe » — comparait alors la laize à
+    // une longueur, concluait que le tissu ne rentrait pas, et repartait en coupe
+    // verticale EN PRENANT L'À PLAT COMME HAUTEUR DE LÉ. La condition censée
+    // déclencher le mode couché était précisément celle qui l'empêchait, et le
+    // métrage était compté deux fois (144 lignes sur 640 en production).
+    // La décision couché/vertical appartient au SEUL calcul du métrage.
     hauteur_coupe: (row) => {
-        const hFinie = hauteurFinieMax(row);
-
-        const laize = toNum(row.laize_tissu1 || row.laize_tissu_deco1);
-        const aPlat = getters.a_plat(row);
-
-        if (laize > (hFinie + 50)) {
-            return round1(aPlat);
-        }
         const piquageBas = toNum(row.piquage_ourlets_du_bas || row.ourlet_bas);
-        return round1(hFinie + 50 + piquageBas);
+        return round1(hauteurFinieMax(row) + 50 + piquageBas);
     },
 
     nb_raccords_motifs: (row) => {
@@ -245,24 +252,19 @@ const getters = {
         return hCoupe;
     },
 
+    // Doublure : marge de 30 (et non 50) + son PROPRE ourlet du bas (« OB Doublure »),
+    // qui n'entrait dans aucun calcul jusqu'ici.
     hauteur_coupe_doublure: (row) => {
-        const hFinie = hauteurFinieMax(row);
-        const laizeD = toNum(row.laize_doublure);
-        const aPlat = getters.a_plat(row);
-        if (laizeD > (hFinie + 50)) return aPlat;
-        return hFinie + 50;
+        const obDoublure = toNum(row.piquage_ourlets_bas_doublure);
+        return round1(hauteurFinieMax(row) + 30 + obDoublure);
     },
 
     // H. Coupe T2 : même logique que hauteur_coupe, mais sur la laize du tissu 2.
     // Vide ("") si aucun tissu 2 renseigné (pas de tissu_deco2 ni de laize_tissu2).
     hauteur_coupe_t2: (row) => {
         if (!String(row.tissu_deco2 || "").trim() && !toNum(row.laize_tissu2)) return "";
-        const hFinie = hauteurFinieMax(row);
-        const laize = toNum(row.laize_tissu2);
-        const aPlat = getters.a_plat(row);
-        if (laize > (hFinie + 50)) return round1(aPlat);
         const piquageBas = toNum(row.piquage_ourlets_du_bas || row.ourlet_bas);
-        return round1(hFinie + 50 + piquageBas);
+        return round1(hauteurFinieMax(row) + 50 + piquageBas);
     },
 
     // H. Coupe Motif T2 : H. Coupe T2 arrondie au raccord vertical du tissu 2.
@@ -276,19 +278,17 @@ const getters = {
 
     // H. Coupe Inter. : même logique que hauteur_coupe_doublure, mais sur la laize inter.
     // Vide ("") si aucune interdoublure renseignée.
+    // Interdoublure : marge de 30 comme la doublure. Pas d'ourlet du bas dédié
+    // dans le schéma à ce jour — à rajouter si l'atelier en exprime le besoin.
     hauteur_coupe_inter: (row) => {
         if (!String(row.inter_doublure || "").trim() && !toNum(row.laize_inter)) return "";
-        const hFinie = hauteurFinieMax(row);
-        const laizeI = toNum(row.laize_inter);
-        const aPlat = getters.a_plat(row);
-        if (laizeI > (hFinie + 50)) return aPlat;
-        return hFinie + 50;
+        return round1(hauteurFinieMax(row) + 30);
     },
 
     nombre_les: (row) => {
         // Lés ENTIERS par pan (la fraction restante est portée par « Appiècement »),
         // × pans (× 2 sur une paire), et 1/pan si on rentre dans la laize.
-        return lesTotalForLaize(row, toNum(row.laize_tissu1));
+        return lesTotalForLaize(row, toNum(row.laize_tissu1), getters.hauteur_coupe(row));
     },
 
     // Nombre de lés — Tissu 2 / Doublure / Interdoublure (même logique que T1, sur leur
@@ -297,35 +297,35 @@ const getters = {
         if (!String(row.tissu_deco2 || "").trim() && !toNum(row.laize_tissu2)) return "";
         const laize = toNum(row.laize_tissu2);
         if (laize <= 0) return "";
-        return lesTotalForLaize(row, laize);
+        return lesTotalForLaize(row, laize, getters.hauteur_coupe_t2(row));
     },
     nombre_les_doublure: (row) => {
         if (!String(row.doublure || "").trim() && !toNum(row.laize_doublure)) return "";
         const laize = toNum(row.laize_doublure);
         if (laize <= 0) return "";
-        return lesTotalForLaize(row, laize);
+        return lesTotalForLaize(row, laize, getters.hauteur_coupe_doublure(row));
     },
     nombre_les_inter: (row) => {
         if (!String(row.inter_doublure || "").trim() && !toNum(row.laize_inter)) return "";
         const laize = toNum(row.laize_inter);
         if (laize <= 0) return "";
-        return lesTotalForLaize(row, laize);
+        return lesTotalForLaize(row, laize, getters.hauteur_coupe_inter(row));
     },
 
     // Nombre de hauteurs à couper — par tissu (T1 / T2 / Doublure / Interdoublure).
     nb_hauteur_a_couper: (row) =>
-        hauteursForLaize(row, toNum(row.laize_tissu1), getters.reste_les(row)),
+        hauteursForLaize(row, toNum(row.laize_tissu1), getters.reste_les(row), getters.hauteur_coupe(row)),
     nb_hauteur_a_couper_t2: (row) => {
         if (!String(row.tissu_deco2 || "").trim() && !toNum(row.laize_tissu2)) return "";
-        return hauteursForLaize(row, toNum(row.laize_tissu2), getters.reste_les_t2(row));
+        return hauteursForLaize(row, toNum(row.laize_tissu2), getters.reste_les_t2(row), getters.hauteur_coupe_t2(row));
     },
     nb_hauteur_a_couper_doublure: (row) => {
         if (!String(row.doublure || "").trim() && !toNum(row.laize_doublure)) return "";
-        return hauteursForLaize(row, toNum(row.laize_doublure), getters.reste_les_doublure(row));
+        return hauteursForLaize(row, toNum(row.laize_doublure), getters.reste_les_doublure(row), getters.hauteur_coupe_doublure(row));
     },
     nb_hauteur_a_couper_inter: (row) => {
         if (!String(row.inter_doublure || "").trim() && !toNum(row.laize_inter)) return "";
-        return hauteursForLaize(row, toNum(row.laize_inter), getters.reste_les_inter(row));
+        return hauteursForLaize(row, toNum(row.laize_inter), getters.reste_les_inter(row), getters.hauteur_coupe_inter(row));
     },
 
     reste_les: (row) => {
@@ -334,7 +334,7 @@ const getters = {
 
         // Si le rideau rentre dans la laize (hauteur finie max + 50 < laize T1),
         // on coupe dans le sens de la laize : pas de lés à jointer → pas d'appiècement.
-        if ((hauteurFinieMax(row) + 50) < laize) return "";
+        if (rentreDansLaize(getters.hauteur_coupe(row), laize)) return "";
 
         const aPlat = getters.a_plat(row);
         const fraction = (aPlat / laize) - Math.floor(aPlat / laize);
@@ -347,7 +347,7 @@ const getters = {
         if (!String(row.tissu_deco2 || "").trim() && !toNum(row.laize_tissu2)) return "";
         const laize = toNum(row.laize_tissu2);
         if (laize <= 0) return "";
-        if ((hauteurFinieMax(row) + 50) < laize) return "";
+        if (rentreDansLaize(getters.hauteur_coupe_t2(row), laize)) return "";
         const aPlat = getters.a_plat(row);
         const fraction = (aPlat / laize) - Math.floor(aPlat / laize);
         return round1(fraction * laize);
@@ -357,7 +357,7 @@ const getters = {
         if (!String(row.doublure || "").trim() && !toNum(row.laize_doublure)) return "";
         const laize = toNum(row.laize_doublure);
         if (laize <= 0) return "";
-        if ((hauteurFinieMax(row) + 50) < laize) return "";
+        if (rentreDansLaize(getters.hauteur_coupe_doublure(row), laize)) return "";
         const aPlat = getters.a_plat(row);
         const fraction = (aPlat / laize) - Math.floor(aPlat / laize);
         return round1(fraction * laize);
@@ -367,7 +367,7 @@ const getters = {
         if (!String(row.inter_doublure || "").trim() && !toNum(row.laize_inter)) return "";
         const laize = toNum(row.laize_inter);
         if (laize <= 0) return "";
-        if ((hauteurFinieMax(row) + 50) < laize) return "";
+        if (rentreDansLaize(getters.hauteur_coupe_inter(row), laize)) return "";
         const aPlat = getters.a_plat(row);
         const fraction = (aPlat / laize) - Math.floor(aPlat / laize);
         return round1(fraction * laize);
