@@ -32,8 +32,9 @@ import { MOBILIER_PROD_SCHEMA } from "../lib/schemas/production/mobilier";
 import { uid } from "../lib/utils/uid"; // Import uid
 import { compressAndUpload } from "../lib/utils/imageUpload";
 
-import { Search, Filter, Layers3, Star, FlaskConical, Image as ImageIcon, Pin, Edit2, FileText, BookOpen, Printer } from "lucide-react";
+import { Search, Filter, Layers3, Star, FlaskConical, Image as ImageIcon, Pin, Edit2, FileText, BookOpen, Printer, Scissors } from "lucide-react";
 import ProjectMaterialsPanel from "../components/ProjectMaterialsPanel";
+import OptimisationMetragePanel from "../components/OptimisationMetragePanel";
 import { applyCatalogRenames } from "../lib/utils/catalogRename";
 import AddressAutocomplete from "../components/AddressAutocomplete"; // Added FileText
 import { Dialog, DialogTitle, DialogContent, TextField, DialogActions, Button, Collapse, IconButton } from "@mui/material";
@@ -78,6 +79,11 @@ const getSchemaForRow = (row) => {
   if (/tenture murale/i.test(produit))           return { schema: TENTURE_MURALE_PROD_SCHEMA, tableKey: 'tenture_murale' };
   return { schema: RIDEAUX_PROD_SCHEMA, tableKey: 'rideaux' }; // fallback
 };
+
+// Ordre des colonnes défini par une vue — la liste elle-même, telle qu'elle est
+// écrite dans views.js. getVisibilityModel en perd la séquence (il renvoie un
+// dictionnaire construit dans l'ordre du schéma), d'où ce second accesseur.
+const getViewOrder = (viewKey, tableKey) => DEFAULT_VIEWS?.[viewKey]?.[tableKey] || null;
 
 const getVisibilityModel = (viewKey, tableKey, schema) => {
   const defaults = DEFAULT_VIEWS?.[viewKey]?.[tableKey];
@@ -181,6 +187,17 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
   const [showDocs, setShowDocs] = useState(false);
   const [deliveryOpen, setDeliveryOpen] = useState(false);
   const [showMaterials, setShowMaterials] = useState(false);
+
+  // OPTIMISATION DES MÉTRAGES — phase de test.
+  // Le bouton n'apparaît QUE si l'URL porte ?optim=1 : les équipes ne peuvent pas
+  // tomber dessus. Le panneau lui-même est en lecture seule, donc même un accès
+  // fortuit ne peut modifier aucun dossier.
+  const [showOptim, setShowOptim] = useState(false);
+  // Lignes cochées dans l'une des grilles rideaux. L'optimiseur travaille sur
+  // cette sélection ; à défaut, sur toutes les lignes rideaux du projet.
+  const [selectionRideaux, setSelectionRideaux] = useState([]);
+  const [optimActif] = useState(() => typeof window !== 'undefined'
+    && new URLSearchParams(window.location.search).get('optim') === '1');
   const [showAllPrise, setShowAllPrise] = useState(false);
   const deliveryRef = useRef(null);
 
@@ -331,11 +348,13 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
         ? [openedRow.zone, openedRow.piece, openedRow.produit].filter(Boolean).map(slugify)
         : [];
       const rowSlug = parts.length ? `${shortId}-${parts.join('-')}` : shortId;
-      navigate(`${projectBasePath}/${rowSlug}`, { replace: true });
+      navigate(`${projectBasePath}/${rowSlug}${location.search}`, { replace: true });
     } else {
-      navigate(projectBasePath, { replace: true });
+      // On conserve la query string : cette réécriture la supprimait, ce qui
+      // effaçait tout paramètre passé dans l'URL dès le chargement de l'écran.
+      navigate(`${projectBasePath}${location.search}`, { replace: true });
     }
-  }, [openedRowId, openedRow, projectBasePath]);
+  }, [openedRowId, openedRow, projectBasePath, location.search]);
 
   // document.title
   useEffect(() => {
@@ -845,6 +864,23 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', width: isMobile ? '100%' : 'auto' }}>
+            {optimActif && (
+              <button
+                onClick={() => setShowOptim(true)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  background: '#ECFDF5', border: '1px solid #A7F3D0', borderRadius: 20,
+                  padding: '7px 16px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                  cursor: 'pointer', fontSize: 13, color: '#047857', fontWeight: 600, outline: 'none',
+                }}
+              >
+                <Scissors size={15} />
+                {selectionRideaux.length > 0
+                  ? `Optimiser ${selectionRideaux.length} ligne${selectionRideaux.length > 1 ? 's' : ''}`
+                  : 'Optimiser les métrages'}
+              </button>
+            )}
+
             {/* Matériauthèque Button */}
             <button
               onClick={() => setShowMaterials(true)}
@@ -1269,7 +1305,9 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                 projectId={project?.id}
                 enableDecentree={true}
                 gridKey="pv_rideaux"
-                resetViewLabel="vue prise de cotes"
+                  onSelectionChange={setSelectionRideaux}
+                initialColumnOrder={getViewOrder('prise', 'rideaux')}
+                  resetViewLabel="vue prise de cotes"
                 onRowClick={(id) => setOpenedRowId(id)}
                 isMobile={isMobile}
               />
@@ -1460,8 +1498,10 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                 projectId={project?.id}
                   enableDecentree={true}
                   gridKey="bpf_rideaux"
+                  onSelectionChange={setSelectionRideaux}
                   matiereGroups={RIDEAUX_PROD_MATIERE_GROUPS}
                   matieresInPanel={true}
+                  initialColumnOrder={getViewOrder('bpf', 'rideaux')}
                   resetViewLabel="vue BPF"
                   onRowClick={(id) => setOpenedRowId(id)}
                   isMobile={isMobile}
@@ -1652,6 +1692,8 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                 projectId={project?.id}
                   enableDecentree={true}
                   gridKey="bpp_rideaux"
+                  onSelectionChange={setSelectionRideaux}
+                  initialColumnOrder={getViewOrder('bpp', 'rideaux')}
                   resetViewLabel="vue BPP"
                   onRowClick={(id) => setOpenedRowId(id)}
                   isMobile={isMobile}
@@ -1856,6 +1898,13 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
       )}
 
       {/* MATÉRIOTHÈQUE PROJET */}
+      <OptimisationMetragePanel
+        open={showOptim}
+        onClose={() => setShowOptim(false)}
+        rows={selectionRideaux.length > 0 ? selectionRideaux : rowsRideaux}
+        surSelection={selectionRideaux.length > 0}
+      />
+
       <ProjectMaterialsPanel
         open={showMaterials}
         onClose={() => setShowMaterials(false)}

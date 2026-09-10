@@ -9,7 +9,7 @@ import { recomputeRow } from '../lib/formulas/recomputeRow';
 import { generateRowLogs } from '../lib/utils/logUtils';
 import { uid } from '../lib/utils/uid';
 import { createDecentreePair, PAIRE_DECENTREE, DECENTREE_PARENT_ONLY_TECH, orderDecentreeRows } from '../lib/utils/pairDecentree';
-import { Plus, Trash2, Columns, Layers, Edit2, Filter, FileSpreadsheet } from 'lucide-react';
+import { Plus, Trash2, Columns, Layers, Edit2, Filter, FileSpreadsheet, PinOff } from 'lucide-react';
 import FilterPanel, { isConditionActive, evaluateCondition } from './FilterPanel';
 import { getDefaultMatieres } from '../lib/constants/matiereGroups';
 import { useAuth } from '../auth';
@@ -271,6 +271,7 @@ function MinuteGrid({
     onRowClick,
     readOnly = false,
     currentUser,
+    onSelectionChange,
     isMobile = false,
     gridKey,
     matiereGroups = [],
@@ -280,6 +281,10 @@ function MinuteGrid({
     matieresInPanel = false,
     // Libellé du bouton « Réinitialiser <…> » (ex. "vue BPF"). Absent = pas de bouton.
     resetViewLabel = '',
+    // Ordre des colonnes tel que la vue le définit (liste de clés, dans l'ordre).
+    // `initialVisibilityModel` ne le porte pas : c'est un dictionnaire construit
+    // dans l'ordre du schéma, la séquence voulue par la vue y est perdue.
+    initialColumnOrder = null,
     mecaGroups = [],
     confGroups = [],
     showExpeditionCol = false,
@@ -291,6 +296,8 @@ function MinuteGrid({
     const resolvedUser = currentUser ?? authUser;
     const [selectedCount, setSelectedCount] = useState(0);
     const [selectedRows, setSelectedRows] = useState([]);
+    const onSelectionChangeRef = useRef(onSelectionChange);
+    onSelectionChangeRef.current = onSelectionChange;
     const [colPanelOpen, setColPanelOpen] = useState(false);
     const [colSearch, setColSearch] = useState('');
     const colBtnRef = useRef(null);
@@ -561,6 +568,7 @@ function MinuteGrid({
         }
         // Vue personnelle (filtres / tri / regroupement) par-dessus la mise en page.
         if (userStateRef.current) applyUserState(params.api, userStateRef.current);
+        refreshPinnedCount(params.api);
         // Sinon, le useEffect ci-dessous prendra le relais dès que loaded=true
 
         // Appliquer les matières sauvegardées (override par-dessus initialVisibilityModel)
@@ -890,6 +898,8 @@ function MinuteGrid({
         const rows = params.api.getSelectedRows();
         setSelectedCount(rows.length);
         setSelectedRows(rows);
+        // Remonte la sélection au parent (optimisation des métrages, actions groupées).
+        onSelectionChangeRef.current?.(rows);
     }, []);
 
     // Export Excel (natif AG Grid Enterprise) — lignes cochées + colonnes visibles
@@ -1022,6 +1032,29 @@ function MinuteGrid({
         });
         api.setColumnsVisible(shown, true);
         api.setColumnsVisible(hidden, false);
+
+        // ORDRE — une vue ne définit pas seulement QUELLES colonnes s'affichent,
+        // mais aussi DANS QUEL ORDRE. Le bouton ne remettait que la visibilité :
+        // sur un dossier ancien, les colonnes réapparaissaient à la place où les
+        // déplacements successifs les avaient laissées. Le libellé
+        // « Réinitialiser la vue » promettait donc plus qu'il ne faisait.
+        if (Array.isArray(initialColumnOrder) && initialColumnOrder.length > 0) {
+            const connues = new Set(schema.filter(c => c.key && !c.hidden).map(c => c.key));
+            const ordre = initialColumnOrder.filter(k => connues.has(k));
+            const dansLaVue = new Set(ordre);
+            api.applyColumnState({
+                state: [
+                    // d'abord les colonnes de la vue, dans SON ordre…
+                    ...ordre.map(colId => ({ colId, hide: false })),
+                    // …puis le reste du schéma, masqué, à la suite.
+                    ...schema
+                        .filter(c => c.key && !c.hidden && !dansLaVue.has(c.key))
+                        .map(c => ({ colId: c.key, hide: initialVisibilityModel[c.key] === false })),
+                ],
+                applyOrder: true,
+            });
+        }
+
         saveColumnState(api);
         setColVisibility(nextVis);
 
@@ -1032,7 +1065,7 @@ function MinuteGrid({
             onMatiereChange?.(defMat);
         }
         setColPanelOpen(false);
-    }, [initialVisibilityModel, schema, saveColumnState, matiereGroups, onMatiereChange]);
+    }, [initialVisibilityModel, initialColumnOrder, schema, saveColumnState, matiereGroups, onMatiereChange]);
 
     // Réinitialise les LARGEURS à leur valeur par défaut (auto-ajustée au nom de champ) :
     // efface les largeurs sauvegardées et ré-applique la largeur par défaut à chaque colonne.
@@ -1201,6 +1234,49 @@ function MinuteGrid({
         const filtered = !!api.isAnyFilterPresent?.();
         return sorted || grouped || filtered;
     }, []);
+    // Colonnes épinglées par l'utilisateur (hors « sel » et « detail », épinglées
+    // par construction). Sert à n'afficher le bouton de désépinglage que lorsqu'il
+    // a quelque chose à faire.
+    const [pinnedCount, setPinnedCount] = useState(0);
+
+    // Colonnes épinglées PAR L'UTILISATEUR. On écarte :
+    //  - les colonnes internes d'AG Grid (case à cocher, colonne de regroupement),
+    //    dont l'identifiant commence par « ag-Grid- » ;
+    //  - toute colonne épinglée par sa propre définition, donc par construction.
+    // Se fier au seul identifiant ne suffisait pas : la colonne de sélection
+    // s'appelle « ag-Grid-SelectionColumn », elle était comptée comme épinglée
+    // par l'utilisateur alors qu'elle ne peut pas être détachée.
+    const colonnesEpingleesParUtilisateur = useCallback((api) => {
+        const grid = api || gridRef.current?.api;
+        if (!grid) return [];
+        return (grid.getColumns() || []).filter(col => {
+            if (!col.isPinned?.()) return false;
+            const id = col.getColId?.() || '';
+            if (id.startsWith('ag-Grid-')) return false;
+            return !col.getColDef?.()?.pinned;
+        });
+    }, []);
+
+    const refreshPinnedCount = useCallback((api) => {
+        setPinnedCount(colonnesEpingleesParUtilisateur(api).length);
+    }, [colonnesEpingleesParUtilisateur]);
+
+    const handleUnpinAll = useCallback(() => {
+        const api = gridRef.current?.api;
+        if (!api) return;
+        const aDetacher = colonnesEpingleesParUtilisateur(api)
+            .map(col => ({ colId: col.getColId(), pinned: null }));
+        if (aDetacher.length === 0) return;
+        api.applyColumnState({ state: aDetacher });
+        saveColumnState(api);
+        refreshPinnedCount(api);
+    }, [colonnesEpingleesParUtilisateur, saveColumnState, refreshPinnedCount]);
+
+    const onColumnPinned = useCallback((params) => {
+        refreshPinnedCount(params.api);
+        saveColumnState(params.api);
+    }, [refreshPinnedCount, saveColumnState]);
+
     const updateReorderState = useCallback(() => {
         const blocked = computeReorderBlocked();
         reorderBlockedRef.current = blocked;
@@ -1691,6 +1767,23 @@ function MinuteGrid({
                 {filterPanelOpen && (
                     <div style={{ position: 'fixed', inset: 0, zIndex: 1000 }} onClick={() => setFilterPanelOpen(false)} />
                 )}
+
+                {/* Désépingler tout — n'apparaît que s'il y a des colonnes épinglées,
+                    pour éviter d'avoir à les détacher une par une via leur menu. */}
+                {pinnedCount > 0 && (
+                    <button
+                        onClick={handleUnpinAll}
+                        title="Remettre les colonnes épinglées à leur place dans le tableau"
+                        style={{
+                            cursor: 'pointer', padding: '5px 10px',
+                            background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe',
+                            borderRadius: 4, display: 'flex', alignItems: 'center', gap: 5,
+                            fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap',
+                        }}
+                    >
+                        <PinOff size={14} /> Désépingler ({pinnedCount})
+                    </button>
+                )}
                 {/* Bouton Configuration (Matières + Méca + Conf) — chiffrage. En production
                     (matieresInPanel), les matières vivent dans le panneau Colonnes, donc on
                     ne montre plus ce bouton pour elles. */}
@@ -2024,6 +2117,7 @@ function MinuteGrid({
                     onRowDragEnd={onRowDragEnd}
                     processCellFromClipboard={processCellFromClipboard}
                     onGridReady={onGridReady}
+                    onColumnPinned={onColumnPinned}
                     onColumnResized={onColumnResized}
                     onColumnVisible={onColumnVisible}
                     onColumnMoved={onColumnMoved}

@@ -150,6 +150,20 @@ function AgColumnHeader(props) {
     return () => column.removeEventListener('filterActiveChanged', update);
   }, [column]);
 
+  // Épingle : même principe que l'icône de filtre — un repère qui se remplit
+  // quand l'état est actif. Sans lui, rien ne distingue une colonne épinglée
+  // d'une colonne simplement placée à gauche, et on ne comprend pas pourquoi
+  // elle n'est pas à sa place dans l'ordre du tableau.
+  const [pinned, setPinned] = useState(() => !!column?.isPinned?.());
+  useEffect(() => {
+    const api = props.api;
+    if (!api || !column) return;
+    const update = () => setPinned(!!column.isPinned?.());
+    update();
+    api.addEventListener('columnPinned', update);
+    return () => api.removeEventListener('columnPinned', update);
+  }, [column, props.api]);
+
   const filterable = enableFilterButton && colDef?.filter !== false && !!showFilter;
   const openFilter = (e) => {
     e.stopPropagation();
@@ -166,8 +180,26 @@ function AgColumnHeader(props) {
     </span>
   );
 
+  // Colonnes épinglées par construction (sélection, regroupement) : pas de repère,
+  // ce n'est pas un choix de l'utilisateur.
+  const epingleVisible = pinned
+    && !(column?.getColId?.() || '').startsWith('ag-Grid-')
+    && !colDef?.pinned;
+
+  const epingle = epingleVisible ? (
+    <span
+      title="Colonne épinglée"
+      style={{ display: 'inline-flex', alignItems: 'center', flexShrink: 0, color: '#2563eb' }}
+    >
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <path d="M16 3a1 1 0 0 1 0 2 1 1 0 0 0-1 1v4.76a2 2 0 0 0 1.11 1.79l1.78.9A2 2 0 0 1 19 15.24V16a1 1 0 0 1-1 1h-5v5a1 1 0 0 1-2 0v-5H6a1 1 0 0 1-1-1v-.76a2 2 0 0 1 1.11-1.79l1.78-.9A2 2 0 0 0 9 10.76V6a1 1 0 0 0-1-1 1 1 0 0 1 0-2z" />
+      </svg>
+    </span>
+  ) : null;
+
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '4px', width: '100%', overflow: 'hidden' }}>
+      {epingle}
       {icon && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, height: '14px' }}>
           {icon}

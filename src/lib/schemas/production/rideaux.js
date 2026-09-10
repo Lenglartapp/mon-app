@@ -53,7 +53,7 @@ const isPanLibre = (row) =>
 // (pour une paire, la largeur est divisée par deux) : tout ce qui se consomme réellement
 // — métrage tissu, nombre de lés — doit donc être compté deux fois sur une paire.
 // L'appiècement, lui, reste une donnée de coupe par pan.
-const pansOf = (row) => (isSinglePan(row) ? 1 : 2);
+export const pansOf = (row) => (isSinglePan(row) ? 1 : 2);
 
 // ── Helpers Lés / Hauteurs à couper (par tissu, pour une laize donnée) ────────
 // Hauteur finie retenue pour toute décision de coupe : le MAXIMUM des TROIS cotes
@@ -118,7 +118,12 @@ export const PATTE_CROISEMENT_OPTIONS = ["", ...Object.keys(PATTE_CROISEMENT_CRO
 
 // ML tissu : calcul selon orientation (laize vs hauteur_coupe)
 // aPlat, laize, hCoupe, hCoupeMotif en cm → résultat en m
-const calcML = (aPlat, laize, hCoupe, hCoupeMotif, pans = 1) => {
+// Marge ajoutée à la hauteur finie pour obtenir la hauteur de coupe : ourlet
+// haut + ourlet bas + marge de coupe. Sortie en constante pour que l'optimiseur
+// puisse l'abaisser (levier « rentrer dans la laize »).
+export const MARGE_COUPE_DEFAUT = 50;
+
+export const calcML = (aPlat, laize, hCoupe, hCoupeMotif, pans = 1) => {
     if (!laize || laize <= 0 || !aPlat || aPlat <= 0) return 0;
     if (laize >= hCoupe) {
         // Horizontal (tissu couché) : la longueur suit l'à plat, deux fois pour une paire.
@@ -146,7 +151,9 @@ const calcPassML = (app, aPlat, hCoupe, isPaire) => {
 
 // Helper for complex calculations
 const getters = {
-    largeur_finie: (row) => {
+    // `opts.coefficient` permet à l'optimiseur d'essayer un autre coefficient sans
+    // toucher à la ligne. Absent → comportement historique inchangé.
+    largeur_finie: (row, opts = {}) => {
         const L = toNum(row.largeur);
         const croisement = toNum(row.croisement);
         const isOnePanel = isSinglePan(row);
@@ -159,7 +166,7 @@ const getters = {
         if (isWave) {
             // Wave : largeur finie d'un pan = ArrondiSupPaire(largeurPan × coeff ÷ div) × div,
             // pour tomber sur un nombre pair de vagues. Le 200 est inclus dans « < 200 » → 1,10.
-            const coeff = L <= 200 ? 1.10 : 1.06;
+            const coeff = opts.coefficient ?? (L <= 200 ? 1.10 : 1.06);
             const div = typeConf.includes("wave 60") ? 6 : 8;
             const wavePan = arrondiSupPaire((largeurPan * coeff) / div) * div;
             // Paire : on ajoute le croisement par-dessus (comme les autres confections).
@@ -167,14 +174,15 @@ const getters = {
         }
 
         // Autres confections : formule historique inchangée (200 → 1,06).
-        const coeff = L >= 200 ? 1.06 : 1.10;
+        const coeff = opts.coefficient ?? (L >= 200 ? 1.06 : 1.10);
         const val = isOnePanel ? (L * coeff) : ((L / 2 * coeff) + croisement);
         return Math.ceil(val);
     },
 
-    a_plat: (row) => {
-        const lFinie = getters.largeur_finie(row);
-        const ampleur = toNum(row.ampleur) || 1;
+    // `opts.ampleur` et `opts.coefficient` : voir largeur_finie.
+    a_plat: (row, opts = {}) => {
+        const lFinie = getters.largeur_finie(row, opts);
+        const ampleur = toNum(opts.ampleur ?? row.ampleur) || 1;
         const vOurlets = toNum(row.v_ourlets_de_cotes || row.val_ourlet_cote);
 
         // Retour : on retient la plus grande des deux valeurs gauche / droite.
@@ -225,9 +233,11 @@ const getters = {
     // déclencher le mode couché était précisément celle qui l'empêchait, et le
     // métrage était compté deux fois (144 lignes sur 640 en production).
     // La décision couché/vertical appartient au SEUL calcul du métrage.
-    hauteur_coupe: (row) => {
+    // `opts.margeCoupe` remplace les 50 cm (ourlet haut + bas + marge de coupe).
+    // C'est le levier « réduire la hauteur pour rentrer dans la laize ».
+    hauteur_coupe: (row, opts = {}) => {
         const piquageBas = toNum(row.piquage_ourlets_du_bas || row.ourlet_bas);
-        return round1(hauteurFinieMax(row) + 50 + piquageBas);
+        return round1(hauteurFinieMax(row) + (opts.margeCoupe ?? MARGE_COUPE_DEFAUT) + piquageBas);
     },
 
     nb_raccords_motifs: (row) => {
@@ -245,8 +255,8 @@ const getters = {
         return rV > 0 ? Math.ceil(hCoupe / rV) + 1 : 0;
     },
 
-    hauteur_coupe_motif: (row) => {
-        const hCoupe = getters.hauteur_coupe(row);
+    hauteur_coupe_motif: (row, opts = {}) => {
+        const hCoupe = getters.hauteur_coupe(row, opts);
         const rV = toNum(row.raccord_v_tissu1);
         if (rV > 0) return Math.ceil(hCoupe / rV) * rV;
         return hCoupe;
