@@ -271,6 +271,7 @@ function MinuteGrid({
     onRowClick,
     readOnly = false,
     currentUser,
+    onSelectionChange,
     isMobile = false,
     gridKey,
     matiereGroups = [],
@@ -295,6 +296,8 @@ function MinuteGrid({
     const resolvedUser = currentUser ?? authUser;
     const [selectedCount, setSelectedCount] = useState(0);
     const [selectedRows, setSelectedRows] = useState([]);
+    const onSelectionChangeRef = useRef(onSelectionChange);
+    onSelectionChangeRef.current = onSelectionChange;
     const [colPanelOpen, setColPanelOpen] = useState(false);
     const [colSearch, setColSearch] = useState('');
     const colBtnRef = useRef(null);
@@ -895,6 +898,8 @@ function MinuteGrid({
         const rows = params.api.getSelectedRows();
         setSelectedCount(rows.length);
         setSelectedRows(rows);
+        // Remonte la sélection au parent (optimisation des métrages, actions groupées).
+        onSelectionChangeRef.current?.(rows);
     }, []);
 
     // Export Excel (natif AG Grid Enterprise) — lignes cochées + colonnes visibles
