@@ -79,6 +79,11 @@ const getSchemaForRow = (row) => {
   return { schema: RIDEAUX_PROD_SCHEMA, tableKey: 'rideaux' }; // fallback
 };
 
+// Ordre des colonnes défini par une vue — la liste elle-même, telle qu'elle est
+// écrite dans views.js. getVisibilityModel en perd la séquence (il renvoie un
+// dictionnaire construit dans l'ordre du schéma), d'où ce second accesseur.
+const getViewOrder = (viewKey, tableKey) => DEFAULT_VIEWS?.[viewKey]?.[tableKey] || null;
+
 const getVisibilityModel = (viewKey, tableKey, schema) => {
   const defaults = DEFAULT_VIEWS?.[viewKey]?.[tableKey];
   if (!defaults) return {}; // All visible by default
@@ -181,6 +186,9 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
   const [showDocs, setShowDocs] = useState(false);
   const [deliveryOpen, setDeliveryOpen] = useState(false);
   const [showMaterials, setShowMaterials] = useState(false);
+
+  const [optimActif] = useState(() => typeof window !== 'undefined'
+    && new URLSearchParams(window.location.search).get('optim') === '1');
   const [showAllPrise, setShowAllPrise] = useState(false);
   const deliveryRef = useRef(null);
 
@@ -331,11 +339,13 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
         ? [openedRow.zone, openedRow.piece, openedRow.produit].filter(Boolean).map(slugify)
         : [];
       const rowSlug = parts.length ? `${shortId}-${parts.join('-')}` : shortId;
-      navigate(`${projectBasePath}/${rowSlug}`, { replace: true });
+      navigate(`${projectBasePath}/${rowSlug}${location.search}`, { replace: true });
     } else {
-      navigate(projectBasePath, { replace: true });
+      // On conserve la query string : cette réécriture la supprimait, ce qui
+      // effaçait tout paramètre passé dans l'URL dès le chargement de l'écran.
+      navigate(`${projectBasePath}${location.search}`, { replace: true });
     }
-  }, [openedRowId, openedRow, projectBasePath]);
+  }, [openedRowId, openedRow, projectBasePath, location.search]);
 
   // document.title
   useEffect(() => {
@@ -1269,7 +1279,8 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                 projectId={project?.id}
                 enableDecentree={true}
                 gridKey="pv_rideaux"
-                resetViewLabel="vue prise de cotes"
+                initialColumnOrder={getViewOrder('prise', 'rideaux')}
+                  resetViewLabel="vue prise de cotes"
                 onRowClick={(id) => setOpenedRowId(id)}
                 isMobile={isMobile}
               />
@@ -1462,6 +1473,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                   gridKey="bpf_rideaux"
                   matiereGroups={RIDEAUX_PROD_MATIERE_GROUPS}
                   matieresInPanel={true}
+                  initialColumnOrder={getViewOrder('bpf', 'rideaux')}
                   resetViewLabel="vue BPF"
                   onRowClick={(id) => setOpenedRowId(id)}
                   isMobile={isMobile}
@@ -1652,6 +1664,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                 projectId={project?.id}
                   enableDecentree={true}
                   gridKey="bpp_rideaux"
+                  initialColumnOrder={getViewOrder('bpp', 'rideaux')}
                   resetViewLabel="vue BPP"
                   onRowClick={(id) => setOpenedRowId(id)}
                   isMobile={isMobile}
