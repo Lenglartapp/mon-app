@@ -1140,7 +1140,12 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                   </button>
                 )}
                 <div style={{ marginLeft: 'auto' }}>
-                  <OdooStatusBadge projectName={project?.name} projectId={project?.id} odooProjectId={project?.odoo_project_id} />
+                  <OdooStatusBadge
+                    projectName={project?.name}
+                    projectId={project?.id}
+                    idProjetOdoo={project?.id_projet_odoo}
+                    onLink={(odooId) => onUpdateProject && project && onUpdateProject(project.id, { id_projet_odoo: odooId })}
+                  />
                 </div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>

@@ -19,7 +19,7 @@ import { isSchemaDriftError, updateStrippingPhantomColumns } from '../lib/schema
 // ⚠️ NE JAMAIS faire `select('*')` pour une liste : chaque champ ajouté dans `rows`
 // regonflerait la requête et ferait réapparaître la latence. Pour le détail complet,
 // utiliser loadProjectDetail(id) ci-dessous.
-const PROJECT_LIST_COLUMNS = 'id,name,manager,status,notes,budget,deadline,due,created_at,updated_at,source_minute_id';
+const PROJECT_LIST_COLUMNS = 'id,name,manager,status,notes,budget,deadline,due,created_at,updated_at,source_minute_id,id_projet_odoo';
 
 export const useProjects = () => {
     const [projects, setProjects] = useState([]);
