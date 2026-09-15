@@ -12,6 +12,7 @@ import MinutesScreen from "./MinutesScreen.jsx";
 import LineDetailPanel from "../components/LineDetailPanel";
 import StockInventoryTab from "../components/modules/Stocks/StockInventoryTab.jsx";
 import OdooStatusBadge from "../components/odoo/OdooStatusBadge.jsx";
+import ProjectCourseListPanel from "../components/odoo/ProjectCourseListPanel.jsx";
 
 import { computeFormulas, preserveManualAfterCompute } from "../lib/formulas/compute";
 import { SCHEMA_64 } from "../lib/schemas/production.js";
@@ -1881,6 +1882,13 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
           <Button onClick={() => setStockOpen(false)}>Fermer</Button>
         </DialogTitle>
         <DialogContent dividers sx={{ p: 0 }}>
+          <div style={{ padding: 16, borderBottom: '1px solid #E5E7EB', background: '#FCFCFD' }}>
+            <ProjectCourseListPanel
+              droitfilProjectId={project?.id}
+              odooProjectId={project?.id_projet_odoo}
+              projectName={project?.name}
+            />
+          </div>
           <StockInventoryTab
             inventory={inventory ? inventory.filter(item => {
               if (!item.project) return false;
