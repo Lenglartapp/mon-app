@@ -15,7 +15,7 @@ const STATUT = {
   probleme:        { label: "Problème",       bg: "#FEF2F2", color: "#B91C1C" },
 };
 
-const COLS = ["Fournisseur", "Référence", "Coloris", "Laize", "Qté", "Unité", "Livraison", "Statut", "Réception"];
+const COLS = ["Fournisseur", "Référence", "Coloris", "Laize", "Qté", "Unité", "Date de livraison estimée", "Statut", "Date de réception"];
 const fmtDate = (d) => (d ? new Date(d).toLocaleDateString("fr-FR") : "—");
 
 function StatutBadge({ statut }) {
