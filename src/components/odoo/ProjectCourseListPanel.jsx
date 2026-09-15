@@ -34,6 +34,7 @@ export default function ProjectCourseListPanel({ droitfilProjectId, odooProjectI
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
+  const [notice, setNotice] = useState(null);
   const [lastSync, setLastSync] = useState(null);
 
   useEffect(() => {
@@ -51,10 +52,12 @@ export default function ProjectCourseListPanel({ droitfilProjectId, odooProjectI
     if (!odooProjectId) return;
     setRefreshing(true);
     setError(null);
+    setNotice(null);
     try {
-      const rows = await refreshCourseLines(droitfilProjectId, odooProjectId);
+      const { lines: rows, receptionsCreated } = await refreshCourseLines(droitfilProjectId, odooProjectId, projectName);
       setLines(rows);
       setLastSync(new Date().toISOString());
+      if (receptionsCreated > 0) setNotice(`${receptionsCreated} réception(s) ajoutée(s) au stock du projet.`);
     } catch (e) {
       setError(e.message);
     } finally {
@@ -91,6 +94,12 @@ export default function ProjectCourseListPanel({ droitfilProjectId, odooProjectI
       {error && (
         <div style={{ display: "flex", gap: 8, alignItems: "center", background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", borderRadius: 10, padding: "8px 12px", marginBottom: 10, fontSize: 13 }}>
           <AlertTriangle size={16} /> {error}
+        </div>
+      )}
+
+      {notice && (
+        <div style={{ display: "flex", gap: 8, alignItems: "center", background: "#ECFDF5", border: "1px solid #A7F3D0", color: "#065F46", borderRadius: 10, padding: "8px 12px", marginBottom: 10, fontSize: 13 }}>
+          <ShoppingCart size={16} /> {notice}
         </div>
       )}
 

@@ -32,10 +32,37 @@ export async function readCourseLines(droitfilProjectId) {
 }
 
 /**
- * Rafraîchit depuis Odoo : upsert les lignes courantes, marque « retirées » celles disparues
- * (sans les supprimer). Renvoie la liste à jour du miroir.
+ * Crée une entrée d'inventaire + une ligne de journal (mouvement IN) à partir d'une ligne
+ * de course réceptionnée. Métrage total ; détail des pièces à compléter ensuite dans Droitfil.
+ * Le fournisseur (pas de champ dédié en stock) est mis dans le motif du mouvement.
  */
-export async function refreshCourseLines(droitfilProjectId, odooProjectId) {
+async function createReceptionEntry(line, projectName) {
+  const product = [line.reference, line.coloris].filter(Boolean).join(" — ") || line.reference || "Réception";
+  const qty = line.quantite ?? 0;
+  const unit = line.unite || null;
+  const category = line.unite && /m/i.test(line.unite) ? "Tissu" : "Accessoire";
+  const reason = ["Réception Odoo", line.fournisseur, line.laize ? `laize ${line.laize}` : null]
+    .filter(Boolean)
+    .join(" — ");
+  const now = new Date().toISOString();
+
+  const { error: itemErr } = await supabase.from("inventory_items").insert([
+    { product, qty, unit, project: projectName || null, location: "", category, pieces: [] },
+  ]);
+  if (itemErr) throw itemErr;
+
+  const { error: logErr } = await supabase.from("inventory_logs").insert([
+    { type: "IN", product, qty, unit, user_name: "Synchro Odoo", location: "", project: projectName || null, reason, pieces_names: null, date: now },
+  ]);
+  if (logErr) throw logErr;
+}
+
+/**
+ * Rafraîchit depuis Odoo : upsert les lignes courantes, marque « retirées » celles disparues
+ * (sans les supprimer), puis bascule en stock les lignes « Réceptionné » pas encore basculées.
+ * Renvoie { lines, receptionsCreated }.
+ */
+export async function refreshCourseLines(droitfilProjectId, odooProjectId, projectName) {
   const odooLines = await fetchFromOdoo(odooProjectId);
   const now = new Date().toISOString();
 
@@ -79,5 +106,16 @@ export async function refreshCourseLines(droitfilProjectId, odooProjectId) {
       .in("odoo_id", toMark);
   }
 
-  return readCourseLines(droitfilProjectId);
+  // Bascule en stock : lignes réceptionnées pas encore basculées (idempotent via stock_created)
+  const current = await readCourseLines(droitfilProjectId);
+  let receptionsCreated = 0;
+  for (const line of current) {
+    if (line.statut === "receptionne" && !line.stock_created && !line.removed_from_odoo) {
+      await createReceptionEntry(line, projectName);
+      await supabase.from("odoo_course_lines").update({ stock_created: true }).eq("odoo_id", line.odoo_id);
+      receptionsCreated++;
+    }
+  }
+
+  return { lines: await readCourseLines(droitfilProjectId), receptionsCreated };
 }
