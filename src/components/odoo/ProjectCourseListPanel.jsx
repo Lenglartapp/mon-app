@@ -15,7 +15,7 @@ const STATUT = {
   probleme:        { label: "Problème",       bg: "#FEF2F2", color: "#B91C1C" },
 };
 
-const fmtQty = (q, u) => (q == null ? "—" : `${q}${u ? " " + u : ""}`);
+const COLS = ["Fournisseur", "Référence", "Coloris", "Laize", "Qté", "Unité", "Livraison", "Statut", "Réception"];
 const fmtDate = (d) => (d ? new Date(d).toLocaleDateString("fr-FR") : "—");
 
 function StatutBadge({ statut }) {
@@ -26,6 +26,8 @@ function StatutBadge({ statut }) {
     </span>
   );
 }
+
+const td = { padding: "8px 10px", verticalAlign: "top" };
 
 export default function ProjectCourseListPanel({ droitfilProjectId, odooProjectId, projectName }) {
   const [lines, setLines] = useState([]);
@@ -60,7 +62,6 @@ export default function ProjectCourseListPanel({ droitfilProjectId, odooProjectI
     }
   };
 
-  // Pas relié
   if (!odooProjectId) {
     return (
       <div style={{ padding: 16, display: "flex", alignItems: "center", gap: 10, color: "#6B7280", fontSize: 14 }}>
@@ -75,7 +76,6 @@ export default function ProjectCourseListPanel({ droitfilProjectId, odooProjectI
 
   return (
     <div style={{ padding: "8px 4px" }}>
-      {/* En-tête */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10, flexWrap: "wrap", gap: 8 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 700, color: "#111827" }}>
           <ShoppingCart size={16} /> Liste de courses <span style={{ fontWeight: 400, color: "#9CA3AF", fontSize: 13 }}>({active.length})</span>
@@ -94,43 +94,46 @@ export default function ProjectCourseListPanel({ droitfilProjectId, odooProjectI
         </div>
       )}
 
-      {/* Tableau */}
       <div style={{ overflowX: "auto", border: "1px solid #E5E7EB", borderRadius: 10 }}>
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
           <thead>
             <tr style={{ background: "#F9FAFB" }}>
-              {["Référence", "Coloris", "Laize", "Qté", "Fournisseur", "Livraison", "Statut"].map((h) => (
+              {COLS.map((h) => (
                 <th key={h} style={{ textAlign: "left", padding: "8px 10px", borderBottom: "1px solid #E5E7EB", fontWeight: 700, color: "#374151", whiteSpace: "nowrap" }}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {loading && (
-              <tr><td colSpan={7} style={{ padding: 14, color: "#9CA3AF" }}>Chargement…</td></tr>
+              <tr><td colSpan={COLS.length} style={{ padding: 14, color: "#9CA3AF" }}>Chargement…</td></tr>
             )}
             {!loading && active.length === 0 && removed.length === 0 && (
-              <tr><td colSpan={7} style={{ padding: 14, color: "#9CA3AF" }}>Aucune ligne. Clique « Rafraîchir depuis Odoo ».</td></tr>
+              <tr><td colSpan={COLS.length} style={{ padding: 14, color: "#9CA3AF" }}>Aucune ligne. Clique « Rafraîchir depuis Odoo ».</td></tr>
             )}
             {active.map((l) => (
               <tr key={l.odoo_id} style={{ borderBottom: "1px solid #F3F4F6" }}>
-                <td style={{ padding: "8px 10px", fontWeight: 600 }}>{l.reference || "—"}</td>
-                <td style={{ padding: "8px 10px" }}>{l.coloris || "—"}</td>
-                <td style={{ padding: "8px 10px" }}>{l.laize || "—"}</td>
-                <td style={{ padding: "8px 10px", whiteSpace: "nowrap" }}>{fmtQty(l.quantite, l.unite)}</td>
-                <td style={{ padding: "8px 10px" }}>{l.fournisseur || "—"}</td>
-                <td style={{ padding: "8px 10px", whiteSpace: "nowrap" }}>{fmtDate(l.date_livraison_estimee)}</td>
-                <td style={{ padding: "8px 10px" }}><StatutBadge statut={l.statut} /></td>
+                <td style={td}>{l.fournisseur || "—"}</td>
+                <td style={{ ...td, fontWeight: 600 }}>{l.reference || "—"}</td>
+                <td style={td}>{l.coloris || "—"}</td>
+                <td style={td}>{l.laize || "—"}</td>
+                <td style={{ ...td, textAlign: "right", whiteSpace: "nowrap" }}>{l.quantite ?? "—"}</td>
+                <td style={td}>{l.unite || "—"}</td>
+                <td style={{ ...td, whiteSpace: "nowrap" }}>{fmtDate(l.date_livraison_estimee)}</td>
+                <td style={td}><StatutBadge statut={l.statut} /></td>
+                <td style={{ ...td, whiteSpace: "nowrap" }}>{fmtDate(l.date_reception)}</td>
               </tr>
             ))}
             {removed.map((l) => (
-              <tr key={l.odoo_id} style={{ borderBottom: "1px solid #F3F4F6", opacity: 0.5 }} title="Cette ligne n'existe plus dans Odoo (gardée ici).">
-                <td style={{ padding: "8px 10px", textDecoration: "line-through" }}>{l.reference || "—"}</td>
-                <td style={{ padding: "8px 10px", textDecoration: "line-through" }}>{l.coloris || "—"}</td>
-                <td style={{ padding: "8px 10px" }}>{l.laize || "—"}</td>
-                <td style={{ padding: "8px 10px" }}>{fmtQty(l.quantite, l.unite)}</td>
-                <td style={{ padding: "8px 10px" }}>{l.fournisseur || "—"}</td>
-                <td style={{ padding: "8px 10px" }}>{fmtDate(l.date_livraison_estimee)}</td>
-                <td style={{ padding: "8px 10px", display: "flex", alignItems: "center", gap: 4, color: "#9CA3AF" }}><Link2Off size={12} /> retirée d'Odoo</td>
+              <tr key={l.odoo_id} style={{ borderBottom: "1px solid #F3F4F6", opacity: 0.55, color: "#9CA3AF" }} title="Cette ligne n'existe plus dans Odoo (gardée ici).">
+                <td style={td}>{l.fournisseur || "—"}</td>
+                <td style={{ ...td, textDecoration: "line-through" }}>{l.reference || "—"}</td>
+                <td style={{ ...td, textDecoration: "line-through" }}>{l.coloris || "—"}</td>
+                <td style={td}>{l.laize || "—"}</td>
+                <td style={{ ...td, textAlign: "right" }}>{l.quantite ?? "—"}</td>
+                <td style={td}>{l.unite || "—"}</td>
+                <td style={td}>{fmtDate(l.date_livraison_estimee)}</td>
+                <td style={{ ...td, display: "flex", alignItems: "center", gap: 4 }}><Link2Off size={12} /> retirée d'Odoo</td>
+                <td style={td}>{fmtDate(l.date_reception)}</td>
               </tr>
             ))}
           </tbody>
