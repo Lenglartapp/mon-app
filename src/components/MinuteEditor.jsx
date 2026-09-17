@@ -12,7 +12,7 @@ import { recomputeRow } from "../lib/formulas/recomputeRow";
 import { COLORS } from "../lib/constants/ui";
 import { uid } from "../lib/utils/uid";
 
-import { Library, Plus, Trash2 } from 'lucide-react';
+import { Library, Plus, Trash2, ChevronDown } from 'lucide-react';
 
 import { CHIFFRAGE_SCHEMA_DEP } from "../lib/schemas/deplacement";
 import { EXTRA_DEPENSES_SCHEMA } from "../lib/schemas/extraDepenses";
@@ -504,32 +504,63 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
     return catalog.filter(item => item.category === 'Rail').map(item => item.name);
   }, [catalog]);
 
-  // Détection des doublons (zone, pièce, FENÊTRE, PRODUIT) — réactif sur
-  // localLines (source directe).
+  // Détection des doublons (zone, pièce, FENÊTRE, PRODUIT).
   // Le produit fait partie de la clé : un Rideau et un Voilage au même endroit
   // (même zone + même pièce) sont légitimes et ne doivent PAS déclencher d'alerte.
   // La fenêtre aussi : c'est le 3e niveau de localisation, deux ouvrages dans la
   // même pièce mais sur deux fenêtres distinctes ne sont pas un doublon. Deux
   // lignes sans fenêtre renseignée restent en conflit, comme avant.
+  //
+  // On balaie TABLEAU PAR TABLEAU, sur les mêmes sous-ensembles que ceux affichés :
+  // le numéro de ligne rapporté est alors celui que l'utilisateur lit dans la
+  // grille, et non une position dans la liste globale de la minute.
   const pieceConflicts = React.useMemo(() => {
-    const seen = new Map();
+    const tables = [
+      ['Rideaux', rowsRideaux],
+      ['Stores Négoce', rowsStore],
+      ['Stores Bateaux / Velum', rowsStoresBateau],
+      ['Coussins', rowsCoussins],
+      ['Cache-Sommier', rowsCacheSommier],
+      ['Plaids', rowsPlaid],
+      ['Tentures Murales', rowsTenture],
+      ['Mobilier', rowsMobilier],
+    ];
+    const norm = (v) => (v || '').trim().toLowerCase();
     const found = [];
-    for (const r of localLines) {
-      if (!r.piece) continue;
-      const produit = (r.produit || '').trim().toLowerCase();
-      const fenetre = (r.fenetre || '').trim().toLowerCase();
-      const key = `${(r.zone || '').trim().toLowerCase()}|${(r.piece || '').trim().toLowerCase()}|${fenetre}|${produit}`;
-      if (seen.has(key)) {
-        const base = r.zone ? `"${r.piece}" (${r.zone})` : `"${r.piece}"`;
-        const withWindow = r.fenetre ? `${base} — ${r.fenetre}` : base;
-        const label = r.produit ? `${withWindow} — ${r.produit}` : withWindow;
-        if (!found.some(f => f.key === key)) found.push({ key, label });
-      } else {
-        seen.set(key, true);
+
+    for (const [table, tableRows] of tables) {
+      const groups = new Map();
+      (tableRows || []).forEach((r, i) => {
+        if (!r.piece) return;
+        const key = `${norm(r.zone)}|${norm(r.piece)}|${norm(r.fenetre)}|${norm(r.produit)}`;
+        if (!groups.has(key)) groups.set(key, { key, table, rows: [], sample: r });
+        groups.get(key).rows.push(i + 1); // numéro affiché dans la grille (1-based)
+      });
+      for (const g of groups.values()) {
+        if (g.rows.length < 2) continue;
+        // Raisons : uniquement les champs réellement renseignés. Dire « même
+        // fenêtre » quand les deux lignes n'en ont pas serait trompeur — c'est
+        // justement l'absence de fenêtre qui les rend indiscernables.
+        const reasons = [];
+        if (g.sample.zone) reasons.push(`même zone « ${g.sample.zone} »`);
+        reasons.push(`même pièce « ${g.sample.piece} »`);
+        if (g.sample.fenetre) reasons.push(`même fenêtre « ${g.sample.fenetre} »`);
+        else reasons.push('aucune fenêtre renseignée pour les distinguer');
+        if (g.sample.produit) reasons.push(`même produit « ${g.sample.produit} »`);
+        found.push({
+          key: `${table}|${g.key}`,
+          table,
+          lines: g.rows,
+          reasons,
+        });
       }
     }
     return found;
-  }, [localLines]);
+  }, [rowsRideaux, rowsStore, rowsStoresBateau, rowsCoussins, rowsCacheSommier, rowsPlaid, rowsTenture, rowsMobilier]);
+
+  // Bandeau replié par défaut : le détail peut faire plusieurs lignes par conflit,
+  // de quoi manger l'écran sur une minute qui en accumule.
+  const [conflictsOpen, setConflictsOpen] = React.useState(false);
 
   const handleDuplicateRow = (id) => {
     const currentRows = rowsRef.current;
@@ -879,27 +910,61 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
   return (
     <div style={{ paddingBottom: 40 }}>
 
-      {/* Popup flottante bas-droite — pièces en double */}
+      {/* Pastille flottante bas-droite — pièces en double.
+          Repliée par défaut : on n'affiche que le nombre de conflits, le détail
+          se déroule au clic. Déroulé d'office, il recouvrait le bas de l'écran
+          dès qu'une minute accumulait les doublons. */}
       {pieceConflicts.length > 0 && (
         <div style={{
           position: 'fixed', bottom: 24, right: 24, zIndex: 9999,
-          display: 'flex', alignItems: 'flex-start', gap: 10,
           background: '#FEF3C7', border: '1px solid #F59E0B',
-          borderRadius: 10, padding: '12px 16px',
+          borderRadius: 10,
           fontSize: 13, color: '#92400E',
           boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
-          maxWidth: 360, pointerEvents: 'none'
+          maxWidth: 420,
         }}>
-          <span style={{ fontSize: 18, lineHeight: 1 }}>⚠️</span>
-          <div>
-            <div style={{ fontWeight: 700, marginBottom: 4 }}>Pièces en double</div>
-            {pieceConflicts.map(c => (
-              <div key={c.key} style={{ fontSize: 12, opacity: 0.85 }}>{c.label}</div>
-            ))}
-            <div style={{ fontSize: 11, marginTop: 6, opacity: 0.7 }}>
-              Même nom interdit dans la même zone — sauf si la fenêtre diffère
+          <button
+            onClick={() => setConflictsOpen(o => !o)}
+            aria-expanded={conflictsOpen}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 10, width: '100%',
+              background: 'none', border: 'none', cursor: 'pointer',
+              padding: '10px 14px', font: 'inherit', color: 'inherit', textAlign: 'left',
+            }}
+          >
+            <span style={{ fontSize: 16, lineHeight: 1 }}>⚠️</span>
+            <span style={{ fontWeight: 700, flex: 1 }}>
+              {pieceConflicts.length} {pieceConflicts.length > 1 ? 'pièces en double' : 'pièce en double'}
+            </span>
+            <ChevronDown
+              size={16}
+              style={{
+                transform: conflictsOpen ? 'rotate(180deg)' : 'none',
+                transition: 'transform .15s ease', flexShrink: 0, opacity: .8,
+              }}
+            />
+          </button>
+
+          {conflictsOpen && (
+            <div style={{
+              borderTop: '1px solid #FCD34D', padding: '10px 14px',
+              maxHeight: '42vh', overflowY: 'auto',
+            }}>
+              {pieceConflicts.map(c => (
+                <div key={c.key} style={{ marginBottom: 10 }}>
+                  <div style={{ fontWeight: 700, fontSize: 12 }}>
+                    Tableau {c.table} — lignes {c.lines.slice(0, -1).join(', ')} et {c.lines[c.lines.length - 1]}
+                  </div>
+                  <div style={{ fontSize: 12, opacity: 0.85, marginTop: 2 }}>
+                    {c.reasons.join(', ')}.
+                  </div>
+                </div>
+              ))}
+              <div style={{ fontSize: 11, opacity: 0.7, borderTop: '1px solid #FCD34D', paddingTop: 7 }}>
+                Renseignez la colonne « Fenêtre » ou modifiez la pièce pour distinguer ces lignes.
+              </div>
             </div>
-          </div>
+          )}
         </div>
       )}
 
