@@ -164,13 +164,14 @@ export default function CatalogManager({ open, onClose, catalog, onCatalogChange
             color: '',
             category: defaultCategory, // Pre-fill based on tab
             buyPrice: undefined,
-            coef: activeCategoryTab === 'stores' ? undefined : 2, // Default coef 2 for non-stores
+            coef: 2, // Coef 2 par défaut partout, stores compris (PV = PA × Coef)
             sellPrice: undefined,
             width: undefined,
             motif: false,
             raccord_v: undefined,
             raccord_h: undefined,
-            unit: 'ml'
+            // Les mécanismes de store se vendent à la pièce, jamais au mètre linéaire.
+            unit: activeCategoryTab === 'stores' ? 'pce' : 'ml'
         };
         // Auto-compute name immediately
         newRow.name = 'Nouvel Article (à compléter)';
@@ -225,7 +226,7 @@ export default function CatalogManager({ open, onClose, catalog, onCatalogChange
                 field: 'coef',
                 headerName: 'Coef',
                 width: 100,
-                editable: activeCategoryTab !== 'stores', // Only editable if not stores
+                editable: true,
                 type: 'number',
                 valueParser: (value) => parseDecimal(value),
                 description: 'Coefficient multiplicateur pour le calcul du PV (PV = PA * Coef)'
@@ -271,6 +272,15 @@ export default function CatalogManager({ open, onClose, catalog, onCatalogChange
         // PA / PV / Unit: Visible for Tissus, Rails AND Passementerie
         if (['tissus', 'rails', 'passementerie'].includes(activeCategoryTab)) {
             cols = [...cols, ...priceCols];
+        }
+
+        // Stores : le mécanisme est toujours vendu à la pièce, et son PA est propre à
+        // chaque ligne de chiffrage — un PA/PV catalogue n'aurait pas de sens ici.
+        // Seul le coefficient en a un : il pilote le PV de la ligne (PV = PA × Coef),
+        // comme pour les rails. Sans lui, le PV Méca des stores restait à saisir à la main.
+        if (activeCategoryTab === 'stores') {
+            const coefCol = priceCols.find(c => c.field === 'coef');
+            if (coefCol) cols = [...cols, coefCol];
         }
 
         // Fabric Specs (Laize, Motif, Raccords): Visible for Tissus ONLY
