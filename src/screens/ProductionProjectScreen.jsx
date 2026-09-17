@@ -686,8 +686,14 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
   }, [canEditProd, schema, currentUser?.name, debouncedSave, project?.id]);
 
 
-  const handleAddRow = (produitType = "Rideau") => {
-    const newRow = {
+  // `count` vient du panneau « Ajouter N lignes » de la grille. Les N lignes sont
+  // ajoutées en UNE seule mise à jour : N appels enchaînés produiraient autant
+  // d'écritures concurrentes sur les lignes du projet.
+  const handleAddRow = (produitType = "Rideau", count = 1) => {
+    const asked = Math.floor(Number(count));
+    const n = Number.isFinite(asked) && asked >= 1 ? Math.min(asked, 500) : 1;
+
+    const makeRow = () => ({
       id: uid(),
       produit: produitType,
       pair_un: "Paire",
@@ -701,13 +707,17 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
       retour_d: 0,
       type_confection: "Wave 80",
       created: Date.now()
-    };
-    // Applique les `defaultValue` déclarés dans le schéma du produit (ex. les
-    // étiquettes à « Non »). Ces déclarations existaient mais n'étaient lues nulle part.
-    const withDefaults = applySchemaDefaults(newRow, getSchemaForRow(newRow).schema);
-    const computed = recomputeRow(withDefaults, schema);
+    });
 
-    const newRows = [...rows, computed];
+    const added = Array.from({ length: n }, () => {
+      // Applique les `defaultValue` déclarés dans le schéma du produit (ex. les
+      // étiquettes à « Non »). Ces déclarations existaient mais n'étaient lues nulle part.
+      const newRow = makeRow();
+      const withDefaults = applySchemaDefaults(newRow, getSchemaForRow(newRow).schema);
+      return recomputeRow(withDefaults, schema);
+    });
+
+    const newRows = [...rows, ...added];
 
     setRows(newRows);
     if (project?.id) {
@@ -1318,7 +1328,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                 schema={RIDEAUX_PROD_SCHEMA}
                 enableCellFormulas={true}
                 initialVisibilityModel={getVisibilityModel('prise', 'rideaux', RIDEAUX_PROD_SCHEMA)}
-                onAdd={() => handleAddRow("Rideau")}
+                onAdd={(n) => handleAddRow("Rideau", n)}
                 onDuplicateRow={handleDuplicateRow}
                 catalog={projectMaterials}
                 projectId={project?.id}
@@ -1342,7 +1352,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                 schema={STORES_PROD_SCHEMA}
                 enableCellFormulas={true}
                 initialVisibilityModel={getVisibilityModel('prise', 'stores', STORES_PROD_SCHEMA)}
-                onAdd={() => handleAddRow(STORE_CLASSIQUE_DEFAUT)}
+                onAdd={(n) => handleAddRow(STORE_CLASSIQUE_DEFAUT, n)}
                 onDuplicateRow={handleDuplicateRow}
                 catalog={projectMaterials}
                 projectId={project?.id}
@@ -1362,7 +1372,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                 schema={STORES_BATEAUX_PROD_SCHEMA}
                 enableCellFormulas={true}
                 initialVisibilityModel={getVisibilityModel('prise', 'stores_bateaux', STORES_BATEAUX_PROD_SCHEMA)}
-                onAdd={() => handleAddRow("Store Bateau")}
+                onAdd={(n) => handleAddRow("Store Bateau", n)}
                 onDuplicateRow={handleDuplicateRow}
                 catalog={projectMaterials}
                 projectId={project?.id}
@@ -1382,7 +1392,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                 schema={TENTURE_MURALE_PROD_SCHEMA}
                 enableCellFormulas={true}
                 initialVisibilityModel={getVisibilityModel('prise', 'tenture_murale', TENTURE_MURALE_PROD_SCHEMA)}
-                onAdd={() => handleAddRow("Tenture Murale")}
+                onAdd={(n) => handleAddRow("Tenture Murale", n)}
                 onDuplicateRow={handleDuplicateRow}
                 catalog={projectMaterials}
                 projectId={project?.id}
@@ -1402,7 +1412,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                 schema={COUSSINS_PROD_SCHEMA}
                 enableCellFormulas={true}
                 initialVisibilityModel={getVisibilityModel('prise', 'coussins', COUSSINS_PROD_SCHEMA)}
-                onAdd={() => handleAddRow("Coussin")}
+                onAdd={(n) => handleAddRow("Coussin", n)}
                 onDuplicateRow={handleDuplicateRow}
                 catalog={projectMaterials}
                 projectId={project?.id}
@@ -1422,7 +1432,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                 schema={PLAID_PROD_SCHEMA}
                 enableCellFormulas={true}
                 initialVisibilityModel={getVisibilityModel('prise', 'plaid', PLAID_PROD_SCHEMA)}
-                onAdd={() => handleAddRow("Plaid")}
+                onAdd={(n) => handleAddRow("Plaid", n)}
                 onDuplicateRow={handleDuplicateRow}
                 catalog={projectMaterials}
                 projectId={project?.id}
@@ -1442,7 +1452,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                 schema={MOBILIER_PROD_SCHEMA}
                 enableCellFormulas={true}
                 initialVisibilityModel={getVisibilityModel('prise', 'mobilier', MOBILIER_PROD_SCHEMA)}
-                onAdd={() => handleAddRow("Tête de Lit")}
+                onAdd={(n) => handleAddRow("Tête de Lit", n)}
                 onDuplicateRow={handleDuplicateRow}
                 catalog={projectMaterials}
                 projectId={project?.id}
@@ -1462,7 +1472,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                 schema={CACHE_SOMMIER_PROD_SCHEMA}
                 enableCellFormulas={true}
                 initialVisibilityModel={getVisibilityModel('prise', 'cache_sommier', CACHE_SOMMIER_PROD_SCHEMA)}
-                onAdd={() => handleAddRow("Cache-Sommier")}
+                onAdd={(n) => handleAddRow("Cache-Sommier", n)}
                 onDuplicateRow={handleDuplicateRow}
                 catalog={projectMaterials}
                 projectId={project?.id}
@@ -1511,7 +1521,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                   schema={RIDEAUX_PROD_SCHEMA}
                   enableCellFormulas={true}
                   initialVisibilityModel={getVisibilityModel('bpf', 'rideaux', RIDEAUX_PROD_SCHEMA)}
-                  onAdd={() => handleAddRow("Rideau")}
+                  onAdd={(n) => handleAddRow("Rideau", n)}
                   onDuplicateRow={handleDuplicateRow}
                   catalog={projectMaterials}
                 projectId={project?.id}
@@ -1540,7 +1550,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                   onRowsChange={(nr) => handleSubsetChange(nr, /store (bateau|velum)/i, r => /store (bateau|velum)/i.test(String(r.produit || "")) && !isSousTraite(r))}
                   schema={STORES_BATEAUX_PROD_SCHEMA}
                   enableCellFormulas={true}
-                  onAdd={() => handleAddRow("Store Bateau")}
+                  onAdd={(n) => handleAddRow("Store Bateau", n)}
                   onDuplicateRow={handleDuplicateRow}
                   catalog={projectMaterials}
                 projectId={project?.id}
@@ -1564,7 +1574,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                   schema={COUSSINS_PROD_SCHEMA}
                   initialVisibilityModel={getVisibilityModel('bpf', 'coussins', COUSSINS_PROD_SCHEMA)}
                   enableCellFormulas={true}
-                  onAdd={() => handleAddRow("Coussins")}
+                  onAdd={(n) => handleAddRow("Coussins", n)}
                   onDuplicateRow={handleDuplicateRow}
                   catalog={projectMaterials}
                 projectId={project?.id}
@@ -1588,7 +1598,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                   schema={CACHE_SOMMIER_PROD_SCHEMA}
                   initialVisibilityModel={getVisibilityModel('bpf', 'cache_sommier', CACHE_SOMMIER_PROD_SCHEMA)}
                   enableCellFormulas={true}
-                  onAdd={() => handleAddRow("Cache-Sommier")}
+                  onAdd={(n) => handleAddRow("Cache-Sommier", n)}
                   onDuplicateRow={handleDuplicateRow}
                   catalog={projectMaterials}
                 projectId={project?.id}
@@ -1612,7 +1622,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                   schema={PLAID_PROD_SCHEMA}
                   initialVisibilityModel={getVisibilityModel('bpf', 'plaid', PLAID_PROD_SCHEMA)}
                   enableCellFormulas={true}
-                  onAdd={() => handleAddRow("Plaid")}
+                  onAdd={(n) => handleAddRow("Plaid", n)}
                   onDuplicateRow={handleDuplicateRow}
                   catalog={projectMaterials}
                 projectId={project?.id}
@@ -1636,7 +1646,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                   schema={MOBILIER_PROD_SCHEMA}
                   initialVisibilityModel={getVisibilityModel('bpf', 'mobilier', MOBILIER_PROD_SCHEMA)}
                   enableCellFormulas={true}
-                  onAdd={() => handleAddRow("Tête de Lit")}
+                  onAdd={(n) => handleAddRow("Tête de Lit", n)}
                   onDuplicateRow={handleDuplicateRow}
                   catalog={projectMaterials}
                 projectId={project?.id}
@@ -1660,7 +1670,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                   schema={TENTURE_MURALE_PROD_SCHEMA}
                   initialVisibilityModel={getVisibilityModel('bpf', 'tenture_murale', TENTURE_MURALE_PROD_SCHEMA)}
                   enableCellFormulas={true}
-                  onAdd={() => handleAddRow("Tenture Murale")}
+                  onAdd={(n) => handleAddRow("Tenture Murale", n)}
                   onDuplicateRow={handleDuplicateRow}
                   catalog={projectMaterials}
                 projectId={project?.id}
@@ -1705,7 +1715,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                   schema={RIDEAUX_PROD_SCHEMA}
                   enableCellFormulas={true}
                   initialVisibilityModel={getVisibilityModel('bpp', 'rideaux', RIDEAUX_PROD_SCHEMA)}
-                  onAdd={() => handleAddRow("Rideau")}
+                  onAdd={(n) => handleAddRow("Rideau", n)}
                   onDuplicateRow={handleDuplicateRow}
                   catalog={projectMaterials}
                 projectId={project?.id}
@@ -1733,7 +1743,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                   schema={STORES_PROD_SCHEMA}
                   enableCellFormulas={true}
                   initialVisibilityModel={getVisibilityModel('bpp', 'stores', STORES_PROD_SCHEMA)}
-                  onAdd={() => handleAddRow(STORE_CLASSIQUE_DEFAUT)}
+                  onAdd={(n) => handleAddRow(STORE_CLASSIQUE_DEFAUT, n)}
                   onDuplicateRow={handleDuplicateRow}
                   catalog={projectMaterials}
                 projectId={project?.id}
@@ -1757,7 +1767,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                   schema={STORES_BATEAUX_PROD_SCHEMA}
                   enableCellFormulas={true}
                   initialVisibilityModel={getVisibilityModel('bpp', 'stores_bateaux', STORES_BATEAUX_PROD_SCHEMA)}
-                  onAdd={() => handleAddRow("Store Bateau")}
+                  onAdd={(n) => handleAddRow("Store Bateau", n)}
                   onDuplicateRow={handleDuplicateRow}
                   catalog={projectMaterials}
                 projectId={project?.id}
@@ -1781,7 +1791,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                   schema={TENTURE_MURALE_PROD_SCHEMA}
                   enableCellFormulas={true}
                   initialVisibilityModel={getVisibilityModel('bpp', 'tenture_murale', TENTURE_MURALE_PROD_SCHEMA)}
-                  onAdd={() => handleAddRow("Tenture Murale")}
+                  onAdd={(n) => handleAddRow("Tenture Murale", n)}
                   onDuplicateRow={handleDuplicateRow}
                   catalog={projectMaterials}
                 projectId={project?.id}
@@ -1805,7 +1815,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                   schema={MOBILIER_PROD_SCHEMA}
                   enableCellFormulas={true}
                   initialVisibilityModel={getVisibilityModel('bpp', 'mobilier', MOBILIER_PROD_SCHEMA)}
-                  onAdd={() => handleAddRow("Tête de Lit")}
+                  onAdd={(n) => handleAddRow("Tête de Lit", n)}
                   onDuplicateRow={handleDuplicateRow}
                   catalog={projectMaterials}
                 projectId={project?.id}
