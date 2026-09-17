@@ -2266,6 +2266,14 @@ function MinuteGrid({
                         enableClickSelection: false,
                         checkboxes: !readOnly,
                         headerCheckbox: !readOnly,
+                        // La case d'en-tête ne coche que les lignes VISIBLES.
+                        // Par défaut AG Grid vaut 'all' et sélectionne tout le tableau
+                        // en ignorant les filtres : on filtrait 44 lignes sur 285 et le
+                        // « tout cocher » en sélectionnait 285, y compris pour la
+                        // suppression et l'export. 'filtered' couvre les trois filtres
+                        // en jeu ici : recherche rapide, panneau de filtres maison
+                        // (external filter) et filtres de colonne AG Grid.
+                        selectAll: 'filtered',
                     }}
                     selectionColumnDef={{
                         pinned: 'left',
