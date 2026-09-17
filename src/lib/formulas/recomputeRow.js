@@ -371,9 +371,16 @@ export function recomputeRow(row, schema, ctx = {}) {
     const itemMecaStore = catalog.find(i => i.name === next.mecanisme_store);
     next.pv_mecanisme_store_auto = false;
     if (itemMecaStore) {
-      if (itemMecaStore.unit === 'pce') {
+      // Un coefficient posé sur l'article suffit à piloter le PV, même si l'unité
+      // de l'article est restée à « ml » : les mécanismes de store se vendent
+      // toujours à la pièce, et les articles créés avant que le coef soit saisissable
+      // au catalogue portent encore l'unité par défaut. Sans coef, rien ne change :
+      // les devis existants gardent leur PV saisi à la main.
+      const storeCoef = Number(itemMecaStore.coef);
+      const hasStoreCoef = Number.isFinite(storeCoef) && storeCoef > 0;
+      if (itemMecaStore.unit === 'pce' || hasStoreCoef) {
         // À la pièce : PA saisi à la main, PV = PA × marge (coef biblio, 2 par défaut).
-        const coef = Number(itemMecaStore.coef) || 2;
+        const coef = hasStoreCoef ? storeCoef : 2;
         next.pv_mecanisme_store = Math.round(NVL(next.pa_mecanisme_store) * coef * 100) / 100;
         next.pv_mecanisme_store_auto = true;
       } else {
