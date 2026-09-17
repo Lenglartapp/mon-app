@@ -504,19 +504,25 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
     return catalog.filter(item => item.category === 'Rail').map(item => item.name);
   }, [catalog]);
 
-  // Détection des doublons (zone, pièce, PRODUIT) — réactif sur localLines (source directe).
+  // Détection des doublons (zone, pièce, FENÊTRE, PRODUIT) — réactif sur
+  // localLines (source directe).
   // Le produit fait partie de la clé : un Rideau et un Voilage au même endroit
   // (même zone + même pièce) sont légitimes et ne doivent PAS déclencher d'alerte.
+  // La fenêtre aussi : c'est le 3e niveau de localisation, deux ouvrages dans la
+  // même pièce mais sur deux fenêtres distinctes ne sont pas un doublon. Deux
+  // lignes sans fenêtre renseignée restent en conflit, comme avant.
   const pieceConflicts = React.useMemo(() => {
     const seen = new Map();
     const found = [];
     for (const r of localLines) {
       if (!r.piece) continue;
       const produit = (r.produit || '').trim().toLowerCase();
-      const key = `${(r.zone || '').trim().toLowerCase()}|${(r.piece || '').trim().toLowerCase()}|${produit}`;
+      const fenetre = (r.fenetre || '').trim().toLowerCase();
+      const key = `${(r.zone || '').trim().toLowerCase()}|${(r.piece || '').trim().toLowerCase()}|${fenetre}|${produit}`;
       if (seen.has(key)) {
         const base = r.zone ? `"${r.piece}" (${r.zone})` : `"${r.piece}"`;
-        const label = r.produit ? `${base} — ${r.produit}` : base;
+        const withWindow = r.fenetre ? `${base} — ${r.fenetre}` : base;
+        const label = r.produit ? `${withWindow} — ${r.produit}` : withWindow;
         if (!found.some(f => f.key === key)) found.push({ key, label });
       } else {
         seen.set(key, true);
@@ -891,7 +897,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
               <div key={c.key} style={{ fontSize: 12, opacity: 0.85 }}>{c.label}</div>
             ))}
             <div style={{ fontSize: 11, marginTop: 6, opacity: 0.7 }}>
-              Même nom interdit dans la même zone
+              Même nom interdit dans la même zone — sauf si la fenêtre diffère
             </div>
           </div>
         </div>
