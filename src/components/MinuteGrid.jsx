@@ -9,7 +9,7 @@ import { recomputeRow } from '../lib/formulas/recomputeRow';
 import { generateRowLogs } from '../lib/utils/logUtils';
 import { uid } from '../lib/utils/uid';
 import { createDecentreePair, PAIRE_DECENTREE, DECENTREE_PARENT_ONLY_TECH, orderDecentreeRows } from '../lib/utils/pairDecentree';
-import { Plus, Trash2, Columns, Layers, Edit2, Filter, FileSpreadsheet, PinOff } from 'lucide-react';
+import { Plus, Trash2, Columns, Layers, Edit2, Filter, FileSpreadsheet, PinOff, ChevronDown } from 'lucide-react';
 import FilterPanel, { isConditionActive, evaluateCondition } from './FilterPanel';
 import { getDefaultMatieres } from '../lib/constants/matiereGroups';
 import { useAuth } from '../auth';
@@ -18,6 +18,17 @@ import { useUserGridState } from '../lib/hooks/useUserGridState';
 
 const STORAGE_PREFIX = 'ag_grid_state_v1_';
 const GRID_STATE_VERSION = 5; // à incrémenter si le calcul des largeurs change
+
+// Ajout de lignes en lot : garde-fou sur la quantité saisie. Le plafond protège
+// d'une faute de frappe (1500 au lieu de 150) qui ferait gonfler le JSONB du
+// devis d'un coup ; il n'a pas vocation à brider un usage normal.
+const MAX_ADD_ROWS = 500;
+const ADD_ROWS_PRESETS = [5, 10, 25, 50];
+const clampAddCount = (value) => {
+    const n = Math.floor(Number(value));
+    if (!Number.isFinite(n) || n < 1) return 1;
+    return Math.min(n, MAX_ADD_ROWS);
+};
 
 // ─── Ordre des colonnes ajoutées APRÈS la sauvegarde d'un état ───────────────
 // `applyColumnState({ applyOrder: true })` range d'abord les colonnes listées
@@ -334,6 +345,11 @@ function MinuteGrid({
     const onSelectionChangeRef = useRef(onSelectionChange);
     onSelectionChangeRef.current = onSelectionChange;
     const [colPanelOpen, setColPanelOpen] = useState(false);
+    // Panneau « Ajouter N lignes » (chevron à droite du bouton Ajouter, ou clic droit dessus)
+    const [addPanelOpen, setAddPanelOpen] = useState(false);
+    const [addPanelPos, setAddPanelPos] = useState(null);
+    const [addCount, setAddCount] = useState('');
+    const addBtnRef = useRef(null);
     const [colSearch, setColSearch] = useState('');
     const colBtnRef = useRef(null);
     const [matierePanelOpen, setMatierePanelOpen] = useState(false);
@@ -913,12 +929,35 @@ function MinuteGrid({
         onRowsChange(newRows);
     }, [onRowsChange]);
 
-    // Ajouter une ligne
-    const handleAddRow = useCallback(() => {
-        if (onAddRef.current) { onAddRef.current(); return; }
-        const newRow = { id: uid(), ...Object.fromEntries(schema.map(col => [col.key, ''])) };
-        onRowsChangeRef.current([...rowsRef.current, newRow]);
+    // Ajouter une ou plusieurs lignes.
+    // Les N lignes partent en UNE seule mise à jour : un ajout en lot ne doit pas
+    // déclencher N écritures concurrentes sur le même JSONB (cf. saturation base).
+    const handleAddRow = useCallback((count = 1) => {
+        const n = clampAddCount(count);
+        if (onAddRef.current) { onAddRef.current(n); return; }
+        const blank = Object.fromEntries(schema.map(col => [col.key, '']));
+        const newRows = Array.from({ length: n }, () => ({ id: uid(), ...blank }));
+        onRowsChangeRef.current([...rowsRef.current, ...newRows]);
     }, [schema]);
+
+    // Ouvre / ferme le panneau « combien de lignes ? »
+    const openAddPanel = useCallback((e) => {
+        e?.preventDefault?.();
+        const rect = addBtnRef.current?.getBoundingClientRect();
+        if (rect) setAddPanelPos({ top: rect.bottom + 4, left: rect.left });
+        setAddCount('');
+        setAddPanelOpen(true);
+    }, []);
+
+    // Champ vide ou invalide : on ne fait rien plutôt que d'ajouter une ligne
+    // par défaut — l'utilisateur est venu ici pour en demander plusieurs.
+    const addCountAsked = Math.floor(Number(addCount));
+    const canSubmitAddCount = addCount !== '' && Number.isFinite(addCountAsked) && addCountAsked >= 1;
+    const submitAddCount = useCallback(() => {
+        if (!canSubmitAddCount) return;
+        setAddPanelOpen(false);
+        handleAddRow(addCountAsked);
+    }, [canSubmitAddCount, addCountAsked, handleAddRow]);
 
     // Supprimer les lignes sélectionnées
     const handleDeleteRows = useCallback(() => {
@@ -1023,6 +1062,17 @@ function MinuteGrid({
         window.addEventListener('scroll', updatePos, true);
         return () => window.removeEventListener('scroll', updatePos, true);
     }, [colPanelOpen]);
+
+    // Le panneau d'ajout est en position fixed : il doit suivre son bouton au scroll.
+    useEffect(() => {
+        if (!addPanelOpen) return;
+        const updatePos = () => {
+            const rect = addBtnRef.current?.getBoundingClientRect();
+            if (rect) setAddPanelPos({ top: rect.bottom + 4, left: rect.left });
+        };
+        window.addEventListener('scroll', updatePos, true);
+        return () => window.removeEventListener('scroll', updatePos, true);
+    }, [addPanelOpen]);
 
     const handleToggleColPanel = useCallback(() => {
         const api = gridRef.current?.api;
@@ -1654,7 +1704,7 @@ function MinuteGrid({
                 <div className="mobile-grid-cards">
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                         <span style={{ fontSize: 13, fontWeight: 600, color: '#6B7280' }}>{rows.length} Lignes</span>
-                        {!readOnly && <button onClick={handleAddRow} style={{ background: '#2563EB', color: 'white', border: 'none', padding: '6px 12px', borderRadius: 20, fontSize: 12, fontWeight: 600 }}>+ Ajouter</button>}
+                        {!readOnly && <button onClick={() => handleAddRow(1)} style={{ background: '#2563EB', color: 'white', border: 'none', padding: '6px 12px', borderRadius: 20, fontSize: 12, fontWeight: 600 }}>+ Ajouter</button>}
                     </div>
                     {rows.length === 0 ? (
                         <div style={{ padding: 30, textAlign: 'center', color: '#9CA3AF', background: 'transparent', borderRadius: 8, border: '1px dashed #D1D5DB' }}>Aucune ligne</div>
@@ -1695,9 +1745,80 @@ function MinuteGrid({
             {/* Toolbar */}
             <div style={{ padding: '8px 10px', borderBottom: '1px solid #e5e7eb', display: 'flex', gap: 8, alignItems: 'center', background: '#fafafa', flexWrap: 'wrap' }}>
                 {!readOnly && (
-                    <button onClick={handleAddRow} style={{ cursor: 'pointer', padding: '5px 10px', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, display: 'flex', alignItems: 'center', gap: 5, fontSize: 12 }}>
-                        <Plus size={14} /> Ajouter
-                    </button>
+                    /* Bouton scindé : clic = 1 ligne (geste habituel inchangé),
+                       chevron — ou clic droit — = « combien de lignes ? ». */
+                    <div ref={addBtnRef} style={{ display: 'flex', alignItems: 'stretch' }} onContextMenu={openAddPanel}>
+                        <button
+                            onClick={() => handleAddRow(1)}
+                            title="Ajouter une ligne"
+                            style={{ cursor: 'pointer', padding: '5px 10px', background: '#2563eb', color: 'white', border: 'none', borderRadius: '4px 0 0 4px', display: 'flex', alignItems: 'center', gap: 5, fontSize: 12 }}
+                        >
+                            <Plus size={14} /> Ajouter
+                        </button>
+                        <button
+                            onClick={openAddPanel}
+                            title="Ajouter plusieurs lignes"
+                            aria-label="Ajouter plusieurs lignes"
+                            style={{ cursor: 'pointer', padding: '5px 6px', background: '#2563eb', color: 'white', border: 'none', borderLeft: '1px solid rgba(255,255,255,.35)', borderRadius: '0 4px 4px 0', display: 'flex', alignItems: 'center', fontSize: 12 }}
+                        >
+                            <ChevronDown size={14} />
+                        </button>
+                    </div>
+                )}
+                {addPanelOpen && (
+                    <div style={{ position: 'fixed', inset: 0, zIndex: 999 }} onClick={() => setAddPanelOpen(false)} />
+                )}
+                {addPanelOpen && addPanelPos && (
+                    <div
+                        style={{
+                            position: 'fixed', top: addPanelPos.top, left: addPanelPos.left,
+                            background: 'white', border: '1px solid #e5e7eb', borderRadius: 8,
+                            boxShadow: '0 10px 25px rgba(0,0,0,0.12)', zIndex: 1000,
+                            padding: 10, width: 232,
+                        }}
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <div style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', marginBottom: 6 }}>
+                            Ajouter plusieurs lignes
+                        </div>
+                        <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+                            <input
+                                type="number"
+                                min={1}
+                                max={MAX_ADD_ROWS}
+                                autoFocus
+                                placeholder="Nombre"
+                                value={addCount}
+                                onChange={e => setAddCount(e.target.value)}
+                                onKeyDown={e => {
+                                    if (e.key === 'Enter') { e.preventDefault(); submitAddCount(); }
+                                    if (e.key === 'Escape') setAddPanelOpen(false);
+                                }}
+                                style={{ flex: 1, minWidth: 0, boxSizing: 'border-box', padding: '5px 8px', border: '1px solid #d1d5db', borderRadius: 4, fontSize: 12, outline: 'none' }}
+                            />
+                            <button
+                                onClick={submitAddCount}
+                                disabled={!canSubmitAddCount}
+                                style={{ cursor: canSubmitAddCount ? 'pointer' : 'not-allowed', padding: '5px 12px', background: canSubmitAddCount ? '#2563eb' : '#cbd5e1', color: 'white', border: 'none', borderRadius: 4, fontSize: 12, fontWeight: 600 }}
+                            >
+                                Ajouter
+                            </button>
+                        </div>
+                        <div style={{ display: 'flex', gap: 5 }}>
+                            {ADD_ROWS_PRESETS.map(n => (
+                                <button
+                                    key={n}
+                                    onClick={() => { setAddPanelOpen(false); handleAddRow(n); }}
+                                    style={{ flex: 1, cursor: 'pointer', padding: '4px 0', background: '#f3f4f6', color: '#374151', border: '1px solid #e5e7eb', borderRadius: 4, fontSize: 11, fontWeight: 600 }}
+                                >
+                                    +{n}
+                                </button>
+                            ))}
+                        </div>
+                        <div style={{ fontSize: 10, color: '#9ca3af', marginTop: 7 }}>
+                            {MAX_ADD_ROWS} lignes maximum d'un coup.
+                        </div>
+                    </div>
                 )}
                 {selectedCount > 0 && !readOnly && (
                     <button onClick={handleDeleteRows} style={{ cursor: 'pointer', padding: '5px 10px', background: '#ef4444', color: 'white', border: 'none', borderRadius: 4, display: 'flex', alignItems: 'center', gap: 5, fontSize: 12 }}>

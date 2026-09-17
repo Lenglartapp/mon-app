@@ -414,24 +414,31 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
     // onChangeMinute?.({ ...minute, lines: withFx, updatedAt: Date.now() });
   };
 
-  // Ajout d'une nouvelle ligne
-  const handleAddRow = React.useCallback((key) => {
-    const newRow = {
+  // Ajout d'une ou plusieurs lignes.
+  // `count` vient du panneau « Ajouter N lignes » de la grille. Les N lignes
+  // partent en UN SEUL triggerUpdate : N appels enchaînés rejoueraient la course
+  // d'écritures concurrentes sur le JSONB `lines` (cf. saturation base).
+  const handleAddRow = React.useCallback((key, count = 1) => {
+    const asked = Math.floor(Number(count));
+    const n = Number.isFinite(asked) && asked >= 1 ? Math.min(asked, 500) : 1;
+
+    const produit = key === "rideaux" ? "Rideau" :
+      key === "coussins" ? "Coussins" :
+        key === "store" ? STORE_CLASSIQUE_DEFAUT :
+          key === "store_bateau" ? "Store Bateau" :
+            key === "cache_sommier" ? "Cache-Sommier" :
+              key === "plaid" ? "Plaid" :
+                key === "tenture_murale" ? "Tenture Murale" :
+                  key === "mobilier" ? "Tête de Lit" :
+                    key === "deplacement" ? "Déplacement" : "Autre Dépense";
+    const makeRow = () => ({
       id: genId(),
-      produit: key === "rideaux" ? "Rideau" :
-        key === "coussins" ? "Coussins" :
-          key === "store" ? STORE_CLASSIQUE_DEFAUT :
-            key === "store_bateau" ? "Store Bateau" :
-              key === "cache_sommier" ? "Cache-Sommier" :
-                key === "plaid" ? "Plaid" :
-                  key === "tenture_murale" ? "Tenture Murale" :
-                    key === "mobilier" ? "Tête de Lit" :
-                      key === "deplacement" ? "Déplacement" : "Autre Dépense",
+      produit,
       // Valeurs par défaut pour éviter les vides
       quantite: 1,
       largeur: 0,
       hauteur: 0,
-    };
+    });
 
     // Calculate new state
     // 1. Determine target schema
@@ -447,9 +454,9 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
     else if (key === 'tenture_murale') targetSchema = TENTURE_MURALE_SCHEMA;
     else if (key === 'mobilier') targetSchema = MOBILIER_SCHEMA;
 
-    // 2. Recompute the new row immediately
-    const computedRow = recomputeRow(newRow, targetSchema, extendedCtx);
-    const nextRows = [...rowsRef.current, computedRow];
+    // 2. Recompute the new rows immediately
+    const computedRows = Array.from({ length: n }, () => recomputeRow(makeRow(), targetSchema, extendedCtx));
+    const nextRows = [...rowsRef.current, ...computedRows];
 
     // DEBOUNCED UPDATE
     triggerUpdate(nextRows);
@@ -578,7 +585,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
               schema={RIDEAUX_SCHEMA}
               enableCellFormulas={enableCellFormulas}
               formulaCtx={extendedCtx}
-              onAdd={() => handleAddRow("rideaux")}
+              onAdd={(n) => handleAddRow("rideaux", n)}
               onDelete={() => handleDeleteRows(selRideaux)}
               rowSelectionModel={selRideaux}
               onRowSelectionModelChange={setSelRideaux}
@@ -619,7 +626,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
               schema={STORES_CLASSIQUES_SCHEMA}
               enableCellFormulas={enableCellFormulas}
               formulaCtx={extendedCtx}
-              onAdd={() => handleAddRow("store")}
+              onAdd={(n) => handleAddRow("store", n)}
               onDelete={() => handleDeleteRows(selStore)}
               rowSelectionModel={selStore}
               onRowSelectionModelChange={setSelStore}
@@ -654,7 +661,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
               schema={STORES_BATEAUX_SCHEMA}
               enableCellFormulas={enableCellFormulas}
               formulaCtx={extendedCtx}
-              onAdd={() => handleAddRow("store_bateau")}
+              onAdd={(n) => handleAddRow("store_bateau", n)}
               onDelete={() => handleDeleteRows(selStoreBateau)}
               rowSelectionModel={selStoreBateau}
               onRowSelectionModelChange={setSelStoreBateau}
@@ -692,7 +699,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
               schema={COUSSINS_SCHEMA}
               enableCellFormulas={enableCellFormulas}
               formulaCtx={extendedCtx}
-              onAdd={() => handleAddRow("coussins")}
+              onAdd={(n) => handleAddRow("coussins", n)}
               onDelete={() => handleDeleteRows(selCoussins)}
               rowSelectionModel={selCoussins}
               onRowSelectionModelChange={setSelCoussins}
@@ -730,7 +737,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
               schema={CACHE_SOMMIER_SCHEMA}
               enableCellFormulas={enableCellFormulas}
               formulaCtx={extendedCtx}
-              onAdd={() => handleAddRow("cache_sommier")}
+              onAdd={(n) => handleAddRow("cache_sommier", n)}
               onDelete={() => handleDeleteRows(selCacheSommier)}
               rowSelectionModel={selCacheSommier}
               onRowSelectionModelChange={setSelCacheSommier}
@@ -768,7 +775,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
               schema={PLAID_SCHEMA}
               enableCellFormulas={enableCellFormulas}
               formulaCtx={extendedCtx}
-              onAdd={() => handleAddRow("plaid")}
+              onAdd={(n) => handleAddRow("plaid", n)}
               onDelete={() => handleDeleteRows(selPlaid)}
               rowSelectionModel={selPlaid}
               onRowSelectionModelChange={setSelPlaid}
@@ -806,7 +813,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
               schema={TENTURE_MURALE_SCHEMA}
               enableCellFormulas={enableCellFormulas}
               formulaCtx={extendedCtx}
-              onAdd={() => handleAddRow("tenture_murale")}
+              onAdd={(n) => handleAddRow("tenture_murale", n)}
               onDelete={() => handleDeleteRows(selTenture)}
               rowSelectionModel={selTenture}
               onRowSelectionModelChange={setSelTenture}
@@ -841,7 +848,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
               schema={MOBILIER_SCHEMA}
               enableCellFormulas={enableCellFormulas}
               formulaCtx={extendedCtx}
-              onAdd={() => handleAddRow("mobilier")}
+              onAdd={(n) => handleAddRow("mobilier", n)}
               onDelete={() => handleDeleteRows(selMobilier)}
               rowSelectionModel={selMobilier}
               onRowSelectionModelChange={setSelMobilier}
@@ -908,7 +915,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
               schema={EXTRA_DEPENSES_SCHEMA}
               enableCellFormulas={enableCellFormulas}
               formulaCtx={extendedCtx}
-              onAdd={() => handleAddRow("autre")}
+              onAdd={(n) => handleAddRow("autre", n)}
               onDelete={() => handleDeleteRows(selAutre)}
               rowSelectionModel={selAutre}
               onRowSelectionModelChange={setSelAutre}
@@ -938,7 +945,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
               schema={CHIFFRAGE_SCHEMA_DEP}
               enableCellFormulas={enableCellFormulas}
               formulaCtx={extendedCtx}
-              onAdd={() => handleAddRow("deplacement")}
+              onAdd={(n) => handleAddRow("deplacement", n)}
               onDelete={() => handleDeleteRows(selDeplacement)}
               rowSelectionModel={selDeplacement}
               onRowSelectionModelChange={setSelDeplacement}
