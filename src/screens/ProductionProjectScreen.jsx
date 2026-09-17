@@ -88,7 +88,17 @@ const getViewOrder = (viewKey, tableKey) => DEFAULT_VIEWS?.[viewKey]?.[tableKey]
 
 const getVisibilityModel = (viewKey, tableKey, schema) => {
   const defaults = DEFAULT_VIEWS?.[viewKey]?.[tableKey];
-  if (!defaults) return {}; // All visible by default
+
+  // Pas de vue définie → tout est visible, SAUF les colonnes marquées
+  // `defaultHidden` dans le schéma (colonnes d'appoint que l'on active à la
+  // demande via le sélecteur de colonnes, ex. « Fenêtre »).
+  if (!defaults) {
+    const model = {};
+    (schema || []).forEach(col => {
+      if (col.defaultHidden) model[col.key] = false;
+    });
+    return model;
+  }
 
   const model = {};
   schema.forEach(col => {
@@ -144,10 +154,13 @@ const buildBppPrintColumns = (schema, tableKey, gridKey) => {
     }
   } catch (_) { /* fallback ci-dessous */ }
 
-  // 2. Fallback : visibilité par défaut de la vue BPP
+  // 2. Fallback : visibilité par défaut de la vue BPP.
+  // `!== false` et non `truthy` : une vue « tout visible » (pas de liste dans
+  // views.js) renvoie un modèle quasi vide, et tester la vérité y masquait
+  // TOUTES les colonnes — le BPP sortait blanc.
   const vm = getVisibilityModel('bpp', tableKey, schema);
   return (schema || [])
-    .filter(col => vm[col.key] && isPrintableCol(col))
+    .filter(col => vm[col.key] !== false && isPrintableCol(col))
     .map(toPrintCol);
 };
 

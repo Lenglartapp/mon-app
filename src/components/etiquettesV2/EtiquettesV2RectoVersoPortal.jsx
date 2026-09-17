@@ -68,6 +68,9 @@ const isHidden = (row, key) =>
 const showComment = (row) =>
   !isHidden(row, "commentaire") && v(row, "commentaire_confection", "") !== "—" && !!v(row, "commentaire_confection", "").trim();
 const wantsVerso = (row) => !isHidden(row, "croquis") && !!getCroquis(row);
+// 3e niveau de localisation : n'occupe une ligne de l'en-tête que s'il est
+// renseigné sur la ligne (et non masqué via le menu « Champs »).
+const showWindow = (row) => !isHidden(row, "fenetre") && !!String(row?.fenetre || "").trim();
 
 // Sections visibles (hors champs masqués)
 function visibleSections(row) {
@@ -85,6 +88,8 @@ function Header({ row, projectName, index, total }) {
   const val = { fontSize: 11, fontWeight: 600, lineHeight: 1.1 };
   const comment = v(row, "commentaire_confection", "");
   const hasComment = showComment(row);
+  const fenetre = v(row, "fenetre", "");
+  const showFenetre = showWindow(row);
   const verso = wantsVerso(row);
   const pan = v(row, "paire_ou_un_seul_pan", "");
   const hasPan = pan && pan !== "—";
@@ -100,6 +105,12 @@ function Header({ row, projectName, index, total }) {
           <span style={val}>{v(row, "zone", "—")}</span>
           <span style={{ ...lbl, alignSelf: "center" }}>PIÈCE :</span>
           <span style={val}>{v(row, "piece", "—")}</span>
+          {showFenetre && (
+            <>
+              <span style={{ ...lbl, alignSelf: "center" }}>FENÊTRE :</span>
+              <span style={val}>{fenetre}</span>
+            </>
+          )}
           {hasPan && (
             <span style={{ gridColumn: "1 / -1", fontSize: 14, fontWeight: 700, lineHeight: 1.15, color: PAN_COLOR, marginTop: 3, textTransform: "uppercase" }}>
               {pan}

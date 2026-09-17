@@ -472,6 +472,7 @@ export const RIDEAUX_PROD_SCHEMA = [
     { key: "detail", label: "Détail", type: "button", width: 130 }, // Keep existing UI trigger
     { key: "zone", label: "Zone", type: "text", width: 120, editable: true },
     { key: "piece", label: "Pièce", type: "text", width: 120, editable: true },
+    { key: "fenetre", label: "Fenêtre", type: "text", width: 140, editable: true, defaultHidden: true },
     { key: "produit", label: "Produit", type: "select", options: ["Rideau", "Voilage"], width: 125, editable: true },
     { key: "type_confection", label: "Plis", type: "select", options: ["Pli Flamand", "Pli Creux", "Pli Plat", "Tripli", "Wave 80", "Wave 60", "Pli Couteau", "Pli Rabattu Cousu", "A Plat"], width: 150, editable: true },
     { key: "hauteur_renfort_tete", label: "Renfort tête", type: "select", options: HAUTEUR_RENFORT_TETE_OPTIONS, width: 155, editable: true },

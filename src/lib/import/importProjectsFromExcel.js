@@ -85,6 +85,7 @@ const PRODUCT_SHEETS = [
     columns: [
       c('zone',                        'Zone',                    'text',     16),
       c('piece',                       'Pièce',                   'text',     18),
+      c('fenetre',                     'Fenêtre',                 'text',     18),
       c('produit',                     'Produit',                 'select',   16, { options: ['Rideau', 'Voilage'] }),
       c('type_confection',             'Plis',              'select',   18, { options: ['Pli Flamand', 'Pli Creux', 'Pli Plat', 'Tripli', 'Wave 80', 'Wave 60', 'Pli Couteau', 'Pli Rabattu Cousu', 'A Plat'] }),
       c('hauteur_renfort_tete',        'Renfort tête',            'select',   22, { options: HAUTEUR_RENFORT_TETE_OPTIONS }),
@@ -167,7 +168,7 @@ const PRODUCT_SHEETS = [
       c('quantite',                    'Qté',                     'number',    8),
     ],
     example: {
-      zone: 'Salon', piece: 'Fenêtre principale', produit: 'Rideau',
+      zone: 'RDC', piece: 'Salon', fenetre: 'Fenêtre principale', produit: 'Rideau',
       type_confection: 'Pli Flamand', paire_ou_un_seul_pan: 'Paire',
       largeur_mecanisme: 280, largeur: 275, ampleur: 2.5,
       hspf_droite: 260, hspf_milieu: 260, hspf_gauche: 260,
@@ -184,6 +185,7 @@ const PRODUCT_SHEETS = [
     columns: [
       c('zone',                        'Zone',                    'text',     16),
       c('piece',                       'Pièce',                   'text',     18),
+      c('fenetre',                     'Fenêtre',                 'text',     18),
       c('produit',                     'Produit',                 'select',   16, { options: ['Store Bateau', 'Store Velum'] }),
       c('largeur',                     'Largeur (cm)',            'number',   14),
       calc('largeur_finie',            'L. Finie',                12),
@@ -231,7 +233,7 @@ const PRODUCT_SHEETS = [
       c('quantite',                    'Qté',                     'number',    8),
     ],
     example: {
-      zone: 'Chambre', piece: 'Fenêtre gauche', produit: 'Store Bateau',
+      zone: 'Étage', piece: 'Chambre', fenetre: 'Fenêtre gauche', produit: 'Store Bateau',
       largeur: 120, ourlet_de_cote: 1.5, hauteur_finie: 180,
       statut_cotes: 'Définitive', toile_finition_1: 'Coton blanc cassé',
       laize_toile_finition_1: 140, cote_manoeuvre: 'Droite',
@@ -247,6 +249,7 @@ const PRODUCT_SHEETS = [
     columns: [
       c('zone',              'Zone',               'text',     16),
       c('piece',             'Pièce',              'text',     18),
+      c('fenetre',           'Fenêtre',            'text',     18),
       c('produit',           'Produit',            'select',   24, { options: [...STORES_CLASSIQUES_PRODUITS, 'Autre'] }),
       c('largeur',           'Largeur (cm)',        'number',   14),
       c('hauteur',           'Hauteur (cm)',        'number',   14),
@@ -263,7 +266,7 @@ const PRODUCT_SHEETS = [
       c('quantite',          'Qté',                 'number',    8),
     ],
     example: {
-      zone: 'Bureau', piece: 'Fenêtre', produit: STORE_CLASSIQUE_DEFAUT,
+      zone: 'Étage', piece: 'Bureau', fenetre: 'Fenêtre sud', produit: STORE_CLASSIQUE_DEFAUT,
       largeur: 100, hauteur: 150, cote_manoeuvre: 'Manœuvre droite', quantite: 1,
     },
   },

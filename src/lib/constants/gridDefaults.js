@@ -1,4 +1,7 @@
 export const RIDEAUX_DEFAULT_VISIBILITY = {
+    // Localisation : 3e niveau, masqué par défaut (activable via le sélecteur de colonnes)
+    fenetre: false,
+
     // Tissu 2
     tissu_deco2: false,
     laize_tissu2: false,
@@ -39,6 +42,9 @@ export const RIDEAUX_DEFAULT_VISIBILITY = {
 
 
 export const STORES_DEFAULT_VISIBILITY = {
+    // Localisation : 3e niveau, masqué par défaut (activable via le sélecteur de colonnes)
+    fenetre: false,
+
     // ❌ À DÉSACTIVER (Visible = false)
 
     // Géométrie Rideau

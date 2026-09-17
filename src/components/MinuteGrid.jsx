@@ -19,6 +19,41 @@ import { useUserGridState } from '../lib/hooks/useUserGridState';
 const STORAGE_PREFIX = 'ag_grid_state_v1_';
 const GRID_STATE_VERSION = 5; // à incrémenter si le calcul des largeurs change
 
+// ─── Ordre des colonnes ajoutées APRÈS la sauvegarde d'un état ───────────────
+// `applyColumnState({ applyOrder: true })` range d'abord les colonnes listées
+// dans l'état, puis colle TOUTES les autres à la suite (cf. sortColsLikeKeys
+// dans ag-grid-community). Une colonne ajoutée au schéma après coup — donc
+// absente des états déjà enregistrés sur les dossiers existants — atterrissait
+// ainsi en dernière position de la grille, au lieu de sa place dans le schéma.
+//
+// On réinjecte donc chaque colonne manquante juste derrière son voisin de
+// gauche au sens du schéma (le premier, en remontant, qui figure dans l'état).
+// Les entrées ajoutées portent `__new` : elles ne servent QU'À l'ordre, l'appelant
+// leur laisse une visibilité indéfinie pour ne rien écraser.
+function withSchemaOrderForNewCols(columnState, schema, makeEntry = (key) => ({ colId: key, __new: true })) {
+    // Mêmes exclusions que schemaToGridCols : ces clés n'ont pas de colonne dans la grille.
+    const schemaKeys = (schema || [])
+        .filter(c => c?.key && c.key !== 'sel' && !c.hidden)
+        .map(c => c.key);
+    const saved = (columnState || []).filter(cs => cs?.colId);
+    const savedIds = new Set(saved.map(cs => cs.colId));
+    const missing = schemaKeys.filter(k => !savedIds.has(k));
+    if (missing.length === 0) return saved;
+
+    const out = [...saved];
+    // Parcours dans l'ordre du schéma : deux nouvelles colonnes voisines
+    // s'enchaînent correctement, la seconde s'ancrant sur la première.
+    for (const key of missing) {
+        let at = 0;
+        for (let i = schemaKeys.indexOf(key) - 1; i >= 0; i--) {
+            const j = out.findIndex(cs => cs.colId === schemaKeys[i]);
+            if (j >= 0) { at = j + 1; break; }
+        }
+        out.splice(at, 0, makeEntry(key));
+    }
+    return out;
+}
+
 
 const AG_GRID_LOCALE_FR = {
     // Regroupement (panneau « Regrouper par »)
@@ -487,6 +522,13 @@ function MinuteGrid({
     const applySharedState = useCallback((api, state) => {
         const hasVisibilityModel = initialVisibilityModel && Object.keys(initialVisibilityModel).length > 0;
         const { columnState, v } = state ?? {};
+        // Colonnes « masquées par défaut mais activables » (ex. « Fenêtre », 3e niveau
+        // de localisation). Contrairement aux colonnes qu'une vue exclut franchement,
+        // celles-ci doivent rester affichées si l'équipe les a activées : sinon le
+        // bouton Colonnes ne tiendrait pas d'un rechargement à l'autre.
+        const softHidden = new Set(
+            (schema || []).filter(c => c?.defaultHidden && c.key).map(c => c.key)
+        );
 
         // Restaurer les largeurs sauvegardées. initialWidth (dans columnDefs) ne s'applique qu'à
         // la création des colonnes, or Supabase répond en asynchrone après ce point : on applique
@@ -519,14 +561,18 @@ function MinuteGrid({
         if (columnState && v === GRID_STATE_VERSION) {
             // Réglages de l'équipe par-dessus. Une colonne que la vue exclut reste
             // masquée même si un ancien état enregistré la disait visible.
-            const allowed = (colId) => !hasVisibilityModel || initialVisibilityModel[colId] !== false;
+            const allowed = (colId) =>
+                !hasVisibilityModel || initialVisibilityModel[colId] !== false || softHidden.has(colId);
             api.applyColumnState({
                 // rowGroupIndex volontairement ABSENT : le regroupement est devenu
                 // personnel (userState), il ne doit plus être imposé par l'équipe.
-                state: columnState.map(cs => ({
+                state: withSchemaOrderForNewCols(columnState, schema).map(cs => ({
                     colId: cs.colId,
-                    hide: allowed(cs.colId) ? cs.hide : true,
-                    pinned: cs.pinned,
+                    // Une colonne absente de l'état enregistré (`__new`) n'a pas d'avis
+                    // sur sa visibilité : `hide: undefined` laisse AG Grid la conserver
+                    // telle que le préfiltre vient de la poser.
+                    hide: cs.__new ? undefined : (allowed(cs.colId) ? cs.hide : true),
+                    pinned: cs.__new ? undefined : cs.pinned,
                 })),
                 applyOrder: true,
             });
@@ -557,7 +603,7 @@ function MinuteGrid({
             });
             api.applyColumnState({ state: confState });
         }
-    }, [initialVisibilityModel, mecaGroups, confGroups]);
+    }, [initialVisibilityModel, mecaGroups, confGroups, schema]);
 
     const onGridReady = useCallback((params) => {
         isGridReadyRef.current = true;
@@ -1041,16 +1087,17 @@ function MinuteGrid({
         if (Array.isArray(initialColumnOrder) && initialColumnOrder.length > 0) {
             const connues = new Set(schema.filter(c => c.key && !c.hidden).map(c => c.key));
             const ordre = initialColumnOrder.filter(k => connues.has(k));
-            const dansLaVue = new Set(ordre);
+            // Les colonnes de la vue, dans SON ordre ; le reste du schéma vient
+            // ensuite s'ancrer à sa place (juste derrière son voisin de gauche)
+            // plutôt que de s'empiler en queue de tableau : une colonne d'appoint
+            // comme « Fenêtre » doit rester à côté de « Pièce » même après un reset,
+            // pour réapparaître au bon endroit le jour où on la réactive.
             api.applyColumnState({
-                state: [
-                    // d'abord les colonnes de la vue, dans SON ordre…
-                    ...ordre.map(colId => ({ colId, hide: false })),
-                    // …puis le reste du schéma, masqué, à la suite.
-                    ...schema
-                        .filter(c => c.key && !c.hidden && !dansLaVue.has(c.key))
-                        .map(c => ({ colId: c.key, hide: initialVisibilityModel[c.key] === false })),
-                ],
+                state: withSchemaOrderForNewCols(
+                    ordre.map(colId => ({ colId, hide: false })),
+                    schema,
+                    (key) => ({ colId: key, hide: initialVisibilityModel[key] === false }),
+                ),
                 applyOrder: true,
             });
         }

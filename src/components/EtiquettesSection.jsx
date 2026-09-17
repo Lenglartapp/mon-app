@@ -25,6 +25,7 @@ const PAGE_SIZE = 9;
 // Bascules supplémentaires du Format atelier (V2 rideaux) : commentaire + croquis.
 // Mêmes clés que celles lues par le portail V2 (etiquette_hidden_fields).
 const ETQ_V2_EXTRA_FIELDS = [
+  { key: "fenetre",     label: "Fenêtre (en-tête)",     section: "En-tête & verso" },
   { key: "commentaire", label: "Commentaire (en-tête)", section: "En-tête & verso" },
   { key: "croquis",     label: "Croquis (verso)",       section: "En-tête & verso" },
 ];
@@ -591,7 +592,7 @@ export default function EtiquettesSection({
   const fields = React.useMemo(() => {
     if (fieldsLS && fieldsLS.length > 0) return fieldsLS;
     return (schema || [])
-      .filter(c => !['sel', 'detail', 'zone', 'piece', 'photo'].includes(c.key))
+      .filter(c => !['sel', 'detail', 'zone', 'piece', 'fenetre', 'photo'].includes(c.key))
       .slice(0, 6)
       .map(c => c.key);
   }, [fieldsLS, schema]);
