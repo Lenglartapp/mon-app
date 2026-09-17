@@ -138,7 +138,7 @@ export const RIDEAUX_SCHEMA = [
     // 60b
     { key: "mecanisme_bis", label: "Méca Bis", type: "catalog_item", category: "Rail", width: 135 },
     { key: "pa_mecanisme_bis", label: "PA Méca Bis", type: "number", width: 155 },
-    { key: "pv_mecanisme_bis", label: "PV Méca Bis", type: "number", width: 155 },
+    { key: "pv_mecanisme_bis", label: "PV Méca Bis", type: "number", width: 155, readOnly: (row) => row.pv_mecanisme_bis_auto === true },
 
     // 61
     { key: "heures_prepa", label: "H. Prépa", type: "number", width: 135 },

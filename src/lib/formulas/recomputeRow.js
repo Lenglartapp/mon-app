@@ -316,6 +316,32 @@ export function recomputeRow(row, schema, ctx = {}) {
       // Autres (ex. Tringle au ml) : PA/PV restent saisis à la main.
     }
 
+    // Méca Bis — même règle que le mécanisme principal ci-dessus. Elle manquait :
+    // sur un article vendu à la pièce, le PA se remplissait depuis le catalogue mais
+    // le PV restait à saisir, alors que PA Méca / PV Méca s'enchaînaient bien.
+    next.pv_mecanisme_bis_auto = false; // repère de verrouillage du PV
+    if (next.mecanisme_bis) {
+      const mecaBisItem = catalog.find(i => i.name === next.mecanisme_bis);
+      if (mecaBisItem?.unit === 'pce') {
+        // À la pièce : PA saisi à la main, PV = PA × marge (coef de la biblio, 2 par
+        // défaut). Le PV devient auto → verrouillé (pv_mecanisme_bis_auto).
+        const coef = Number(mecaBisItem.coef) || 2;
+        next.pv_mecanisme_bis = Math.round(NVL(next.pa_mecanisme_bis) * coef * 100) / 100;
+        next.pv_mecanisme_bis_auto = true;
+      } else if (next.type_mecanisme === 'Rail') {
+        // Rail facturé au ml : PA et PV depuis la largeur méca × prix catalogue.
+        const pMB = getPrice(next.mecanisme_bis);
+        const wMB = NVL(next.largeur_mecanisme) / 100;
+        if (pMB.found) {
+          next.pa_mecanisme_bis = wMB * (pMB.pa || 0);
+          next.pv_mecanisme_bis = wMB * (pMB.pv || 0);
+        }
+      }
+    } else {
+      next.pa_mecanisme_bis = 0;
+      next.pv_mecanisme_bis = 0;
+    }
+
     // Embrasse (passementerie vendue à la pièce)
     next.pv_embrasse_auto = false; // repère de verrouillage du PV
     if (next.embrasse) {
