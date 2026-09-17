@@ -336,14 +336,23 @@ export function schemaToGridCols(
 
     // --- Catalog columns (dropdown) ---
     const isCatalogType = col.type === 'catalog_item';
+    // Repli historique : ces colonnes n'ont pas `type: 'catalog_item'` mais désignent
+    // bien une référence du catalogue. La détection se fait sur le NOM de la clé,
+    // d'où le garde-fou `isNumericCol` ci-dessous.
     const isLegacyCatalogCol =
       col.key.includes('tissu') ||
       col.key.includes('doublure') ||
       (col.key.includes('passementerie') && !col.key.includes('app_')) ||
       (col.key === 'produit' && !col.hidden && col.type !== 'text');
     const isMechColumn = ['modele_mecanisme', 'nom_tringle', 'rail', 'mecanisme_bis'].includes(col.key);
+    // Une colonne chiffrée ne peut pas être une référence catalogue, quel que soit
+    // son nom : `laize_tissu1`, `pa_doublure`, `raccord_v_tissu2`, `ml_tissu1`…
+    // contiennent « tissu » ou « doublure » et se voyaient donc coller la liste
+    // déroulante des tissus à la place de la saisie du nombre.
+    // Un `type: 'catalog_item'` explicite reste prioritaire : il fait foi.
+    const isNumericCol = col.type === 'number' || col.type === 'formula';
 
-    if ((isCatalogType || isLegacyCatalogCol || isMechColumn) && catalog.length > 0) {
+    if ((isCatalogType || (!isNumericCol && (isLegacyCatalogCol || isMechColumn))) && catalog.length > 0) {
       let filteredCatalog = catalog;
 
       if (isCatalogType && col.category) {
@@ -363,9 +372,19 @@ export function schemaToGridCols(
       }
 
       // Éditeur "rich select" (Enterprise) : affiche le nom COMPLET de la référence
-      // catalogue et permet de taper pour filtrer (listes longues).
+      // catalogue, que la liste déroulante native tronquerait.
+      //
+      // `allowTyping: false` — se comporter comme les autres listes déroulantes
+      // (ex. « Paire ou un Pan ») : la cellule en édition montre la valeur et sa
+      // flèche ▼, la liste s'ouvre au clic, et le champ n'est PAS saisissable en
+      // texte libre. Avec `allowTyping: true` la cellule devenait un champ texte
+      // ouvert sur la liste, ce qui laissait croire qu'on pouvait écrire une
+      // référence à la main.
+      // `filterList: false` va avec : la frappe ne filtre plus la liste (il n'y a
+      // plus de champ pour voir ce qu'on tape), elle saute à l'entrée
+      // correspondante — le type-ahead classique d'un select.
       gridCol.cellEditor = 'agRichSelectCellEditor';
-      const richParams = { allowTyping: true, filterList: true, highlightMatch: true, searchType: 'matchAny' };
+      const richParams = { allowTyping: false, filterList: false, searchType: 'matchAny' };
 
       if (col.key === 'modele_mecanisme' || col.key === 'mecanisme_bis') {
         gridCol.cellEditorParams = (params) => {

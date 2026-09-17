@@ -22,6 +22,14 @@ const GRID_STATE_VERSION = 5; // à incrémenter si le calcul des largeurs chang
 // Ajout de lignes en lot : garde-fou sur la quantité saisie. Le plafond protège
 // d'une faute de frappe (1500 au lieu de 150) qui ferait gonfler le JSONB du
 // devis d'un coup ; il n'a pas vocation à brider un usage normal.
+// Éditeurs à liste déroulante : ils s'ouvrent au DOUBLE-clic, pas au clic simple.
+// Un clic simple doit d'abord sélectionner la cellule (copier, naviguer au clavier,
+// faire défiler) — sinon le menu s'ouvre sous le doigt dès qu'on effleure la case.
+// `agRichSelectCellEditor` manquait ici : les colonnes catalogue (tissus, doublures,
+// passementeries, mécanismes) ouvraient donc leur liste au premier clic, contrairement
+// aux autres listes déroulantes comme « Paire ou un Pan ».
+const SELECT_EDITORS = new Set(['agSelectCellEditor', 'agRichSelectCellEditor']);
+
 const MAX_ADD_ROWS = 500;
 const ADD_ROWS_PRESETS = [5, 10, 25, 50];
 const clampAddCount = (value) => {
@@ -242,15 +250,25 @@ const AG_CUSTOM_CSS = `
   animation: ag-col-jump-flash 1s ease-in-out 2;
   box-shadow: inset 0 -3px 0 0 #f59e0b;
 }
-/* Éditeur catalogue (rich select) : popup élargi + noms complets non tronqués */
-.ag-rich-select {
+/* Éditeur catalogue (rich select) : popup élargi + noms complets non tronqués.
+   L'éditeur DANS la cellule doit garder la largeur de la cellule. Forcer 340px
+   sur le sélecteur .ag-rich-select le faisait déborder d'une cellule en
+   overflow:hidden, et sa flèche ▼ — collée au bord droit — se retrouvait hors du
+   cadre visible : la cellule n'avait donc pas l'air d'une liste déroulante. */
+.ag-rich-select.ag-cell-editor {
+  min-width: 0;
+  max-width: none;
+}
+/* Le popup, lui, s'élargit pour afficher les références en entier. Il est monté
+   HORS de l'éditeur (.ag-popup-child, d'où l'ancien sélecteur descendant qui ne
+   matchait jamais) et AG Grid lui pose une largeur EN LIGNE calquée sur celle de
+   la cellule : d'où le !important. */
+.ag-rich-select-list.ag-popup-child {
+  width: auto !important;
   min-width: 340px !important;
-  max-width: 560px;
+  max-width: 560px !important;
 }
-.ag-rich-select .ag-rich-select-list {
-  min-width: 100%;
-}
-.ag-rich-select .ag-rich-select-row,
+.ag-rich-select-row,
 .ag-rich-select .ag-rich-select-value {
   overflow: visible;
   text-overflow: clip;
@@ -725,7 +743,7 @@ function MinuteGrid({
 
         // singleClickEdit pour les cellules non-select (les selects s'éditent au double-clic)
         if (readOnly || params.node.rowPinned) return;
-        if (params.colDef?.cellEditor === 'agSelectCellEditor') return;
+        if (SELECT_EDITORS.has(params.colDef?.cellEditor)) return;
         const isEditable = typeof params.colDef?.editable === 'function'
             ? params.colDef.editable(params)
             : params.colDef?.editable;
