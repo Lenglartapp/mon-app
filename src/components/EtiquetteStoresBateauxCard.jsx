@@ -5,6 +5,9 @@ import { STORES_BATEAUX_GETTERS } from "../lib/schemas/production/stores_bateaux
 
 // ─── Champs disponibles sur l'étiquette (ordre + sections) ───────────────────
 export const ETIQUETTE_STORES_BATEAUX_FIELDS = [
+  // Localisation — « Fenêtre » est le 3e niveau, optionnel : il n'apparaît dans
+  // l'en-tête que s'il est renseigné sur la ligne (et non masqué ici).
+  { key: "fenetre",             label: "Fenêtre",              section: "Localisation" },
   // Dimensions
   { key: "largeur",             label: "Largeur",              section: "Dimensions" },
   { key: "largeur_finie",       label: "L. Finie",             section: "Dimensions" },
@@ -37,7 +40,7 @@ export const ETIQUETTE_STORES_BATEAUX_FIELDS = [
   { key: "longueur_tigette",         label: "Long. tigette",        section: "Intervalles & Barre" },
 ];
 
-const SECTIONS = ["Dimensions", "Coupes & Finitions", "Matériaux", "Mécanisme", "Intervalles & Barre"];
+const SECTIONS = ["Localisation", "Dimensions", "Coupes & Finitions", "Matériaux", "Mécanisme", "Intervalles & Barre"];
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 const v = (row, key, fallback = "—") => {
@@ -239,6 +242,8 @@ export default function EtiquetteStoresBateauxCard({ row, projectName, index, to
 
   const zone = v(row, "zone", "Zone ?");
   const piece = v(row, "piece", "Pièce ?");
+  const fenetre = v(row, "fenetre", "");
+  const showFenetre = show("fenetre") && !!fenetre.trim();
   const produit = v(row, "produit", "—");
   const statutCotes = v(row, "statut_cotes", "—");
 
@@ -285,7 +290,7 @@ export default function EtiquetteStoresBateauxCard({ row, projectName, index, to
             {projectName || "Projet"}
           </div>
           <div style={{ fontSize: 18, fontWeight: 800, color: hdr.textMain, marginTop: 2 }}>
-            {zone} — {piece}
+            {zone} — {piece}{showFenetre ? ` — ${fenetre}` : ""}
           </div>
           <div style={{ fontSize: 12, color: hdr.textMuted, marginTop: 2 }}>{produit}</div>
         </div>

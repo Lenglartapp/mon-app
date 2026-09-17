@@ -18,6 +18,9 @@ const BASE_STORES_BATEAUX_SCHEMA = [
     // piece (text) : Pièce
     { key: "piece", label: "Pièce", type: "text", width: 120 },
 
+    // fenetre (text) : Fenêtre — 3e niveau de localisation, masqué par défaut
+    { key: "fenetre", label: "Fenêtre", type: "text", width: 140, defaultHidden: true },
+
     // produit (select) - Concerne uniquement Bateau / Velum
     {
         key: "produit",
@@ -223,7 +226,7 @@ const mapSchema = (list) => list.map(def => {
 export const STORES_BATEAUX_PROD_SCHEMA = [
     ...mapSchema([
         'detail',
-        'zone', 'piece', 'produit',
+        'zone', 'piece', 'fenetre', 'produit',
         'largeur', 'largeur_finie', 'ourlet_de_cote',
         'a_plat',
         'hauteur_finie', 'statut_cotes', 'hauteur_coupe', 'hauteur_coupe_motif', 'hauteur_coupe_doublure',

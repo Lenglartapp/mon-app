@@ -12,6 +12,7 @@ import MinutesScreen from "./MinutesScreen.jsx";
 import LineDetailPanel from "../components/LineDetailPanel";
 import StockInventoryTab from "../components/modules/Stocks/StockInventoryTab.jsx";
 import OdooStatusBadge from "../components/odoo/OdooStatusBadge.jsx";
+import ProjectCourseListPanel from "../components/odoo/ProjectCourseListPanel.jsx";
 
 import { computeFormulas, preserveManualAfterCompute } from "../lib/formulas/compute";
 import { SCHEMA_64 } from "../lib/schemas/production.js";
@@ -87,7 +88,17 @@ const getViewOrder = (viewKey, tableKey) => DEFAULT_VIEWS?.[viewKey]?.[tableKey]
 
 const getVisibilityModel = (viewKey, tableKey, schema) => {
   const defaults = DEFAULT_VIEWS?.[viewKey]?.[tableKey];
-  if (!defaults) return {}; // All visible by default
+
+  // Pas de vue définie → tout est visible, SAUF les colonnes marquées
+  // `defaultHidden` dans le schéma (colonnes d'appoint que l'on active à la
+  // demande via le sélecteur de colonnes, ex. « Fenêtre »).
+  if (!defaults) {
+    const model = {};
+    (schema || []).forEach(col => {
+      if (col.defaultHidden) model[col.key] = false;
+    });
+    return model;
+  }
 
   const model = {};
   schema.forEach(col => {
@@ -143,10 +154,13 @@ const buildBppPrintColumns = (schema, tableKey, gridKey) => {
     }
   } catch (_) { /* fallback ci-dessous */ }
 
-  // 2. Fallback : visibilité par défaut de la vue BPP
+  // 2. Fallback : visibilité par défaut de la vue BPP.
+  // `!== false` et non `truthy` : une vue « tout visible » (pas de liste dans
+  // views.js) renvoie un modèle quasi vide, et tester la vérité y masquait
+  // TOUTES les colonnes — le BPP sortait blanc.
   const vm = getVisibilityModel('bpp', tableKey, schema);
   return (schema || [])
-    .filter(col => vm[col.key] && isPrintableCol(col))
+    .filter(col => vm[col.key] !== false && isPrintableCol(col))
     .map(toPrintCol);
 };
 
@@ -1140,7 +1154,12 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                   </button>
                 )}
                 <div style={{ marginLeft: 'auto' }}>
-                  <OdooStatusBadge projectName={project?.name} projectId={project?.id} odooProjectId={project?.odoo_project_id} />
+                  <OdooStatusBadge
+                    projectName={project?.name}
+                    projectId={project?.id}
+                    idProjetOdoo={project?.id_projet_odoo}
+                    onLink={(odooId) => onUpdateProject && project && onUpdateProject(project.id, { id_projet_odoo: odooId })}
+                  />
                 </div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
@@ -1876,6 +1895,13 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
           <Button onClick={() => setStockOpen(false)}>Fermer</Button>
         </DialogTitle>
         <DialogContent dividers sx={{ p: 0 }}>
+          <div style={{ padding: 16, borderBottom: '1px solid #E5E7EB', background: '#FCFCFD' }}>
+            <ProjectCourseListPanel
+              droitfilProjectId={project?.id}
+              odooProjectId={project?.id_projet_odoo}
+              projectName={project?.name}
+            />
+          </div>
           <StockInventoryTab
             inventory={inventory ? inventory.filter(item => {
               if (!item.project) return false;

@@ -9,6 +9,8 @@ export const RIDEAUX_SCHEMA = [
     { key: "zone", label: "Zone", type: "text", width: 120 },
     // 4
     { key: "piece", label: "Pièce", type: "text", width: 120 },
+    // 4 bis — 3e niveau de localisation, masqué par défaut (activable via le sélecteur de colonnes)
+    { key: "fenetre", label: "Fenêtre", type: "text", width: 140, defaultHidden: true },
     // 5
     { key: "produit", label: "Produit", type: "select", options: ["Rideau", "Voilage"], width: 125 },
     // 6

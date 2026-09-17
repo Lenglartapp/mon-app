@@ -24,6 +24,9 @@ const BASE_STORES_CLASSIQUES_SCHEMA = [
     // piece (text) : Pièce
     { key: "piece", label: "Pièce", type: "text", width: 120 },
 
+    // fenetre (text) : Fenêtre — 3e niveau de localisation, masqué par défaut
+    { key: "fenetre", label: "Fenêtre", type: "text", width: 140, defaultHidden: true },
+
     // produit (select) - Filtré pour ne pas inclure Bateau/Velum
     {
         key: "produit",
@@ -155,7 +158,7 @@ const mapSchema = (list) => list.map(def => {
 export const STORES_PROD_SCHEMA = [
     ...mapSchema([
         'detail',
-        'zone', 'piece', 'produit',
+        'zone', 'piece', 'fenetre', 'produit',
         { key: "largeur", width: 130 },
         'hauteur',
         'tailles_lames',

@@ -96,6 +96,9 @@ function PrintLabel({ row, projectName, index, total }) {
 
   const zone = v(row, "zone", "Zone ?");
   const piece = v(row, "piece", "Pièce ?");
+  // 3e niveau de localisation : imprimé seulement s'il est renseigné et non masqué.
+  const fenetre = v(row, "fenetre", "");
+  const showFenetre = show("fenetre") && !!fenetre.trim();
   const statutCotes = v(row, "statut_cotes", "—");
   const isStatutWarn = statutCotes && !["Définitive", "Validé par chef de projet"].includes(statutCotes);
 
@@ -133,7 +136,7 @@ function PrintLabel({ row, projectName, index, total }) {
             {projectName || "Projet"}
           </div>
           <div style={{ fontSize: "8pt", fontWeight: 700, color: hdr.textMain, marginTop: "1pt" }}>
-            {zone} — {piece}
+            {zone} — {piece}{showFenetre ? ` — ${fenetre}` : ""}
           </div>
           <div style={{ fontSize: "7pt", fontWeight: 600, color: hdr.textMuted, marginTop: "1pt" }}>
             {v(row, "produit")}

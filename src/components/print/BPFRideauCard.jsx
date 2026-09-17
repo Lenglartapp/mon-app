@@ -55,6 +55,7 @@ export default function BPFRideauCard({ row, project, index, total }) {
     };
     const t1 = getTissuInfo(1);
     const t2 = getTissuInfo(2);
+    const fenetre = String(row.fenetre || '').trim();
 
     return (
         <div style={S.container}>
@@ -79,6 +80,13 @@ export default function BPFRideauCard({ row, project, index, total }) {
                             <div style={S.blackVal}>{row.zone}</div>
                             <div style={S.redLabel}>Pièce</div>
                             <div style={S.blackVal}>{row.piece}</div>
+                            {/* 3e niveau de localisation : imprimé uniquement s'il est renseigné */}
+                            {fenetre && (
+                                <>
+                                    <div style={S.redLabel}>Fenêtre</div>
+                                    <div style={S.blackVal}>{fenetre}</div>
+                                </>
+                            )}
                         </td>
                         {/* OB/OC */}
                         <td style={S.td}>
