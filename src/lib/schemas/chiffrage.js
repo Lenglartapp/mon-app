@@ -134,7 +134,7 @@ export const CHIFFRAGE_SCHEMA = [
   // 60b (NEW) - Mécanisme Bis
   { key: "mecanisme_bis", label: "Méca Bis", type: "catalog_item", category: "Rail", width: 140 }, // Same categories as main meca
   { key: "pa_mecanisme_bis", label: "PA Méca Bis", type: "number", width: 90 },
-  { key: "pv_mecanisme_bis", label: "PV Méca Bis", type: "number", width: 90 },
+  { key: "pv_mecanisme_bis", label: "PV Méca Bis", type: "number", width: 90, readOnly: (row) => row.pv_mecanisme_bis_auto === true },
 
   // 61
   { key: "heures_prepa", label: "H. Prépa", type: "number", width: 80 },
