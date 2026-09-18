@@ -3,11 +3,17 @@
 // va dans quel chapitre : toute évolution du découpage se répercute sur les deux écrans.
 //
 // Chapitres matières (achats fixes) :
-//   1. Tissus & Doublures  — tissus déco, doublure, interdoublure, molleton, toile de finition
-//   2. Passementerie       — isolée des tissus
+//   1. Tissus & Doublures  — tissus déco, doublure, interdoublure, molleton, toile de finition,
+//                            intérieurs de coussins (garnissage, comme le molleton)
+//   2. Passementerie       — isolée des tissus ; embrasses comprises (vendues à la pièce)
 //   3. Rails & Mécanismes  — rails, tringles, fournitures ET mécanismes de stores bateaux/vélum,
-//                            qu'ils soient vendus au mètre linéaire ou à l'unité
+//                            qu'ils soient vendus au mètre linéaire ou à l'unité ; baguettes de
+//                            tenture murale (article catalogue de catégorie « Rail »)
 //   4. Stores              — uniquement les stores négoce (produit fini acheté tel quel)
+//
+// ⚠ Fonctionnement en LISTE BLANCHE : un champ de PA qui n'est pas listé ici est ignoré
+// SANS AUCUN MESSAGE, et disparaît à la fois de la liste d'achats et de la moulinette.
+// Tout nouveau champ pa_* ajouté à un schéma doit donc être branché ici.
 //
 // La sous-traitance n'est pas un achat matière : elle est rendue à part (charges variables
 // côté moulinette, chapitre simple côté liste d'achats).
@@ -50,6 +56,22 @@ const PASSEMENTERIE_FIELDS = [
     { name: 'passementerie2', ml: 'ml_pass2', pa: 'pa_pass2' },
     { name: 'passementerie_1', ml: 'ml_pass_1', pa: 'pa_pass_1' },
     { name: 'passementerie_2', ml: 'ml_pass_2', pa: 'pa_pass_2' },
+];
+
+// Baguettes de tenture murale : fourniture achetée au mètre linéaire. Même forme que
+// les tissus (nom / ml / pa), d'où la réutilisation de collectFabrics — mais rangées
+// dans Rails & Mécanismes, conformément à leur catégorie catalogue « Rail ».
+const BAGUETTE_FIELDS = [
+    { name: 'baguette_1', ml: 'ml_baguette_1', pa: 'pa_baguette_1' },
+    { name: 'baguette_2', ml: 'ml_baguette_2', pa: 'pa_baguette_2' },
+];
+
+// Achats à la pièce hors mécanismes. Le PA de ligne couvre une unité de produit,
+// comme partout ailleurs → × quantité. `fallback` sert de libellé si la référence
+// n'est pas nommée, pour ne jamais perdre un montant faute de nom.
+const PIECE_FIELDS = [
+    { chapter: 'passementerie', name: 'embrasse', pa: 'pa_embrasse', fallback: 'Embrasse' },
+    { chapter: 'tissus', name: 'type_interieur', pa: 'pa_interieur', fallback: 'Intérieur de coussin' },
 ];
 
 export const ST_LABELS = {
@@ -156,6 +178,14 @@ const collectMecanismes = (maps, r, q) => {
     }
 };
 
+const collectPieces = (maps, r, q) => {
+    for (const f of PIECE_FIELDS) {
+        const pa = lineCost(r, f.pa, q);
+        if (pa <= 0) continue;
+        push(maps[f.chapter], r[f.name] || f.fallback, q, UNIT_PIECE, pa, sourceOf(r, q, UNIT_PIECE, pa));
+    }
+};
+
 const collectSousTraitance = (map, r, q) => {
     for (const f of SOUS_TRAITANCE_FIELDS) {
         const pa = lineCost(r, f.pa, q);
@@ -189,6 +219,8 @@ export function aggregatePurchaseChapters(rows = []) {
         const q = qtyOf(r);
         collectFabrics(maps.tissus, r, q, TISSU_FIELDS);
         collectFabrics(maps.passementerie, r, q, PASSEMENTERIE_FIELDS);
+        collectFabrics(maps.rails, r, q, BAGUETTE_FIELDS);
+        collectPieces(maps, r, q);
         collectMecanismes(maps, r, q);
         collectSousTraitance(stMap, r, q);
     }
