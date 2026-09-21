@@ -109,7 +109,7 @@ export async function refreshCourseLines(droitfilProjectId, odooProjectId, proje
   // Bascule en stock : lignes réceptionnées pas encore basculées (idempotent via stock_created)
   const current = await readCourseLines(droitfilProjectId);
   const candidates = current.filter(
-    (l) => l.statut === "receptionne" && !l.stock_created && !l.removed_from_odoo
+    (l) => l.statut === "receptionne" && !l.stock_created && !l.removed_from_odoo && Number(l.quantite) > 0
   );
   console.log(`[odoo] Réceptions à basculer en stock : ${candidates.length}`, candidates.map((l) => l.odoo_id));
 
