@@ -51,6 +51,10 @@ const COLUMNS = [
                 label = 'DÉPLACEMENT';
                 bg = '#DBEAFE'; // Blue Light
                 color = '#1E40AF'; // Blue Dark
+            } else if (type === 'ADJUST') {
+                label = 'ÉDITION';
+                bg = '#EDE9FE'; // Violet Light
+                color = '#5B21B6'; // Violet Dark
             }
 
             return (

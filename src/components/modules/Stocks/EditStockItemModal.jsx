@@ -39,7 +39,8 @@ export default function EditStockItemModal({ item, onClose, onSave }) {
     const cleanPieces = hasPieces
       ? pieces.filter((p) => Number(p.qty) > 0).map((p, idx) => ({ id: p.id, qty: Number(p.qty), location: p.location || '', name: `Pièce ${idx + 1}` }))
       : [];
-    const patch = { product, ref: ref || null, category, laize: laize || null, project: project || null, location, qty: totalQty, unit: unit || null, pieces: cleanPieces };
+    // Emplacement : quand il y a des pièces, ce sont leurs emplacements qui font foi (pas de global)
+    const patch = { product, ref: ref || null, category, laize: laize || null, project: project || null, location: hasPieces ? '' : location, qty: totalQty, unit: unit || null, pieces: cleanPieces };
     await onSave(patch, operator);
     setSaving(false);
   };
@@ -65,9 +66,11 @@ export default function EditStockItemModal({ item, onClose, onSave }) {
           </Stack>
           <Stack direction="row" spacing={2}>
             <TextField label="Affectation (dossier)" value={project} onChange={(e) => setProject(e.target.value)} size="small" sx={{ flex: 1 }} />
-            <TextField label="Opérateur" value={operator} onChange={(e) => setOperator(e.target.value)} size="small" sx={{ width: '40%' }} placeholder="Qui complète ?" />
+            <TextField label="Opérateur" value={operator} onChange={(e) => setOperator(e.target.value)} size="small" sx={{ width: '40%' }} placeholder="Qui édite ?" required error={!operator.trim()} />
           </Stack>
-          <TextField label="Emplacement (global)" value={location} onChange={(e) => setLocation(e.target.value)} size="small" fullWidth />
+          {!hasPieces && (
+            <TextField label="Emplacement" value={location} onChange={(e) => setLocation(e.target.value)} size="small" fullWidth />
+          )}
 
           <Divider />
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -92,7 +95,7 @@ export default function EditStockItemModal({ item, onClose, onSave }) {
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>Annuler</Button>
-        <Button variant="contained" onClick={save} disabled={saving || !product.trim()}>Enregistrer</Button>
+        <Button variant="contained" onClick={save} disabled={saving || !product.trim() || !operator.trim()}>Enregistrer</Button>
       </DialogActions>
     </Dialog>
   );
