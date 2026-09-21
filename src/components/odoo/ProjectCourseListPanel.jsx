@@ -94,8 +94,10 @@ export default function ProjectCourseListPanel({ droitfilProjectId, odooProjectI
     );
   }
 
-  const active = lines.filter((l) => !l.removed_from_odoo);
-  const removed = lines.filter((l) => l.removed_from_odoo);
+  // Option B : on n'affiche QUE le tissu (les autres types sont ignorés à l'affichage aussi).
+  const tissuLines = lines.filter((l) => l.type_produit === "tissu");
+  const active = tissuLines.filter((l) => !l.removed_from_odoo);
+  const removed = tissuLines.filter((l) => l.removed_from_odoo);
 
   return (
     <div style={{ padding: "8px 4px" }}>
