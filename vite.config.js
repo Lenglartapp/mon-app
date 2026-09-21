@@ -6,20 +6,29 @@ import { VitePWA } from 'vite-plugin-pwa'
 // serveur Vite (npm run dev), en réutilisant les mêmes handlers que sur Vercel.
 // En production, ce plugin ne s'applique pas : ce sont les vraies fonctions Vercel qui répondent.
 function odooApiDevPlugin(env) {
-  const ROUTES = new Set(['ping', 'preview', 'project-status', 'sync', 'course-lines'])
+  // Fichiers servables en dev, par préfixe d'URL -> dossier api/.
+  const ROUTES = {
+    '/api/odoo/': { dir: './api/odoo/', names: new Set(['ping', 'preview', 'project-status', 'sync', 'course-lines']) },
+    '/api/cron/': { dir: './api/cron/', names: new Set(['nightly']) },
+  }
   return {
     name: 'odoo-api-dev',
     apply: 'serve',
     configureServer(server) {
-      // Rendre les variables Odoo (du .env) visibles aux handlers via process.env
-      for (const k of ['ODOO_URL', 'ODOO_DB', 'ODOO_LOGIN', 'ODOO_KEY']) {
+      // Rendre les variables serveur (du .env) visibles aux handlers via process.env
+      const passthru = ['ODOO_URL', 'ODOO_DB', 'ODOO_LOGIN', 'ODOO_KEY',
+        'SUPABASE_URL', 'SUPABASE_SERVICE_KEY', 'VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY', 'CRON_SECRET']
+      for (const k of passthru) {
         if (env[k] && !process.env[k]) process.env[k] = env[k]
       }
       server.middlewares.use(async (req, res, next) => {
-        if (!req.url || !req.url.startsWith('/api/odoo/')) return next()
+        if (!req.url) return next()
+        const prefix = Object.keys(ROUTES).find((p) => req.url.startsWith(p))
+        if (!prefix) return next()
+        const { dir, names } = ROUTES[prefix]
         const url = new URL(req.url, 'http://localhost')
-        const route = url.pathname.replace('/api/odoo/', '').replace(/\/$/, '')
-        if (!ROUTES.has(route)) return next()
+        const route = url.pathname.replace(prefix, '').replace(/\/$/, '')
+        if (!names.has(route)) return next()
 
         // Adapter la requête Node vers la signature (req, res) de Vercel
         const query = Object.fromEntries(url.searchParams.entries())
@@ -31,7 +40,7 @@ function odooApiDevPlugin(env) {
             req.on('end', () => { try { resolve(JSON.parse(d || '{}')) } catch { resolve({}) } })
           })
         }
-        const vreq = { method: req.method, query, body }
+        const vreq = { method: req.method, query, body, headers: req.headers }
         const vres = {
           statusCode: 200,
           status(c) { this.statusCode = c; return this },
@@ -42,7 +51,7 @@ function odooApiDevPlugin(env) {
           },
         }
         try {
-          const modUrl = new URL(`./api/odoo/${route}.js`, import.meta.url)
+          const modUrl = new URL(`${dir}${route}.js`, import.meta.url)
           const handler = (await import(modUrl.href)).default
           await handler(vreq, vres)
         } catch (e) {
