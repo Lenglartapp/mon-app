@@ -15,7 +15,16 @@ const STATUT = {
   probleme:        { label: "Problème",       bg: "#FEF2F2", color: "#B91C1C" },
 };
 
-const COLS = ["Fournisseur", "Référence", "Coloris", "Laize", "Qté", "Unité", "Date de livraison estimée", "Statut", "Date de réception"];
+const TYPE = {
+  tissu: { label: "Tissu", bg: "#DBEAFE", color: "#1E40AF" },
+  rail: { label: "Rail", bg: "#F3F4F6", color: "#374151" },
+  mecanisme: { label: "Mécanisme", bg: "#FEF3C7", color: "#92400E" },
+  store: { label: "Store", bg: "#ECFEFF", color: "#155E75" },
+  consommable: { label: "Consommable", bg: "#FCE7F3", color: "#9D174D" },
+  autre: { label: "Autre", bg: "#F3F4F6", color: "#6B7280" },
+};
+
+const COLS = ["Fournisseur", "Référence", "Type", "Coloris", "Laize", "Qté", "Unité", "Date de livraison estimée", "Statut", "Date de réception"];
 const fmtDate = (d) => (d ? new Date(d).toLocaleDateString("fr-FR") : "—");
 
 function StatutBadge({ statut }) {
@@ -23,6 +32,16 @@ function StatutBadge({ statut }) {
   return (
     <span style={{ display: "inline-block", padding: "2px 8px", borderRadius: 999, background: s.bg, color: s.color, fontSize: 12, fontWeight: 600, whiteSpace: "nowrap" }}>
       {s.label}
+    </span>
+  );
+}
+
+function TypeBadge({ type }) {
+  if (!type) return <span style={{ color: "#9CA3AF" }}>—</span>;
+  const t = TYPE[type] || { label: type, bg: "#F3F4F6", color: "#374151" };
+  return (
+    <span style={{ display: "inline-block", padding: "2px 8px", borderRadius: 999, background: t.bg, color: t.color, fontSize: 12, fontWeight: 600, whiteSpace: "nowrap" }}>
+      {t.label}
     </span>
   );
 }
@@ -124,6 +143,7 @@ export default function ProjectCourseListPanel({ droitfilProjectId, odooProjectI
               <tr key={l.odoo_id} style={{ borderBottom: "1px solid #F3F4F6" }}>
                 <td style={td}>{l.fournisseur || "—"}</td>
                 <td style={{ ...td, fontWeight: 600 }}>{l.reference || "—"}</td>
+                <td style={td}><TypeBadge type={l.type_produit} /></td>
                 <td style={td}>{l.coloris || "—"}</td>
                 <td style={td}>{l.laize || "—"}</td>
                 <td style={{ ...td, textAlign: "right", whiteSpace: "nowrap" }}>{l.quantite ?? "—"}</td>
@@ -137,6 +157,7 @@ export default function ProjectCourseListPanel({ droitfilProjectId, odooProjectI
               <tr key={l.odoo_id} style={{ borderBottom: "1px solid #F3F4F6", opacity: 0.55, color: "#9CA3AF" }} title="Cette ligne n'existe plus dans Odoo (gardée ici).">
                 <td style={td}>{l.fournisseur || "—"}</td>
                 <td style={{ ...td, textDecoration: "line-through" }}>{l.reference || "—"}</td>
+                <td style={td}><TypeBadge type={l.type_produit} /></td>
                 <td style={{ ...td, textDecoration: "line-through" }}>{l.coloris || "—"}</td>
                 <td style={td}>{l.laize || "—"}</td>
                 <td style={{ ...td, textAlign: "right" }}>{l.quantite ?? "—"}</td>

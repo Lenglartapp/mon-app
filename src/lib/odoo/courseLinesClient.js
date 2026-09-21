@@ -40,7 +40,8 @@ async function createReceptionEntry(line, projectName) {
   const product = [line.reference, line.coloris].filter(Boolean).join(" — ") || line.reference || "Réception";
   const qty = line.quantite ?? 0;
   const unit = line.unite || null;
-  const category = line.unite && /m/i.test(line.unite) ? "Tissu" : "Divers";
+  const TYPE_TO_CATEGORY = { tissu: "Tissu", rail: "Rail", mecanisme: "Mécanisme", consommable: "Consommable", store: "Divers", autre: "Divers" };
+  const category = TYPE_TO_CATEGORY[line.type_produit] || (line.unite && /m/i.test(line.unite) ? "Tissu" : "Divers");
   const reason = ["Réception Odoo", line.fournisseur].filter(Boolean).join(" — ");
   const now = new Date().toISOString();
 
@@ -78,6 +79,7 @@ export async function refreshCourseLines(droitfilProjectId, odooProjectId, proje
     prix_indicatif: l.prix_indicatif ?? null,
     purchase_order: m2oName(l.purchase_order_id),
     statut: l.statut || null,
+    type_produit: l.type_produit || null,
     date_livraison_estimee: dateOrNull(l.date_livraison_estimee),
     date_reception: dateOrNull(l.date_reception),
     write_date: l.write_date || null,
@@ -106,8 +108,9 @@ export async function refreshCourseLines(droitfilProjectId, odooProjectId, proje
 
   // Bascule en stock : lignes réceptionnées pas encore basculées (idempotent via stock_created)
   const current = await readCourseLines(droitfilProjectId);
+  // Pour l'instant : SEUL le tissu bascule en stock (les autres types s'affichent mais ne remontent pas).
   const candidates = current.filter(
-    (l) => l.statut === "receptionne" && !l.stock_created && !l.removed_from_odoo && Number(l.quantite) > 0
+    (l) => l.statut === "receptionne" && !l.stock_created && !l.removed_from_odoo && Number(l.quantite) > 0 && l.type_produit === "tissu"
   );
   console.log(`[odoo] Réceptions à basculer en stock : ${candidates.length}`, candidates.map((l) => l.odoo_id));
 
