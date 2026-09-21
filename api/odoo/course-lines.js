@@ -3,11 +3,12 @@
 
 import { searchRead } from '../_odooClient.js';
 
-const FIELDS = [
+export const COURSE_FIELDS = [
   'id', 'sequence', 'reference', 'coloris', 'laize', 'quantite', 'unite_id',
   'fournisseur_id', 'prix_indicatif', 'purchase_order_id', 'statut', 'type_produit',
   'date_livraison_estimee', 'date_reception', 'write_date',
 ];
+const FIELDS = COURSE_FIELDS;
 
 export default async function handler(req, res) {
   try {

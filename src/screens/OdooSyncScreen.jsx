@@ -1,9 +1,10 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, RefreshCw, ExternalLink, Info, AlertTriangle, Upload, CheckCircle } from "lucide-react";
 import { COLORS, S } from "../lib/constants/ui";
 import { useLocalStorage } from "../lib/hooks/useLocalStorage";
 import { aggregateConsumed } from "../lib/odoo/aggregateConsumed";
 import { fetchOdooPreview, syncOdoo, odooProjectUrl } from "../lib/odoo/odooPreviewClient";
+import { setConfig } from "../lib/appConfig";
 
 const todayStr = () => new Date().toISOString().slice(0, 10);
 
@@ -17,6 +18,8 @@ const fmtH = (n) => `${Math.round((n || 0) * 10) / 10}`.replace(".", ",") + " h"
 
 export default function OdooSyncScreen({ events = [], projects = [], onBack }) {
   const [cutoffDate, setCutoffDate] = useLocalStorage("odoo_cutoff_date", todayStr());
+  // Partage la date de bascule côté serveur (app_config) : le job de nuit lit cette même valeur.
+  useEffect(() => { if (cutoffDate) setConfig("odoo_cutoff_date", cutoffDate); }, [cutoffDate]);
   const [preview, setPreview] = useState(null); // Map id -> statut Odoo
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
