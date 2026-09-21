@@ -1186,13 +1186,43 @@ export const useStocks = () => {
         }
     };
 
+    // Édition directe d'un article de stock (produit, catégorie, affectation, emplacement,
+    // quantité, pièces) + trace « Ajustement » au journal. Rafraîchit l'inventaire.
+    const updateInventoryItem = async (itemId, patch, { operator } = {}) => {
+        try {
+            const { error } = await supabase.from('inventory_items').update(patch).eq('id', itemId);
+            if (error) throw error;
+
+            await supabase.from('inventory_logs').insert([{
+                type: 'ADJUST',
+                product: patch.product,
+                qty: patch.qty ?? null,
+                unit: patch.unit ?? null,
+                user_name: operator || 'Édition',
+                location: patch.location || '',
+                project: patch.project || null,
+                reason: 'Édition manuelle (article)',
+                pieces_names: null,
+                date: new Date().toISOString(),
+            }]);
+
+            fetchStocks();
+            return { success: true };
+        } catch (error) {
+            console.error('Erreur updateInventoryItem:', error);
+            alert(`Erreur : ${error.message}`);
+            return { success: false, error };
+        }
+    };
+
     return {
         inventory,
         movements,
         loading,
         addMovement,
         refreshStocks: fetchStocks,
-        bulkUpdateInventory
+        bulkUpdateInventory,
+        updateInventoryItem
     };
 };
 

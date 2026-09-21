@@ -10,7 +10,10 @@ import Stack from '@mui/material/Stack';
 import SearchIcon from '@mui/icons-material/Search';
 import InputAdornment from '@mui/material/InputAdornment';
 import Autocomplete from '@mui/material/Autocomplete';
+import IconButton from '@mui/material/IconButton';
+import HistoryIcon from '@mui/icons-material/History';
 import ProductHistoryModal from './ProductHistoryModal';
+import EditStockItemModal from './EditStockItemModal';
 import { useMemo, useRef } from 'react';
 import Button from '@mui/material/Button';
 import { Download, Upload, Map } from 'lucide-react';
@@ -18,7 +21,7 @@ import { exportInventoryToExcel, processInventoryClearanceImport } from '../../.
 import { useAuth } from '../../../auth';
 import WarehouseMap from './WarehouseMap';
 
-export default function StockInventoryTab({ inventory, projects = [], movements = [], onBulkMovement, zones = [] }) {
+export default function StockInventoryTab({ inventory, projects = [], movements = [], onBulkMovement, onUpdateItem, zones = [] }) {
     const { currentUser } = useAuth();
     const fileInputRef = useRef(null);
     const [search, setSearch] = useState('');
@@ -72,8 +75,15 @@ export default function StockInventoryTab({ inventory, projects = [], movements 
     // History Modal State
     const [historyOpen, setHistoryOpen] = useState(false);
     const [historyProduct, setHistoryProduct] = useState(null);
+    const [editItem, setEditItem] = useState(null);
 
     const handleRowDoubleClick = (params) => {
+        const src = params.row._sourceItems || [];
+        // Article simple (une seule entrée sous-jacente) → édition ; sinon → historique
+        if (src.length === 1 && onUpdateItem) {
+            setEditItem(src[0]);
+            return;
+        }
         setHistoryProduct(params.row);
         setHistoryOpen(true);
     };
@@ -213,6 +223,22 @@ export default function StockInventoryTab({ inventory, projects = [], movements 
                 );
             }
         },
+        {
+            field: '_history',
+            headerName: '',
+            width: 56,
+            sortable: false,
+            filterable: false,
+            renderCell: (params) => (
+                <IconButton
+                    size="small"
+                    title="Historique des mouvements"
+                    onClick={(e) => { e.stopPropagation(); setHistoryProduct(params.row); setHistoryOpen(true); }}
+                >
+                    <HistoryIcon fontSize="small" />
+                </IconButton>
+            )
+        },
     ], [projects]);
 
     const filteredRows = inventory.filter(item => {
@@ -255,10 +281,11 @@ export default function StockInventoryTab({ inventory, projects = [], movements 
             if (!groups[key]) {
                 groups[key] = {
                     ...item,
-                    id: key, 
+                    id: key,
                     allLocations: new Set([item.location, ...pieceLocs].filter(Boolean)),
                     allProjects: new Set([item.project].filter(Boolean)),
-                    allPieces: [...itemPieces]
+                    allPieces: [...itemPieces],
+                    _sourceItems: [item]
                 };
             } else {
                 groups[key].qty += item.qty;
@@ -266,6 +293,7 @@ export default function StockInventoryTab({ inventory, projects = [], movements 
                 pieceLocs.forEach(l => groups[key].allLocations.add(l));
                 if (item.project) groups[key].allProjects.add(item.project);
                 groups[key].allPieces = [...groups[key].allPieces, ...itemPieces];
+                groups[key]._sourceItems.push(item);
             }
         });
         
@@ -434,6 +462,17 @@ export default function StockInventoryTab({ inventory, projects = [], movements 
             </Card>
 
             {/* HISTORY MODAL */}
+            {editItem && (
+                <EditStockItemModal
+                    item={editItem}
+                    onClose={() => setEditItem(null)}
+                    onSave={async (patch, operator) => {
+                        const r = await onUpdateItem(editItem.id, patch, { operator });
+                        if (!r || r.success !== false) setEditItem(null);
+                    }}
+                />
+            )}
+
             {historyOpen && (
                 <ProductHistoryModal
                     open={historyOpen}

@@ -5,7 +5,7 @@ import { searchRead } from '../_odooClient.js';
 
 const FIELDS = [
   'id', 'sequence', 'reference', 'coloris', 'laize', 'quantite', 'unite_id',
-  'fournisseur_id', 'prix_indicatif', 'purchase_order_id', 'statut',
+  'fournisseur_id', 'prix_indicatif', 'purchase_order_id', 'statut', 'type_produit',
   'date_livraison_estimee', 'date_reception', 'write_date',
 ];
 
