@@ -108,14 +108,28 @@ export async function refreshCourseLines(droitfilProjectId, odooProjectId, proje
 
   // Bascule en stock : lignes réceptionnées pas encore basculées (idempotent via stock_created)
   const current = await readCourseLines(droitfilProjectId);
+  const candidates = current.filter(
+    (l) => l.statut === "receptionne" && !l.stock_created && !l.removed_from_odoo
+  );
+  console.log(`[odoo] Réceptions à basculer en stock : ${candidates.length}`, candidates.map((l) => l.odoo_id));
+
   let receptionsCreated = 0;
-  for (const line of current) {
-    if (line.statut === "receptionne" && !line.stock_created && !line.removed_from_odoo) {
+  const receptionErrors = [];
+  for (const line of candidates) {
+    try {
       await createReceptionEntry(line, projectName);
-      await supabase.from("odoo_course_lines").update({ stock_created: true }).eq("odoo_id", line.odoo_id);
+      const { error } = await supabase
+        .from("odoo_course_lines")
+        .update({ stock_created: true })
+        .eq("odoo_id", line.odoo_id);
+      if (error) throw error;
       receptionsCreated++;
+      console.log(`[odoo] Réception #${line.odoo_id} basculée en stock ✓`);
+    } catch (e) {
+      console.error(`[odoo] Échec bascule réception #${line.odoo_id} :`, e);
+      receptionErrors.push(`${line.reference || "#" + line.odoo_id} : ${e?.message || e}`);
     }
   }
 
-  return { lines: await readCourseLines(droitfilProjectId), receptionsCreated };
+  return { lines: await readCourseLines(droitfilProjectId), receptionsCreated, receptionErrors };
 }

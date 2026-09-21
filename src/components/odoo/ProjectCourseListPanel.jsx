@@ -54,10 +54,11 @@ export default function ProjectCourseListPanel({ droitfilProjectId, odooProjectI
     setError(null);
     setNotice(null);
     try {
-      const { lines: rows, receptionsCreated } = await refreshCourseLines(droitfilProjectId, odooProjectId, projectName);
+      const { lines: rows, receptionsCreated, receptionErrors } = await refreshCourseLines(droitfilProjectId, odooProjectId, projectName);
       setLines(rows);
       setLastSync(new Date().toISOString());
       if (receptionsCreated > 0) setNotice(`${receptionsCreated} réception(s) ajoutée(s) au stock du projet.`);
+      if (receptionErrors && receptionErrors.length) setError("Réception non basculée en stock — " + receptionErrors.join(" · "));
     } catch (e) {
       setError(e.message);
     } finally {
