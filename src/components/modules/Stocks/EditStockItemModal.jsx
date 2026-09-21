@@ -10,7 +10,10 @@ const CATEGORIES = ['Tissu', 'Rail', 'Consommable', 'Mécanisme', 'Divers'];
 
 export default function EditStockItemModal({ item, onClose, onSave }) {
   const [product, setProduct] = useState(item.product || '');
+  const [ref, setRef] = useState(item.ref || '');
   const [category, setCategory] = useState(CATEGORIES.includes(item.category) ? item.category : 'Tissu');
+  const [laize, setLaize] = useState(item.laize || '');
+  const [unit, setUnit] = useState(item.unit || '');
   const [project, setProject] = useState(item.project || '');
   const [location, setLocation] = useState(item.location || '');
   const [operator, setOperator] = useState('');
@@ -36,7 +39,7 @@ export default function EditStockItemModal({ item, onClose, onSave }) {
     const cleanPieces = hasPieces
       ? pieces.filter((p) => Number(p.qty) > 0).map((p, idx) => ({ id: p.id, qty: Number(p.qty), location: p.location || '', name: `Pièce ${idx + 1}` }))
       : [];
-    const patch = { product, category, project: project || null, location, qty: totalQty, unit: item.unit ?? null, pieces: cleanPieces };
+    const patch = { product, ref: ref || null, category, laize: laize || null, project: project || null, location, qty: totalQty, unit: unit || null, pieces: cleanPieces };
     await onSave(patch, operator);
     setSaving(false);
   };
@@ -49,14 +52,21 @@ export default function EditStockItemModal({ item, onClose, onSave }) {
       </DialogTitle>
       <DialogContent dividers>
         <Stack spacing={2} sx={{ mt: 1 }}>
-          <TextField label="Produit" value={product} onChange={(e) => setProduct(e.target.value)} size="small" fullWidth />
           <Stack direction="row" spacing={2}>
-            <TextField select label="Catégorie" value={category} onChange={(e) => setCategory(e.target.value)} size="small" sx={{ width: '50%' }}>
+            <TextField label="Produit" value={product} onChange={(e) => setProduct(e.target.value)} size="small" sx={{ flex: 1 }} />
+            <TextField label="Référence" value={ref} onChange={(e) => setRef(e.target.value)} size="small" sx={{ width: '35%' }} />
+          </Stack>
+          <Stack direction="row" spacing={2}>
+            <TextField select label="Catégorie" value={category} onChange={(e) => setCategory(e.target.value)} size="small" sx={{ width: '34%' }}>
               {CATEGORIES.map((c) => <MenuItem key={c} value={c}>{c}</MenuItem>)}
             </TextField>
-            <TextField label="Opérateur" value={operator} onChange={(e) => setOperator(e.target.value)} size="small" sx={{ width: '50%' }} placeholder="Qui complète ?" />
+            <TextField label="Laize" value={laize} onChange={(e) => setLaize(e.target.value)} size="small" sx={{ width: '33%' }} placeholder="ex. 140" />
+            <TextField label="Unité" value={unit} onChange={(e) => setUnit(e.target.value)} size="small" sx={{ width: '33%' }} placeholder="ml, u…" />
           </Stack>
-          <TextField label="Affectation (dossier)" value={project} onChange={(e) => setProject(e.target.value)} size="small" fullWidth />
+          <Stack direction="row" spacing={2}>
+            <TextField label="Affectation (dossier)" value={project} onChange={(e) => setProject(e.target.value)} size="small" sx={{ flex: 1 }} />
+            <TextField label="Opérateur" value={operator} onChange={(e) => setOperator(e.target.value)} size="small" sx={{ width: '40%' }} placeholder="Qui complète ?" />
+          </Stack>
           <TextField label="Emplacement (global)" value={location} onChange={(e) => setLocation(e.target.value)} size="small" fullWidth />
 
           <Divider />

@@ -10,6 +10,8 @@ import Stack from '@mui/material/Stack';
 import SearchIcon from '@mui/icons-material/Search';
 import InputAdornment from '@mui/material/InputAdornment';
 import Autocomplete from '@mui/material/Autocomplete';
+import IconButton from '@mui/material/IconButton';
+import HistoryIcon from '@mui/icons-material/History';
 import ProductHistoryModal from './ProductHistoryModal';
 import EditStockItemModal from './EditStockItemModal';
 import { useMemo, useRef } from 'react';
@@ -220,6 +222,22 @@ export default function StockInventoryTab({ inventory, projects = [], movements 
                     </div>
                 );
             }
+        },
+        {
+            field: '_history',
+            headerName: '',
+            width: 56,
+            sortable: false,
+            filterable: false,
+            renderCell: (params) => (
+                <IconButton
+                    size="small"
+                    title="Historique des mouvements"
+                    onClick={(e) => { e.stopPropagation(); setHistoryProduct(params.row); setHistoryOpen(true); }}
+                >
+                    <HistoryIcon fontSize="small" />
+                </IconButton>
+            )
         },
     ], [projects]);
 

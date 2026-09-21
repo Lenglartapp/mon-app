@@ -41,13 +41,11 @@ async function createReceptionEntry(line, projectName) {
   const qty = line.quantite ?? 0;
   const unit = line.unite || null;
   const category = line.unite && /m/i.test(line.unite) ? "Tissu" : "Divers";
-  const reason = ["Réception Odoo", line.fournisseur, line.laize ? `laize ${line.laize}` : null]
-    .filter(Boolean)
-    .join(" — ");
+  const reason = ["Réception Odoo", line.fournisseur].filter(Boolean).join(" — ");
   const now = new Date().toISOString();
 
   const { error: itemErr } = await supabase.from("inventory_items").insert([
-    { product, qty, unit, project: projectName || null, location: "", category, pieces: [] },
+    { product, ref: line.reference || null, laize: line.laize || null, qty, unit, project: projectName || null, location: "", category, pieces: [] },
   ]);
   if (itemErr) throw itemErr;
 
