@@ -24,7 +24,8 @@ export default function StocksModule({
     inventory = [],
     movements = [],
     onAddMovement,
-    onBulkMovement
+    onBulkMovement,
+    onUpdateItem
 }) {
     const { currentUser } = useAuth();
     const canEdit = can(currentUser, 'inventory.edit');
@@ -174,6 +175,7 @@ export default function StocksModule({
                             projects={projects}
                             movements={movements}
                             onBulkMovement={onBulkMovement}
+                            onUpdateItem={onUpdateItem}
                             zones={zones}
                         />
                     )}

@@ -40,7 +40,7 @@ async function createReceptionEntry(line, projectName) {
   const product = [line.reference, line.coloris].filter(Boolean).join(" — ") || line.reference || "Réception";
   const qty = line.quantite ?? 0;
   const unit = line.unite || null;
-  const category = line.unite && /m/i.test(line.unite) ? "Tissu" : "Accessoire";
+  const category = line.unite && /m/i.test(line.unite) ? "Tissu" : "Divers";
   const reason = ["Réception Odoo", line.fournisseur, line.laize ? `laize ${line.laize}` : null]
     .filter(Boolean)
     .join(" — ");

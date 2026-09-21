@@ -109,7 +109,7 @@ function AppShell() {
   const { projects, addProject, updateProject, deleteProject, refreshProjects, loadProjectDetail, loadAllProjects } = useProjects();
   const { minutes, addMinute, updateMinute, deleteMinute, loadMinuteDetail, loadAllMinutes } = useMinutes();
   const { events: planningEvents, updateEvent, deleteEvent } = useEvents();
-  const { inventory, movements, addMovement, bulkUpdateInventory } = useStocks();
+  const { inventory, movements, addMovement, bulkUpdateInventory, updateInventoryItem } = useStocks();
 
   // Alias pour compatibilité
   const cleanProjects = projects;
@@ -477,6 +477,7 @@ function AppShell() {
       {screen === "project" && currentProject && !isInternalProject(cleanProjects.find(p => String(p.id) === String(currentProject.id)) || currentProject) && (
         <ProductionProjectScreen
           inventory={inventory}
+          onUpdateItem={updateInventoryItem}
           project={cleanProjects.find(p => String(p.id) === String(currentProject.id)) || currentProject}
           projects={cleanProjects}
           onBack={() => navigate("/production")}
@@ -498,6 +499,7 @@ function AppShell() {
           movements={movements}
           onAddMovement={addMovement}
           onBulkMovement={bulkUpdateInventory}
+          onUpdateItem={updateInventoryItem}
           onBack={() => navigate("/")}
         />
       )}
