@@ -600,7 +600,7 @@ const PlanningGrid = ({
     return (
         <div style={{ flex: 1, overflow: 'hidden', padding: '0 24px 24px', display: 'flex', flexDirection: 'column' }}>
             <div style={{ height: 'fit-content', maxHeight: '100%', overflow: 'auto', background: 'white', border: '1px solid #E5E7EB', borderRadius: 12, position: 'relative' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: `260px repeat(${gridCols.length}, minmax(${MIN_WIDTH}px, 1fr))`, gridAutoRows: 'max-content', width: 'max-content', minWidth: '100%' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: `260px repeat(${gridCols.length}, minmax(${MIN_WIDTH}px, 1fr))`, gridAutoRows: 'max-content', width: (view === 'year' || view === 'quarter' || view === 'month') ? 'max-content' : '100%', minWidth: '100%' }}>
                     <StickyCorner style={{ height: HEADER_HEIGHT_1, borderBottom: 'none' }} />
                     {superHeaders.map((header, i) => (<div key={i} style={{ gridColumn: `span ${header.span}`, position: 'sticky', top: 0, zIndex: 40, background: 'white', borderBottom: '1px solid #E5E7EB', borderRight: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: 1 }}>{header.label}</div>))}
                     <StickyCorner style={{ top: HEADER_HEIGHT_1, height: HEADER_HEIGHT_2 }}>Ressources</StickyCorner>
@@ -650,7 +650,7 @@ const PlanningGrid = ({
                                 .filter(member => expandedGroups[key] >= 2 || member.id === 'backlog_confection')
                                 .map(member => (
                                     <React.Fragment key={member.id}>
-                                        <StickyLeftCell style={{ paddingLeft: 42, color: member.id === 'backlog_confection' ? '#BE123C' : '#4B5563', fontWeight: member.id === 'backlog_confection' ? 700 : 500, display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: member.id === 'backlog_confection' ? PROGRAMME_ROW_HEIGHT : ROW_HEIGHT }}>
+                                        <StickyLeftCell style={{ paddingLeft: 42, color: member.id === 'backlog_confection' ? '#BE123C' : '#4B5563', fontWeight: member.id === 'backlog_confection' ? 700 : 500, display: 'flex', justifyContent: 'space-between', alignItems: 'center', ...(member.id === 'backlog_confection' ? { minHeight: PROGRAMME_ROW_HEIGHT, height: 'auto', alignSelf: 'stretch' } : { height: ROW_HEIGHT }) }}>
                                             {member.id === 'backlog_confection' ? (
                                                 <span style={{ display: 'flex', alignItems: 'center' }}>
                                                     <span
@@ -775,7 +775,7 @@ const PlanningGrid = ({
                                                                 key={`bin-${binIndex}`}
                                                                 style={{
                                                                     gridColumn: `span ${weekDays.length}`,
-                                                                    height: PROGRAMME_ROW_HEIGHT,
+                                                                    minHeight: PROGRAMME_ROW_HEIGHT,
                                                                     display: 'flex',
                                                                     flexDirection: 'column',
                                                                     background: binIndex % 2 === 0 ? '#FFF1F2' : '#FDF2F8',
@@ -839,9 +839,10 @@ const PlanningGrid = ({
                                                                 <div style={{
                                                                     flex: 1,
                                                                     display: 'flex',
+                                                                    flexWrap: 'wrap',
                                                                     alignItems: 'center',
-                                                                    overflowX: 'auto',
-                                                                    padding: '0 4px',
+                                                                    alignContent: 'center',
+                                                                    padding: '4px',
                                                                     gap: 4
                                                                 }}>
                                                                     {binEvents.map(evt => {
@@ -973,7 +974,8 @@ const PlanningGrid = ({
                                                                                 style={{
                                                                                     minWidth: 170,
                                                                                     maxWidth: 190,
-                                                                                    height: 'calc(100% - 4px)',
+                                                                                    height: 124,
+                                                                                    flexShrink: 0,
                                                                                     background: 'white',
                                                                                     border: '1px solid #FECDD3',
                                                                                     borderRadius: 4,
