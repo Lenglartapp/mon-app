@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { ChevronDown, ChevronRight as ChevronRightIcon, CheckCircle, X, Plus as PlusIcon } from 'lucide-react';
+import { ChevronDown, ChevronRight as ChevronRightIcon, CheckCircle, X, Plus as PlusIcon, BedDouble } from 'lucide-react';
 import { format, isSameDay, startOfMonth, startOfDay, endOfMonth, eachDayOfInterval, isWeekend, differenceInMinutes, addDays, parseISO, getHours, getMinutes, getISOWeek, addWeeks, startOfWeek, endOfWeek } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { PLANNING_COLORS, getProjectColor, ROW_HEIGHT, PROGRAMME_ROW_HEIGHT, HEADER_HEIGHT_1, HEADER_HEIGHT_2, TOTAL_WORK_MINUTES, WORK_START_HOUR, WORK_END_HOUR, DEFAULT_DAILY_HOURS, ATELIER_HOURS_PER_DAY, dailyHoursForGroup } from './constants';
@@ -312,8 +312,11 @@ const PlanningGrid = ({
                 >
                     {isBacklog ? renderBacklogContent() : (
                         <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', height: '100%', gap: 1, overflow: 'hidden' }}>
-                            <div style={{ fontSize: 11, fontWeight: fontWeight, color: style.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flexShrink: 0 }}>
-                                {evt.title}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, overflow: 'hidden' }}>
+                                {evt.meta?.decouche && <BedDouble size={12} color={style.text} style={{ flexShrink: 0 }} aria-label="Découché — nuit sur place" />}
+                                <div style={{ fontSize: 11, fontWeight: fontWeight, color: style.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                    {evt.title}
+                                </div>
                             </div>
                             {/* Heures début-fin : uniquement pour la pose (conf/prepa raisonnent en durée) */}
                             {evt.meta?.start && evt.meta?.end && evt.type !== 'conf' && evt.type !== 'prepa' && (
