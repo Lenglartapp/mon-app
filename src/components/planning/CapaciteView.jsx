@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
-import { format, startOfWeek, endOfWeek, eachWeekOfInterval, eachDayOfInterval, isWeekend, addMonths, subWeeks } from 'date-fns';
+import { format, startOfWeek, endOfWeek, eachWeekOfInterval, eachDayOfInterval, isWeekend, addMonths, subMonths } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { X } from 'lucide-react';
+import { X, ChevronRight, ChevronDown } from 'lucide-react';
 import {
     ComposedChart, Line, Area, XAxis, YAxis, CartesianGrid, Tooltip,
     ResponsiveContainer, ReferenceLine, Legend,
@@ -27,24 +27,126 @@ const ALL_WS = ['conf', 'pose', 'prepa'];
 // Typologies de période (comme le module Performance) : on démarre toujours à S-1
 // et on projette N mois en avant.
 const PERIODE_PRESETS = [
-    { key: 'month',   label: 'Mois',      months: 1  },
-    { key: 'quarter', label: 'Trimestre', months: 3  },
-    { key: '6m',      label: '6 mois',    months: 6  },
-    { key: 'year',    label: 'Année',     months: 12 },
+    { key: 'month',        label: 'Mois en cours',     dir: 'future', months: 1  },
+    { key: 'quarter',      label: 'Trimestre à venir', dir: 'future', months: 3  },
+    { key: '6m',           label: '6 mois à venir',    dir: 'future', months: 6  },
+    { key: 'year',         label: 'Année à venir',     dir: 'future', months: 12 },
+    { key: 'last_month',   label: 'Mois dernier',      dir: 'past',   months: 1  },
+    { key: 'last_quarter', label: 'Trimestre dernier', dir: 'past',   months: 3  },
+    { key: 'last_6m',      label: '6 derniers mois',   dir: 'past',   months: 6  },
+    { key: 'last_year',    label: 'Dernière année',    dir: 'past',   months: 12 },
 ];
 
 // Tuile de synthèse du dashboard.
-const Tile = ({ label, value, sub, color = '#111827' }) => (
-    <div style={{ background: 'white', border: '1px solid #E5E7EB', borderRadius: 12, padding: '14px 16px' }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: 0.3 }}>{label}</div>
+const Tile = ({ label, value, sub, color = '#111827', onClick }) => (
+    <div
+        onClick={onClick}
+        title={onClick ? 'Voir les projets concernés' : undefined}
+        style={{ background: 'white', border: '1px solid #E5E7EB', borderRadius: 12, padding: '14px 16px', cursor: onClick ? 'pointer' : 'default', transition: 'box-shadow .15s, border-color .15s' }}
+        onMouseEnter={onClick ? (e) => { e.currentTarget.style.boxShadow = '0 2px 10px rgba(0,0,0,0.08)'; e.currentTarget.style.borderColor = '#C7D2FE'; } : undefined}
+        onMouseLeave={onClick ? (e) => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.borderColor = '#E5E7EB'; } : undefined}
+    >
+        <div style={{ fontSize: 11, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: 0.3, display: 'flex', alignItems: 'center', gap: 4 }}>
+            {label}{onClick && <span style={{ fontSize: 13, color: '#9CA3AF', lineHeight: 1 }}>›</span>}
+        </div>
         <div style={{ fontSize: 24, fontWeight: 800, color, marginTop: 6, lineHeight: 1 }}>{value}</div>
         {sub && <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 4 }}>{sub}</div>}
     </div>
 );
 
+// Pop-up : liste des projets qui dépassent (surplanification ou suroccupation), avec les chiffres.
+const OverModal = ({ type, rows, onClose }) => {
+    const r1 = (n) => Math.round((n || 0) * 10) / 10;
+    const isPlan = type === 'surplanif';
+    const [expanded, setExpanded] = useState(() => new Set());
+    const toggle = (id) => setExpanded((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+    const title = isPlan ? 'Surplanification — projets concernés' : 'Surconsommation — projets concernés';
+    const suffix = isPlan ? 'au-delà du budget restant' : 'au-delà du budget vendu';
+    const totalOver = rows.reduce((s, r) => s + r.over, 0);
+    const dth = { textAlign: 'right', padding: '4px 8px', fontSize: 10, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase' };
+    const dtd = { textAlign: 'right', padding: '4px 8px', color: '#4B5563' };
+    return (
+        <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(17,24,39,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 }}>
+            <div onClick={(e) => e.stopPropagation()} style={{ background: 'white', borderRadius: 14, width: 'min(720px, 100%)', maxHeight: '80vh', display: 'flex', flexDirection: 'column', boxShadow: '0 20px 50px rgba(0,0,0,0.3)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '16px 18px', borderBottom: '1px solid #E5E7EB' }}>
+                    <div>
+                        <div style={{ fontWeight: 800, fontSize: 16, color: '#111827' }}>{title}</div>
+                        <div style={{ fontSize: 12, color: '#6B7280', marginTop: 2 }}>{rows.length} projet{rows.length > 1 ? 's' : ''} · total +{r1(totalOver)}h {suffix} · <span style={{ color: '#9CA3AF' }}>clique un projet pour le détail par service</span></div>
+                    </div>
+                    <button onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#6B7280', padding: 4 }}><X size={20} /></button>
+                </div>
+                <div style={{ overflowY: 'auto', padding: '4px 8px 10px' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                        <thead>
+                            <tr style={{ color: '#9CA3AF', fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.3 }}>
+                                <th style={{ textAlign: 'left', padding: '8px 10px' }}>Projet</th>
+                                <th style={{ textAlign: 'right', padding: '8px 10px' }}>{isPlan ? 'Planifié futur' : 'Consommé'}</th>
+                                <th style={{ textAlign: 'right', padding: '8px 10px' }}>{isPlan ? 'Budget restant' : 'Budget vendu'}</th>
+                                <th style={{ textAlign: 'right', padding: '8px 10px' }}>{isPlan ? 'Surplanif' : 'Surconso'}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {rows.map((r) => {
+                                const open = expanded.has(r.id);
+                                return (
+                                    <React.Fragment key={r.id}>
+                                        <tr onClick={() => toggle(r.id)} style={{ borderTop: '1px solid #F3F4F6', cursor: 'pointer', background: open ? '#F9FAFB' : 'transparent' }}>
+                                            <td style={{ padding: '8px 10px', fontWeight: 600, color: '#111827' }}>
+                                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                                                    {open ? <ChevronDown size={14} color="#9CA3AF" /> : <ChevronRight size={14} color="#9CA3AF" />}
+                                                    {r.name}
+                                                </span>
+                                            </td>
+                                            <td style={{ padding: '8px 10px', textAlign: 'right', color: '#374151' }}>{r1(r.a)}h</td>
+                                            <td style={{ padding: '8px 10px', textAlign: 'right', color: '#374151' }}>{r1(r.b)}h</td>
+                                            <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 700, color: '#B91C1C' }}>+{r1(r.over)}h</td>
+                                        </tr>
+                                        {open && (
+                                            <tr style={{ background: '#F9FAFB' }}>
+                                                <td colSpan={4} style={{ padding: '2px 10px 12px 28px' }}>
+                                                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                                                        <thead>
+                                                            <tr>
+                                                                <th style={{ textAlign: 'left', padding: '4px 8px', fontSize: 10, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase' }}>Service</th>
+                                                                <th style={dth}>{isPlan ? 'Planifié futur' : 'Consommé'}</th>
+                                                                <th style={dth}>{isPlan ? 'Budget restant' : 'Budget vendu'}</th>
+                                                                <th style={dth}>{isPlan ? 'Surplanif' : 'Surconso'}</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {r.services.map((s) => {
+                                                                const aWs = isPlan ? s.planned : s.consumed;
+                                                                const bWs = isPlan ? s.remaining : s.budget;
+                                                                const overWs = Math.max(0, aWs - bWs);
+                                                                return (
+                                                                    <tr key={s.key} style={{ borderTop: '1px solid #EEF0F3' }}>
+                                                                        <td style={{ textAlign: 'left', padding: '4px 8px', color: '#374151', fontWeight: 600 }}>{s.label}</td>
+                                                                        <td style={dtd}>{r1(aWs)}h</td>
+                                                                        <td style={dtd}>{r1(bWs)}h</td>
+                                                                        <td style={{ ...dtd, fontWeight: 700, color: overWs > 0 ? '#B91C1C' : '#9CA3AF' }}>{overWs > 0 ? `+${r1(overWs)}h` : '—'}</td>
+                                                                    </tr>
+                                                                );
+                                                            })}
+                                                        </tbody>
+                                                    </table>
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </React.Fragment>
+                                );
+                            })}
+                            {rows.length === 0 && <tr><td colSpan={4} style={{ padding: 16, textAlign: 'center', color: '#9CA3AF' }}>Aucun projet concerné.</td></tr>}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 // Détail par projet (panneau latéral) : titre + liste avec barres proportionnelles.
 // overFn(item) → heures de surplanification du projet (0 si aucune) ; marqueur rouge si > 0.
-const ProjectBreakdown = ({ title, items, total, barColor, emptyText, overFn, overLabel = 'dépassement' }) => (
+const ProjectBreakdown = ({ title, items, total, barColor, emptyText, overFn, overLabel = 'dépassement', overSuffix = 'au-delà du budget' }) => (
     <div style={{ marginBottom: 20 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
             <span style={{ fontSize: 11, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase' }}>{title} ({items.length})</span>
@@ -66,7 +168,7 @@ const ProjectBreakdown = ({ title, items, total, barColor, emptyText, overFn, ov
                     </div>
                     <div style={{ fontSize: 10, marginTop: 2 }}>
                         <span style={{ color: '#9CA3AF' }}>{pct}%</span>
-                        {over > 0 && <span style={{ color: '#EF4444', fontWeight: 700, marginLeft: 6 }}>· {overLabel} +{over}h au-delà du budget</span>}
+                        {over > 0 && <span style={{ color: '#EF4444', fontWeight: 700, marginLeft: 6 }}>· {overLabel} +{over}h {overSuffix}</span>}
                     </div>
                 </div>
             );
@@ -81,20 +183,29 @@ const CapaciteView = ({ localUsers, localEvents, projects = [] }) => {
 
     const [selectedWorkshops, setSelectedWorkshops] = useState(isPoseTech ? ['pose'] : ['conf', 'pose', 'prepa']);
     // Vue de base : on démarre à la semaine précédente (S-1), horizon = trimestre.
-    const [periode,    setPeriode]    = useState('quarter');
-    const [rangeStart, setRangeStart] = useState(format(startOfWeek(subWeeks(today, 1), { weekStartsOn: 1 }), 'yyyy-MM-dd'));
+    const [periode,    setPeriode]    = useState('quarter');   // défaut : Trimestre à venir
+    const [direction,  setDirection]  = useState('future');    // 'future' (planification) | 'past' (consommation)
+    const [rangeStart, setRangeStart] = useState(format(startOfWeek(today, { weekStartsOn: 1 }), 'yyyy-MM-dd'));
     const [rangeEnd,   setRangeEnd]   = useState(format(addMonths(today, 3), 'yyyy-MM-dd'));
     const [selectedWeekData, setSelectedWeekData] = useState(null);
     // Charge masquée par défaut : la vue de base compare Capacité et Planifié.
     const [showCharge, setShowCharge] = useState(false);
 
-    // Applique une typologie : début figé à S-1, fin = today + N mois.
+    // Applique une typologie. Futur : de la semaine en cours à +N mois (planification).
+    // Passé : de −N mois à la semaine en cours (consommation). La direction pilote les tuiles.
     const applyPreset = (key) => {
         const preset = PERIODE_PRESETS.find(p => p.key === key);
         if (!preset) return;
         setPeriode(key);
-        setRangeStart(format(startOfWeek(subWeeks(today, 1), { weekStartsOn: 1 }), 'yyyy-MM-dd'));
-        setRangeEnd(format(addMonths(today, preset.months), 'yyyy-MM-dd'));
+        setDirection(preset.dir);
+        const weekStart = startOfWeek(today, { weekStartsOn: 1 });
+        if (preset.dir === 'past') {
+            setRangeStart(format(startOfWeek(subMonths(today, preset.months), { weekStartsOn: 1 }), 'yyyy-MM-dd'));
+            setRangeEnd(format(weekStart, 'yyyy-MM-dd'));
+        } else {
+            setRangeStart(format(weekStart, 'yyyy-MM-dd'));
+            setRangeEnd(format(addMonths(today, preset.months), 'yyyy-MM-dd'));
+        }
     };
 
     const closures      = useMemo(() => localEvents.filter(e => e.type === 'closure'),  [localEvents]);
@@ -115,16 +226,26 @@ const CapaciteView = ({ localUsers, localEvents, projects = [] }) => {
     // Budget / planifié par projet (source unique) → sert à repérer la SURPLANIFICATION :
     // heures planifiées au-delà du budget vendu (planifié > budget), sur les ateliers affichés.
     const projectHoursById = useMemo(() => {
+        // Surplanification = FUTUR uniquement : on ne compte le planifié qu'à partir du lundi de la
+        // semaine en cours. Le passé planifié-non-réalisé ne doit pas gonfler le total (ex. 100h
+        // programmées S-1, 60h faites → les 40h non faites ne comptent plus). Le consommé, lui,
+        // reste compté quelle que soit la date (c'est du réalisé).
+        const plannedFrom = startOfWeek(today, { weekStartsOn: 1 });
         const map = {};
-        (projects || []).forEach(p => { map[p.id] = computeProjectHours(p, localEvents); });
+        (projects || []).forEach(p => { map[p.id] = computeProjectHours(p, localEvents, { plannedFrom }); });
         return map;
     }, [projects, localEvents]);
     const overPlanForProject = (projId) => {
         const h = projectHoursById[projId];
         if (!h) return 0;
-        let planned = 0, budget = 0;
-        selectedWorkshops.forEach(ws => { planned += h.planned[ws] || 0; budget += h.budget[ws] || 0; });
-        return Math.max(0, planned - budget);
+        // Planifié FUTUR total (ateliers sélectionnés) au-delà du budget RESTANT total
+        // (budget vendu − déjà consommé). Agrégé, cohérent avec les chiffres affichés.
+        let planned = 0, remaining = 0;
+        selectedWorkshops.forEach(ws => {
+            planned   += h.planned[ws] || 0;
+            remaining += Math.max(0, (h.budget[ws] || 0) - (h.consumed[ws] || 0));
+        });
+        return Math.max(0, planned - remaining);
     };
     // Suroccupation : heures CONSOMMÉES au-delà du budget vendu (débordement réel).
     const overOccForProject = (projId) => {
@@ -134,6 +255,26 @@ const CapaciteView = ({ localUsers, localEvents, projects = [] }) => {
         selectedWorkshops.forEach(ws => { consumed += h.consumed[ws] || 0; budget += h.budget[ws] || 0; });
         return Math.max(0, consumed - budget);
     };
+
+    // Détails par projet (pour les pop-ups) — mêmes calculs que les tuiles.
+    const overPlanDetail = (projId) => {
+        const h = projectHoursById[projId];
+        if (!h) return { planned: 0, remaining: 0, over: 0 };
+        let planned = 0, remaining = 0;
+        selectedWorkshops.forEach(ws => {
+            planned   += h.planned[ws] || 0;
+            remaining += Math.max(0, (h.budget[ws] || 0) - (h.consumed[ws] || 0));
+        });
+        return { planned, remaining, over: Math.max(0, planned - remaining) };
+    };
+    const overOccDetail = (projId) => {
+        const h = projectHoursById[projId];
+        if (!h) return { consumed: 0, budget: 0, over: 0 };
+        let consumed = 0, budget = 0;
+        selectedWorkshops.forEach(ws => { consumed += h.consumed[ws] || 0; budget += h.budget[ws] || 0; });
+        return { consumed, budget, over: Math.max(0, consumed - budget) };
+    };
+    const [overModal, setOverModal] = useState(null); // 'surplanif' | 'surocc' | null
 
     const filteredUsers = useMemo(() =>
         // Groupe de production (ex. ordo_conf compté en confection)
@@ -398,22 +539,32 @@ const CapaciteView = ({ localUsers, localEvents, projects = [] }) => {
                         {showCharge ? 'Charge sur la courbe ✓' : 'Charge sur la courbe'}
                     </button>
 
-                    {/* Sélecteur de période — typologies (comme Performance) + perso */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 'auto', flexWrap: 'wrap' }}>
-                        {PERIODE_PRESETS.map(p => (
-                            <button key={p.key} onClick={() => applyPreset(p.key)} style={{
-                                padding: '6px 12px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                                background: periode === p.key ? '#111827' : 'white',
-                                color:      periode === p.key ? 'white'   : '#6B7280',
-                                border:     `1px solid ${periode === p.key ? '#111827' : '#E5E7EB'}`,
-                            }}>{p.label}</button>
-                        ))}
-                        <button onClick={() => setPeriode('custom')} style={{
-                            padding: '6px 12px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                            background: periode === 'custom' ? '#111827' : 'white',
-                            color:      periode === 'custom' ? 'white'   : '#6B7280',
-                            border:     `1px solid ${periode === 'custom' ? '#111827' : '#E5E7EB'}`,
-                        }}>Perso.</button>
+                    {/* Sélecteur de période : direction (Futur/Passé) + menu déroulant + perso */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 'auto', flexWrap: 'wrap' }}>
+                        {/* Toggle direction : quelles tuiles afficher (planification vs consommation) */}
+                        <div style={{ display: 'inline-flex', background: '#F3F4F6', borderRadius: 20, padding: 2 }}>
+                            {[{ k: 'future', l: 'Futur' }, { k: 'past', l: 'Passé' }].map(o => (
+                                <button key={o.k} onClick={() => setDirection(o.k)} style={{
+                                    padding: '5px 14px', borderRadius: 18, fontSize: 12, fontWeight: 700, cursor: 'pointer', border: 'none',
+                                    background: direction === o.k ? '#111827' : 'transparent',
+                                    color:      direction === o.k ? 'white'   : '#6B7280',
+                                }}>{o.l}</button>
+                            ))}
+                        </div>
+                        {/* Menu déroulant de période */}
+                        <select
+                            value={periode}
+                            onChange={e => { const v = e.target.value; if (v === 'custom') setPeriode('custom'); else applyPreset(v); }}
+                            style={{ padding: '6px 10px', borderRadius: 8, fontSize: 12, fontWeight: 600, color: '#374151', border: '1px solid #E5E7EB', background: 'white', cursor: 'pointer' }}
+                        >
+                            <optgroup label="À venir">
+                                {PERIODE_PRESETS.filter(p => p.dir === 'future').map(p => <option key={p.key} value={p.key}>{p.label}</option>)}
+                            </optgroup>
+                            <optgroup label="Passé">
+                                {PERIODE_PRESETS.filter(p => p.dir === 'past').map(p => <option key={p.key} value={p.key}>{p.label}</option>)}
+                            </optgroup>
+                            <option value="custom">Perso…</option>
+                        </select>
                         {periode === 'custom' && (
                             <>
                                 <input type="date" value={rangeStart} onChange={e => { setPeriode('custom'); setRangeStart(e.target.value); }}
@@ -429,18 +580,27 @@ const CapaciteView = ({ localUsers, localEvents, projects = [] }) => {
                 {/* Dashboard — synthèse sur toute la période sélectionnée */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 }}>
                     <Tile label="Capacité" value={`${totals.capa}h`} sub="disponible sur la période" />
-                    <Tile label="Planifié" value={`${totals.planifie}h`} color={COLOR_PLANIFIE} sub="à faire sur la période" />
-                    <Tile label="Taux de planification" value={`${totals.ratePlan}%`} color={rateColor(totals.ratePlan)}
-                        sub={`écart ${totals.ecartPlan >= 0 ? '+' : ''}${totals.ecartPlan}h`} />
-                    <Tile label="Surplanification" value={`${totals.surplanif}h`}
-                        color={totals.surplanif > 0 ? '#EF4444' : '#10B981'}
-                        sub={totals.surplanif > 0 ? `${totals.nbOver} projet${totals.nbOver > 1 ? 's' : ''} au-delà du budget · ${totals.pctSurplanif}% du planifié` : 'aucun dépassement de budget'} />
-                    <Tile label="Consommé" value={`${totals.charge}h`} color={COLOR_CHARGE} sub="réalisé sur la période" />
-                    <Tile label="Taux d'occupation" value={`${totals.rateOcc}%`} color={rateColor(totals.rateOcc)}
-                        sub={`écart ${totals.ecartOcc >= 0 ? '+' : ''}${totals.ecartOcc}h`} />
-                    <Tile label="Suroccupation" value={`${totals.suroccup}h`}
-                        color={totals.suroccup > 0 ? '#EF4444' : '#10B981'}
-                        sub={totals.suroccup > 0 ? `${totals.nbOverOcc} projet${totals.nbOverOcc > 1 ? 's' : ''} au-delà du budget · ${totals.pctSuroccup}% du consommé` : 'aucun dépassement de budget'} />
+                    {direction === 'future' ? (
+                        <>
+                            <Tile label="Planifié" value={`${totals.planifie}h`} color={COLOR_PLANIFIE} sub="à faire sur la période" />
+                            <Tile label="Taux de planification" value={`${totals.ratePlan}%`} color={rateColor(totals.ratePlan)}
+                                sub={`écart ${totals.ecartPlan >= 0 ? '+' : ''}${totals.ecartPlan}h`} />
+                            <Tile label="Surplanification" value={`${totals.surplanif}h`}
+                                color={totals.surplanif > 0 ? '#EF4444' : '#10B981'}
+                                onClick={totals.surplanif > 0 ? () => setOverModal('surplanif') : undefined}
+                                sub={totals.surplanif > 0 ? `${totals.nbOver} projet${totals.nbOver > 1 ? 's' : ''} au-delà du budget · ${totals.pctSurplanif}% du planifié` : 'aucun dépassement de budget'} />
+                        </>
+                    ) : (
+                        <>
+                            <Tile label="Consommé" value={`${totals.charge}h`} color={COLOR_CHARGE} sub="réalisé sur la période" />
+                            <Tile label="Taux d'occupation" value={`${totals.rateOcc}%`} color={rateColor(totals.rateOcc)}
+                                sub={`écart ${totals.ecartOcc >= 0 ? '+' : ''}${totals.ecartOcc}h`} />
+                            <Tile label="Surconsommation" value={`${totals.suroccup}h`}
+                                color={totals.suroccup > 0 ? '#EF4444' : '#10B981'}
+                                onClick={totals.suroccup > 0 ? () => setOverModal('surocc') : undefined}
+                                sub={totals.suroccup > 0 ? `${totals.nbOverOcc} projet${totals.nbOverOcc > 1 ? 's' : ''} au-delà du budget · ${totals.pctSuroccup}% du consommé` : 'aucun dépassement de budget'} />
+                        </>
+                    )}
                 </div>
 
                 {/* Courbe */}
@@ -574,6 +734,7 @@ const CapaciteView = ({ localUsers, localEvents, projects = [] }) => {
                             emptyText="Rien de planifié sur cette semaine."
                             overFn={(p) => Math.round(overPlanForProject(p.id) * 10) / 10}
                             overLabel="surplanifié"
+                            overSuffix="au-delà du budget restant"
                         />
                         <ProjectBreakdown
                             title="Consommé"
@@ -587,6 +748,32 @@ const CapaciteView = ({ localUsers, localEvents, projects = [] }) => {
                     </div>
                 </div>
             )}
+
+            {overModal && (() => {
+                const isPlan = overModal === 'surplanif';
+                const ids = new Set();
+                chartData.forEach((row) => (isPlan ? row.plannedProjects : row.projects).forEach((p) => { if (p.id) ids.add(p.id); }));
+                const nameById = new Map((projects || []).map((p) => [p.id, p.name]));
+                const rows = [];
+                ids.forEach((id) => {
+                    const d = isPlan ? overPlanDetail(id) : overOccDetail(id);
+                    if (d.over > 0) {
+                        const h = projectHoursById[id];
+                        // Détail par service (uniquement les ateliers sélectionnés en haut).
+                        const services = selectedWorkshops.map((ws) => ({
+                            key: ws,
+                            label: WORKSHOP_CONFIG[ws]?.label || ws,
+                            budget: h?.budget?.[ws] || 0,
+                            consumed: h?.consumed?.[ws] || 0,
+                            remaining: Math.max(0, (h?.budget?.[ws] || 0) - (h?.consumed?.[ws] || 0)),
+                            planned: h?.planned?.[ws] || 0,
+                        }));
+                        rows.push({ id, name: nameById.get(id) || '—', a: isPlan ? d.planned : d.consumed, b: isPlan ? d.remaining : d.budget, over: d.over, services });
+                    }
+                });
+                rows.sort((x, y) => y.over - x.over);
+                return <OverModal type={overModal} rows={rows} onClose={() => setOverModal(null)} />;
+            })()}
         </div>
     );
 };

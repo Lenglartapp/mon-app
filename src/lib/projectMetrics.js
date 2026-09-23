@@ -216,7 +216,17 @@ const emptyServices = () => ({ prepa: 0, conf: 0, pose: 0 });
  * Heures par service pour un projet.
  * @returns { budget, consumed, planned, remaining } — chacun { prepa, conf, pose }
  */
-export const computeProjectHours = (project, events) => {
+// opts.plannedFrom (Date) : ne comptabilise dans `planned` que les créneaux dont la date ≥ plannedFrom.
+// Sert à la SURPLANIFICATION « futur uniquement » (le passé planifié-non-réalisé ne doit pas gonfler
+// le total). Par défaut (non fourni) : comportement inchangé, tout le planifié est compté.
+export const computeProjectHours = (project, events, opts = {}) => {
+  const plannedFrom = opts.plannedFrom ? new Date(opts.plannedFrom) : null;
+  const isCountedPlan = (evt) => {
+    if (!plannedFrom) return true;
+    const d = new Date(evt.meta?.start || evt.date);
+    return !isNaN(d.getTime()) && d >= plannedFrom;
+  };
+
   const budget = {
     prepa: Number(project?.budget?.prepa) || 0,
     conf: Number(project?.budget?.conf) || 0,
@@ -240,7 +250,7 @@ export const computeProjectHours = (project, events) => {
     // pas de la répartition par personne. Chaque carte porte ses heures dans
     // meta.budgetHours ; on les cumule (toutes semaines) dans planned.conf.
     if (evt.resourceId === 'backlog_confection' || evt.meta?.isBacklogMaster) {
-      planned.conf += Number(evt.meta?.budgetHours) || 0;
+      if (isCountedPlan(evt)) planned.conf += Number(evt.meta?.budgetHours) || 0;
       return;
     }
 
@@ -250,12 +260,13 @@ export const computeProjectHours = (project, events) => {
 
     if (evt.meta?.status === 'validated') {
       // Consommé (réalisé) : inchangé, tous services — créneaux validés par personne.
+      // (Le consommé compte quelle que soit la date : c'est du réalisé.)
       consumed[svc] += h;
     } else if (svc !== 'conf') {
       // Planifié pose/prépa : inchangé (répartition par personne).
       // Planifié conf : ignoré ici — il provient du Programme semaine (ci-dessus),
       // sinon on compterait deux fois les mêmes heures.
-      planned[svc] += h;
+      if (isCountedPlan(evt)) planned[svc] += h;
     }
   });
 
