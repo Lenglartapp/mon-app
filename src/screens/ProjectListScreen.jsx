@@ -14,6 +14,7 @@ import { truncate } from "../lib/utils/truncate";
 
 import CreateProjectDialog from "../components/CreateProjectDialog.jsx";
 import ImportProjectsDialog from "../components/ImportProjectsDialog.jsx";
+import OdooLinkCell from "../components/odoo/OdooLinkCell.jsx";
 import { SCHEMA_64 } from "../lib/schemas/production.js";
 import { computeFormulas } from "../lib/formulas/compute.js";
 import { createBlankProject } from "../lib/import/createBlankProject.js";
@@ -352,6 +353,14 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#4B5563' }}>
                   <span role="img" aria-label="date">📅</span> {dateStr}
                 </div>
+                {!isInternalProject(p) && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }} onClick={(e) => e.stopPropagation()}>
+                    <OdooLinkCell
+                      idProjetOdoo={p?.id_projet_odoo || null}
+                      onLink={(odooId) => handleUpdate(p.id, { id_projet_odoo: odooId })}
+                    />
+                  </div>
+                )}
               </div>
 
               {/* FOOTER: Budgets + Actions */}
@@ -416,6 +425,7 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
                 <th style={{ padding: '12px 16px', fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Responsable</th>
                 <th style={{ padding: '12px 16px', fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: 'center' }}>Statut</th>
                 <th style={{ padding: '12px 16px', fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Livraison</th>
+                <th style={{ padding: '12px 16px', fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Odoo</th>
 
                 {/* Creation Date */}
                 <th
@@ -557,6 +567,15 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
                       )}
                     </td>
 
+                    {/* ODOO */}
+                    <td style={{ padding: '12px 16px' }} onClick={(e) => e.stopPropagation()}>
+                      <OdooLinkCell
+                        idProjetOdoo={p?.id_projet_odoo || null}
+                        internal={internal}
+                        onLink={(odooId) => handleUpdate(p.id, { id_projet_odoo: odooId })}
+                      />
+                    </td>
+
                     {/* CREATION */}
                     <td style={{ padding: '12px 16px', fontSize: 13, color: '#6B7280' }}>
                       {new Date(p.created_at || p.createdAt || Date.now()).toLocaleDateString("fr-FR")}
@@ -592,7 +611,7 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
                   </tr>
                 );
               })}
-              {filteredProjects.length === 0 && (<tr><td colSpan={8} style={{ padding: 40, textAlign: 'center', color: '#9CA3AF' }}><FileText size={48} style={{ opacity: 0.2, marginBottom: 16 }} /><div>Aucun projet trouvé.</div></td></tr>)}
+              {filteredProjects.length === 0 && (<tr><td colSpan={10} style={{ padding: 40, textAlign: 'center', color: '#9CA3AF' }}><FileText size={48} style={{ opacity: 0.2, marginBottom: 16 }} /><div>Aucun projet trouvé.</div></td></tr>)}
             </tbody>
           </table>
         </div>

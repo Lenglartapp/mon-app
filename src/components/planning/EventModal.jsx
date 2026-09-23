@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { X, Briefcase, Check, Calendar as CalendarIcon, Clock, ArrowRight, User, ChevronDown, Trash2, CheckCircle } from 'lucide-react';
+import { X, Briefcase, Check, Calendar as CalendarIcon, Clock, ArrowRight, User, ChevronDown, Trash2, CheckCircle, BedDouble } from 'lucide-react';
 import { format, differenceInMinutes } from 'date-fns';
 import { ATELIER_HOURS_PER_DAY } from './constants';
 import {
@@ -20,6 +20,7 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
     const [selectedResources, setSelectedResources] = useState([]);
     const [showResourceList, setShowResourceList] = useState(false);
     const [description, setDescription] = useState('');
+    const [decouche, setDecouche] = useState(false); // Pose : l'équipe dort sur place (nuit sur place)
 
     // Dates & Heures
     const [startDate, setStartDate] = useState(format(new Date(), 'yyyy-MM-dd'));
@@ -114,6 +115,7 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
                 setEndDate(format(endDateObj, 'yyyy-MM-dd'));
                 setEndTime(format(endDateObj, 'HH:mm'));
                 setDescription(eventToEdit.meta?.description || '');
+                setDecouche(!!eventToEdit.meta?.decouche);
                 setDurationHours(eventToEdit.meta?.durationHours ?? ATELIER_HOURS_PER_DAY);
             } else if (initialData) {
                 // Mode Création (Clic Cellule)
@@ -126,6 +128,7 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
                 setStartTime('08:00');
                 setEndTime('17:00');
                 setDescription('');
+                setDecouche(false);
                 setDurationHours(ATELIER_HOURS_PER_DAY);
             } else {
                 // Mode Création (Bouton Nouveau)
@@ -138,6 +141,7 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
                 setStartTime('08:00');
                 setEndTime('17:00');
                 setDescription('');
+                setDecouche(false);
                 setDurationHours(ATELIER_HOURS_PER_DAY);
             }
         }
@@ -228,6 +232,7 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
                 endTime,
                 durationHours: isHourMode ? parseFloat(durationHours) || ATELIER_HOURS_PER_DAY : null,
                 description,
+                decouche: selectedGroup === 'pose' ? decouche : false, // découché : pertinent pour la pose
                 status: eventToEdit?.meta?.status || 'pending', // Preserves status or defaults to pending
                 type: allMembers.find(m => m.id === selectedResources[0])?.group || 'default'
             });
@@ -373,6 +378,21 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
                                         <span style={{ fontWeight: 600, color: poseStats.remaining < 0 ? '#EF4444' : '#10B981' }}>{fmtH(poseStats.remaining)}h</span>
                                     </div>
                                 </div>
+                            )}
+
+                            {/* DÉCOUCHÉ (pose uniquement) : l'équipe dort sur place */}
+                            {selectedGroup === 'pose' && (
+                                <label style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 12, padding: '10px 12px', borderRadius: 8, border: `1px solid ${decouche ? '#6366F1' : '#E5E7EB'}`, background: decouche ? '#EEF2FF' : '#fff', cursor: readOnly ? 'default' : 'pointer' }}>
+                                    <input
+                                        type="checkbox"
+                                        checked={decouche}
+                                        disabled={readOnly}
+                                        onChange={(e) => setDecouche(e.target.checked)}
+                                        style={{ width: 16, height: 16, cursor: readOnly ? 'default' : 'pointer', accentColor: '#6366F1' }}
+                                    />
+                                    <BedDouble size={18} color={decouche ? '#4338CA' : '#6B7280'} />
+                                    <span style={{ fontSize: 13, fontWeight: 600, color: decouche ? '#3730A3' : '#374151' }}>Découché — nuit sur place</span>
+                                </label>
                             )}
                         </div>
 
