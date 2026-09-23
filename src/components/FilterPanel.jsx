@@ -3,10 +3,17 @@ import React, { useState, useRef } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { uid } from '../lib/utils/uid';
 
+// Deux conventions de schéma coexistent (comme dans MinuteGrid) :
+//  - Rideaux / Stores : `label` + `options`.
+//  - Coussins, Plaids, Cache-sommiers, Tentures, Mobilier (createCol) : `headerName` + `valueOptions`.
+// On lit les deux, sans jamais planter même si une colonne n'a aucun nom.
+const colLabel = (col) => col?.label || col?.headerName || col?.key || '';
+const colOptions = (col) => col?.options ?? col?.valueOptions;
+
 export function getFieldType(col) {
     if (!col) return 'text';
     if (col.type === 'number' || col.type === 'formula') return 'number';
-    if (col.type === 'select' || col.type === 'singleSelect' || col.type === 'catalog_item' || col.options) return 'select';
+    if (col.type === 'select' || col.type === 'singleSelect' || col.type === 'catalog_item' || Array.isArray(colOptions(col))) return 'select';
     return 'text';
 }
 
@@ -14,8 +21,9 @@ export function getFieldType(col) {
 // Deux formats coexistent dans les schémas : liste de chaînes (["Oui", "Non"])
 // et liste d'objets ([{ value: 'IN_PROGRESS', label: 'En cours' }]).
 function getColOptions(col) {
-    if (!Array.isArray(col?.options)) return [];
-    return col.options
+    const opts = colOptions(col);
+    if (!Array.isArray(opts)) return [];
+    return opts
         .map(o => (o && typeof o === 'object')
             ? { value: String(o.value ?? ''), label: String(o.label ?? o.value ?? '') }
             : { value: String(o ?? ''), label: String(o ?? '') })
@@ -81,7 +89,7 @@ function FieldSelect({ fields, value, onChange }) {
     const inputRef = useRef(null);
 
     const filtered = fields.filter(f =>
-        f.label.toLowerCase().includes(search.toLowerCase())
+        colLabel(f).toLowerCase().includes(search.toLowerCase())
     );
     const selected = fields.find(f => f.key === value);
 
@@ -97,7 +105,7 @@ function FieldSelect({ fields, value, onChange }) {
                 }}
             >
                 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
-                    {selected?.label || '— Champ —'}
+                    {selected ? colLabel(selected) : '— Champ —'}
                 </span>
                 <span style={{ fontSize: 10, color: '#9ca3af', flexShrink: 0, marginLeft: 4 }}>▾</span>
             </button>
@@ -135,7 +143,7 @@ function FieldSelect({ fields, value, onChange }) {
                                     onMouseEnter={e => { if (f.key !== value) e.currentTarget.style.background = '#f9fafb'; }}
                                     onMouseLeave={e => { e.currentTarget.style.background = f.key === value ? '#eff6ff' : 'white'; }}
                                 >
-                                    {f.label}
+                                    {colLabel(f)}
                                 </div>
                             ))}
                             {filtered.length === 0 && (
