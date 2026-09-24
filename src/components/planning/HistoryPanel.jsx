@@ -11,8 +11,18 @@ const SERVICES = [
     { key: 'pose', label: 'Pose' },
 ];
 
+// Créneau « Programme semaine » (confection agrégée à la semaine) : son type réel est 'default',
+// il se reconnaît à son resourceId / son marqueur master. On le rattache à la Confection.
+const isBacklogEvt = (e) => e?.resourceId === 'backlog_confection' || e?.meta?.isBacklogMaster;
+
 // Heures d'un créneau : durée explicite, sinon calcul depuis start/end.
 const eventHours = (e) => {
+    // Cartes du « Programme semaine » : leurs heures sont dans meta.budgetHours
+    // (pas de durée ni de start/end exploitables — le start/end couvre toute la semaine).
+    if (isBacklogEvt(e)) {
+        const bh = Number(e.meta?.budgetHours);
+        return isNaN(bh) ? 0 : Math.round(bh * 10) / 10;
+    }
     if (typeof e.meta?.durationHours === 'number') return e.meta.durationHours;
     if (typeof e.hours === 'number') return e.hours;
     if (e.meta?.start && e.meta?.end) {
@@ -53,16 +63,18 @@ export default function HistoryPanel({ isOpen, onClose, projects = [], events = 
     const grouped = useMemo(() => {
         const out = { prepa: [], conf: [], pose: [] };
         if (!selected) return out;
+        // Service d'un créneau : les cartes Programme semaine (type 'default') sont de la Confection.
+        const svcOf = (e) => (isBacklogEvt(e) ? 'conf' : e.type);
         const matched = (events || []).filter(e => {
             if (e.type === 'absence') return false;
-            if (!out[e.type]) return false; // uniquement prepa/conf/pose
+            if (!out[svcOf(e)]) return false; // uniquement prepa/conf/pose (+ Programme semaine → conf)
             if (e.meta?.projectId) return e.meta.projectId === selected.id;
             // Créneaux hérités sans projectId : repli sur le titre
             return (e.title || '').toLowerCase().includes((selected.name || '').toLowerCase());
         });
         // Plus récent en premier
         matched.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
-        matched.forEach(e => out[e.type].push(e));
+        matched.forEach(e => out[svcOf(e)].push(e));
         return out;
     }, [selected, events]);
 
@@ -71,6 +83,46 @@ export default function HistoryPanel({ isOpen, onClose, projects = [], events = 
     // Somme d'heures d'une liste de créneaux (les heures inconnues comptent 0).
     const sumHours = (list) => Math.round(list.reduce((s, e) => s + (eventHours(e) || 0), 0) * 10) / 10;
     const totalHours = sumHours([...grouped.prepa, ...grouped.conf, ...grouped.pose]);
+
+    // Rendu d'une liste de créneaux (réutilisé par les services et les sous-chapitres Confection).
+    const renderEvents = (list, col) => (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 2 }}>
+            {list.map(evt => {
+                const d = parseISO(evt.date);
+                const h = eventHours(evt);
+                return (
+                    <div
+                        key={evt.id}
+                        onDoubleClick={() => onJump && onJump(evt, selected.id)}
+                        title="Double-cliquez pour aller à cette semaine"
+                        style={{
+                            display: 'flex', alignItems: 'center', gap: 8,
+                            padding: '8px 10px', borderRadius: 8, cursor: 'pointer',
+                            background: '#FAFAFA', border: '1px solid #F3F4F6',
+                            borderLeft: `3px solid ${col.border}`,
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.background = '#F3F4F6'}
+                        onMouseLeave={e => e.currentTarget.style.background = '#FAFAFA'}
+                    >
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: '#111827' }}>
+                                {format(d, 'EEE d MMM yyyy', { locale: fr })}
+                                <span style={{ fontSize: 11, fontWeight: 500, color: '#9CA3AF', marginLeft: 6 }}>sem. {getISOWeek(d)}</span>
+                            </div>
+                            <div style={{ fontSize: 12, color: '#6B7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {userName(evt.resourceId)}
+                            </div>
+                        </div>
+                        {h != null && (
+                            <span style={{ flexShrink: 0, fontSize: 12, fontWeight: 700, color: col.text, background: col.bg, borderRadius: 6, padding: '2px 8px' }}>
+                                {h}h
+                            </span>
+                        )}
+                    </div>
+                );
+            })}
+        </div>
+    );
 
     if (!isOpen) return null;
 
@@ -161,6 +213,13 @@ export default function HistoryPanel({ isOpen, onClose, projects = [], events = 
                     if (list.length === 0) return null;
                     const col = PLANNING_COLORS[svc.key] || PLANNING_COLORS.default;
                     const isCollapsed = collapsed[svc.key];
+
+                    // Confection : deux sous-chapitres (Programme semaine + Atelier par personne).
+                    const confSubs = svc.key === 'conf' ? [
+                        { key: 'conf_programme', label: 'Programme semaine',     items: list.filter(e => isBacklogEvt(e)) },
+                        { key: 'conf_atelier',   label: 'Atelier (par personne)', items: list.filter(e => !isBacklogEvt(e)) },
+                    ] : null;
+
                     return (
                         <div key={svc.key} style={{ marginBottom: 12 }}>
                             <div
@@ -175,42 +234,29 @@ export default function HistoryPanel({ isOpen, onClose, projects = [], events = 
                             </div>
 
                             {!isCollapsed && (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 2 }}>
-                                    {list.map(evt => {
-                                        const d = parseISO(evt.date);
-                                        const h = eventHours(evt);
-                                        return (
-                                            <div
-                                                key={evt.id}
-                                                onDoubleClick={() => onJump && onJump(evt, selected.id)}
-                                                title="Double-cliquez pour aller à cette semaine"
-                                                style={{
-                                                    display: 'flex', alignItems: 'center', gap: 8,
-                                                    padding: '8px 10px', borderRadius: 8, cursor: 'pointer',
-                                                    background: '#FAFAFA', border: '1px solid #F3F4F6',
-                                                    borderLeft: `3px solid ${col.border}`,
-                                                }}
-                                                onMouseEnter={e => e.currentTarget.style.background = '#F3F4F6'}
-                                                onMouseLeave={e => e.currentTarget.style.background = '#FAFAFA'}
-                                            >
-                                                <div style={{ minWidth: 0, flex: 1 }}>
-                                                    <div style={{ fontSize: 13, fontWeight: 600, color: '#111827' }}>
-                                                        {format(d, 'EEE d MMM yyyy', { locale: fr })}
-                                                        <span style={{ fontSize: 11, fontWeight: 500, color: '#9CA3AF', marginLeft: 6 }}>sem. {getISOWeek(d)}</span>
+                                confSubs ? (
+                                    // Sous-chapitres imbriqués (Confection uniquement)
+                                    <div style={{ marginLeft: 14, borderLeft: '1px solid #F0F0F0', paddingLeft: 8, marginTop: 2 }}>
+                                        {confSubs.map(sub => {
+                                            if (sub.items.length === 0) return null;
+                                            const subCollapsed = collapsed[sub.key];
+                                            return (
+                                                <div key={sub.key} style={{ marginBottom: 8 }}>
+                                                    <div
+                                                        onClick={() => setCollapsed(prev => ({ ...prev, [sub.key]: !prev[sub.key] }))}
+                                                        style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 6px', cursor: 'pointer', userSelect: 'none' }}
+                                                    >
+                                                        {subCollapsed ? <ChevronRight size={13} color="#9CA3AF" /> : <ChevronDown size={13} color="#9CA3AF" />}
+                                                        <span style={{ fontSize: 12, fontWeight: 600, color: '#4B5563' }}>{sub.label}</span>
+                                                        <span style={{ fontSize: 11, color: '#9CA3AF' }}>· {sub.items.length}</span>
+                                                        <span style={{ marginLeft: 'auto', fontSize: 11, fontWeight: 700, color: col.text, background: col.bg, border: `1px solid ${col.border}`, borderRadius: 6, padding: '1px 7px' }}>{sumHours(sub.items)}h</span>
                                                     </div>
-                                                    <div style={{ fontSize: 12, color: '#6B7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                                        {userName(evt.resourceId)}
-                                                    </div>
+                                                    {!subCollapsed && renderEvents(sub.items, col)}
                                                 </div>
-                                                {h != null && (
-                                                    <span style={{ flexShrink: 0, fontSize: 12, fontWeight: 700, color: col.text, background: col.bg, borderRadius: 6, padding: '2px 8px' }}>
-                                                        {h}h
-                                                    </span>
-                                                )}
-                                            </div>
-                                        );
-                                    })}
-                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                ) : renderEvents(list, col)
                             )}
                         </div>
                     );
