@@ -717,6 +717,34 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
               onChangeMinute={(m) => {
                 if (!canEdit) return;
                 const all = m.lines || [];
+
+                // GARDE-FOU ANTI-VIDAGE : ne jamais remplacer une minute pleine par une minute vide.
+                // Protège notamment la SUPPRESSION DE TABLEAU — seul save qui court-circuite la
+                // protection de performSave. Le remontage forcé de l'éditeur (key sur les modules)
+                // peut y renvoyer une liste momentanément vide → tous les tableaux se vidaient.
+                const currentCount = (rows?.length || 0) + (extraRows?.length || 0) + (depRows?.length || 0);
+                if (all.length === 0 && currentCount > 0) {
+                  console.warn('[chiffrage] Écrasement vide bloqué (garde-fou suppression tableau).', {
+                    minuteId: minute?.id,
+                    lignesConservees: currentCount,
+                    modulesDemandes: m.modules,
+                  });
+                  // On applique quand même le changement de modules / méta, mais on PRÉSERVE les lignes.
+                  if (m.modules) setLocalModules(m.modules);
+                  updateMinute({
+                    lines: rows,
+                    extraDepenses: extraRows,
+                    deplacements: depRows,
+                    name: m.name,
+                    notes: m.notes,
+                    status: m.status,
+                    catalog: m.catalog,
+                    modules: m.modules,
+                    matieres: m.matieres,
+                  });
+                  return;
+                }
+
                 const newLines = all.filter(r => r.produit !== "Autre Dépense" && r.produit !== "Déplacement");
                 const newExtras = all.filter(r => r.produit === "Autre Dépense");
                 const newDeps = all.filter(r => r.produit === "Déplacement");
