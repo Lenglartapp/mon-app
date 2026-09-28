@@ -541,7 +541,9 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
                     {/* Une absence est toujours « validée » par nature : le garde-fou
                         « seul l'admin supprime un créneau validé » (pensé pour le travail
                         confirmé) ne doit pas empêcher l'ordo de retirer un congé/RTT/maladie. */}
-                    {eventToEdit && onDelete && canDelete && (isAbsence || eventToEdit.meta?.status !== 'validated' || currentUser?.role === 'admin') && !readOnly && (
+                    {/* Validé : réservé à l'admin, SAUF si le créneau est encore À VENIR
+                        (début après maintenant) → misclic de validation sur un futur, l'ordo peut le retirer. */}
+                    {eventToEdit && onDelete && canDelete && (isAbsence || eventToEdit.meta?.status !== 'validated' || currentUser?.role === 'admin' || (new Date(eventToEdit.meta?.start || eventToEdit.date) > new Date())) && !readOnly && (
                         <button
                             onClick={() => { onClose(); onDelete(eventToEdit); }}
                             style={{ marginRight: 'auto', padding: '10px 16px', borderRadius: 8, border: '1px solid #fee2e2', background: '#fef2f2', color: '#ef4444', fontWeight: 600, cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}

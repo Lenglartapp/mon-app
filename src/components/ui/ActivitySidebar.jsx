@@ -535,9 +535,9 @@ const ActivityList = React.memo(({ activities, currentUser }) => {
 // --- MAIN COMPONENT ---
 
 const ACTIVITY_FILTERS = [
-    { key: 'all', label: 'Tout' },
-    { key: 'activity', label: 'Activité' },
     { key: 'messages', label: 'Messages & Photos' },
+    { key: 'activity', label: 'Activité' },
+    { key: 'all', label: 'Tout' },
 ];
 
 const ActivitySidebar = React.memo(({ activities = [], onAddComment, onAddImage, currentUser = "Moi", isOpen, minuteId, projectId, rowId, row }) => {
@@ -546,7 +546,7 @@ const ActivitySidebar = React.memo(({ activities = [], onAddComment, onAddImage,
 
     // Notification Menu State (Visual)
     const [headerAnchor, setHeaderAnchor] = useState(null);
-    const [activityFilter, setActivityFilter] = useState('all');
+    const [activityFilter, setActivityFilter] = useState('messages'); // défaut : Messages & Photos
 
     const filteredActivities = useMemo(() => {
         if (activityFilter === 'all') return activities;

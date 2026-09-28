@@ -918,10 +918,15 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
     // « ce jour / toute la série » ; sinon suppression directe (persistée).
     const requestDeleteEvent = (evt) => {
         if (!evt || !canDelete) return; // suppression réservée ordo/admin
-        const seriesId = evt.meta?.seriesId;
-        const seriesEvents = seriesId ? localEvents.filter(e => e.meta?.seriesId === seriesId) : [];
         // Jour réellement visé : depuis la fenêtre agrégée on récupère le créneau cliqué.
         const dayEvent = evt.__clickedId ? (localEvents.find(e => e.id === evt.__clickedId) || evt) : evt;
+        // Créneau VALIDÉ : réservé à l'admin, SAUF s'il est encore À VENIR (début après maintenant)
+        // — c'est le misclic de validation sur un créneau futur, que l'ordo doit pouvoir retirer.
+        const isValidated = dayEvent.meta?.status === 'validated' && dayEvent.type !== 'absence';
+        const isFuture = new Date(dayEvent.meta?.start || dayEvent.date) > new Date();
+        if (isValidated && !isFuture && currentUser?.role !== 'admin') return;
+        const seriesId = evt.meta?.seriesId;
+        const seriesEvents = seriesId ? localEvents.filter(e => e.meta?.seriesId === seriesId) : [];
         if (seriesEvents.length > 1) {
             setDeleteChoice({ dayEvent, seriesEvents });
         } else if (window.confirm('Supprimer ce créneau ?')) {
