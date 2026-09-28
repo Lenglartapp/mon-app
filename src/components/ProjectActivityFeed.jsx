@@ -1,4 +1,6 @@
 import React, { useMemo, useState } from 'react';
+import { mergeRowLogs } from '../lib/lineLogs';
+import { useArchivedRowLogs } from '../hooks/useArchivedRowLogs';
 import { Clock, MessageSquare, CheckCircle, Edit, ArrowRight, Pin, Image as ImageIcon } from 'lucide-react';
 import { SmartFilterBar } from './ui/SmartFilterBar';
 import { formatDistanceToNow, format } from 'date-fns';
@@ -85,7 +87,7 @@ const extractActivity = (rows, wall, pinnedIds = []) => {
     return allEvents.sort((a, b) => b.date - a.date);
 };
 
-export default function ProjectActivityFeed({ rows, wall, pinnedIds, onTogglePin, isMobile = false }) {
+export default function ProjectActivityFeed({ rows, wall, pinnedIds, onTogglePin, isMobile = false, projectId }) {
     const [filter, setFilter] = useState('all');
     const [activeFilters, setActiveFilters] = useState([]);
 
@@ -93,7 +95,18 @@ export default function ProjectActivityFeed({ rows, wall, pinnedIds, onTogglePin
     const [lightboxOpen, setLightboxOpen] = useState(false);
     const [lightboxIndex, setLightboxIndex] = useState(0);
 
-    const events = useMemo(() => extractActivity(rows, wall, pinnedIds), [rows, wall, pinnedIds]);
+    // Historique « Modif … » archivé hors des lignes (table line_logs) : rechargé et
+    // réinjecté dans les commentaires de chaque ligne (cf. lib/lineLogs).
+    const { byRow: archivedLogs } = useArchivedRowLogs(projectId, rows, !!projectId);
+    const rowsWithLogs = useMemo(() => {
+        if (!archivedLogs.size || !Array.isArray(rows)) return rows;
+        return rows.map(r => {
+            const archived = archivedLogs.get(String(r?.id));
+            return archived ? { ...r, comments: mergeRowLogs(r.comments, archived) } : r;
+        });
+    }, [rows, archivedLogs]);
+
+    const events = useMemo(() => extractActivity(rowsWithLogs, wall, pinnedIds), [rowsWithLogs, wall, pinnedIds]);
     const pinnedPosts = useMemo(() => events.filter(e => e.pinned), [events]);
     const feedEvents = useMemo(() => {
         const byFilter = filter === 'all' ? events : events.filter(e => e.category === filter);

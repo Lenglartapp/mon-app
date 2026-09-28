@@ -30,8 +30,11 @@ import { withRowLock } from './rowWriteLock';
  * @param {object} [opts]
  * @param {(payload: object) => object} [opts.prepare]  nettoyage juste avant envoi
  * @param {(dropped: string[]) => void} [opts.onDropped] colonnes fantômes retirées
+ * @param {(id: string, payload: object) => Promise<object>} [opts.transform]
+ *        transformation asynchrone juste avant l'envoi (ex. archivage de l'historique
+ *        des lignes) ; doit renvoyer le payload d'origine en cas d'échec.
  */
-export const createCoalescedWriter = (table, { prepare = (p) => p, onDropped } = {}) => {
+export const createCoalescedWriter = (table, { prepare = (p) => p, onDropped, transform } = {}) => {
   const inFlight = new Set();
   const pending = new Map();   // id -> payload fusionné en attente
   const pause = new Map();     // id -> { failures, until }
@@ -41,16 +44,20 @@ export const createCoalescedWriter = (table, { prepare = (p) => p, onDropped } =
     inFlight.add(id);
     try {
       while (pending.has(id)) {
-        const cleaned = prepare({ ...pending.get(id) });
+        let cleaned = prepare({ ...pending.get(id) });
         pending.delete(id);
         if (!cleaned || Object.keys(cleaned).length === 0) continue;
-
         const p = pause.get(id);
         if (p && Date.now() < p.until) {
           // Base en difficulté pour cette ligne : on ne relance pas d'envoi, on
           // persiste en file (la file réessaiera avec son propre rythme).
           await queueMutation(table, id, cleaned);
           continue;
+        }
+
+        if (transform) {
+          try { cleaned = await transform(id, cleaned); }
+          catch (e) { console.warn(`[${table}] transformation avant envoi ignorée :`, e); }
         }
 
         const startedAt = Date.now();

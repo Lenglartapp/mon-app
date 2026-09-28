@@ -16,6 +16,8 @@ import ActivitySidebar from './ui/ActivitySidebar';
 import GridPhotoCell from './ui/GridPhotoCell';
 import GridSketchCell from './ui/GridSketchCell';
 import { generateRowLogs } from '../lib/utils/logUtils';
+import { mergeRowLogs } from '../lib/lineLogs';
+import { useArchivedRowLogs } from '../hooks/useArchivedRowLogs';
 
 import BlurTextField from './ui/BlurTextField';
 import { useAuth } from '../auth'; // <--- NEW IMPORT
@@ -45,7 +47,14 @@ export default function LineDetailPanel({ open, onClose, row, schema, onRowChang
         );
     }, [allRows, row?.piece, row?.zone, row?.id]);
 
-    const activities = React.useMemo(() => row?.comments || [], [row?.comments]);
+    // Historique « Modif … » archivé hors de la ligne (table line_logs) : rechargé à
+    // l'ouverture du panneau et fusionné avec row.comments (cf. lib/lineLogs).
+    const archiveRows = React.useMemo(() => (row ? [row] : []), [row?.id, row?.__logArchive]); // eslint-disable-line react-hooks/exhaustive-deps
+    const { byRow: archivedLogs } = useArchivedRowLogs(minuteId || projectId, archiveRows, !!open && !!row);
+    const activities = React.useMemo(
+        () => mergeRowLogs(row?.comments || [], archivedLogs.get(String(row?.id))),
+        [row?.comments, row?.id, archivedLogs]
+    );
     const activityCount = React.useMemo(() =>
         activities.filter(c => c.type !== 'log' && c.type !== 'change').length,
         [activities]

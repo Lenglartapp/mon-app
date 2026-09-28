@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { db } from '../lib/offlineDb';
 import { getQueuedPayloads } from '../lib/syncQueue';
+import { replaceInlineImages, hasInlineImages } from '../lib/inlineImages';
+import { archiveRowLogs } from '../lib/lineLogs';
 import { calculateProfitability } from '../lib/financial/profitabilityCalculator';
 import { isSchemaDriftError } from '../lib/schemaDrift';
 import { createCoalescedWriter } from '../lib/coalescedWriter';
@@ -52,6 +54,8 @@ const PROJECT_LIST_COLUMNS = 'id,name,manager,status,notes,budget,deadline,due,c
 export const useProjects = () => {
     const [projects, setProjects] = useState([]);
     const [loading, setLoading] = useState(true);
+    const projectsRef = useRef(projects);
+    projectsRef.current = projects;
 
     const fetchProjects = async () => {
         // 0. Affichage INSTANTANÉ depuis le cache local (stale-while-revalidate).
@@ -116,6 +120,17 @@ export const useProjects = () => {
         if ('pinned_ids' in data) data.pinnedIds = data.pinned_ids || [];
         setProjects(prev => prev.map(p => p.id === id ? { ...p, ...data } : p));
         db.projects.put(data).catch(() => {});
+        // Anciennes photos du mur incrustées en base64 (avant l'upload Storage) : envoi
+        // en arrière-plan puis remplacement par leur URL, sur la version LA PLUS RÉCENTE
+        // du mur (jamais sur celle lue ici, qui a pu changer entre-temps).
+        if (hasInlineImages(data.wall)) {
+            const { uploads } = replaceInlineImages(data.wall);
+            Promise.all(uploads).then(() => {
+                const latest = projectsRef.current.find(p => p.id === id)?.wall;
+                const healed = replaceInlineImages(latest);
+                if (healed.changed) updateProject(id, { wall: healed.value });
+            });
+        }
         return data;
     };
 
@@ -197,7 +212,12 @@ export const useProjects = () => {
     // plusieurs Mo (`rows`) partaient en parallèle sur la même ligne → verrous,
     // timeouts, base "Unhealthy". Voir src/lib/coalescedWriter.js.
     const projectWriterRef = useRef(null);
-    if (!projectWriterRef.current) projectWriterRef.current = createCoalescedWriter('projects');
+    if (!projectWriterRef.current) projectWriterRef.current = createCoalescedWriter('projects', {
+        // Historique « Modif … » des lignes rangé dans `line_logs` (cf. lib/lineLogs).
+        transform: async (id, payload) => (
+            Array.isArray(payload.rows) ? { ...payload, rows: await archiveRowLogs(id, payload.rows) } : payload
+        ),
+    });
 
     const updateProject = async (id, updates) => {
         // 1. Optimistic UI (Mise à jour immédiate)
@@ -235,6 +255,12 @@ export const useProjects = () => {
         if ('pinnedIds' in dbUpdates) {
             dbUpdates.pinned_ids = dbUpdates.pinnedIds;
             delete dbUpdates.pinnedIds;
+        }
+
+        // 3 bis. Images incrustées (base64) déjà envoyées dans Storage → remplacées par
+        //       leur URL ; les autres partent en arrière-plan (cf. lib/inlineImages).
+        for (const key of ['rows', 'wall']) {
+            if (dbUpdates[key]) dbUpdates[key] = replaceInlineImages(dbUpdates[key]).value;
         }
 
         // 4. Nettoyer les photos pending (base64) des rows avant envoi à Supabase
@@ -291,6 +317,9 @@ const MINUTE_LIST_COLUMNS = 'id,name,client,status,version,notes,owner,delivery_
 // db/migrations/2026-08-27_add_minutes_settings_matieres.sql.
 const PHANTOM_MINUTE_COLUMNS = new Set();
 
+// Champs lourds d'une minute qui changent rarement : envoyés seulement s'ils ont changé.
+const HEAVY_RARELY_CHANGED_MINUTE_FIELDS = ['catalog', 'modules', 'matieres', 'settings', 'params', 'budget_snapshot'];
+
 export const useMinutes = () => {
     const [minutes, setMinutes] = useState([]);
 
@@ -301,6 +330,8 @@ export const useMinutes = () => {
     // restait en mémoire et était perdue si l'onglet se fermait) avec reprise progressive.
     // Voir src/lib/coalescedWriter.js.
     const minuteWriterRef = useRef(null);
+    // id -> { champ: JSON du dernier envoi } (voir « ALLÈGEMENT » dans updateMinute).
+    const lastSentMinuteRef = useRef(new Map());
     if (!minuteWriterRef.current) minuteWriterRef.current = createCoalescedWriter('minutes', {
         // Retire d'emblée les colonnes DÉJÀ identifiées comme absentes en base :
         // sans ça, chaque sauvegarde suivante les réexpédie et se fait rejeter
@@ -312,6 +343,14 @@ export const useMinutes = () => {
         onDropped: (dropped) => {
             dropped.forEach(col => PHANTOM_MINUTE_COLUMNS.add(col));
             console.warn('[updateMinute] Jouer la migration SQL correspondante.');
+        },
+        // Historique « Modif … » des lignes rangé dans `line_logs` (cf. lib/lineLogs).
+        transform: async (id, payload) => {
+            const out = { ...payload };
+            for (const key of ['lines', 'deplacements', 'extraDepenses']) {
+                if (Array.isArray(out[key])) out[key] = await archiveRowLogs(id, out[key]);
+            }
+            return out;
         },
     });
 
@@ -470,6 +509,12 @@ export const useMinutes = () => {
             }
         }
 
+        // Images incrustées (ex. croquis dont l'upload avait échoué) → URL Storage dès
+        // qu'elles ont été envoyées en arrière-plan (cf. lib/inlineImages).
+        for (const key of ['lines', 'deplacements', 'extraDepenses']) {
+            if (Array.isArray(dbUpdates[key])) dbUpdates[key] = replaceInlineImages(dbUpdates[key]).value;
+        }
+
         // GARDE-FOU DATES — Postgres (timestamp/timestamptz/date) REFUSE la chaîne vide ""
         // (erreur 22007 "invalid input syntax"). On convertit "" -> null avant l'écriture.
         for (const dateKey of ['delivery_date', 'created_at', 'updated_at']) {
@@ -484,6 +529,21 @@ export const useMinutes = () => {
         //    avec un éventuel payload déjà en attente), puis on déclenche l'écrivain
         //    sérialisé. S'il tourne déjà pour cet id, il prendra ce payload à son tour —
         //    AUCUN deuxième UPDATE concurrent n'est lancé sur la même ligne.
+        // 3. ALLÈGEMENT : les champs lourds rarement modifiés (bibliothèque du devis,
+        //    modules + historique des statuts, matières…) étaient renvoyés à CHAQUE
+        //    frappe dans la grille. On ne les envoie que s'ils ont changé depuis le
+        //    dernier envoi confié à l'écrivain (qui garantit leur livraison, file hors
+        //    ligne comprise). Comparaison sur la valeur, donc aucun changement réel perdu.
+        const sent = lastSentMinuteRef.current.get(id) || {};
+        for (const key of HEAVY_RARELY_CHANGED_MINUTE_FIELDS) {
+            if (!(key in dbUpdates)) continue;
+            const json = JSON.stringify(dbUpdates[key] ?? null);
+            if (sent[key] === json) delete dbUpdates[key];
+            else sent[key] = json;
+        }
+        lastSentMinuteRef.current.set(id, sent);
+        if (Object.keys(dbUpdates).length === 0) return;
+
         return minuteWriterRef.current.write(id, dbUpdates);
     };
 
