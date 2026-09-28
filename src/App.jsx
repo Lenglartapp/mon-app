@@ -108,7 +108,7 @@ function AppShell() {
 
   // --- 1. CHARGEMENT DONNÉES (Supabase) ---
   const { projects, addProject, updateProject, deleteProject, refreshProjects, loadProjectDetail, loadAllProjects } = useProjects();
-  const { minutes, addMinute, updateMinute, deleteMinute, loadMinuteDetail, loadAllMinutes } = useMinutes();
+  const { minutes, addMinute, updateMinute, deleteMinute, loadMinuteDetail } = useMinutes();
   const { events: planningEvents, updateEvent, deleteEvent } = useEvents();
   const { inventory, movements, addMovement, bulkUpdateInventory, updateInventoryItem } = useStocks();
 
@@ -242,11 +242,13 @@ function AppShell() {
   // PERF — Chargement complet À LA DEMANDE pour les écrans qui agrègent l'ensemble des
   // lignes (impossible avec la liste légère). Idempotent + mis en cache côté hook, donc
   // la latence n'est payée qu'une fois, et JAMAIS sur les écrans Droitfil (chiffrage/projets).
-  //   • inventaire/stocks : index tissus (minutes + projets) + autocomplete mouvements
+  //   • inventaire/stocks : lignes des projets (mouvements, dashboard)
   //   • planning          : capacité (projets)
   //   • logistique        : lignes du projet sélectionné + comptage par projet
   useEffect(() => {
-    if (screen === "inventory") { loadAllMinutes(); loadAllProjects(); }
+    // (Les chiffrages complets ne sont PAS chargés pour les Stocks : aucun onglet ne
+    //  s'en sert — c'était ~20 Mo téléchargés pour rien.)
+    if (screen === "inventory") { loadAllProjects(); }
     else if (screen === "planning" || screen === "logistique" || screen === "odoo") { loadAllProjects(); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [screen]);

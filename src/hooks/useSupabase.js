@@ -49,6 +49,12 @@ const DERIVED_FROM = { tables: 'lines', budgetSnapshot: 'budget_snapshot', paren
 // ⚠️ NE JAMAIS faire `select('*')` pour une liste : chaque champ ajouté dans `rows`
 // regonflerait la requête et ferait réapparaître la latence. Pour le détail complet,
 // utiliser loadProjectDetail(id) ci-dessous.
+// PERF — Colonnes des projets COMPLETS pour les écrans qui agrègent toutes les lignes
+// (Planning, Logistique, Stocks, Odoo) : tout SAUF `wall` (fil du mur : messages +
+// photos, ~1/3 du poids) et `documents`, qui ne servent qu'à l'écran d'un projet
+// (chargés par loadProjectDetail). ⚠️ Nouvelle colonne utile à ces écrans → l'ajouter ici.
+const PROJECT_AGGREGATE_COLUMNS = 'id,name,manager,status,notes,deadline,budget_prepa,budget_conf,budget_pose,source_minute_id,rows,config,created_at,updated_at,budget,due,expedition_type,intervention_type,location,consumed_import,delivery_phases,materials,pinned_ids,id_projet_odoo';
+
 const PROJECT_LIST_COLUMNS = 'id,name,manager,status,notes,budget,deadline,due,created_at,updated_at,source_minute_id,id_projet_odoo';
 
 export const useProjects = () => {
@@ -142,17 +148,25 @@ export const useProjects = () => {
         if (fullProjectsLoadedRef.current && !force) return;
         fullProjectsLoadedRef.current = true;
         const queued = await getQueuedPayloads('projects'); // lue AVANT la base (cf. loadProjectDetail)
-        const { data, error } = await supabase
+        let { data, error } = await supabase
             .from('projects')
-            .select('*')
+            .select(PROJECT_AGGREGATE_COLUMNS)
             .order('updated_at', { ascending: false });
+        if (error && isSchemaDriftError(error)) {
+            console.warn('[useProjects] loadAllProjects : colonne absente, repli sur select(*) :', error.message);
+            ({ data, error } = await supabase.from('projects').select('*').order('updated_at', { ascending: false }));
+        }
         if (!error && data) {
             // Superpose les modifications encore en file (pas encore arrivées en base).
             data.forEach(p => { const q = queued.get(String(p.id)); if (q) Object.assign(p, q); });
             // Mapping DB -> Frontend : `pinned_ids` lue en `pinnedIds`.
             data.forEach(p => { if ('pinned_ids' in p) p.pinnedIds = p.pinned_ids || []; });
-            setProjects(data);
-            db.projects.bulkPut(data).catch(() => {});
+            // FUSION : garde le mur / les documents déjà chargés d'un projet ouvert.
+            setProjects(prev => mergeLightList(prev, data));
+            (async () => {
+                const existing = await db.projects.bulkGet(data.map(p => p.id));
+                await db.projects.bulkPut(data.map((p, i) => existing[i] ? { ...existing[i], ...p } : p));
+            })().catch(() => {});
         } else {
             fullProjectsLoadedRef.current = false; // autorise un nouvel essai
         }

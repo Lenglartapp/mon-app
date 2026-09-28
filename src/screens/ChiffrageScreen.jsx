@@ -312,6 +312,83 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
     if (onUpdate && minute?.id) onUpdate(minute.id, patch);
   }, [canEdit, onUpdate, minute?.id]);
 
+  // PERF — Props STABLES pour l'éditeur (React.memo). Recréés inline à chaque rendu,
+  // ils forçaient un re-rendu complet de l'éditeur et de toutes ses grilles au moindre
+  // changement d'état de l'écran (ouvrir/fermer une ligne, taper le nom du devis…)
+  // — et, via performSave, déclenchaient une sauvegarde immédiate à chaque fois.
+  const editorMinute = React.useMemo(() => ({
+    ...minute,
+    // Toujours passer localSettings (état local autoritatif) pour éviter
+    // la race condition où minute.settings est stale pendant un save Supabase
+    settings: localSettings,
+    lines: [
+      ...(rows || []),
+      ...(extraRows || []).map(r => ({ ...r, produit: r.produit || "Autre Dépense" })),
+      ...(depRows || []).map(r => ({ ...r, produit: r.produit || "Déplacement" }))
+    ],
+    modules: mods
+  }), [minute, localSettings, rows, extraRows, depRows, mods]);
+
+  const handleEditorChange = React.useCallback((m) => {
+    if (!canEdit) return;
+    const all = m.lines || [];
+
+    // GARDE-FOU ANTI-VIDAGE : ne jamais remplacer une minute pleine par une minute vide.
+    // Protège notamment la SUPPRESSION DE TABLEAU — seul save qui court-circuite la
+    // protection de performSave. Le remontage forcé de l'éditeur (key sur les modules)
+    // peut y renvoyer une liste momentanément vide → tous les tableaux se vidaient.
+    const currentCount = (rows?.length || 0) + (extraRows?.length || 0) + (depRows?.length || 0);
+    if (all.length === 0 && currentCount > 0) {
+      console.warn('[chiffrage] Écrasement vide bloqué (garde-fou suppression tableau).', {
+        minuteId: minute?.id,
+        lignesConservees: currentCount,
+        modulesDemandes: m.modules,
+      });
+      // On applique quand même le changement de modules / méta, mais on PRÉSERVE les lignes.
+      if (m.modules) setLocalModules(m.modules);
+      updateMinute({
+        lines: rows,
+        extraDepenses: extraRows,
+        deplacements: depRows,
+        name: m.name,
+        notes: m.notes,
+        status: m.status,
+        catalog: m.catalog,
+        modules: m.modules,
+        matieres: m.matieres,
+      });
+      return;
+    }
+
+    const newLines = all.filter(r => r.produit !== "Autre Dépense" && r.produit !== "Déplacement");
+    const newExtras = all.filter(r => r.produit === "Autre Dépense");
+    const newDeps = all.filter(r => r.produit === "Déplacement");
+
+    setRows(newLines);
+    setExtraRows(newExtras);
+    setDepRows(newDeps);
+    if (m.modules) setLocalModules(m.modules);
+
+    // NE JAMAIS lire m.settings ici — les settings viennent UNIQUEMENT
+    // du callback onSettingsChange du CatalogManager (ci-dessous).
+    // Lire m.settings ici provoquerait un écrasement des settings
+    // par une closure stale de performSave dans MinuteEditor.
+
+    // Le ca_total + marges sont recalculés et persistés de façon centralisée
+    // dans updateMinute (hook useMinutes) dès que lines/deplacements changent.
+    updateMinute({
+      lines: newLines,
+      extraDepenses: newExtras,
+      deplacements: newDeps,
+      name: m.name,
+      notes: m.notes,
+      status: m.status,
+      catalog: m.catalog,
+      modules: m.modules,
+      matieres: m.matieres,
+    });
+  }, [canEdit, rows, extraRows, depRows, minute?.id, updateMinute]);
+
   // --- HEAL-ON-OPEN (Étape 1b) ---
   // Le détail recalcule les prix en direct à l'ouverture (catalogue/taux actuels).
   // Si le ca_total stocké en BDD diverge de ce recalcul (minute non rééditée depuis
@@ -722,85 +799,16 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
           <div style={{ minWidth: 0, overflowX: "auto" }}>
             <MemoizedMinuteEditor
               key={`${minute?.id}-${Object.keys(mods || {}).filter(k => mods[k]).sort().join('-')}`} // FORCE REMOUNT on module change
-              minute={{
-                ...minute,
-                // Toujours passer localSettings (état local autoritatif) pour éviter
-                // la race condition où minute.settings est stale pendant un save Supabase
-                settings: localSettings,
-                lines: [
-                  ...(rows || []),
-                  ...(extraRows || []).map(r => ({ ...r, produit: r.produit || "Autre Dépense" })),
-                  ...(depRows || []).map(r => ({ ...r, produit: r.produit || "Déplacement" }))
-                ],
-                modules: mods
-              }}
+              minute={editorMinute}
               readOnly={minute?.status === "VALIDATED"}
               currentUser={currentUser}
-              onChangeMinute={(m) => {
-                if (!canEdit) return;
-                const all = m.lines || [];
-
-                // GARDE-FOU ANTI-VIDAGE : ne jamais remplacer une minute pleine par une minute vide.
-                // Protège notamment la SUPPRESSION DE TABLEAU — seul save qui court-circuite la
-                // protection de performSave. Le remontage forcé de l'éditeur (key sur les modules)
-                // peut y renvoyer une liste momentanément vide → tous les tableaux se vidaient.
-                const currentCount = (rows?.length || 0) + (extraRows?.length || 0) + (depRows?.length || 0);
-                if (all.length === 0 && currentCount > 0) {
-                  console.warn('[chiffrage] Écrasement vide bloqué (garde-fou suppression tableau).', {
-                    minuteId: minute?.id,
-                    lignesConservees: currentCount,
-                    modulesDemandes: m.modules,
-                  });
-                  // On applique quand même le changement de modules / méta, mais on PRÉSERVE les lignes.
-                  if (m.modules) setLocalModules(m.modules);
-                  updateMinute({
-                    lines: rows,
-                    extraDepenses: extraRows,
-                    deplacements: depRows,
-                    name: m.name,
-                    notes: m.notes,
-                    status: m.status,
-                    catalog: m.catalog,
-                    modules: m.modules,
-                    matieres: m.matieres,
-                  });
-                  return;
-                }
-
-                const newLines = all.filter(r => r.produit !== "Autre Dépense" && r.produit !== "Déplacement");
-                const newExtras = all.filter(r => r.produit === "Autre Dépense");
-                const newDeps = all.filter(r => r.produit === "Déplacement");
-
-                setRows(newLines);
-                setExtraRows(newExtras);
-                setDepRows(newDeps);
-                if (m.modules) setLocalModules(m.modules);
-
-                // NE JAMAIS lire m.settings ici — les settings viennent UNIQUEMENT
-                // du callback onSettingsChange du CatalogManager (ci-dessous).
-                // Lire m.settings ici provoquerait un écrasement des settings
-                // par une closure stale de performSave dans MinuteEditor.
-
-                // Le ca_total + marges sont recalculés et persistés de façon centralisée
-                // dans updateMinute (hook useMinutes) dès que lines/deplacements changent.
-                updateMinute({
-                  lines: newLines,
-                  extraDepenses: newExtras,
-                  deplacements: newDeps,
-                  name: m.name,
-                  notes: m.notes,
-                  status: m.status,
-                  catalog: m.catalog,
-                  modules: m.modules,
-                  matieres: m.matieres,
-                });
-              }}
+              onChangeMinute={handleEditorChange}
               enableCellFormulas={true}
               formulaCtx={formulaCtx}
               schema={schema}
               setSchema={setSchema}
               targetRowId={localRowId}
-              onRowClick={(id) => setLocalRowId(id)}
+              onRowClick={setLocalRowId}
             />
           </div>
         </div>
