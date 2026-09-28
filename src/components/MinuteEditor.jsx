@@ -144,6 +144,11 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
 
   }, [minute, onChangeMinute]);
 
+  // Toujours la DERNIÈRE version de performSave (minute à jour : nom, statut,
+  // bibliothèque…) pour le minuteur et le flush de démontage.
+  const performSaveRef = React.useRef(performSave);
+  performSaveRef.current = performSave;
+
   // DEBOUNCE TRIGGER
   const triggerUpdate = React.useCallback((newLines) => {
     // 1. Update UI Immediately
@@ -156,22 +161,26 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
 
     // 3. Set new timer (1000ms)
     saveTimerRef.current = setTimeout(() => {
-      performSave(newLines);
       saveTimerRef.current = null;
+      performSaveRef.current(newLines);
     }, 1000);
 
-  }, [performSave]);
+  }, []);
 
-  // FLUSH ON UNMOUNT
+  // FLUSH ON UNMOUNT — UNIQUEMENT au démontage. Avant, cet effet dépendait de
+  // performSave (recréé à chaque rendu du parent) : son nettoyage s'exécutait à
+  // CHAQUE re-rendu et sauvegardait immédiatement → le délai de 1 s ne servait à
+  // rien et chaque sauvegarde en déclenchait une autre (écritures en rafale).
   React.useEffect(() => {
     return () => {
       if (saveTimerRef.current && pendingLinesRef.current) {
         console.log("💾 Flushing pending save on unmount...");
         clearTimeout(saveTimerRef.current);
-        performSave(pendingLinesRef.current);
+        saveTimerRef.current = null;
+        performSaveRef.current(pendingLinesRef.current);
       }
     };
-  }, [performSave]);
+  }, []);
 
 
   // Catalog State
