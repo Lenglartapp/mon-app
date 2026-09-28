@@ -485,27 +485,43 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
   // --- IMPRESSION BPP (A3 paysage, fidèle à l'écran) ---
   const [showBppPrint, setShowBppPrint] = useState(false);
   const [bppPrintSections, setBppPrintSections] = useState([]);
+  const [bppPickerOpen, setBppPickerOpen] = useState(false);
+  const [bppSelected, setBppSelected] = useState([]); // tableKeys cochés
 
   const hasAnyBppRows = [rowsRideaux, rowsStores, rowsStoresBateaux, rowsTentureMurale, rowsMobilier]
     .some(a => (a || []).length > 0);
 
-  // Calcule les sections à imprimer AU CLIC (lit l'état courant des colonnes).
+  // Modules BPP possibles (avec leurs lignes courantes).
+  const bppModulesCfg = () => [
+    { title: 'BPP Rideaux (Préparation Mécanismes)',          rows: rowsRideaux,       schema: RIDEAUX_PROD_SCHEMA,        tableKey: 'rideaux' },
+    { title: 'BPP Stores Négoce (Préparation Mécanismes)',    rows: rowsStores,        schema: STORES_PROD_SCHEMA,         tableKey: 'stores' },
+    { title: 'BPP Stores Bateaux / Velum (Préparation Mécanismes)', rows: rowsStoresBateaux, schema: STORES_BATEAUX_PROD_SCHEMA, tableKey: 'stores_bateaux' },
+    { title: 'BPP Tenture Murale',                            rows: rowsTentureMurale, schema: TENTURE_MURALE_PROD_SCHEMA,  tableKey: 'tenture_murale' },
+    { title: 'BPP Mobilier / Tête de Lit',                    rows: rowsMobilier,      schema: MOBILIER_PROD_SCHEMA,       tableKey: 'mobilier' },
+  ];
+
+  // Au clic : on ouvre le choix des modules (ceux qui ont des lignes), tout coché par défaut.
   const handleOpenBppPrint = () => {
-    const cfg = [
-      { title: 'BPP Rideaux (Préparation Mécanismes)',          rows: rowsRideaux,       schema: RIDEAUX_PROD_SCHEMA,        tableKey: 'rideaux' },
-      { title: 'BPP Stores Négoce (Préparation Mécanismes)',    rows: rowsStores,        schema: STORES_PROD_SCHEMA,         tableKey: 'stores' },
-      { title: 'BPP Stores Bateaux / Velum (Préparation Mécanismes)', rows: rowsStoresBateaux, schema: STORES_BATEAUX_PROD_SCHEMA, tableKey: 'stores_bateaux' },
-      { title: 'BPP Tenture Murale',                            rows: rowsTentureMurale, schema: TENTURE_MURALE_PROD_SCHEMA,  tableKey: 'tenture_murale' },
-      { title: 'BPP Mobilier / Tête de Lit',                    rows: rowsMobilier,      schema: MOBILIER_PROD_SCHEMA,       tableKey: 'mobilier' },
-    ];
-    const sections = cfg
-      .filter(s => (s.rows || []).length > 0)
+    const available = bppModulesCfg().filter(s => (s.rows || []).length > 0);
+    if (available.length === 0) return;
+    setBppSelected(available.map(s => s.tableKey));
+    setBppPickerOpen(true);
+  };
+  const toggleBppModule = (key) =>
+    setBppSelected(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]);
+
+  // Construit les sections des modules cochés (lit l'état courant des colonnes) et imprime.
+  const runBppPrint = () => {
+    const sel = new Set(bppSelected);
+    const sections = bppModulesCfg()
+      .filter(s => (s.rows || []).length > 0 && sel.has(s.tableKey))
       .map(s => ({
         title: s.title,
         rows: s.rows,
         columns: buildBppPrintColumns(s.schema, s.tableKey, `bpp_${s.tableKey}`),
       }))
       .filter(s => s.columns.length > 0);
+    setBppPickerOpen(false);
     if (sections.length === 0) return;
     setBppPrintSections(sections);
     setShowBppPrint(true);
@@ -1828,6 +1844,40 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
           )}
         </>
       )}
+
+      {bppPickerOpen && (() => {
+        const available = bppModulesCfg().filter(s => (s.rows || []).length > 0);
+        const allChecked = available.length > 0 && available.every(s => bppSelected.includes(s.tableKey));
+        return (
+          <div onClick={() => setBppPickerOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(17,24,39,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: 16 }}>
+            <div onClick={(e) => e.stopPropagation()} style={{ background: 'white', borderRadius: 14, width: 'min(480px, 100%)', boxShadow: '0 20px 50px rgba(0,0,0,0.3)', overflow: 'hidden' }}>
+              <div style={{ padding: '16px 18px', borderBottom: '1px solid #E5E7EB', fontWeight: 800, fontSize: 16, color: '#111827' }}>
+                Imprimer le BPP — choisir les tableaux
+              </div>
+              <div style={{ padding: '6px 8px 4px', maxHeight: '55vh', overflowY: 'auto' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', cursor: 'pointer', fontSize: 12, color: '#6B7280' }}>
+                  <input type="checkbox" checked={allChecked} onChange={() => setBppSelected(allChecked ? [] : available.map(s => s.tableKey))} />
+                  {allChecked ? 'Tout décocher' : 'Tout cocher'}
+                </label>
+                {available.map(s => {
+                  const checked = bppSelected.includes(s.tableKey);
+                  return (
+                    <label key={s.tableKey} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 10px', borderTop: '1px solid #F3F4F6', cursor: 'pointer', fontSize: 14 }}>
+                      <input type="checkbox" checked={checked} onChange={() => toggleBppModule(s.tableKey)} style={{ width: 16, height: 16 }} />
+                      <span style={{ flex: 1, color: '#111827', fontWeight: 600 }}>{s.title}</span>
+                      <span style={{ fontSize: 12, color: '#9CA3AF' }}>{s.rows.length} ligne{s.rows.length > 1 ? 's' : ''}</span>
+                    </label>
+                  );
+                })}
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, padding: '12px 16px', borderTop: '1px solid #E5E7EB' }}>
+                <button onClick={() => setBppPickerOpen(false)} style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid #E5E7EB', background: 'white', cursor: 'pointer', fontSize: 13 }}>Annuler</button>
+                <button onClick={runBppPrint} disabled={bppSelected.length === 0} style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: bppSelected.length ? '#1E2447' : '#E5E7EB', color: bppSelected.length ? '#fff' : '#9CA3AF', cursor: bppSelected.length ? 'pointer' : 'not-allowed', fontSize: 13, fontWeight: 600 }}>Imprimer</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {showBppPrint && (
         <BPPPrintPortal
