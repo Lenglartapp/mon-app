@@ -24,6 +24,54 @@ const WORKSHOP_CONFIG = {
 };
 const ALL_WS = ['conf', 'pose', 'prepa'];
 
+// Sélecteur d'ateliers : menu déroulant à cases à cocher (conf / pose / prépa).
+// Au moins un atelier reste toujours coché. Verrouillé pour les techniciens pose.
+function WorkshopSelect({ selected, onChange, disabled }) {
+    const [open, setOpen] = useState(false);
+    const summary = selected.length === ALL_WS.length ? 'Tous'
+        : selected.length === 0 ? 'Aucun'
+        : ALL_WS.filter(k => selected.includes(k)).map(k => WORKSHOP_CONFIG[k].label).join(' + ');
+    const toggle = (k) => {
+        const has = selected.includes(k);
+        let next = has ? selected.filter(w => w !== k) : [...selected, k];
+        if (next.length === 0) next = [k]; // toujours au moins un atelier
+        onChange(ALL_WS.filter(w => next.includes(w)));
+    };
+    if (disabled) {
+        return <div style={{ padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600, color: '#6B7280', border: '1px solid #E5E7EB', background: 'white' }}>Ateliers : {summary}</div>;
+    }
+    return (
+        <div style={{ position: 'relative' }}>
+            <button onClick={() => setOpen(o => !o)} style={{
+                padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600, color: '#374151',
+                border: '1px solid #E5E7EB', background: 'white', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6,
+            }}>
+                <span>Ateliers : {summary}</span>
+                <span style={{ fontSize: 10, color: '#9CA3AF' }}>▾</span>
+            </button>
+            {open && (
+                <>
+                    <div style={{ position: 'fixed', inset: 0, zIndex: 40 }} onClick={() => setOpen(false)} />
+                    <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, background: 'white', border: '1px solid #E5E7EB', borderRadius: 8, boxShadow: '0 4px 16px rgba(0,0,0,0.12)', zIndex: 41, minWidth: 180, padding: 4 }}>
+                        {ALL_WS.map(k => {
+                            const cfg = WORKSHOP_CONFIG[k];
+                            const checked = selected.includes(k);
+                            return (
+                                <label key={k} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 6, cursor: 'pointer', fontSize: 13 }}
+                                    onMouseEnter={e => e.currentTarget.style.background = '#F9FAFB'} onMouseLeave={e => e.currentTarget.style.background = 'white'}>
+                                    <input type="checkbox" checked={checked} onChange={() => toggle(k)} style={{ accentColor: cfg.color, width: 15, height: 15 }} />
+                                    <span style={{ width: 9, height: 9, borderRadius: 3, background: cfg.color }} />
+                                    <span style={{ color: '#374151', fontWeight: checked ? 600 : 400 }}>{cfg.label}</span>
+                                </label>
+                            );
+                        })}
+                    </div>
+                </>
+            )}
+        </div>
+    );
+}
+
 // Typologies de période (comme le module Performance) : on démarre toujours à S-1
 // et on projette N mois en avant.
 const PERIODE_PRESETS = [
@@ -160,14 +208,15 @@ const ProjectBreakdown = ({ title, items, total, barColor, emptyText, overFn, ov
             return (
                 <div key={i} style={{ padding: '9px 0', borderBottom: '1px solid #F3F4F6' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
-                        <span style={{ fontWeight: 600, fontSize: 13, color: over > 0 ? '#B91C1C' : '#111827' }}>{p.name}</span>
+                        <span style={{ fontWeight: 600, fontSize: 13, color: p.internal ? '#8B5CF6' : (over > 0 ? '#B91C1C' : '#111827') }}>{p.name}</span>
                         <span style={{ fontWeight: 700, fontSize: 13, color: '#374151' }}>{Math.round(p.hours * 10) / 10}h</span>
                     </div>
                     <div style={{ height: 4, background: '#F3F4F6', borderRadius: 2 }}>
-                        <div style={{ height: 4, width: `${Math.min(pct, 100)}%`, background: over > 0 ? '#EF4444' : barColor, borderRadius: 2 }} />
+                        <div style={{ height: 4, width: `${Math.min(pct, 100)}%`, background: p.internal ? '#8B5CF6' : (over > 0 ? '#EF4444' : barColor), borderRadius: 2 }} />
                     </div>
                     <div style={{ fontSize: 10, marginTop: 2 }}>
                         <span style={{ color: '#9CA3AF' }}>{pct}%</span>
+                        {p.internal && <span style={{ color: '#8B5CF6', fontWeight: 700, marginLeft: 6 }}>· interne (non vendu)</span>}
                         {over > 0 && <span style={{ color: '#EF4444', fontWeight: 700, marginLeft: 6 }}>· {overLabel} +{over}h {overSuffix}</span>}
                     </div>
                 </div>
@@ -181,15 +230,21 @@ const CapaciteView = ({ localUsers, localEvents, projects = [] }) => {
     const { currentUser } = useAuth();
     const isPoseTech = currentUser?.role === 'pose';
 
-    const [selectedWorkshops, setSelectedWorkshops] = useState(isPoseTech ? ['pose'] : ['conf', 'pose', 'prepa']);
+    const [selectedWorkshops, setSelectedWorkshops] = useState(isPoseTech ? ['pose'] : ['conf']); // défaut : Confection
     // Vue de base : on démarre à la semaine précédente (S-1), horizon = trimestre.
     const [periode,    setPeriode]    = useState('quarter');   // défaut : Trimestre à venir
-    const [direction,  setDirection]  = useState('future');    // 'future' (planification) | 'past' (consommation)
+    const [includeInternal, setIncludeInternal] = useState(true); // interne Lenglart compté dans les taux (défaut : oui)
     const [rangeStart, setRangeStart] = useState(format(startOfWeek(today, { weekStartsOn: 1 }), 'yyyy-MM-dd'));
     const [rangeEnd,   setRangeEnd]   = useState(format(addMonths(today, 3), 'yyyy-MM-dd'));
+    // Direction DÉDUITE de la période (plus de toggle manuel) : une période « à venir »
+    // → planification, une période passée → consommation.
+    const direction = useMemo(() => {
+        const preset = PERIODE_PRESETS.find(p => p.key === periode);
+        if (preset) return preset.dir;
+        const end = new Date(rangeEnd); // custom : d'après la fin de fenêtre
+        return (!isNaN(end.getTime()) && end < startOfWeek(today, { weekStartsOn: 1 })) ? 'past' : 'future';
+    }, [periode, rangeEnd, today]);
     const [selectedWeekData, setSelectedWeekData] = useState(null);
-    // Charge masquée par défaut : la vue de base compare Capacité et Planifié.
-    const [showCharge, setShowCharge] = useState(false);
 
     // Applique une typologie. Futur : de la semaine en cours à +N mois (planification).
     // Passé : de −N mois à la semaine en cours (consommation). La direction pilote les tuiles.
@@ -197,7 +252,6 @@ const CapaciteView = ({ localUsers, localEvents, projects = [] }) => {
         const preset = PERIODE_PRESETS.find(p => p.key === key);
         if (!preset) return;
         setPeriode(key);
-        setDirection(preset.dir);
         const weekStart = startOfWeek(today, { weekStartsOn: 1 });
         if (preset.dir === 'past') {
             setRangeStart(format(startOfWeek(subMonths(today, preset.months), { weekStartsOn: 1 }), 'yyyy-MM-dd'));
@@ -390,6 +444,37 @@ const CapaciteView = ({ localUsers, localEvents, projects = [] }) => {
                 .filter(e => (e.type === 'pose' || e.type === 'prepa') && e.meta?.status !== 'validated' && !isInternalEvt(e))
                 .forEach(e => addPlanned(e.meta?.projectId, e.title, eventHours(e)));
 
+            // ── INTERNE LENGLART (isolé) : occupe l'atelier mais N'EST PAS vendu.
+            // On le calcule à part (consommé + planifié) et on l'ajoute au détail, grisé.
+            const internalChargeEvts = weekEvts.filter(e => isInternalEvt(e) && e.meta?.status === 'validated');
+            const internalChargeHours = internalChargeEvts.reduce((s, e) => s + eventHours(e), 0);
+            let internalPlanifieHours = 0;
+            const addInternalToMap = (map, key, name, h) => {
+                if (!map[key]) map[key] = { id: null, name, hours: 0, internal: true };
+                map[key].hours += h;
+            };
+            internalChargeEvts.forEach(e => {
+                const chap = e.meta?.internalChapter || 'Lenglart';
+                addInternalToMap(projectMap, 'interne:' + chap, `Interne — ${chap}`, eventHours(e));
+            });
+            if (selectedWorkshops.includes('conf')) {
+                backlogCards
+                    .filter(c => c.date >= weekStr && c.date <= weekEndStr && isInternalEvt(c))
+                    .forEach(c => {
+                        const h = Number(c.meta?.budgetHours) || 0;
+                        internalPlanifieHours += h;
+                        const chap = c.meta?.internalChapter || 'Lenglart';
+                        addInternalToMap(plannedMap, 'interne:' + chap, `Interne — ${chap}`, h);
+                    });
+            }
+            weekEvts
+                .filter(e => (e.type === 'pose' || e.type === 'prepa') && e.meta?.status !== 'validated' && isInternalEvt(e))
+                .forEach(e => {
+                    internalPlanifieHours += eventHours(e);
+                    const chap = e.meta?.internalChapter || 'Lenglart';
+                    addInternalToMap(plannedMap, 'interne:' + chap, `Interne — ${chap}`, eventHours(e));
+                });
+
             const weekNum  = format(weekStart, 'w');
             const prevWeek = weeks[weeks.indexOf(weekStart) - 1];
             const monthLabel = !prevWeek || format(prevWeek, 'M') !== format(weekStart, 'M')
@@ -403,6 +488,10 @@ const CapaciteView = ({ localUsers, localEvents, projects = [] }) => {
                 capa:     Math.round(capaHours     * 10) / 10,
                 charge:   Math.round(chargeHours   * 10) / 10,
                 planifie: Math.round(planifieHours * 10) / 10,
+                internalCharge:   Math.round(internalChargeHours   * 10) / 10,
+                internalPlanifie: Math.round(internalPlanifieHours * 10) / 10,
+                planifieTotal: Math.round((planifieHours + internalPlanifieHours) * 10) / 10,
+                chargeTotal:   Math.round((chargeHours   + internalChargeHours)   * 10) / 10,
                 projects:        Object.values(projectMap).sort((a, b) => b.hours - a.hours),
                 plannedProjects: Object.values(plannedMap).sort((a, b) => b.hours - a.hours),
             };
@@ -410,20 +499,14 @@ const CapaciteView = ({ localUsers, localEvents, projects = [] }) => {
     }, [weeks, filteredUsers, planningEvts, backlogCards, closures, absences, selectedWorkshops, internalProjectId]);
 
     // « Tous » = les 3 ateliers actifs, mais les puces individuelles apparaissent inactives.
-    const isAllMode = selectedWorkshops.length === ALL_WS.length;
-    const toggleWorkshop = (ws) => {
-        if (isPoseTech) return; // technicien pose : verrouillé sur son atelier
-        setSelectedWorkshops(prev => {
-            if (prev.length === ALL_WS.length) return [ws];        // depuis « Tous » → uniquement cet atelier
-            if (prev.includes(ws)) {
-                const next = prev.filter(w => w !== ws);
-                return next.length ? next : [...ALL_WS];           // plus rien de sélectionné → retour à « Tous »
-            }
-            return [...prev, ws];                                  // ajoute l'atelier
-        });
-    };
-
     const todayWeekLabel = `S${format(today, 'w')}`;
+
+    // Courbe : une seule ligne, qui suit la direction (planification à venir / consommation passée)
+    // et l'interrupteur interne (total ou vendu seul).
+    const curveKey  = direction === 'future' ? (includeInternal ? 'planifieTotal' : 'planifie')
+                                             : (includeInternal ? 'chargeTotal'   : 'charge');
+    const curveName = direction === 'future' ? 'Planifié' : 'Consommé';
+    const curveColor = direction === 'future' ? COLOR_PLANIFIE : COLOR_CHARGE;
 
     // Style d'en-tête de tableau (aligné, compact).
     const th = (align = 'right', extra = {}) => ({ padding: '8px 14px', textAlign: align, fontSize: 11, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', whiteSpace: 'nowrap', ...extra });
@@ -431,9 +514,13 @@ const CapaciteView = ({ localUsers, localEvents, projects = [] }) => {
 
     // Synthèse (tuiles) : conglomérat sur toute la période affichée.
     const totals = useMemo(() => {
-        const sum = (k) => chartData.reduce((s, r) => s + r[k], 0);
+        const sum = (k) => chartData.reduce((s, r) => s + (r[k] || 0), 0);
         const capa = sum('capa'), planifie = sum('planifie'), charge = sum('charge');
+        const internalPlanifie = sum('internalPlanifie'), internalCharge = sum('internalCharge');
         const round = (n) => Math.round(n * 10) / 10;
+        // Taux : selon l'interrupteur, l'interne Lenglart (non vendu) compte ou non.
+        const planRate   = includeInternal ? planifie + internalPlanifie : planifie;
+        const chargeRate = includeInternal ? charge   + internalCharge   : charge;
 
         // Surplanification : heures planifiées au-delà du budget, sur les projets présents
         // dans la période (dédupliqués). Signal des chantiers en dépassement/retard.
@@ -450,10 +537,12 @@ const CapaciteView = ({ localUsers, localEvents, projects = [] }) => {
 
         return {
             capa: round(capa), planifie: round(planifie), charge: round(charge),
-            ratePlan: capa > 0 ? Math.round(planifie / capa * 100) : 0,
-            rateOcc:  capa > 0 ? Math.round(charge   / capa * 100) : 0,
-            ecartPlan: round(planifie - capa),
-            ecartOcc:  round(charge   - capa),
+            internalPlanifie: round(internalPlanifie), internalCharge: round(internalCharge),
+            planifieShown: round(planRate), chargeShown: round(chargeRate),
+            ratePlan: capa > 0 ? Math.round(planRate   / capa * 100) : 0,
+            rateOcc:  capa > 0 ? Math.round(chargeRate / capa * 100) : 0,
+            ecartPlan: round(planRate   - capa),
+            ecartOcc:  round(chargeRate - capa),
             surplanif: round(surplanif),
             nbOver,
             pctSurplanif: planifie > 0 ? Math.round(surplanif / planifie * 100) : 0,
@@ -461,7 +550,7 @@ const CapaciteView = ({ localUsers, localEvents, projects = [] }) => {
             nbOverOcc,
             pctSuroccup: charge > 0 ? Math.round(suroccup / charge * 100) : 0,
         };
-    }, [chartData, projectHoursById, selectedWorkshops]);
+    }, [chartData, projectHoursById, selectedWorkshops, includeInternal]);
 
     const CustomXAxisTick = ({ x, y, payload }) => {
         const item = chartData.find(d => d.weekLabel === payload.value);
@@ -503,55 +592,24 @@ const CapaciteView = ({ localUsers, localEvents, projects = [] }) => {
 
                 {/* Contrôles */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                    {/* Filtres ateliers */}
-                    <div style={{ display: 'flex', gap: 6 }}>
-                        {Object.entries(WORKSHOP_CONFIG)
-                            .filter(([key]) => !isPoseTech || key === 'pose')
-                            .map(([key, cfg]) => (
-                                <button key={key} onClick={() => toggleWorkshop(key)} style={{
-                                    padding: '6px 14px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s',
-                                    background: (selectedWorkshops.includes(key) && !isAllMode) ? cfg.color : 'white',
-                                    color:      (selectedWorkshops.includes(key) && !isAllMode) ? 'white'   : '#6B7280',
-                                    border:     `1px solid ${(selectedWorkshops.includes(key) && !isAllMode) ? cfg.color : '#E5E7EB'}`,
-                                }}>
-                                    {cfg.label}
-                                </button>
-                            ))}
-                        {!isPoseTech && (
-                            <button onClick={() => setSelectedWorkshops([...ALL_WS])} style={{
-                                padding: '6px 14px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                                background: isAllMode ? '#111827' : 'white',
-                                color:      isAllMode ? 'white'   : '#6B7280',
-                                border:     `1px solid ${isAllMode ? '#111827' : '#E5E7EB'}`,
-                            }}>
-                                Tous
-                            </button>
-                        )}
-                    </div>
+                    {/* Filtre ateliers : menu à cases à cocher (défaut Confection) */}
+                    <WorkshopSelect selected={selectedWorkshops} onChange={setSelectedWorkshops} disabled={isPoseTech} />
 
-                    {/* Bascule charge (masquée par défaut) */}
-                    <button onClick={() => setShowCharge(v => !v)} style={{
-                        padding: '6px 14px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                        background: showCharge ? '#EF4444' : 'white',
-                        color:      showCharge ? 'white'   : '#6B7280',
-                        border:     `1px solid ${showCharge ? '#EF4444' : '#E5E7EB'}`,
-                    }}>
-                        {showCharge ? 'Charge sur la courbe ✓' : 'Charge sur la courbe'}
+                    {/* Interne Lenglart : compté ou non dans les taux (toujours visible sur la courbe/détail) */}
+                    <button onClick={() => setIncludeInternal(v => !v)}
+                        title="Compter le dossier interne Lenglart (non vendu) dans les taux d'occupation / planification"
+                        style={{
+                            padding: '6px 14px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                            background: includeInternal ? '#8B5CF6' : 'white',
+                            color:      includeInternal ? 'white'   : '#6B7280',
+                            border:     `1px solid ${includeInternal ? '#8B5CF6' : '#E5E7EB'}`,
+                        }}>
+                        {includeInternal ? 'Interne dans les taux ✓' : 'Interne dans les taux'}
                     </button>
 
                     {/* Sélecteur de période : direction (Futur/Passé) + menu déroulant + perso */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 'auto', flexWrap: 'wrap' }}>
-                        {/* Toggle direction : quelles tuiles afficher (planification vs consommation) */}
-                        <div style={{ display: 'inline-flex', background: '#F3F4F6', borderRadius: 20, padding: 2 }}>
-                            {[{ k: 'future', l: 'Futur' }, { k: 'past', l: 'Passé' }].map(o => (
-                                <button key={o.k} onClick={() => setDirection(o.k)} style={{
-                                    padding: '5px 14px', borderRadius: 18, fontSize: 12, fontWeight: 700, cursor: 'pointer', border: 'none',
-                                    background: direction === o.k ? '#111827' : 'transparent',
-                                    color:      direction === o.k ? 'white'   : '#6B7280',
-                                }}>{o.l}</button>
-                            ))}
-                        </div>
-                        {/* Menu déroulant de période */}
+                        {/* Menu déroulant de période (la direction planif/conso en est déduite) */}
                         <select
                             value={periode}
                             onChange={e => { const v = e.target.value; if (v === 'custom') setPeriode('custom'); else applyPreset(v); }}
@@ -582,7 +640,8 @@ const CapaciteView = ({ localUsers, localEvents, projects = [] }) => {
                     <Tile label="Capacité" value={`${totals.capa}h`} sub="disponible sur la période" />
                     {direction === 'future' ? (
                         <>
-                            <Tile label="Planifié" value={`${totals.planifie}h`} color={COLOR_PLANIFIE} sub="à faire sur la période" />
+                            <Tile label="Planifié" value={`${totals.planifieShown}h`} color={COLOR_PLANIFIE}
+                                sub={includeInternal && totals.internalPlanifie > 0 ? `à faire · dont ${totals.internalPlanifie}h interne` : 'à faire sur la période'} />
                             <Tile label="Taux de planification" value={`${totals.ratePlan}%`} color={rateColor(totals.ratePlan)}
                                 sub={`écart ${totals.ecartPlan >= 0 ? '+' : ''}${totals.ecartPlan}h`} />
                             <Tile label="Surplanification" value={`${totals.surplanif}h`}
@@ -592,7 +651,8 @@ const CapaciteView = ({ localUsers, localEvents, projects = [] }) => {
                         </>
                     ) : (
                         <>
-                            <Tile label="Consommé" value={`${totals.charge}h`} color={COLOR_CHARGE} sub="réalisé sur la période" />
+                            <Tile label="Consommé" value={`${totals.chargeShown}h`} color={COLOR_CHARGE}
+                                sub={includeInternal && totals.internalCharge > 0 ? `réalisé · dont ${totals.internalCharge}h interne` : 'réalisé sur la période'} />
                             <Tile label="Taux d'occupation" value={`${totals.rateOcc}%`} color={rateColor(totals.rateOcc)}
                                 sub={`écart ${totals.ecartOcc >= 0 ? '+' : ''}${totals.ecartOcc}h`} />
                             <Tile label="Surconsommation" value={`${totals.suroccup}h`}
@@ -620,23 +680,19 @@ const CapaciteView = ({ localUsers, localEvents, projects = [] }) => {
                                 type="monotone" dataKey="capa" name="Capacité"
                                 fill="#ECFDF5" stroke={COLOR_CAPA} strokeWidth={2} dot={false}
                             />
+                            {/* Une seule ligne : planifié (période à venir) ou consommé (période passée) */}
                             <Line
-                                type="monotone" dataKey="planifie" name="Planifié"
-                                stroke={COLOR_PLANIFIE} strokeWidth={2.5}
+                                type="monotone" dataKey={curveKey} name={curveName}
+                                stroke={curveColor} strokeWidth={2.5}
                                 activeDot={{ r: 8, cursor: 'pointer', onClick: (_, payload) => setSelectedWeekData(payload.payload) }}
                                 dot={(props) => {
                                     const { cx, cy, payload } = props;
-                                    return <circle key={`pl-${cx}`} cx={cx} cy={cy} r={4}
-                                        fill={payload.planifie > payload.capa ? '#EF4444' : COLOR_PLANIFIE}
+                                    const val = payload[curveKey];
+                                    return <circle key={`cv-${cx}`} cx={cx} cy={cy} r={4}
+                                        fill={val > payload.capa ? '#EF4444' : curveColor}
                                         stroke="white" strokeWidth={1.5} />;
                                 }}
                             />
-                            {showCharge && (
-                                <Line
-                                    type="monotone" dataKey="charge" name="Charge"
-                                    stroke={COLOR_CHARGE} strokeWidth={2} strokeDasharray="5 4" dot={false}
-                                />
-                            )}
                             <ReferenceLine
                                 x={todayWeekLabel} stroke="#F59E0B" strokeDasharray="4 4"
                                 label={{ value: 'Auj.', position: 'insideTopRight', fontSize: 10, fill: '#F59E0B' }}
@@ -729,7 +785,7 @@ const CapaciteView = ({ localUsers, localEvents, projects = [] }) => {
                         <ProjectBreakdown
                             title="Planifié"
                             items={selectedWeekData.plannedProjects}
-                            total={selectedWeekData.planifie}
+                            total={selectedWeekData.planifieTotal ?? selectedWeekData.planifie}
                             barColor={COLOR_PLANIFIE}
                             emptyText="Rien de planifié sur cette semaine."
                             overFn={(p) => Math.round(overPlanForProject(p.id) * 10) / 10}
@@ -739,7 +795,7 @@ const CapaciteView = ({ localUsers, localEvents, projects = [] }) => {
                         <ProjectBreakdown
                             title="Consommé"
                             items={selectedWeekData.projects}
-                            total={selectedWeekData.charge}
+                            total={selectedWeekData.chargeTotal ?? selectedWeekData.charge}
                             barColor={COLOR_CHARGE}
                             emptyText="Rien de consommé sur cette semaine."
                             overFn={(p) => Math.round(overOccForProject(p.id) * 10) / 10}
