@@ -141,6 +141,7 @@ function AppShell() {
     // pour qu'une résolution tardive ne puisse pas rouvrir le projet (cf. garde anti-course).
     if (!path.startsWith("/production/")) setPendingProjectId(null);
     setProjectLoadError(null);
+    failedProjectRef.current = null;
 
     if (path === "/" || path === "") {
       setScreen("home");
@@ -196,10 +197,15 @@ function AppShell() {
   // Résolution différée du projet (attend que cleanProjects soit chargé)
   // pendingProjectId est un short ID (8 hex chars), on cherche par startsWith
   const resolvingProjectRef = useRef(null);
+  // Projet dont le chargement a échoué : on NE réessaie PAS automatiquement (cet effet
+  // se relance à chaque rendu de cleanProjects → sinon boucle de centaines de requêtes
+  // par seconde sur une base déjà saturée). Seul « Réessayer » ou une navigation relance.
+  const failedProjectRef = useRef(null);
   useEffect(() => {
     if (!pendingProjectId || !cleanProjects.length) return;
     const project = cleanProjects.find(p => p.id.toLowerCase().startsWith(pendingProjectId.toLowerCase()));
     if (!project) return;
+    if (failedProjectRef.current === project.id) return;
     // PERF — La liste est légère (sans `rows`). On charge le projet COMPLET avant
     // d'afficher l'écran de production → jamais de rendu avec des lignes vides.
     // Guard par ref : loadProjectDetail fusionne dans cleanProjects (dépendance de cet
@@ -220,10 +226,12 @@ function AppShell() {
       // avec la version légère (sans `rows`) — l'écran l'afficherait vide et la
       // prochaine sauvegarde pourrait écraser les lignes. On affiche une erreur.
       if (!full) {
+        failedProjectRef.current = project.id;
         setProjectLoadError({ name: project.name });
         setScreen("projectError");
         return;
       }
+      failedProjectRef.current = null;
       setProjectLoadError(null);
       setCurrentProject(full);
       setScreen("project");
@@ -432,7 +440,7 @@ function AppShell() {
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               <button onClick={() => navigate("/production")} style={{ background: '#F3F4F6', color: '#111827', border: 'none', padding: '8px 16px', borderRadius: 6, fontWeight: 600, cursor: 'pointer' }}>Retour</button>
-              <button onClick={() => { setProjectLoadError(null); setProjectRetry((n) => n + 1); }} style={{ background: '#1E2447', color: 'white', border: 'none', padding: '8px 16px', borderRadius: 6, fontWeight: 600, cursor: 'pointer' }}>Réessayer</button>
+              <button onClick={() => { failedProjectRef.current = null; setProjectLoadError(null); setProjectRetry((n) => n + 1); }} style={{ background: '#1E2447', color: 'white', border: 'none', padding: '8px 16px', borderRadius: 6, fontWeight: 600, cursor: 'pointer' }}>Réessayer</button>
             </div>
           </div>
         )}
