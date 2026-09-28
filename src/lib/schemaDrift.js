@@ -16,7 +16,10 @@ export const isSchemaDriftError = (error) => {
   const msg = String(error.message || '').toLowerCase();
   // Un échec réseau ressemble à "failed to fetch" / "networkerror" / "load failed" : on l'EXCLUT.
   if (msg.includes('failed to fetch') || msg.includes('networkerror') || msg.includes('load failed')) return false;
-  return /does not exist|could not find|schema cache|column/.test(msg);
+  // ⚠️ Ne PAS matcher le simple mot "column" : il attrape aussi des erreurs de
+  // contrainte (`null value in column "x" violates not-null`, 23502) → la colonne
+  // était alors retirée à tort et silencieusement ignorée pour toute la session.
+  return /does not exist|could not find|schema cache/.test(msg);
 };
 
 /**

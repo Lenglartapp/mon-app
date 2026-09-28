@@ -1250,6 +1250,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
               pinnedIds={project?.pinnedIds || []}
               onTogglePin={handleTogglePin}
               isMobile={isMobile}
+              projectId={project?.id}
             />
           </div>
         </div>

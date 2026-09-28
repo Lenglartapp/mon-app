@@ -13,6 +13,7 @@ import { ProjectListScreen } from "./screens/ProjectListScreen";
 import { ProductionProjectScreen } from "./screens/ProductionProjectScreen";
 import ChiffrageRoot from "./screens/ChiffrageRoot.jsx";
 import ChiffrageScreen from "./screens/ChiffrageScreen";
+import ScreenErrorBoundary from "./components/ScreenErrorBoundary";
 import HomeScreen from "./screens/HomeScreen.jsx";
 import SettingsScreen from "./screens/SettingsScreen.jsx";
 import { ActivityProvider } from "./contexts/activity";
@@ -126,6 +127,10 @@ function AppShell() {
   const [pendingRowId, setPendingRowId] = useState(null);
   const [pendingProjectId, setPendingProjectId] = useState(null);
   const [pendingStage, setPendingStage] = useState(null);
+  // Échec du chargement complet d'un projet (base lente/injoignable) → écran d'erreur
+  // avec « Réessayer ». projectRetry relance la résolution.
+  const [projectLoadError, setProjectLoadError] = useState(null);
+  const [projectRetry, setProjectRetry] = useState(0);
 
   // URL → State : lit l'URL au chargement et à chaque navigation
   useEffect(() => {
@@ -135,6 +140,8 @@ function AppShell() {
     // Quitter un deep-link projet annule toute résolution de projet en attente,
     // pour qu'une résolution tardive ne puisse pas rouvrir le projet (cf. garde anti-course).
     if (!path.startsWith("/production/")) setPendingProjectId(null);
+    setProjectLoadError(null);
+    failedProjectRef.current = null;
 
     if (path === "/" || path === "") {
       setScreen("home");
@@ -190,10 +197,15 @@ function AppShell() {
   // Résolution différée du projet (attend que cleanProjects soit chargé)
   // pendingProjectId est un short ID (8 hex chars), on cherche par startsWith
   const resolvingProjectRef = useRef(null);
+  // Projet dont le chargement a échoué : on NE réessaie PAS automatiquement (cet effet
+  // se relance à chaque rendu de cleanProjects → sinon boucle de centaines de requêtes
+  // par seconde sur une base déjà saturée). Seul « Réessayer » ou une navigation relance.
+  const failedProjectRef = useRef(null);
   useEffect(() => {
     if (!pendingProjectId || !cleanProjects.length) return;
     const project = cleanProjects.find(p => p.id.toLowerCase().startsWith(pendingProjectId.toLowerCase()));
     if (!project) return;
+    if (failedProjectRef.current === project.id) return;
     // PERF — La liste est légère (sans `rows`). On charge le projet COMPLET avant
     // d'afficher l'écran de production → jamais de rendu avec des lignes vides.
     // Guard par ref : loadProjectDetail fusionne dans cleanProjects (dépendance de cet
@@ -201,7 +213,7 @@ function AppShell() {
     if (resolvingProjectRef.current === project.id) return;
     resolvingProjectRef.current = project.id;
     const targetShortId = pendingProjectId.toLowerCase(); // figé pour la garde anti-course
-    loadProjectDetail(project.id).then(full => {
+    loadProjectDetail(project.id).catch(() => null).then(full => {
       resolvingProjectRef.current = null;
       // GARDE ANTI-COURSE : le chargement complet est asynchrone. Si l'utilisateur a
       // navigué ailleurs pendant ce temps (ex. clic sur Planning), l'URL courante ne
@@ -210,11 +222,22 @@ function AppShell() {
       const stillOnThisProject =
         seg[1] === "production" && extractShortId(seg[2] || "") === targetShortId;
       if (!stillOnThisProject) return;
-      setCurrentProject(full || project);
+      // SÉCURITÉ DONNÉES : si le détail n'a pas pu être chargé, on N'OUVRE PAS le projet
+      // avec la version légère (sans `rows`) — l'écran l'afficherait vide et la
+      // prochaine sauvegarde pourrait écraser les lignes. On affiche une erreur.
+      if (!full) {
+        failedProjectRef.current = project.id;
+        setProjectLoadError({ name: project.name });
+        setScreen("projectError");
+        return;
+      }
+      failedProjectRef.current = null;
+      setProjectLoadError(null);
+      setCurrentProject(full);
       setScreen("project");
       setPendingProjectId(null);
     });
-  }, [pendingProjectId, cleanProjects, loadProjectDetail]);
+  }, [pendingProjectId, cleanProjects, loadProjectDetail, projectRetry]);
 
   // PERF — Chargement complet À LA DEMANDE pour les écrans qui agrègent l'ensemble des
   // lignes (impossible avec la liste légère). Idempotent + mis en cache côté hook, donc
@@ -403,142 +426,162 @@ function AppShell() {
         onAction={handleNotificationAction}
       />
 
-      {screen === "home" && (
-        <HomeScreen
-          onOpenProdList={() => go("prodList")}
-          onOpenSettings={() => navigate("/parametres")}
-          onOpenChiffrage={() => go("chiffrageRoot")}
-          onOpenInventory={() => go("inventory")}
-          onOpenPlanning={() => go("planning")}
-          onOpenLogistique={() => go("logistique")}
-          onOpenPerformance={() => go("performance")}
-        />
+      {/* Filet de sécurité par écran : un plantage n'emporte plus toute l'application. */}
+      <ScreenErrorBoundary resetKey={location.pathname} onBack={() => navigate("/")}>
+        {screen === "projectError" && !projectLoadError && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '50vh', fontSize: 13, color: '#6B7280' }}>Chargement du projet…</div>
+        )}
 
-      )}
+        {screen === "projectError" && projectLoadError && (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '50vh', gap: 12, color: '#6B7280', padding: 16 }}>
+            <div style={{ fontSize: 15, fontWeight: 600, color: '#111827' }}>{projectLoadError.name || 'Projet'}</div>
+            <div style={{ fontSize: 13, color: '#B91C1C', textAlign: 'center', maxWidth: 420 }}>
+              Le projet n'a pas pu être chargé (serveur lent ou connexion interrompue). Aucune donnée n'a été modifiée.
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={() => navigate("/production")} style={{ background: '#F3F4F6', color: '#111827', border: 'none', padding: '8px 16px', borderRadius: 6, fontWeight: 600, cursor: 'pointer' }}>Retour</button>
+              <button onClick={() => { failedProjectRef.current = null; setProjectLoadError(null); setProjectRetry((n) => n + 1); }} style={{ background: '#1E2447', color: 'white', border: 'none', padding: '8px 16px', borderRadius: 6, fontWeight: 600, cursor: 'pointer' }}>Réessayer</button>
+            </div>
+          </div>
+        )}
 
-      {screen === "prodList" && (
-        <ProjectListScreen
-          projects={cleanProjects}
-          onCreate={addProject}
-          onDelete={deleteProject}
-          onUpdateProject={handleUpdateProject}
-          onOpenProject={(p) => navigate(`/production/${p.id.slice(0,8)}-${slugify(p.name)}`)}
-          minutes={can(currentUser, "chiffrage.view") ? cleanMinutes : []}
-          onUpdateMinute={updateMinute}
-          onLoadMinuteDetail={loadMinuteDetail}
-          onBack={() => navigate("/")}
-        />
-      )}
+        {screen === "home" && (
+          <HomeScreen
+            onOpenProdList={() => go("prodList")}
+            onOpenSettings={() => navigate("/parametres")}
+            onOpenChiffrage={() => go("chiffrageRoot")}
+            onOpenInventory={() => go("inventory")}
+            onOpenPlanning={() => go("planning")}
+            onOpenLogistique={() => go("logistique")}
+            onOpenPerformance={() => go("performance")}
+          />
 
-      {screen === "chiffrageRoot" && (
-        <ChiffrageRoot
-          minutes={cleanMinutes}
-          onCreate={addMinute}
-          onDelete={deleteMinute}
-          onUpdate={updateMinute}
-          onBack={() => navigate("/")}
-          onOpenMinute={(id) => {
-            const m = cleanMinutes.find(m => String(m.id) === String(id));
-            navigate(`/chiffrage/${String(id).slice(0,8)}-${slugify(m?.name)}`);
-          }}
-        />
-      )}
+        )}
 
-      {screen === "chiffrage" && openMinuteId && (
-        <ChiffrageScreen
-          minuteId={openMinuteId}
-          minutes={cleanMinutes}
-          onUpdate={updateMinute}
-          onCreate={addMinute}
-          onLoadMinuteDetail={loadMinuteDetail}
-          onBack={() => navigate("/chiffrage")}
-          onOpenMinute={(id) => {
-            const m = cleanMinutes.find(m => String(m.id) === String(id));
-            navigate(`/chiffrage/${String(id).slice(0,8)}-${slugify(m?.name)}`);
-          }}
-          highlightRowId={pendingRowId}
-        />
-      )}
+        {screen === "prodList" && (
+          <ProjectListScreen
+            projects={cleanProjects}
+            onCreate={addProject}
+            onDelete={deleteProject}
+            onUpdateProject={handleUpdateProject}
+            onOpenProject={(p) => navigate(`/production/${p.id.slice(0,8)}-${slugify(p.name)}`)}
+            minutes={can(currentUser, "chiffrage.view") ? cleanMinutes : []}
+            onUpdateMinute={updateMinute}
+            onLoadMinuteDetail={loadMinuteDetail}
+            onBack={() => navigate("/")}
+          />
+        )}
 
-      {/* Le dossier interne n'a ni ouvrages, ni BPF, ni prise de cotes : l'écran de
-          production n'afficherait que des onglets vides. Il a le sien, réduit au suivi
-          des heures par chapitre et au transfert vers un vrai dossier. */}
-      {screen === "project" && currentProject && isInternalProject(cleanProjects.find(p => String(p.id) === String(currentProject.id)) || currentProject) && (
-        <InternalProjectScreen
-          project={cleanProjects.find(p => String(p.id) === String(currentProject.id)) || currentProject}
-          projects={cleanProjects}
-          events={planningEvents}
-          onUpdateProject={handleUpdateProject}
-          onUpdateEvent={updateEvent}
-          onBack={() => navigate("/production")}
-        />
-      )}
+        {screen === "chiffrageRoot" && (
+          <ChiffrageRoot
+            minutes={cleanMinutes}
+            onCreate={addMinute}
+            onDelete={deleteMinute}
+            onUpdate={updateMinute}
+            onBack={() => navigate("/")}
+            onOpenMinute={(id) => {
+              const m = cleanMinutes.find(m => String(m.id) === String(id));
+              navigate(`/chiffrage/${String(id).slice(0,8)}-${slugify(m?.name)}`);
+            }}
+          />
+        )}
 
-      {screen === "project" && currentProject && !isInternalProject(cleanProjects.find(p => String(p.id) === String(currentProject.id)) || currentProject) && (
-        <ProductionProjectScreen
-          inventory={inventory}
-          onUpdateItem={updateInventoryItem}
-          project={cleanProjects.find(p => String(p.id) === String(currentProject.id)) || currentProject}
-          projects={cleanProjects}
-          onBack={() => navigate("/production")}
-          onUpdateProjectRows={handleUpdateProjectRows}
-          onUpdateProject={handleUpdateProject}
-          highlightRowId={pendingRowId}
-          initialStage={pendingStage}
-          events={planningEvents}
-        />
-      )}
+        {screen === "chiffrage" && openMinuteId && (
+          <ChiffrageScreen
+            minuteId={openMinuteId}
+            minutes={cleanMinutes}
+            onUpdate={updateMinute}
+            onCreate={addMinute}
+            onLoadMinuteDetail={loadMinuteDetail}
+            onBack={() => navigate("/chiffrage")}
+            onOpenMinute={(id) => {
+              const m = cleanMinutes.find(m => String(m.id) === String(id));
+              navigate(`/chiffrage/${String(id).slice(0,8)}-${slugify(m?.name)}`);
+            }}
+            highlightRowId={pendingRowId}
+          />
+        )}
 
-      {screen === "settings" && <SettingsScreen onBack={() => navigate("/")} />}
+        {/* Le dossier interne n'a ni ouvrages, ni BPF, ni prise de cotes : l'écran de
+            production n'afficherait que des onglets vides. Il a le sien, réduit au suivi
+            des heures par chapitre et au transfert vers un vrai dossier. */}
+        {screen === "project" && currentProject && isInternalProject(cleanProjects.find(p => String(p.id) === String(currentProject.id)) || currentProject) && (
+          <InternalProjectScreen
+            project={cleanProjects.find(p => String(p.id) === String(currentProject.id)) || currentProject}
+            projects={cleanProjects}
+            events={planningEvents}
+            onUpdateProject={handleUpdateProject}
+            onUpdateEvent={updateEvent}
+            onBack={() => navigate("/production")}
+          />
+        )}
 
-      {screen === "inventory" && (
-        <StocksModule
-          minutes={cleanMinutes}
-          projects={cleanProjects}
-          inventory={inventory}
-          movements={movements}
-          onAddMovement={addMovement}
-          onBulkMovement={bulkUpdateInventory}
-          onUpdateItem={updateInventoryItem}
-          onBack={() => navigate("/")}
-        />
-      )}
+        {screen === "project" && currentProject && !isInternalProject(cleanProjects.find(p => String(p.id) === String(currentProject.id)) || currentProject) && (
+          <ProductionProjectScreen
+            inventory={inventory}
+            onUpdateItem={updateInventoryItem}
+            project={cleanProjects.find(p => String(p.id) === String(currentProject.id)) || currentProject}
+            projects={cleanProjects}
+            onBack={() => navigate("/production")}
+            onUpdateProjectRows={handleUpdateProjectRows}
+            onUpdateProject={handleUpdateProject}
+            highlightRowId={pendingRowId}
+            initialStage={pendingStage}
+            events={planningEvents}
+          />
+        )}
 
-      {screen === "planning" && (
-        <PlanningScreen
-          projects={cleanProjects}
-          events={planningEvents}
-          onUpdateEvent={updateEvent}
-          onDeleteEvent={(id) => deleteEvent(id)}
-          onUpdateProject={handleUpdateProject}
-          onCreateProject={addProject}
-          onBack={() => navigate("/")}
-        />
-      )}
+        {screen === "settings" && <SettingsScreen onBack={() => navigate("/")} />}
 
-      {screen === "logistique" && (
-        <LogistiqueScreen
-          projects={cleanProjects}
-          onUpdateProject={handleUpdateProject}
-          onBack={() => navigate("/")}
-        />
-      )}
+        {screen === "inventory" && (
+          <StocksModule
+            minutes={cleanMinutes}
+            projects={cleanProjects}
+            inventory={inventory}
+            movements={movements}
+            onAddMovement={addMovement}
+            onBulkMovement={bulkUpdateInventory}
+            onUpdateItem={updateInventoryItem}
+            onBack={() => navigate("/")}
+          />
+        )}
 
-      {screen === "performance" && (
-        <PerformanceScreen
-          projects={cleanProjects}
-          events={planningEvents}
-          onBack={() => navigate("/")}
-        />
-      )}
+        {screen === "planning" && (
+          <PlanningScreen
+            projects={cleanProjects}
+            events={planningEvents}
+            onUpdateEvent={updateEvent}
+            onDeleteEvent={(id) => deleteEvent(id)}
+            onUpdateProject={handleUpdateProject}
+            onCreateProject={addProject}
+            onBack={() => navigate("/")}
+          />
+        )}
 
-      {screen === "odoo" && (
-        <OdooSyncScreen
-          projects={cleanProjects}
-          events={planningEvents}
-          onBack={() => navigate("/")}
-        />
-      )}
+        {screen === "logistique" && (
+          <LogistiqueScreen
+            projects={cleanProjects}
+            onUpdateProject={handleUpdateProject}
+            onBack={() => navigate("/")}
+          />
+        )}
+
+        {screen === "performance" && (
+          <PerformanceScreen
+            projects={cleanProjects}
+            events={planningEvents}
+            onBack={() => navigate("/")}
+          />
+        )}
+
+        {screen === "odoo" && (
+          <OdooSyncScreen
+            projects={cleanProjects}
+            events={planningEvents}
+            onBack={() => navigate("/")}
+          />
+        )}
+      </ScreenErrorBoundary>
 
       <CommandPalette
         ref={cmdRef}

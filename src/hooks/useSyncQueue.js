@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNetworkStatus } from './useNetworkStatus';
-import { drainQueue, getPendingCount, drainPhotos, getPendingPhotoCount } from '../lib/syncQueue';
+import { drainQueue, getPendingCount, drainPhotos, getPendingPhotoCount, QUEUE_EVENT } from '../lib/syncQueue';
 
 /**
  * Draine automatiquement la file de mutations offline :
@@ -39,6 +39,25 @@ export function useSyncQueue(onSynced) {
       drainLock.current = false;
     }
   }, [onSynced]);
+
+  // Un élément vient d'entrer en file pendant l'utilisation (sauvegarde échouée) :
+  // on met à jour le compteur, ce qui active la reprise automatique ci-dessous.
+  useEffect(() => {
+    const onQueued = async () => {
+      const total = (await getPendingCount()) + (await getPendingPhotoCount());
+      setPendingCount(total);
+    };
+    window.addEventListener(QUEUE_EVENT, onQueued);
+    return () => window.removeEventListener(QUEUE_EVENT, onQueued);
+  }, []);
+
+  // Reprise automatique tant qu'il reste des éléments en file (vérification toutes les
+  // 10 s ; la cadence réelle d'envoi est bornée par la reprise progressive de drainQueue : 5 s → 5 min).
+  useEffect(() => {
+    if (pendingCount === 0) return;
+    const t = setInterval(() => { if (document.visibilityState === 'visible') tryDrain(); }, 10_000);
+    return () => clearInterval(t);
+  }, [pendingCount, tryDrain]);
 
   // Au montage : drainer si mutations en attente et déjà en ligne
   useEffect(() => {

@@ -1,4 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
+import { mergeRowLogs } from '../lib/lineLogs';
+import { useArchivedRowLogs } from '../hooks/useArchivedRowLogs';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
@@ -178,6 +180,14 @@ export default function MinuteHistoryDialog({ open, onClose, minute }) {
     // Repart du haut à chaque ouverture (sinon on rouvre sur 400 entrées rendues).
     useEffect(() => { if (open) { setVisibleCount(PAGE_SIZE); setQuery(''); } }, [open]);
 
+    // Historique « Modif … » archivé hors des lignes (table line_logs), chargé
+    // uniquement quand le dialogue est ouvert (cf. lib/lineLogs).
+    const allRows = useMemo(
+        () => (open && minute ? [...(minute.lines || []), ...(minute.deplacements || []), ...(minute.extraDepenses || [])] : []),
+        [open, minute]
+    );
+    const { byRow: archivedLogs, loading: archivedLoading } = useArchivedRowLogs(minute?.id, allRows, !!open && !!minute);
+
     const sortedActivities = useMemo(() => {
         // PERF — ce dialogue reste monté en permanence dans ChiffrageScreen : sans
         // ce garde-fou, l'agrégation + le tri seraient refaits à CHAQUE frappe dans
@@ -195,8 +205,9 @@ export default function MinuteHistoryDialog({ open, onClose, minute }) {
         // 2. Line Level Logs (Aggregated)
         const processLines = (arr, typeName) => {
             (arr || []).forEach(row => {
-                if (Array.isArray(row.comments)) {
-                    row.comments.forEach(c => {
+                const comments = mergeRowLogs(row.comments, archivedLogs.get(String(row.id)));
+                if (comments.length) {
+                    comments.forEach(c => {
                         // Enrich with context
                         const context = `${typeName} - ${row.produit || 'Article'} ${row.piece ? `(${row.piece})` : ''} #${String(row.id).slice(-4)}`;
                         all.push({ ...c, context });
@@ -215,7 +226,7 @@ export default function MinuteHistoryDialog({ open, onClose, minute }) {
             .map(item => ({ item, ts: new Date(item.createdAt || item.date || 0).getTime() }))
             .sort((a, b) => b.ts - a.ts)
             .map(x => x.item);
-    }, [open, minute]);
+    }, [open, minute, archivedLogs]);
 
     // Index de recherche calculé UNE fois par entrée, pas à chaque frappe.
     const indexed = useMemo(
@@ -245,6 +256,11 @@ export default function MinuteHistoryDialog({ open, onClose, minute }) {
                 <IconButton onClick={onClose}><CloseIcon /></IconButton>
             </DialogTitle>
             <DialogContent sx={{ bgcolor: '#F9FAFB', p: 0 }}>
+                {archivedLoading && (
+                    <Typography variant="caption" sx={{ display: 'block', px: 3, pt: 1, color: '#6B7280' }}>
+                        Chargement de l'historique des lignes…
+                    </Typography>
+                )}
                 {/* Barre de recherche : collée en haut, elle reste visible pendant le défilement. */}
                 <Box sx={{ position: 'sticky', top: 0, zIndex: 1, bgcolor: '#F9FAFB', px: 3, pt: 2, pb: 1.5, borderBottom: '1px solid #E5E7EB' }}>
                     <TextField
