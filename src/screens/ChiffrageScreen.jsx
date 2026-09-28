@@ -24,6 +24,7 @@ import { useAppSettings, useCatalog, useCatalogRail } from "../hooks/useSupabase
 import { calculateProfitability } from '../lib/financial/profitabilityCalculator';
 
 import MinuteHistoryDialog from "../components/MinuteHistoryDialog";
+import { readVersionContent, mergeVisualsFromCurrent } from "../lib/minuteVersions";
 import { buildSettingsLogs, buildCatalogLogs, buildStatusLog, appendHistory } from "../lib/minuteHistory";
 import { MOBILIER_PRODUIT_RE } from "../lib/constants/productRouting";
 import { applyCatalogRenames } from "../lib/utils/catalogRename";
@@ -91,6 +92,9 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
   const location = useLocation();
   const [localRowId, setLocalRowId] = React.useState(null);
   const [showHistory, setShowHistory] = React.useState(false);
+  // Incrémenté après une restauration en place → force le remount de l'éditeur
+  // pour qu'il affiche immédiatement le contenu restauré (évite toute course de sync).
+  const [restoreNonce, setRestoreNonce] = React.useState(0);
   const [showCatalog, setShowCatalog] = React.useState(false);
   const [showRecalibration, setShowRecalibration] = React.useState(false);
 
@@ -495,6 +499,58 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
     else onBack();
   }, [minute, minutes, onCreate, onBack, onOpenMinute]);
 
+  // ——— RESTAURATION D'UNE VERSION (historique de versions) ———
+  // A. Revenir à la version SUR le devis actuel (remplace le contenu). L'état courant
+  //    est auto-capturé par le trigger juste avant → réversible.
+  const handleRestoreInPlace = React.useCallback(async (version) => {
+    if (!canEdit || !minute?.id) return;
+    const content = await readVersionContent(version.id);
+    if (!content) { addNotification?.("Version introuvable.", "error"); return; }
+    // On préserve les visuels actuels (les versions n'archivent pas les croquis/photos).
+    const mergedLines = mergeVisualsFromCurrent(content.lines || [], rows);
+    const mainFx = computeFormulas(mergedLines, schema, formulaCtx);
+    const depsFx = (content.deplacements || []).map(r =>
+      recomputeRow({ ...r, produit: r.produit || "Déplacement" }, CHIFFRAGE_SCHEMA_DEP, formulaCtx));
+    const extras = content.extra_depenses || [];
+    setRows(mainFx); setDepRows(depsFx); setExtraRows(extras);
+    const when = new Date(version.captured_at).toLocaleString("fr-FR");
+    const journal = pushHistory([{ id: uid(), type: 'log', field: 'Restauration de version',
+      from: 'version actuelle', to: `version du ${when}`, author: historyAuthor, createdAt: new Date().toISOString() }]);
+    updateMinute({ lines: mainFx, deplacements: depsFx, extraDepenses: extras, ...(journal ? { modules: journal } : {}) });
+    setRestoreNonce(n => n + 1);
+    addNotification?.(`Devis restauré à la version du ${when}.`, "success");
+  }, [canEdit, minute?.id, rows, schema, formulaCtx, updateMinute, historyAuthor, pushHistory, addNotification]);
+
+  // B. Créer une VARIANTE à partir de la version (garde le devis actuel intact).
+  const handleRestoreAsVariant = React.useCallback(async (version) => {
+    if (!minute || !onCreate) return;
+    const content = await readVersionContent(version.id);
+    if (!content) { addNotification?.("Version introuvable.", "error"); return; }
+    const rootId = minute.parentId || minute.id;
+    const siblings = (minutes || []).filter(m => (m.parentId || m.id) === rootId && m.id !== rootId);
+    const baseName = (minute.name || '')
+      .replace(/ Recalibrage \d+$/i, '').replace(/ Variante \d+$/i, '')
+      .replace(/ Variante$/i, '').replace(/ — v\d+.*$/, '');
+    const when = new Date(version.captured_at).toLocaleDateString("fr-FR");
+    const copy = {
+      ...minute,
+      id: uid(),
+      lines: content.lines || [],
+      tables: content.lines || [],
+      deplacements: content.deplacements || [],
+      extraDepenses: content.extra_depenses || [],
+      version: siblings.length + 2,
+      parentId: rootId,
+      name: `${baseName} (version du ${when})`,
+      status: 'DRAFT',
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+    const result = await onCreate(copy);
+    const newId = result?.data?.[0]?.id || copy.id;
+    if (onOpenMinute) onOpenMinute(newId); else onBack();
+  }, [minute, minutes, onCreate, onOpenMinute, onBack, addNotification]);
+
   const fileInputRef = React.useRef(null);
   const handleGlobalImport = async (e) => {
     const file = e.target.files?.[0];
@@ -754,7 +810,14 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
         </div>
       </div>
 
-      <MinuteHistoryDialog open={showHistory} onClose={() => setShowHistory(false)} minute={minute} />
+      <MinuteHistoryDialog
+        open={showHistory}
+        onClose={() => setShowHistory(false)}
+        minute={minute}
+        canEdit={canEdit}
+        onRestoreInPlace={handleRestoreInPlace}
+        onRestoreAsVariant={handleRestoreAsVariant}
+      />
 
       {showRecalibration && (
         <RecalibrationModal
@@ -798,7 +861,7 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
           <MemoizedDashboardSummary recap={recap} nf={nfEur0} activeModules={mods} />
           <div style={{ minWidth: 0, overflowX: "auto" }}>
             <MemoizedMinuteEditor
-              key={`${minute?.id}-${Object.keys(mods || {}).filter(k => mods[k]).sort().join('-')}`} // FORCE REMOUNT on module change
+              key={`${minute?.id}-${restoreNonce}-${Object.keys(mods || {}).filter(k => mods[k]).sort().join('-')}`} // FORCE REMOUNT on module change / restauration
               minute={editorMinute}
               readOnly={minute?.status === "VALIDATED"}
               currentUser={currentUser}
