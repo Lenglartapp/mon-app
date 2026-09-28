@@ -50,6 +50,9 @@ export default function CreateProjectDialog({
     // de la minute choisie pour disposer de ses ouvrages au moment de créer le projet.
     const [selectedFull, setSelectedFull] = useState(null);
     const [loadingMinute, setLoadingMinute] = useState(false);
+    // Le détail (lignes) du chiffrage n'a pas pu être chargé → on bloque l'import
+    // (sinon le projet serait créé SANS ses ouvrages).
+    const [minuteLoadFailed, setMinuteLoadFailed] = useState(false);
     const [deliveryDate, setDeliveryDate] = useState("");
 
     // -- EMPLACEMENT & LOGISTIQUE --
@@ -105,13 +108,15 @@ export default function CreateProjectDialog({
     const handleSelectMinute = async (m) => {
         setSelectedMinute(m);
         setSelectedFull(null);
+        setMinuteLoadFailed(false);
         if (!m) return;
         // Si la minute possède déjà ses lignes (rare avec la liste légère), inutile de recharger.
         if (Array.isArray(m.lines) && m.lines.length > 0) { setSelectedFull(m); return; }
         if (!onLoadMinuteDetail || !m.id) { setSelectedFull(m); return; }
         setLoadingMinute(true);
-        const full = await onLoadMinuteDetail(m.id);
-        setSelectedFull(full || m);
+        const full = await Promise.resolve(onLoadMinuteDetail(m.id)).catch(() => null);
+        setSelectedFull(full || null);
+        setMinuteLoadFailed(!full);
         setLoadingMinute(false);
     };
 
@@ -120,9 +125,16 @@ export default function CreateProjectDialog({
         // Garantit qu'on a bien le détail complet (lignes) avant de créer le projet.
         let full = selectedFull;
         if (!full) {
-            full = (onLoadMinuteDetail && selectedMinute.id)
-                ? (await onLoadMinuteDetail(selectedMinute.id)) || selectedMinute
-                : selectedMinute;
+            if (onLoadMinuteDetail && selectedMinute.id) {
+                setLoadingMinute(true);
+                full = await Promise.resolve(onLoadMinuteDetail(selectedMinute.id)).catch(() => null);
+                setLoadingMinute(false);
+                if (!full) { setMinuteLoadFailed(true); return; } // jamais de projet sans ses lignes
+                setSelectedFull(full);
+                setMinuteLoadFailed(false);
+            } else {
+                full = selectedMinute;
+            }
         }
         onCreateFromMinute({
             name: full.name || "Projet Importé",
@@ -190,7 +202,12 @@ export default function CreateProjectDialog({
                         <Box sx={{ mt: 2, p: 2, bgcolor: '#f9fafb', borderRadius: 2, border: '1px solid #e5e7eb' }}>
                             <Typography variant="caption" fontWeight={700} color="text.secondary" display="block">RÉSUMÉ</Typography>
                             <Typography variant="body2"><strong>Client :</strong> {selectedMinute.client || "—"}</Typography>
-                            <Typography variant="body2"><strong>Lignes :</strong> {loadingMinute ? "chargement…" : `${((selectedFull || selectedMinute).lines || []).length} ouvrages`}</Typography>
+                            <Typography variant="body2"><strong>Lignes :</strong> {loadingMinute ? "chargement…" : minuteLoadFailed ? "non chargées" : `${((selectedFull || selectedMinute).lines || []).length} ouvrages`}</Typography>
+                            {minuteLoadFailed && !loadingMinute && (
+                                <Typography variant="body2" sx={{ color: '#B91C1C', mt: 0.5 }}>
+                                    Le chiffrage n'a pas pu être chargé (serveur lent ou connexion interrompue). Cliquez sur « Importer le projet » pour réessayer.
+                                </Typography>
+                            )}
                         </Box>
                     )}
                 </TabPanel>

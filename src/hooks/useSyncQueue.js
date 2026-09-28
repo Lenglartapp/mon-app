@@ -40,6 +40,14 @@ export function useSyncQueue(onSynced) {
     }
   }, [onSynced]);
 
+  // Reprise automatique tant qu'il reste des éléments en file (la cadence réelle
+  // d'envoi est bornée par la reprise progressive de drainQueue : 5 s → 5 min).
+  useEffect(() => {
+    if (pendingCount === 0) return;
+    const t = setInterval(() => { if (document.visibilityState === 'visible') tryDrain(); }, 30_000);
+    return () => clearInterval(t);
+  }, [pendingCount, tryDrain]);
+
   // Au montage : drainer si mutations en attente et déjà en ligne
   useEffect(() => {
     tryDrain();

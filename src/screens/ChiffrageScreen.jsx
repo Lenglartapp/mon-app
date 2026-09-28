@@ -126,17 +126,23 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
   // liste globale → re-render → cet effet se relancerait. Le ref évite tout double
   // chargement (et toute boucle) en dédupliquant par id de minute.
   const requestedDetailRef = React.useRef(null);
+  // Échec du chargement (base lente/injoignable, délai dépassé) : on l'affiche avec un
+  // bouton « Réessayer » au lieu d'un loader infini. detailRetry relance l'effet.
+  const [detailErrorId, setDetailErrorId] = React.useState(null);
+  const [detailRetry, setDetailRetry] = React.useState(0);
   React.useEffect(() => {
     if (!minute?.id || !onLoadMinuteDetail) return;
     if (detailLoadedId === minute.id) return;
     if (requestedDetailRef.current === minute.id) return; // déjà en cours pour cette minute
     requestedDetailRef.current = minute.id;
-    onLoadMinuteDetail(minute.id).then((full) => {
+    const id = minute.id;
+    Promise.resolve(onLoadMinuteDetail(id)).catch(() => null).then((full) => {
       // Ne marquer "prêt" qu'en cas de succès : sinon le heal-on-open écraserait
       // ca_total/marges à 0 sur des lignes encore vides.
-      if (full) setDetailLoadedId(minute.id);
+      if (full) { setDetailLoadedId(id); setDetailErrorId(null); }
+      else { requestedDetailRef.current = null; setDetailErrorId(id); }
     });
-  }, [minute?.id, detailLoadedId, onLoadMinuteDetail]);
+  }, [minute?.id, detailLoadedId, onLoadMinuteDetail, detailRetry]);
   const detailReady = detailLoadedId === minute?.id;
 
   const [schema, setSchema] = React.useState(CHIFFRAGE_SCHEMA);
@@ -538,9 +544,25 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
       <div style={S.contentWide}>
         <button onClick={onBack} style={{ background: 'none', border: 'none', color: '#6B7280', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, padding: 0, fontSize: 13, fontWeight: 500, marginTop: 8 }}>← Retour</button>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '50vh', gap: 12, color: '#6B7280' }}>
-          <div style={{ width: 28, height: 28, border: '3px solid #E5E7EB', borderTopColor: '#1E2447', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+          {detailErrorId !== minute?.id && (
+            <div style={{ width: 28, height: 28, border: '3px solid #E5E7EB', borderTopColor: '#1E2447', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+          )}
           <div style={{ fontSize: 15, fontWeight: 600, color: '#111827' }}>{minute?.name || 'Chiffrage'}</div>
-          <div style={{ fontSize: 13 }}>Chargement du chiffrage…</div>
+          {detailErrorId === minute?.id ? (
+            <>
+              <div style={{ fontSize: 13, color: '#B91C1C', textAlign: 'center', maxWidth: 420 }}>
+                Le chiffrage n'a pas pu être chargé (serveur lent ou connexion interrompue). Aucune donnée n'a été modifiée.
+              </div>
+              <button
+                onClick={() => { setDetailErrorId(null); setDetailRetry((n) => n + 1); }}
+                style={{ background: '#1E2447', color: 'white', border: 'none', padding: '8px 16px', borderRadius: 6, fontWeight: 600, cursor: 'pointer' }}
+              >
+                Réessayer
+              </button>
+            </>
+          ) : (
+            <div style={{ fontSize: 13 }}>Chargement du chiffrage…</div>
+          )}
         </div>
       </div>
     );

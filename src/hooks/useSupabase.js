@@ -1,9 +1,36 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { db } from '../lib/offlineDb';
-import { queueMutation } from '../lib/syncQueue';
 import { calculateProfitability } from '../lib/financial/profitabilityCalculator';
-import { isSchemaDriftError, updateStrippingPhantomColumns } from '../lib/schemaDrift';
+import { isSchemaDriftError } from '../lib/schemaDrift';
+import { createCoalescedWriter } from '../lib/coalescedWriter';
+
+// RÉSILIENCE — Fusion "liste légère" → état en mémoire.
+// La liste ne contient que des colonnes légères. La REMPLACER telle quelle effaçait
+// le détail déjà chargé (lines/rows…) du devis ou projet OUVERT : il apparaissait
+// vide et la sauvegarde suivante pouvait écrire une version tronquée. On garde donc
+// les champs lourds déjà en mémoire et on n'écrase que les colonnes renvoyées.
+// Les éléments absents de la nouvelle liste (supprimés) disparaissent normalement.
+const mergeLightList = (prevList, freshList, format = (x) => x) => {
+    const prevById = new Map((prevList || []).map(x => [x.id, x]));
+    return freshList.map(fresh => {
+        const prev = prevById.get(fresh.id);
+        const formatted = format(fresh);
+        if (!prev) return formatted;
+        // Ne garder, du formatage, que les clés réellement issues des colonnes reçues :
+        // un champ dérivé d'une colonne ABSENTE (ex. tables ← lines) ne doit pas écraser
+        // la valeur complète déjà chargée par un défaut vide.
+        const out = { ...prev };
+        for (const [k, v] of Object.entries(formatted)) {
+            const source = DERIVED_FROM[k];
+            if (source && !(source in fresh)) continue;
+            out[k] = v;
+        }
+        return out;
+    });
+};
+// Champ dérivé (formatMinutes) → colonne source.
+const DERIVED_FROM = { tables: 'lines', budgetSnapshot: 'budget_snapshot', parentId: 'parent_id', createdAt: 'created_at', updatedAt: 'updated_at' };
 
 // PERF / RÉSILIENCE — Ne PAS escalader vers `select('*')` quand l'erreur est un simple
 // échec RÉSEAU (base injoignable / hors ligne). Dans ce cas, le serveur ne répond pas :
@@ -50,8 +77,14 @@ export const useProjects = () => {
         }
 
         if (!error && data) {
-            setProjects(data);
-            db.projects.bulkPut(data).catch(() => {});
+            setProjects(prev => mergeLightList(prev, data));
+            // Cache local : FUSIONNER (et non remplacer) pour ne pas effacer les projets
+            // complets (avec rows) enregistrés par loadProjectDetail / loadAllProjects —
+            // sinon, hors ligne, les projets n'ont plus de lignes.
+            (async () => {
+                const existing = await db.projects.bulkGet(data.map(p => p.id));
+                await db.projects.bulkPut(data.map((p, i) => existing[i] ? { ...existing[i], ...p } : p));
+            })().catch(() => {});
         } else {
             // Hors ligne ou erreur réseau : charger depuis IndexedDB
             const cached = await db.projects.toArray();
@@ -148,6 +181,15 @@ export const useProjects = () => {
         return { data, error };
     };
 
+    // 🔒 ÉCRITURES PROJET COALESCÉES (même principe que les chiffrages) : un seul
+    // UPDATE en cours par projet, sauvegardes intermédiaires fusionnées, reprise
+    // progressive + file hors ligne persistante si la base est lente/injoignable.
+    // Sans ça, si la base mettait plus de 800 ms à répondre, plusieurs UPDATE de
+    // plusieurs Mo (`rows`) partaient en parallèle sur la même ligne → verrous,
+    // timeouts, base "Unhealthy". Voir src/lib/coalescedWriter.js.
+    const projectWriterRef = useRef(null);
+    if (!projectWriterRef.current) projectWriterRef.current = createCoalescedWriter('projects');
+
     const updateProject = async (id, updates) => {
         // 1. Optimistic UI (Mise à jour immédiate)
         setProjects(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
@@ -199,22 +241,8 @@ export const useProjects = () => {
             });
         }
 
-        // 5. Envoi Supabase. AUTO-RÉPARATION : si une colonne n'existe pas en base
-        //    (dérive de schéma, ex. `pinned_ids` pas encore créée), on la RETIRE et on
-        //    rejoue — pour que le reste (surtout `rows`) soit bien sauvegardé. Sans ça,
-        //    une seule colonne fantôme ferait rejeter TOUTE la sauvegarde (perte de données).
-        const { error, dropped, body } = await updateStrippingPhantomColumns(supabase, 'projects', id, dbUpdates);
-        if (dropped.length > 0) {
-            console.warn(`[updateProject] colonne(s) absente(s) en base ignorée(s) : ${dropped.join(', ')} — le reste a été sauvegardé.`);
-        }
-        // Erreur RÉSEAU/hors-ligne → file d'attente (avec le payload déjà nettoyé des
-        // colonnes fantômes, pour ne jamais empoisonner les futures sauvegardes par fusion).
-        // Une dérive de schéma résiduelle n'est JAMAIS enfilée (elle échouerait en boucle).
-        if (error && !isSchemaDriftError(error)) {
-            queueMutation('projects', id, body).catch(() => {});
-        } else if (error) {
-            console.error(`[updateProject] sauvegarde rejetée (dérive schéma persistante), non mise en file : ${error.message}`);
-        }
+        // 5. Écriture COALESCÉE (aucun UPDATE concurrent sur la même ligne).
+        return projectWriterRef.current.write(id, dbUpdates);
     };
 
     const deleteProject = async (id) => {
@@ -257,59 +285,26 @@ const PHANTOM_MINUTE_COLUMNS = new Set();
 export const useMinutes = () => {
     const [minutes, setMinutes] = useState([]);
 
-    // 🔒 COALESCENCE DES ÉCRITURES (anti-verrous Postgres) :
-    //   inFlightMinuteRef = ids dont un UPDATE est EN COURS (pour ne pas en lancer un 2ᵉ
-    //     en parallèle sur la MÊME ligne → c'est ce qui provoquait les ShareLock/timeouts).
-    //   pendingMinuteRef  = id -> dernier payload à écrire (les états intermédiaires
-    //     périmés sont fusionnés/écrasés : on n'écrit QUE le plus récent).
-    const inFlightMinuteRef = useRef(new Set());
-    const pendingMinuteRef = useRef(new Map());
-
-    // Écrivain sérialisé : tant qu'il reste un payload en attente pour cet id, on l'écrit,
-    // un seul à la fois. Jamais deux UPDATE concurrents sur la même ligne `minutes`.
-    const flushMinuteWrites = async (id) => {
-        if (inFlightMinuteRef.current.has(id)) return; // déjà en train d'écrire cet id
-        inFlightMinuteRef.current.add(id);
-        try {
-            while (pendingMinuteRef.current.has(id)) {
-                const payload = pendingMinuteRef.current.get(id);
-                pendingMinuteRef.current.delete(id);
-
-                // Retire d'emblée les colonnes DÉJÀ identifiées comme absentes en base :
-                // sans ça, chaque sauvegarde suivante les réexpédie et se fait rejeter
-                // EN BLOC (on perdait params/catalog/lines au passage).
-                const cleaned = { ...payload };
-                for (const col of PHANTOM_MINUTE_COLUMNS) delete cleaned[col];
-                if (Object.keys(cleaned).length === 0) continue; // plus rien à écrire
-
-                // AUTO-RÉPARATION (même mécanisme que updateProject) : si la base
-                // rejette une colonne inexistante, on la retire et on rejoue pour que
-                // le RESTE du payload soit bien sauvegardé.
-                const { error, dropped, body } = await updateStrippingPhantomColumns(supabase, 'minutes', id, cleaned);
-                if (dropped.length > 0) {
-                    dropped.forEach(col => PHANTOM_MINUTE_COLUMNS.add(col));
-                    console.warn(`[updateMinute] colonne(s) absente(s) en base ignorée(s) : ${dropped.join(', ')} — le reste a été sauvegardé. Jouer la migration SQL correspondante.`);
-                }
-                if (error && isSchemaDriftError(error)) {
-                    // Dérive résiduelle non identifiable : on N'ENFILE PAS ce payload,
-                    // il échouerait en boucle et bloquerait toutes les écritures suivantes.
-                    console.error(`[updateMinute] sauvegarde rejetée (dérive schéma persistante), abandonnée : ${error.message}`);
-                    continue;
-                }
-                if (error) {
-                    console.error('Erreur update minute:', error);
-                    // On NE PERD PAS l'écriture : on la re-fusionne (en laissant les
-                    // éventuels champs plus récents arrivés entre-temps gagner) et on
-                    // s'arrête — elle repartira au prochain edit (ou au flush de démontage).
-                    const newer = pendingMinuteRef.current.get(id);
-                    pendingMinuteRef.current.set(id, { ...body, ...(newer || {}) });
-                    break;
-                }
-            }
-        } finally {
-            inFlightMinuteRef.current.delete(id);
-        }
-    };
+    // 🔒 COALESCENCE DES ÉCRITURES (anti-verrous Postgres) : un seul UPDATE en cours
+    // par devis ; les états intermédiaires périmés sont fusionnés et seul le plus récent
+    // part (c'est ce qui provoquait les ShareLock/timeouts). En cas d'échec réseau ou
+    // de base saturée, la sauvegarde part en file hors ligne PERSISTANTE (avant : elle
+    // restait en mémoire et était perdue si l'onglet se fermait) avec reprise progressive.
+    // Voir src/lib/coalescedWriter.js.
+    const minuteWriterRef = useRef(null);
+    if (!minuteWriterRef.current) minuteWriterRef.current = createCoalescedWriter('minutes', {
+        // Retire d'emblée les colonnes DÉJÀ identifiées comme absentes en base :
+        // sans ça, chaque sauvegarde suivante les réexpédie et se fait rejeter
+        // EN BLOC (on perdait params/catalog/lines au passage).
+        prepare: (payload) => {
+            for (const col of PHANTOM_MINUTE_COLUMNS) delete payload[col];
+            return payload;
+        },
+        onDropped: (dropped) => {
+            dropped.forEach(col => PHANTOM_MINUTE_COLUMNS.add(col));
+            console.warn('[updateMinute] Jouer la migration SQL correspondante.');
+        },
+    });
 
     const fetchMinutes = async () => {
         // 0. Affichage INSTANTANÉ depuis le cache local (stale-while-revalidate).
@@ -336,7 +331,9 @@ export const useMinutes = () => {
         }
 
         if (!error && data) {
-            setMinutes(formatMinutes(data));
+            // FUSION (et non remplacement) : ne jamais effacer le détail (lines…) du devis
+            // ouvert — cf. mergeLightList.
+            setMinutes(prev => mergeLightList(prev, data, (m) => formatMinutes([m])[0]));
             db.minutes.clear().then(() => db.minutes.bulkPut(data)).catch(() => {});
         }
     };
@@ -471,9 +468,7 @@ export const useMinutes = () => {
         //    avec un éventuel payload déjà en attente), puis on déclenche l'écrivain
         //    sérialisé. S'il tourne déjà pour cet id, il prendra ce payload à son tour —
         //    AUCUN deuxième UPDATE concurrent n'est lancé sur la même ligne.
-        const merged = { ...(pendingMinuteRef.current.get(id) || {}), ...dbUpdates };
-        pendingMinuteRef.current.set(id, merged);
-        flushMinuteWrites(id);
+        return minuteWriterRef.current.write(id, dbUpdates);
     };
 
     const addMinute = async (minute) => {
