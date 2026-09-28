@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { db } from '../lib/offlineDb';
+import { getQueuedPayloads } from '../lib/syncQueue';
 import { calculateProfitability } from '../lib/financial/profitabilityCalculator';
 import { isSchemaDriftError } from '../lib/schemaDrift';
 import { createCoalescedWriter } from '../lib/coalescedWriter';
@@ -97,6 +98,9 @@ export const useProjects = () => {
     // puis le fusionne dans la liste en mémoire. La liste reste légère ; seul le
     // projet ouvert porte ses données lourdes.
     const loadProjectDetail = async (id) => {
+        // File lue AVANT la base : si l'envoi en attente se termine entre les deux,
+        // la base est à jour ; sinon la file l'est. Aucun ordre ne donne une vieille version.
+        const queued = await getQueuedPayloads('projects', [id]);
         const { data, error } = await supabase
             .from('projects')
             .select('*')
@@ -106,6 +110,8 @@ export const useProjects = () => {
             console.error('[useProjects] loadProjectDetail échoué :', error?.message);
             return null;
         }
+        // Superpose les modifications encore en file (pas encore arrivées en base).
+        Object.assign(data, queued.get(String(id)) || {});
         // Mapping DB -> Frontend : la colonne `pinned_ids` est lue en `pinnedIds`.
         if ('pinned_ids' in data) data.pinnedIds = data.pinned_ids || [];
         setProjects(prev => prev.map(p => p.id === id ? { ...p, ...data } : p));
@@ -120,11 +126,14 @@ export const useProjects = () => {
     const loadAllProjects = async (force = false) => {
         if (fullProjectsLoadedRef.current && !force) return;
         fullProjectsLoadedRef.current = true;
+        const queued = await getQueuedPayloads('projects'); // lue AVANT la base (cf. loadProjectDetail)
         const { data, error } = await supabase
             .from('projects')
             .select('*')
             .order('updated_at', { ascending: false });
         if (!error && data) {
+            // Superpose les modifications encore en file (pas encore arrivées en base).
+            data.forEach(p => { const q = queued.get(String(p.id)); if (q) Object.assign(p, q); });
             // Mapping DB -> Frontend : `pinned_ids` lue en `pinnedIds`.
             data.forEach(p => { if ('pinned_ids' in p) p.pinnedIds = p.pinned_ids || []; });
             setProjects(data);
@@ -341,6 +350,7 @@ export const useMinutes = () => {
     // Charge la minute COMPLÈTE (lines, deplacements, params, catalog…) à l'ouverture
     // et la fusionne dans la liste en mémoire. Retourne la minute formatée (ou null).
     const loadMinuteDetail = async (id) => {
+        const queued = await getQueuedPayloads('minutes', [id]); // lue AVANT la base (cf. loadProjectDetail)
         const { data, error } = await supabase
             .from('minutes')
             .select('*')
@@ -350,6 +360,8 @@ export const useMinutes = () => {
             console.error('[useMinutes] loadMinuteDetail échoué :', error?.message);
             return null;
         }
+        // Superpose les modifications encore en file (pas encore arrivées en base).
+        Object.assign(data, queued.get(String(id)) || {});
         const [full] = formatMinutes([data]);
         setMinutes(prev => prev.map(m => m.id === id ? { ...m, ...full } : m));
         return full;
@@ -361,11 +373,15 @@ export const useMinutes = () => {
     const loadAllMinutes = async (force = false) => {
         if (fullMinutesLoadedRef.current && !force) return;
         fullMinutesLoadedRef.current = true;
+        const queued = await getQueuedPayloads('minutes'); // lue AVANT la base (cf. loadProjectDetail)
         const { data, error } = await supabase
             .from('minutes')
             .select('*')
             .order('updated_at', { ascending: false });
-        if (!error && data) setMinutes(formatMinutes(data));
+        if (!error && data) {
+            data.forEach(m => { const q = queued.get(String(m.id)); if (q) Object.assign(m, q); });
+            setMinutes(formatMinutes(data));
+        }
         else fullMinutesLoadedRef.current = false; // autorise un nouvel essai
     };
 

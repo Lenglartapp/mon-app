@@ -36,9 +36,32 @@ export const queueMutation = async (table, recordId, payload) => {
         timestamp: now,
       });
     });
+    // Prévient useSyncQueue qu'un élément vient d'entrer en file (sinon il ne le
+    // voyait qu'au prochain retour sur l'onglet / retour réseau).
+    if (typeof window !== 'undefined') window.dispatchEvent(new Event(QUEUE_EVENT));
   } catch (e) {
     console.warn('Impossible d\'enregistrer la mutation offline:', e);
   }
+};
+
+export const QUEUE_EVENT = 'droitfil:mutation-queued';
+
+/**
+ * Modifications encore EN FILE (non envoyées) pour ces lignes, fusionnées par id.
+ * À superposer à ce qu'on lit de la base : sinon, si la page se charge avant la fin
+ * de l'envoi, l'écran affiche l'ancienne version et la prochaine sauvegarde écrase
+ * les modifications en attente (perte de données constatée en test).
+ * @returns {Promise<Map<string, object>>} id -> payload (format base)
+ */
+export const getQueuedPayloads = async (table, ids = null) => {
+  const out = new Map();
+  try {
+    const wanted = ids ? new Set(ids.map(String)) : null;
+    const muts = (await db.pending_mutations.orderBy('timestamp').toArray())
+      .filter(m => m.table === table && !m.dead && (!wanted || wanted.has(m.record_id)));
+    for (const m of muts) out.set(m.record_id, { ...(out.get(m.record_id) || {}), ...m.payload });
+  } catch { /* IndexedDB indisponible : rien à superposer */ }
+  return out;
 };
 
 /** Nombre de mutations en attente (hors mutations mises de côté car refusées par la base). */
