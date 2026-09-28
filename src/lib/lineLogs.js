@@ -50,6 +50,9 @@ const archivedIds = new Map();
 // Table absente (migration pas encore jouée) ou refus définitif : on n'archive plus
 // pendant la session — l'app fonctionne exactement comme avant.
 let archivingDisabled = false;
+// Table `line_logs` absente : inutile de l'interroger à chaque ouverture de panneau.
+let tableMissing = false;
+const isMissingTable = (error) => error?.code === 'PGRST205' || error?.code === '42P01';
 
 const upsertRef = (refs, ref) => {
   const list = Array.isArray(refs) ? refs.filter(x => !(x?.p === ref.p && x?.r === ref.r)) : [];
@@ -96,8 +99,9 @@ export const archiveRowLogs = async (parentId, rows) => {
       .from(TABLE)
       .upsert(chunk, { onConflict: 'parent_id,row_id,log_id', ignoreDuplicates: true });
     if (error) {
-      if (isPermanentDbError(error) || error.code === 'PGRST205' || error.code === '42P01') {
+      if (isPermanentDbError(error) || isMissingTable(error)) {
         archivingDisabled = true;
+        if (isMissingTable(error)) tableMissing = true;
         console.warn('[lineLogs] archivage désactivé (table line_logs absente ou refusée) — historique conservé dans les lignes :', error.message);
       } else {
         console.warn('[lineLogs] archivage reporté (réseau / base) — historique conservé dans les lignes :', error.message);
@@ -136,7 +140,7 @@ export const archiveRowLogs = async (parentId, rows) => {
  */
 export const fetchRowLogs = async (parentId, rows) => {
   const result = new Map();
-  if (!Array.isArray(rows) || rows.length === 0) return result;
+  if (tableMissing || !Array.isArray(rows) || rows.length === 0) return result;
 
   // Références à lire : celles portées par chaque ligne + la ligne elle-même.
   const refsByRow = new Map();
@@ -164,7 +168,7 @@ export const fetchRowLogs = async (parentId, rows) => {
       const { data, error } = await q.order('created_at', { ascending: true }).range(from, from + 999);
       if (error) {
         // Table absente : pas d'historique archivé (tout est encore dans les lignes).
-        if (error.code === 'PGRST205' || error.code === '42P01') return result;
+        if (isMissingTable(error)) { tableMissing = true; return result; }
         throw error;
       }
       for (const d of data || []) {
