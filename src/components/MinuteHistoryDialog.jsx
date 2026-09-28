@@ -17,6 +17,9 @@ import TextField from '@mui/material/TextField';
 import InputAdornment from '@mui/material/InputAdornment';
 import SearchIcon from '@mui/icons-material/Search';
 import ClearIcon from '@mui/icons-material/Close';
+import Tabs from '@mui/material/Tabs';
+import Tab from '@mui/material/Tab';
+import { readMinuteVersions } from '../lib/minuteVersions';
 
 // Helpers
 const stringToColor = (string) => {
@@ -173,12 +176,97 @@ const HistoryItem = React.memo(({ item }) => {
 });
 HistoryItem.displayName = 'HistoryItem';
 
-export default function MinuteHistoryDialog({ open, onClose, minute }) {
+// Onglet « Versions » : liste des snapshots restaurables (table minutes_history).
+const REASON_LABELS = {
+    auto:            { label: 'Auto',                bg: '#F3F4F6', color: '#374151' },
+    'shrink-guard':  { label: 'Sécurité (chute)',    bg: '#FEF3C7', color: '#92400E' },
+    'pre-restore':   { label: 'Avant restauration',  bg: '#EDE9FE', color: '#5B21B6' },
+};
+const fmtEur = (n) => (n == null ? '—' : new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(Number(n) || 0));
+
+function VersionsPanel({ minuteId, canEdit, onRestoreInPlace, onRestoreAsVariant, onDone }) {
+    const [versions, setVersions] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
+    const [selected, setSelected] = useState(null);
+    const [busy, setBusy] = useState(false);
+
+    useEffect(() => {
+        let alive = true;
+        if (!minuteId) return;
+        setLoading(true); setError(null);
+        readMinuteVersions(minuteId)
+            .then((v) => { if (alive) setVersions(v); })
+            .catch((e) => alive && setError(e.message))
+            .finally(() => alive && setLoading(false));
+        return () => { alive = false; };
+    }, [minuteId]);
+
+    const run = async (fn, version) => {
+        if (!fn) return;
+        setBusy(true);
+        try { await fn(version); onDone?.(); }
+        catch (e) { setError(e.message); }
+        finally { setBusy(false); setSelected(null); }
+    };
+
+    return (
+        <Box sx={{ p: 3 }}>
+            {loading && <Typography sx={{ color: '#9CA3AF', fontSize: 13 }}>Chargement des versions…</Typography>}
+            {error && <Typography sx={{ color: '#B91C1C', fontSize: 13, mb: 1 }}>{error}</Typography>}
+            {!loading && !error && versions.length === 0 && (
+                <Box sx={{ textAlign: 'center', color: '#9CA3AF', py: 6, fontSize: 13 }}>
+                    Aucune version enregistrée pour l'instant.<br />Les versions se créent automatiquement au fil des modifications.
+                </Box>
+            )}
+            {versions.map((v) => {
+                const r = REASON_LABELS[v.reason] || REASON_LABELS.auto;
+                const isSel = selected?.id === v.id;
+                return (
+                    <Box key={v.id} sx={{ border: '1px solid #E5E7EB', borderRadius: 2, mb: 1, bgcolor: 'white', overflow: 'hidden' }}>
+                        <Box onClick={() => canEdit && setSelected(isSel ? null : v)}
+                             sx={{ display: 'flex', alignItems: 'center', gap: 1.5, p: 1.5, cursor: canEdit ? 'pointer' : 'default' }}>
+                            <Box sx={{ flex: 1, minWidth: 0 }}>
+                                <Typography variant="body2" sx={{ fontWeight: 600, color: '#111827' }}>{formatRelativeTime(v.captured_at)}</Typography>
+                                <Typography variant="caption" sx={{ color: '#6B7280' }}>
+                                    {new Date(v.captured_at).toLocaleString('fr-FR')} · {v.nb_lignes ?? '—'} ligne(s) · {fmtEur(v.ca_total)}
+                                </Typography>
+                            </Box>
+                            <Chip label={r.label} size="small" sx={{ height: 20, fontSize: 10, fontWeight: 700, bgcolor: r.bg, color: r.color }} />
+                        </Box>
+                        {isSel && canEdit && (
+                            <Box sx={{ borderTop: '1px dashed #E5E7EB', p: 1.5, bgcolor: '#F9FAFB', display: 'flex', flexDirection: 'column', gap: 1 }}>
+                                <Typography variant="caption" sx={{ color: '#6B7280' }}>
+                                    « Revenir » remplace le contenu actuel (l'état actuel est sauvegardé au passage → réversible). « Variante » crée un nouveau devis et garde l'actuel intact.
+                                </Typography>
+                                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                                    <Button size="small" variant="contained" color="error" disabled={busy} onClick={() => run(onRestoreInPlace, v)} sx={{ textTransform: 'none' }}>
+                                        Revenir à cette version
+                                    </Button>
+                                    <Button size="small" variant="outlined" disabled={busy} onClick={() => run(onRestoreAsVariant, v)} sx={{ textTransform: 'none' }}>
+                                        Créer une variante
+                                    </Button>
+                                    <Button size="small" disabled={busy} onClick={() => setSelected(null)} sx={{ textTransform: 'none', color: '#6B7280' }}>Annuler</Button>
+                                </Box>
+                            </Box>
+                        )}
+                    </Box>
+                );
+            })}
+            {!canEdit && versions.length > 0 && (
+                <Typography variant="caption" sx={{ color: '#9CA3AF' }}>Lecture seule — la restauration nécessite les droits d'édition.</Typography>
+            )}
+        </Box>
+    );
+}
+
+export default function MinuteHistoryDialog({ open, onClose, minute, canEdit = false, onRestoreInPlace, onRestoreAsVariant }) {
     const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
     const [query, setQuery] = useState('');
+    const [tab, setTab] = useState('journal');
 
     // Repart du haut à chaque ouverture (sinon on rouvre sur 400 entrées rendues).
-    useEffect(() => { if (open) { setVisibleCount(PAGE_SIZE); setQuery(''); } }, [open]);
+    useEffect(() => { if (open) { setVisibleCount(PAGE_SIZE); setQuery(''); setTab('journal'); } }, [open]);
 
     // Historique « Modif … » archivé hors des lignes (table line_logs), chargé
     // uniquement quand le dialogue est ouvert (cf. lib/lineLogs).
@@ -255,7 +343,24 @@ export default function MinuteHistoryDialog({ open, onClose, minute }) {
                 <Typography variant="h6" sx={{ fontWeight: 700 }}>Historique Complet</Typography>
                 <IconButton onClick={onClose}><CloseIcon /></IconButton>
             </DialogTitle>
-            <DialogContent sx={{ bgcolor: '#F9FAFB', p: 0 }}>
+            <DialogContent sx={{ bgcolor: '#F9FAFB', p: 0, display: 'flex', flexDirection: 'column' }}>
+                <Tabs value={tab} onChange={(e, v) => setTab(v)} sx={{ px: 2, bgcolor: 'white', borderBottom: '1px solid #E5E7EB', minHeight: 42, flexShrink: 0 }}>
+                    <Tab value="journal" label="Journal" sx={{ textTransform: 'none', minHeight: 42, fontWeight: 600 }} />
+                    <Tab value="versions" label="Versions" sx={{ textTransform: 'none', minHeight: 42, fontWeight: 600 }} />
+                </Tabs>
+
+                {tab === 'versions' ? (
+                    <Box sx={{ overflowY: 'auto' }}>
+                        <VersionsPanel
+                            minuteId={minute?.id}
+                            canEdit={canEdit}
+                            onRestoreInPlace={onRestoreInPlace}
+                            onRestoreAsVariant={onRestoreAsVariant}
+                            onDone={onClose}
+                        />
+                    </Box>
+                ) : (
+                <Box sx={{ overflowY: 'auto' }}>
                 {archivedLoading && (
                     <Typography variant="caption" sx={{ display: 'block', px: 3, pt: 1, color: '#6B7280' }}>
                         Chargement de l'historique des lignes…
@@ -320,6 +425,8 @@ export default function MinuteHistoryDialog({ open, onClose, minute }) {
                     </>
                 )}
                 </Box>
+                </Box>
+                )}
             </DialogContent>
         </Dialog>
     );
