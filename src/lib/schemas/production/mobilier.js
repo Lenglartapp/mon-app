@@ -62,7 +62,8 @@ const BASE_MOBILIER_SCHEMA = [
     createCol('pa_pass_1', 'PA P1', 100, 'number'),
     createCol('pv_pass_1', 'PV P1', 100, 'number'),
 
-    createCol('heures_pose', 'H. Pose', 120, 'number'),
+    createCol('heures_pose', 'H. Pose', 120, 'number', { defaultHidden: true }),
+    createCol('heures_prepa', 'H. Prépa', 120, 'number', { defaultHidden: true }),
     createCol('pv_pose', 'PV Pose', 100, 'number'),
 
     createCol('heures_confection', 'H. Conf', 120, 'number'),
@@ -115,6 +116,7 @@ export const MOBILIER_PROD_SCHEMA = [
     createCol('schema_photo', 'Schéma', 120, 'photo'),
     createCol('photos_sur_site', 'Photo sur site', 150, 'photo'),
     { field: 'heures_confection', valueFormatter: hideZero },
+    { field: 'heures_prepa', valueFormatter: hideZero },
     'quantite',
 ].map(def => {
     if (typeof def === 'string') return BASE_MOBILIER_SCHEMA.find(c => c.field === def || c.key === def) || { field: def, headerName: def };

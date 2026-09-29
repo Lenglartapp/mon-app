@@ -231,14 +231,14 @@ export const DEFAULT_VIEWS = {
       "meca_couvert", "type_commande",
       "nombre_glisseur", "couleur_glisseur",
       "piton", "embout_meca", "support", "equerre",
-      "type_pose", "statut_prepa"
+      "type_pose", "heures_prepa", "statut_prepa"
     ],
     stores: [
       "detail", "zone", "piece", "produit",
       "largeur", "hauteur", "tailles_lames", "largeur_gorge", "profondeur_gorge",
       "mecanisme_store", "cote_manoeuvre", "hauteur_manoeuvre",
       "type_pose", "guidage_coulisse",
-      "statut_cotes", "statut_prepa", "quantite"
+      "statut_cotes", "heures_prepa", "statut_prepa", "quantite"
     ],
     stores_bateaux: null, // tout visible
     tenture_murale: [
@@ -246,11 +246,11 @@ export const DEFAULT_VIEWS = {
       "largeur", "hauteur",
       "baguette_1", "ml_baguette_1",
       "baguette_2", "ml_baguette_2",
-      "schema_photo", "quantite"
+      "heures_prepa", "schema_photo", "quantite"
     ],
     mobilier: [
       "detail", "zone", "piece", "produit",
-      "mecanisme_fourniture",
+      "mecanisme_fourniture", "heures_prepa",
       "schema_photo", "quantite"
     ],
   },
@@ -258,7 +258,7 @@ export const DEFAULT_VIEWS = {
   // SUIVI DE PROJET (grille unifiée toutes catégories)
   suivi: {
     all: [
-      "sel", "detail", "zone", "piece", "produit",
+      "sel", "detail", "zone", "piece", "fenetre", "produit",
       "statut_cotes", "statut_prepa", "statut_conf", "statut_pose",
       "photos_sur_site",
     ],

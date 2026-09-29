@@ -980,6 +980,10 @@ export const RIDEAUX_PROD_SCHEMA = [
     { key: "commentaire_confection", label: "Commentaire Confection", type: "textarea", width: 260, editable: true },
     { key: "type_pose", label: "Type Pose", type: "select", options: ["Mural", "Plafond", "Grande hauteur", "Suspente", "Naissance", "Encastrée"], width: 145, editable: true },
     { key: "heures_confection", label: "H. Conf.", type: "number", width: 115, editable: true },
+    // Heures de pose / prépa (importées du chiffrage). Masquées par défaut ; H. Prépa est
+    // rendue visible dans le BPP, et les 3 heures sont activables à la demande dans le Suivi.
+    { key: "heures_pose", label: "H. Pose", type: "number", width: 115, editable: true, defaultHidden: true },
+    { key: "heures_prepa", label: "H. Prépa", type: "number", width: 115, editable: true, defaultHidden: true },
     { key: "statut_pose", label: "Statut Pose", type: "select", options: ['Non démarré', 'Méca posé', 'Accroché', 'Terminé', 'Reprise'], width: 155, editable: true },
     { key: "statut_prepa", label: "Statut Prépa", type: "select", options: ['Non démarré', 'En cours', 'Terminé'], width: 150, editable: true },
     { key: "statut_conf", label: "Statut Conf", type: "select", options: ['Non démarré', 'Coupé', 'Assemblé', 'Plis terminés', 'Emballé'], width: 170, editable: true },

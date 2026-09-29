@@ -109,7 +109,7 @@ const BASE_STORES_CLASSIQUES_SCHEMA = [
     { key: "pv_prepa", label: "PV Prépa", type: "number", width: 100 },
 
     // heures_pose (number) : H. Pose
-    { key: "heures_pose", label: "H. Pose", type: "number", width: 120 },
+    { key: "heures_pose", label: "H. Pose", type: "number", width: 120, defaultHidden: true },
 
     // pv_pose (number, readOnly) : PV Pose
     { key: "pv_pose", label: "PV Pose", type: "number", width: 100 },
@@ -186,6 +186,7 @@ export const STORES_PROD_SCHEMA = [
         width: 200,
         editable: true
     },
+    { key: "heures_prepa", label: "H. Prépa", type: "number", width: 120, editable: true, defaultHidden: true },
     { key: "statut_prepa", label: "Statut Prépa", type: "select", options: ['Non démarré', 'En cours', 'Terminé'], width: 150, editable: true },
     { key: "statut_pose", label: "Statut Pose", type: "select", options: ['Non démarré', 'Méca posé', 'Accroché', 'Terminé', 'Reprise'], width: 155, editable: true },
 
