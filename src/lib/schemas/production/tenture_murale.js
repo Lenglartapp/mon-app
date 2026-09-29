@@ -64,7 +64,8 @@ const BASE_TENTURE_MURALE_SCHEMA = [
     createCol('pa_baguette_2', 'PA B2', 100, 'number'),
     createCol('pv_baguette_2', 'PV B2', 100, 'number'),
 
-    createCol('heures_pose', 'H. Pose', 120, 'number'),
+    createCol('heures_pose', 'H. Pose', 120, 'number', { defaultHidden: true }),
+    createCol('heures_prepa', 'H. Prépa', 120, 'number', { defaultHidden: true }),
     createCol('pv_pose', 'PV Pose', 100, 'number'),
 
     createCol('heures_confection', 'H. Conf', 120, 'number'),
@@ -95,6 +96,7 @@ export const TENTURE_MURALE_PROD_SCHEMA = [
     'baguette_1', 'ml_baguette_1',
     'baguette_2', 'ml_baguette_2',
     { field: 'heures_confection', valueFormatter: hideZero },
+    { field: 'heures_prepa', valueFormatter: hideZero },
     {
         field: 'statut_conf',
         headerName: 'Statut Conf',

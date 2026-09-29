@@ -201,7 +201,7 @@ const BASE_STORES_BATEAUX_SCHEMA = [
 
     // HEURES & STATUTS
     { key: "heures_prepa", label: "H. Prépa", type: "number", width: 120 },
-    { key: "heures_pose", label: "H. Pose", type: "number", width: 120 },
+    { key: "heures_pose", label: "H. Pose", type: "number", width: 120, defaultHidden: true },
     { key: "heures_confection", label: "H. Conf", type: "number", width: 120 },
 
     { key: "statut_pose", label: "Statut Pose", type: "select", options: ['Non démarré', 'Méca posé', 'Accroché', 'Terminé', 'Reprise'], width: 155 },
