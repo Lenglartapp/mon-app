@@ -187,6 +187,7 @@ export const STORES_PROD_SCHEMA = [
         editable: true
     },
     { key: "heures_prepa", label: "H. Prépa", type: "number", width: 120, editable: true, defaultHidden: true },
+    { key: "heures_pose", label: "H. Pose", type: "number", width: 120, editable: true, defaultHidden: true },
     { key: "statut_prepa", label: "Statut Prépa", type: "select", options: ['Non démarré', 'En cours', 'Terminé'], width: 150, editable: true },
     { key: "statut_pose", label: "Statut Pose", type: "select", options: ['Non démarré', 'Méca posé', 'Accroché', 'Terminé', 'Reprise'], width: 155, editable: true },
 

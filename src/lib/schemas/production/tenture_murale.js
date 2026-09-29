@@ -97,6 +97,7 @@ export const TENTURE_MURALE_PROD_SCHEMA = [
     'baguette_2', 'ml_baguette_2',
     { field: 'heures_confection', valueFormatter: hideZero },
     { field: 'heures_prepa', valueFormatter: hideZero },
+    { field: 'heures_pose', valueFormatter: hideZero },
     {
         field: 'statut_conf',
         headerName: 'Statut Conf',

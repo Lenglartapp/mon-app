@@ -117,6 +117,7 @@ export const MOBILIER_PROD_SCHEMA = [
     createCol('photos_sur_site', 'Photo sur site', 150, 'photo'),
     { field: 'heures_confection', valueFormatter: hideZero },
     { field: 'heures_prepa', valueFormatter: hideZero },
+    { field: 'heures_pose', valueFormatter: hideZero },
     'quantite',
 ].map(def => {
     if (typeof def === 'string') return BASE_MOBILIER_SCHEMA.find(c => c.field === def || c.key === def) || { field: def, headerName: def };
