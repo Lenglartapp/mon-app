@@ -322,6 +322,7 @@ export const STORES_BATEAUX_PROD_SCHEMA = [
     ...mapSchema([
         // HEURES (Hide if 0)
         { key: 'heures_prepa', valueFormatter: hideZero },
+        { key: 'heures_pose', valueFormatter: hideZero },
         { key: 'heures_confection', valueFormatter: hideZero },
 
         // STATUTS
