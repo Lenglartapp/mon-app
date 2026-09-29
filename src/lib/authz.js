@@ -57,6 +57,8 @@ const PERMISSIONS = {
     // Redistribuer des heures internes vers un dossier : déplace du temps RÉALISÉ
     // d'un dossier à un autre, réservé à l'ordo et à l'admin.
     "planning.transfer_internal": true,
+    // Mobile : consulter l'agenda pose « en tant que » un poseur (lecture seule).
+    "planning.mobile_view_as": true,
 
     "production.edit": true,
 

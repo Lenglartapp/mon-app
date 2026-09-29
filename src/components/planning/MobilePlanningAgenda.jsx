@@ -1,7 +1,7 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { format, parseISO, startOfWeek, addDays, isSameDay } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, MapPin, User, Users, StickyNote, ClipboardList } from 'lucide-react';
+import { ChevronLeft, ChevronRight, MapPin, User, Users, StickyNote, ClipboardList, BedDouble } from 'lucide-react';
 import { PLANNING_COLORS } from './constants';
 
 const POSE = PLANNING_COLORS.pose;
@@ -17,10 +17,14 @@ const eventTime = (e) => {
 const mapsUrl = (loc) => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(loc)}`;
 
 export default function MobilePlanningAgenda({
-    events = [], projects = [], users = [], currentUser,
+    events = [], projects = [], users = [], poseMembers = [], canViewAs = false, currentUser,
     currentDate, onChangeDate, onBack, onOpenPrise,
 }) {
     const [myView, setMyView] = useState(false);
+    // Ordo/admin : agenda « en tant que » un poseur (null = toute l'équipe).
+    const [viewAsId, setViewAsId] = useState(null);
+    // Personne dont on affiche l'agenda : le poseur choisi, soi-même en mode « Moi », sinon personne (équipe).
+    const focusId = canViewAs ? viewAsId : (myView ? currentUser?.id : null);
     const dayRefs = useRef({});
 
     const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
@@ -50,20 +54,21 @@ export default function MobilePlanningAgenda({
         const out = days.map(() => []);
         (events || []).forEach(e => {
             if (e.type !== 'pose') return;
-            if (myView && e.resourceId !== currentUser?.id) return;
+            if (focusId && e.resourceId !== focusId) return;
             const idx = days.findIndex(d => isSameDay(parseISO(e.date), d));
             if (idx === -1) return;
             out[idx].push(e);
         });
         out.forEach(list => list.sort((a, b) => {
-            // Mes créneaux d'abord, puis par heure de début
-            const am = a.resourceId === currentUser?.id ? 0 : 1;
-            const bm = b.resourceId === currentUser?.id ? 0 : 1;
+            // Mes créneaux (ou ceux du poseur suivi) d'abord, puis par heure de début
+            const me = focusId || currentUser?.id;
+            const am = a.resourceId === me ? 0 : 1;
+            const bm = b.resourceId === me ? 0 : 1;
             if (am !== bm) return am - bm;
             return (a.meta?.start || '') < (b.meta?.start || '') ? -1 : 1;
         }));
         return out;
-    }, [events, days, myView, currentUser]);
+    }, [events, days, focusId, currentUser]);
 
     const total = byDay.reduce((s, l) => s + l.length, 0);
 
@@ -91,6 +96,23 @@ export default function MobilePlanningAgenda({
                     <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: 16, fontWeight: 800, color: '#111827' }}>Planning Pose</div>
                     </div>
+                    {canViewAs ? (
+                        <select
+                            value={viewAsId || ''}
+                            onChange={(e) => setViewAsId(e.target.value || null)}
+                            aria-label="Voir l'agenda de"
+                            style={{
+                                ...btn, width: 'auto', maxWidth: 170, padding: '0 10px', fontSize: 13, fontWeight: 700, fontFamily: 'inherit',
+                                background: viewAsId ? '#2563EB' : 'white', color: viewAsId ? 'white' : '#374151',
+                                borderColor: viewAsId ? '#2563EB' : '#E5E7EB', appearance: 'auto',
+                            }}
+                        >
+                            <option value="">Équipe</option>
+                            {poseMembers.map(m => (
+                                <option key={m.id} value={m.id}>{`${m.first_name || ''} ${m.last_name || ''}`.trim() || '—'}</option>
+                            ))}
+                        </select>
+                    ) : (
                     <button
                         onClick={() => setMyView(v => !v)}
                         style={{
@@ -102,6 +124,7 @@ export default function MobilePlanningAgenda({
                         {myView ? <User size={15} /> : <Users size={15} />}
                         {myView ? 'Moi' : 'Équipe'}
                     </button>
+                    )}
                 </div>
 
                 {/* Navigation semaine */}
@@ -145,7 +168,9 @@ export default function MobilePlanningAgenda({
             <div style={{ flex: 1, overflowY: 'auto', padding: '4px 12px 32px' }}>
                 {total === 0 && (
                     <div style={{ padding: '48px 20px', textAlign: 'center', color: '#9CA3AF', fontSize: 14 }}>
-                        {myView ? "Aucun créneau pour vous cette semaine." : "Aucun créneau de pose cette semaine."}
+                        {viewAsId
+                            ? `Aucun créneau pour ${userName(viewAsId)} cette semaine.`
+                            : myView ? "Aucun créneau pour vous cette semaine." : "Aucun créneau de pose cette semaine."}
                     </div>
                 )}
 
@@ -167,6 +192,7 @@ export default function MobilePlanningAgenda({
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                                     {list.map(evt => {
                                         const isMine = evt.resourceId === currentUser?.id;
+                                        const decouche = !!evt.meta?.decouche;
                                         const proj = projectMap.get(evt.meta?.projectId);
                                         const location = proj?.location;
                                         const note = (evt.meta?.description || '').trim();
@@ -189,9 +215,17 @@ export default function MobilePlanningAgenda({
                                                     {time && <span style={{ flexShrink: 0, fontSize: 12, fontWeight: 700, color: POSE.text, background: POSE.bg, borderRadius: 6, padding: '2px 8px' }}>{time}</span>}
                                                 </div>
 
-                                                <div style={{ fontSize: 14, color: '#1F2937', fontWeight: 600, marginBottom: (location || note) ? 4 : 0 }}>
+                                                <div style={{ fontSize: 14, color: '#1F2937', fontWeight: 600, marginBottom: (location || note || decouche) ? 4 : 0 }}>
                                                     {evt.title || '(sans dossier)'}
                                                 </div>
+
+                                                {decouche && (
+                                                    <div style={{ marginBottom: 6 }}>
+                                                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#EEF2FF', border: '1px solid #C7D2FE', color: '#3730A3', borderRadius: 6, padding: '3px 8px', fontSize: 12, fontWeight: 700 }}>
+                                                            <BedDouble size={14} /> Nuit sur place
+                                                        </span>
+                                                    </div>
+                                                )}
 
                                                 {location && (
                                                     <a
