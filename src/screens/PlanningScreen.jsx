@@ -1385,6 +1385,8 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                 events={localEvents}
                 projects={projects}
                 users={localUsers}
+                poseMembers={visibleGroupsConfig.pose?.members || []}
+                canViewAs={can(currentUser, 'planning.mobile_view_as')}
                 currentUser={currentUser}
                 currentDate={currentDate}
                 onChangeDate={setCurrentDate}
