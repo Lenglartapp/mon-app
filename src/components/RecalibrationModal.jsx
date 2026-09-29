@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from "react";
+import { nextFamilyVersion } from "../lib/minuteFamily";
 import { uid } from "../lib/utils/uid";
 
 const toNum = (v) => {
@@ -184,9 +185,7 @@ export default function RecalibrationModal({ minute, minutes, onClose, onCreateV
   }, [distributionMode, selectedLevers, leverMaxes, absGap, isDownward, minute?.lines]);
 
   const computeNextVersion = () => {
-    const rootId = minute.parentId || minute.id;
-    const siblingCount = (minutes || []).filter(m => (m.parentId || m.id) === rootId && m.id !== rootId).length;
-    return siblingCount + 2;
+    return nextFamilyVersion(minutes, minute.parentId || minute.id);
   };
 
   const handleConfirm = () => {

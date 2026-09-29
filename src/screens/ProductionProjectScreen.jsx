@@ -33,7 +33,7 @@ import { MOBILIER_PROD_SCHEMA } from "../lib/schemas/production/mobilier";
 import { uid } from "../lib/utils/uid"; // Import uid
 import { compressAndUpload } from "../lib/utils/imageUpload";
 
-import { Search, Filter, Layers3, Star, FlaskConical, Image as ImageIcon, Pin, Edit2, FileText, BookOpen, Printer, Scissors } from "lucide-react";
+import { Search, Filter, Layers3, Star, FlaskConical, Image as ImageIcon, Edit2, FileText, BookOpen, Printer, Scissors } from "lucide-react";
 import ProjectMaterialsPanel from "../components/ProjectMaterialsPanel";
 import OptimisationMetragePanel from "../components/OptimisationMetragePanel";
 import { applyCatalogRenames } from "../lib/utils/catalogRename";
@@ -43,7 +43,9 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { differenceInMinutes } from "date-fns";
 import DocumentListModal from "../components/DocumentListModal"; // Added import
 import { useAuth } from "../auth";
-import { can } from "../lib/authz";
+import { can, role } from "../lib/authz";
+import { HeaderCard, HeaderPanel, EditableTitle, StatusPill, MetaItem, OwnerPicker } from "../components/ui/EntityHeader";
+import { formatAnyDateFR } from "../lib/utils/formatDate";
 
 function SectionPanel({ title, count, expanded, onToggle, children }) {
   return (
@@ -214,6 +216,9 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
     && new URLSearchParams(window.location.search).get('optim') === '1');
   const [showAllPrise, setShowAllPrise] = useState(false);
   const deliveryRef = useRef(null);
+  // Adresse : saisie locale, persistée une seule fois (sélection / sortie du champ)
+  const [addressDraft, setAddressDraft] = useState(project?.location || "");
+  useEffect(() => { setAddressDraft(project?.location || ""); }, [project?.id, project?.location]);
 
   const handleUpdateDocs = (newDocs) => {
     if (onUpdateProject && project) {
@@ -310,7 +315,10 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
     return () => document.removeEventListener('mousedown', handler);
   }, [deliveryOpen]);
 
-  const { currentUser } = useAuth();
+  const { currentUser, users = [] } = useAuth();
+  const canEditHeader = can(currentUser, "production.edit");
+  // Mêmes rôles éligibles que la colonne « Responsable » de la liste des projets
+  const potentialManagers = useMemo(() => users.filter(u => ['admin', 'sales', 'op'].includes(role(u))), [users]);
   const canEditProd = can(currentUser, "production.edit") ||
     (stage === 'prise' && can(currentUser, 'production.edit.prise_de_cotes')) ||
     (stage === 'suivi' && can(currentUser, 'production.edit.suivi_projet'));
@@ -845,65 +853,188 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
         .island-nav-container { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
 
-      {/* Header Minimalist Refactor */}
-      <div style={{ marginBottom: 24, marginTop: 8 }}>
+      {/* Header : fiche d'identité (gauche) + livraison & logistique (droite), actions en dessous */}
+      <div style={{ marginBottom: 20, marginTop: 8 }}>
         <button
           onClick={onBack}
           style={{
             background: "none", border: "none", cursor: "pointer",
-            color: "#6B7280", fontWeight: 600, fontSize: 13,
-            display: "flex", alignItems: "center", gap: 4, marginBottom: 8, padding: 0
+            color: "#6B7280", fontWeight: 500, fontSize: 13,
+            display: "flex", alignItems: "center", gap: 4, marginBottom: 12, padding: 0
           }}
         >
           ← Retour
         </button>
-        <div style={{ display: "flex", flexDirection: isMobile ? 'column' : 'row', justifyContent: "space-between", alignItems: isMobile ? "flex-start" : "flex-end", gap: isMobile ? 12 : 0 }}>
-          <div style={{ width: isMobile ? '100%' : 'auto' }}>
-            <h1 style={{ margin: 0, fontSize: isMobile ? 24 : 32, fontWeight: 800, color: '#111827', letterSpacing: '-0.02em' }}>
-              {projectName}
-            </h1>
-            <div style={{ fontSize: 16, color: '#6B7280', marginTop: 4, fontWeight: 300 }}>
-              Chargé·e d'affaires : <span style={{ color: '#374151', fontWeight: 500 }}>{project?.manager || "—"}</span>
-            </div>
-            {/* Emplacement & logistique */}
-            <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#6B7280' }}>
-                <Pin size={13} style={{ flexShrink: 0 }} />
-                <AddressAutocomplete
-                  value={project?.location || ""}
-                  onChange={v => onUpdateProject(project.id, { location: v })}
-                  placeholder="Emplacement du projet…"
-                  style={{ width: 300 }}
+        <HeaderCard
+          stacked={isMobile}
+          left={
+            <>
+              <EditableTitle
+                value={project?.name || ""}
+                canEdit={canEditHeader}
+                placeholder="—"
+                fontSize={isMobile ? 24 : 30}
+                onSave={(v) => onUpdateProject(project.id, { name: v })}
+              />
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 14, flexWrap: 'wrap' }}>
+                <StatusPill
+                  value={project?.status || "TODO"}
+                  options={PROJECT_STATUS_OPTIONS}
+                  onChange={(v) => onUpdateProject(project.id, { status: v })}
                 />
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#6B7280' }}>
-                <span>Type :</span>
-                <select
-                  value={project?.intervention_type || "livraison"}
-                  onChange={e => onUpdateProject(project.id, { intervention_type: e.target.value, expedition_type: e.target.value === 'livraison' ? null : project?.expedition_type })}
-                  style={{ border: 'none', background: 'transparent', color: '#374151', fontSize: 13, fontFamily: 'inherit', outline: 'none', cursor: 'pointer' }}
-                >
-                  <option value="livraison">Livraison</option>
-                  <option value="installation">Installation</option>
-                </select>
-                {project?.intervention_type === 'installation' && (
-                  <>
-                    <span style={{ color: '#d1d5db' }}>·</span>
-                    <select
-                      value={project?.expedition_type || "depart_nantes"}
-                      onChange={e => onUpdateProject(project.id, { expedition_type: e.target.value })}
-                      style={{ border: 'none', background: 'transparent', color: '#374151', fontSize: 13, fontFamily: 'inherit', outline: 'none', cursor: 'pointer' }}
-                    >
-                      <option value="depart_nantes">Départ depuis Nantes</option>
-                      <option value="expedition">Expédition transporteur</option>
-                    </select>
-                  </>
-                )}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px 28px', alignItems: 'flex-start', marginTop: 18 }}>
+                <MetaItem label="Chargé d'affaires">
+                  <OwnerPicker
+                    value={project?.manager || ""}
+                    users={potentialManagers}
+                    canEdit={canEditHeader}
+                    onChange={(manager) => onUpdateProject(project.id, { manager })}
+                  />
+                </MetaItem>
+                <MetaItem label="Créé le">{formatAnyDateFR(project?.created_at || project?.createdAt)}</MetaItem>
               </div>
-            </div>
-          </div>
+            </>
+          }
+          right={
+            <HeaderPanel title="Livraison & logistique" tone="logistics">
+              <div style={{ display: 'grid', gridTemplateColumns: '90px minmax(0,1fr)', gap: '16px 18px', alignItems: 'center', fontSize: 13 }}>
+                <span style={{ color: '#6B7280', fontWeight: 500 }}>Adresse</span>
+                <AddressAutocomplete
+                  value={addressDraft}
+                  onChange={setAddressDraft}
+                  onCommit={(v) => { if (v !== (project?.location || "")) onUpdateProject(project.id, { location: v }); }}
+                  placeholder="Saisir une adresse…"
+                  style={{ width: '100%', maxWidth: 420 }}
+                  inputStyle={{ border: '1px solid #E5E7EB', borderRadius: 6, padding: '4px 8px', background: 'white', color: '#1F2937' }}
+                />
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', width: isMobile ? '100%' : 'auto' }}>
+                <span style={{ color: '#6B7280', fontWeight: 500 }}>Type</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <select
+                    value={project?.intervention_type || "livraison"}
+                    onChange={e => onUpdateProject(project.id, { intervention_type: e.target.value, expedition_type: e.target.value === 'livraison' ? null : project?.expedition_type })}
+                    style={{ border: 'none', background: 'transparent', color: '#1F2937', fontWeight: 600, fontSize: 13, fontFamily: 'inherit', outline: 'none', cursor: 'pointer', padding: 0 }}
+                  >
+                    <option value="livraison">Livraison</option>
+                    <option value="installation">Installation</option>
+                  </select>
+                  {project?.intervention_type === 'installation' && (
+                    <>
+                      <span style={{ color: '#d1d5db' }}>·</span>
+                      <select
+                        value={project?.expedition_type || "depart_nantes"}
+                        onChange={e => onUpdateProject(project.id, { expedition_type: e.target.value })}
+                        style={{ border: 'none', background: 'transparent', color: '#1F2937', fontWeight: 600, fontSize: 13, fontFamily: 'inherit', outline: 'none', cursor: 'pointer', padding: 0 }}
+                      >
+                        <option value="depart_nantes">Départ depuis Nantes</option>
+                        <option value="expedition">Expédition transporteur</option>
+                      </select>
+                    </>
+                  )}
+                </div>
+
+                <span style={{ color: '#6B7280', fontWeight: 500 }}>Livraison</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  <input
+                    type="date"
+                    value={project?.deadline ? project.deadline.split('T')[0] : ''}
+                    onChange={(e) => onUpdateProject(project.id, { deadline: e.target.value || null })}
+                    style={{ border: '1px solid #E5E7EB', borderRadius: 6, padding: '3px 6px', fontSize: 13, color: '#374151', background: 'white', outline: 'none', fontFamily: 'inherit' }}
+                  />
+                  {(project?.delivery_phases || []).filter(ph => ph.label || ph.date).map((ph, i) => (
+                    <span key={ph.id || i} style={{ background: 'white', border: '1px solid #E5E7EB', borderRadius: 99, padding: '2px 9px', fontSize: 12, color: '#374151', whiteSpace: 'nowrap' }}>
+                      {ph.label || `Phase ${i + 1}`}{ph.date && <> · <b style={{ color: '#2563EB', fontWeight: 600 }}>{new Date(ph.date).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })}</b></>}
+                    </span>
+                  ))}
+                  <div ref={deliveryRef} style={{ position: 'relative' }}>
+                    <button
+                      onClick={() => setDeliveryOpen(o => !o)}
+                      style={{ color: '#2563EB', fontSize: 12, fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}
+                    >
+                      {project?.delivery_phases?.length > 0 ? 'Gérer les phases' : '+ Phase'}
+                    </button>
+                    {deliveryOpen && (
+                      <div style={{
+                        position: 'absolute', top: 'calc(100% + 6px)', left: 0,
+                        background: 'white', border: '1px solid #E5E7EB', borderRadius: 12,
+                        boxShadow: '0 4px 16px rgba(0,0,0,0.1)', padding: 16, minWidth: 290, zIndex: 1000
+                      }}>
+                        {/* Date globale */}
+                        <div style={{ marginBottom: 14 }}>
+                          <label style={{ fontSize: 11, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 6 }}>
+                            Date de livraison souhaitée
+                          </label>
+                          <input
+                            type="date"
+                            value={project?.deadline ? project.deadline.split('T')[0] : ''}
+                            onChange={(e) => onUpdateProject(project.id, { deadline: e.target.value })}
+                            style={{ width: '100%', border: '1px solid #E5E7EB', borderRadius: 8, padding: '6px 10px', fontSize: 13, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
+                          />
+                        </div>
+
+                        {/* Phases */}
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                            <span style={{ fontSize: 11, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Phases</span>
+                            <button
+                              onClick={() => {
+                                const phases = [...(project?.delivery_phases || []), { id: uid(), label: '', date: '' }];
+                                onUpdateProject(project.id, { delivery_phases: phases });
+                              }}
+                              style={{ fontSize: 12, color: '#2563EB', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500, padding: 0 }}
+                            >
+                              + Phase
+                            </button>
+                          </div>
+
+                          {(project?.delivery_phases || []).map((phase, idx) => (
+                            <div key={phase.id || idx} style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 6 }}>
+                              <input
+                                value={phase.label}
+                                placeholder="Phase 1…"
+                                onChange={(e) => {
+                                  const phases = (project.delivery_phases || []).map((p, i) => i === idx ? { ...p, label: e.target.value } : p);
+                                  onUpdateProject(project.id, { delivery_phases: phases });
+                                }}
+                                style={{ flex: 1, border: '1px solid #E5E7EB', borderRadius: 8, padding: '5px 8px', fontSize: 12, fontFamily: 'inherit', outline: 'none', minWidth: 0 }}
+                              />
+                              <input
+                                type="date"
+                                value={phase.date || ''}
+                                onChange={(e) => {
+                                  const phases = (project.delivery_phases || []).map((p, i) => i === idx ? { ...p, date: e.target.value } : p);
+                                  onUpdateProject(project.id, { delivery_phases: phases });
+                                }}
+                                style={{ border: '1px solid #E5E7EB', borderRadius: 8, padding: '5px 8px', fontSize: 12, fontFamily: 'inherit', outline: 'none', width: 130 }}
+                              />
+                              <button
+                                onClick={() => {
+                                  const phases = (project.delivery_phases || []).filter((_, i) => i !== idx);
+                                  onUpdateProject(project.id, { delivery_phases: phases });
+                                }}
+                                style={{ color: '#9CA3AF', background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '0 2px' }}
+                              >
+                                ×
+                              </button>
+                            </div>
+                          ))}
+
+                          {(!project?.delivery_phases || project.delivery_phases.length === 0) && (
+                            <p style={{ fontSize: 12, color: '#9CA3AF', margin: 0, textAlign: 'center', padding: '8px 0' }}>Aucune phase</p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </HeaderPanel>
+          }
+        />
+
+        {/* Actions */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: isMobile ? 'flex-start' : 'flex-end', gap: 10, flexWrap: 'wrap', marginTop: 12 }}>
             {optimActif && (
               <button
                 onClick={() => setShowOptim(true)}
@@ -987,142 +1118,6 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
               </button>
             )}
 
-            {/* Delivery Date - Hidden on Mobile */}
-            {!isMobile && (
-              <div ref={deliveryRef} style={{ position: 'relative', flexShrink: 0 }}>
-                <button
-                  onClick={() => setDeliveryOpen(o => !o)}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 8,
-                    background: 'white', border: '1px solid #E5E7EB', borderRadius: 20,
-                    padding: '6px 12px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-                    whiteSpace: 'nowrap', cursor: 'pointer', fontSize: 13,
-                    color: '#374151', fontFamily: 'inherit'
-                  }}
-                >
-                  <span style={{ color: '#6B7280', fontWeight: 500 }}>Livraison :</span>
-                  <span style={{ color: project?.deadline ? '#374151' : '#9CA3AF' }}>
-                    {project?.deadline ? new Date(project.deadline).toLocaleDateString('fr-FR') : '—'}
-                  </span>
-                  {(project?.delivery_phases?.length > 0) && (
-                    <span style={{ background: '#EFF6FF', color: '#2563EB', borderRadius: 10, fontSize: 11, fontWeight: 600, padding: '1px 6px' }}>
-                      {project.delivery_phases.length} phase{project.delivery_phases.length > 1 ? 's' : ''}
-                    </span>
-                  )}
-                </button>
-
-                {deliveryOpen && (
-                  <div style={{
-                    position: 'absolute', top: 'calc(100% + 6px)', right: 0,
-                    background: 'white', border: '1px solid #E5E7EB', borderRadius: 12,
-                    boxShadow: '0 4px 16px rgba(0,0,0,0.1)', padding: 16, minWidth: 290, zIndex: 1000
-                  }}>
-                    {/* Date globale */}
-                    <div style={{ marginBottom: 14 }}>
-                      <label style={{ fontSize: 11, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 6 }}>
-                        Date de livraison souhaitée
-                      </label>
-                      <input
-                        type="date"
-                        value={project?.deadline ? project.deadline.split('T')[0] : ''}
-                        onChange={(e) => onUpdateProject(project.id, { deadline: e.target.value })}
-                        style={{ width: '100%', border: '1px solid #E5E7EB', borderRadius: 8, padding: '6px 10px', fontSize: 13, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
-                      />
-                    </div>
-
-                    {/* Phases */}
-                    <div>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                        <span style={{ fontSize: 11, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Phases</span>
-                        <button
-                          onClick={() => {
-                            const phases = [...(project?.delivery_phases || []), { id: uid(), label: '', date: '' }];
-                            onUpdateProject(project.id, { delivery_phases: phases });
-                          }}
-                          style={{ fontSize: 12, color: '#2563EB', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500, padding: 0 }}
-                        >
-                          + Phase
-                        </button>
-                      </div>
-
-                      {(project?.delivery_phases || []).map((phase, idx) => (
-                        <div key={phase.id || idx} style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 6 }}>
-                          <input
-                            value={phase.label}
-                            placeholder="Phase 1…"
-                            onChange={(e) => {
-                              const phases = (project.delivery_phases || []).map((p, i) => i === idx ? { ...p, label: e.target.value } : p);
-                              onUpdateProject(project.id, { delivery_phases: phases });
-                            }}
-                            style={{ flex: 1, border: '1px solid #E5E7EB', borderRadius: 8, padding: '5px 8px', fontSize: 12, fontFamily: 'inherit', outline: 'none', minWidth: 0 }}
-                          />
-                          <input
-                            type="date"
-                            value={phase.date || ''}
-                            onChange={(e) => {
-                              const phases = (project.delivery_phases || []).map((p, i) => i === idx ? { ...p, date: e.target.value } : p);
-                              onUpdateProject(project.id, { delivery_phases: phases });
-                            }}
-                            style={{ border: '1px solid #E5E7EB', borderRadius: 8, padding: '5px 8px', fontSize: 12, fontFamily: 'inherit', outline: 'none', width: 130 }}
-                          />
-                          <button
-                            onClick={() => {
-                              const phases = (project.delivery_phases || []).filter((_, i) => i !== idx);
-                              onUpdateProject(project.id, { delivery_phases: phases });
-                            }}
-                            style={{ color: '#9CA3AF', background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '0 2px' }}
-                          >
-                            ×
-                          </button>
-                        </div>
-                      ))}
-
-                      {(!project?.delivery_phases || project.delivery_phases.length === 0) && (
-                        <p style={{ fontSize: 12, color: '#9CA3AF', margin: 0, textAlign: 'center', padding: '8px 0' }}>Aucune phase</p>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Project Status Selector - Hidden on Mobile */}
-            {!isMobile && (
-              <div style={{ position: 'relative', flex: 'initial', minWidth: 0 }}>
-                <select
-                  value={project?.status || "TODO"}
-                  onChange={(e) => onUpdateProject(project.id, { status: e.target.value })}
-                  style={{
-                    appearance: 'none',
-                    padding: "8px 12px 8px 24px",
-                    borderRadius: 20,
-                    border: "1px solid #E5E7EB",
-                    background: 'white',
-                    color: "#374151",
-                    fontWeight: 600,
-                    fontSize: 13,
-                    cursor: 'pointer',
-                    textAlign: 'center',
-                    minWidth: 120,
-                    width: '100%',
-                    outline: 'none',
-                    boxShadow: "0 1px 2px rgba(0,0,0,0.05)"
-                  }}
-                >
-                  {Object.entries(PROJECT_STATUS_OPTIONS).map(([key, opt]) => (
-                    <option key={key} value={key}>{opt.label}</option>
-                  ))}
-                </select>
-                {/* Colored Dot Overlay */}
-                <div style={{
-                  position: 'absolute', top: '50%', left: 10, transform: 'translateY(-50%)',
-                  width: 8, height: 8, borderRadius: '50%',
-                  background: PROJECT_STATUS_OPTIONS[project?.status || "TODO"]?.color || "#9CA3AF",
-                  pointerEvents: 'none'
-                }} />
-              </div>
-            )}
-          </div>
         </div>
       </div>
 
