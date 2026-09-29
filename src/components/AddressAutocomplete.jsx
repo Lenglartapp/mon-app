@@ -29,8 +29,11 @@ async function fetchPlaces(q) {
  *   placeholder – texte gris
  *   style       – style inline pour le wrapper <div>
  *   inputStyle  – style inline pour le <input> intérieur
+ *   onCommit    – (string) => void, optionnel : appelé seulement quand la saisie est
+ *                 « validée » (sélection, effacement, sortie du champ). Permet de
+ *                 persister une seule fois au lieu d'écrire en base à chaque frappe.
  */
-export default function AddressAutocomplete({ value, onChange, placeholder = "Ex: 20 rue du Renard, Paris…", style, inputStyle }) {
+export default function AddressAutocomplete({ value, onChange, onCommit, placeholder = "Ex: 20 rue du Renard, Paris…", style, inputStyle }) {
     const [suggestions, setSuggestions] = useState([]);
     const [open, setOpen] = useState(false);
     const [isConfirmed, setIsConfirmed] = useState(false);
@@ -53,6 +56,7 @@ export default function AddressAutocomplete({ value, onChange, placeholder = "Ex
 
     const pick = (addr) => {
         onChange(addr);
+        onCommit?.(addr);
         setIsConfirmed(true);
         setSuggestions([]);
         setOpen(false);
@@ -60,6 +64,7 @@ export default function AddressAutocomplete({ value, onChange, placeholder = "Ex
 
     const clear = () => {
         onChange('');
+        onCommit?.('');
         setIsConfirmed(false);
         setSuggestions([]);
         setTimeout(() => inputRef.current?.focus(), 50);
@@ -78,7 +83,11 @@ export default function AddressAutocomplete({ value, onChange, placeholder = "Ex
                         maxWidth: '100%', overflow: 'hidden',
                     }}>
                         <MapPin size={11} color="#9CA3AF" style={{ flexShrink: 0 }} />
-                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <span
+                            onClick={() => { setIsConfirmed(false); setTimeout(() => inputRef.current?.focus(), 50); }}
+                            title="Modifier l'adresse"
+                            style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'text' }}
+                        >
                             {value}
                         </span>
                         <button
@@ -106,7 +115,7 @@ export default function AddressAutocomplete({ value, onChange, placeholder = "Ex
                 value={value}
                 placeholder={placeholder}
                 onChange={e => { onChange(e.target.value); fetchSuggestions(e.target.value); }}
-                onBlur={() => setTimeout(() => setOpen(false), 150)}
+                onBlur={(e) => { const v = e.target.value; setTimeout(() => setOpen(false), 150); onCommit?.(v); }}
                 onFocus={() => suggestions.length > 0 && setOpen(true)}
                 autoComplete="off"
                 style={{

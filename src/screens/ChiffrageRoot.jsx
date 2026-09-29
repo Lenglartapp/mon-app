@@ -1,5 +1,6 @@
 // src/screens/ChiffrageRoot.jsx
 import React, { useState, useMemo, useEffect, useRef } from "react";
+import { nextFamilyVersion } from "../lib/minuteFamily";
 import { Plus, Copy, Trash2, FileText, ArrowUpDown, ArrowUp, ArrowDown, Archive, Filter, ChevronDown, ChevronRight, ChevronLeft, GitBranch, SlidersHorizontal } from "lucide-react";
 import Chip from '@mui/material/Chip';
 import Avatar from '@mui/material/Avatar';
@@ -452,8 +453,7 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
     const src = minutes.find(x => x.id === id);
     if (!src) return;
     const rootParentId = src.parentId || src.id;
-    const siblingCount = minutes.filter(m => (m.parentId || m.id) === rootParentId && m.id !== rootParentId).length;
-    const newVersion = siblingCount + 2;
+    const newVersion = nextFamilyVersion(minutes, rootParentId);
     const copy = {
       ...src,
       id: uid(),

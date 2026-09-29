@@ -17,24 +17,40 @@ import { computeFormulas, preserveManualAfterCompute } from "../lib/formulas/com
 import { recomputeRow } from "../lib/formulas/recomputeRow";
 import { uid } from "../lib/utils/uid";
 
-import { useAuth } from "../auth";
+import { useAuth, ROLES } from "../auth";
 import { can } from "../lib/authz";
 import { useNotifications } from "../contexts/NotificationContext";
 import { useAppSettings, useCatalog, useCatalogRail } from "../hooks/useSupabase";
 import { calculateProfitability } from '../lib/financial/profitabilityCalculator';
 
 import MinuteHistoryDialog from "../components/MinuteHistoryDialog";
+import VariantTabs from "../components/VariantTabs";
+import { buildFamilyTabs, nextFamilyVersion, variantShade } from "../lib/minuteFamily";
+import { HeaderCard, HeaderPanel, EditableTitle, StatusPill, HeaderButton, MetaItem, OwnerPicker } from "../components/ui/EntityHeader";
+import { formatAnyDateFR } from "../lib/utils/formatDate";
 import { readVersionContent, mergeVisualsFromCurrent } from "../lib/minuteVersions";
 import { buildSettingsLogs, buildCatalogLogs, buildStatusLog, appendHistory } from "../lib/minuteHistory";
 import { MOBILIER_PRODUIT_RE } from "../lib/constants/productRouting";
 import { applyCatalogRenames } from "../lib/utils/catalogRename";
 import RecalibrationModal from "../components/RecalibrationModal";
-import { BookOpen, History, FileUp, SlidersHorizontal, GitBranch } from 'lucide-react';
+import { BookOpen, History, FileUp, SlidersHorizontal } from 'lucide-react';
 import { importGlobalExcel } from "../lib/utils/importGlobalExcel";
 
 const toNum = (v) => {
   const n = Number(String(v ?? "").replace(",", "."));
   return Number.isFinite(n) ? n : 0;
+};
+
+// Statuts du chiffrage (mêmes couleurs que la liste ChiffrageRoot)
+const CHIFFRAGE_STATUS = {
+  DRAFT: { label: "À faire", color: "#9CA3AF" },
+  IN_PROGRESS: { label: "En cours", color: "#3B82F6" },
+  PENDING_APPROVAL: { label: "À valider", color: "#F59E0B" },
+  REVISE: { label: "À reprendre", color: "#EF4444" },
+  VALIDATED: { label: "Validée", color: "#10B981" },
+  ORDERED: { label: "Commande", color: "#8B5CF6" },
+  ORDER_COMPLETED: { label: "Commande terminée", color: "#059669" },
+  LOST: { label: "Perdu", color: "#EF4444" },
 };
 
 // Optimisation: Composant Isolé pour les Notes afin d'éviter le re-render global à chaque frappe
@@ -67,14 +83,16 @@ const NotesField = React.memo(({ initialValue, onSave, readOnly, canEdit }) => {
       rows={1}
       style={{
         width: '100%',
+        minHeight: 60,
         border: 'none',
         background: 'transparent',
-        borderBottom: '1px dashed #E5E7EB',
         outline: 'none',
         resize: 'none',
-        fontSize: 14,
+        fontSize: 13.5,
+        lineHeight: 1.5,
+        color: '#422006',
         overflow: 'hidden',
-        fontFamily: 'Roboto, sans-serif'
+        fontFamily: 'inherit'
       }}
       readOnly={!canEdit || readOnly}
     />
@@ -102,7 +120,11 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
   const { settings: globalSettings } = useAppSettings();
   const { catalog } = useCatalog(); // Tissus globaux
   const { catalogRails } = useCatalogRail(); // NOUVEAU: Rails globaux
-  const { currentUser } = useAuth();
+  const { currentUser, users = [] } = useAuth();
+  const assignableUsers = React.useMemo(
+    () => users.filter(u => u.role === ROLES.ADMIN || u.role === ROLES.ADV || u.role === 'sales'),
+    [users]
+  );
   const { addNotification } = useNotifications();
 
   // Highlight Row Effect
@@ -473,7 +495,7 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
     if (!minute || !onCreate) return;
     const rootId = minute.parentId || minute.id;
     const siblings = (minutes || []).filter(m => (m.parentId || m.id) === rootId && m.id !== rootId);
-    const newVersion = siblings.length + 2;
+    const newVersion = nextFamilyVersion(minutes, rootId);
     const baseName = minute.name
       .replace(/ Recalibrage \d+$/i, '')
       .replace(/ Variante \d+$/i, '')
@@ -587,6 +609,12 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
   React.useEffect(() => {
     setName(minute?.name || "Minute sans nom");
   }, [minuteId, minute?.name]);
+
+  const familyTabs = React.useMemo(() => buildFamilyTabs(minutes, minute), [minutes, minute]);
+  const activeTabShade = React.useMemo(() => {
+    const i = familyTabs.findIndex(t => t.id === minute?.id);
+    return variantShade(Math.max(i, 0), familyTabs.length).bg;
+  }, [familyTabs, minute?.id]);
 
   const handleNotesSave = React.useCallback((newNotes) => {
     updateMinute({ notes: newNotes });
@@ -703,50 +731,74 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
 
   return (
     <div style={S.contentWide}>
-      {/* Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24, marginTop: 8 }}>
-        <div>
-          <button onClick={onBack} style={{ background: 'none', border: 'none', color: '#6B7280', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, padding: 0, fontSize: 13, fontWeight: 500 }}>← Retour</button>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 12 }}>
-            {canEdit ? (
-              <input
+      {/* Header : fiche d'identité (gauche) + notes (droite), actions en dessous */}
+      <div style={{ marginTop: 8, marginBottom: 20 }}>
+        <button onClick={onBack} style={{ background: 'none', border: 'none', color: '#6B7280', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, padding: 0, fontSize: 13, fontWeight: 500, marginBottom: 12 }}>← Retour</button>
+        <HeaderCard
+          left={
+            <>
+              <EditableTitle
                 value={name}
-                onChange={(e) => setName(e.target.value)}
-                onBlur={() => updateMinute({ name })}
-                style={{ fontSize: 32, fontWeight: 800, color: '#111827', border: 'none', background: 'transparent', outline: 'none', width: '100%' }}
+                canEdit={canEdit}
                 placeholder="Nom du projet"
+                onSave={(v) => { setName(v); updateMinute({ name: v }); }}
               />
-            ) : <h1 style={{ fontSize: 32, fontWeight: 800, margin: 0 }}>{name}</h1>}
-            <div style={{ fontSize: 16, color: '#6B7280', fontWeight: 300 }}>{minute?.client || "Client non spécifié"}</div>
-          </div>
-          <div style={{ marginTop: 16, width: '50vw', maxWidth: '800px' }}>
-            <NotesField
-              initialValue={minute?.notes || ""}
-              onSave={handleNotesSave}
-              canEdit={canEdit}
-              readOnly={minute?.status === "VALIDATED"}
-            />
-            {/* DATE DE LIVRAISON ESTIMÉE */}
-            <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 13, fontWeight: 500, color: '#6B7280' }}>Date de livraison estimée :</span>
-              {canEdit ? (
-                <input
-                  type="date"
-                  value={minute?.delivery_date || minute?.deliveryDate || ""}
-                  onChange={(e) => updateMinute({ delivery_date: e.target.value || null })}
-                  style={{ border: '1px solid #E5E7EB', borderRadius: 4, padding: '4px 8px', fontSize: 13, color: '#374151', background: 'white', outline: 'none' }}
+              <div style={{ fontSize: 15, color: '#6B7280', marginTop: 2 }}>{minute?.client || "Client non spécifié"}</div>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 14, flexWrap: 'wrap' }}>
+                <StatusPill
+                  value={localStatus}
+                  options={CHIFFRAGE_STATUS}
+                  onChange={handleStatusChange}
+                  disabled={!canEdit && localStatus !== "VALIDATED"}
                 />
-              ) : (
-                <span style={{ fontSize: 13, fontWeight: 600, color: '#1F2937' }}>
-                  {(minute?.delivery_date || minute?.deliveryDate) ? new Date(minute.delivery_date || minute.deliveryDate).toLocaleDateString("fr-FR") : "Non renseignée"}
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
+                <HeaderButton onClick={() => setShowHistory(true)} title="Historique des modifications et versions">
+                  <History size={15} /> Historique
+                </HeaderButton>
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px 28px', alignItems: 'flex-start', marginTop: 18 }}>
+                <MetaItem label="Chargé d'affaires">
+                  <OwnerPicker
+                    value={minute?.owner || ""}
+                    users={assignableUsers}
+                    canEdit={canEdit}
+                    onChange={(owner) => updateMinute({ owner })}
+                  />
+                </MetaItem>
+                <MetaItem label="Créé le">{formatAnyDateFR(minute?.createdAt)}</MetaItem>
+                <MetaItem label="Livraison estimée">
+                  {canEdit ? (
+                    <input
+                      type="date"
+                      value={minute?.delivery_date || minute?.deliveryDate || ""}
+                      onChange={(e) => updateMinute({ delivery_date: e.target.value || null })}
+                      style={{ border: '1px solid #E5E7EB', borderRadius: 6, padding: '3px 6px', fontSize: 13, color: '#374151', background: 'white', outline: 'none', fontFamily: 'inherit' }}
+                    />
+                  ) : formatAnyDateFR(minute?.delivery_date || minute?.deliveryDate)}
+                </MetaItem>
+              </div>
+            </>
+          }
+          right={
+            <HeaderPanel title="Notes" tone="notes">
+              <NotesField
+                initialValue={minute?.notes || ""}
+                onSave={handleNotesSave}
+                canEdit={canEdit}
+                readOnly={minute?.status === "VALIDATED"}
+              />
+            </HeaderPanel>
+          }
+        />
 
-        {/* Actions */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16, paddingTop: 32 }}>
+        {/* Intercalaires de variantes (gauche) + actions (droite) */}
+        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16, marginTop: 14, borderBottom: `1px solid ${activeTabShade}` }}>
+          <VariantTabs
+            tabs={familyTabs}
+            activeId={minute?.id}
+            onOpen={(id) => onOpenMinute?.(id)}
+            onCreate={canEdit ? handleCreateVariant : undefined}
+          />
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10, flexWrap: 'wrap', marginBottom: 8 }}>
           <input
             type="file"
             ref={fileInputRef}
@@ -754,59 +806,23 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
             accept=".xlsx, .xls"
             onChange={handleGlobalImport}
           />
-          <button onClick={() => fileInputRef.current?.click()} style={{ display: 'flex', gap: 8, padding: '8px 16px', borderRadius: 8, background: '#10B981', color: 'white', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+          <button onClick={() => fileInputRef.current?.click()} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', borderRadius: 8, background: '#10B981', color: 'white', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
             <FileUp size={16} /> Importer Excel
           </button>
 
           {canEdit && (
             <button
-              onClick={handleCreateVariant}
-              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px', borderRadius: 8, background: 'white', color: '#1E2447', border: '1px solid #D1D5DB', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}
-              title="Dupliquer ce chiffrage comme nouvelle variante"
-            >
-              <GitBranch size={16} /> Créer une variante
-            </button>
-          )}
-          {canEdit && (
-            <button
               onClick={() => setShowRecalibration(true)}
-              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px', borderRadius: 8, background: '#1E2447', color: 'white', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, boxShadow: '0 1px 2px rgba(0,0,0,0.1)' }}
+              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', borderRadius: 8, background: '#1E2447', color: 'white', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, boxShadow: '0 1px 2px rgba(0,0,0,0.1)' }}
               title="Recalibrer le devis vers un montant cible"
             >
               <SlidersHorizontal size={16} /> Recalibrer
             </button>
           )}
-          <button onClick={() => setShowHistory(true)} style={{ display: 'flex', gap: 8, padding: '8px 12px', borderRadius: 8, background: 'white', border: '1px solid #E5E7EB', cursor: 'pointer', color: '#374151' }} title="Historique">
-            <History size={16} />
-          </button>
-          <button onClick={() => setShowCatalog(true)} style={{ display: 'flex', gap: 8, padding: '8px 16px', borderRadius: 8, background: 'white', border: '1px solid #E5E7EB', cursor: 'pointer', color: '#374151', fontSize: 13, fontWeight: 500 }}>
+          <button onClick={() => setShowCatalog(true)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', borderRadius: 8, background: 'white', border: '1px solid #E5E7EB', cursor: 'pointer', color: '#374151', fontSize: 13, fontWeight: 600 }}>
             <BookOpen size={16} /> Bibliothèque
           </button>
-
-          <div style={{ position: 'relative' }}>
-            <select
-              value={localStatus}
-              onChange={(e) => handleStatusChange(e.target.value)}
-              disabled={!canEdit && localStatus !== "VALIDATED"}
-              style={{
-                appearance: 'none', padding: "8px 12px 8px 24px", borderRadius: 20, border: "1px solid #E5E7EB", background: 'white',
-                fontWeight: 600, color: '#374151', cursor: canEdit ? 'pointer' : 'not-allowed', outline: 'none', fontSize: 13, minWidth: 120, textAlign: 'center'
-              }}
-            >
-              <option value="DRAFT">À faire</option>
-              <option value="IN_PROGRESS">En cours</option>
-              <option value="PENDING_APPROVAL">À valider</option>
-              <option value="REVISE">À reprendre</option>
-              <option value="VALIDATED">Validée</option>
-              <option value="ORDERED">Commande</option>
-              <option value="ORDER_COMPLETED">Commande terminée</option>
-              <option value="LOST">Perdu</option>
-            </select>
-            <div style={{
-              position: 'absolute', top: '50%', left: 10, transform: 'translateY(-50%)', width: 8, height: 8, borderRadius: '50%', pointerEvents: 'none',
-              background: localStatus === 'ORDERED' ? '#8B5CF6' : localStatus === 'VALIDATED' ? '#10B981' : localStatus === 'ORDER_COMPLETED' ? '#059669' : localStatus === 'LOST' ? '#EF4444' : localStatus === 'PENDING_APPROVAL' ? '#F59E0B' : localStatus === 'IN_PROGRESS' ? '#3B82F6' : '#9CA3AF'
-            }} />
-          </div>
+        </div>
         </div>
       </div>
 
