@@ -3,6 +3,7 @@
 import { HAUTEUR_RENFORT_TETE_OPTIONS, FINITION_OURLET_OPTIONS } from '../../constants/rideauxFields';
 import React from 'react';
 import { PAIRE_OPTIONS_BASE, paireOptionsForRow, PAIRE_DECENTREE } from '../../utils/pairDecentree';
+import { isMetrageV2Row, largeurFinieV2, parseCm } from '../../formulas/metrageVersion';
 
 // Helper to safely extract row from valueGetter args (MUI V5 vs V6 compat)
 const getRow = (a, b) => {
@@ -118,12 +119,9 @@ export const PATTE_CROISEMENT_OPTIONS = ["", ...Object.keys(PATTE_CROISEMENT_CRO
 
 // ML tissu : calcul selon orientation (laize vs hauteur_coupe)
 // aPlat, laize, hCoupe, hCoupeMotif en cm → résultat en m
-// Marge ajoutée à la hauteur finie pour obtenir la hauteur de coupe : ourlet
-// haut + ourlet bas + marge de coupe. Sortie en constante pour que l'optimiseur
-// puisse l'abaisser (levier « rentrer dans la laize »).
-export const MARGE_COUPE_DEFAUT = 50;
-
-export const calcML = (aPlat, laize, hCoupe, hCoupeMotif, pans = 1) => {
+// `demiLe` (v2, tissus unis) : sur une paire, les lés par rideau sont arrondis au DEMI-lé
+// supérieur (un lé coupé en deux sert les deux rideaux) au lieu de l'entier supérieur.
+export const calcML = (aPlat, laize, hCoupe, hCoupeMotif, pans = 1, demiLe = false) => {
     if (!laize || laize <= 0 || !aPlat || aPlat <= 0) return 0;
     if (laize >= hCoupe) {
         // Horizontal (tissu couché) : la longueur suit l'à plat, deux fois pour une paire.
@@ -131,7 +129,7 @@ export const calcML = (aPlat, laize, hCoupe, hCoupeMotif, pans = 1) => {
     }
     // Vertical : les lés ne se partagent pas entre deux pans, on coupe donc
     // ceil(à plat / laize) lés PAR pan.
-    const nbLes = Math.ceil(aPlat / laize);
+    const nbLes = (demiLe && pans === 2) ? Math.ceil((aPlat / laize) * 2) / 2 : Math.ceil(aPlat / laize);
     return ((nbLes * hCoupeMotif) / 100) * pans;
 };
 
@@ -151,22 +149,27 @@ const calcPassML = (app, aPlat, hCoupe, isPaire) => {
 
 // Helper for complex calculations
 const getters = {
-    // `opts.coefficient` permet à l'optimiseur d'essayer un autre coefficient sans
-    // toucher à la ligne. Absent → comportement historique inchangé.
-    largeur_finie: (row, opts = {}) => {
+    largeur_finie: (row) => {
         const L = toNum(row.largeur);
         const croisement = toNum(row.croisement);
         const isOnePanel = isSinglePan(row);
-        // Largeur d'UN pan avant coeff : L entier pour un pan unique, L/2 pour une paire.
-        const largeurPan = isOnePanel ? L : L / 2;
 
         const typeConf = (row.type_confection || "").toLowerCase();
         const isWave = typeConf.includes("wave 60") || typeConf.includes("wave 80");
 
+        // Formules v2 (nouveaux projets), comme au chiffrage : L/pan + 10 cm + 2,5 %
+        // (Wave : arrondie au multiple pair de 6/8 cm), + croisement/2 si paire.
+        // Anciens projets : coefficient 1,06 / 1,10 ci-dessous, inchangé.
+        if (isMetrageV2Row(row)) {
+            return round1(largeurFinieV2({ largeur: L, isOnePanel, croisement, typeConfection: row.type_confection }));
+        }
+        // Largeur d'UN pan avant coeff : L entier pour un pan unique, L/2 pour une paire.
+        const largeurPan = isOnePanel ? L : L / 2;
+
         if (isWave) {
             // Wave : largeur finie d'un pan = ArrondiSupPaire(largeurPan × coeff ÷ div) × div,
             // pour tomber sur un nombre pair de vagues. Le 200 est inclus dans « < 200 » → 1,10.
-            const coeff = opts.coefficient ?? (L <= 200 ? 1.10 : 1.06);
+            const coeff = L <= 200 ? 1.10 : 1.06;
             const div = typeConf.includes("wave 60") ? 6 : 8;
             const wavePan = arrondiSupPaire((largeurPan * coeff) / div) * div;
             // Paire : on ajoute le croisement par-dessus (comme les autres confections).
@@ -174,15 +177,14 @@ const getters = {
         }
 
         // Autres confections : formule historique inchangée (200 → 1,06).
-        const coeff = opts.coefficient ?? (L >= 200 ? 1.06 : 1.10);
+        const coeff = L >= 200 ? 1.06 : 1.10;
         const val = isOnePanel ? (L * coeff) : ((L / 2 * coeff) + croisement);
         return Math.ceil(val);
     },
 
-    // `opts.ampleur` et `opts.coefficient` : voir largeur_finie.
-    a_plat: (row, opts = {}) => {
-        const lFinie = getters.largeur_finie(row, opts);
-        const ampleur = toNum(opts.ampleur ?? row.ampleur) || 1;
+    a_plat: (row) => {
+        const lFinie = getters.largeur_finie(row);
+        const ampleur = toNum(row.ampleur) || 1;
         const vOurlets = toNum(row.v_ourlets_de_cotes || row.val_ourlet_cote);
 
         // Retour : on retient la plus grande des deux valeurs gauche / droite.
@@ -233,11 +235,18 @@ const getters = {
     // déclencher le mode couché était précisément celle qui l'empêchait, et le
     // métrage était compté deux fois (144 lignes sur 640 en production).
     // La décision couché/vertical appartient au SEUL calcul du métrage.
-    // `opts.margeCoupe` remplace les 50 cm (ourlet haut + bas + marge de coupe).
-    // C'est le levier « réduire la hauteur pour rentrer dans la laize ».
-    hauteur_coupe: (row, opts = {}) => {
+    // Historique : hauteur finie max + 50 cm (ourlet haut + bas + marge de coupe) + OB.
+    // Formules v2 (nouveaux projets), comme au chiffrage :
+    //   hauteur finie max (inclut déjà la finition bas) + k × Hauteur tête + 2 × OB,
+    //   k = 2 si non doublé (Doublure vide), 1 si doublé.
+    hauteur_coupe: (row) => {
         const piquageBas = toNum(row.piquage_ourlets_du_bas || row.ourlet_bas);
-        return round1(hauteurFinieMax(row) + (opts.margeCoupe ?? MARGE_COUPE_DEFAUT) + piquageBas);
+        if (isMetrageV2Row(row)) {
+            const hTete = parseCm(row.hauteur_renfort_tete);
+            const isDouble = String(row.doublure || "").trim() !== "";
+            return round1(hauteurFinieMax(row) + (isDouble ? 1 : 2) * hTete + 2 * piquageBas);
+        }
+        return round1(hauteurFinieMax(row) + 50 + piquageBas);
     },
 
     nb_raccords_motifs: (row) => {
@@ -255,23 +264,37 @@ const getters = {
         return rV > 0 ? Math.ceil(hCoupe / rV) + 1 : 0;
     },
 
-    hauteur_coupe_motif: (row, opts = {}) => {
-        const hCoupe = getters.hauteur_coupe(row, opts);
+    // v2 (nouveaux projets), comme au chiffrage : + 1 raccord en plus.
+    hauteur_coupe_motif: (row) => {
+        const hCoupe = getters.hauteur_coupe(row);
         const rV = toNum(row.raccord_v_tissu1);
-        if (rV > 0) return Math.ceil(hCoupe / rV) * rV;
+        if (rV > 0) return Math.ceil(hCoupe / rV) * rV + (isMetrageV2Row(row) ? rV : 0);
         return hCoupe;
+    },
+
+    // Hauteur comparée à la laize T1 pour décider « couché » (laize ≥ hauteur) ou « en lés ».
+    // v2 : la plus grande entre H. Coupe et H. Coupe motif (comme au chiffrage).
+    // Anciens projets : H. Coupe seule.
+    hauteur_laize_t1: (row) => {
+        const hCoupe = getters.hauteur_coupe(row);
+        if (!isMetrageV2Row(row)) return hCoupe;
+        return Math.max(hCoupe, getters.hauteur_coupe_motif(row));
     },
 
     // Doublure : marge de 30 (et non 50) + son PROPRE ourlet du bas (« OB Doublure »),
     // qui n'entrait dans aucun calcul jusqu'ici.
+    // v2 (nouveaux projets) : même H. Coupe que le tissu 1.
     hauteur_coupe_doublure: (row) => {
+        if (isMetrageV2Row(row)) return getters.hauteur_coupe(row);
         const obDoublure = toNum(row.piquage_ourlets_bas_doublure);
         return round1(hauteurFinieMax(row) + 30 + obDoublure);
     },
 
     // H. Coupe T2 : même logique que hauteur_coupe, mais sur la laize du tissu 2.
     // Vide ("") si aucun tissu 2 renseigné (pas de tissu_deco2 ni de laize_tissu2).
+    // v2 : le tissu 2 est en saisie libre (prises de main, bandes) → aucun calcul.
     hauteur_coupe_t2: (row) => {
+        if (isMetrageV2Row(row)) return "";
         if (!String(row.tissu_deco2 || "").trim() && !toNum(row.laize_tissu2)) return "";
         const piquageBas = toNum(row.piquage_ourlets_du_bas || row.ourlet_bas);
         return round1(hauteurFinieMax(row) + 50 + piquageBas);
@@ -292,18 +315,22 @@ const getters = {
     // dans le schéma à ce jour — à rajouter si l'atelier en exprime le besoin.
     hauteur_coupe_inter: (row) => {
         if (!String(row.inter_doublure || "").trim() && !toNum(row.laize_inter)) return "";
+        // v2 (nouveaux projets) : hauteur finie + hauteur tête.
+        if (isMetrageV2Row(row)) return round1(hauteurFinieMax(row) + parseCm(row.hauteur_renfort_tete));
         return round1(hauteurFinieMax(row) + 30);
     },
 
     nombre_les: (row) => {
         // Lés ENTIERS par pan (la fraction restante est portée par « Appiècement »),
         // × pans (× 2 sur une paire), et 1/pan si on rentre dans la laize.
-        return lesTotalForLaize(row, toNum(row.laize_tissu1), getters.hauteur_coupe(row));
+        return lesTotalForLaize(row, toNum(row.laize_tissu1), getters.hauteur_laize_t1(row));
     },
 
     // Nombre de lés — Tissu 2 / Doublure / Interdoublure (même logique que T1, sur leur
     // laize). Vide si le tissu n'est pas renseigné.
     nombre_les_t2: (row) => {
+        // v2 : saisie libre (repris du chiffrage via nb_les_tissu2 à la mise en projet)
+        if (isMetrageV2Row(row)) return row.nombre_les_t2 ?? row.nb_les_tissu2 ?? "";
         if (!String(row.tissu_deco2 || "").trim() && !toNum(row.laize_tissu2)) return "";
         const laize = toNum(row.laize_tissu2);
         if (laize <= 0) return "";
@@ -324,8 +351,9 @@ const getters = {
 
     // Nombre de hauteurs à couper — par tissu (T1 / T2 / Doublure / Interdoublure).
     nb_hauteur_a_couper: (row) =>
-        hauteursForLaize(row, toNum(row.laize_tissu1), getters.reste_les(row), getters.hauteur_coupe(row)),
+        hauteursForLaize(row, toNum(row.laize_tissu1), getters.reste_les(row), getters.hauteur_laize_t1(row)),
     nb_hauteur_a_couper_t2: (row) => {
+        if (isMetrageV2Row(row)) return "";
         if (!String(row.tissu_deco2 || "").trim() && !toNum(row.laize_tissu2)) return "";
         return hauteursForLaize(row, toNum(row.laize_tissu2), getters.reste_les_t2(row), getters.hauteur_coupe_t2(row));
     },
@@ -344,7 +372,7 @@ const getters = {
 
         // Si le rideau rentre dans la laize (hauteur finie max + 50 < laize T1),
         // on coupe dans le sens de la laize : pas de lés à jointer → pas d'appiècement.
-        if (rentreDansLaize(getters.hauteur_coupe(row), laize)) return "";
+        if (rentreDansLaize(getters.hauteur_laize_t1(row), laize)) return "";
 
         const aPlat = getters.a_plat(row);
         const fraction = (aPlat / laize) - Math.floor(aPlat / laize);
@@ -354,6 +382,7 @@ const getters = {
     // Appiècement T2 / Doublure / Interdoublure : même formule que reste_les (T1),
     // mais sur la laize du tissu concerné. Vide ("") si le tissu n'est pas renseigné.
     reste_les_t2: (row) => {
+        if (isMetrageV2Row(row)) return "";
         if (!String(row.tissu_deco2 || "").trim() && !toNum(row.laize_tissu2)) return "";
         const laize = toNum(row.laize_tissu2);
         if (laize <= 0) return "";
@@ -705,6 +734,13 @@ export const RIDEAUX_PROD_SCHEMA = [
         tooltip: "ML Tissu 1 calculé depuis les cotes BPF. Horizontal si laize ≥ H.Coupe : À Plat ÷ 100. Vertical : Nb lés × H.Coupe Motif ÷ 100. Une paire compte deux pans : le résultat est doublé (l'À Plat, lui, décrit un seul pan).",
         valueGetter: (v, r) => {
             const row = getRow(v, r);
+            if (isMetrageV2Row(row)) {
+                // v2 : couché si laize ≥ max(H. Coupe, H. Coupe motif) ; sinon Nb lés × H. Coupe motif.
+                // Demi-lé sur une paire uniquement si le tissu est uni (sans raccord).
+                const uni = !toNum(row.raccord_v_tissu1) && !toNum(row.raccord_h_tissu1);
+                return calcML(getters.a_plat(row), toNum(row.laize_tissu1), getters.hauteur_laize_t1(row),
+                    getters.hauteur_coupe_motif(row), pansOf(row), uni);
+            }
             return calcML(getters.a_plat(row), toNum(row.laize_tissu1), getters.hauteur_coupe(row),
                 (() => { const hC = getters.hauteur_coupe(row); const rV = toNum(row.raccord_v_tissu1); return rV > 0 ? Math.ceil(hC / rV) * rV : hC; })(),
                 pansOf(row));
@@ -719,10 +755,12 @@ export const RIDEAUX_PROD_SCHEMA = [
         label: "ML T2",
         type: "number",
         width: 100,
-        readOnly: true,
-        tooltip: "ML Tissu 2 calculé depuis les cotes BPF (tissu uni, sans raccord motif). Une paire compte deux pans : le résultat est doublé (l'À Plat, lui, décrit un seul pan).",
+        // Nouveaux projets (v2) : saisie libre ; anciens : calculé.
+        readOnly: (row) => !isMetrageV2Row(row),
+        tooltip: "Nouveaux projets : saisie libre (prises de main, bandes…). Anciens projets : calculé depuis les cotes BPF (tissu uni), doublé pour une paire.",
         valueGetter: (v, r) => {
             const row = getRow(v, r);
+            if (isMetrageV2Row(row)) return row.ml_tissu2 ?? "";
             const hC = getters.hauteur_coupe(row);
             return calcML(getters.a_plat(row), toNum(row.laize_tissu2), hC, hC, pansOf(row));
         }
@@ -741,8 +779,8 @@ export const RIDEAUX_PROD_SCHEMA = [
         label: "Nb Lés T2",
         type: "number",
         width: 110,
-        readOnly: true,
-        tooltip: "Nombre de lés (largeurs de tissu 2) à couper. Une paire compte les deux pans (× 2). Vide s'il n'y a pas de tissu 2.",
+        readOnly: (row) => !isMetrageV2Row(row),
+        tooltip: "Nouveaux projets : saisie libre. Anciens projets : nombre de lés (largeurs de tissu 2) à couper, × 2 pour une paire.",
         valueGetter: (v, r) => getters.nombre_les_t2(getRow(v, r))
     },
     {
@@ -767,7 +805,8 @@ export const RIDEAUX_PROD_SCHEMA = [
             const row = getRow(v, r);
             // Délègue au getter (logique auparavant dupliquée ici, sans le milieu).
             const hCD = getters.hauteur_coupe_doublure(row);
-            return calcML(getters.a_plat(row), toNum(row.laize_doublure), hCD, hCD, pansOf(row));
+            // v2 : doublure unie → demi-lé possible sur une paire.
+            return calcML(getters.a_plat(row), toNum(row.laize_doublure), hCD, hCD, pansOf(row), isMetrageV2Row(row));
         }
     },
     {
@@ -808,6 +847,11 @@ export const RIDEAUX_PROD_SCHEMA = [
         tooltip: "ML Interdoublure calculé depuis les cotes BPF. Une paire compte deux pans : le résultat est doublé (l'À Plat, lui, décrit un seul pan).",
         valueGetter: (v, r) => {
             const row = getRow(v, r);
+            // v2 : H. Coupe propre à l'interdoublure (hauteur finie + tête), demi-lé possible.
+            if (isMetrageV2Row(row)) {
+                const hI = toNum(getters.hauteur_coupe_inter(row));
+                return calcML(getters.a_plat(row), toNum(row.laize_inter), hI, hI, pansOf(row), true);
+            }
             const hC = getters.hauteur_coupe(row);
             return calcML(getters.a_plat(row), toNum(row.laize_inter), hC, hC, pansOf(row));
         }

@@ -33,9 +33,8 @@ import { MOBILIER_PROD_SCHEMA } from "../lib/schemas/production/mobilier";
 import { uid } from "../lib/utils/uid"; // Import uid
 import { compressAndUpload } from "../lib/utils/imageUpload";
 
-import { Search, Filter, Layers3, Star, FlaskConical, Image as ImageIcon, Edit2, FileText, BookOpen, Printer, Scissors } from "lucide-react";
+import { Search, Filter, Layers3, Star, FlaskConical, Image as ImageIcon, Edit2, FileText, BookOpen, Printer } from "lucide-react";
 import ProjectMaterialsPanel from "../components/ProjectMaterialsPanel";
-import OptimisationMetragePanel from "../components/OptimisationMetragePanel";
 import { applyCatalogRenames } from "../lib/utils/catalogRename";
 import AddressAutocomplete from "../components/AddressAutocomplete"; // Added FileText
 import { Dialog, DialogTitle, DialogContent, TextField, DialogActions, Button, Collapse, IconButton } from "@mui/material";
@@ -46,6 +45,7 @@ import { useAuth } from "../auth";
 import { can, role } from "../lib/authz";
 import { HeaderCard, HeaderPanel, EditableTitle, StatusPill, MetaItem, OwnerPicker } from "../components/ui/EntityHeader";
 import { formatAnyDateFR } from "../lib/utils/formatDate";
+import { FORMULES_METRAGE_V2 } from "../lib/formulas/metrageVersion";
 
 function SectionPanel({ title, count, expanded, onToggle, children }) {
   return (
@@ -204,16 +204,6 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
   const [deliveryOpen, setDeliveryOpen] = useState(false);
   const [showMaterials, setShowMaterials] = useState(false);
 
-  // OPTIMISATION DES MÉTRAGES — phase de test.
-  // Le bouton n'apparaît QUE si l'URL porte ?optim=1 : les équipes ne peuvent pas
-  // tomber dessus. Le panneau lui-même est en lecture seule, donc même un accès
-  // fortuit ne peut modifier aucun dossier.
-  const [showOptim, setShowOptim] = useState(false);
-  // Lignes cochées dans l'une des grilles rideaux. L'optimiseur travaille sur
-  // cette sélection ; à défaut, sur toutes les lignes rideaux du projet.
-  const [selectionRideaux, setSelectionRideaux] = useState([]);
-  const [optimActif] = useState(() => typeof window !== 'undefined'
-    && new URLSearchParams(window.location.search).get('optim') === '1');
   const [showAllPrise, setShowAllPrise] = useState(false);
   const deliveryRef = useRef(null);
   // Adresse : saisie locale, persistée une seule fois (sélection / sortie du champ)
@@ -713,6 +703,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
   // `count` vient du panneau « Ajouter N lignes » de la grille. Les N lignes sont
   // ajoutées en UNE seule mise à jour : N appels enchaînés produiraient autant
   // d'écritures concurrentes sur les lignes du projet.
+  const isMetrageV2Project = Number(project?.config?.formules_metrage) >= FORMULES_METRAGE_V2;
   const handleAddRow = (produitType = "Rideau", count = 1) => {
     const asked = Math.floor(Number(count));
     const n = Number.isFinite(asked) && asked >= 1 ? Math.min(asked, 500) : 1;
@@ -730,7 +721,9 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
       retour_g: 0,
       retour_d: 0,
       type_confection: "Wave 80",
-      created: Date.now()
+      created: Date.now(),
+      // Projet créé avec les formules v2 → la ligne les suit aussi (lu par les getters).
+      ...(isMetrageV2Project && { formules_metrage: FORMULES_METRAGE_V2 }),
     });
 
     const added = Array.from({ length: n }, () => {
@@ -1035,23 +1028,6 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
 
         {/* Actions */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: isMobile ? 'flex-start' : 'flex-end', gap: 10, flexWrap: 'wrap', marginTop: 12 }}>
-            {optimActif && (
-              <button
-                onClick={() => setShowOptim(true)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 8,
-                  background: '#ECFDF5', border: '1px solid #A7F3D0', borderRadius: 20,
-                  padding: '7px 16px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-                  cursor: 'pointer', fontSize: 13, color: '#047857', fontWeight: 600, outline: 'none',
-                }}
-              >
-                <Scissors size={15} />
-                {selectionRideaux.length > 0
-                  ? `Optimiser ${selectionRideaux.length} ligne${selectionRideaux.length > 1 ? 's' : ''}`
-                  : 'Optimiser les métrages'}
-              </button>
-            )}
-
             {/* Matériauthèque Button */}
             <button
               onClick={() => setShowMaterials(true)}
@@ -1346,7 +1322,6 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                 projectId={project?.id}
                 enableDecentree={true}
                 gridKey="pv_rideaux"
-                  onSelectionChange={setSelectionRideaux}
                 initialColumnOrder={getViewOrder('prise', 'rideaux')}
                   resetViewLabel="vue prise de cotes"
                 onRowClick={(id) => setOpenedRowId(id)}
@@ -1539,7 +1514,6 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                 projectId={project?.id}
                   enableDecentree={true}
                   gridKey="bpf_rideaux"
-                  onSelectionChange={setSelectionRideaux}
                   matiereGroups={RIDEAUX_PROD_MATIERE_GROUPS}
                   matieresInPanel={true}
                   initialColumnOrder={getViewOrder('bpf', 'rideaux')}
@@ -1733,7 +1707,6 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                 projectId={project?.id}
                   enableDecentree={true}
                   gridKey="bpp_rideaux"
-                  onSelectionChange={setSelectionRideaux}
                   initialColumnOrder={getViewOrder('bpp', 'rideaux')}
                   resetViewLabel="vue BPP"
                   onRowClick={(id) => setOpenedRowId(id)}
@@ -1981,13 +1954,6 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
       )}
 
       {/* MATÉRIOTHÈQUE PROJET */}
-      <OptimisationMetragePanel
-        open={showOptim}
-        onClose={() => setShowOptim(false)}
-        rows={selectionRideaux.length > 0 ? selectionRideaux : rowsRideaux}
-        surSelection={selectionRideaux.length > 0}
-      />
-
       <ProjectMaterialsPanel
         open={showMaterials}
         onClose={() => setShowMaterials(false)}
