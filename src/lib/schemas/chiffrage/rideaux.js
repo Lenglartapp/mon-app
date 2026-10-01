@@ -1,6 +1,15 @@
 // src/lib/schemas/chiffrage/rideaux.js
 // Schéma commercial pour la famille "Rideaux" (Rideau / Voilage)
 
+// Valeurs posées sur chaque NOUVELLE ligne rideau du chiffrage (cm).
+// Les lignes existantes ne sont pas modifiées.
+export const RIDEAUX_LINE_DEFAULTS = {
+    hauteur_renfort_tete: 14, // Hauteur tête
+    piquage_ourlets_du_bas: 8, // OB
+    v_ourlets_de_cotes: 3,     // OC
+    finition_champs: 8,        // Fin. Chant
+};
+
 export const RIDEAUX_SCHEMA = [
     // 2. Actions (Détail)
     { key: "detail", label: "Détail", type: "button", width: 130 },
@@ -23,21 +32,29 @@ export const RIDEAUX_SCHEMA = [
     { key: "largeur_mecanisme", label: "L. Méca", type: "number", width: 130 },
     // 10
     { key: "largeur", label: "Largeur", type: "number", width: 130 },
+    // 10 bis — par pan
+    { key: "largeur_finie", label: "L. Finie", type: "number", width: 120, readOnly: true, tooltip: "Un seul pan : L + 10 + 2,5 % × L. Paire : L/2 + 10 + 2,5 % × L/2 + Croisement/2" },
     // 11
     { key: "croisement", label: "Croisement", type: "number", width: 135 },
     // 12
     { key: "retour_gauche", label: "Ret. G", type: "number", width: 120 },
     // 13
     { key: "retour_droit", label: "Ret. D", type: "number", width: 120 },
+    // 13 bis — mêmes clés qu'en production (reprises à la mise en projet)
+    { key: "finition_champs", label: "Fin. Chant", type: "number", width: 125, defaultValue: 8 },
+    { key: "v_ourlets_de_cotes", label: "OC", type: "number", width: 110, defaultValue: 3, tooltip: "Ourlet de côté" },
     // 14
-    { key: "a_plat", label: "À Plat", type: "number", width: 130, readOnly: true, tooltip: "Si L < 200 cm → coeff 1,10 ; si L ≥ 200 cm → coeff 1,06. Paire : ((L/2 × coeff) × ampleur + Ret.G) × 2 + Croisement. Pan unique : (L × coeff) × ampleur + Ret.G + Ret.D" },
+    { key: "a_plat", label: "À Plat", type: "number", width: 130, readOnly: true, tooltip: "Par rideau (même en paire) : L. Finie × Ampleur + max(Ret. G, Ret. D), + 4 × OC si non doublé, + 2 × Fin. Chant + 3 si doublé d'un autre tissu (rien si doublé de lui-même). Anciens chiffrages : calcul historique." },
     // 15
     { key: "hauteur", label: "Hauteur", type: "number", width: 130 },
 
     // 17
     { key: "finition_bas", label: "Fin. Bas", type: "number", width: 130 },
+    // 17 bis — mêmes clés qu'en production (reprises à la mise en projet)
+    { key: "hauteur_renfort_tete", label: "Hauteur tête", type: "number", width: 140, defaultValue: 14 },
+    { key: "piquage_ourlets_du_bas", label: "OB", type: "number", width: 110, defaultValue: 8, tooltip: "Ourlet du bas" },
     // 18
-    { key: "hauteur_coupe", label: "H. Coupe", type: "number", width: 135, readOnly: true, tooltip: "Si laize > H_finie + 50 cm → À Plat. Sinon → H_finie + 50 cm" },
+    { key: "hauteur_coupe", label: "H. Coupe", type: "number", width: 135, readOnly: true, tooltip: "Non doublé : Hauteur + Fin. Bas + 2 × Hauteur tête + 2 × OB. Doublé : Hauteur + Fin. Bas + Hauteur tête + 2 × OB" },
     // 19
     { key: "hauteur_coupe_motif", label: "H. Motif", type: "number", width: 130, readOnly: true, tooltip: "H. Coupe arrondie au raccord motif vertical supérieur : ceil(H_coupe ÷ raccord_V) × raccord_V" },
 
@@ -50,9 +67,9 @@ export const RIDEAUX_SCHEMA = [
     // 23
     { key: "raccord_h_tissu1", label: "Rac. H1", type: "number", width: 125 },
     // 24
-    { key: "nb_les_tissu1", label: "Nb Lés 1", type: "number", width: 131, readOnly: true, tooltip: "Nombre de lés tissu 1 : ceil(À Plat ÷ laize 1)" },
+    { key: "nb_les_tissu1", label: "Nb Lés 1", type: "number", width: 131, readOnly: true, tooltip: "Nombre de lés tissu 1 PAR RIDEAU : arrondi supérieur de À Plat ÷ laize 1. Paire en tissu uni (nouveaux chiffrages) : arrondi au demi-lé (1,2 → 1,5)." },
     // 25
-    { key: "ml_tissu1", label: "ML Tissu 1", type: "number", width: 142, readOnly: true, tooltip: "Métrage linéaire tissu 1 : Nb lés × H. Coupe Motif (÷ 100 pour convertir en mètres)" },
+    { key: "ml_tissu1", label: "ML Tissu 1", type: "number", width: 142, readOnly: true, tooltip: "Métrage linéaire tissu 1 : Nb lés (par rideau) × H. Coupe Motif × 2 si paire (÷ 100 pour convertir en mètres)" },
     // 26
     { key: "pa_tissu1", label: "PA T1", type: "number", width: 115 },
     // 27
@@ -67,7 +84,9 @@ export const RIDEAUX_SCHEMA = [
     // 31
     { key: "raccord_h_tissu2", label: "Rac. H2", type: "number", width: 125 },
     // 32
-    { key: "ml_tissu2", label: "ML Tissu 2", type: "number", width: 142 },
+    // 31 bis — Tissu 2 en saisie libre (nouveaux chiffrages) : prises de main, bandes…
+    { key: "nb_les_tissu2", label: "Nb Lés 2", type: "number", width: 131, tooltip: "Saisie libre (nouveaux chiffrages)" },
+    { key: "ml_tissu2", label: "ML Tissu 2", type: "number", width: 142, tooltip: "Saisie libre (nouveaux chiffrages) ; calculé sur les anciens chiffrages" },
     // 33
     { key: "pa_tissu2", label: "PA T2", type: "number", width: 115 },
     // 34

@@ -83,6 +83,8 @@ export function createDecentreePair(sourceRow = {}, schema = []) {
 
     const makeChild = (role, paireValue) => {
         const child = { id: uid(), pair_id: pairId, pair_role: role, paire_ou_un_seul_pan: paireValue };
+        // Version des formules de métrage : les enfants suivent la ligne d'origine.
+        if (sourceRow.formules_metrage !== undefined) child.formules_metrage = sourceRow.formules_metrage;
         // Localisation + identité du rail recopiées ; le reste reste vide (à saisir).
         [...LOCALISATION_FIELDS, ...CHILD_INHERIT_RAIL].forEach((k) => {
             if (sourceRow[k] !== undefined) child[k] = sourceRow[k];

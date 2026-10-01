@@ -18,7 +18,7 @@ import { CHIFFRAGE_SCHEMA_DEP } from "../lib/schemas/deplacement";
 import { EXTRA_DEPENSES_SCHEMA } from "../lib/schemas/extraDepenses";
 import { RIDEAUX_DEFAULT_VISIBILITY, STORES_DEFAULT_VISIBILITY, COUSSINS_DEFAULT_VISIBILITY, CACHE_SOMMIER_DEFAULT_VISIBILITY, PLAID_DEFAULT_VISIBILITY, TENTURE_DEFAULT_VISIBILITY, MOBILIER_DEFAULT_VISIBILITY } from "../lib/constants/gridDefaults";
 import { RIDEAUX_MATIERE_GROUPS, STORES_BATEAUX_MATIERE_GROUPS, COUSSINS_MATIERE_GROUPS, CACHE_SOMMIER_MATIERE_GROUPS, PLAID_MATIERE_GROUPS, RIDEAUX_MECA_GROUPS, RIDEAUX_CONF_GROUPS } from "../lib/constants/matiereGroups";
-import { RIDEAUX_SCHEMA } from "../lib/schemas/chiffrage/rideaux";
+import { RIDEAUX_SCHEMA, RIDEAUX_LINE_DEFAULTS } from "../lib/schemas/chiffrage/rideaux";
 import { STORES_CLASSIQUES_SCHEMA } from "../lib/schemas/chiffrage/stores_classiques";
 import { STORES_BATEAUX_SCHEMA } from "../lib/schemas/chiffrage/stores_bateaux";
 import { COUSSINS_SCHEMA } from "../lib/schemas/chiffrage/coussins";
@@ -447,6 +447,8 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
       quantite: 1,
       largeur: 0,
       hauteur: 0,
+      // Rideaux : valeurs atelier par défaut (Hauteur tête, OB, OC, Fin. Chant)
+      ...(key === "rideaux" && RIDEAUX_LINE_DEFAULTS),
     });
 
     // Calculate new state

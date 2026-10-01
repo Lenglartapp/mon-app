@@ -23,6 +23,7 @@ import { applySchemaDefaults } from "../lib/utils/schemaDefaults.js";
 import { useAuth } from "../auth";
 
 import { can, role } from "../lib/authz";
+import { FORMULES_METRAGE_V2 } from "../lib/formulas/metrageVersion";
 // 👇 IMPORT IMPORTANT
 import { uid } from "../lib/utils/uid";
 import { extractMaterialsFromLines } from "../lib/data/demo";
@@ -672,7 +673,9 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
               // Défauts du schéma (étiquettes à « Non ») sur les lignes reprises du devis :
               // c'est le chemin de création le plus courant, il doit se comporter comme
               // l'ajout manuel d'une ligne. Ne remplit que ce qui est absent.
-              project.rows = computeFormulas((rows || []).map(r => applySchemaDefaults(r, SCHEMA_64)), SCHEMA_64);
+              // Nouveau projet → formules de métrage v2 (projet + chaque ligne, lue par les getters).
+              project.config = { ...(project.config || {}), formules_metrage: FORMULES_METRAGE_V2 };
+              project.rows = computeFormulas((rows || []).map(r => applySchemaDefaults({ ...r, formules_metrage: FORMULES_METRAGE_V2 }, SCHEMA_64)), SCHEMA_64);
               project.materials = extractMaterialsFromLines(rows || []);
 
               if (onCreate) {
@@ -708,12 +711,13 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
                 id: uid(),
                 name: projectName || "Nouveau Projet",
                 budget: { prepa: 0, conf: 0, pose: 0 },
-                config: config,
+                // Nouveau projet → formules de métrage v2 (projet + chaque ligne, lue par les getters).
+                config: { ...(config || {}), formules_metrage: FORMULES_METRAGE_V2 },
                 deadline: config?.deliveryDate || null,
                 location: config?.location || null,
                 intervention_type: config?.intervention_type || null,
                 expedition_type: config?.expedition_type || null,
-                rows: createBlankProject(config, SCHEMA_64),
+                rows: createBlankProject(config, SCHEMA_64).map(r => ({ ...r, formules_metrage: FORMULES_METRAGE_V2 })),
                 created_at: new Date().toISOString()
               };
 
