@@ -125,7 +125,7 @@ export const CHIFFRAGE_SCHEMA = [
   // 57
   { key: "type_mecanisme", label: "Type Méca", type: "select", options: ["Rail", "Tringle", "Rail Motorisé", "Sans Méca"], width: 120 },
   // 58
-  { key: "modele_mecanisme", label: "Modèle Méca", type: "catalog_item", category: "Rail", width: 140, readOnly: (row) => row.type_mecanisme === 'Sans Méca' },
+  { key: "modele_mecanisme", label: "Modèle Méca", type: "catalog_item", category: "Rail", width: 140, tooltip: "Renseignable même en « Sans Méca » (rail fourni par un tiers) : sert d'information, sans prix." },
   // 59
   { key: "pa_mecanisme", label: "PA Méca", type: "number", width: 90, readOnly: (row) => row.type_mecanisme === 'Sans Méca' },
   // 60
