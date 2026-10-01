@@ -1462,9 +1462,9 @@ function MinuteGrid({
         const cellFx = { ...(oldRow.__cellFormulas || {}) };
         let hasOverride = false;
 
-        // 0. Sans Méca — vider modèle, PA et PV mécanisme
+        // 0. Sans Méca — PA et PV mécanisme à 0. Le modèle est CONSERVÉ : il reste une
+        //    information utile (quel rail, même fourni par un tiers).
         if (changedKey === 'type_mecanisme' && newVal === 'Sans Méca') {
-            updatedRow.modele_mecanisme = '';
             updatedRow.pa_mecanisme = 0;
             updatedRow.pv_mecanisme = 0;
         }

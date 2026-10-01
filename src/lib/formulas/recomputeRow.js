@@ -350,7 +350,7 @@ export function recomputeRow(row, schema, ctx = {}) {
     // Mecanisme
     next.pv_mecanisme_auto = false; // repère de verrouillage du PV (recalculé ci-dessous)
     if (next.type_mecanisme === 'Sans Méca') {
-      next.modele_mecanisme = '';
+      // Modèle conservé (information : quel rail, même non fourni) ; pas de prix.
       next.pa_mecanisme = 0;
       next.pv_mecanisme = 0;
     } else {

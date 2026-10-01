@@ -148,7 +148,7 @@ export const RIDEAUX_SCHEMA = [
     // 57
     { key: "type_mecanisme", label: "Type Méca", type: "select", options: ["Rail", "Tringle", "Rail Motorisé", "Sans Méca"], width: 148 },
     // 58
-    { key: "modele_mecanisme", label: "Modèle Méca", type: "catalog_item", category: "Rail", width: 165, readOnly: (row) => row.type_mecanisme === 'Sans Méca' },
+    { key: "modele_mecanisme", label: "Modèle Méca", type: "catalog_item", category: "Rail", width: 165, tooltip: "Renseignable même en « Sans Méca » (rail fourni par un tiers) : sert d'information, sans prix." },
     // 59
     { key: "pa_mecanisme", label: "PA Méca", type: "number", width: 135, readOnly: (row) => row.type_mecanisme === 'Sans Méca' },
     // 60
