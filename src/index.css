@@ -100,7 +100,7 @@ button{ background:none; border:0; padding:0; margin:0; font:inherit; color:inhe
 }
 
 /* ---- TEST UI (local) : fond blanc cassé (entre blanc et beige) au lieu du blanc, sur un seul chiffrage (ChiffrageScreen) ---- */
-body.df-beige-test { --df-beige: #FAF8F4; --df-beige-2: #F2F2F0; background: var(--df-beige) !important; }
+body.df-beige-test { --df-beige: #FAF8F4; --df-beige-2: #ECEBE8; --df-line: #E0DED9; --df-line-soft: #E8E6E2; background: var(--df-beige) !important; }
 body.df-beige-test [style*="background: white"],
 body.df-beige-test [style*="background: rgb(255, 255, 255)"],
 body.df-beige-test [style*="background-color: white"],
@@ -141,3 +141,17 @@ body.df-beige-test textarea {
 }
 body.df-beige-test .ag-theme-alpine .ag-row-hover { background-color: var(--df-beige-2) !important; }
 body.df-beige-test .ag-theme-alpine .ag-row-selected { background-color: #dbeafe !important; }
+/* Traits plus marqués (cadre, séparateurs de lignes/colonnes, traits de la page) */
+body.df-beige-test .ag-theme-alpine {
+  --ag-border-color: var(--df-line);
+  --ag-row-border-color: var(--df-line-soft);
+  --ag-secondary-border-color: var(--df-line-soft);
+}
+body.df-beige-test .ag-theme-alpine .ag-root-wrapper { border-color: var(--df-line) !important; }
+body.df-beige-test .ag-theme-alpine .ag-header,
+body.df-beige-test .ag-theme-alpine .ag-column-drop-horizontal { border-bottom-color: var(--df-line) !important; }
+body.df-beige-test .ag-theme-alpine .ag-header-cell { border-right-color: var(--df-line-soft) !important; }
+body.df-beige-test .ag-theme-alpine .ag-cell { border-right-color: var(--df-line-soft) !important; }
+body.df-beige-test .ag-theme-alpine .ag-row { border-bottom-color: var(--df-line-soft) !important; }
+body.df-beige-test [style*="border-bottom: 1px solid rgb(237, 237, 235)"] { border-bottom-color: var(--df-line) !important; }
+body.df-beige-test [style*="border: 1px solid rgb(229, 231, 235)"] { border-color: var(--df-line) !important; }
