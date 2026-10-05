@@ -5,13 +5,13 @@
 * { box-sizing: border-box; }
 html, body, #root { height: 100%; margin: 0; }
 body {
-  background: #f4ded4 !important; /* fond beige partout */
+  background: #ffffff !important; /* fond blanc partout */
   font-family: system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
 }
 
 /* ---- Variables (couleurs + print) ---- */
 :root{
-  --page-bg: #f4ded4;   /* beige fond */
+  --page-bg: #ffffff;   /* fond blanc */
   --tile-bg: #0a2c3d;   /* bleu foncé tuiles */
   --text: #111827;
   --muted: #4b5563;
