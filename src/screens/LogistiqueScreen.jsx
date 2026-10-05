@@ -137,7 +137,7 @@ function CreateShipmentModal({ onClose, onCreate, projects }) {
                             value={projectSearch}
                             onChange={e => setProjectSearch(e.target.value)}
                         />
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 180, overflowY: 'auto', border: '1px solid #E5E7EB', borderRadius: 8, padding: '8px 4px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 180, overflowY: 'auto', border: '1px solid #E0DED9', borderRadius: 8, padding: '8px 4px' }}>
                             {projects.filter(p => !projectSearch.trim() || p.name?.toLowerCase().includes(projectSearch.toLowerCase())).map(p => {
                                 const checked = selectedProjectIds.includes(String(p.id));
                                 return (
@@ -150,7 +150,7 @@ function CreateShipmentModal({ onClose, onCreate, projects }) {
                                             background: checked ? '#EEF2FF' : 'transparent',
                                             userSelect: 'none',
                                         }}
-                                        onMouseEnter={e => { if (!checked) e.currentTarget.style.background = '#F9FAFB'; }}
+                                        onMouseEnter={e => { if (!checked) e.currentTarget.style.background = '#F4F4F4'; }}
                                         onMouseLeave={e => { if (!checked) e.currentTarget.style.background = 'transparent'; }}
                                     >
                                         <div style={{
@@ -262,7 +262,7 @@ function OuvragePicker({ projects, existingRowIds, onClose, onAdd }) {
                             {filteredProjects.map(p => (
                                 <button key={p.id} onClick={() => { setSelectedProject(p); setStep(2); setSearch(''); }} style={{
                                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                                    padding: '10px 14px', borderRadius: 10, border: '1px solid #E5E7EB',
+                                    padding: '10px 14px', borderRadius: 10, border: '1px solid #E0DED9',
                                     background: '#FAFAFA', cursor: 'pointer', textAlign: 'left',
                                 }}>
                                     <div>
@@ -292,8 +292,8 @@ function OuvragePicker({ projects, existingRowIds, onClose, onAdd }) {
                                 return (
                                     <div key={r.id} style={{
                                         borderRadius: 8,
-                                        border: `1px solid ${checked ? '#6366F1' : '#E5E7EB'}`,
-                                        background: alreadyAdded ? '#F9FAFB' : checked ? '#EEF2FF' : '#fff',
+                                        border: `1px solid ${checked ? '#6366F1' : '#E0DED9'}`,
+                                        background: alreadyAdded ? '#F4F4F4' : checked ? '#EEF2FF' : '#fff',
                                         opacity: alreadyAdded ? 0.6 : 1,
                                     }}>
                                         {/* Ligne principale — div cliquable */}
@@ -500,9 +500,9 @@ function RouleauPicker({ onClose, onAdd, projectIds, projects, stocks }) {
                                 ? stockItem.pieces
                                 : [{ id: 'single', qty: stockItem.qty, location: stockItem.location, name: null }];
                             return (
-                                <div key={stockItem.id} style={{ border: '1px solid #E5E7EB', borderRadius: 10, overflow: 'hidden' }}>
+                                <div key={stockItem.id} style={{ border: '1px solid #E0DED9', borderRadius: 10, overflow: 'hidden' }}>
                                     {/* En-tête rouleau */}
-                                    <div style={{ padding: '9px 14px', background: '#F9FAFB', borderBottom: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    <div style={{ padding: '9px 14px', background: '#F4F4F4', borderBottom: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', gap: 8 }}>
                                         <span style={{ fontWeight: 700, fontSize: 13, flex: 1 }}>{stockItem.product}</span>
                                         {stockItem.project && <span style={{ fontSize: 11, color: '#6B7280' }}>{stockItem.project}</span>}
                                         <span style={{ fontSize: 11, color: '#9CA3AF' }}>{stockItem.qty} {stockItem.unit} total</span>
@@ -596,7 +596,7 @@ function RouleauxSection({ shipmentId, rouleauItems, projectIds, projects, stock
                 <div style={{ padding: '24px', color: '#9CA3AF', fontSize: 13, textAlign: 'center' }}>Aucun rouleau ajouté.</div>
             ) : (
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                    <thead style={{ background: '#F9FAFB' }}>
+                    <thead style={{ background: '#F4F4F4' }}>
                         <tr>
                             <TH>Rouleau / Pièce</TH>
                             <TH>Quantité</TH>
@@ -732,9 +732,9 @@ function ColisSection({ shipmentId, shipmentItems, colisItems, isExpediee, onCre
                                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                                                     {unassignedItems.map(item => (
                                                         <div key={item.id} onClick={() => onToggleItem(c.id, item.id)}
-                                                            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 8px', borderRadius: 6, background: '#F9FAFB', cursor: 'pointer', border: '1px dashed #E5E7EB' }}
+                                                            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 8px', borderRadius: 6, background: '#F4F4F4', cursor: 'pointer', border: '1px dashed #E5E7EB' }}
                                                             onMouseEnter={e => e.currentTarget.style.background = '#EEF2FF'}
-                                                            onMouseLeave={e => e.currentTarget.style.background = '#F9FAFB'}>
+                                                            onMouseLeave={e => e.currentTarget.style.background = '#F4F4F4'}>
                                                             <Plus size={11} color="#9CA3AF" style={{ flexShrink: 0 }} />
                                                             <span style={{ fontSize: 12, color: '#6B7280' }}>{labelForItem(item)}</span>
                                                         </div>
@@ -861,7 +861,7 @@ function ShipmentDetail({ shipment, shipmentItems, colisItems, projects, onBack,
                                     {pill(shipment.statut, STATUT_STYLE[shipment.statut] || STATUT_STYLE['Brouillon'])}
                                 </button>
                                 {editingStatut && (
-                                    <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, background: '#fff', border: '1px solid #E5E7EB', borderRadius: 10, boxShadow: '0 4px 16px rgba(0,0,0,0.1)', zIndex: 10, minWidth: 160 }}>
+                                    <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, background: '#fff', border: '1px solid #E0DED9', borderRadius: 10, boxShadow: '0 4px 16px rgba(0,0,0,0.1)', zIndex: 10, minWidth: 160 }}>
                                         {STATUTS.filter(s => s !== 'Expédiée').map(s => (
                                             <button key={s} onClick={() => { onUpdateShipment(shipment.id, { statut: s }); setEditingStatut(false); }} style={{ display: 'block', width: '100%', padding: '8px 16px', border: 'none', background: 'none', cursor: 'pointer', textAlign: 'left', fontSize: 13 }}>
                                                 {pill(s, STATUT_STYLE[s])}
@@ -908,7 +908,7 @@ function ShipmentDetail({ shipment, shipmentItems, colisItems, projects, onBack,
                         </div>
                     ) : (
                         <textarea
-                            style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid #E5E7EB', fontSize: 13, outline: 'none', resize: 'vertical', minHeight: 72, fontFamily: 'inherit', boxSizing: 'border-box' }}
+                            style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid #E0DED9', fontSize: 13, outline: 'none', resize: 'vertical', minHeight: 72, fontFamily: 'inherit', boxSizing: 'border-box' }}
                             placeholder="Code portail, instructions particulières, remarques..."
                             value={notesValue}
                             onChange={e => setNotesValue(e.target.value)}
@@ -946,7 +946,7 @@ function ShipmentDetail({ shipment, shipmentItems, colisItems, projects, onBack,
                         <div style={{ padding: '24px', color: '#9CA3AF', fontSize: 13, textAlign: 'center' }}>Aucun ouvrage ajouté.</div>
                     ) : (
                         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                            <thead style={{ background: '#F9FAFB' }}>
+                            <thead style={{ background: '#F4F4F4' }}>
                                 <tr>
                                     <TH>Pièce</TH>
                                     <TH>Produit</TH>
@@ -1002,7 +1002,7 @@ function ShipmentDetail({ shipment, shipmentItems, colisItems, projects, onBack,
                         <div style={{ padding: '24px', color: '#9CA3AF', fontSize: 13, textAlign: 'center' }}>Aucun item libre ajouté.</div>
                     ) : (
                         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                            <thead style={{ background: '#F9FAFB' }}>
+                            <thead style={{ background: '#F4F4F4' }}>
                                 <tr>
                                     <TH>Description</TH>
                                     <TH>Quantité</TH>
@@ -1130,7 +1130,7 @@ function ShipmentList({ shipments, items, projects, onSelect, onDelete, onUpdate
                 ) : (
                     <div style={{ overflowX: 'auto' }}>
                         <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                            <thead style={{ background: '#F9FAFB', borderBottom: '1px solid #E5E7EB' }}>
+                            <thead style={{ background: '#F4F4F4', borderBottom: '1px solid #E5E7EB' }}>
                                 <tr>
                                     <TH>Référence</TH>
                                     <TH>Projet(s)</TH>
@@ -1155,7 +1155,7 @@ function ShipmentList({ shipments, items, projects, onSelect, onDelete, onUpdate
                                             key={s.id}
                                             onClick={() => onSelect(s)}
                                             style={{ borderBottom: '1px solid #F3F4F6', cursor: 'pointer', transition: 'background 0.1s' }}
-                                            onMouseEnter={e => e.currentTarget.style.background = '#F9FAFB'}
+                                            onMouseEnter={e => e.currentTarget.style.background = '#F4F4F4'}
                                             onMouseLeave={e => e.currentTarget.style.background = 'white'}
                                         >
                                             <td style={{ padding: '12px 16px' }}>
@@ -1181,7 +1181,7 @@ function ShipmentList({ shipments, items, projects, onSelect, onDelete, onUpdate
                                                     disabled={s.statut === 'Expédiée' || !canEdit}
                                                     style={{
                                                         appearance: 'none', padding: '5px 12px', borderRadius: 20,
-                                                        border: '1px solid #E5E7EB', background: 'white',
+                                                        border: '1px solid #E0DED9', background: 'white',
                                                         color: STATUT_STYLE[s.statut]?.color || '#6B7280',
                                                         fontWeight: 600, fontSize: 12, cursor: s.statut === 'Expédiée' ? 'default' : 'pointer',
                                                         outline: 'none', minWidth: 120, textAlign: 'center',
@@ -1408,7 +1408,7 @@ export default function LogistiqueScreen({ projects, onUpdateProject, onBack }) 
 // ── Styles partagés ───────────────────────────────────────────────────────────
 const inputStyle = {
     width: '100%', padding: '8px 12px', borderRadius: 8,
-    border: '1px solid #E5E7EB', fontSize: 13, outline: 'none',
+    border: '1px solid #E0DED9', fontSize: 13, outline: 'none',
     boxSizing: 'border-box',
 };
 const labelStyle = { display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 5 };
@@ -1419,7 +1419,7 @@ const btnPrimary = {
 };
 const btnSecondary = {
     padding: '7px 14px', borderRadius: 8,
-    border: '1px solid #E5E7EB', background: '#fff',
+    border: '1px solid #E0DED9', background: '#fff',
     color: '#374151', fontSize: 13, fontWeight: 500, cursor: 'pointer',
     display: 'flex', alignItems: 'center', gap: 6,
 };

@@ -213,7 +213,7 @@ const ResourcePanel = ({
 
         return (
             <div key={user.id} style={{
-                background: 'white', border: '1px solid #E5E7EB', borderRadius: 8,
+                background: 'white', border: '1px solid #E0DED9', borderRadius: 8,
                 padding: '11px 13px', marginBottom: 8,
             }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -257,7 +257,7 @@ const ResourcePanel = ({
                         <button
                             onClick={() => { setSelectedUserForAbsence(user.id); setSelectedGroupForAbsence(null); }}
                             title="Déclarer une absence"
-                            style={{ padding: 5, borderRadius: 5, border: '1px solid #E5E7EB', background: 'white', cursor: 'pointer', color: '#EF4444' }}
+                            style={{ padding: 5, borderRadius: 5, border: '1px solid #E0DED9', background: 'white', cursor: 'pointer', color: '#EF4444' }}
                         >
                             <CalendarIcon size={13} />
                         </button>
@@ -267,7 +267,7 @@ const ResourcePanel = ({
                             title="Contrat (type & dates)"
                             style={{
                                 padding: 5, borderRadius: 5,
-                                border: `1px solid ${hasContractEnd ? '#FECACA' : '#E5E7EB'}`,
+                                border: `1px solid ${hasContractEnd ? '#FECACA' : '#E0DED9'}`,
                                 background: hasContractEnd ? '#FEF2F2' : 'white',
                                 cursor: 'pointer', color: hasContractEnd ? '#EF4444' : '#6B7280',
                             }}
@@ -289,7 +289,7 @@ const ResourcePanel = ({
 
                 {/* Paramètres contrat : type + dates */}
                 {isContractSettings && (
-                    <div style={{ marginTop: 10, padding: 10, background: '#F9FAFB', borderRadius: 6, border: '1px solid #E5E7EB' }}>
+                    <div style={{ marginTop: 10, padding: 10, background: '#F4F4F4', borderRadius: 6, border: '1px solid #E0DED9' }}>
                         <div style={{ fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 8 }}>Contrat</div>
                         <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
                             {CONTRACT_TYPES.map(ct => (
@@ -515,7 +515,7 @@ const ResourcePanel = ({
                         ))}
 
                         {showClosureForm && (
-                            <div style={{ background: 'white', border: '1px solid #E5E7EB', borderRadius: 8, padding: 14, marginTop: 4 }}>
+                            <div style={{ background: 'white', border: '1px solid #E0DED9', borderRadius: 8, padding: 14, marginTop: 4 }}>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
                                     <div>
                                         <label style={{ display: 'block', fontSize: 11, fontWeight: 600, marginBottom: 3 }}>Libellé</label>

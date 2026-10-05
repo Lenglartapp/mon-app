@@ -218,7 +218,7 @@ function RequestCard({ request: r, showProject, onConfirm, onCancel }) {
 
             <Stack spacing={1}>
                 {r.lines.map(l => (
-                    <Box key={l.id} sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 1.25, borderRadius: 2, bgcolor: l.status === 'pending' ? '#F9FAFB' : 'white', border: '1px solid #E5E7EB', flexWrap: 'wrap', opacity: l.status === 'cancelled' ? 0.55 : 1 }}>
+                    <Box key={l.id} sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 1.25, borderRadius: 2, bgcolor: l.status === 'pending' ? '#F4F4F4' : 'white', border: '1px solid #E5E7EB', flexWrap: 'wrap', opacity: l.status === 'cancelled' ? 0.55 : 1 }}>
                         <Box sx={{ flex: '1 1 260px', minWidth: 0 }}>
                             <Typography sx={{ fontWeight: 600, fontSize: 14 }}>{itemTitle(l)}</Typography>
                             <Typography variant="caption" sx={{ color: '#6B7280' }}>

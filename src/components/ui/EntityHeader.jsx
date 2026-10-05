@@ -24,7 +24,7 @@ export function HeaderCard({ left, right, stacked = false, bare = false }) {
   return (
     <div style={{
       ...(bare ? {} : {
-        background: 'white', border: '1px solid #E5E7EB', borderRadius: 12,
+        background: 'white', border: '1px solid #E0DED9', borderRadius: 12,
         boxShadow: '0 1px 3px rgba(0,0,0,0.04)', padding: stacked ? 16 : '22px 26px',
       }),
       display: 'grid', gridTemplateColumns: (stacked || !right) ? 'minmax(0,1fr)' : 'minmax(0,1.3fr) minmax(0,1fr)', gap: stacked ? 16 : 28,
@@ -39,7 +39,7 @@ const PANEL_TONES = {
   notes: { bg: '#FFFBEB', border: '#F3E3A3', accent: '#F59E0B', title: '#92400E' },
   logistics: { bg: '#F5F7FB', border: '#DCE3EF', accent: '#1E2447', title: '#1E2447' },
   // Bloc discret façon Notion (même rendu que le bloc Notes du chiffrage)
-  soft: { bg: '#F7F7F5', soft: true },
+  soft: { bg: '#F4F4F4', soft: true },
 };
 
 export function HeaderPanel({ title, tone = 'notes', children }) {
@@ -131,7 +131,7 @@ export function StatusPill({ value, options, onChange, disabled }) {
         onChange={(e) => onChange(e.target.value)}
         disabled={disabled}
         style={{
-          appearance: 'none', padding: '7px 14px 7px 26px', borderRadius: 20, border: '1px solid #E5E7EB', background: 'white',
+          appearance: 'none', padding: '7px 14px 7px 26px', borderRadius: 20, border: '1px solid #E0DED9', background: 'white',
           fontWeight: 600, color: '#374151', cursor: disabled ? 'not-allowed' : 'pointer', outline: 'none', fontSize: 13,
           minWidth: 120, textAlign: 'center', fontFamily: 'inherit',
         }}
@@ -150,7 +150,7 @@ export function HeaderButton({ onClick, title, children }) {
     <button
       onClick={onClick}
       title={title}
-      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 12px', borderRadius: 8, background: 'white', border: '1px solid #E5E7EB', cursor: 'pointer', color: '#374151', fontSize: 13, fontWeight: 500, fontFamily: 'inherit' }}
+      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 12px', borderRadius: 8, background: 'white', border: '1px solid #E0DED9', cursor: 'pointer', color: '#374151', fontSize: 13, fontWeight: 500, fontFamily: 'inherit' }}
     >
       {children}
     </button>
@@ -202,7 +202,7 @@ export function OwnerPicker({ value, users = [], onChange, canEdit }) {
       </button>
       {open && (
         <div style={{
-          position: 'absolute', top: 'calc(100% + 4px)', left: 0, zIndex: 1000, background: 'white', border: '1px solid #E5E7EB',
+          position: 'absolute', top: 'calc(100% + 4px)', left: 0, zIndex: 1000, background: 'white', border: '1px solid #E0DED9',
           borderRadius: 8, boxShadow: '0 10px 25px -5px rgba(0,0,0,0.12)', padding: 6, minWidth: 220, maxHeight: 320, overflowY: 'auto',
         }}>
           {users.length === 0 && <div style={{ padding: '7px 8px', fontSize: 12, color: '#9CA3AF' }}>Aucun utilisateur éligible</div>}
@@ -211,8 +211,8 @@ export function OwnerPicker({ value, users = [], onChange, canEdit }) {
               key={u.id || u.name}
               onClick={() => { setOpen(false); if (u.name !== value) onChange(u.name); }}
               onMouseEnter={(e) => { e.currentTarget.style.background = '#F3F4F6'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = u.name === value ? '#F9FAFB' : 'transparent'; }}
-              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 8px', borderRadius: 6, fontSize: 13, cursor: 'pointer', background: u.name === value ? '#F9FAFB' : 'transparent', fontWeight: u.name === value ? 600 : 400 }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = u.name === value ? '#F4F4F4' : 'transparent'; }}
+              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 8px', borderRadius: 6, fontSize: 13, cursor: 'pointer', background: u.name === value ? '#F4F4F4' : 'transparent', fontWeight: u.name === value ? 600 : 400 }}
             >
               {avatar(u.name)}
               {u.name}

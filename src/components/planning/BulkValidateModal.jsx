@@ -141,7 +141,7 @@ export default function BulkValidateModal({ isOpen, onClose, membersByService = 
                             const members = membersByService[svc.key] || [];
                             const activeCount = members.filter(u => !excluded.has(u.id)).length;
                             return (
-                                <div key={svc.key} style={{ border: `1px solid ${isOn ? col.border : '#E5E7EB'}`, borderRadius: 10, overflow: 'hidden' }}>
+                                <div key={svc.key} style={{ border: `1px solid ${isOn ? col.border : '#E0DED9'}`, borderRadius: 10, overflow: 'hidden' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', padding: '10px 12px', background: isOn ? col.bg : 'white' }}>
                                         <div onClick={() => toggleService(svc.key)} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', flex: 1, minWidth: 0 }}>
                                             <div style={chk(isOn)}>{isOn && <CheckCircle2 size={12} color="white" />}</div>
@@ -185,7 +185,7 @@ export default function BulkValidateModal({ isOpen, onClose, membersByService = 
                             <button
                                 key={m}
                                 onClick={() => { setConfirmOpen(false); setMode(m); }}
-                                style={{ flex: 1, padding: '7px 0', borderRadius: 8, border: `1px solid ${mode === m ? '#2563EB' : '#E5E7EB'}`, background: mode === m ? '#EFF6FF' : 'white', color: mode === m ? '#2563EB' : '#6B7280', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}
+                                style={{ flex: 1, padding: '7px 0', borderRadius: 8, border: `1px solid ${mode === m ? '#2563EB' : '#E0DED9'}`, background: mode === m ? '#EFF6FF' : 'white', color: mode === m ? '#2563EB' : '#6B7280', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}
                             >
                                 {lbl}
                             </button>
@@ -195,23 +195,23 @@ export default function BulkValidateModal({ isOpen, onClose, membersByService = 
                         <select
                             value={weekStartISO}
                             onChange={(e) => { setConfirmOpen(false); setWeekStart(parseISO(e.target.value)); }}
-                            style={{ width: '100%', padding: '10px 12px', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 14, marginBottom: 20, background: 'white', cursor: 'pointer' }}
+                            style={{ width: '100%', padding: '10px 12px', border: '1px solid #E0DED9', borderRadius: 8, fontSize: 14, marginBottom: 20, background: 'white', cursor: 'pointer' }}
                         >
                             {weekOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                         </select>
                     ) : (
                         <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
                             <label style={{ flex: 1, fontSize: 12, color: '#6B7280' }}>Du
-                                <input type="date" value={rangeStart} onChange={(e) => { setConfirmOpen(false); setRangeStart(e.target.value); }} style={{ width: '100%', marginTop: 4, padding: '9px 10px', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 14 }} />
+                                <input type="date" value={rangeStart} onChange={(e) => { setConfirmOpen(false); setRangeStart(e.target.value); }} style={{ width: '100%', marginTop: 4, padding: '9px 10px', border: '1px solid #E0DED9', borderRadius: 8, fontSize: 14 }} />
                             </label>
                             <label style={{ flex: 1, fontSize: 12, color: '#6B7280' }}>Au
-                                <input type="date" value={rangeEnd} min={rangeStart} onChange={(e) => { setConfirmOpen(false); setRangeEnd(e.target.value); }} style={{ width: '100%', marginTop: 4, padding: '9px 10px', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 14 }} />
+                                <input type="date" value={rangeEnd} min={rangeStart} onChange={(e) => { setConfirmOpen(false); setRangeEnd(e.target.value); }} style={{ width: '100%', marginTop: 4, padding: '9px 10px', border: '1px solid #E0DED9', borderRadius: 8, fontSize: 14 }} />
                             </label>
                         </div>
                     )}
 
                     {/* Aperçu + détail dépliable */}
-                    <div style={{ borderRadius: 10, background: matching.length ? '#ECFDF5' : '#F9FAFB', border: `1px solid ${matching.length ? '#A7F3D0' : '#E5E7EB'}`, overflow: 'hidden' }}>
+                    <div style={{ borderRadius: 10, background: matching.length ? '#ECFDF5' : '#F4F4F4', border: `1px solid ${matching.length ? '#A7F3D0' : '#E0DED9'}`, overflow: 'hidden' }}>
                         <div
                             onClick={() => matching.length && setShowDetail(v => !v)}
                             style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '12px 14px', cursor: matching.length ? 'pointer' : 'default' }}

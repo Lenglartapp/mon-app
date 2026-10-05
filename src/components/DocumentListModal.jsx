@@ -110,8 +110,8 @@ function CategorySelect({ value, onChange, error }) {
                         sx={{
                             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                             px: 2, py: 0.9, cursor: 'pointer',
-                            bgcolor: value === t.value ? '#F9FAFB' : 'transparent',
-                            '&:hover': { bgcolor: '#F9FAFB' },
+                            bgcolor: value === t.value ? '#F4F4F4' : 'transparent',
+                            '&:hover': { bgcolor: '#F4F4F4' },
                         }}
                     >
                         <span style={{
@@ -333,10 +333,10 @@ export default function DocumentListModal({ open, onClose, documents = [], onUpd
                                 sx={{
                                     borderColor: activeFilter ? '#1F2937' : '#E5E7EB',
                                     color: activeFilter ? '#1F2937' : '#6B7280',
-                                    bgcolor: activeFilter ? '#F9FAFB' : 'white',
+                                    bgcolor: activeFilter ? '#F4F4F4' : 'white',
                                     borderRadius: 2, fontWeight: 600, fontSize: 12,
                                     textTransform: 'none', px: 1.5, whiteSpace: 'nowrap',
-                                    '&:hover': { borderColor: '#1F2937', bgcolor: '#F9FAFB' },
+                                    '&:hover': { borderColor: '#1F2937', bgcolor: '#F4F4F4' },
                                 }}
                             >
                                 {activeFilter ? getType(activeFilter).label : 'Filtrer'}
@@ -460,8 +460,8 @@ export default function DocumentListModal({ open, onClose, documents = [], onUpd
                         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                         px: 2, py: 1, cursor: 'pointer', fontSize: 13, fontWeight: 600,
                         color: activeFilter === null ? '#111827' : '#6B7280',
-                        bgcolor: activeFilter === null ? '#F9FAFB' : 'transparent',
-                        '&:hover': { bgcolor: '#F9FAFB' },
+                        bgcolor: activeFilter === null ? '#F4F4F4' : 'transparent',
+                        '&:hover': { bgcolor: '#F4F4F4' },
                     }}>
                         Tous les types
                         {activeFilter === null && <Check size={14} color="#1F2937" />}

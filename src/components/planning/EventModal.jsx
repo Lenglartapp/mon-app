@@ -281,12 +281,12 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
                                 {isAbsence ? "Type d'absence" : 'Projet / Client'}
                             </label>
                             {isAbsence ? (
-                                <div style={{ display: 'flex', alignItems: 'center', border: '1px solid #E5E7EB', borderRadius: 8, padding: '10px 12px', background: '#F9FAFB', color: '#374151', fontSize: 14 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', border: '1px solid #E0DED9', borderRadius: 8, padding: '10px 12px', background: '#F4F4F4', color: '#374151', fontSize: 14 }}>
                                     <Briefcase size={18} color="#9CA3AF" style={{ marginRight: 10 }} />
                                     {eventToEdit?.title || eventToEdit?.meta?.type || 'Absence'}
                                 </div>
                             ) : (
-                            <div style={{ position: 'relative', display: 'flex', alignItems: 'center', border: '1px solid #E5E7EB', borderRadius: 8, padding: '10px 12px', background: 'white', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+                            <div style={{ position: 'relative', display: 'flex', alignItems: 'center', border: '1px solid #E0DED9', borderRadius: 8, padding: '10px 12px', background: 'white', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
                                 <Briefcase size={18} color="#9CA3AF" style={{ marginRight: 10 }} />
                                 <input
                                     autoFocus
@@ -300,7 +300,7 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
                             </div>
                             )}
                             {showProjectList && projectSearch.length > 0 && !selectedProject && (
-                                <div style={{ position: 'absolute', width: '100%', maxHeight: 200, overflowY: 'auto', background: 'white', border: '1px solid #E5E7EB', borderRadius: 8, marginTop: 4, zIndex: 20, boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}>
+                                <div style={{ position: 'absolute', width: '100%', maxHeight: 200, overflowY: 'auto', background: 'white', border: '1px solid #E0DED9', borderRadius: 8, marginTop: 4, zIndex: 20, boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}>
                                     {filteredProjects.length > 0 ? filteredProjects.map(p => (
                                         <div
                                             key={p.id}
@@ -340,10 +340,10 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
                                         onFocus={() => setShowChapterList(true)}
                                         onBlur={() => setTimeout(() => setShowChapterList(false), 150)}
                                         placeholder="Nom du chapitre"
-                                        style={{ width: '100%', border: '1px solid #E5E7EB', borderRadius: 8, padding: '10px 12px', fontSize: 14, color: '#111827', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }}
+                                        style={{ width: '100%', border: '1px solid #E0DED9', borderRadius: 8, padding: '10px 12px', fontSize: 14, color: '#111827', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }}
                                     />
                                     {showChapterList && chapterSuggestions.length > 0 && (
-                                        <div style={{ position: 'absolute', width: '100%', maxHeight: 180, overflowY: 'auto', background: 'white', border: '1px solid #E5E7EB', borderRadius: 8, marginTop: 4, zIndex: 20, boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}>
+                                        <div style={{ position: 'absolute', width: '100%', maxHeight: 180, overflowY: 'auto', background: 'white', border: '1px solid #E0DED9', borderRadius: 8, marginTop: 4, zIndex: 20, boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}>
                                             {chapterSuggestions.map(c => (
                                                 <div
                                                     key={c.name}
@@ -360,7 +360,7 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
 
                             {/* SYNTHÈSE BUDGET POSE */}
                             {poseStats && (
-                                <div style={{ backgroundColor: '#F3F4F6', borderRadius: 8, padding: 12, marginTop: 12, fontSize: 13, color: '#4B5563', border: '1px solid #E5E7EB' }}>
+                                <div style={{ backgroundColor: '#F3F4F6', borderRadius: 8, padding: 12, marginTop: 12, fontSize: 13, color: '#4B5563', border: '1px solid #E0DED9' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
                                         <span>Budget Vendu (Pose) :</span>
                                         <span style={{ fontWeight: 600, color: '#111827' }}>{fmtH(poseStats.sold)}h</span>
@@ -382,7 +382,7 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
 
                             {/* DÉCOUCHÉ (pose uniquement) : l'équipe dort sur place */}
                             {selectedGroup === 'pose' && (
-                                <label style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 12, padding: '10px 12px', borderRadius: 8, border: `1px solid ${decouche ? '#6366F1' : '#E5E7EB'}`, background: decouche ? '#EEF2FF' : '#fff', cursor: readOnly ? 'default' : 'pointer' }}>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 12, padding: '10px 12px', borderRadius: 8, border: `1px solid ${decouche ? '#6366F1' : '#E0DED9'}`, background: decouche ? '#EEF2FF' : '#fff', cursor: readOnly ? 'default' : 'pointer' }}>
                                     <input
                                         type="checkbox"
                                         checked={decouche}
@@ -406,7 +406,7 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
                                 /* MODE DURÉE — conf & prepa */
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                                     {/* Date début */}
-                                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', border: '1px solid #E5E7EB', borderRadius: 8, padding: '10px 12px', background: '#F9FAFB' }}>
+                                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', border: '1px solid #E0DED9', borderRadius: 8, padding: '10px 12px', background: '#F4F4F4' }}>
                                         <CalendarIcon size={16} color="#6B7280" style={{ marginRight: 8, flexShrink: 0 }} />
                                         <input
                                             type="date" value={startDate} onChange={e => {
@@ -420,7 +420,7 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
                                     <ArrowRight size={18} color="#9CA3AF" />
 
                                     {/* Date fin */}
-                                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', border: '1px solid #E5E7EB', borderRadius: 8, padding: '10px 12px', background: '#F9FAFB' }}>
+                                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', border: '1px solid #E0DED9', borderRadius: 8, padding: '10px 12px', background: '#F4F4F4' }}>
                                         <CalendarIcon size={16} color="#6B7280" style={{ marginRight: 8, flexShrink: 0 }} />
                                         <input
                                             type="date" value={endDate} min={startDate} onChange={e => setEndDate(e.target.value)}
@@ -429,7 +429,7 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
                                     </div>
 
                                     {/* Durée par jour */}
-                                    <div style={{ display: 'flex', alignItems: 'center', border: '1px solid #E5E7EB', borderRadius: 8, padding: '10px 12px', background: '#F9FAFB', gap: 8 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', border: '1px solid #E0DED9', borderRadius: 8, padding: '10px 12px', background: '#F4F4F4', gap: 8 }}>
                                         <Clock size={16} color="#6B7280" style={{ flexShrink: 0 }} />
                                         <input
                                             type="number"
@@ -445,7 +445,7 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
                                 /* MODE CRÉNEAU — pose */
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                                     {/* Début */}
-                                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', border: '1px solid #E5E7EB', borderRadius: 8, padding: '10px 12px', background: '#F9FAFB', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.02)' }}>
+                                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', border: '1px solid #E0DED9', borderRadius: 8, padding: '10px 12px', background: '#F4F4F4', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.02)' }}>
                                         <CalendarIcon size={16} color="#6B7280" style={{ marginRight: 8, flexShrink: 0 }} />
                                         <input
                                             type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
@@ -462,7 +462,7 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
                                     <ArrowRight size={18} color="#9CA3AF" />
 
                                     {/* Fin */}
-                                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', border: '1px solid #E5E7EB', borderRadius: 8, padding: '10px 12px', background: '#F9FAFB', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.02)' }}>
+                                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', border: '1px solid #E0DED9', borderRadius: 8, padding: '10px 12px', background: '#F4F4F4', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.02)' }}>
                                         <CalendarIcon size={16} color="#6B7280" style={{ marginRight: 8, flexShrink: 0 }} />
                                         <input
                                             type="date" value={endDate} onChange={e => setEndDate(e.target.value)}
@@ -484,7 +484,7 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
                             <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 8, color: '#374151' }}>Ressources affectées</label>
                             <div
                                 onClick={() => setShowResourceList(!showResourceList)}
-                                style={{ display: 'flex', alignItems: 'center', border: '1px solid #E5E7EB', borderRadius: 8, padding: '12px 14px', cursor: 'pointer', justifyContent: 'space-between', background: 'white', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}
+                                style={{ display: 'flex', alignItems: 'center', border: '1px solid #E0DED9', borderRadius: 8, padding: '12px 14px', cursor: 'pointer', justifyContent: 'space-between', background: 'white', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}
                             >
                                 <div style={{ display: 'flex', alignItems: 'center', overflow: 'hidden' }}>
                                     <User size={18} color="#9CA3AF" style={{ marginRight: 10, flexShrink: 0 }} />
@@ -497,7 +497,7 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
                             </div>
 
                             {showResourceList && (
-                                <div style={{ maxHeight: 200, overflowY: 'auto', background: 'white', border: '1px solid #E5E7EB', borderRadius: 8, marginTop: 8, padding: 4, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}>
+                                <div style={{ maxHeight: 200, overflowY: 'auto', background: 'white', border: '1px solid #E0DED9', borderRadius: 8, marginTop: 8, padding: 4, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}>
                                     {['prepa', 'conf', 'pose'].map(grpKey => (
                                         <div key={grpKey}>
                                             <div style={{ padding: '8px 12px', background: '#F3F4F6', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#6B7280', borderRadius: 4, margin: 4 }}>
@@ -528,7 +528,7 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
                                 value={description}
                                 onChange={e => setDescription(e.target.value)}
                                 placeholder="Détails de l'intervention..."
-                                style={{ width: '100%', minHeight: 80, border: '1px solid #E5E7EB', borderRadius: 8, padding: '10px 12px', fontSize: 14, fontFamily: 'inherit', resize: 'vertical' }}
+                                style={{ width: '100%', minHeight: 80, border: '1px solid #E0DED9', borderRadius: 8, padding: '10px 12px', fontSize: 14, fontFamily: 'inherit', resize: 'vertical' }}
                             />
                         </div>
 
@@ -537,7 +537,7 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
                 </fieldset>
 
                 {/* Footer */}
-                <div style={{ padding: '20px 24px', background: '#F9FAFB', borderTop: '1px solid #F3F4F6', display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+                <div style={{ padding: '20px 24px', background: '#F4F4F4', borderTop: '1px solid #F3F4F6', display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
                     {/* Une absence est toujours « validée » par nature : le garde-fou
                         « seul l'admin supprime un créneau validé » (pensé pour le travail
                         confirmé) ne doit pas empêcher l'ordo de retirer un congé/RTT/maladie. */}

@@ -118,9 +118,9 @@ export default function ProjectComparisonTab({ needs, courseLines, loading, erro
                 Commandé = toutes les lignes de courses sauf « Problème ». Juste = écart dans ±{Math.round(JUSTE_MARGIN * 100)} % du besoin.
             </div>
 
-            <div style={{ border: '1px solid #E5E7EB', borderRadius: 12, overflow: 'hidden', background: 'white' }}>
+            <div style={{ border: '1px solid #E0DED9', borderRadius: 12, overflow: 'hidden', background: 'white' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
-                    <thead style={{ background: '#F9FAFB' }}>
+                    <thead style={{ background: '#F4F4F4' }}>
                         <tr>
                             <th style={{ ...th, width: 32 }} />
                             <th style={th}>Tissu</th>
@@ -185,7 +185,7 @@ export default function ProjectComparisonTab({ needs, courseLines, loading, erro
             {ignored.length > 0 && (
                 <div style={{ marginTop: 20 }}>
                     <div style={{ fontWeight: 700, marginBottom: 6, color: '#6B7280' }}>Lignes non comptées ({ignored.length})</div>
-                    <div style={{ border: '1px solid #E5E7EB', borderRadius: 12, overflow: 'hidden', background: 'white' }}>
+                    <div style={{ border: '1px solid #E0DED9', borderRadius: 12, overflow: 'hidden', background: 'white' }}>
                         <CourseLinesTable lines={ignored} matches={matches} needs={needs} onSetMatch={onSetMatch} savingId={savingId} />
                     </div>
                 </div>

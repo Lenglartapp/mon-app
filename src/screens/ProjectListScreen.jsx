@@ -232,7 +232,7 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
                 title="Importer des projets depuis Excel"
                 style={{
                   background: 'white', color: '#374151', padding: '8px 14px', borderRadius: 8,
-                  border: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', gap: 8,
+                  border: '1px solid #E0DED9', display: 'flex', alignItems: 'center', gap: 8,
                   cursor: 'pointer', fontWeight: 600, fontSize: 13, whiteSpace: 'nowrap', marginBottom: isMobile ? 0 : 4,
                 }}
               >
@@ -298,7 +298,7 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
                 borderRadius: 2,
                 height: 38,
                 width: 38,
-                '&:hover': { bgcolor: showArchived ? '#BFDBFE' : '#F9FAFB' }
+                '&:hover': { bgcolor: showArchived ? '#BFDBFE' : '#F4F4F4' }
               }}
             >
               <Archive size={20} />
@@ -323,7 +323,7 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
           return (
             <div key={p.id} style={{
               background: 'white', borderRadius: 12, padding: 16,
-              boxShadow: '0 1px 3px rgba(0,0,0,0.05)', border: '1px solid #E5E7EB', display: 'flex', flexDirection: 'column', gap: 12
+              boxShadow: '0 1px 3px rgba(0,0,0,0.05)', border: '1px solid #E0DED9', display: 'flex', flexDirection: 'column', gap: 12
             }}>
               {/* HEADER: Name + Status */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -424,7 +424,7 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
           @media (max-width: 1180px) { .col-created, .col-hours { display: none; } .col-hours-merged { display: table-cell; } }`}</style>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-            <thead style={{ background: '#F9FAFB', borderBottom: '1px solid #E5E7EB' }}>
+            <thead style={{ background: '#F4F4F4', borderBottom: '1px solid #E5E7EB' }}>
               <tr>
                 <th style={{ padding: '12px 10px', fontSize: 13, fontWeight: 600, color: '#374151' }}>Projet</th>
                 <th style={{ padding: '12px 10px', fontSize: 13, fontWeight: 600, color: '#374151' }}>Responsable</th>
@@ -467,7 +467,7 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
                 ))}
                 {/* Écran étroit : les 3 budgets d'heures regroupés en une colonne */}
                 <th className="col-hours-merged" title="Heures budgétées : préparation / confection / pose" style={{ padding: '12px 8px', fontSize: 13, fontWeight: 600, color: '#374151', textAlign: 'right', whiteSpace: 'nowrap' }}>H. P / C / P</th>
-                <th style={{ padding: '12px 10px', width: 64, position: 'sticky', right: 0, background: '#F9FAFB' }}></th>
+                <th style={{ padding: '12px 10px', width: 64, position: 'sticky', right: 0, background: '#F4F4F4' }}></th>
               </tr>
             </thead>
             <tbody>
@@ -480,7 +480,7 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
                 const internal = isInternalProject(p);
 
                 return (
-                  <tr key={p?.id || idx} className="project-row" style={{ borderBottom: '1px solid #F3F4F6', transition: 'background 0.1s', background: 'white' }} onClick={() => onOpenProject?.(p)} onMouseEnter={(e) => e.currentTarget.style.background = '#F9FAFB'} onMouseLeave={(e) => e.currentTarget.style.background = 'white'}>
+                  <tr key={p?.id || idx} className="project-row" style={{ borderBottom: '1px solid #F3F4F6', transition: 'background 0.1s', background: 'white' }} onClick={() => onOpenProject?.(p)} onMouseEnter={(e) => e.currentTarget.style.background = '#F4F4F4'} onMouseLeave={(e) => e.currentTarget.style.background = 'white'}>
                     {/* DOSSIER */}
                     <td style={{ padding: '12px 10px' }}>
                       <div style={{ fontWeight: 600, color: '#111827', fontSize: 14, minWidth: 150 }}>{p?.name || "Sans nom"}</div>
@@ -530,7 +530,7 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
                             appearance: 'none',
                             padding: "5px 10px 5px 22px",
                             borderRadius: 20,
-                            border: "1px solid #E5E7EB",
+                            border: "1px solid #E0DED9",
                             background: 'white',
                             color: "#374151",
                             fontWeight: 600,

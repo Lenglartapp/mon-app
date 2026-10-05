@@ -198,7 +198,7 @@ function PrintLabel({ row, projectName, index, total }) {
             {show("cote_manoeuvre")             && <PCell label="Côté man." value={v(row, "cote_manoeuvre")} />}
             {show("methode_manoeuvre")          && <PCell label="Méthode" value={v(row, "methode_manoeuvre")} />}
           </PRow>
-          <PRow cols={6} bg="#F9FAFB">
+          <PRow cols={6} bg="#F4F4F4">
             {show("nombre_anneaux_largeur")     && <PCell label="Nb anneaux" value={v(row, "nombre_anneaux_largeur")} />}
             {show("deportation_premier_anneau") && <PCell label="Déport 1er" value={v(row, "deportation_premier_anneau")} />}
             {show("valeur_velcro")              && <PCell label="Velcro" value={v(row, "valeur_velcro")} />}

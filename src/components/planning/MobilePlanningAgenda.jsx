@@ -79,12 +79,12 @@ export default function MobilePlanningAgenda({
 
     const btn = {
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        border: '1px solid #E5E7EB', background: 'white', borderRadius: 10,
+        border: '1px solid #E0DED9', background: 'white', borderRadius: 10,
         width: 40, height: 40, cursor: 'pointer', flexShrink: 0,
     };
 
     return (
-        <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: '#F9FAFB' }}>
+        <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: '#F4F4F4' }}>
             {/* En-tête fixe */}
             <div style={{ flexShrink: 0, background: 'white', borderBottom: '1px solid #E5E7EB', padding: '10px 12px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
@@ -200,7 +200,7 @@ export default function MobilePlanningAgenda({
                                         return (
                                             <div key={evt.id} style={{
                                                 background: 'white', borderRadius: 12,
-                                                border: `1px solid ${isMine ? POSE.border : '#E5E7EB'}`,
+                                                border: `1px solid ${isMine ? POSE.border : '#E0DED9'}`,
                                                 borderLeft: `5px solid ${POSE.border}`,
                                                 boxShadow: isMine ? `0 0 0 2px ${POSE.bg}` : '0 1px 2px rgba(0,0,0,0.05)',
                                                 padding: '10px 12px',

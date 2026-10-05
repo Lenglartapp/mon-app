@@ -199,7 +199,7 @@ export default function CreateProjectDialog({
                     />
 
                     {selectedMinute && (
-                        <Box sx={{ mt: 2, p: 2, bgcolor: '#f9fafb', borderRadius: 2, border: '1px solid #e5e7eb' }}>
+                        <Box sx={{ mt: 2, p: 2, bgcolor: '#F4F4F4', borderRadius: 2, border: '1px solid #E5E7EB' }}>
                             <Typography variant="caption" fontWeight={700} color="text.secondary" display="block">RÉSUMÉ</Typography>
                             <Typography variant="body2"><strong>Client :</strong> {selectedMinute.client || "—"}</Typography>
                             <Typography variant="body2"><strong>Lignes :</strong> {loadingMinute ? "chargement…" : minuteLoadFailed ? "non chargées" : `${((selectedFull || selectedMinute).lines || []).length} ouvrages`}</Typography>

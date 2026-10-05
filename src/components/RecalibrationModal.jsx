@@ -451,7 +451,7 @@ export default function RecalibrationModal({ minute, minutes, onClose, onCreateV
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
               <button
                 onClick={onClose}
-                style={{ padding: '9px 18px', borderRadius: 8, border: '1px solid #E5E7EB', background: 'white', cursor: 'pointer', fontSize: 14, fontWeight: 500 }}
+                style={{ padding: '9px 18px', borderRadius: 8, border: '1px solid #E0DED9', background: 'white', cursor: 'pointer', fontSize: 14, fontWeight: 500 }}
               >
                 Annuler
               </button>

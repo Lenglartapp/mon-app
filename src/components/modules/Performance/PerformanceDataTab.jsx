@@ -140,11 +140,11 @@ function RaisonsCell({ raisons, onSave }) {
           : displayed.map(r => <span key={r} style={{ background: '#F3F4F6', color: '#374151', borderRadius: 4, padding: '2px 6px', fontSize: 11 }}>{r}</span>)}
       </div>
       {open && (
-        <div ref={ref} style={{ position: 'fixed', top: pos.top, left: pos.left, zIndex: 9999, background: 'white', border: '1px solid #E5E7EB', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', padding: 12, minWidth: 260 }}>
+        <div ref={ref} style={{ position: 'fixed', top: pos.top, left: pos.left, zIndex: 9999, background: 'white', border: '1px solid #E0DED9', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', padding: 12, minWidth: 260 }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', marginBottom: 8 }}>Raisons</div>
           {RAISONS_CATALOGUE.map(r => (
             <label key={r} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 4px', cursor: 'pointer', fontSize: 13, color: '#374151', borderRadius: 4 }}
-              onMouseEnter={e => e.currentTarget.style.background = '#F9FAFB'}
+              onMouseEnter={e => e.currentTarget.style.background = '#F4F4F4'}
               onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
             >
               <input type="checkbox" checked={draft.includes(r)} onChange={() => toggle(r)} style={{ accentColor: '#1E2447' }} />
@@ -153,7 +153,7 @@ function RaisonsCell({ raisons, onSave }) {
           ))}
           {draft.includes('Autre') && (
             <input autoFocus value={autre} onChange={e => setAutre(e.target.value)} placeholder="Précisez..."
-              style={{ marginTop: 6, width: '100%', boxSizing: 'border-box', border: '1px solid #E5E7EB', borderRadius: 6, padding: '6px 8px', fontSize: 13, outline: 'none' }} />
+              style={{ marginTop: 6, width: '100%', boxSizing: 'border-box', border: '1px solid #E0DED9', borderRadius: 6, padding: '6px 8px', fontSize: 13, outline: 'none' }} />
           )}
           <button onClick={commit} style={{ marginTop: 10, width: '100%', background: '#1E2447', color: 'white', border: 'none', borderRadius: 6, padding: '7px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Valider</button>
         </div>
@@ -237,7 +237,7 @@ function PeriodeDropdown({ filters, onChange }) {
   return (
     <div ref={ref} style={{ position: 'relative' }}>
       <button onClick={() => setOpen(v => !v)} style={{
-        background: 'white', border: '1px solid #E5E7EB', borderRadius: 8,
+        background: 'white', border: '1px solid #E0DED9', borderRadius: 8,
         padding: '6px 12px', fontSize: 13, fontWeight: 500, cursor: 'pointer',
         display: 'flex', alignItems: 'center', gap: 8, color: '#374151',
         boxShadow: open ? '0 0 0 2px #E0E7FF' : 'none',
@@ -245,7 +245,7 @@ function PeriodeDropdown({ filters, onChange }) {
         {currentLabel} <ChevronDown size={14} color="#9CA3AF" />
       </button>
       {open && (
-        <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, zIndex: 90, background: 'white', border: '1px solid #E5E7EB', borderRadius: 8, boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', width: 220, padding: 4 }}>
+        <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, zIndex: 90, background: 'white', border: '1px solid #E0DED9', borderRadius: 8, boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', width: 220, padding: 4 }}>
           <div style={{ paddingBottom: 4, borderBottom: '1px solid #F3F4F6' }}>
             {PERIODE_PRESETS.map(o => (
               <div key={o.key} onClick={() => { onChange('periode', o.key); setOpen(false); }} style={{
@@ -260,9 +260,9 @@ function PeriodeDropdown({ filters, onChange }) {
             <div style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 8 }}>Période personnalisée</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 8 }}>
               <input type="date" value={tempFrom} onChange={e => setTempFrom(e.target.value)}
-                style={{ width: '100%', boxSizing: 'border-box', border: '1px solid #E5E7EB', borderRadius: 6, padding: '5px 8px', fontSize: 12, outline: 'none' }} />
+                style={{ width: '100%', boxSizing: 'border-box', border: '1px solid #E0DED9', borderRadius: 6, padding: '5px 8px', fontSize: 12, outline: 'none' }} />
               <input type="date" value={tempTo} onChange={e => setTempTo(e.target.value)}
-                style={{ width: '100%', boxSizing: 'border-box', border: '1px solid #E5E7EB', borderRadius: 6, padding: '5px 8px', fontSize: 12, outline: 'none' }} />
+                style={{ width: '100%', boxSizing: 'border-box', border: '1px solid #E0DED9', borderRadius: 6, padding: '5px 8px', fontSize: 12, outline: 'none' }} />
             </div>
             <button onClick={applyCustom} style={{ width: '100%', background: '#1E2447', color: 'white', border: 'none', borderRadius: 6, padding: '6px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Appliquer</button>
           </div>
@@ -274,11 +274,11 @@ function PeriodeDropdown({ filters, onChange }) {
 
 // ── Panneau de filtres (toujours visible) ─────────────────────────────────────
 function FilterPanel({ filters, onChange, managers, allRaisons, onReset }) {
-  const selectStyle = { border: '1px solid #E5E7EB', borderRadius: 8, padding: '6px 10px', fontSize: 13, outline: 'none', background: 'white', color: '#374151' };
+  const selectStyle = { border: '1px solid #E0DED9', borderRadius: 8, padding: '6px 10px', fontSize: 13, outline: 'none', background: 'white', color: '#374151' };
   const labelStyle  = { fontSize: 11, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 4, display: 'block' };
 
   return (
-    <div style={{ background: 'white', border: '1px solid #E5E7EB', borderRadius: 10, padding: '14px 18px', marginBottom: 16, display: 'flex', flexWrap: 'wrap', gap: 20, alignItems: 'flex-end' }}>
+    <div style={{ background: 'white', border: '1px solid #E0DED9', borderRadius: 10, padding: '14px 18px', marginBottom: 16, display: 'flex', flexWrap: 'wrap', gap: 20, alignItems: 'flex-end' }}>
 
       {/* Période */}
       <div>
@@ -326,7 +326,7 @@ function FilterPanel({ filters, onChange, managers, allRaisons, onReset }) {
       </div>
 
       {/* Reset */}
-      <button onClick={onReset} style={{ display: 'flex', alignItems: 'center', gap: 4, border: '1px solid #E5E7EB', background: 'white', borderRadius: 8, padding: '6px 12px', fontSize: 12, cursor: 'pointer', color: '#9CA3AF' }}>
+      <button onClick={onReset} style={{ display: 'flex', alignItems: 'center', gap: 4, border: '1px solid #E0DED9', background: 'white', borderRadius: 8, padding: '6px 12px', fontSize: 12, cursor: 'pointer', color: '#9CA3AF' }}>
         <X size={12} /> Réinitialiser
       </button>
     </div>
@@ -461,15 +461,15 @@ export default function PerformanceDataTab({ projects, events, entries, onUpsert
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, gap: 12 }}>
         <span style={{ fontSize: 12, color: '#9CA3AF' }}>{filtered.length} projet{filtered.length > 1 ? 's' : ''} archivé{filtered.length > 1 ? 's' : ''}</span>
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher..."
-          style={{ border: '1px solid #E5E7EB', borderRadius: 8, padding: '7px 12px', fontSize: 13, outline: 'none', width: 240, background: 'white' }}
+          style={{ border: '1px solid #E0DED9', borderRadius: 8, padding: '7px 12px', fontSize: 13, outline: 'none', width: 240, background: 'white' }}
         />
       </div>
 
       {/* Tableau */}
-      <div style={{ background: 'white', borderRadius: 12, border: '1px solid #E5E7EB', overflow: 'hidden' }}>
+      <div style={{ background: 'white', borderRadius: 12, border: '1px solid #E0DED9', overflow: 'hidden' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
-            <tr style={{ background: '#F9FAFB', borderBottom: '2px solid #E5E7EB' }}>
+            <tr style={{ background: '#F4F4F4', borderBottom: '2px solid #E5E7EB' }}>
               <th style={{ ...TH, width: 32 }} />
               <th style={TH}>{thBtn('name', 'Projet')}</th>
               <th style={TH}>{thBtn('manager', 'Responsable')}</th>
@@ -572,7 +572,7 @@ export default function PerformanceDataTab({ projects, events, entries, onUpsert
                             <button
                               onClick={() => setHistoModal({ project, service: svc, entry })}
                               title="Voir l'historique de saisie"
-                              style={{ display: 'inline-flex', alignItems: 'center', gap: 4, border: '1px solid #E5E7EB', background: 'white', borderRadius: 6, padding: '4px 8px', fontSize: 12, cursor: 'pointer', color: '#6B7280' }}
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: 4, border: '1px solid #E0DED9', background: 'white', borderRadius: 6, padding: '4px 8px', fontSize: 12, cursor: 'pointer', color: '#6B7280' }}
                             >
                               <Clock size={13} />
                             </button>

@@ -150,7 +150,7 @@ function CustomizePanel({ hiddenFields, onChange, onClose }) {
             onClick={() => setDraft([])}
             style={{
               fontSize: 11, color: "#6B7280", background: "none",
-              border: "1px solid #E5E7EB", borderRadius: 5,
+              border: "1px solid #E0DED9", borderRadius: 5,
               padding: "4px 10px", cursor: "pointer",
             }}
           >
@@ -332,7 +332,7 @@ export default function EtiquetteStoresBateauxCard({ row, projectName, index, to
             </Row>
           )}
           {(show("picage_bas") || show("finition_chant_et_retour")) && (
-            <Row cols={2} bg="#F9FAFB">
+            <Row cols={2} bg="#F4F4F4">
               {show("picage_bas")               && <Cell label="Picage bas" value={v(row, "picage_bas")} />}
               {show("finition_chant_et_retour")  && <Cell label="Fin. chant & retour" value={v(row, "finition_chant_et_retour")} />}
             </Row>
@@ -358,7 +358,7 @@ export default function EtiquetteStoresBateauxCard({ row, projectName, index, to
             </Row>
           )}
           {(show("methode_manoeuvre") || show("nombre_anneaux_largeur") || show("deportation_premier_anneau") || show("valeur_velcro") || show("type_pose")) && (
-            <Row cols={5} bg="#F9FAFB">
+            <Row cols={5} bg="#F4F4F4">
               {show("methode_manoeuvre")          && <Cell label="Méthode manœuvre" value={v(row, "methode_manoeuvre")} />}
               {show("nombre_anneaux_largeur")      && <Cell label="Nb anneaux" value={v(row, "nombre_anneaux_largeur")} />}
               {show("deportation_premier_anneau")  && <Cell label="Déport 1er ann." value={v(row, "deportation_premier_anneau")} />}
@@ -416,7 +416,7 @@ export default function EtiquetteStoresBateauxCard({ row, projectName, index, to
 
       {/* FOOTER */}
       <div style={{
-        background: "#F9FAFB", borderTop: "1px solid #E5E7EB",
+        background: "#F4F4F4", borderTop: "1px solid #E5E7EB",
         padding: "6px 14px", display: "flex", justifyContent: "space-between", alignItems: "center",
       }}>
         <button
@@ -425,7 +425,7 @@ export default function EtiquetteStoresBateauxCard({ row, projectName, index, to
             fontSize: 11, fontWeight: 600,
             color: hiddenCount > 0 ? "#92742A" : "#6B7280",
             background: hiddenCount > 0 ? "#FEF3C7" : "white",
-            border: `1px solid ${hiddenCount > 0 ? "#FCD34D" : "#E5E7EB"}`,
+            border: `1px solid ${hiddenCount > 0 ? "#FCD34D" : "#E0DED9"}`,
             borderRadius: 6, padding: "4px 12px", cursor: "pointer",
             display: "flex", alignItems: "center", gap: 5,
           }}

@@ -56,7 +56,7 @@ export default function RichTextArea({ value, onChange, placeholder, minHeight =
                         title={btn.title}
                         onMouseDown={e => e.preventDefault()} // garde le focus/sélection dans le champ
                         onClick={() => applyMark(btn.mark)}
-                        style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #E5E7EB', background: 'white', borderRadius: 6, cursor: 'pointer', color: '#6B7280' }}
+                        style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #E0DED9', background: 'white', borderRadius: 6, cursor: 'pointer', color: '#6B7280' }}
                     >
                         <btn.Icon size={14} />
                     </button>

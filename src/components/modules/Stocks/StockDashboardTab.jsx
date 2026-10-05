@@ -40,7 +40,7 @@ const CustomTooltip = ({ active, payload, label }) => {
     if (!active || !payload?.length) return null;
     return (
         <div style={{
-            background: 'white', border: '1px solid #E5E7EB',
+            background: 'white', border: '1px solid #E0DED9',
             borderRadius: 10, padding: '10px 16px',
             boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
         }}>

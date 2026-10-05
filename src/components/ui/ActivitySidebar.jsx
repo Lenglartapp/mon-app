@@ -364,7 +364,7 @@ const LogItem = React.memo(({ act }) => {
                 </Box>
 
                 <Box sx={{
-                    bgcolor: '#F9FAFB',
+                    bgcolor: '#F4F4F4',
                     border: '1px solid #E5E7EB',
                     borderRadius: 1,
                     p: 1.5,
@@ -609,7 +609,7 @@ const ActivitySidebar = React.memo(({ activities = [], onAddComment, onAddImage,
     if (!isOpen) return null;
 
     return (
-        <Box sx={{ width: 380, display: 'flex', flexDirection: 'column', bgcolor: '#F9FAFB', borderLeft: '1px solid #E5E7EB', height: '100%' }}>
+        <Box sx={{ width: 380, display: 'flex', flexDirection: 'column', bgcolor: '#F4F4F4', borderLeft: '1px solid #E5E7EB', height: '100%' }}>
 
             {/* Header */}
             <Box sx={{

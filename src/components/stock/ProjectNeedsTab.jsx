@@ -33,9 +33,9 @@ export default function ProjectNeedsTab({ needs }) {
                 <Stat label="Métrage total" value={`${fmt(total)} ml`} />
                 <Stat label="Lignes BPF concernées" value={new Set(needs.flatMap((n) => n.sources.map((s) => s.rowId))).size} />
             </div>
-            <div style={{ border: '1px solid #E5E7EB', borderRadius: 12, overflow: 'hidden', background: 'white' }}>
+            <div style={{ border: '1px solid #E0DED9', borderRadius: 12, overflow: 'hidden', background: 'white' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
-                    <thead style={{ background: '#F9FAFB' }}>
+                    <thead style={{ background: '#F4F4F4' }}>
                         <tr>
                             <th style={{ ...th, width: 32 }} />
                             <th style={th}>Tissu</th>
@@ -100,7 +100,7 @@ export default function ProjectNeedsTab({ needs }) {
 
 export function Stat({ label, value, color = '#111827', bg = 'white' }) {
     return (
-        <div style={{ padding: '10px 16px', border: '1px solid #E5E7EB', borderRadius: 12, background: bg, minWidth: 140 }}>
+        <div style={{ padding: '10px 16px', border: '1px solid #E0DED9', borderRadius: 12, background: bg, minWidth: 140 }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: 0.4 }}>{label}</div>
             <div style={{ fontSize: 20, fontWeight: 800, color, marginTop: 2 }}>{value}</div>
         </div>

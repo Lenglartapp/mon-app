@@ -149,7 +149,7 @@ export default function ProfitabilitySimulatorModal({ currentData, onClose }) {
                     </div>
                 </div>
 
-                <div style={{ fontSize: 12, color: '#6b7280', lineHeight: 1.5, background: '#f9fafb', padding: 12, borderRadius: 8 }}>
+                <div style={{ fontSize: 12, color: '#6b7280', lineHeight: 1.5, background: '#F4F4F4', padding: 12, borderRadius: 8 }}>
                     <strong>Paramètres fixes :</strong> Heures ({nf2.format(H)}h), Coûts Fixes (+Matériel) ({nfEur0.format(Fixed_Costs)}) et Taux Commission ({(Com_Rate * 100).toFixed(1)}%).
                 </div>
             </div>
