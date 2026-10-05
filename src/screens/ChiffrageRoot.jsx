@@ -491,7 +491,7 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
 
   return (
     <div style={{ minHeight: '100vh', background: '#F9F7F2', padding: '24px', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ maxWidth: 1200, width: '100%', margin: '0 auto 24px auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div style={{ maxWidth: 1440, width: '100%', margin: '0 auto 24px auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
           <div>
             <button
@@ -669,14 +669,14 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
         </div>
       </div>
 
-      <div style={{ maxWidth: 1200, width: '100%', margin: '0 auto', background: 'white', borderRadius: 12, boxShadow: '0 1px 3px rgba(0,0,0,0.05), 0 4px 6px rgba(0,0,0,0.02)', overflow: 'hidden' }}>
+      <div style={{ maxWidth: 1440, width: '100%', margin: '0 auto', background: 'white', borderRadius: 12, boxShadow: '0 1px 3px rgba(0,0,0,0.05), 0 4px 6px rgba(0,0,0,0.02)', overflow: 'hidden' }}>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
             <thead style={{ background: '#F9FAFB', borderBottom: '1px solid #E5E7EB' }}>
               <tr>
-                <th style={{ padding: '12px 16px', fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Nom Chiffrage</th>
-                <th style={{ padding: '12px 16px', fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Client</th>
-                <th style={{ padding: '12px 16px', fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                <th style={{ padding: '12px 8px', fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.3px' }}>Nom Chiffrage</th>
+                <th style={{ padding: '12px 8px', fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.3px' }}>Client</th>
+                <th style={{ padding: '12px 8px', fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     Statut
                     <IconButton size="small" onClick={(e) => setStatusFilterAnchor(e.currentTarget)} sx={{ p: 0.5, color: activeFilters.some(f => f.field === 'status') ? '#1E2447' : '#9CA3AF' }}>
@@ -689,35 +689,36 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
                 {[
                   { key: 'ca_ht', label: 'Montant HT' },
                   ...(showKPIs ? [
-                    { key: 'marge_pct', label: 'Contribution %' },
-                    { key: 'marge_eur', label: 'Contribution €' },
-                    { key: 'renta_hh', label: 'Contr. Horaire' },
+                    { key: 'marge_pct', label: 'Contrib. %', title: 'Contribution %' },
+                    { key: 'marge_eur', label: 'Contrib. €', title: 'Contribution €' },
+                    { key: 'renta_hh', label: 'Contrib. €/h', title: 'Contribution horaire' },
                   ] : [])
-                ].map(({ key, label }) => (
+                ].map(({ key, label, title }) => (
                   <th
                     key={key}
+                    title={title}
                     onClick={() => handleSort(key)}
-                    style={{ padding: '12px 16px', fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: 'right', cursor: 'pointer', userSelect: 'none' }}
+                    style={{ padding: '12px 8px', fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.3px', textAlign: 'right', cursor: 'pointer', userSelect: 'none' }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
                       {label}
                       {sortConfig.key === key ? (
-                        sortConfig.direction === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />
-                      ) : <ArrowUpDown size={14} style={{ opacity: 0.3 }} />}
+                        sortConfig.direction === 'asc' ? <ArrowUp size={12} /> : <ArrowDown size={12} />
+                      ) : <ArrowUpDown size={12} style={{ opacity: 0.3 }} />}
                     </div>
                   </th>
                 ))}
 
-                <th style={{ padding: '12px 16px', fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Mise à jour</th>
-                <th style={{ padding: '12px 16px', fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                <th style={{ padding: '12px 8px', fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.3px' }}>Mise à jour</th>
+                <th style={{ padding: '12px 8px', fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    Chargé d'Affaires
+                    <span title="Chargé d'affaires">Chargé d'aff.</span>
                     <IconButton size="small" onClick={(e) => setOwnerFilterAnchor(e.currentTarget)} sx={{ p: 0.5, color: activeFilters.some(f => f.field === 'owner') ? '#1E2447' : '#9CA3AF' }}>
                       <Filter size={14} />
                     </IconButton>
                   </div>
                 </th>
-                <th style={{ padding: '12px 16px', width: 60 }}></th>
+                <th style={{ padding: '12px 8px', width: 80, position: 'sticky', right: 0, background: '#F9FAFB' }}></th>
               </tr>
             </thead>
             <tbody>
@@ -760,7 +761,7 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
                         onMouseEnter={(e) => e.currentTarget.style.background = isChild ? '#F3F4F6' : '#F9FAFB'}
                         onMouseLeave={(e) => e.currentTarget.style.background = isChild ? '#FAFAFA' : 'white'}
                       >
-                        <td style={{ padding: '12px 16px' }}>
+                        <td style={{ padding: '12px 8px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                             {/* Indentation enfant */}
                             {isChild && <div style={{ width: 20, height: 1, borderLeft: '2px solid #E5E7EB', borderBottom: '2px solid #E5E7EB', marginLeft: 8, marginBottom: -8 }} />}
@@ -775,15 +776,15 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
                             )}
                             {!hasChildren && !isChild && <div style={{ width: 20 }} />}
                             <div>
-                              <div style={{ fontWeight: 600, color: '#111827', fontSize: 15, display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <div style={{ fontWeight: 600, color: '#111827', fontSize: 15, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                                 {m.name || "Minute sans nom"}
                                 {isChild && (
-                                  <span style={{ fontSize: 10, background: '#EFF6FF', color: '#1D4ED8', padding: '1px 6px', borderRadius: 4, fontWeight: 600 }}>
+                                  <span style={{ fontSize: 10, background: '#EFF6FF', color: '#1D4ED8', padding: '1px 6px', borderRadius: 4, fontWeight: 600, whiteSpace: 'nowrap' }}>
                                     Variante
                                   </span>
                                 )}
                                 {hasChildren && (
-                                  <span style={{ fontSize: 10, background: '#F3F4F6', color: '#6B7280', padding: '1px 6px', borderRadius: 4, fontWeight: 600 }}>
+                                  <span style={{ fontSize: 10, background: '#F3F4F6', color: '#6B7280', padding: '1px 6px', borderRadius: 4, fontWeight: 600, whiteSpace: 'nowrap' }}>
                                     {children.length} variante{children.length > 1 ? 's' : ''}
                                   </span>
                                 )}
@@ -794,10 +795,10 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
                             </div>
                           </div>
                         </td>
-                        <td style={{ padding: '12px 16px', fontSize: 14, color: '#374151', fontWeight: 500 }}>
+                        <td style={{ padding: '12px 8px', fontSize: 14, color: '#374151', fontWeight: 500 }}>
                           {m.client || "Client inconnu"}
                         </td>
-                        <td style={{ padding: '12px 16px' }}>
+                        <td style={{ padding: '12px 8px' }}>
                           <Chip
                             label={statusInfo.label}
                             size="small"
@@ -805,36 +806,36 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
                             sx={{ bgcolor: statusInfo.bg, color: statusInfo.text, fontWeight: 700, fontSize: 11, height: 24, cursor: 'pointer', '&:hover': { opacity: 0.8 } }}
                           />
                         </td>
-                        <td style={{ padding: '12px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                        <td style={{ padding: '12px 8px', textAlign: 'right', whiteSpace: 'nowrap' }}>
                           <div style={{ fontWeight: 700, color: '#111827', fontSize: 14 }}>
                             {Math.round(m.ca_ht).toLocaleString("fr-FR")} €
                           </div>
                         </td>
                         {showKPIs && (
                           <>
-                            <td style={{ padding: '12px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                            <td style={{ padding: '12px 8px', textAlign: 'right', whiteSpace: 'nowrap' }}>
                               <div style={{ fontWeight: 700, color: mColor, fontSize: 14 }}>{Math.round(m.marge_pct)} %</div>
                             </td>
-                            <td style={{ padding: '12px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                            <td style={{ padding: '12px 8px', textAlign: 'right', whiteSpace: 'nowrap' }}>
                               <div style={{ fontSize: 14, color: '#4B5563' }}>{Math.round(m.marge_eur).toLocaleString("fr-FR")} €</div>
                             </td>
-                            <td style={{ padding: '12px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                            <td style={{ padding: '12px 8px', textAlign: 'right', whiteSpace: 'nowrap' }}>
                               <div style={{ fontWeight: 700, color: '#1E3A8A', fontSize: 14 }}>
                                 {Math.round(m.renta_hh).toLocaleString("fr-FR")} <small style={{ fontSize: 10, color: '#9CA3AF' }}>€/h</small>
                               </div>
                             </td>
                           </>
                         )}
-                        <td style={{ padding: '12px 16px', color: '#6B7280', fontSize: 13 }}>
+                        <td style={{ padding: '12px 8px', color: '#6B7280', fontSize: 13 }}>
                           {new Date(m.updatedAt || m.createdAt).toLocaleDateString("fr-FR")} <small>{new Date(m.updatedAt || m.createdAt).toLocaleTimeString("fr-FR", { hour: '2-digit', minute: '2-digit' })}</small>
                         </td>
-                        <td style={{ padding: '12px 16px' }}>
+                        <td style={{ padding: '12px 8px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }} onClick={(e) => handleOwnerClick(e, m.id)}>
                             <Avatar sx={{ width: 26, height: 26, fontSize: 11, bgcolor: stringToColor(m.owner || "?") }}>{(m.owner?.[0] || "?").toUpperCase()}</Avatar>
                             <span style={{ fontSize: 13, color: '#374151', fontWeight: 500 }}>{m.owner || "—"}</span>
                           </div>
                         </td>
-                        <td style={{ padding: '12px 16px', textAlign: 'right', whiteSpace: 'nowrap' }} onClick={(e) => e.stopPropagation()}>
+                        <td style={{ padding: '12px 8px', textAlign: 'right', whiteSpace: 'nowrap', position: 'sticky', right: 0, background: 'inherit' }} onClick={(e) => e.stopPropagation()}>
                           <Tooltip title="Dupliquer (copie indépendante)">
                             <span>
                               <IconButton size="small" disabled={!!duplicatingId} onClick={(e) => { e.stopPropagation(); duplicate(m.id); }} sx={{ opacity: duplicatingId === m.id ? 1 : 0.4, '&:hover': { opacity: 1 } }}>
