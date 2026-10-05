@@ -247,8 +247,9 @@ const AG_CUSTOM_CSS = `
 .ag-theme-alpine .ag-row-pinned .ag-cell {
   cursor: pointer;
   font-weight: 600;
-  color: #065f46;
+  color: #111827;
 }
+.ag-theme-alpine .ag-floating-bottom { background: #ffffff; border-top: none; }
 .ag-cell-read-only {
   background-color: #f3f4f6 !important;
   color: #9ca3af !important;
@@ -1786,7 +1787,7 @@ function MinuteGrid({
                         <button
                             onClick={() => handleAddRow(1)}
                             title="Ajouter une ligne"
-                            style={{ cursor: 'pointer', padding: '5px 10px', background: '#2563eb', color: 'white', border: 'none', borderRadius: '4px 0 0 4px', display: 'flex', alignItems: 'center', gap: 5, fontSize: 12 }}
+                            style={{ cursor: 'pointer', padding: '5px 10px', background: 'white', color: '#374151', border: '1px solid #d1d5db', borderRight: 'none', borderRadius: '4px 0 0 4px', display: 'flex', alignItems: 'center', gap: 5, fontSize: 12 }}
                         >
                             <Plus size={14} /> Ajouter
                         </button>
@@ -1794,7 +1795,7 @@ function MinuteGrid({
                             onClick={openAddPanel}
                             title="Ajouter plusieurs lignes"
                             aria-label="Ajouter plusieurs lignes"
-                            style={{ cursor: 'pointer', padding: '5px 6px', background: '#2563eb', color: 'white', border: 'none', borderLeft: '1px solid rgba(255,255,255,.35)', borderRadius: '0 4px 4px 0', display: 'flex', alignItems: 'center', fontSize: 12 }}
+                            style={{ cursor: 'pointer', padding: '5px 6px', background: 'white', color: '#374151', border: '1px solid #d1d5db', borderRadius: '0 4px 4px 0', display: 'flex', alignItems: 'center', fontSize: 12 }}
                         >
                             <ChevronDown size={14} />
                         </button>
@@ -1924,13 +1925,13 @@ function MinuteGrid({
                         )}
                     </div>
                 )}
-                {/* Recherche rapide */}
+                {/* Recherche rapide (affichée en dernier, tout à droite) */}
                 <input
                     type="text"
                     placeholder="Rechercher..."
                     value={quickFilter}
                     onChange={e => setQuickFilter(e.target.value)}
-                    style={{ padding: '4px 8px', border: '1px solid #d1d5db', borderRadius: 4, fontSize: 12, width: 160, outline: 'none' }}
+                    style={{ order: 99, padding: '4px 8px', border: '1px solid #d1d5db', borderRadius: 4, fontSize: 12, width: 160, outline: 'none' }}
                 />
                 {/* Bouton Filtrer */}
                 {(() => {
@@ -2285,7 +2286,7 @@ function MinuteGrid({
                     context={{ colAggregations, onAggregationChange }}
                     getRowStyle={(params) => {
                         if (params.node.rowPinned === 'bottom') {
-                            return { background: '#f0fdf4', borderTop: '2px solid #10b981' };
+                            return { background: '#ffffff', borderTop: '1px solid #E5E5E3' };
                         }
                         const role = params.data?.pair_role;
                         if (role === 'parent') return { background: '#eef2ff', fontWeight: 600 };
