@@ -219,7 +219,12 @@ const AG_CUSTOM_CSS = `
 .df-sticky .ag-theme-alpine .ag-root-wrapper > .ag-column-drop-wrapper {
   position: sticky; top: var(--df-sticky-top, 0px); z-index: 4;
 }
-.df-sticky .ag-theme-alpine .ag-root-wrapper .ag-column-drop-horizontal { border-radius: 8px 8px 0 0; }
+.df-sticky .ag-theme-alpine .ag-root-wrapper .ag-column-drop-horizontal {
+  border-radius: 8px 8px 0 0;
+  /* Le trait du haut du cadre défile avec le tableau : la barre collante porte le sien (haut + côtés),
+     superposé exactement au cadre quand elle n'est pas collée. */
+  box-shadow: 0 -1px 0 0 #E5E7EB, -1px 0 0 0 #E5E7EB, 1px 0 0 0 #E5E7EB, -1px -1px 0 0 #E5E7EB, 1px -1px 0 0 #E5E7EB;
+}
 .df-sticky .ag-theme-alpine .ag-root > .ag-header {
   position: sticky; top: calc(var(--df-sticky-top, 0px) + ${GROUP_PANEL_HEIGHT}px); z-index: 3;
 }
