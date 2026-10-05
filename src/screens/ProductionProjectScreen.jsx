@@ -1119,7 +1119,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
           <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>
 
             {/* Chapitre 1 : Consommation Temps */}
-            <div style={{ background: 'white', borderRadius: 12, border: `1px solid ${COLORS.border}`, padding: 20 }}>
+            <div style={{ padding: '4px 4px 8px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
                 <h3 style={{ fontSize: 20, fontWeight: 500, fontFamily: 'Roboto, system-ui, sans-serif', margin: 0, color: '#111827', display: 'flex', alignItems: 'center', gap: 8 }}>
                   ⏱️ Consommation Temps
@@ -1170,7 +1170,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
             </div>
 
             {/* Chapitre 2 : Avancement */}
-            <div style={{ background: 'white', borderRadius: 12, border: `1px solid ${COLORS.border}`, padding: 20 }}>
+            <div style={{ padding: '4px 4px 8px' }}>
               <h3 style={{ fontSize: 20, fontWeight: 500, fontFamily: 'Roboto, system-ui, sans-serif', margin: '0 0 16px', color: '#111827', display: 'flex', alignItems: 'center', gap: 8 }}>
                 📊 Avancement
               </h3>
