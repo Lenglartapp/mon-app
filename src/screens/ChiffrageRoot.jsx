@@ -1,11 +1,11 @@
 // src/screens/ChiffrageRoot.jsx
 import React, { useState, useMemo, useEffect, useRef } from "react";
-import { nextFamilyVersion } from "../lib/minuteFamily";
 import { Plus, Copy, Trash2, FileText, ArrowUpDown, ArrowUp, ArrowDown, Archive, Filter, ChevronDown, ChevronRight, ChevronLeft, GitBranch, SlidersHorizontal } from "lucide-react";
 import Chip from '@mui/material/Chip';
 import Avatar from '@mui/material/Avatar';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
+import CircularProgress from '@mui/material/CircularProgress';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 
@@ -89,7 +89,7 @@ function stringToColor(string) {
   return color;
 }
 
-export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, onDelete, onUpdate, onBack }) {
+export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, onDelete, onUpdate, onBack, onLoadMinuteDetail }) {
   const { currentUser, users } = useAuth?.() || { currentUser: { name: "—" }, users: [] };
   const { settings: globalSettings } = useAppSettings();
   const { catalog } = useCatalog();
@@ -451,22 +451,36 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
     }
   };
 
-  const duplicate = (id) => {
-    const src = minutes.find(x => x.id === id);
-    if (!src) return;
-    const rootParentId = src.parentId || src.id;
-    const newVersion = nextFamilyVersion(minutes, rootParentId);
-    const copy = {
-      ...src,
-      id: uid(),
-      name: src.name.replace(/ — v\d+.*$/, ''),
-      version: newVersion,
-      parentId: rootParentId,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-      status: "DRAFT",
-    };
-    if (onCreate) onCreate(copy);
+  // Duplication depuis la liste = COPIE INDÉPENDANTE (les variantes se créent depuis le
+  // chiffrage, onglets V1/V2…). La liste ne charge que des colonnes légères : on relit
+  // le chiffrage complet (lignes, déplacements, paramètres…) avant de le copier.
+  const [duplicatingId, setDuplicatingId] = useState(null);
+  const duplicate = async (id) => {
+    if (!onCreate || !onLoadMinuteDetail || duplicatingId) return;
+    setDuplicatingId(id);
+    try {
+      const src = await onLoadMinuteDetail(id);
+      if (!src) { alert("Impossible de charger ce chiffrage pour le dupliquer."); return; }
+      const lines = src.lines || src.tables || [];
+      const copy = {
+        ...src,
+        id: uid(),
+        name: `${src.name || 'Chiffrage'} (copie)`,
+        lines,
+        tables: lines,
+        version: 1,
+        parentId: null,
+        status: "DRAFT",
+        // Nouveau chiffrage : on garde la config des modules, pas l'historique des statuts.
+        modules: { ...(src.modules || {}), history: [] },
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      };
+      const { error } = await onCreate(copy);
+      if (error) alert(`Duplication impossible : ${error.message}`);
+    } finally {
+      setDuplicatingId(null);
+    }
   };
 
   const removeOne = (id) => {
@@ -820,7 +834,14 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
                             <span style={{ fontSize: 13, color: '#374151', fontWeight: 500 }}>{m.owner || "—"}</span>
                           </div>
                         </td>
-                        <td style={{ padding: '12px 16px', textAlign: 'right' }} onClick={(e) => e.stopPropagation()}>
+                        <td style={{ padding: '12px 16px', textAlign: 'right', whiteSpace: 'nowrap' }} onClick={(e) => e.stopPropagation()}>
+                          <Tooltip title="Dupliquer (copie indépendante)">
+                            <span>
+                              <IconButton size="small" disabled={!!duplicatingId} onClick={(e) => { e.stopPropagation(); duplicate(m.id); }} sx={{ opacity: duplicatingId === m.id ? 1 : 0.4, '&:hover': { opacity: 1 } }}>
+                                {duplicatingId === m.id ? <CircularProgress size={14} /> : <Copy size={16} />}
+                              </IconButton>
+                            </span>
+                          </Tooltip>
                           <Tooltip title="Supprimer">
                             <IconButton size="small" onClick={(e) => { e.stopPropagation(); removeOne(m.id); }} sx={{ opacity: 0.4, '&:hover': { opacity: 1 } }}>
                               <Trash2 size={16} />

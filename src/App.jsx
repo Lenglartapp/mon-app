@@ -481,6 +481,7 @@ function AppShell() {
             onDelete={deleteMinute}
             onUpdate={updateMinute}
             onBack={() => navigate("/")}
+            onLoadMinuteDetail={loadMinuteDetail}
             onOpenMinute={(id) => {
               const m = cleanMinutes.find(m => String(m.id) === String(id));
               navigate(`/chiffrage/${String(id).slice(0,8)}-${slugify(m?.name)}`);
