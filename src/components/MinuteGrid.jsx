@@ -199,11 +199,13 @@ const AG_CUSTOM_CSS = `
   --ag-border-color: #EDEDEB;
   --ag-secondary-border-color: #F1F1EF;
   --ag-row-border-color: #F1F1EF;
-  --ag-header-background-color: #ffffff;
+  --ag-header-background-color: #F9FAFB;
 }
-.ag-theme-alpine .ag-root-wrapper { border: none; }
+/* Cadre complet du tableau (gauche, droite, haut, bas) */
+.ag-theme-alpine .ag-root-wrapper { border: 1px solid #E5E7EB; border-radius: 8px; }
+/* Barre de regroupement : même gris que la ligne des en-têtes */
 .ag-theme-alpine .ag-column-drop-horizontal {
-  background: transparent;
+  background: #F9FAFB;
   border-bottom: 1px solid #EDEDEB;
   min-height: ${GROUP_PANEL_HEIGHT}px;
   height: ${GROUP_PANEL_HEIGHT}px;
@@ -219,8 +221,8 @@ const AG_CUSTOM_CSS = `
   color: #374151;
 }
 .ag-theme-alpine .ag-header {
-  background-color: #ffffff;
-  border-bottom: 1px solid #EDEDEB;
+  background-color: #F9FAFB;
+  border-bottom: 1px solid #E5E7EB;
 }
 .ag-theme-alpine .ag-header-cell {
   border-right: 1px solid #F1F1EF;
@@ -254,7 +256,7 @@ const AG_CUSTOM_CSS = `
 .df-ro-light .ag-cell.ag-cell-read-only {
   background-color: transparent !important;
   color: #A8A7A3 !important;
-  position: relative;
+  /* pas de position: relative ici — les cellules AG Grid sont déjà positionnées en absolu */
 }
 .df-ro-light .ag-cell.ag-cell-read-only::after {
   content: '';
@@ -348,12 +350,15 @@ const AG_CUSTOM_CSS = `
 }
 `;
 
-// Injecter le CSS une seule fois
-if (typeof document !== 'undefined' && !document.getElementById('ag-custom-styles')) {
-    const style = document.createElement('style');
-    style.id = 'ag-custom-styles';
+// Injecter le CSS une seule fois (contenu réécrit si la balise existe déjà : rechargement à chaud)
+if (typeof document !== 'undefined') {
+    let style = document.getElementById('ag-custom-styles');
+    if (!style) {
+        style = document.createElement('style');
+        style.id = 'ag-custom-styles';
+        document.head.appendChild(style);
+    }
     style.textContent = AG_CUSTOM_CSS;
-    document.head.appendChild(style);
 }
 
 function MinuteGrid({
