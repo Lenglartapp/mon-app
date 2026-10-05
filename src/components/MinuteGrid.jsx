@@ -212,14 +212,14 @@ const AG_CUSTOM_CSS = `
 /* En-têtes collants au défilement de la PAGE (tableaux en hauteur auto) : la barre de
    regroupement puis la ligne des en-têtes restent en haut de l'écran jusqu'à la dernière
    ligne du tableau. Le sticky exige des ancêtres sans overflow : on rouvre ceux d'AG Grid. */
-.ag-theme-alpine .ag-root-wrapper.ag-layout-auto-height,
-.ag-theme-alpine .ag-root-wrapper-body.ag-layout-auto-height,
-.ag-theme-alpine .ag-root.ag-layout-auto-height { overflow: visible; }
-.ag-theme-alpine .ag-root-wrapper.ag-layout-auto-height > .ag-column-drop-wrapper {
+.df-sticky .ag-theme-alpine .ag-root-wrapper.ag-layout-auto-height,
+.df-sticky .ag-theme-alpine .ag-root-wrapper-body.ag-layout-auto-height,
+.df-sticky .ag-theme-alpine .ag-root.ag-layout-auto-height { overflow: visible; }
+.df-sticky .ag-theme-alpine .ag-root-wrapper.ag-layout-auto-height > .ag-column-drop-wrapper {
   position: sticky; top: var(--df-sticky-top, 0px); z-index: 4;
 }
-.ag-theme-alpine .ag-root-wrapper.ag-layout-auto-height .ag-column-drop-horizontal { border-radius: 8px 8px 0 0; }
-.ag-theme-alpine .ag-root.ag-layout-auto-height > .ag-header {
+.df-sticky .ag-theme-alpine .ag-root-wrapper.ag-layout-auto-height .ag-column-drop-horizontal { border-radius: 8px 8px 0 0; }
+.df-sticky .ag-theme-alpine .ag-root.ag-layout-auto-height > .ag-header {
   position: sticky; top: calc(var(--df-sticky-top, 0px) + ${GROUP_PANEL_HEIGHT}px); z-index: 3;
 }
 /* La toolbar couvre toute la largeur (pour coller) mais laisse passer les clics / glisser-déposer
@@ -386,7 +386,7 @@ if (typeof document !== 'undefined') {
 function MinuteGrid({
     lightReadOnly = false, // test UI : cellules non modifiables sans fond gris, cadenas au survol
     fillField = null,      // colonne qui s'étire pour occuper toute la largeur restante du tableau
-    stickyTop = 0,         // décalage (px) des barres collantes : hauteur du titre de section collant au-dessus
+    stickyTop = null,      // null = pas d'en-têtes collants ; sinon décalage (px) sous le titre de section collant
     rows,
     onRowsChange,
     schema,
@@ -1825,11 +1825,13 @@ function MinuteGrid({
     );
 
     return (
-        <div style={{ width: '100%', position: 'relative', '--df-sticky-top': `${stickyTop}px` }}>
+        <>
+        <div className={stickyTop != null ? 'df-sticky' : undefined} style={{ width: '100%', position: 'relative', '--df-sticky-top': `${stickyTop ?? 0}px` }}>
 
             {/* Toolbar : posée à droite, sur la barre « Glissez un champ ici pour regrouper » d'AG Grid.
-                Collante (comme cette barre) ; la marge négative la superpose à la barre sans prendre de place. */}
-            <div className="df-grid-toolbar" style={{ position: 'sticky', top: stickyTop, height: GROUP_PANEL_HEIGHT, marginBottom: -GROUP_PANEL_HEIGHT, zIndex: 5, padding: '0 8px', display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'flex-end', pointerEvents: 'none' }}>
+                Collante (comme cette barre) : elle garde sa place dans le flux et c'est la grille qui remonte
+                dessous (marge négative), pour qu'elle se décolle pile en même temps que le bas du tableau. */}
+            <div className="df-grid-toolbar" style={{ ...(stickyTop != null ? { position: 'sticky', top: stickyTop } : { position: 'absolute', top: 0, left: 0, right: 0 }), height: GROUP_PANEL_HEIGHT, zIndex: 5, padding: '0 8px', display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'flex-end', pointerEvents: 'none' }}>
                 {!readOnly && (
                     /* Bouton scindé : clic = 1 ligne (geste habituel inchangé),
                        chevron — ou clic droit — = « combien de lignes ? ». */
@@ -2318,7 +2320,7 @@ function MinuteGrid({
             )}
 
             {/* AG Grid + poignée de redimensionnement vertical */}
-            <div style={{ position: 'relative' }}>
+            <div style={{ position: 'relative', ...(stickyTop != null ? { marginTop: -GROUP_PANEL_HEIGHT } : {}) }}>
             <div ref={gridContainerRef} className={`ag-theme-alpine${reorderBlocked ? ' reorder-blocked' : ''}${lightReadOnly ? ' df-ro-light' : ''}`} style={{ width: '100%', height: effectiveHeight }}>
                 <AgGridReact
                     ref={gridRef}
@@ -2391,28 +2393,30 @@ function MinuteGrid({
                     stopEditingWhenCellsLoseFocus
                 />
             </div>
-            {/* Poignée : glisser pour régler la hauteur, double-clic pour revenir en auto */}
-            <div
-                onMouseDown={onResizeHandleMouseDown}
-                onDoubleClick={resetManualHeight}
-                title="Glisser pour ajuster la hauteur — double-clic pour revenir en automatique"
-                style={{
-                    height: 12,
-                    marginTop: 2,
-                    cursor: 'ns-resize',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    borderRadius: 4,
-                    background: manualHeight != null ? '#ecfdf5' : 'transparent',
-                }}
-                onMouseEnter={e => { e.currentTarget.style.background = '#e2e8f0'; }}
-                onMouseLeave={e => { e.currentTarget.style.background = manualHeight != null ? '#ecfdf5' : 'transparent'; }}
-            >
-                <div style={{ width: 44, height: 4, borderRadius: 2, background: '#94a3b8' }} />
-            </div>
+
             </div>
         </div>
+        {/* Poignée (glisser = hauteur, double-clic = auto), HORS du bloc ci-dessus : la barre d'outils collante s'arrête ainsi pile en bas du tableau */}
+        <div
+            onMouseDown={onResizeHandleMouseDown}
+            onDoubleClick={resetManualHeight}
+            title="Glisser pour ajuster la hauteur — double-clic pour revenir en automatique"
+            style={{
+                height: 12,
+                marginTop: 2,
+                cursor: 'ns-resize',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderRadius: 4,
+                background: manualHeight != null ? '#ecfdf5' : 'transparent',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = '#e2e8f0'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = manualHeight != null ? '#ecfdf5' : 'transparent'; }}
+        >
+            <div style={{ width: 44, height: 4, borderRadius: 2, background: '#94a3b8' }} />
+        </div>
+        </>
     );
 }
 

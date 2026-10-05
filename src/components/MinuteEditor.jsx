@@ -35,11 +35,11 @@ import { MOBILIER_PRODUIT_RE, STORE_CLASSIQUE_DEFAUT } from "../lib/constants/pr
 
 const SECTION_TITLE_HEIGHT = 44;
 
-function SectionPanel({ title, count, expanded, onToggle, onDelete, readOnly, children }) {
+function SectionPanel({ title, count, expanded, onToggle, onDelete, readOnly, sticky = true, children }) {
   return (
     <div style={{ marginBottom: 28 }}>
-      {/* Titre collant : reste en haut de l'écran tant qu'on défile dans ce tableau */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px', height: SECTION_TITLE_HEIGHT, position: 'sticky', top: 0, zIndex: 6, background: '#ffffff' }}>
+      {/* Titre collant (sauf sticky=false) : reste en haut de l'écran tant qu'on défile dans ce tableau */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px', height: SECTION_TITLE_HEIGHT, ...(sticky ? { position: 'sticky', top: 0, zIndex: 6, background: '#ffffff' } : {}) }}>
         {/* Flèche à gauche du titre ; le titre lui-même replie / déplie aussi */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <IconButton size="small" onClick={onToggle} title={expanded ? 'Replier' : 'Déplier'} sx={{ color: '#9B9A97', ml: -0.5 }}>
@@ -998,12 +998,12 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
           {/* Tableau Autres Dépenses */}
           <SectionPanel
             title="Autres Dépenses"
+            sticky={false}
             count={rowsAutre.length}
             expanded={isPanelExpanded('autre')}
             onToggle={() => togglePanel('autre')}
           >
             <MinuteGrid
-              stickyTop={SECTION_TITLE_HEIGHT}
               title=""
               lightReadOnly
               fillField="commentaire"
@@ -1031,12 +1031,12 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
           {/* Tableau Déplacement */}
           <SectionPanel
             title="Déplacements & Logistique"
+            sticky={false}
             count={rowsDeplacement.length}
             expanded={isPanelExpanded('deplacement')}
             onToggle={() => togglePanel('deplacement')}
           >
             <MinuteGrid
-              stickyTop={SECTION_TITLE_HEIGHT}
               title=""
               lightReadOnly
               rows={rowsDeplacement}
