@@ -806,11 +806,11 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
         />
       )}
 
-      {/* Minutes Tab */}
+      {/* Minutes Tab — pas d'overflow sur ces conteneurs : il casserait les en-têtes de tableaux collants (sticky) */}
       {activeTab === "minutes" && (
-        <div style={{ display: "grid", gap: 12, overflow: "hidden" }}>
+        <div style={{ display: "grid", gap: 12, minWidth: 0 }}>
           <MemoizedDashboardSummary recap={recap} nf={nfEur0} />
-          <div style={{ minWidth: 0, overflowX: "auto" }}>
+          <div style={{ minWidth: 0 }}>
             <MemoizedMinuteEditor
               key={`${minute?.id}-${restoreNonce}-${Object.keys(mods || {}).filter(k => mods[k]).sort().join('-')}`} // FORCE REMOUNT on module change / restauration
               minute={editorMinute}

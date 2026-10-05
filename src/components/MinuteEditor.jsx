@@ -33,10 +33,13 @@ import { MOBILIER_PRODUIT_RE, STORE_CLASSIQUE_DEFAUT } from "../lib/constants/pr
 
 
 
+const SECTION_TITLE_HEIGHT = 44;
+
 function SectionPanel({ title, count, expanded, onToggle, onDelete, readOnly, children }) {
   return (
     <div style={{ marginBottom: 28 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px', height: 44 }}>
+      {/* Titre collant : reste en haut de l'écran tant qu'on défile dans ce tableau */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px', height: SECTION_TITLE_HEIGHT, position: 'sticky', top: 0, zIndex: 6, background: '#ffffff' }}>
         {/* Flèche à gauche du titre ; le titre lui-même replie / déplie aussi */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <IconButton size="small" onClick={onToggle} title={expanded ? 'Replier' : 'Déplier'} sx={{ color: '#9B9A97', ml: -0.5 }}>
@@ -628,6 +631,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
             readOnly={readOnly}
           >
             <MinuteGrid
+              stickyTop={SECTION_TITLE_HEIGHT}
               title=""
               rows={rowsRideaux}
               onRowsChange={mergeChildRowsFor("rideaux")}
@@ -669,6 +673,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
             readOnly={readOnly}
           >
             <MinuteGrid
+              stickyTop={SECTION_TITLE_HEIGHT}
               title=""
               rows={rowsStore}
               onRowsChange={mergeChildRowsFor("store")}
@@ -704,6 +709,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
             readOnly={readOnly}
           >
             <MinuteGrid
+              stickyTop={SECTION_TITLE_HEIGHT}
               title=""
               rows={rowsStoresBateau}
               onRowsChange={mergeChildRowsFor("store_bateau")}
@@ -742,6 +748,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
             readOnly={readOnly}
           >
             <MinuteGrid
+              stickyTop={SECTION_TITLE_HEIGHT}
               title=""
               rows={rowsCoussins}
               onRowsChange={mergeChildRowsFor("coussins")}
@@ -780,6 +787,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
             readOnly={readOnly}
           >
             <MinuteGrid
+              stickyTop={SECTION_TITLE_HEIGHT}
               title=""
               rows={rowsCacheSommier}
               onRowsChange={mergeChildRowsFor("cache_sommier")}
@@ -818,6 +826,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
             readOnly={readOnly}
           >
             <MinuteGrid
+              stickyTop={SECTION_TITLE_HEIGHT}
               title=""
               rows={rowsPlaid}
               onRowsChange={mergeChildRowsFor("plaid")}
@@ -856,6 +865,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
             readOnly={readOnly}
           >
             <MinuteGrid
+              stickyTop={SECTION_TITLE_HEIGHT}
               title=""
               rows={rowsTenture}
               onRowsChange={mergeChildRowsFor("tenture_murale")}
@@ -891,6 +901,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
             readOnly={readOnly}
           >
             <MinuteGrid
+              stickyTop={SECTION_TITLE_HEIGHT}
               title=""
               rows={rowsMobilier}
               onRowsChange={mergeChildRowsFor("mobilier")}
@@ -992,6 +1003,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
             onToggle={() => togglePanel('autre')}
           >
             <MinuteGrid
+              stickyTop={SECTION_TITLE_HEIGHT}
               title=""
               lightReadOnly
               fillField="commentaire"
@@ -1024,6 +1036,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
             onToggle={() => togglePanel('deplacement')}
           >
             <MinuteGrid
+              stickyTop={SECTION_TITLE_HEIGHT}
               title=""
               lightReadOnly
               rows={rowsDeplacement}
