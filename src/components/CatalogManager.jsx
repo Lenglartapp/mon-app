@@ -185,7 +185,7 @@ export default function CatalogManager({ open, onClose, catalog, onCatalogChange
             { field: 'color', headerName: 'Coloris', width: 120, editable: true },
             {
                 field: 'name',
-                headerName: 'Nom Complet(ID)',
+                headerName: 'Nom complet',
                 width: 250,
                 editable: false,
                 description: 'Généré automatiquement (Fournisseur + Ref + Coloris)',
@@ -205,8 +205,9 @@ export default function CatalogManager({ open, onClose, catalog, onCatalogChange
         const priceCols = [
             {
                 field: 'buyPrice',
-                headerName: 'Prix Achat (€)',
-                width: 130,
+                headerName: 'PA (€)',
+                description: 'Prix d\'achat',
+                width: 110,
                 valueParser: (value) => parseDecimal(value),
                 editable: (params) => params.row.unit !== 'pce', // Lock if Piece
                 type: 'number',
@@ -225,7 +226,7 @@ export default function CatalogManager({ open, onClose, catalog, onCatalogChange
             {
                 field: 'coef',
                 headerName: 'Coef',
-                width: 100,
+                width: 80,
                 editable: true,
                 type: 'number',
                 valueParser: (value) => parseDecimal(value),
@@ -233,8 +234,9 @@ export default function CatalogManager({ open, onClose, catalog, onCatalogChange
             },
             {
                 field: 'sellPrice',
-                headerName: 'Prix Vente (€)',
-                width: 130,
+                headerName: 'PV (€)',
+                description: 'Prix de vente (PV = PA × Coef)',
+                width: 110,
                 editable: (params) => params.row.unit !== 'pce', // Lock if Piece
                 type: 'number',
                 valueParser: (value) => parseDecimal(value),
@@ -253,7 +255,7 @@ export default function CatalogManager({ open, onClose, catalog, onCatalogChange
             {
                 field: 'unit',
                 headerName: 'Unité',
-                width: 100,
+                width: 80,
                 editable: true,
                 type: 'singleSelect',
                 valueOptions: ['ml', 'm2', 'pce', 'h']
@@ -261,10 +263,10 @@ export default function CatalogManager({ open, onClose, catalog, onCatalogChange
         ];
 
         const fabricCols = [
-            { field: 'width', headerName: 'Laize (cm)', width: 100, editable: true, type: 'number', valueParser: (value) => parseDecimal(value) },
-            { field: 'motif', headerName: 'Motif ?', width: 80, editable: true, type: 'boolean' },
-            { field: 'raccord_v', headerName: 'Raccord V (cm)', width: 110, editable: true, type: 'number', valueParser: (value) => parseDecimal(value) },
-            { field: 'raccord_h', headerName: 'Raccord H (cm)', width: 110, editable: true, type: 'number', valueParser: (value) => parseDecimal(value) },
+            { field: 'width', headerName: 'Laize', description: 'Laize (cm)', width: 80, editable: true, type: 'number', valueParser: (value) => parseDecimal(value) },
+            { field: 'motif', headerName: 'Motif', description: 'Tissu à motif ?', width: 70, editable: true, type: 'boolean' },
+            { field: 'raccord_v', headerName: 'Racc. V', description: 'Raccord vertical (cm)', width: 85, editable: true, type: 'number', valueParser: (value) => parseDecimal(value) },
+            { field: 'raccord_h', headerName: 'Racc. H', description: 'Raccord horizontal (cm)', width: 85, editable: true, type: 'number', valueParser: (value) => parseDecimal(value) },
         ];
 
         let cols = [...base];
@@ -288,11 +290,15 @@ export default function CatalogManager({ open, onClose, catalog, onCatalogChange
             cols = [...cols, ...fabricCols];
         }
 
-        return cols;
+        // Colonnes extensibles : elles se partagent TOUJOURS la largeur de la fenêtre
+        // (proportions = largeurs d'origine, plancher bas) — jamais de défilement
+        // horizontal, laize et raccords visibles quel que soit l'écran. Libellé complet
+        // en infobulle (`description`) quand l'en-tête est abrégé.
+        return cols.map(({ width, ...col }) => ({ ...col, flex: width, minWidth: 60 }));
     }, [activeCategoryTab]);
 
     return (
-        <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
+        <Dialog open={open} onClose={onClose} maxWidth="xl" fullWidth>
             <DialogTitle sx={{ m: 0, p: 2, background: COLORS.page }}>
                 {/* Header Row: Titles + Close */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -357,6 +363,9 @@ export default function CatalogManager({ open, onClose, catalog, onCatalogChange
                             toolbar: { onAdd: handleAddRow, onDelete: handleDeleteRows, selectedCount: selectionModel.length }
                         }}
                         localeText={frFR.components.MuiDataGrid.defaultProps.localeText}
+                        // L'icône de menu masquée de la dernière colonne dépassait de quelques px
+                        // et suffisait à faire apparaître un défilement horizontal.
+                        sx={{ '& .MuiDataGrid-menuIcon': { overflow: 'hidden' } }}
                     />
                 ) : (
                     <div style={{ padding: 40, display: 'flex', flexDirection: 'column', gap: 24, maxWidth: 600, margin: '0 auto' }}>
