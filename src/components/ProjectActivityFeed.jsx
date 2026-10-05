@@ -18,6 +18,24 @@ const avatarColor = (name) => {
     return AVATAR_COLORS[h % AVATAR_COLORS.length];
 };
 
+// Exemple affiché tant que le dossier n'a aucun message : montre à quoi ressemblera le fil.
+function ExampleMessage() {
+    return (
+        <div style={{ display: 'flex', gap: 12, padding: '14px 0', opacity: 0.75 }} aria-label="Exemple de message">
+            <span style={{ width: 30, height: 30, borderRadius: '50%', background: '#D5D8DD', color: 'white', fontSize: 11, fontWeight: 600, display: 'grid', placeItems: 'center', flexShrink: 0 }}>EX</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                    <span style={{ fontWeight: 500, color: '#5B616B', fontSize: 14 }}>Exemple</span>
+                    <span style={{ fontSize: 12, color: '#A0A5AD' }}>aperçu — aucun message pour l'instant</span>
+                </div>
+                <div style={{ marginTop: 6, background: '#F4F5F7', borderRadius: '4px 14px 14px 14px', padding: '10px 14px', display: 'inline-block', maxWidth: '100%', fontSize: 14, color: '#6B7079', lineHeight: 1.5, fontStyle: 'italic' }}>
+                    « Écrivez ici les infos utiles à toute l'équipe : rendez-vous client, contraintes de pose, décisions prises… Ajoutez une photo si besoin, et épinglez les messages importants pour les garder en haut. »
+                </div>
+            </div>
+        </div>
+    );
+}
+
 const FILTERS = [
     { key: 'all', label: 'Tout' },
     { key: 'messages', label: 'Messages' },
@@ -97,7 +115,7 @@ const extractActivity = (rows, wall, pinnedIds = []) => {
 };
 
 export default function ProjectActivityFeed({ rows, wall, pinnedIds, onTogglePin, isMobile = false, projectId, composer = null }) {
-    const [filter, setFilter] = useState('all');
+    const [filter, setFilter] = useState('messages'); // par défaut : les messages (l'activité reste à un clic)
     const [activeFilters, setActiveFilters] = useState([]);
 
     // Lightbox States
@@ -118,7 +136,9 @@ export default function ProjectActivityFeed({ rows, wall, pinnedIds, onTogglePin
     const events = useMemo(() => extractActivity(rowsWithLogs, wall, pinnedIds), [rowsWithLogs, wall, pinnedIds]);
     const pinnedPosts = useMemo(() => events.filter(e => e.pinned), [events]);
     const feedEvents = useMemo(() => {
-        const byFilter = filter === 'all' ? events : events.filter(e => e.category === filter);
+        // Les épinglés sont déjà affichés en haut : on ne les répète pas dans le fil.
+        const unpinned = events.filter(e => !e.pinned);
+        const byFilter = filter === 'all' ? unpinned : unpinned.filter(e => e.category === filter);
         if (activeFilters.length === 0) return byFilter;
         return byFilter.filter(e => activeFilters.every(f => {
             const q = f.value.toLowerCase();
@@ -232,33 +252,43 @@ export default function ProjectActivityFeed({ rows, wall, pinnedIds, onTogglePin
     return (
         <div style={{ display: 'flex', flexDirection: 'column', fontFamily: 'Roboto, system-ui, sans-serif', padding: '20px 4px 12px' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingBottom: 8 }}>
-                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
                     <div>
                         <div style={{ fontWeight: 500, fontSize: 17, color: '#1F2A37' }}>Journal</div>
                         <div style={{ fontSize: 13, color: '#8A8F98', marginTop: 2 }}>Messages et activité du dossier</div>
                     </div>
-                    {/* Filtres en onglets texte, l'actif est souligné */}
+                    {/* Recherche compacte, à gauche des filtres (onglets texte, l'actif est souligné) */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginLeft: 'auto', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                        <div style={{ width: 230, fontSize: 13 }}>
+                        <SmartFilterBar
+                            fields={[
+                                { id: 'user',    label: 'Auteur' },
+                                { id: 'target',  label: 'Ouvrage' },
+                                { id: 'content', label: 'Contenu' },
+                            ]}
+                            activeFilters={activeFilters}
+                            onAddFilter={f => setActiveFilters(prev => [...prev, f])}
+                            onRemoveFilter={id => setActiveFilters(prev => prev.filter(f => f.id !== id))}
+                            placeholder="Ouvrage, auteur, contenu…"
+                        />
+                        </div>
                     <div style={{ display: 'flex', gap: 16 }}>
                         {FILTERS.map(f => (
                             <button key={f.key} onClick={() => setFilter(f.key)} style={{ padding: '2px 0', border: 'none', borderBottom: `1.5px solid ${filter === f.key ? '#111827' : 'transparent'}`, background: 'transparent', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', color: filter === f.key ? '#111827' : '#9B9A97' }}>{f.label}</button>
                         ))}
                     </div>
+                    </div>
                 </div>
                 {composer}
-                <SmartFilterBar
-                    fields={[
-                        { id: 'user',    label: 'Auteur' },
-                        { id: 'target',  label: 'Ouvrage' },
-                        { id: 'content', label: 'Contenu' },
-                    ]}
-                    activeFilters={activeFilters}
-                    onAddFilter={f => setActiveFilters(prev => [...prev, f])}
-                    onRemoveFilter={id => setActiveFilters(prev => prev.filter(f => f.id !== id))}
-                    placeholder="Ouvrage, auteur, contenu…"
-                />
             </div>
             {pinnedPosts.length > 0 && <div style={{ marginBottom: 8, paddingBottom: 8, borderBottom: '1px solid #EDEEF0' }}><div style={{ padding: '8px 0 0', fontSize: 12, color: '#8A8F98', display: 'flex', alignItems: 'center', gap: 6 }}><Pin size={12} /> Épinglés ({pinnedPosts.length})</div>{pinnedPosts.map(post => renderEvent(post, true))}</div>}
-            <div style={{ maxHeight: 600, overflowY: 'auto' }}>{feedEvents.length === 0 ? <div style={{ padding: '24px 4px', color: '#A8A7A3', fontSize: 14 }}>Aucune activité.</div> : feedEvents.map(evt => renderEvent(evt, false))}</div>
+            <div style={{ maxHeight: 600, overflowY: 'auto' }}>{feedEvents.length === 0
+                ? (pinnedPosts.length > 0
+                    ? null
+                    : filter === 'activity'
+                        ? <div style={{ padding: '24px 0', color: '#A0A5AD', fontSize: 14 }}>Aucune activité.</div>
+                        : <ExampleMessage />)
+                : feedEvents.map(evt => renderEvent(evt, false))}</div>
 
             {/* LIGHTBOX COMPONENT */}
             <ImageLightbox
