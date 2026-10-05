@@ -224,7 +224,8 @@ const AssistantView = ({ stats, onUpdateProject }) => {
     // sticky top = hauteur de la barre de filtres, pour que l'en-tête se cale pile
     // dessous. Fond opaque obligatoire (sinon les lignes défileraient au travers) et
     // z-index sous les menus déroulants des filtres (z 200).
-    const th = { padding: '12px 16px', fontSize: 12, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', userSelect: 'none', position: 'sticky', top: filterBarH, background: '#F9FAFB', borderBottom: '1px solid #E5E7EB', zIndex: 20 };
+    // En-têtes : même rendu que les listes Chiffrages / Projets (13 px, demi-gras, quasi noir, sans majuscules)
+    const th = { padding: '12px 10px', fontSize: 13, fontWeight: 600, color: '#374151', whiteSpace: 'nowrap', userSelect: 'none', position: 'sticky', top: filterBarH, background: '#F9FAFB', borderBottom: '1px solid #E5E7EB', zIndex: 20 };
     const tdNum = { padding: '8px 16px', textAlign: 'right', fontSize: 13 };
     const iconBtn = (active) => ({
         display: 'flex', alignItems: 'center', gap: 6, height: 38, padding: '0 12px', borderRadius: 8, cursor: 'pointer',
@@ -254,7 +255,7 @@ const AssistantView = ({ stats, onUpdateProject }) => {
         <div style={{ flex: 1, overflowY: 'auto', position: 'relative' }}>
             {/* BARRE DE FILTRES — épinglée en haut du scroll (recherche + statut + avancés) */}
             <div ref={filterBarRef} style={{ position: 'sticky', top: 0, zIndex: 30, background: '#FFFFFF', padding: '24px 24px 16px' }}>
-            <div style={{ maxWidth: 1100, margin: '0 auto', display: 'flex', gap: 8, alignItems: 'center' }}>
+            <div style={{ maxWidth: 1440, margin: '0 auto', display: 'flex', gap: 8, alignItems: 'center' }}>
                 <SmartFilterBar
                     fields={SEARCH_FIELDS}
                     activeFilters={activeFilters}
@@ -290,7 +291,7 @@ const AssistantView = ({ stats, onUpdateProject }) => {
                     </button>
                     {advOpen && (
                         <div style={{ position: 'absolute', top: 'calc(100% + 6px)', right: 0, background: 'white', borderRadius: 10, width: 360, boxShadow: '0 10px 25px -5px rgba(0,0,0,0.15)', border: '1px solid #E5E7EB', zIndex: 200, padding: 16 }}>
-                            <div style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 14 }}>Filtres avancés</div>
+                            <div style={{ fontSize: 12.5, fontWeight: 500, color: '#8A8F98', fontFamily: 'Roboto, system-ui, sans-serif', marginBottom: 14 }}>Filtres avancés</div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                                 {conditions.map((cond, i) => {
                                     const fieldDef = FILTER_FIELDS.find(f => f.id === cond.field);
@@ -343,10 +344,10 @@ const AssistantView = ({ stats, onUpdateProject }) => {
 
             {/* overflow visible (au lieu de hidden) : sinon la carte deviendrait le
                 conteneur de défilement du thead collant et le figerait dans la carte.
-                Même gabarit que la barre de filtres (padding 24 + inner maxWidth 1100
+                Même gabarit que la barre de filtres (padding 24 + inner maxWidth 1440
                 centré) pour que les deux soient parfaitement alignés. */}
             <div style={{ padding: '0 24px 24px' }}>
-            <div style={{ maxWidth: 1100, margin: '0 auto', background: 'white', borderRadius: 12, border: '1px solid #E5E7EB', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', overflow: 'visible' }}>
+            <div style={{ maxWidth: 1440, margin: '0 auto', background: 'white', borderRadius: 12, border: '1px solid #E5E7EB', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', overflow: 'visible' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead style={{ background: '#F9FAFB' }}>
                         <tr>
@@ -369,7 +370,7 @@ const AssistantView = ({ stats, onUpdateProject }) => {
                             return (
                                 <React.Fragment key={proj.id}>
                                     <tr style={{ borderBottom: '1px solid #F3F4F6', background: 'white' }}>
-                                        <td style={{ padding: '12px 16px', fontWeight: 600, color: '#111827' }}>
+                                        <td style={{ padding: '12px 10px', fontWeight: 600, color: '#111827' }}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                                 <button onClick={() => toggleExpand(proj.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, color: '#6B7280', display: 'flex', alignItems: 'center' }} aria-label={isOpen ? 'Replier' : 'Déplier'}>
                                                     {isOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
@@ -380,10 +381,10 @@ const AssistantView = ({ stats, onUpdateProject }) => {
                                                 </div>
                                             </div>
                                         </td>
-                                        <td style={{ padding: '12px 16px', fontSize: 13, color: '#374151' }}>
+                                        <td style={{ padding: '12px 10px', fontSize: 13, color: '#374151' }}>
                                             {proj.deadline ? format(new Date(proj.deadline), 'dd MMM yyyy', { locale: fr }) : '-'}
                                         </td>
-                                        <td style={{ padding: '12px 16px', textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
+                                        <td style={{ padding: '12px 10px', textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
                                             <div style={{ position: 'relative', display: 'inline-block' }}>
                                                 <select value={proj.projectStatus || "TODO"} onChange={(e) => onUpdateProject && onUpdateProject(proj.id, { status: e.target.value })}
                                                     style={{ appearance: 'none', padding: "4px 12px 4px 24px", borderRadius: 20, border: "1px solid #E5E7EB", background: 'white', color: "#374151", fontWeight: 600, fontSize: 11, cursor: 'pointer', textAlign: 'center', outline: 'none', boxShadow: "0 1px 2px rgba(0,0,0,0.05)", minWidth: 100 }}>
@@ -393,10 +394,10 @@ const AssistantView = ({ stats, onUpdateProject }) => {
                                             </div>
                                         </td>
                                         <td />
-                                        <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 600, color: '#374151' }}>{proj.totalSold}h</td>
-                                        <td style={{ padding: '12px 16px', textAlign: 'right', color: '#6B7280' }}>{proj.totalConsumed}h</td>
-                                        <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 700, color: proj.remainingBudget < 0 ? '#EF4444' : '#10B981' }}>{proj.remainingBudget}h</td>
-                                        <td style={{ padding: '12px 16px', textAlign: 'right', color: '#111827' }}>{proj.totalFuture}h</td>
+                                        <td style={{ padding: '12px 10px', textAlign: 'right', fontWeight: 600, color: '#374151' }}>{proj.totalSold}h</td>
+                                        <td style={{ padding: '12px 10px', textAlign: 'right', color: '#6B7280' }}>{proj.totalConsumed}h</td>
+                                        <td style={{ padding: '12px 10px', textAlign: 'right', fontWeight: 700, color: proj.remainingBudget < 0 ? '#EF4444' : '#10B981' }}>{proj.remainingBudget}h</td>
+                                        <td style={{ padding: '12px 10px', textAlign: 'right', color: '#111827' }}>{proj.totalFuture}h</td>
                                     </tr>
 
                                     {isOpen && (
