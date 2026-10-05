@@ -35,8 +35,8 @@ import { MOBILIER_PRODUIT_RE, STORE_CLASSIQUE_DEFAUT } from "../lib/constants/pr
 
 function SectionPanel({ title, count, expanded, onToggle, onDelete, readOnly, children }) {
   return (
-    <div style={{ marginBottom: 24, borderRadius: 12, background: 'white', overflow: 'hidden', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', border: '1px solid #f3f4f6' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px', height: 56, borderBottom: expanded ? '1px solid #f3f4f6' : 'none', backgroundColor: '#fff' }}>
+    <div style={{ marginBottom: 28 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px', height: 44 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <h3 style={{ margin: 0, fontSize: 18, color: '#111827', fontWeight: 700 }}>{title}</h3>
           <span style={{ background: '#f3f4f6', color: '#4b5563', padding: '2px 8px', borderRadius: 12, fontSize: 12, fontWeight: 600 }}>{count} articles</span>

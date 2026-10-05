@@ -189,24 +189,46 @@ function computeAgg(rawValues, type) {
 
 
 
+// Hauteur de la barre de regroupement d'AG Grid, sur laquelle la toolbar est posée.
+const GROUP_PANEL_HEIGHT = 44;
+
 // CSS custom pour le thème AG Grid
 const AG_CUSTOM_CSS = `
+/* Style épuré (façon Notion / Airtable) : pas de cadre, traits très clairs, en-têtes blancs */
+.ag-theme-alpine {
+  --ag-border-color: #EDEDEB;
+  --ag-secondary-border-color: #F1F1EF;
+  --ag-row-border-color: #F1F1EF;
+  --ag-header-background-color: #ffffff;
+}
+.ag-theme-alpine .ag-root-wrapper { border: none; }
+.ag-theme-alpine .ag-column-drop-horizontal {
+  background: transparent;
+  border-bottom: 1px solid #EDEDEB;
+  min-height: ${GROUP_PANEL_HEIGHT}px;
+  height: ${GROUP_PANEL_HEIGHT}px;
+}
+.ag-theme-alpine .ag-column-drop-empty-message { color: #A8A7A3; font-size: 12px; }
+/* Icônes menu / filtre des en-têtes : visibles au survol (ou si un filtre est actif) */
+.ag-theme-alpine .df-hdr-icon { opacity: 0; transition: opacity .15s; }
+.ag-theme-alpine .ag-header-cell:hover .df-hdr-icon,
+.ag-theme-alpine .df-hdr-icon-active { opacity: 1; }
 .ag-theme-alpine .ag-header-cell-label {
   font-size: 13px;
   font-weight: 600;
   color: #374151;
 }
 .ag-theme-alpine .ag-header {
-  background-color: #f9fafb;
-  border-bottom: 1px solid #e5e7eb;
+  background-color: #ffffff;
+  border-bottom: 1px solid #EDEDEB;
 }
 .ag-theme-alpine .ag-header-cell {
-  border-right: 1px solid #e5e7eb;
+  border-right: 1px solid #F1F1EF;
 }
 .ag-theme-alpine .ag-cell {
   font-size: 13px;
   color: #111827;
-  border-right: 1px solid #f3f4f6;
+  border-right: 1px solid #F4F4F2;
   display: flex;
   align-items: center;
 }
@@ -214,10 +236,10 @@ const AG_CUSTOM_CSS = `
   background-color: #ffffff;
 }
 .ag-theme-alpine .ag-row-odd {
-  background-color: #fafafa;
+  background-color: #ffffff;
 }
 .ag-theme-alpine .ag-row-hover {
-  background-color: #eff6ff !important;
+  background-color: #F7F7F5 !important;
 }
 .ag-theme-alpine .ag-row-selected {
   background-color: #dbeafe !important;
@@ -1753,10 +1775,10 @@ function MinuteGrid({
     );
 
     return (
-        <div style={{ width: '100%' }}>
+        <div style={{ width: '100%', position: 'relative' }}>
 
-            {/* Toolbar */}
-            <div style={{ padding: '8px 10px', borderBottom: '1px solid #e5e7eb', display: 'flex', gap: 8, alignItems: 'center', background: '#fafafa', flexWrap: 'wrap' }}>
+            {/* Toolbar : posée à droite, sur la barre « Glissez un champ ici pour regrouper » d'AG Grid */}
+            <div style={{ position: 'absolute', top: 0, right: 0, height: GROUP_PANEL_HEIGHT, zIndex: 2, padding: '0 8px', display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'flex-end' }}>
                 {!readOnly && (
                     /* Bouton scindé : clic = 1 ligne (geste habituel inchangé),
                        chevron — ou clic droit — = « combien de lignes ? ». */
@@ -2043,7 +2065,7 @@ function MinuteGrid({
                 )}
 
                 {/* Bouton colonnes */}
-                <div style={{ position: 'relative', marginLeft: 'auto' }}>
+                <div style={{ position: 'relative' }}>
                     <button
                         ref={colBtnRef}
                         onClick={handleToggleColPanel}
