@@ -993,6 +993,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
             <MinuteGrid
               title=""
               lightReadOnly
+              fillField="commentaire"
               rows={rowsAutre}
               onRowsChange={mergeChildRowsFor("autre")}
               schema={EXTRA_DEPENSES_SCHEMA}

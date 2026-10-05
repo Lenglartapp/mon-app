@@ -369,6 +369,7 @@ if (typeof document !== 'undefined') {
 
 function MinuteGrid({
     lightReadOnly = false, // test UI : cellules non modifiables sans fond gris, cadenas au survol
+    fillField = null,      // colonne qui s'étire pour occuper toute la largeur restante du tableau
     rows,
     onRowsChange,
     schema,
@@ -617,7 +618,8 @@ function MinuteGrid({
         // donc les largeurs ici via applyColumnState.
         if (state?.widths && Object.keys(state.widths).length > 0) {
             api.applyColumnState({
-                state: Object.entries(state.widths).map(([colId, width]) => ({ colId, width })),
+                // La colonne de remplissage (fillField) garde sa largeur élastique.
+                state: Object.entries(state.widths).filter(([colId]) => colId !== fillField).map(([colId, width]) => ({ colId, width })),
             });
         }
 
@@ -685,7 +687,7 @@ function MinuteGrid({
             });
             api.applyColumnState({ state: confState });
         }
-    }, [initialVisibilityModel, mecaGroups, confGroups, schema]);
+    }, [initialVisibilityModel, mecaGroups, confGroups, schema, fillField]);
 
     const onGridReady = useCallback((params) => {
         isGridReadyRef.current = true;
@@ -1308,6 +1310,8 @@ function MinuteGrid({
                 width: undefined,
                 initialWidth: w,
                 aggFunc,
+                // Colonne « de remplissage » : prend toute la largeur restante (jamais moins que sa largeur normale)
+                ...(fillField && col.field === fillField ? { flex: 1, minWidth: w } : {}),
                 // Chevron déplier/replier + indentation sur la colonne identité (paire décentrée)
                 ...(enableDecentree && col.field === 'zone' ? { cellRenderer: decentreeZoneRenderer } : {}),
                 // « voir parent » sur les colonnes techniques du rail pour les lignes enfants
@@ -1356,7 +1360,7 @@ function MinuteGrid({
         // Le glisser-déposer de lignes se fait via une poignée intégrée à la colonne
         // de sélection (voir selectionColumnDef), révélée au survol — pas de colonne dédiée.
         return showExpeditionCol ? [...withWidths, expeditionCol] : withWidths;
-    }, [schema, enableCellFormulas, handleOpenDetail, catalog, railOptions, handlePhotoChange, handleLinkUpdate, onDuplicateRow, hideCroquis, readOnly, title, isMobile, gridId, showExpeditionCol, resolvedUser, colAggregations, enableDecentree, decentreeZoneRenderer, decentreeParentOnlyRenderer]);
+    }, [schema, enableCellFormulas, handleOpenDetail, catalog, railOptions, handlePhotoChange, handleLinkUpdate, onDuplicateRow, hideCroquis, readOnly, title, isMobile, gridId, showExpeditionCol, resolvedUser, colAggregations, enableDecentree, decentreeZoneRenderer, decentreeParentOnlyRenderer, fillField]);
 
     const isExternalFilterPresent = useCallback(() => {
         return filterConditionsRef.current.some(isConditionActive) || collapsedPairsRef.current.size > 0;
