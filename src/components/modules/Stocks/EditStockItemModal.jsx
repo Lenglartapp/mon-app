@@ -3,6 +3,7 @@ import { Dialog, DialogTitle, DialogContent, DialogActions, TextField, MenuItem,
 import { Add as AddIcon, Delete as DeleteIcon, Close as CloseIcon } from '@mui/icons-material';
 import { LOC_A_COMPLETER, splitLocations } from '../../../lib/inventory/stockFields';
 import LocationInput from './LocationInput';
+import OperatorInput from './OperatorInput';
 
 // Édition d'un article de stock au double-clic — sert aussi à COMPLÉTER une réception Odoo :
 // détail des pièces (métrage seul) + UN emplacement pour toute la réception (éventuellement
@@ -63,7 +64,7 @@ export default function EditStockItemModal({ item, zones = [], onClose, onSave }
     const reason = isToComplete && location !== LOC_A_COMPLETER
       ? `Complément réception : ${cleanPieces.length} pièce(s) → ${location}`
       : undefined;
-    await onSave(patch, operator, reason);
+    await onSave(patch, operator.trim(), reason);
     setSaving(false);
   };
 
@@ -98,7 +99,7 @@ export default function EditStockItemModal({ item, zones = [], onClose, onSave }
           </Stack>
           <Stack direction="row" spacing={2}>
             <TextField label="Affectation (dossier)" value={project} onChange={(e) => setProject(e.target.value)} size="small" sx={{ flex: 1 }} />
-            <TextField label="Opérateur" value={operator} onChange={(e) => setOperator(e.target.value)} size="small" sx={{ width: '40%' }} placeholder="Qui édite ?" required error={!operator.trim()} />
+            <OperatorInput value={operator} onChange={setOperator} sx={{ width: '40%' }} />
           </Stack>
 
           <Divider />

@@ -21,7 +21,7 @@ import ProductHistoryModal from './ProductHistoryModal';
 import EditStockItemModal from './EditStockItemModal';
 import { useMemo, useRef } from 'react';
 import Button from '@mui/material/Button';
-import { Download, Upload, Map } from 'lucide-react';
+import { Download, Upload, Map as MapIcon } from 'lucide-react';
 import { exportInventoryToExcel, processInventoryClearanceImport } from '../../../lib/utils/inventoryExcelUtils';
 import { useAuth } from '../../../auth';
 import WarehouseMap from './WarehouseMap';
@@ -138,7 +138,7 @@ export default function StockInventoryTab({ inventory, projects = [], movements 
             field: 'location',
             headerName: 'Emplacement',
             width: 160,
-            renderCell: (params) => <LocationChips value={params.value} />
+            renderCell: (params) => <LocationChips value={params.value} breakdown={params.row.locBreakdown} unit={params.row.unit} />
         },
         {
             field: 'project',
@@ -286,6 +286,12 @@ export default function StockInventoryTab({ inventory, projects = [], movements 
         return Object.values(groups).map(g => ({
             ...g,
             location: Array.from(g.allLocations).sort().join(', '),
+            // Répartition en mètres par emplacement quand l'article est à plusieurs endroits (ex. ATELIER + B3)
+            locBreakdown: (() => {
+                const m = new Map();
+                g._sourceItems.forEach(it => { const k = it.location || ''; m.set(k, (m.get(k) || 0) + Number(it.qty || 0)); });
+                return m.size > 1 ? [...m].map(([loc, qty]) => ({ loc, qty: Math.round(qty * 100) / 100 })) : null;
+            })(),
             project: Array.from(g.allProjects).sort().join(', '),
             pieces: g.allPieces
         }));
@@ -401,7 +407,7 @@ export default function StockInventoryTab({ inventory, projects = [], movements 
                     <Button
                         variant={showMap ? 'contained' : 'outlined'}
                         size="small"
-                        startIcon={<Map size={16} />}
+                        startIcon={<MapIcon size={16} />}
                         onClick={() => setShowMap(v => !v)}
                         sx={{
                             textTransform: 'none', fontWeight: 700, borderRadius: 2,

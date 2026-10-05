@@ -1,0 +1,449 @@
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import Box from '@mui/material/Box';
+import Card from '@mui/material/Card';
+import Button from '@mui/material/Button';
+import Chip from '@mui/material/Chip';
+import TextField from '@mui/material/TextField';
+import InputAdornment from '@mui/material/InputAdornment';
+import Typography from '@mui/material/Typography';
+import Stack from '@mui/material/Stack';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
+import Autocomplete from '@mui/material/Autocomplete';
+import IconButton from '@mui/material/IconButton';
+import Alert from '@mui/material/Alert';
+import CircularProgress from '@mui/material/CircularProgress';
+import SearchIcon from '@mui/icons-material/Search';
+import CloseIcon from '@mui/icons-material/Close';
+import { Plus, Truck } from 'lucide-react';
+import { supabase } from '../../../lib/supabaseClient';
+import { fetchRequests, createRequest, confirmLine, cancelLine, requestLabel, LOC_ATELIER } from '../../../lib/inventory/stockRequests';
+import { splitLocations } from '../../../lib/inventory/stockFields';
+import OperatorInput from './OperatorInput';
+import LocationChips from './LocationChips';
+
+// « Mise à disposition » : l'atelier demande des pièces du stock, la logistique les
+// dépose à l'atelier et confirme ligne par ligne (les pièces passent en ATELIER).
+// Utilisé dans Inventaire (tous les dossiers) et dans le dossier (`project` = son nom).
+
+const itemTitle = (it) => {
+    const name = it.ref ? [it.ref, it.coloris].filter(Boolean).join(' — ') : it.product;
+    return [it.fournisseur, name].filter(Boolean).join(' · ');
+};
+const fmtDate = (d) => (d ? new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }) : '');
+const fmtDateTime = (d) => (d ? new Date(d).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '');
+const todayISO = () => new Date().toISOString().slice(0, 10);
+const round2 = (n) => Math.round(Number(n) * 100) / 100;
+
+const STATUS = {
+    open: { label: 'À faire', bg: '#FEF3C7', color: '#92400E' },
+    done: { label: 'Mise à disposition', bg: '#D1FAE5', color: '#065F46' },
+    cancelled: { label: 'Annulée', bg: '#F3F4F6', color: '#6B7280' },
+};
+const FILTERS = [
+    { key: 'open', label: 'À faire' },
+    { key: 'done', label: 'Faites' },
+    { key: 'cancelled', label: 'Annulées' },
+    { key: 'all', label: 'Toutes' },
+];
+
+export default function StockRequestsPanel({ inventory = [], project = null, onStockChanged }) {
+    const [requests, setRequests] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [filter, setFilter] = useState('open');
+    const [search, setSearch] = useState('');
+    const [newOpen, setNewOpen] = useState(false);
+    const [confirming, setConfirming] = useState(null); // { request, line }
+
+    const load = useCallback(async () => {
+        try {
+            setRequests(await fetchRequests(supabase, { project }));
+            setError(null);
+        } catch (e) {
+            setError(e.message || String(e));
+        } finally {
+            setLoading(false);
+        }
+    }, [project]);
+
+    useEffect(() => { load(); }, [load]);
+
+    const afterStockChange = async () => {
+        await load();
+        onStockChanged?.();
+    };
+
+    // Pièces déjà demandées (lignes en attente) : on ne les redemande pas.
+    const reserved = useMemo(() => {
+        const map = new Map();
+        requests.forEach(r => r.lines.forEach(l => {
+            if (l.status !== 'pending') return;
+            (l.pieces || []).forEach(p => map.set(`${l.item_id}:${p.id}`, requestLabel(r)));
+        }));
+        return map;
+    }, [requests]);
+
+    const counts = useMemo(() => ({
+        open: requests.filter(r => r.status === 'open').length,
+        done: requests.filter(r => r.status === 'done').length,
+        cancelled: requests.filter(r => r.status === 'cancelled').length,
+        all: requests.length,
+    }), [requests]);
+
+    const visible = useMemo(() => {
+        const q = search.trim().toLowerCase();
+        return requests
+            .filter(r => filter === 'all' || r.status === filter)
+            .filter(r => !q || [requestLabel(r), r.project, r.requested_by, r.comment, ...r.lines.flatMap(l => [l.product, l.ref, l.coloris, l.fournisseur, l.project])]
+                .some(v => (v || '').toLowerCase().includes(q)))
+            // À faire : la date souhaitée la plus proche d'abord
+            .sort((a, b) => (filter === 'open'
+                ? String(a.requested_for || '9999').localeCompare(String(b.requested_for || '9999'))
+                : String(b.created_at).localeCompare(String(a.created_at))));
+    }, [requests, filter, search]);
+
+    const handleCancel = async (line) => {
+        if (!window.confirm('Annuler cette ligne de la demande ?')) return;
+        try {
+            await cancelLine(supabase, line);
+            await load();
+        } catch (e) {
+            alert(`Erreur : ${e.message}`);
+        }
+    };
+
+    return (
+        <Box>
+            <Card sx={{ mb: 3, p: 2, display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
+                <Stack direction="row" spacing={1}>
+                    {FILTERS.map(f => (
+                        <Chip
+                            key={f.key}
+                            label={`${f.label} (${counts[f.key]})`}
+                            onClick={() => setFilter(f.key)}
+                            sx={{ fontWeight: 700, bgcolor: filter === f.key ? '#1E2447' : '#F3F4F6', color: filter === f.key ? 'white' : '#374151', '&:hover': { bgcolor: filter === f.key ? '#1E2447' : '#E5E7EB' } }}
+                        />
+                    ))}
+                </Stack>
+                <TextField
+                    placeholder="Rechercher (MAD-, dossier, tissu, demandeur…)"
+                    size="small"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    sx={{ width: 300 }}
+                    InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon color="action" /></InputAdornment> }}
+                />
+                <Box sx={{ flexGrow: 1 }} />
+                <Button
+                    variant="contained"
+                    startIcon={<Plus size={18} />}
+                    onClick={() => setNewOpen(true)}
+                    sx={{ fontWeight: 700, textTransform: 'none', borderRadius: 2, bgcolor: '#1E2447', '&:hover': { bgcolor: '#2D3561' } }}
+                >
+                    Nouvelle demande
+                </Button>
+            </Card>
+
+            {error && (
+                <Alert severity="error" sx={{ mb: 2 }}>
+                    Impossible de charger les demandes : {error}
+                    {/relation|does not exist|schema cache/i.test(error) && ' — la migration « stock_requests » doit être lancée dans Supabase.'}
+                </Alert>
+            )}
+            {loading && <Box sx={{ textAlign: 'center', py: 6 }}><CircularProgress size={28} /></Box>}
+            {!loading && !error && visible.length === 0 && (
+                <Box sx={{ textAlign: 'center', py: 8, color: '#9CA3AF' }}>
+                    <Truck size={32} />
+                    <Typography sx={{ mt: 1 }}>{filter === 'open' ? 'Aucune demande en attente.' : 'Aucune demande.'}</Typography>
+                </Box>
+            )}
+
+            <Stack spacing={2}>
+                {visible.map(r => (
+                    <RequestCard
+                        key={r.id}
+                        request={r}
+                        showProject={!project}
+                        onConfirm={(line) => setConfirming({ request: r, line })}
+                        onCancel={handleCancel}
+                    />
+                ))}
+            </Stack>
+
+            {newOpen && (
+                <NewRequestDialog
+                    inventory={inventory}
+                    project={project}
+                    reserved={reserved}
+                    onClose={() => setNewOpen(false)}
+                    onCreated={async () => { setNewOpen(false); setFilter('open'); await load(); }}
+                />
+            )}
+            {confirming && (
+                <ConfirmDialog
+                    {...confirming}
+                    onClose={() => setConfirming(null)}
+                    onDone={async () => { setConfirming(null); await afterStockChange(); }}
+                />
+            )}
+        </Box>
+    );
+}
+
+function RequestCard({ request: r, showProject, onConfirm, onCancel }) {
+    const late = r.status === 'open' && r.requested_for && r.requested_for < todayISO();
+    const st = STATUS[r.status] || STATUS.open;
+    const pendingCount = r.lines.filter(l => l.status === 'pending').length;
+    return (
+        <Card sx={{ p: 2, borderRadius: 3, boxShadow: '0 1px 3px rgba(0,0,0,0.08)', borderLeft: `4px solid ${late ? '#DC2626' : r.status === 'open' ? '#F59E0B' : r.status === 'done' ? '#10B981' : '#D1D5DB'}` }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mb: 1 }}>
+                <Chip label={requestLabel(r)} size="small" sx={{ fontWeight: 800, bgcolor: '#1E2447', color: 'white' }} />
+                {showProject && r.project && <Chip label={r.project} size="small" variant="outlined" sx={{ borderColor: '#6366F1', color: '#4F46E5' }} />}
+                <Typography sx={{ fontWeight: 700, color: late ? '#DC2626' : '#111827' }}>
+                    {r.requested_for ? `Pour le ${fmtDate(r.requested_for)}` : 'Sans date'}{late ? ' — en retard' : ''}
+                </Typography>
+                <Box sx={{ flexGrow: 1 }} />
+                {r.status === 'open' && r.lines.length > 1 && (
+                    <Typography variant="caption" sx={{ color: '#6B7280' }}>{r.lines.length - pendingCount}/{r.lines.length} livrée(s)</Typography>
+                )}
+                <Chip label={st.label} size="small" sx={{ fontWeight: 700, bgcolor: st.bg, color: st.color }} />
+            </Box>
+            <Typography variant="body2" sx={{ color: '#6B7280', mb: r.comment ? 0.5 : 1.5 }}>
+                Demandé par <b>{r.requested_by}</b> le {fmtDateTime(r.created_at)}
+            </Typography>
+            {r.comment && <Typography variant="body2" sx={{ mb: 1.5, fontStyle: 'italic', color: '#374151' }}>« {r.comment} »</Typography>}
+
+            <Stack spacing={1}>
+                {r.lines.map(l => (
+                    <Box key={l.id} sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 1.25, borderRadius: 2, bgcolor: l.status === 'pending' ? '#F9FAFB' : 'white', border: '1px solid #E5E7EB', flexWrap: 'wrap', opacity: l.status === 'cancelled' ? 0.55 : 1 }}>
+                        <Box sx={{ flex: '1 1 260px', minWidth: 0 }}>
+                            <Typography sx={{ fontWeight: 600, fontSize: 14 }}>{itemTitle(l)}</Typography>
+                            <Typography variant="caption" sx={{ color: '#6B7280' }}>
+                                {showProject && l.project && !r.project ? `${l.project} · ` : ''}{l.laize ? `Laize ${l.laize} · ` : ''}depuis {splitLocations(l.from_location).join(', ') || '—'}
+                            </Typography>
+                        </Box>
+                        <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', alignItems: 'center' }}>
+                            {(l.pieces || []).length > 0
+                                ? l.pieces.map(p => <Chip key={p.id} size="small" label={`${p.name || 'Pièce'} · ${p.qty} ${l.unit || 'ml'}`} sx={{ bgcolor: '#EEF2FF', color: '#3730A3', fontWeight: 600 }} />)
+                                : <Chip size="small" label={`${l.qty} ${l.unit || 'ml'}`} sx={{ bgcolor: '#EEF2FF', color: '#3730A3', fontWeight: 600 }} />}
+                        </Box>
+                        <Box sx={{ minWidth: 200, textAlign: 'right' }}>
+                            {l.status === 'pending' && (
+                                <Stack direction="row" spacing={1} justifyContent="flex-end">
+                                    <Button size="small" onClick={() => onCancel(l)} sx={{ color: '#6B7280', textTransform: 'none' }}>Annuler</Button>
+                                    <Button size="small" variant="contained" onClick={() => onConfirm(l)} sx={{ textTransform: 'none', fontWeight: 700, bgcolor: '#059669', '&:hover': { bgcolor: '#047857' } }}>
+                                        Confirmer la mise à dispo
+                                    </Button>
+                                </Stack>
+                            )}
+                            {l.status === 'done' && (
+                                <Typography variant="body2" sx={{ color: '#065F46', fontWeight: 600 }}>✓ En atelier — {l.done_by}, {fmtDateTime(l.done_at)}</Typography>
+                            )}
+                            {l.status === 'cancelled' && <Typography variant="body2" sx={{ color: '#6B7280' }}>Annulée</Typography>}
+                        </Box>
+                    </Box>
+                ))}
+            </Stack>
+        </Card>
+    );
+}
+
+function NewRequestDialog({ inventory, project, reserved, onClose, onCreated }) {
+    const [requestedBy, setRequestedBy] = useState('');
+    const [requestedFor, setRequestedFor] = useState(todayISO());
+    const [comment, setComment] = useState('');
+    const [lines, setLines] = useState([]); // [{ item, pieceIds:Set, qty }]
+    const [saving, setSaving] = useState(false);
+
+    // Seulement ce qui est réellement en stock, hors atelier ; limité au dossier si on est dans un dossier.
+    const eligible = useMemo(() => inventory
+        .filter(it => Number(it.qty) > 0)
+        .filter(it => !splitLocations(it.location).includes(LOC_ATELIER))
+        .filter(it => !project || it.project === project)
+        .filter(it => !lines.some(l => l.item.id === it.id))
+        .sort((a, b) => itemTitle(a).localeCompare(itemTitle(b))), [inventory, project, lines]);
+
+    const addItem = (it) => {
+        if (!it) return;
+        setLines(prev => [...prev, { item: it, pieceIds: new Set(), qty: '' }]);
+    };
+    const removeLine = (id) => setLines(prev => prev.filter(l => l.item.id !== id));
+    const togglePiece = (itemId, pieceId) => setLines(prev => prev.map(l => {
+        if (l.item.id !== itemId) return l;
+        const s = new Set(l.pieceIds);
+        if (s.has(pieceId)) s.delete(pieceId); else s.add(pieceId);
+        return { ...l, pieceIds: s };
+    }));
+    const setQty = (itemId, v) => setLines(prev => prev.map(l => (l.item.id === itemId ? { ...l, qty: v } : l)));
+
+    const hasPieces = (it) => Array.isArray(it.pieces) && it.pieces.length > 0;
+    const lineQty = (l) => (hasPieces(l.item)
+        ? round2(l.item.pieces.filter(p => l.pieceIds.has(p.id)).reduce((s, p) => s + Number(p.qty || 0), 0))
+        : Number(l.qty) || 0);
+    const lineValid = (l) => lineQty(l) > 0 && (hasPieces(l.item) || lineQty(l) <= Number(l.item.qty));
+    const canSave = requestedBy.trim() && requestedFor && lines.length > 0 && lines.every(lineValid);
+
+    const save = async () => {
+        setSaving(true);
+        try {
+            await createRequest(supabase, { project, requested_by: requestedBy.trim(), requested_for: requestedFor, comment: comment.trim() }, lines.map(l => ({
+                item: l.item,
+                pieces: hasPieces(l.item) ? l.item.pieces.filter(p => l.pieceIds.has(p.id)) : [],
+                qty: lineQty(l),
+            })));
+            await onCreated();
+        } catch (e) {
+            alert(`Erreur : ${e.message}`);
+            setSaving(false);
+        }
+    };
+
+    return (
+        <Dialog open onClose={onClose} maxWidth="md" fullWidth>
+            <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                Nouvelle demande de mise à disposition{project ? ` — ${project}` : ''}
+                <IconButton onClick={onClose}><CloseIcon /></IconButton>
+            </DialogTitle>
+            <DialogContent dividers>
+                <Stack spacing={2}>
+                    <Stack direction="row" spacing={2}>
+                        <OperatorInput value={requestedBy} onChange={setRequestedBy} label="Demandé par" sx={{ flex: 1 }} />
+                        <TextField
+                            type="date" size="small" label="À mettre à dispo pour le" required
+                            value={requestedFor} onChange={(e) => setRequestedFor(e.target.value)}
+                            InputLabelProps={{ shrink: true }} sx={{ width: 220 }} error={!requestedFor}
+                        />
+                    </Stack>
+
+                    <Autocomplete
+                        options={eligible}
+                        value={null}
+                        onChange={(e, it) => addItem(it)}
+                        getOptionLabel={(it) => itemTitle(it)}
+                        isOptionEqualToValue={(a, b) => a.id === b.id}
+                        blurOnSelect
+                        renderOption={(props, it) => (
+                            <li {...props} key={it.id}>
+                                <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                                    <span style={{ fontWeight: 600 }}>{itemTitle(it)}</span>
+                                    <span style={{ fontSize: 12, color: '#6B7280' }}>
+                                        {it.qty} {it.unit} · {hasPieces(it) ? `${it.pieces.length} pièce(s) · ` : ''}{it.project || 'Stock libre'} · {splitLocations(it.location).join(', ') || 'sans emplacement'}
+                                    </span>
+                                </Box>
+                            </li>
+                        )}
+                        renderInput={(params) => <TextField {...params} size="small" label={`+ Ajouter un tissu en stock${project ? ' (affecté au dossier)' : ''}`} />}
+                        noOptionsText={project ? 'Aucun article de ce dossier disponible en stock.' : 'Aucun article disponible en stock.'}
+                    />
+
+                    {lines.length === 0 && (
+                        <Typography variant="body2" sx={{ color: '#9CA3AF', textAlign: 'center', py: 2 }}>
+                            Ajoute les tissus voulus, puis coche les pièces qu’il te faut.
+                        </Typography>
+                    )}
+
+                    {lines.map(l => {
+                        const it = l.item;
+                        return (
+                            <Box key={it.id} sx={{ p: 1.5, border: '1px solid #E5E7EB', borderRadius: 2 }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                                        <Typography sx={{ fontWeight: 700 }}>{itemTitle(it)}</Typography>
+                                        <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 0.5 }}>
+                                            <Typography variant="caption" sx={{ color: '#6B7280' }}>{it.project || 'Stock libre'}{it.laize ? ` · Laize ${it.laize}` : ''} · stock {it.qty} {it.unit}</Typography>
+                                            <LocationChips value={it.location} />
+                                        </Stack>
+                                    </Box>
+                                    <IconButton size="small" onClick={() => removeLine(it.id)}><CloseIcon fontSize="small" /></IconButton>
+                                </Box>
+                                {hasPieces(it) ? (
+                                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 1 }}>
+                                        {it.pieces.map((p, idx) => {
+                                            const takenBy = reserved.get(`${it.id}:${p.id}`);
+                                            const on = l.pieceIds.has(p.id);
+                                            return (
+                                                <Chip
+                                                    key={p.id ?? idx}
+                                                    label={`${p.name || `Pièce ${idx + 1}`} · ${p.qty} ${it.unit || 'ml'}${takenBy ? ` (déjà demandée ${takenBy})` : ''}`}
+                                                    onClick={takenBy ? undefined : () => togglePiece(it.id, p.id)}
+                                                    disabled={!!takenBy}
+                                                    variant={on ? 'filled' : 'outlined'}
+                                                    sx={{ fontWeight: 600, ...(on ? { bgcolor: '#1E2447', color: 'white', '&:hover': { bgcolor: '#2D3561' } } : {}) }}
+                                                />
+                                            );
+                                        })}
+                                    </Box>
+                                ) : (
+                                    <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1 }}>
+                                        <TextField
+                                            type="number" size="small" label="Métrage voulu" value={l.qty}
+                                            onChange={(e) => setQty(it.id, e.target.value)}
+                                            error={Number(l.qty) > Number(it.qty)}
+                                            helperText={Number(l.qty) > Number(it.qty) ? `Max ${it.qty} ${it.unit || ''}` : 'Article sans détail des pièces'}
+                                            sx={{ width: 200 }}
+                                            InputProps={{ endAdornment: <InputAdornment position="end">{it.unit || 'ml'}</InputAdornment> }}
+                                        />
+                                    </Stack>
+                                )}
+                                {hasPieces(it) && lineQty(l) > 0 && (
+                                    <Typography variant="body2" sx={{ mt: 1, color: '#374151' }}>Demandé : <b>{lineQty(l)} {it.unit || 'ml'}</b></Typography>
+                                )}
+                            </Box>
+                        );
+                    })}
+
+                    <TextField label="Commentaire (optionnel)" size="small" multiline minRows={2} value={comment} onChange={(e) => setComment(e.target.value)} />
+                </Stack>
+            </DialogContent>
+            <DialogActions>
+                <Button onClick={onClose}>Annuler</Button>
+                <Button variant="contained" onClick={save} disabled={!canSave || saving} sx={{ fontWeight: 700 }}>
+                    Envoyer la demande
+                </Button>
+            </DialogActions>
+        </Dialog>
+    );
+}
+
+function ConfirmDialog({ request, line, onClose, onDone }) {
+    const [operator, setOperator] = useState('');
+    const [saving, setSaving] = useState(false);
+    const confirm = async () => {
+        setSaving(true);
+        try {
+            await confirmLine(supabase, request, line, operator.trim());
+            await onDone();
+        } catch (e) {
+            alert(`Erreur : ${e.message}`);
+            setSaving(false);
+        }
+    };
+    return (
+        <Dialog open onClose={onClose} maxWidth="xs" fullWidth>
+            <DialogTitle>Confirmer la mise à disposition</DialogTitle>
+            <DialogContent dividers>
+                <Stack spacing={2}>
+                    <Box>
+                        <Typography sx={{ fontWeight: 700 }}>{itemTitle(line)}</Typography>
+                        <Typography variant="body2" sx={{ color: '#6B7280' }}>
+                            {(line.pieces || []).length ? line.pieces.map(p => `${p.name} (${p.qty} ${line.unit || 'ml'})`).join(', ') : `${line.qty} ${line.unit || 'ml'}`}
+                        </Typography>
+                    </Box>
+                    <Alert severity="info" icon={false} sx={{ py: 0.5 }}>
+                        Emplacement : <b>{splitLocations(line.from_location).join(', ') || '—'}</b> → <b>{LOC_ATELIER}</b>
+                    </Alert>
+                    <OperatorInput value={operator} onChange={setOperator} label="Déposé par" />
+                </Stack>
+            </DialogContent>
+            <DialogActions>
+                <Button onClick={onClose}>Annuler</Button>
+                <Button variant="contained" onClick={confirm} disabled={!operator.trim() || saving} sx={{ fontWeight: 700, bgcolor: '#059669', '&:hover': { bgcolor: '#047857' } }}>
+                    Confirmer
+                </Button>
+            </DialogActions>
+        </Dialog>
+    );
+}
