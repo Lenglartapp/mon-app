@@ -27,7 +27,7 @@ export function HeaderCard({ left, right, stacked = false, bare = false }) {
         background: 'white', border: '1px solid #E5E7EB', borderRadius: 12,
         boxShadow: '0 1px 3px rgba(0,0,0,0.04)', padding: stacked ? 16 : '22px 26px',
       }),
-      display: 'grid', gridTemplateColumns: stacked ? 'minmax(0,1fr)' : 'minmax(0,1.3fr) minmax(0,1fr)', gap: stacked ? 16 : 28,
+      display: 'grid', gridTemplateColumns: (stacked || !right) ? 'minmax(0,1fr)' : 'minmax(0,1.3fr) minmax(0,1fr)', gap: stacked ? 16 : 28,
     }}>
       <div style={{ minWidth: 0 }}>{left}</div>
       {right && <div style={{ minWidth: 0, display: 'flex' }}>{right}</div>}

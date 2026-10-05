@@ -42,7 +42,7 @@ import { differenceInMinutes } from "date-fns";
 import DocumentListModal from "../components/DocumentListModal"; // Added import
 import { useAuth } from "../auth";
 import { can, role } from "../lib/authz";
-import { HeaderCard, HeaderPanel, EditableTitle, StatusPill, MetaItem, OwnerPicker } from "../components/ui/EntityHeader";
+import { HeaderCard, EditableTitle, StatusPill, MetaItem, OwnerPicker } from "../components/ui/EntityHeader";
 import { formatAnyDateFR } from "../lib/utils/formatDate";
 import { FORMULES_METRAGE_V2 } from "../lib/formulas/metrageVersion";
 
@@ -857,8 +857,8 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
         >
           ← Retour
         </button>
-        {/* En-tête sans cadre (même modèle que le chiffrage) : titre, puis une ligne d'infos ;
-            bloc discret « Livraison & logistique » à droite */}
+        {/* En-tête sans cadre (même modèle que le chiffrage) : titre, puis une seule ligne d'infos
+            (chargé d'affaires, date, statut, adresse, type, livraison + phases) */}
         <HeaderCard
           bare
           stacked={isMobile}
@@ -890,23 +890,17 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                     onChange={(v) => onUpdateProject(project.id, { status: v })}
                   />
                 </MetaItem>
-              </div>
-            </>
-          }
-          right={
-            <HeaderPanel title="Livraison & logistique" tone="soft">
-              <div style={{ display: 'grid', gridTemplateColumns: '90px minmax(0,1fr)', gap: '16px 18px', alignItems: 'center', fontSize: 13 }}>
-                <span style={{ color: '#6B7280', fontWeight: 500 }}>Adresse</span>
+                <MetaItem label="Adresse">
                 <AddressAutocomplete
                   value={addressDraft}
                   onChange={setAddressDraft}
                   onCommit={(v) => { if (v !== (project?.location || "")) onUpdateProject(project.id, { location: v }); }}
                   placeholder="Saisir une adresse…"
-                  style={{ width: '100%', maxWidth: 420 }}
+                  style={{ width: 300 }}
                   inputStyle={{ border: '1px solid #E5E7EB', borderRadius: 6, padding: '4px 8px', background: 'white', color: '#1F2937' }}
                 />
-
-                <span style={{ color: '#6B7280', fontWeight: 500 }}>Type</span>
+                </MetaItem>
+                <MetaItem label="Type">
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                   <select
                     value={project?.intervention_type || "livraison"}
@@ -930,8 +924,8 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                     </>
                   )}
                 </div>
-
-                <span style={{ color: '#6B7280', fontWeight: 500 }}>Livraison</span>
+                </MetaItem>
+                <MetaItem label="Livraison">
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                   <input
                     type="date"
@@ -1025,13 +1019,14 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                     )}
                   </div>
                 </div>
+                </MetaItem>
               </div>
-            </HeaderPanel>
+            </>
           }
         />
 
         {/* Ligne des vues (au centre) + actions (à droite), comme la ligne des variantes du chiffrage */}
-        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'minmax(0,1fr)' : 'minmax(0,1fr) auto minmax(0,1fr)', alignItems: 'center', gap: 16, marginTop: 32, paddingBottom: 8, borderBottom: '1px solid #EDEDEB' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'minmax(0,1fr)' : 'minmax(0,1fr) auto minmax(0,1fr)', alignItems: 'center', gap: 16, marginTop: 32, paddingBottom: 8 }}>
           {!isMobile && <div />}
           <div className="island-nav-container" style={{ display: 'inline-flex', gap: 2, maxWidth: '100%', overflowX: isMobile ? 'auto' : 'visible', justifySelf: 'center' }}>
             {visibleStages.map((p) => (
@@ -1124,7 +1119,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
             {/* Chapitre 1 : Consommation Temps */}
             <div style={{ background: 'white', borderRadius: 12, border: `1px solid ${COLORS.border}`, padding: 20 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-                <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0, color: '#111827', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <h3 style={{ fontSize: 20, fontWeight: 500, fontFamily: 'Roboto, system-ui, sans-serif', margin: 0, color: '#111827', display: 'flex', alignItems: 'center', gap: 8 }}>
                   ⏱️ Consommation Temps
                 </h3>
                 {canEditProd && (
@@ -1174,7 +1169,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
 
             {/* Chapitre 2 : Avancement */}
             <div style={{ background: 'white', borderRadius: 12, border: `1px solid ${COLORS.border}`, padding: 20 }}>
-              <h3 style={{ fontSize: 16, fontWeight: 700, margin: '0 0 16px', color: '#111827', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <h3 style={{ fontSize: 20, fontWeight: 500, fontFamily: 'Roboto, system-ui, sans-serif', margin: '0 0 16px', color: '#111827', display: 'flex', alignItems: 'center', gap: 8 }}>
                 📊 Avancement
               </h3>
               <DashboardTiles rows={rows} budget={project?.budget || {}} isMobile={isMobile} />

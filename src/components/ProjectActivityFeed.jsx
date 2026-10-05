@@ -219,7 +219,7 @@ export default function ProjectActivityFeed({ rows, wall, pinnedIds, onTogglePin
         <div style={{ background: '#fff', borderRadius: 12, border: `1px solid ${COLORS.border}`, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
             <div style={{ padding: '12px 20px', borderBottom: `1px solid ${COLORS.border}`, background: '#f9fafb', display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-                    <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8, color: '#374151' }}><Clock size={18} /> Journal & Messages</div>
+                    <div style={{ fontWeight: 500, fontSize: 20, fontFamily: 'Roboto, system-ui, sans-serif', display: 'flex', alignItems: 'center', gap: 8, color: '#111827' }}><Clock size={18} /> Journal & Messages</div>
                     <div style={{ display: 'flex', gap: 4 }}>
                         {FILTERS.map(f => (
                             <button key={f.key} onClick={() => setFilter(f.key)} style={{ padding: '4px 12px', borderRadius: 20, border: 'none', fontSize: 12, fontWeight: 500, cursor: 'pointer', background: filter === f.key ? '#374151' : '#E5E7EB', color: filter === f.key ? 'white' : '#4B5563' }}>{f.label}</button>
