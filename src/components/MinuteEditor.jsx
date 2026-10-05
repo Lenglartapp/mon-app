@@ -982,7 +982,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
       {/* 1/2/3 tableaux selon modules */}
       <>
         {/* --- NOUVEAUX TABLEAUX : Autres Dépenses & Déplacement (EN HAUT, FIXES) --- */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 24, marginBottom: 24 }}>
+        <div>
           {/* Tableau Autres Dépenses */}
           <SectionPanel
             title="Autres Dépenses"
