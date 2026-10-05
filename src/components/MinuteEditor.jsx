@@ -1005,7 +1005,6 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
           >
             <MinuteGrid
               title=""
-              lightReadOnly
               fillField="commentaire"
               rows={rowsAutre}
               onRowsChange={mergeChildRowsFor("autre")}
@@ -1038,7 +1037,6 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
           >
             <MinuteGrid
               title=""
-              lightReadOnly
               rows={rowsDeplacement}
               onRowsChange={mergeChildRowsFor("deplacement")}
               schema={CHIFFRAGE_SCHEMA_DEP}
