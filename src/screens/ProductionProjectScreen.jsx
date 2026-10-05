@@ -857,7 +857,10 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
         >
           ← Retour
         </button>
+        {/* En-tête sans cadre (même modèle que le chiffrage) : titre, puis une ligne d'infos ;
+            bloc discret « Livraison & logistique » à droite */}
         <HeaderCard
+          bare
           stacked={isMobile}
           left={
             <>
@@ -865,17 +868,12 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                 value={project?.name || ""}
                 canEdit={canEditHeader}
                 placeholder="—"
-                fontSize={isMobile ? 24 : 30}
+                fontSize={isMobile ? 26 : 34}
+                fontWeight={400}
+                fontFamily="Roboto, system-ui, sans-serif"
                 onSave={(v) => onUpdateProject(project.id, { name: v })}
               />
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 14, flexWrap: 'wrap' }}>
-                <StatusPill
-                  value={project?.status || "TODO"}
-                  options={PROJECT_STATUS_OPTIONS}
-                  onChange={(v) => onUpdateProject(project.id, { status: v })}
-                />
-              </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px 28px', alignItems: 'flex-start', marginTop: 18 }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px 28px', alignItems: 'flex-end', marginTop: 16 }}>
                 <MetaItem label="Chargé d'affaires">
                   <OwnerPicker
                     value={project?.manager || ""}
@@ -885,11 +883,18 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                   />
                 </MetaItem>
                 <MetaItem label="Créé le">{formatAnyDateFR(project?.created_at || project?.createdAt)}</MetaItem>
+                <MetaItem label="Statut">
+                  <StatusPill
+                    value={project?.status || "TODO"}
+                    options={PROJECT_STATUS_OPTIONS}
+                    onChange={(v) => onUpdateProject(project.id, { status: v })}
+                  />
+                </MetaItem>
               </div>
             </>
           }
           right={
-            <HeaderPanel title="Livraison & logistique" tone="logistics">
+            <HeaderPanel title="Livraison & logistique" tone="soft">
               <div style={{ display: 'grid', gridTemplateColumns: '90px minmax(0,1fr)', gap: '16px 18px', alignItems: 'center', fontSize: 13 }}>
                 <span style={{ color: '#6B7280', fontWeight: 500 }}>Adresse</span>
                 <AddressAutocomplete
@@ -1025,8 +1030,24 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
           }
         />
 
-        {/* Actions */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: isMobile ? 'flex-start' : 'flex-end', gap: 10, flexWrap: 'wrap', marginTop: 12 }}>
+        {/* Ligne des vues (au centre) + actions (à droite), comme la ligne des variantes du chiffrage */}
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'minmax(0,1fr)' : 'minmax(0,1fr) auto minmax(0,1fr)', alignItems: 'center', gap: 16, marginTop: 32, paddingBottom: 8, borderBottom: '1px solid #EDEDEB' }}>
+          {!isMobile && <div />}
+          <div className="island-nav-container" style={{ display: 'inline-flex', gap: 2, maxWidth: '100%', overflowX: isMobile ? 'auto' : 'visible', justifySelf: 'center' }}>
+            {visibleStages.map((p) => (
+              <button
+                key={p.key}
+                style={{
+                  ...getNavStyle(stage === p.key),
+                  flex: isMobile ? '1 0 auto' : 'initial' // Allow grow on mobile
+                }}
+                onClick={() => setStage(p.key)}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: isMobile ? 'flex-start' : 'flex-end', gap: 10, flexWrap: 'wrap' }}>
             {/* Matériauthèque Button */}
             <button
               onClick={() => setShowMaterials(true)}
@@ -1034,9 +1055,8 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                 display: 'flex', alignItems: 'center', gap: 8,
                 background: projectMaterials.length > 0 ? '#EDE9FE' : 'white',
                 border: `1px solid ${projectMaterials.length > 0 ? '#C4B5FD' : '#E5E7EB'}`,
-                borderRadius: 20,
-                padding: '7px 16px',
-                boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+                borderRadius: 8,
+                padding: '8px 14px',
                 cursor: 'pointer',
                 fontSize: 13,
                 color: projectMaterials.length > 0 ? '#5B21B6' : '#374151',
@@ -1056,9 +1076,8 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                 display: 'flex', alignItems: 'center', gap: 8,
                 background: 'white',
                 border: '1px solid #E5E7EB',
-                borderRadius: 20,
-                padding: '7px 16px',
-                boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+                borderRadius: 8,
+                padding: '8px 14px',
                 cursor: 'pointer',
                 fontSize: 13,
                 color: '#374151',
@@ -1078,10 +1097,9 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                   display: 'flex', alignItems: 'center', gap: 8,
                   background: 'white',
                   border: '1px solid #E5E7EB',
-                  borderRadius: 20,
-                  padding: '7px 16px',
-                  boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
-                  cursor: 'pointer',
+                  borderRadius: 8,
+                  padding: '8px 14px',
+                    cursor: 'pointer',
                   fontSize: 13,
                   color: '#374151',
                   fontWeight: 600,
@@ -1093,44 +1111,9 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
               </button>
             )}
 
+          </div>
         </div>
       </div>
-
-      {/* Island Navigation */}
-      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 24, position: 'relative' }}>
-
-        <div
-          className="island-nav-container"
-          style={{
-            display: 'inline-flex',
-            background: 'white',
-            padding: 5,
-            borderRadius: 99,
-            gap: 4,
-            flexWrap: isMobile ? 'nowrap' : 'wrap',
-            justifyContent: isMobile ? 'space-between' : 'center',
-            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)',
-            maxWidth: '100%',
-            overflowX: isMobile ? 'auto' : 'visible',
-            width: isMobile ? '100%' : 'auto',
-            position: 'relative', zIndex: 1
-          }}>
-          {visibleStages.map((p) => (
-            <button
-              key={p.key}
-              style={{
-                ...getNavStyle(stage === p.key),
-                flex: isMobile ? '1 0 auto' : 'initial' // Allow grow on mobile
-              }}
-              onClick={() => setStage(p.key)}
-            >
-              {p.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-
 
       {stage === "dashboard" && (
         <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 24, alignItems: 'flex-start' }}>

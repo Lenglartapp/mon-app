@@ -19,11 +19,14 @@ function stringToColor(string) {
 
 const initialsOf = (name) => String(name || "?").trim().split(/\s+/).map(w => w[0]).join("").slice(0, 2).toUpperCase() || "?";
 
-export function HeaderCard({ left, right, stacked = false }) {
+// bare : sans cadre (fond, bordure, ombre, marges), posé directement sur la page.
+export function HeaderCard({ left, right, stacked = false, bare = false }) {
   return (
     <div style={{
-      background: 'white', border: '1px solid #E5E7EB', borderRadius: 12,
-      boxShadow: '0 1px 3px rgba(0,0,0,0.04)', padding: stacked ? 16 : '22px 26px',
+      ...(bare ? {} : {
+        background: 'white', border: '1px solid #E5E7EB', borderRadius: 12,
+        boxShadow: '0 1px 3px rgba(0,0,0,0.04)', padding: stacked ? 16 : '22px 26px',
+      }),
       display: 'grid', gridTemplateColumns: stacked ? 'minmax(0,1fr)' : 'minmax(0,1.3fr) minmax(0,1fr)', gap: stacked ? 16 : 28,
     }}>
       <div style={{ minWidth: 0 }}>{left}</div>
@@ -35,10 +38,20 @@ export function HeaderCard({ left, right, stacked = false }) {
 const PANEL_TONES = {
   notes: { bg: '#FFFBEB', border: '#F3E3A3', accent: '#F59E0B', title: '#92400E' },
   logistics: { bg: '#F5F7FB', border: '#DCE3EF', accent: '#1E2447', title: '#1E2447' },
+  // Bloc discret façon Notion (même rendu que le bloc Notes du chiffrage)
+  soft: { bg: '#F7F7F5', soft: true },
 };
 
 export function HeaderPanel({ title, tone = 'notes', children }) {
   const t = PANEL_TONES[tone] || PANEL_TONES.notes;
+  if (t.soft) {
+    return (
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, background: t.bg, borderRadius: 8, padding: '10px 14px 12px' }}>
+        <div style={{ fontSize: 12, fontWeight: 500, color: '#9B9A97', marginBottom: 10 }}>{title}</div>
+        {children}
+      </div>
+    );
+  }
   return (
     <div style={{
       flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0,
