@@ -185,7 +185,7 @@ export default function CatalogManager({ open, onClose, catalog, onCatalogChange
             { field: 'color', headerName: 'Coloris', width: 120, editable: true },
             {
                 field: 'name',
-                headerName: 'Nom Complet(ID)',
+                headerName: 'Nom complet',
                 width: 250,
                 editable: false,
                 description: 'Généré automatiquement (Fournisseur + Ref + Coloris)',
@@ -205,8 +205,9 @@ export default function CatalogManager({ open, onClose, catalog, onCatalogChange
         const priceCols = [
             {
                 field: 'buyPrice',
-                headerName: 'Prix Achat (€)',
-                width: 130,
+                headerName: 'PA (€)',
+                description: 'Prix d\'achat',
+                width: 110,
                 valueParser: (value) => parseDecimal(value),
                 editable: (params) => params.row.unit !== 'pce', // Lock if Piece
                 type: 'number',
@@ -225,7 +226,7 @@ export default function CatalogManager({ open, onClose, catalog, onCatalogChange
             {
                 field: 'coef',
                 headerName: 'Coef',
-                width: 100,
+                width: 80,
                 editable: true,
                 type: 'number',
                 valueParser: (value) => parseDecimal(value),
@@ -233,8 +234,9 @@ export default function CatalogManager({ open, onClose, catalog, onCatalogChange
             },
             {
                 field: 'sellPrice',
-                headerName: 'Prix Vente (€)',
-                width: 130,
+                headerName: 'PV (€)',
+                description: 'Prix de vente (PV = PA × Coef)',
+                width: 110,
                 editable: (params) => params.row.unit !== 'pce', // Lock if Piece
                 type: 'number',
                 valueParser: (value) => parseDecimal(value),
@@ -253,7 +255,7 @@ export default function CatalogManager({ open, onClose, catalog, onCatalogChange
             {
                 field: 'unit',
                 headerName: 'Unité',
-                width: 100,
+                width: 80,
                 editable: true,
                 type: 'singleSelect',
                 valueOptions: ['ml', 'm2', 'pce', 'h']
@@ -261,10 +263,10 @@ export default function CatalogManager({ open, onClose, catalog, onCatalogChange
         ];
 
         const fabricCols = [
-            { field: 'width', headerName: 'Laize (cm)', width: 100, editable: true, type: 'number', valueParser: (value) => parseDecimal(value) },
-            { field: 'motif', headerName: 'Motif ?', width: 80, editable: true, type: 'boolean' },
-            { field: 'raccord_v', headerName: 'Raccord V (cm)', width: 110, editable: true, type: 'number', valueParser: (value) => parseDecimal(value) },
-            { field: 'raccord_h', headerName: 'Raccord H (cm)', width: 110, editable: true, type: 'number', valueParser: (value) => parseDecimal(value) },
+            { field: 'width', headerName: 'Laize', description: 'Laize (cm)', width: 80, editable: true, type: 'number', valueParser: (value) => parseDecimal(value) },
+            { field: 'motif', headerName: 'Motif', description: 'Tissu à motif ?', width: 70, editable: true, type: 'boolean' },
+            { field: 'raccord_v', headerName: 'Racc. V', description: 'Raccord vertical (cm)', width: 85, editable: true, type: 'number', valueParser: (value) => parseDecimal(value) },
+            { field: 'raccord_h', headerName: 'Racc. H', description: 'Raccord horizontal (cm)', width: 85, editable: true, type: 'number', valueParser: (value) => parseDecimal(value) },
         ];
 
         let cols = [...base];
@@ -288,10 +290,11 @@ export default function CatalogManager({ open, onClose, catalog, onCatalogChange
             cols = [...cols, ...fabricCols];
         }
 
-        // Colonnes extensibles : elles se partagent la largeur de la fenêtre (proportions
-        // = largeurs d'origine) au lieu d'imposer un défilement horizontal — la laize et
-        // les raccords restent visibles sans scroller.
-        return cols.map(({ width, ...col }) => ({ ...col, flex: width, minWidth: Math.round(width * 0.6) }));
+        // Colonnes extensibles : elles se partagent TOUJOURS la largeur de la fenêtre
+        // (proportions = largeurs d'origine, plancher bas) — jamais de défilement
+        // horizontal, laize et raccords visibles quel que soit l'écran. Libellé complet
+        // en infobulle (`description`) quand l'en-tête est abrégé.
+        return cols.map(({ width, ...col }) => ({ ...col, flex: width, minWidth: 60 }));
     }, [activeCategoryTab]);
 
     return (
