@@ -100,7 +100,7 @@ button{ background:none; border:0; padding:0; margin:0; font:inherit; color:inhe
 }
 
 /* ---- TEST UI (local) : fond blanc cassé (entre blanc et beige) au lieu du blanc, sur un seul chiffrage (ChiffrageScreen) ---- */
-body.df-beige-test { --df-beige: #FBFAF8; --df-beige-2: #F2F2F0; background: var(--df-beige) !important; }
+body.df-beige-test { --df-beige: #FAF8F4; --df-beige-2: #F2F2F0; background: var(--df-beige) !important; }
 body.df-beige-test [style*="background: white"],
 body.df-beige-test [style*="background: rgb(255, 255, 255)"],
 body.df-beige-test [style*="background-color: white"],
