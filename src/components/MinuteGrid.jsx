@@ -217,7 +217,8 @@ const AG_CUSTOM_CSS = `
 .df-sticky .ag-theme-alpine .ag-root-wrapper-body,
 .df-sticky .ag-theme-alpine .ag-root { overflow: visible; }
 .df-sticky .ag-theme-alpine .ag-root-wrapper > .ag-column-drop-wrapper {
-  position: sticky; top: var(--df-sticky-top, 0px); z-index: 4;
+  /* Au-dessus du titre de section collant (z 6), sinon son fond blanc masque le trait du haut */
+  position: sticky; top: var(--df-sticky-top, 0px); z-index: 7;
 }
 .df-sticky .ag-theme-alpine .ag-root-wrapper .ag-column-drop-horizontal {
   border-radius: 8px 8px 0 0;
@@ -1839,7 +1840,7 @@ function MinuteGrid({
             {/* Toolbar : posée à droite, sur la barre « Glissez un champ ici pour regrouper » d'AG Grid.
                 Collante (comme cette barre) : elle garde sa place dans le flux et c'est la grille qui remonte
                 dessous (marge négative), pour qu'elle se décolle pile en même temps que le bas du tableau. */}
-            <div className="df-grid-toolbar" style={{ ...(stickyTop != null ? { position: 'sticky', top: stickyTop } : { position: 'absolute', top: 0, left: 0, right: 0 }), height: GROUP_PANEL_HEIGHT, zIndex: 5, padding: '0 8px', display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'flex-end', pointerEvents: 'none' }}>
+            <div className="df-grid-toolbar" style={{ ...(stickyTop != null ? { position: 'sticky', top: stickyTop } : { position: 'absolute', top: 0, left: 0, right: 0 }), height: GROUP_PANEL_HEIGHT, zIndex: 8, padding: '0 8px', display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'flex-end', pointerEvents: 'none' }}>
                 {!readOnly && (
                     /* Bouton scindé : clic = 1 ligne (geste habituel inchangé),
                        chevron — ou clic droit — = « combien de lignes ? ». */
