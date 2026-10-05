@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Link2, Check, X, ExternalLink } from "lucide-react";
+import { Link2, Check, X, ExternalLink, Pencil } from "lucide-react";
 import { fetchProjectStatus, odooProjectUrl } from "../../lib/odoo/odooPreviewClient";
 
 // Cellule « Odoo » de la LISTE des projets (module Production).
@@ -8,7 +8,8 @@ import { fetchProjectStatus, odooProjectUrl } from "../../lib/odoo/odooPreviewCl
 // La vérification du nom Odoo ne se fait qu'à la demande, quand on relie une ligne.
 // `onLink(id|null)` persiste la valeur (via handleUpdate côté parent).
 
-export default function OdooLinkCell({ idProjetOdoo = null, internal = false, onLink, compact = false }) {
+// dense : version liste (sans le mot « Connecté », crayon au lieu de « modifier »).
+export default function OdooLinkCell({ idProjetOdoo = null, internal = false, onLink, compact = false, dense = false }) {
   const [editing, setEditing] = useState(false);
   const [input, setInput] = useState("");
   const [checking, setChecking] = useState(false);
@@ -82,12 +83,14 @@ export default function OdooLinkCell({ idProjetOdoo = null, internal = false, on
           style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "3px 10px", borderRadius: 999, background: "#ECFDF5", color: "#047857", fontSize: 12, fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap" }}
         >
           <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#10B981" }} />
-          Connecté <span style={{ color: "#059669", fontWeight: 500 }}>#{idProjetOdoo}</span>
+          {!dense && "Connecté "}<span style={{ color: "#059669", fontWeight: 500 }}>#{idProjetOdoo}</span>
           <ExternalLink size={11} />
         </a>
-        {!compact && (
+        {!compact && (dense ? (
+          <button onClick={openEditor} title="Modifier le lien Odoo" style={{ border: "none", background: "none", color: "#9CA3AF", cursor: "pointer", padding: 2, display: "inline-flex" }}><Pencil size={13} /></button>
+        ) : (
           <button onClick={openEditor} style={{ border: "none", background: "none", color: "#9CA3AF", fontSize: 11, cursor: "pointer", textDecoration: "underline", padding: 0 }}>modifier</button>
-        )}
+        ))}
       </span>
     );
   }
