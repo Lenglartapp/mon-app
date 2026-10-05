@@ -46,12 +46,16 @@ import { HeaderCard, EditableTitle, StatusPill, MetaItem, OwnerPicker } from "..
 import { formatAnyDateFR } from "../lib/utils/formatDate";
 import { FORMULES_METRAGE_V2 } from "../lib/formulas/metrageVersion";
 
+// Hauteur du titre de section collant (les barres du tableau se collent juste dessous).
+const STICKY_TITLE_HEIGHT = 44;
+
 // Section de tableau, même rendu que le chiffrage : pas de carte autour, flèche de repli
 // à gauche du titre (titre cliquable aussi), nombre d'articles en simple texte.
 function SectionPanel({ title, count, expanded, onToggle, children }) {
   return (
     <div style={{ marginBottom: 28 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 4px', height: 44 }}>
+      {/* Titre collant : reste en haut de l'écran tant qu'on défile dans ce tableau */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 4px', height: STICKY_TITLE_HEIGHT, position: 'sticky', top: 0, zIndex: 6, background: '#ffffff' }}>
         <IconButton size="small" onClick={onToggle} title={expanded ? 'Replier' : 'Déplier'} sx={{ color: '#9B9A97', ml: -0.5 }}>
           <ExpandMoreIcon sx={{ fontSize: 20, transform: expanded ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.2s ease' }} />
         </IconButton>
@@ -797,7 +801,8 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
   // du chiffrage — texte Roboto, pas de majuscules ni de carte autour.
   const cardHeaderStyle = {
     padding: '0 4px',
-    height: 44,
+    height: STICKY_TITLE_HEIGHT,
+    position: 'sticky', top: 0, zIndex: 6, background: '#ffffff', // titre collant
     display: 'flex',
     alignItems: 'center',
     fontWeight: 500,
@@ -1285,6 +1290,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
             <div style={cardStyle}>
               <div style={cardHeaderStyle}>Prise de Cote Rideaux / Voilages</div>
               <MinuteGrid
+                stickyTop={STICKY_TITLE_HEIGHT}
                 rows={rowsRideaux}
                 onRowsChange={mergeChildRowsFor("rideaux")}
                 schema={RIDEAUX_PROD_SCHEMA}
@@ -1308,6 +1314,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
             <div style={cardStyle}>
               <div style={cardHeaderStyle}>Prise de Cote Stores Négoce</div>
               <MinuteGrid
+                stickyTop={STICKY_TITLE_HEIGHT}
                 rows={rowsStores}
                 onRowsChange={mergeChildRowsFor("stores")}
                 schema={STORES_PROD_SCHEMA}
@@ -1328,6 +1335,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
             <div style={cardStyle}>
               <div style={cardHeaderStyle}>Prise de Cote Stores Bateaux / Velum</div>
               <MinuteGrid
+                stickyTop={STICKY_TITLE_HEIGHT}
                 rows={rowsStoresBateaux}
                 onRowsChange={(nr) => handleSubsetChange(nr, /store (bateau|velum)/i)}
                 schema={STORES_BATEAUX_PROD_SCHEMA}
@@ -1348,6 +1356,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
             <div style={cardStyle}>
               <div style={cardHeaderStyle}>Prise de Cote Tenture Murale</div>
               <MinuteGrid
+                stickyTop={STICKY_TITLE_HEIGHT}
                 rows={rowsTentureMurale}
                 onRowsChange={(nr) => handleSubsetChange(nr, /tenture murale/i)}
                 schema={TENTURE_MURALE_PROD_SCHEMA}
@@ -1368,6 +1377,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
             <div style={cardStyle}>
               <div style={cardHeaderStyle}>Prise de Cote Coussins</div>
               <MinuteGrid
+                stickyTop={STICKY_TITLE_HEIGHT}
                 rows={rowsCoussins}
                 onRowsChange={(nr) => handleSubsetChange(nr, /coussin/i)}
                 schema={COUSSINS_PROD_SCHEMA}
@@ -1388,6 +1398,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
             <div style={cardStyle}>
               <div style={cardHeaderStyle}>Prise de Cote Plaids / Chemins de Lit</div>
               <MinuteGrid
+                stickyTop={STICKY_TITLE_HEIGHT}
                 rows={rowsPlaid}
                 onRowsChange={(nr) => handleSubsetChange(nr, /plaid/i)}
                 schema={PLAID_PROD_SCHEMA}
@@ -1408,6 +1419,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
             <div style={cardStyle}>
               <div style={cardHeaderStyle}>Prise de Cote Mobilier / Tête de Lit</div>
               <MinuteGrid
+                stickyTop={STICKY_TITLE_HEIGHT}
                 rows={rowsMobilier}
                 onRowsChange={(nr) => handleSubsetChange(nr, MOBILIER_PRODUIT_RE)}
                 schema={MOBILIER_PROD_SCHEMA}
@@ -1428,6 +1440,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
             <div style={cardStyle}>
               <div style={cardHeaderStyle}>Prise de Cote Cache-Sommier</div>
               <MinuteGrid
+                stickyTop={STICKY_TITLE_HEIGHT}
                 rows={rowsCacheSommier}
                 onRowsChange={(nr) => handleSubsetChange(nr, /cache-sommier/i)}
                 schema={CACHE_SOMMIER_PROD_SCHEMA}
@@ -1451,6 +1464,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
         <div style={cardStyle}>
           <div style={cardHeaderStyle}>Suivi de projet</div>
           <MinuteGrid
+            stickyTop={STICKY_TITLE_HEIGHT}
             rows={filteredRows} // Suivi shows all rows
             onRowsChange={handleRowsChangeInstallation}
             schema={schema}
@@ -1477,6 +1491,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
               onToggle={() => togglePanel('bpf_rideaux')}
             >
                 <MinuteGrid
+                  stickyTop={STICKY_TITLE_HEIGHT}
                   rows={bpfRideaux}
                   onRowsChange={mergeChildRowsFor("rideaux")}
                   schema={RIDEAUX_PROD_SCHEMA}
@@ -1506,6 +1521,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
               onToggle={() => togglePanel('bpf_stores_bateaux')}
             >
                 <MinuteGrid
+                  stickyTop={STICKY_TITLE_HEIGHT}
                   rows={bpfStoresBateaux}
                   onRowsChange={(nr) => handleSubsetChange(nr, /store (bateau|velum)/i, r => /store (bateau|velum)/i.test(String(r.produit || "")) && !isSousTraite(r))}
                   schema={STORES_BATEAUX_PROD_SCHEMA}
@@ -1529,6 +1545,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
               onToggle={() => togglePanel('bpf_coussins')}
             >
                 <MinuteGrid
+                  stickyTop={STICKY_TITLE_HEIGHT}
                   rows={bpfCoussins}
                   onRowsChange={(nr) => handleSubsetChange(nr, /coussin/i)}
                   schema={COUSSINS_PROD_SCHEMA}
@@ -1553,6 +1570,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
               onToggle={() => togglePanel('bpf_cache_sommier')}
             >
                 <MinuteGrid
+                  stickyTop={STICKY_TITLE_HEIGHT}
                   rows={bpfCacheSommier}
                   onRowsChange={(nr) => handleSubsetChange(nr, /cache-sommier/i)}
                   schema={CACHE_SOMMIER_PROD_SCHEMA}
@@ -1577,6 +1595,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
               onToggle={() => togglePanel('bpf_plaid')}
             >
                 <MinuteGrid
+                  stickyTop={STICKY_TITLE_HEIGHT}
                   rows={bpfPlaid}
                   onRowsChange={(nr) => handleSubsetChange(nr, /plaid/i)}
                   schema={PLAID_PROD_SCHEMA}
@@ -1601,6 +1620,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
               onToggle={() => togglePanel('bpf_mobilier')}
             >
                 <MinuteGrid
+                  stickyTop={STICKY_TITLE_HEIGHT}
                   rows={bpfMobilier}
                   onRowsChange={(nr) => handleSubsetChange(nr, MOBILIER_PRODUIT_RE)}
                   schema={MOBILIER_PROD_SCHEMA}
@@ -1625,6 +1645,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
               onToggle={() => togglePanel('bpf_tenture_murale')}
             >
                 <MinuteGrid
+                  stickyTop={STICKY_TITLE_HEIGHT}
                   rows={bpfTentureMurale}
                   onRowsChange={(nr) => handleSubsetChange(nr, /tenture murale/i)}
                   schema={TENTURE_MURALE_PROD_SCHEMA}
@@ -1670,6 +1691,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
               onToggle={() => togglePanel('bpp_rideaux')}
             >
                 <MinuteGrid
+                  stickyTop={STICKY_TITLE_HEIGHT}
                   rows={rowsRideaux}
                   onRowsChange={mergeChildRowsFor("rideaux")}
                   schema={RIDEAUX_PROD_SCHEMA}
@@ -1697,6 +1719,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
               onToggle={() => togglePanel('bpp_stores')}
             >
                 <MinuteGrid
+                  stickyTop={STICKY_TITLE_HEIGHT}
                   rows={rowsStores}
                   onRowsChange={mergeChildRowsFor("stores")}
                   schema={STORES_PROD_SCHEMA}
@@ -1721,6 +1744,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
               onToggle={() => togglePanel('bpp_stores_bateaux')}
             >
                 <MinuteGrid
+                  stickyTop={STICKY_TITLE_HEIGHT}
                   rows={rowsStoresBateaux}
                   onRowsChange={(nr) => handleSubsetChange(nr, /store (bateau|velum)/i)}
                   schema={STORES_BATEAUX_PROD_SCHEMA}
@@ -1745,6 +1769,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
               onToggle={() => togglePanel('bpp_tenture_murale')}
             >
                 <MinuteGrid
+                  stickyTop={STICKY_TITLE_HEIGHT}
                   rows={rowsTentureMurale}
                   onRowsChange={(nr) => handleSubsetChange(nr, /tenture murale/i)}
                   schema={TENTURE_MURALE_PROD_SCHEMA}
@@ -1769,6 +1794,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
               onToggle={() => togglePanel('bpp_mobilier')}
             >
                 <MinuteGrid
+                  stickyTop={STICKY_TITLE_HEIGHT}
                   rows={rowsMobilier}
                   onRowsChange={(nr) => handleSubsetChange(nr, MOBILIER_PRODUIT_RE)}
                   schema={MOBILIER_PROD_SCHEMA}
