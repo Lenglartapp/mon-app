@@ -9,6 +9,7 @@ import StockMovementsTab from './StockMovementsTab';
 
 import StockInventoryTab from './StockInventoryTab';
 import StockDashboardTab from './StockDashboardTab';
+import StockRequestsPanel from './StockRequestsPanel';
 import { useAuth } from '../../../auth';
 import { can } from '../../../lib/authz';
 import MovementModal from './MovementModal'; // Imported Modal
@@ -25,7 +26,8 @@ export default function StocksModule({
     movements = [],
     onAddMovement,
     onBulkMovement,
-    onUpdateItem
+    onUpdateItem,
+    onStockChanged
 }) {
     const { currentUser } = useAuth();
     const canEdit = can(currentUser, 'inventory.edit');
@@ -53,7 +55,8 @@ export default function StocksModule({
     const TABS = [
         { key: 0, label: "Dashboard" },
         { key: 1, label: "Journal des Mouvements" },
-        { key: 2, label: "État du Stock" }
+        { key: 2, label: "État du Stock" },
+        { key: 3, label: "Mise à disposition" }
     ];
 
     return (
@@ -178,6 +181,9 @@ export default function StocksModule({
                             onUpdateItem={onUpdateItem}
                             zones={zones}
                         />
+                    )}
+                    {tabIndex === 3 && (
+                        <StockRequestsPanel inventory={inventory} onStockChanged={onStockChanged} />
                     )}
                 </div>
             </div>

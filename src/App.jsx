@@ -110,7 +110,7 @@ function AppShell() {
   const { projects, addProject, updateProject, deleteProject, refreshProjects, loadProjectDetail, loadAllProjects } = useProjects();
   const { minutes, addMinute, updateMinute, deleteMinute, loadMinuteDetail } = useMinutes();
   const { events: planningEvents, updateEvent, deleteEvent } = useEvents();
-  const { inventory, movements, addMovement, bulkUpdateInventory, updateInventoryItem } = useStocks();
+  const { inventory, movements, addMovement, bulkUpdateInventory, updateInventoryItem, refreshStocks } = useStocks();
 
   // Alias pour compatibilité
   const cleanProjects = projects;
@@ -522,6 +522,7 @@ function AppShell() {
           <ProductionProjectScreen
             inventory={inventory}
             onUpdateItem={updateInventoryItem}
+            onStockChanged={refreshStocks}
             project={cleanProjects.find(p => String(p.id) === String(currentProject.id)) || currentProject}
             projects={cleanProjects}
             onBack={() => navigate("/production")}
@@ -544,6 +545,7 @@ function AppShell() {
             onAddMovement={addMovement}
             onBulkMovement={bulkUpdateInventory}
             onUpdateItem={updateInventoryItem}
+            onStockChanged={refreshStocks}
             onBack={() => navigate("/")}
           />
         )}

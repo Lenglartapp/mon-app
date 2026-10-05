@@ -11,6 +11,7 @@ import BPPPrintPortal from "../components/print/BPPPrintPortal.jsx";
 import MinutesScreen from "./MinutesScreen.jsx";
 import LineDetailPanel from "../components/LineDetailPanel";
 import StockInventoryTab from "../components/modules/Stocks/StockInventoryTab.jsx";
+import StockRequestsPanel from "../components/modules/Stocks/StockRequestsPanel.jsx";
 import OdooStatusBadge from "../components/odoo/OdooStatusBadge.jsx";
 import ProjectCourseListPanel from "../components/odoo/ProjectCourseListPanel.jsx";
 
@@ -170,7 +171,7 @@ import { PROJECT_STATUS_OPTIONS } from "../lib/constants/projectStatus";
 import { useViewportWidth } from "../lib/hooks/useViewportWidth";
 
 // 1. SIGNATURE MISE A JOUR
-export function ProductionProjectScreen({ project: propProject, projects, inventory, onUpdateItem, onBack, onUpdateProjectRows, onUpdateProject, highlightRowId, initialStage, events = [] }) {
+export function ProductionProjectScreen({ project: propProject, projects, inventory, onUpdateItem, onStockChanged, onBack, onUpdateProjectRows, onUpdateProject, highlightRowId, initialStage, events = [] }) {
   const { projectId: urlProjectId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -200,6 +201,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
   const [schema, setSchema] = useState(SCHEMA_64);
   const [openedRowId, setOpenedRowId] = useState(null);
   const [stockOpen, setStockOpen] = useState(false);
+  const [stockTab, setStockTab] = useState('stock'); // 'stock' | 'mad' (mise à disposition)
   const [showDocs, setShowDocs] = useState(false);
   const [deliveryOpen, setDeliveryOpen] = useState(false);
   const [showMaterials, setShowMaterials] = useState(false);
@@ -1931,15 +1933,35 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
               projectName={project?.name}
             />
           </div>
-          <StockInventoryTab
-            inventory={inventory ? inventory.filter(item => {
-              if (!item.project) return false;
-              const pName = project?.name;
-              return item.project === pName;
-            }) : []}
-            projects={projects}
-            onUpdateItem={onUpdateItem}
-          />
+          <div style={{ display: 'flex', gap: 4, padding: '12px 16px 0' }}>
+            {[{ key: 'stock', label: 'Stock du dossier' }, { key: 'mad', label: 'Mise à disposition' }].map(t => (
+              <button
+                key={t.key}
+                onClick={() => setStockTab(t.key)}
+                style={{
+                  padding: '6px 16px', borderRadius: 9999, fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer',
+                  background: stockTab === t.key ? '#1E2447' : '#F3F4F6', color: stockTab === t.key ? 'white' : '#4B5563',
+                }}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+          <div style={{ padding: 16 }}>
+            {stockTab === 'stock' ? (
+              <StockInventoryTab
+                inventory={inventory ? inventory.filter(item => {
+                  if (!item.project) return false;
+                  const pName = project?.name;
+                  return item.project === pName;
+                }) : []}
+                projects={projects}
+                onUpdateItem={onUpdateItem}
+              />
+            ) : (
+              <StockRequestsPanel inventory={inventory || []} project={project?.name} onStockChanged={onStockChanged} />
+            )}
+          </div>
         </DialogContent>
       </Dialog>
 
