@@ -162,14 +162,14 @@ export default function ProjectActivityFeed({ rows, wall, pinnedIds, onTogglePin
         else if (evt.type === 'system_create') { Icon = CheckCircle; }
 
         return (
-            <div key={`${evt.id}-${isPinnedView ? 'pin' : 'feed'}`} style={{ padding: '12px 4px', borderBottom: '1px solid #EDEDEB', display: 'flex', gap: 12 }}>
+            <div key={`${evt.id}-${isPinnedView ? 'pin' : 'feed'}`} style={{ padding: '12px 4px', borderBottom: '1px solid #E6E8EB', display: 'flex', gap: 12 }}>
                 <div style={{ marginTop: 2, color: iconColor, opacity: 0.75 }}><Icon size={15} /></div>
 
                 <div style={{ flex: 1 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, alignItems: 'flex-start' }}>
                         <div style={{ display: 'flex', flexDirection: 'column' }}>
                             <span style={{ fontSize: 13, color: '#374151' }}>
-                                <span style={{ fontWeight: 500, color: '#111827' }}>{evt.user}</span> <span style={{ color: '#787774' }}>{evt.actionLabel}</span> {evt.target && <span style={{ color: '#37352F', background: '#F1F1EF', padding: '1px 6px', borderRadius: 4, fontSize: 12 }}>{evt.target}</span>}
+                                <span style={{ fontWeight: 500, color: '#111827' }}>{evt.user}</span> <span style={{ color: '#787774' }}>{evt.actionLabel}</span> {evt.target && <span style={{ color: '#37352F', background: 'white', padding: '1px 6px', borderRadius: 4, fontSize: 12 }}>{evt.target}</span>}
                             </span>
                             <span style={{ fontSize: 12, color: '#A8A7A3' }} title={format(dateObj, 'dd/MM/yyyy HH:mm', { locale: fr })}>{formatDistanceToNow(dateObj, { addSuffix: true, locale: fr })} · {format(dateObj, 'dd/MM HH:mm', { locale: fr })}</span>
                         </div>
@@ -213,10 +213,14 @@ export default function ProjectActivityFeed({ rows, wall, pinnedIds, onTogglePin
     };
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', fontFamily: 'Roboto, system-ui, sans-serif' }}>
+        // Bloc doux (même famille que Consommation temps / Avancement) : fond gris très clair, arrondi
+        <div style={{ display: 'flex', flexDirection: 'column', fontFamily: 'Roboto, system-ui, sans-serif', background: '#F5F6F7', borderRadius: 16, padding: '20px 24px 12px' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingBottom: 8 }}>
                 <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-                    <div style={{ fontWeight: 500, fontSize: 20, color: '#111827' }}>Journal</div>
+                    <div>
+                        <div style={{ fontWeight: 500, fontSize: 17, color: '#1F2A37' }}>Journal</div>
+                        <div style={{ fontSize: 13, color: '#8A8F98', marginTop: 2 }}>Messages et activité du dossier</div>
+                    </div>
                     {/* Filtres en onglets texte, l'actif est souligné */}
                     <div style={{ display: 'flex', gap: 16 }}>
                         {FILTERS.map(f => (

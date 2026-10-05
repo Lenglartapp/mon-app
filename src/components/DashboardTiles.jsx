@@ -1,42 +1,39 @@
 import React, { useMemo } from "react";
 import { calculateProjectStats } from "../lib/projectMetrics";
-import ProgressList, { Ratio } from "./ui/ProgressList";
+import { Kpi, KpiGrid } from "./ui/SoftBlock";
 
-// Avancement du dossier : une ligne par étape (prise de cotes, préparation, confection, pose)
-// avec barre fine, réalisé / total et %. Vert quand l'étape est terminée.
+// Avancement du dossier : un indicateur par étape (prise de cotes, préparation, confection,
+// pose) — grand chiffre fin, total, barre fine et pastille %. Vert quand l'étape est terminée.
 export default function DashboardTiles({ rows, budget = {} }) {
   const stats = useMemo(() => calculateProjectStats(rows, budget), [rows, budget]);
 
-  if (!stats) return <div style={{ padding: "4px 0", color: "#A8A7A3", fontSize: 14 }}>Ajoutez des lignes pour voir l'avancement.</div>;
+  if (!stats) return <div style={{ color: "#8A8F98", fontSize: 14 }}>Ajoutez des lignes pour voir l'avancement.</div>;
 
   const r = stats.raw;
-  const items = [
-    stats.cotesTotal > 0
-      ? { key: "cotes", label: "Prise de cotes", pct: stats.pctCotes, value: <Ratio done={r.cotesValidees} total={`${stats.cotesTotal} validées`} /> }
-      : { key: "cotes", label: "Prise de cotes", note: "Non applicable" },
-    { key: "prepa", label: "Préparation", pct: stats.pctPrepa, value: <Ratio done={r.prepaOk} total={r.prepaTotal} /> },
-  ];
+  const pct = (v) => (v == null ? null : Number(v));
 
-  if (stats.confMode === "not_applicable") {
-    items.push({ key: "conf", label: "Confection", note: "Non applicable" });
-  } else if (stats.confMode === "all_st") {
-    items.push({ key: "conf", label: "Confection", note: `Sous-traité${stats.stConfSummary ? ` · ${stats.stConfSummary}` : ""}` });
-  } else {
-    items.push({
-      key: "conf", label: "Confection", pct: stats.pctConf,
-      value: r.confHouresTotal > 0 ? <Ratio done={r.confHouresDone} total={r.confHouresTotal} unit=" h" /> : <Ratio done={r.confHouresDone} total={stats.total} />,
-    });
-    if (stats.confMode === "mix_st" && stats.stConfSummary) items.push({ key: "conf-st", label: "", note: stats.stConfSummary });
-  }
+  const conf = stats.confMode === "not_applicable"
+    ? <Kpi key="conf" label="Confection" note="Non applicable" />
+    : stats.confMode === "all_st"
+      ? <Kpi key="conf" label="Confection" note="Sous-traité" sub={stats.stConfSummary} />
+      : r.confHouresTotal > 0
+        ? <Kpi key="conf" label="Confection" value={String(r.confHouresDone).replace('.', ',')} unit="h" total={`${r.confHouresTotal} h`} pct={pct(stats.pctConf)} doneIsGreen sub={stats.confMode === "mix_st" ? stats.stConfSummary : null} />
+        : <Kpi key="conf" label="Confection" value={r.confHouresDone} total={`${stats.total} terminées`} pct={pct(stats.pctConf)} doneIsGreen sub={stats.confMode === "mix_st" ? stats.stConfSummary : null} />;
 
-  if (stats.poseMode === "not_applicable") {
-    items.push({ key: "pose", label: "Pose", note: "Installation non réalisée par nos soins" });
-  } else if (stats.poseMode === "all_st") {
-    items.push({ key: "pose", label: "Pose", note: `Sous-traité${stats.stPoseSummary ? ` · ${stats.stPoseSummary}` : ""}` });
-  } else {
-    items.push({ key: "pose", label: "Pose", pct: stats.pctPose, value: <Ratio done={r.poseOk} total={`${r.poseTotal} installées`} /> });
-    if (stats.poseMode === "mix_st" && stats.stPoseSummary) items.push({ key: "pose-st", label: "", note: stats.stPoseSummary });
-  }
+  const pose = stats.poseMode === "not_applicable"
+    ? <Kpi key="pose" label="Pose" note="Installation non réalisée par nos soins" />
+    : stats.poseMode === "all_st"
+      ? <Kpi key="pose" label="Pose" note="Sous-traité" sub={stats.stPoseSummary} />
+      : <Kpi key="pose" label="Pose" value={r.poseOk} total={`${r.poseTotal} installées`} pct={pct(stats.pctPose)} doneIsGreen sub={stats.poseMode === "mix_st" ? stats.stPoseSummary : null} />;
 
-  return <ProgressList items={items} doneIsGreen />;
+  return (
+    <KpiGrid min={150}>
+      {stats.cotesTotal > 0
+        ? <Kpi label="Prise de cotes" value={r.cotesValidees} total={`${stats.cotesTotal} validées`} pct={pct(stats.pctCotes)} doneIsGreen />
+        : <Kpi label="Prise de cotes" note="Non applicable" />}
+      <Kpi label="Préparation" value={r.prepaOk} total={`${r.prepaTotal} terminées`} pct={pct(stats.pctPrepa)} doneIsGreen />
+      {conf}
+      {pose}
+    </KpiGrid>
+  );
 }

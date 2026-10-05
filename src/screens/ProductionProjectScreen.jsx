@@ -5,7 +5,7 @@ import { COLORS, S } from "../lib/constants/ui.js";
 import { slugify } from "../lib/utils/slugify";
 import MinuteGrid from "../components/MinuteGrid.jsx"; // Replaces DataTable
 import DashboardTiles from "../components/DashboardTiles.jsx";
-import ProgressList, { Ratio } from "../components/ui/ProgressList";
+import { SoftBlock, Kpi, KpiGrid } from "../components/ui/SoftBlock";
 import ProjectActivityFeed from "../components/ProjectActivityFeed.jsx";
 import EtiquettesSection from "../components/EtiquettesSection.jsx";
 import BPPPrintPortal from "../components/print/BPPPrintPortal.jsx";
@@ -46,9 +46,6 @@ import { can, role } from "../lib/authz";
 import { HeaderCard, EditableTitle, StatusPill, MetaItem, OwnerPicker } from "../components/ui/EntityHeader";
 import { formatAnyDateFR } from "../lib/utils/formatDate";
 import { FORMULES_METRAGE_V2 } from "../lib/formulas/metrageVersion";
-
-// Titres des blocs du dashboard (Roboto, sobre)
-const DASH_TITLE = { fontSize: 20, fontWeight: 500, fontFamily: 'Roboto, system-ui, sans-serif', margin: 0, color: '#111827' };
 
 // Hauteur du titre de section collant (les barres du tableau se collent juste dessous).
 const STICKY_TITLE_HEIGHT = 44;
@@ -1122,43 +1119,47 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
           {/* ── COLONNE GAUCHE : stats ── */}
           <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 16, paddingTop: 4 }}>
 
-            {/* Consommation temps : une ligne par service (barre fine · réalisé / budget · %) */}
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-                <h3 style={DASH_TITLE}>Consommation temps</h3>
+            {/* Consommation temps : réalisé vs budget par service (grands chiffres fins) */}
+            <SoftBlock
+              title="Consommation temps"
+              subtitle="Heures réalisées / budget"
+              actions={<>
                 {canEditProd && (
-                  <button onClick={handleOpenBudget} title="Ajuster le budget" style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#A8A7A3', padding: 4, borderRadius: 6, display: 'grid', placeItems: 'center' }}>
+                  <button onClick={handleOpenBudget} title="Ajuster le budget" style={{ border: 'none', background: 'white', cursor: 'pointer', color: '#5B616B', width: 28, height: 28, borderRadius: 8, display: 'grid', placeItems: 'center' }}>
                     <Edit2 size={14} />
                   </button>
                 )}
-                <div style={{ marginLeft: 'auto' }}>
-                  <OdooStatusBadge
-                    projectName={project?.name}
-                    projectId={project?.id}
-                    idProjetOdoo={project?.id_projet_odoo}
-                    onLink={(odooId) => onUpdateProject && project && onUpdateProject(project.id, { id_projet_odoo: odooId })}
-                  />
-                </div>
-              </div>
-              <ProgressList
-                items={[['prepa', 'Préparation'], ['conf', 'Confection'], ['pose', 'Pose']].map(([key, label]) => {
+                <OdooStatusBadge
+                  projectName={project?.name}
+                  projectId={project?.id}
+                  idProjetOdoo={project?.id_projet_odoo}
+                  onLink={(odooId) => onUpdateProject && project && onUpdateProject(project.id, { id_projet_odoo: odooId })}
+                />
+              </>}
+            >
+              <KpiGrid min={150}>
+                {[['prepa', 'Préparation'], ['conf', 'Confection'], ['pose', 'Pose']].map(([key, label]) => {
                   const budgetVal = Number(project.budget?.[key] || 0);
                   const realVal = realized[key] || 0;
                   const fmtH = (n) => String(Math.round(n * 10) / 10).replace('.', ',');
-                  return {
-                    key, label,
-                    pct: budgetVal > 0 ? (realVal / budgetVal) * 100 : null,
-                    value: <Ratio done={fmtH(realVal)} total={fmtH(budgetVal)} unit=" h" />,
-                  };
+                  return (
+                    <Kpi
+                      key={key}
+                      label={label}
+                      value={fmtH(realVal)}
+                      unit="h"
+                      total={`${fmtH(budgetVal)} h`}
+                      pct={budgetVal > 0 ? (realVal / budgetVal) * 100 : null}
+                    />
+                  );
                 })}
-              />
-            </div>
+              </KpiGrid>
+            </SoftBlock>
 
-            {/* Avancement : une ligne par étape */}
-            <div style={{ marginTop: 20 }}>
-              <h3 style={{ ...DASH_TITLE, marginBottom: 16 }}>Avancement</h3>
+            {/* Avancement : un indicateur par étape */}
+            <SoftBlock title="Avancement" subtitle="Par étape du dossier">
               <DashboardTiles rows={rows} budget={project?.budget || {}} />
-            </div>
+            </SoftBlock>
           </div>
 
           {/* ── COLONNE DROITE : journal (avec la zone d'écriture du mur) ── */}
