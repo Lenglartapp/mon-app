@@ -46,17 +46,17 @@ import { HeaderCard, EditableTitle, StatusPill, MetaItem, OwnerPicker } from "..
 import { formatAnyDateFR } from "../lib/utils/formatDate";
 import { FORMULES_METRAGE_V2 } from "../lib/formulas/metrageVersion";
 
+// Section de tableau, même rendu que le chiffrage : pas de carte autour, flèche de repli
+// à gauche du titre (titre cliquable aussi), nombre d'articles en simple texte.
 function SectionPanel({ title, count, expanded, onToggle, children }) {
   return (
-    <div style={{ marginBottom: 24, borderRadius: 12, background: 'white', overflow: 'hidden', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', border: '1px solid #f3f4f6' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px', height: 56, borderBottom: expanded ? '1px solid #f3f4f6' : 'none', backgroundColor: '#fff' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <h3 style={{ margin: 0, fontSize: 18, color: '#111827', fontWeight: 700 }}>{title}</h3>
-          <span style={{ background: '#f3f4f6', color: '#4b5563', padding: '2px 8px', borderRadius: 12, fontSize: 12, fontWeight: 600 }}>{count} articles</span>
-        </div>
-        <IconButton size="small" onClick={onToggle} sx={{ color: '#6b7280' }}>
-          <ExpandMoreIcon sx={{ transform: expanded ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.2s ease' }} />
+    <div style={{ marginBottom: 28 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 4px', height: 44 }}>
+        <IconButton size="small" onClick={onToggle} title={expanded ? 'Replier' : 'Déplier'} sx={{ color: '#9B9A97', ml: -0.5 }}>
+          <ExpandMoreIcon sx={{ fontSize: 20, transform: expanded ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.2s ease' }} />
         </IconButton>
+        <h3 onClick={onToggle} style={{ margin: 0, fontSize: 20, color: '#111827', fontWeight: 500, fontFamily: 'Roboto, system-ui, sans-serif', cursor: 'pointer' }}>{title}</h3>
+        <span style={{ color: '#9B9A97', fontSize: 13, fontFamily: 'Roboto, system-ui, sans-serif', marginLeft: 4, alignSelf: 'flex-end', paddingBottom: 13 }}>{count} {count > 1 ? 'articles' : 'article'}</span>
       </div>
       <Collapse in={expanded} timeout="auto" unmountOnExit>
         {children}
@@ -793,25 +793,22 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
     alert("Données de test ajoutées ! (3 lignes)");
   };
 
-  // Helper styles for Header inside Card
+  // Titre de section (Prise de cotes, Suivi de projet) : même rendu que les titres de tableaux
+  // du chiffrage — texte Roboto, pas de majuscules ni de carte autour.
   const cardHeaderStyle = {
-    padding: '16px 20px',
-    borderBottom: `1px solid ${COLORS.border}`,
-    fontWeight: 700,
-    fontSize: 14,
-    color: '#374151',
-    textTransform: 'uppercase'
+    padding: '0 4px',
+    height: 44,
+    display: 'flex',
+    alignItems: 'center',
+    fontWeight: 500,
+    fontSize: 20,
+    fontFamily: 'Roboto, system-ui, sans-serif',
+    color: '#111827',
   };
 
-  // Card wrapper style
+  // Conteneur de section : sans cadre (le tableau garde son propre contour)
   const cardStyle = {
-    ...S.modernCard,
-    padding: 0,
-    marginBottom: 24,
-    overflow: 'visible', // Visible for shadows of children
-    background: isMobile ? 'transparent' : 'white',
-    boxShadow: isMobile ? 'none' : S.modernCard.boxShadow,
-    border: isMobile ? 'none' : S.modernCard.border
+    marginBottom: 28,
   };
 
   // Helper Style Island Nav (White + Navy Pill)
