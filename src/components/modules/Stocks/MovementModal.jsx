@@ -14,6 +14,7 @@ import Chip from '@mui/material/Chip';
 import IconButton from '@mui/material/IconButton';
 import Alert from '@mui/material/Alert';
 import LocationInput from './LocationInput';
+import OperatorInput from './OperatorInput';
 import LocationChips from './LocationChips';
 import { LOC_A_COMPLETER, splitLocations } from '../../../lib/inventory/stockFields';
 
@@ -23,12 +24,6 @@ import { LOC_A_COMPLETER, splitLocations } from '../../../lib/inventory/stockFie
 //    (un ou plusieurs codes « B3, C1 ») ;
 //  - sortie et déplacement visent un article précis du stock (par son id).
 
-const USERS = [
-    'Elisa Laprune', 'Guillaume Mailly', 'David Vergel', 'Lucie Jaulin', 'Maelane Poulaud',
-    'Thomas Bonnet', 'Delphine Butez', 'Catherine Bosse', 'Thierry Menant', 'Alain Houdemont',
-    'Nicolas Podyma', 'Audry Papin', 'Julie Rabin', 'Alison Gloaguen', 'Samuel Blandin',
-    'Emilie David', 'Emmanuel Peltier', 'Malcolm Jeantal', 'Florence Gobbe'
-].sort();
 const EXIT_REASONS = ['Production', 'Solde / Déstockage', 'Perte / Inventaire', 'Autre'];
 const TYPOLOGIES = ['Tissu', 'Rail', 'Consommable', 'Mécanisme'];
 const round2 = (n) => Math.round(n * 100) / 100;
@@ -160,7 +155,7 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
     const newLocation = locations.join(', ');
     const moveUnchanged = isMOVE && selectedItem && newLocation === splitLocations(selectedItem.location).join(', ');
 
-    const canSubmit = !!user && (
+    const canSubmit = !!user.trim() && (
         isIN ? (qty > 0 && !!(formData.product.trim() || formData.ref.trim()))
             : isOUT ? (!!selectedItem && qty > 0 && qty <= Number(selectedItem.qty))
                 : (!!selectedItem && locations.length > 0 && !moveUnchanged)
@@ -168,7 +163,7 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
 
     const handleSubmit = () => {
         if (!canSubmit) return;
-        const base = { user, type, date: new Date().toISOString() };
+        const base = { user: user.trim(), type, date: new Date().toISOString() };
 
         if (isIN) {
             const product = formData.product.trim() || [formData.ref.trim(), formData.coloris.trim()].filter(Boolean).join(' — ');
@@ -423,9 +418,7 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
 
                     {/* 5. CONTEXTE */}
                     <Stack direction="row" spacing={2}>
-                        <TextField select fullWidth label="Opérateur" value={user} onChange={(e) => setUser(e.target.value)} size="small" required>
-                            {USERS.map(u => <MenuItem key={u} value={u}>{u}</MenuItem>)}
-                        </TextField>
+                        <OperatorInput value={user} onChange={setUser} sx={{ flex: 1 }} />
                         {isOUT && (
                             <TextField select fullWidth label="Motif" value={exitReason} onChange={(e) => setExitReason(e.target.value)} size="small">
                                 {EXIT_REASONS.map(r => <MenuItem key={r} value={r}>{r}</MenuItem>)}
