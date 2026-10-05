@@ -32,7 +32,7 @@ import { MOBILIER_PROD_SCHEMA } from "../lib/schemas/production/mobilier";
 import { uid } from "../lib/utils/uid"; // Import uid
 import { compressAndUpload } from "../lib/utils/imageUpload";
 
-import { Search, Filter, Layers3, Star, FlaskConical, Image as ImageIcon, Edit2, FileText, BookOpen, Printer } from "lucide-react";
+import { Search, Filter, Layers3, Star, FlaskConical, Image as ImageIcon, Edit2, FileText, BookOpen, Printer, Package } from "lucide-react";
 import ProjectMaterialsPanel from "../components/ProjectMaterialsPanel";
 import { applyCatalogRenames } from "../lib/utils/catalogRename";
 import AddressAutocomplete from "../components/AddressAutocomplete"; // Added FileText
@@ -1023,7 +1023,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
         />
 
         {/* Ligne des vues (au centre) + actions (à droite), comme la ligne des variantes du chiffrage */}
-        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'minmax(0,1fr)' : 'minmax(0,1fr) auto minmax(0,1fr)', alignItems: 'center', gap: 16, marginTop: 32, paddingBottom: 8 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'minmax(0,1fr)' : 'minmax(0,1fr) auto minmax(0,1fr)', alignItems: 'center', gap: 16, marginTop: 48, paddingBottom: 8 }}>
           {!isMobile && <div />}
           <div className="island-nav-container" style={{ display: 'inline-flex', gap: 2, maxWidth: '100%', overflowX: isMobile ? 'auto' : 'visible', justifySelf: 'center' }}>
             {visibleStages.map((p) => (
@@ -1045,13 +1045,13 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
               onClick={() => setShowMaterials(true)}
               style={{
                 display: 'flex', alignItems: 'center', gap: 8,
-                background: projectMaterials.length > 0 ? '#EDE9FE' : 'white',
-                border: `1px solid ${projectMaterials.length > 0 ? '#C4B5FD' : '#E5E7EB'}`,
+                background: 'white',
+                border: '1px solid #E5E7EB',
                 borderRadius: 8,
                 padding: '8px 14px',
                 cursor: 'pointer',
                 fontSize: 13,
-                color: projectMaterials.length > 0 ? '#5B21B6' : '#374151',
+                color: '#374151',
                 fontWeight: 600,
                 outline: 'none',
                 flex: 'initial', justifyContent: 'center'
@@ -1078,7 +1078,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                 flex: 'initial', justifyContent: 'center'
               }}
             >
-              <FileText size={16} color="#4B5563" />
+              <FileText size={16} />
               Docs ({project?.documents?.length || 0})
             </button>
             {/* Stock Button (Header) - Hidden on Mobile */}
@@ -1091,7 +1091,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                   border: '1px solid #E5E7EB',
                   borderRadius: 8,
                   padding: '8px 14px',
-                    cursor: 'pointer',
+                  cursor: 'pointer',
                   fontSize: 13,
                   color: '#374151',
                   fontWeight: 600,
@@ -1099,7 +1099,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                   flex: 'initial', justifyContent: 'center'
                 }}
               >
-                Stock
+                <Package size={16} /> Stock
               </button>
             )}
 
