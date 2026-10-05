@@ -288,11 +288,14 @@ export default function CatalogManager({ open, onClose, catalog, onCatalogChange
             cols = [...cols, ...fabricCols];
         }
 
-        return cols;
+        // Colonnes extensibles : elles se partagent la largeur de la fenêtre (proportions
+        // = largeurs d'origine) au lieu d'imposer un défilement horizontal — la laize et
+        // les raccords restent visibles sans scroller.
+        return cols.map(({ width, ...col }) => ({ ...col, flex: width, minWidth: Math.round(width * 0.6) }));
     }, [activeCategoryTab]);
 
     return (
-        <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
+        <Dialog open={open} onClose={onClose} maxWidth="xl" fullWidth>
             <DialogTitle sx={{ m: 0, p: 2, background: COLORS.page }}>
                 {/* Header Row: Titles + Close */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -357,6 +360,9 @@ export default function CatalogManager({ open, onClose, catalog, onCatalogChange
                             toolbar: { onAdd: handleAddRow, onDelete: handleDeleteRows, selectedCount: selectionModel.length }
                         }}
                         localeText={frFR.components.MuiDataGrid.defaultProps.localeText}
+                        // L'icône de menu masquée de la dernière colonne dépassait de quelques px
+                        // et suffisait à faire apparaître un défilement horizontal.
+                        sx={{ '& .MuiDataGrid-menuIcon': { overflow: 'hidden' } }}
                     />
                 ) : (
                     <div style={{ padding: 40, display: 'flex', flexDirection: 'column', gap: 24, maxWidth: 600, margin: '0 auto' }}>
