@@ -574,16 +574,17 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
 
   // Helper Style Island Nav
   const getNavStyle = (isActive) => ({
-    padding: '6px 14px',
+    padding: '8px 20px',
     borderRadius: 99,
     border: 'none',
     cursor: 'pointer',
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: 500,
     transition: 'all 0.2s cubic-bezier(0.25, 1, 0.5, 1)',
     outline: 'none',
     background: isActive ? '#1E2447' : 'transparent',
     color: isActive ? '#FFFFFF' : '#4B5563',
+    boxShadow: isActive ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
   });
 
   // Row Opening
@@ -738,7 +739,7 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
         </div>
 
         {/* Intercalaires de variantes (gauche) + actions (droite) */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) auto minmax(0,1fr)', alignItems: 'flex-end', gap: 16, marginTop: 8, borderBottom: '1px solid #EDEDEB' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) auto minmax(0,1fr)', alignItems: 'flex-end', gap: 16, marginTop: 32, borderBottom: '1px solid #EDEDEB' }}>
           <VariantTabs
             tabs={familyTabs}
             activeId={minute?.id}
