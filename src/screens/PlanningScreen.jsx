@@ -1406,8 +1406,7 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                             ← Retour
                         </button>
                     )}
-                    <h1 style={{ fontSize: 32, fontWeight: 800, color: '#111827', margin: 0, letterSpacing: '-0.5px' }}>Planning</h1>
-                    <p style={{ fontSize: 14, color: '#6B7280', margin: '4px 0 0' }}>Planification des équipes et de la charge de production</p>
+                    <h1 style={{ fontSize: 32, fontWeight: 400, fontFamily: 'Roboto, system-ui, sans-serif', color: '#111827', margin: 0, letterSpacing: '-0.01em' }}>Planning</h1>
                 </div>
             </div>
 

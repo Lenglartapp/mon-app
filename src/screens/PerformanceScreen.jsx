@@ -37,12 +37,9 @@ export default function PerformanceScreen({ projects, events, onBack }) {
               ← Retour
             </button>
           )}
-          <h1 style={{ fontSize: 32, fontWeight: 800, color: '#111827', margin: 0, letterSpacing: '-0.5px' }}>
+          <h1 style={{ fontSize: 32, fontWeight: 400, fontFamily: 'Roboto, system-ui, sans-serif', color: '#111827', margin: 0, letterSpacing: '-0.01em' }}>
             Performance
           </h1>
-          <p style={{ fontSize: 14, color: '#6B7280', margin: '4px 0 0' }}>
-            Suivi du budget temps alloué vs consommé par projet et par service
-          </p>
         </div>
 
         {/* Navigation onglets (centré, style Inventaire) */}

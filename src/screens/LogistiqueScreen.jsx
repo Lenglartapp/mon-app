@@ -1321,8 +1321,7 @@ export default function LogistiqueScreen({ projects, onUpdateProject, onBack }) 
                         <button onClick={onBack} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6B7280', fontWeight: 600, fontSize: 13, marginBottom: 8, padding: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
                             ← Retour
                         </button>
-                        <h1 style={{ fontSize: 32, fontWeight: 800, color: '#111827', margin: 0, letterSpacing: '-0.5px' }}>Logistique</h1>
-                        <p style={{ fontSize: 14, color: '#6B7280', margin: '4px 0 0' }}>Gestion des expéditions et suivi logistique</p>
+                        <h1 style={{ fontSize: 32, fontWeight: 400, fontFamily: 'Roboto, system-ui, sans-serif', color: '#111827', margin: 0, letterSpacing: '-0.01em' }}>Logistique</h1>
                     </div>
                     {tabKey === 'expeditions' && canEdit && (
                         <button onClick={() => setShowCreate(true)} style={{ ...btnPrimary, background: '#1E2447', padding: '10px 20px', fontSize: 14, fontWeight: 600, boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
