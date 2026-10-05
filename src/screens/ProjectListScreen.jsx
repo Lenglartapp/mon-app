@@ -210,7 +210,7 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
             >
               ← Retour
             </button>
-            <h1 style={{ fontSize: 28, fontWeight: 700, color: '#1F2937', margin: 0, letterSpacing: '-0.5px' }}>Projets</h1>
+            <h1 style={{ fontSize: 32, fontWeight: 400, fontFamily: 'Roboto, system-ui, sans-serif', color: '#111827', margin: 0, letterSpacing: '-0.01em' }}>Projets</h1>
           </div>
           {canCreate && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -425,17 +425,17 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
             <thead style={{ background: '#F9FAFB', borderBottom: '1px solid #E5E7EB' }}>
               <tr>
-                <th style={{ padding: '12px 10px', fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Projet</th>
-                <th style={{ padding: '12px 10px', fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Responsable</th>
-                <th style={{ padding: '12px 10px', fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: 'center' }}>Statut</th>
-                <th style={{ padding: '12px 10px', fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Livraison</th>
-                <th style={{ padding: '12px 10px', fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Odoo</th>
+                <th style={{ padding: '12px 10px', fontSize: 12.5, fontWeight: 500, color: '#8A8F98', fontFamily: 'Roboto, system-ui, sans-serif' }}>Projet</th>
+                <th style={{ padding: '12px 10px', fontSize: 12.5, fontWeight: 500, color: '#8A8F98', fontFamily: 'Roboto, system-ui, sans-serif' }}>Responsable</th>
+                <th style={{ padding: '12px 10px', fontSize: 12.5, fontWeight: 500, color: '#8A8F98', fontFamily: 'Roboto, system-ui, sans-serif', textAlign: 'center' }}>Statut</th>
+                <th style={{ padding: '12px 10px', fontSize: 12.5, fontWeight: 500, color: '#8A8F98', fontFamily: 'Roboto, system-ui, sans-serif' }}>Livraison</th>
+                <th style={{ padding: '12px 10px', fontSize: 12.5, fontWeight: 500, color: '#8A8F98', fontFamily: 'Roboto, system-ui, sans-serif' }}>Odoo</th>
 
                 {/* Creation Date */}
                 <th
                   onClick={() => handleSort('created_at')}
                   className="col-created"
-                  style={{ padding: '12px 10px', fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.5px', cursor: 'pointer', userSelect: 'none' }}
+                  style={{ padding: '12px 10px', fontSize: 12.5, fontWeight: 500, color: '#8A8F98', fontFamily: 'Roboto, system-ui, sans-serif', cursor: 'pointer', userSelect: 'none' }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                     Création
@@ -454,7 +454,7 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
                     key={key}
                     className="col-hours"
                     onClick={() => handleSort(key)}
-                    style={{ padding: '12px 8px', fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: 'right', cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                    style={{ padding: '12px 8px', fontSize: 12.5, fontWeight: 500, color: '#8A8F98', fontFamily: 'Roboto, system-ui, sans-serif', textAlign: 'right', cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
                       {label}
@@ -465,7 +465,7 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
                   </th>
                 ))}
                 {/* Écran étroit : les 3 budgets d'heures regroupés en une colonne */}
-                <th className="col-hours-merged" title="Heures budgétées : préparation / confection / pose" style={{ padding: '12px 8px', fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: 'right', whiteSpace: 'nowrap' }}>H. P / C / P</th>
+                <th className="col-hours-merged" title="Heures budgétées : préparation / confection / pose" style={{ padding: '12px 8px', fontSize: 12.5, fontWeight: 500, color: '#8A8F98', fontFamily: 'Roboto, system-ui, sans-serif', textAlign: 'right', whiteSpace: 'nowrap' }}>H. P / C / P</th>
                 <th style={{ padding: '12px 10px', width: 64, position: 'sticky', right: 0, background: '#F9FAFB' }}></th>
               </tr>
             </thead>

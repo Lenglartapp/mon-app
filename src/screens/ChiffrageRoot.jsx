@@ -504,7 +504,7 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
             >
               ← Retour
             </button>
-            <h1 style={{ fontSize: 28, fontWeight: 700, color: '#1F2937', margin: 0, letterSpacing: '-0.5px' }}>Chiffrages</h1>
+            <h1 style={{ fontSize: 32, fontWeight: 400, fontFamily: 'Roboto, system-ui, sans-serif', color: '#111827', margin: 0, letterSpacing: '-0.01em' }}>Chiffrages</h1>
           </div>
           <div style={{ display: 'flex', gap: 12 }}>
             <button onClick={() => setNewMinOpen(true)} style={{ background: '#1E2447', color: 'white', padding: '8px 16px', borderRadius: 8, border: 'none', display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontWeight: 600, boxShadow: '0 2px 4px rgba(0,0,0,0.1)', marginBottom: 4 }}>
@@ -559,7 +559,7 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
                 boxShadow: '0 10px 25px -5px rgba(0,0,0,0.15)', border: '1px solid #E5E7EB', zIndex: 200,
                 padding: 16,
               }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 14 }}>
+                <div style={{ fontSize: 12.5, fontWeight: 500, color: '#8A8F98', fontFamily: 'Roboto, system-ui, sans-serif', marginBottom: 14 }}>
                   Filtres avancés
                 </div>
 
@@ -674,9 +674,9 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
             <thead style={{ background: '#F9FAFB', borderBottom: '1px solid #E5E7EB' }}>
               <tr>
-                <th style={{ padding: '12px 8px', fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.3px' }}>Nom Chiffrage</th>
-                <th style={{ padding: '12px 8px', fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.3px' }}>Client</th>
-                <th style={{ padding: '12px 8px', fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+                <th style={{ padding: '12px 8px', fontSize: 12.5, fontWeight: 500, color: '#8A8F98', fontFamily: 'Roboto, system-ui, sans-serif' }}>Nom Chiffrage</th>
+                <th style={{ padding: '12px 8px', fontSize: 12.5, fontWeight: 500, color: '#8A8F98', fontFamily: 'Roboto, system-ui, sans-serif' }}>Client</th>
+                <th style={{ padding: '12px 8px', fontSize: 12.5, fontWeight: 500, color: '#8A8F98', fontFamily: 'Roboto, system-ui, sans-serif' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     Statut
                     <IconButton size="small" onClick={(e) => setStatusFilterAnchor(e.currentTarget)} sx={{ p: 0.5, color: activeFilters.some(f => f.field === 'status') ? '#1E2447' : '#9CA3AF' }}>
@@ -698,7 +698,7 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
                     key={key}
                     title={title}
                     onClick={() => handleSort(key)}
-                    style={{ padding: '12px 8px', fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.3px', textAlign: 'right', cursor: 'pointer', userSelect: 'none' }}
+                    style={{ padding: '12px 8px', fontSize: 12.5, fontWeight: 500, color: '#8A8F98', fontFamily: 'Roboto, system-ui, sans-serif', textAlign: 'right', cursor: 'pointer', userSelect: 'none' }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
                       {label}
@@ -709,8 +709,8 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
                   </th>
                 ))}
 
-                <th style={{ padding: '12px 8px', fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.3px' }}>Mise à jour</th>
-                <th style={{ padding: '12px 8px', fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+                <th style={{ padding: '12px 8px', fontSize: 12.5, fontWeight: 500, color: '#8A8F98', fontFamily: 'Roboto, system-ui, sans-serif' }}>Mise à jour</th>
+                <th style={{ padding: '12px 8px', fontSize: 12.5, fontWeight: 500, color: '#8A8F98', fontFamily: 'Roboto, system-ui, sans-serif' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <span title="Chargé d'affaires">Chargé d'aff.</span>
                     <IconButton size="small" onClick={(e) => setOwnerFilterAnchor(e.currentTarget)} sx={{ p: 0.5, color: activeFilters.some(f => f.field === 'owner') ? '#1E2447' : '#9CA3AF' }}>
@@ -1014,7 +1014,7 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
         open={Boolean(statusFilterAnchor)}
         onClose={() => setStatusFilterAnchor(null)}
       >
-        <div style={{ padding: '8px 16px', fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase' }}>Filtrer par statut</div>
+        <div style={{ padding: '8px 16px', fontSize: 12.5, fontWeight: 500, color: '#8A8F98', fontFamily: 'Roboto, system-ui, sans-serif' }}>Filtrer par statut</div>
         {Object.entries(STATUS_OPTIONS).map(([key, opt]) => (
           <MenuItem key={key} onClick={() => toggleFilter('status', key, `Statut: ${opt.label}`)}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%' }}>
@@ -1030,7 +1030,7 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
         open={Boolean(ownerFilterAnchor)}
         onClose={() => setOwnerFilterAnchor(null)}
       >
-        <div style={{ padding: '8px 16px', fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase' }}>Filtrer par chargé d'affaires</div>
+        <div style={{ padding: '8px 16px', fontSize: 12.5, fontWeight: 500, color: '#8A8F98', fontFamily: 'Roboto, system-ui, sans-serif' }}>Filtrer par chargé d'affaires</div>
         {users.filter(u => u.role === ROLES.ADMIN || u.role === ROLES.ADV || u.role === 'sales').map((u) => (
           <MenuItem key={u.id} onClick={() => toggleFilter('owner', u.name, `CA: ${u.name}`)}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%' }}>
