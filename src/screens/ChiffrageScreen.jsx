@@ -26,8 +26,9 @@ import { calculateProfitability } from '../lib/financial/profitabilityCalculator
 import MinuteHistoryDialog from "../components/MinuteHistoryDialog";
 import VariantTabs from "../components/VariantTabs";
 import { buildFamilyTabs, nextFamilyVersion, variantShade } from "../lib/minuteFamily";
-import { HeaderCard, HeaderPanel, EditableTitle, StatusPill, HeaderButton, MetaItem, OwnerPicker } from "../components/ui/EntityHeader";
+import { EditableTitle, StatusPill, HeaderButton, MetaItem, OwnerPicker } from "../components/ui/EntityHeader";
 import { formatAnyDateFR } from "../lib/utils/formatDate";
+import NotesBlock from "../components/ui/NotesBlock";
 import { readVersionContent, mergeVisualsFromCurrent } from "../lib/minuteVersions";
 import { buildSettingsLogs, buildCatalogLogs, buildStatusLog, appendHistory } from "../lib/minuteHistory";
 import { MOBILIER_PRODUIT_RE } from "../lib/constants/productRouting";
@@ -52,52 +53,6 @@ const CHIFFRAGE_STATUS = {
   ORDER_COMPLETED: { label: "Commande terminée", color: "#059669" },
   LOST: { label: "Perdu", color: "#EF4444" },
 };
-
-// Optimisation: Composant Isolé pour les Notes afin d'éviter le re-render global à chaque frappe
-const NotesField = React.memo(({ initialValue, onSave, readOnly, canEdit }) => {
-  const [localNotes, setLocalNotes] = React.useState(initialValue);
-  const notesRef = React.useRef(null);
-
-  React.useEffect(() => {
-    setLocalNotes(initialValue);
-  }, [initialValue]);
-
-  React.useEffect(() => {
-    if (notesRef.current) {
-      notesRef.current.style.height = "auto";
-      notesRef.current.style.height = notesRef.current.scrollHeight + "px";
-    }
-  }, [localNotes]);
-
-  return (
-    <textarea
-      ref={notesRef}
-      value={localNotes}
-      onChange={(e) => setLocalNotes(e.target.value)}
-      onBlur={() => {
-        if (localNotes !== initialValue) {
-          onSave(localNotes);
-        }
-      }}
-      placeholder="Ajouter une note de contexte..."
-      rows={1}
-      style={{
-        width: '100%',
-        minHeight: 60,
-        border: 'none',
-        background: 'transparent',
-        outline: 'none',
-        resize: 'none',
-        fontSize: 13.5,
-        lineHeight: 1.5,
-        color: '#422006',
-        overflow: 'hidden',
-        fontFamily: 'inherit'
-      }}
-      readOnly={!canEdit || readOnly}
-    />
-  );
-});
 
 // Memoize External Components for better performance
 const MemoizedMinuteEditor = React.memo(MinuteEditor);
@@ -603,8 +558,6 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
 
   // Header State
   const [name, setName] = React.useState(minute?.name || "Minute sans nom");
-  const [notes, setNotes] = React.useState(minute?.notes || "");
-  const notesRef = React.useRef(null);
 
   React.useEffect(() => {
     setName(minute?.name || "Minute sans nom");
@@ -734,61 +687,58 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
       {/* Header : fiche d'identité (gauche) + notes (droite), actions en dessous */}
       <div style={{ marginTop: 8, marginBottom: 20 }}>
         <button onClick={onBack} style={{ background: 'none', border: 'none', color: '#6B7280', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, padding: 0, fontSize: 13, fontWeight: 500, marginBottom: 12 }}>← Retour</button>
-        <HeaderCard
-          left={
-            <>
-              <EditableTitle
-                value={name}
-                canEdit={canEdit}
-                placeholder="Nom du projet"
-                onSave={(v) => { setName(v); updateMinute({ name: v }); }}
-              />
-              <div style={{ fontSize: 15, color: '#6B7280', marginTop: 2 }}>{minute?.client || "Client non spécifié"}</div>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 14, flexWrap: 'wrap' }}>
-                <StatusPill
-                  value={localStatus}
-                  options={CHIFFRAGE_STATUS}
-                  onChange={handleStatusChange}
-                  disabled={!canEdit && localStatus !== "VALIDATED"}
-                />
-                <HeaderButton onClick={() => setShowHistory(true)} title="Historique des modifications et versions">
-                  <History size={15} /> Historique
-                </HeaderButton>
-              </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px 28px', alignItems: 'flex-start', marginTop: 18 }}>
-                <MetaItem label="Chargé d'affaires">
-                  <OwnerPicker
-                    value={minute?.owner || ""}
-                    users={assignableUsers}
-                    canEdit={canEdit}
-                    onChange={(owner) => updateMinute({ owner })}
-                  />
-                </MetaItem>
-                <MetaItem label="Créé le">{formatAnyDateFR(minute?.createdAt)}</MetaItem>
-                <MetaItem label="Livraison estimée">
-                  {canEdit ? (
-                    <input
-                      type="date"
-                      value={minute?.delivery_date || minute?.deliveryDate || ""}
-                      onChange={(e) => updateMinute({ delivery_date: e.target.value || null })}
-                      style={{ border: '1px solid #E5E7EB', borderRadius: 6, padding: '3px 6px', fontSize: 13, color: '#374151', background: 'white', outline: 'none', fontFamily: 'inherit' }}
-                    />
-                  ) : formatAnyDateFR(minute?.delivery_date || minute?.deliveryDate)}
-                </MetaItem>
-              </div>
-            </>
-          }
-          right={
-            <HeaderPanel title="Notes" tone="notes">
-              <NotesField
-                initialValue={minute?.notes || ""}
-                onSave={handleNotesSave}
-                canEdit={canEdit}
-                readOnly={minute?.status === "VALIDATED"}
-              />
-            </HeaderPanel>
-          }
+        {/* En-tête sans cadre : titre + client, puis infos (gauche) et notes (droite, même hauteur) */}
+        <EditableTitle
+          value={name}
+          canEdit={canEdit}
+          placeholder="Nom du projet"
+          onSave={(v) => { setName(v); updateMinute({ name: v }); }}
         />
+        <div style={{ fontSize: 15, color: '#6B7280', marginTop: 2 }}>{minute?.client || "Client non spécifié"}</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1.3fr) minmax(0,1fr)', gap: 28, marginTop: 14 }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+              <StatusPill
+                value={localStatus}
+                options={CHIFFRAGE_STATUS}
+                onChange={handleStatusChange}
+                disabled={!canEdit && localStatus !== "VALIDATED"}
+              />
+              <HeaderButton onClick={() => setShowHistory(true)} title="Historique des modifications et versions">
+                <History size={15} /> Historique
+              </HeaderButton>
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px 28px', alignItems: 'flex-start', marginTop: 18 }}>
+              <MetaItem label="Chargé d'affaires">
+                <OwnerPicker
+                  value={minute?.owner || ""}
+                  users={assignableUsers}
+                  canEdit={canEdit}
+                  onChange={(owner) => updateMinute({ owner })}
+                />
+              </MetaItem>
+              <MetaItem label="Créé le">{formatAnyDateFR(minute?.createdAt)}</MetaItem>
+              <MetaItem label="Livraison estimée">
+                {canEdit ? (
+                  <input
+                    type="date"
+                    value={minute?.delivery_date || minute?.deliveryDate || ""}
+                    onChange={(e) => updateMinute({ delivery_date: e.target.value || null })}
+                    style={{ border: '1px solid #E5E7EB', borderRadius: 6, padding: '3px 6px', fontSize: 13, color: '#374151', background: 'white', outline: 'none', fontFamily: 'inherit' }}
+                  />
+                ) : formatAnyDateFR(minute?.delivery_date || minute?.deliveryDate)}
+              </MetaItem>
+            </div>
+          </div>
+          <div style={{ position: 'relative', minWidth: 0, minHeight: 96 }}>
+            <NotesBlock
+              fill
+              value={minute?.notes || ""}
+              onSave={handleNotesSave}
+              editable={canEdit && minute?.status !== "VALIDATED"}
+            />
+          </div>
+        </div>
 
         {/* Intercalaires de variantes (gauche) + actions (droite) */}
         <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16, marginTop: 14, borderBottom: `1px solid ${activeTabShade}` }}>
