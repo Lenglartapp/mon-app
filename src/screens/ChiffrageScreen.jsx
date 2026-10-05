@@ -97,6 +97,14 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
     [minutes, minuteId]
   );
 
+  // TEST UI (local) : sur ce seul chiffrage, les blancs passent à l'ancien beige (voir index.css .df-beige-test).
+  const isBeigeTest = String(minuteId || '').toLowerCase().startsWith('f0a88ea4');
+  React.useEffect(() => {
+    if (!isBeigeTest) return undefined;
+    document.body.classList.add('df-beige-test');
+    return () => document.body.classList.remove('df-beige-test');
+  }, [isBeigeTest]);
+
   // PERF — La liste des chiffrages est légère (sans `lines`/`deplacements`/`params`…).
   // À l'ouverture, on charge la minute COMPLÈTE par son id et on la fusionne dans la
   // liste globale (via onLoadMinuteDetail). `detailLoadedId` indique quelle minute a
