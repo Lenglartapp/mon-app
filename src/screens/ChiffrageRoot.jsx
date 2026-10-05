@@ -674,9 +674,9 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
             <thead style={{ background: '#F9FAFB', borderBottom: '1px solid #E5E7EB' }}>
               <tr>
-                <th style={{ padding: '12px 8px', fontSize: 12.5, fontWeight: 500, color: '#8A8F98', fontFamily: 'Roboto, system-ui, sans-serif' }}>Nom Chiffrage</th>
-                <th style={{ padding: '12px 8px', fontSize: 12.5, fontWeight: 500, color: '#8A8F98', fontFamily: 'Roboto, system-ui, sans-serif' }}>Client</th>
-                <th style={{ padding: '12px 8px', fontSize: 12.5, fontWeight: 500, color: '#8A8F98', fontFamily: 'Roboto, system-ui, sans-serif' }}>
+                <th style={{ padding: '12px 8px', fontSize: 13, fontWeight: 600, color: '#374151' }}>Nom Chiffrage</th>
+                <th style={{ padding: '12px 8px', fontSize: 13, fontWeight: 600, color: '#374151' }}>Client</th>
+                <th style={{ padding: '12px 8px', fontSize: 13, fontWeight: 600, color: '#374151' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     Statut
                     <IconButton size="small" onClick={(e) => setStatusFilterAnchor(e.currentTarget)} sx={{ p: 0.5, color: activeFilters.some(f => f.field === 'status') ? '#1E2447' : '#9CA3AF' }}>
@@ -698,7 +698,7 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
                     key={key}
                     title={title}
                     onClick={() => handleSort(key)}
-                    style={{ padding: '12px 8px', fontSize: 12.5, fontWeight: 500, color: '#8A8F98', fontFamily: 'Roboto, system-ui, sans-serif', textAlign: 'right', cursor: 'pointer', userSelect: 'none' }}
+                    style={{ padding: '12px 8px', fontSize: 13, fontWeight: 600, color: '#374151', textAlign: 'right', cursor: 'pointer', userSelect: 'none' }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
                       {label}
@@ -709,8 +709,8 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
                   </th>
                 ))}
 
-                <th style={{ padding: '12px 8px', fontSize: 12.5, fontWeight: 500, color: '#8A8F98', fontFamily: 'Roboto, system-ui, sans-serif' }}>Mise à jour</th>
-                <th style={{ padding: '12px 8px', fontSize: 12.5, fontWeight: 500, color: '#8A8F98', fontFamily: 'Roboto, system-ui, sans-serif' }}>
+                <th style={{ padding: '12px 8px', fontSize: 13, fontWeight: 600, color: '#374151' }}>Mise à jour</th>
+                <th style={{ padding: '12px 8px', fontSize: 13, fontWeight: 600, color: '#374151' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <span title="Chargé d'affaires">Chargé d'aff.</span>
                     <IconButton size="small" onClick={(e) => setOwnerFilterAnchor(e.currentTarget)} sx={{ p: 0.5, color: activeFilters.some(f => f.field === 'owner') ? '#1E2447' : '#9CA3AF' }}>
