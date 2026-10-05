@@ -175,7 +175,7 @@ export default function ImportProjectsDialog({ open, onClose, onCreate, users = 
                   <div style={{ overflowX: 'auto' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                       <thead>
-                        <tr style={{ background: '#F9FAFB' }}>
+                        <tr style={{ background: '#F4F4F4' }}>
                           {['Nom', 'Responsable', 'Statut', 'Livraison', 'Budget Prépa/Conf/Pose', 'Consommé Prépa/Conf/Pose', 'Modules', 'Lieu'].map(h => (
                             <th key={h} style={{ padding: '8px 10px', textAlign: 'left', color: '#374151', fontWeight: 600, borderBottom: '2px solid #E5E7EB', whiteSpace: 'nowrap' }}>
                               {h}

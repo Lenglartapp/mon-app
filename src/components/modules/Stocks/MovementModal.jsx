@@ -211,7 +211,7 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
             <DialogContent sx={{ p: 4 }}>
                 <Stack spacing={3}>
                     {/* 1. CATÉGORIE */}
-                    <Box sx={{ p: 2, border: '1px solid #E5E7EB', borderRadius: 2, bgcolor: '#F9FAFB' }}>
+                    <Box sx={{ p: 2, border: '1px solid #E5E7EB', borderRadius: 2, bgcolor: '#F4F4F4' }}>
                         <Typography variant="caption" sx={captionSx}>CATÉGORIE</Typography>
                         <Stack direction="row" spacing={1}>
                             {TYPOLOGIES.map(t => (
@@ -245,7 +245,7 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
                                     onChange={handleSourceIN}
                                     onInputChange={(e, val, reason) => { if (reason === 'input') setField('product', val); }}
                                     renderInput={(params) => (
-                                        <TextField {...params} size="small" label={typology === 'Tissu' ? '🔍 Tissu d’un dossier (ou saisie libre)' : `🔍 ${typology} déjà connu (ou saisie libre)`} sx={{ bgcolor: '#F9FAFB' }} />
+                                        <TextField {...params} size="small" label={typology === 'Tissu' ? '🔍 Tissu d’un dossier (ou saisie libre)' : `🔍 ${typology} déjà connu (ou saisie libre)`} sx={{ bgcolor: '#F4F4F4' }} />
                                     )}
                                 />
                                 <Stack direction="row" spacing={1}>
@@ -284,11 +284,11 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
                                         </Box>
                                     </li>
                                 )}
-                                renderInput={(params) => <TextField {...params} label="🔍 Rechercher dans le stock (fournisseur, réf, coloris…)" sx={{ bgcolor: '#F9FAFB' }} />}
+                                renderInput={(params) => <TextField {...params} label="🔍 Rechercher dans le stock (fournisseur, réf, coloris…)" sx={{ bgcolor: '#F4F4F4' }} />}
                                 noOptionsText="Aucun article en stock dans cette catégorie."
                             />
                             {selectedItem && (
-                                <Box sx={{ mt: 1.5, p: 1.5, bgcolor: '#F9FAFB', borderRadius: 2, border: '1px solid #E5E7EB' }}>
+                                <Box sx={{ mt: 1.5, p: 1.5, bgcolor: '#F4F4F4', borderRadius: 2, border: '1px solid #E5E7EB' }}>
                                     <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
                                         <Chip size="small" color="primary" label={`Stock : ${selectedItem.qty} ${selectedItem.unit || ''}`} />
                                         {Array.isArray(selectedItem.pieces) && selectedItem.pieces.length > 0 && (
@@ -310,7 +310,7 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
 
                     {/* 3. QUANTITÉ */}
                     {usesInPieces && (
-                        <Box sx={{ p: 2, border: '1px dashed #D1D5DB', borderRadius: 2, bgcolor: '#F9FAFB' }}>
+                        <Box sx={{ p: 2, border: '1px dashed #D1D5DB', borderRadius: 2, bgcolor: '#F4F4F4' }}>
                             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
                                 <Typography variant="caption" sx={{ fontWeight: 800, color: '#374151' }}>COMPOSITION PAR PIÈCE</Typography>
                                 <Button size="small" startIcon={<Plus size={14} />} onClick={addPiece} sx={{ textTransform: 'none', fontWeight: 700 }}>Ajouter une pièce</Button>
@@ -352,7 +352,7 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
                     )}
 
                     {usesOutPieces && (
-                        <Box sx={{ p: 2, border: '1px dashed #D1D5DB', borderRadius: 2, bgcolor: '#F9FAFB' }}>
+                        <Box sx={{ p: 2, border: '1px dashed #D1D5DB', borderRadius: 2, bgcolor: '#F4F4F4' }}>
                             <Typography variant="caption" sx={{ fontWeight: 800, color: '#374151', mb: 1.5, display: 'block' }}>RESTE EN STOCK PAR PIÈCE</Typography>
                             <Stack spacing={1}>
                                 {pieces.map(p => {
@@ -429,7 +429,7 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
                 </Stack>
             </DialogContent>
 
-            <DialogActions sx={{ p: 3, borderTop: '1px solid #F3F4F6', bgcolor: '#F9FAFB', justifyContent: 'space-between' }}>
+            <DialogActions sx={{ p: 3, borderTop: '1px solid #F3F4F6', bgcolor: '#F4F4F4', justifyContent: 'space-between' }}>
                 <Button onClick={onClose} sx={{ color: '#6B7280' }}>Annuler</Button>
                 <Button
                     variant="contained"

@@ -194,15 +194,18 @@ const GROUP_PANEL_HEIGHT = 44;
 
 // CSS custom pour le thème AG Grid
 const AG_CUSTOM_CSS = `
-/* Style épuré (façon Notion / Airtable) : pas de cadre, traits très clairs, en-têtes blancs */
+/* Style épuré (façon Notion / ClickUp) : fond blanc, en-têtes gris clair #F4F4F4,
+   cadre #E0DED9, traits intérieurs #E8E6E2 */
 .ag-theme-alpine {
-  --ag-border-color: #EDEDEB;
-  --ag-secondary-border-color: #F1F1EF;
-  --ag-row-border-color: #F1F1EF;
-  --ag-header-background-color: #F9FAFB;
+  --ag-background-color: #FFFFFF;
+  --ag-odd-row-background-color: #FFFFFF;
+  --ag-border-color: #E0DED9;
+  --ag-secondary-border-color: #E8E6E2;
+  --ag-row-border-color: #E8E6E2;
+  --ag-header-background-color: #F4F4F4;
 }
 /* Cadre complet du tableau (gauche, droite, haut, bas) */
-.ag-theme-alpine .ag-root-wrapper { border: 1px solid #E5E7EB; border-radius: 8px; }
+.ag-theme-alpine .ag-root-wrapper { border: 1px solid #E0DED9; border-radius: 8px; }
 /* Hauteur auto : AG Grid impose ~150px mini à la zone des lignes, d'où un grand vide
    sous une table d'une seule ligne. On ramène le minimum à une ligne. */
 .ag-theme-alpine .ag-layout-auto-height .ag-center-cols-viewport,
@@ -224,7 +227,7 @@ const AG_CUSTOM_CSS = `
   border-radius: 8px 8px 0 0;
   /* Le trait du haut du cadre défile avec le tableau : la barre collante porte le sien (haut + côtés),
      superposé exactement au cadre quand elle n'est pas collée. */
-  box-shadow: 0 -1px 0 0 #E5E7EB, -1px 0 0 0 #E5E7EB, 1px 0 0 0 #E5E7EB, -1px -1px 0 0 #E5E7EB, 1px -1px 0 0 #E5E7EB;
+  box-shadow: 0 -1px 0 0 #E0DED9, -1px 0 0 0 #E0DED9, 1px 0 0 0 #E0DED9, -1px -1px 0 0 #E0DED9, 1px -1px 0 0 #E0DED9;
 }
 .df-sticky .ag-theme-alpine .ag-root > .ag-header {
   position: sticky; top: calc(var(--df-sticky-top, 0px) + ${GROUP_PANEL_HEIGHT}px); z-index: 3;
@@ -234,8 +237,8 @@ const AG_CUSTOM_CSS = `
 .df-grid-toolbar > * { pointer-events: auto; }
 /* Barre de regroupement : même gris que la ligne des en-têtes */
 .ag-theme-alpine .ag-column-drop-horizontal {
-  background: #F9FAFB;
-  border-bottom: 1px solid #EDEDEB;
+  background: #F4F4F4;
+  border-bottom: 1px solid #E0DED9;
   min-height: ${GROUP_PANEL_HEIGHT}px;
   height: ${GROUP_PANEL_HEIGHT}px;
 }
@@ -250,16 +253,16 @@ const AG_CUSTOM_CSS = `
   color: #374151;
 }
 .ag-theme-alpine .ag-header {
-  background-color: #F9FAFB;
-  border-bottom: 1px solid #E5E7EB;
+  background-color: #F4F4F4;
+  border-bottom: 1px solid #E0DED9;
 }
 .ag-theme-alpine .ag-header-cell {
-  border-right: 1px solid #F1F1EF;
+  border-right: 1px solid #E8E6E2;
 }
 .ag-theme-alpine .ag-cell {
   font-size: 13px;
   color: #111827;
-  border-right: 1px solid #F4F4F2;
+  border-right: 1px solid #E8E6E2;
   display: flex;
   align-items: center;
 }
@@ -270,7 +273,7 @@ const AG_CUSTOM_CSS = `
   background-color: #ffffff;
 }
 .ag-theme-alpine .ag-row-hover {
-  background-color: #F7F7F5 !important;
+  background-color: #F4F4F4 !important;
 }
 .ag-theme-alpine .ag-row-selected {
   background-color: #dbeafe !important;
@@ -282,7 +285,7 @@ const AG_CUSTOM_CSS = `
 }
 .ag-theme-alpine .ag-floating-bottom { background: #ffffff; border-top: none; }
 .ag-cell-read-only {
-  background-color: #F9FAFB !important; /* même gris que les en-têtes */
+  background-color: #F4F4F4 !important; /* même gris que les en-têtes */
   color: #9ca3af !important;
   cursor: not-allowed;
 }
@@ -1747,7 +1750,7 @@ function MinuteGrid({
             else if (row.statut_cotes === 'Définitive') mainStatus = { label: 'Coté', bg: '#DBEAFE', color: '#1D4ED8' };
             else if (row.statut_cotes === 'Déduction restante à faire') mainStatus = { label: 'Déduction', bg: '#FEF3C7', color: '#92400E' };
             return (
-                <div onClick={() => handleOpenDetail(row)} style={{ background: 'white', borderRadius: 12, padding: 16, marginBottom: 12, boxShadow: '0 1px 3px rgba(0,0,0,0.05)', border: '1px solid #E5E7EB', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div onClick={() => handleOpenDetail(row)} style={{ background: 'white', borderRadius: 12, padding: 16, marginBottom: 12, boxShadow: '0 1px 3px rgba(0,0,0,0.05)', border: '1px solid #E0DED9', display: 'flex', flexDirection: 'column', gap: 10 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                         <div>
                             <div style={{ fontSize: 16, fontWeight: 700, color: '#111827' }}>{row.piece || 'Sans pièce'}</div>
@@ -1852,7 +1855,7 @@ function MinuteGrid({
                     <div
                         style={{
                             position: 'fixed', top: addPanelPos.top, left: addPanelPos.left,
-                            background: 'white', border: '1px solid #e5e7eb', borderRadius: 8,
+                            background: 'white', border: '1px solid #E0DED9', borderRadius: 8,
                             boxShadow: '0 10px 25px rgba(0,0,0,0.12)', zIndex: 1000,
                             padding: 10, width: 232,
                         }}
@@ -1889,7 +1892,7 @@ function MinuteGrid({
                                 <button
                                     key={n}
                                     onClick={() => { setAddPanelOpen(false); handleAddRow(n); }}
-                                    style={{ flex: 1, cursor: 'pointer', padding: '4px 0', background: '#f3f4f6', color: '#374151', border: '1px solid #e5e7eb', borderRadius: 4, fontSize: 11, fontWeight: 600 }}
+                                    style={{ flex: 1, cursor: 'pointer', padding: '4px 0', background: '#f3f4f6', color: '#374151', border: '1px solid #E0DED9', borderRadius: 4, fontSize: 11, fontWeight: 600 }}
                                 >
                                     +{n}
                                 </button>
@@ -2046,7 +2049,7 @@ function MinuteGrid({
                         {matierePanelOpen && (
                             <div style={{
                                 position: 'absolute', left: 0, top: '100%', marginTop: 4,
-                                background: 'white', border: '1px solid #e5e7eb', borderRadius: 8,
+                                background: 'white', border: '1px solid #E0DED9', borderRadius: 8,
                                 boxShadow: '0 10px 25px rgba(0,0,0,0.1)', zIndex: 1000,
                                 padding: 8, display: 'flex', gap: 0,
                             }}>
@@ -2130,7 +2133,7 @@ function MinuteGrid({
                             position: 'fixed',
                             top: colPanelPos.top,
                             right: colPanelPos.right,
-                            background: 'white', border: '1px solid #e5e7eb', borderRadius: 8,
+                            background: 'white', border: '1px solid #E0DED9', borderRadius: 8,
                             boxShadow: '0 10px 25px rgba(0,0,0,0.1)', zIndex: 1000,
                             maxHeight: 'calc(100vh - ' + colPanelPos.top + 'px - 16px)',
                             display: 'flex', flexDirection: 'column',
@@ -2283,7 +2286,7 @@ function MinuteGrid({
                     return (
                     <div style={{
                         position: 'fixed', left, top,
-                        background: 'white', border: '1px solid #e5e7eb', borderRadius: 6,
+                        background: 'white', border: '1px solid #E0DED9', borderRadius: 6,
                         boxShadow: '0 4px 16px rgba(0,0,0,0.15)', zIndex: 9999,
                         minWidth: 150, overflow: 'hidden',
                     }}>
@@ -2297,7 +2300,7 @@ function MinuteGrid({
                                     key={opt.value}
                                     onClick={() => { onAggregationChange(aggMenu.field, opt.value); setAggMenu(null); }}
                                     style={{ padding: '8px 14px', cursor: 'pointer', fontSize: 13, background: current ? '#f0fdf4' : 'white', fontWeight: current ? 700 : 400, color: current ? '#065f46' : '#111827', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-                                    onMouseEnter={e => { if (!current) e.currentTarget.style.background = '#f9fafb'; }}
+                                    onMouseEnter={e => { if (!current) e.currentTarget.style.background = '#F4F4F4'; }}
                                     onMouseLeave={e => { e.currentTarget.style.background = current ? '#f0fdf4' : 'white'; }}
                                 >
                                     <span>{opt.label}</span>

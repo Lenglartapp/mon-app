@@ -87,7 +87,7 @@ const SX_ICON = { fontSize: 16, color: '#6B7280' };
 const SX_HEAD = { display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 };
 const SX_AUTHOR = { fontWeight: 600, color: '#1F2937' };
 const SX_TIME = { color: '#9CA3AF' };
-const SX_CARD_LOG = { bgcolor: '#F9FAFB', border: '1px solid #E5E7EB', borderRadius: 2, p: 1.5 };
+const SX_CARD_LOG = { bgcolor: '#F4F4F4', border: '1px solid #E5E7EB', borderRadius: 2, p: 1.5 };
 const SX_CARD_MSG = { bgcolor: 'white', border: '1px solid #E5E7EB', borderRadius: 2, p: 1.5, boxShadow: '0 1px 2px rgba(0,0,0,0.05)' };
 const SX_CHIP = { mb: 1, height: 20, fontSize: 10, fontWeight: 700, borderRadius: 1 };
 const SX_FIELD = { display: 'block', textTransform: 'uppercase', color: '#6B7280', fontSize: 10, fontWeight: 700, mb: 0.5 };
@@ -235,7 +235,7 @@ function VersionsPanel({ minuteId, canEdit, onRestoreInPlace, onRestoreAsVariant
                             <Chip label={r.label} size="small" sx={{ height: 20, fontSize: 10, fontWeight: 700, bgcolor: r.bg, color: r.color }} />
                         </Box>
                         {isSel && canEdit && (
-                            <Box sx={{ borderTop: '1px dashed #E5E7EB', p: 1.5, bgcolor: '#F9FAFB', display: 'flex', flexDirection: 'column', gap: 1 }}>
+                            <Box sx={{ borderTop: '1px dashed #E5E7EB', p: 1.5, bgcolor: '#F4F4F4', display: 'flex', flexDirection: 'column', gap: 1 }}>
                                 <Typography variant="caption" sx={{ color: '#6B7280' }}>
                                     « Revenir » remplace le contenu actuel (l'état actuel est sauvegardé au passage → réversible). « Variante » crée un nouveau devis et garde l'actuel intact.
                                 </Typography>
@@ -343,7 +343,7 @@ export default function MinuteHistoryDialog({ open, onClose, minute, canEdit = f
                 <Typography variant="h6" sx={{ fontWeight: 700 }}>Historique Complet</Typography>
                 <IconButton onClick={onClose}><CloseIcon /></IconButton>
             </DialogTitle>
-            <DialogContent sx={{ bgcolor: '#F9FAFB', p: 0, display: 'flex', flexDirection: 'column' }}>
+            <DialogContent sx={{ bgcolor: '#F4F4F4', p: 0, display: 'flex', flexDirection: 'column' }}>
                 <Tabs value={tab} onChange={(e, v) => setTab(v)} sx={{ px: 2, bgcolor: 'white', borderBottom: '1px solid #E5E7EB', minHeight: 42, flexShrink: 0 }}>
                     <Tab value="journal" label="Journal" sx={{ textTransform: 'none', minHeight: 42, fontWeight: 600 }} />
                     <Tab value="versions" label="Versions" sx={{ textTransform: 'none', minHeight: 42, fontWeight: 600 }} />
@@ -367,7 +367,7 @@ export default function MinuteHistoryDialog({ open, onClose, minute, canEdit = f
                     </Typography>
                 )}
                 {/* Barre de recherche : collée en haut, elle reste visible pendant le défilement. */}
-                <Box sx={{ position: 'sticky', top: 0, zIndex: 1, bgcolor: '#F9FAFB', px: 3, pt: 2, pb: 1.5, borderBottom: '1px solid #E5E7EB' }}>
+                <Box sx={{ position: 'sticky', top: 0, zIndex: 1, bgcolor: '#F4F4F4', px: 3, pt: 2, pb: 1.5, borderBottom: '1px solid #E5E7EB' }}>
                     <TextField
                         fullWidth
                         size="small"

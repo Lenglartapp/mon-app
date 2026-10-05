@@ -280,7 +280,7 @@ export default function CreateProductionProjectDialog({
             {/* Colonne gauche : recherche + liste */}
             <div
               style={{
-                border: "1px solid #e5e7eb",
+                border: "1px solid #E0DED9",
                 borderRadius: 12,
                 padding: 10,
                 background: "#fff",
@@ -332,7 +332,7 @@ export default function CreateProductionProjectDialog({
             {/* Colonne droite : aperçu */}
             <div
               style={{
-                border: "1px solid #e5e7eb",
+                border: "1px solid #E0DED9",
                 borderRadius: 12,
                 padding: 10,
                 background: "#fff",

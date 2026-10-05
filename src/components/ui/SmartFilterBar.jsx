@@ -62,7 +62,7 @@ export function SmartFilterBar({ activeFilters = [], onAddFilter, onRemoveFilter
     <div ref={containerRef} style={{ position: 'relative', flex: 1, maxWidth: 600 }}>
       <div style={{
         display: 'flex', alignItems: 'center', background: 'white', flexWrap: 'wrap', gap: 6,
-        border: `1px solid ${open ? '#6366F1' : '#E5E7EB'}`, borderRadius: 8,
+        border: `1px solid ${open ? '#6366F1' : '#E0DED9'}`, borderRadius: 8,
         padding: '4px 10px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)', transition: 'border-color 0.15s',
       }}>
         <Search size={16} color="#9CA3AF" style={{ flexShrink: 0 }} />
@@ -115,7 +115,7 @@ export function SmartFilterBar({ activeFilters = [], onAddFilter, onRemoveFilter
           position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0,
           background: 'white', borderRadius: 8,
           boxShadow: '0 10px 25px -5px rgba(0,0,0,0.15), 0 4px 6px -2px rgba(0,0,0,0.05)',
-          border: '1px solid #E5E7EB', zIndex: 1000, overflow: 'hidden',
+          border: '1px solid #E0DED9', zIndex: 1000, overflow: 'hidden',
         }}>
           {suggestions.map((field, i) => {
             const isAllFields = field.id === 'all';
@@ -127,7 +127,7 @@ export function SmartFilterBar({ activeFilters = [], onAddFilter, onRemoveFilter
                 onMouseLeave={() => setHovered(null)}
                 style={{
                   width: '100%', display: 'flex', alignItems: 'center', gap: 10,
-                  padding: '9px 14px', background: hovered === field.id ? '#F9FAFB' : 'white',
+                  padding: '9px 14px', background: hovered === field.id ? '#F4F4F4' : 'white',
                   border: 'none', borderTop: isAllFields ? '1px solid #F3F4F6' : 'none',
                   cursor: 'pointer', textAlign: 'left', fontSize: 14,
                 }}

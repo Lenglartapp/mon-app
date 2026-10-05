@@ -288,7 +288,7 @@ export default function SettingsScreen({ onBack }) {
                   sx={{ px: 4, pt: 3, pb: 0 }}
                 />
                 <CardContent sx={{ px: 4, py: 3 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 3, bgcolor: '#F9FAFB', borderRadius: 2, border: '1px solid rgba(0,0,0,0.06)', color: '#9CA3AF' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 3, bgcolor: '#F4F4F4', borderRadius: 2, border: '1px solid rgba(0,0,0,0.06)', color: '#9CA3AF' }}>
                     <Clock size={20} />
                     <Box>
                       <Typography fontWeight={600} fontSize={14} color="#6B7280">Modification du mot de passe</Typography>
@@ -305,7 +305,7 @@ export default function SettingsScreen({ onBack }) {
                   sx={{ px: 4, pt: 3, pb: 0 }}
                 />
                 <CardContent sx={{ px: 4, py: 3 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 3, bgcolor: '#F9FAFB', borderRadius: 2, border: '1px solid rgba(0,0,0,0.06)', color: '#9CA3AF' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 3, bgcolor: '#F4F4F4', borderRadius: 2, border: '1px solid rgba(0,0,0,0.06)', color: '#9CA3AF' }}>
                     <Clock size={20} />
                     <Box>
                       <Typography fontWeight={600} fontSize={14} color="#6B7280">Préférences de notifications</Typography>

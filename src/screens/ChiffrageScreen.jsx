@@ -712,7 +712,7 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
                   type="date"
                   value={minute?.delivery_date || minute?.deliveryDate || ""}
                   onChange={(e) => updateMinute({ delivery_date: e.target.value || null })}
-                  style={{ border: '1px solid #E5E7EB', borderRadius: 6, padding: '3px 6px', fontSize: 13, color: '#374151', background: 'white', outline: 'none', fontFamily: 'inherit' }}
+                  style={{ border: '1px solid #E0DED9', borderRadius: 6, padding: '3px 6px', fontSize: 13, color: '#374151', background: 'white', outline: 'none', fontFamily: 'inherit' }}
                 />
               ) : formatAnyDateFR(minute?.delivery_date || minute?.deliveryDate)}
             </MetaItem>
@@ -739,7 +739,7 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
         </div>
 
         {/* Intercalaires de variantes (gauche) + actions (droite) */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) auto minmax(0,1fr)', alignItems: 'flex-end', gap: 16, marginTop: 32, borderBottom: '1px solid #EDEDEB' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) auto minmax(0,1fr)', alignItems: 'flex-end', gap: 16, marginTop: 32, borderBottom: '1px solid #E0DED9' }}>
           <VariantTabs
             tabs={familyTabs}
             activeId={minute?.id}
@@ -760,20 +760,20 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
             accept=".xlsx, .xls"
             onChange={handleGlobalImport}
           />
-          <button onClick={() => fileInputRef.current?.click()} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', borderRadius: 8, background: 'white', border: '1px solid #E5E7EB', cursor: 'pointer', color: '#374151', fontSize: 13, fontWeight: 600 }}>
+          <button onClick={() => fileInputRef.current?.click()} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', borderRadius: 8, background: 'white', border: '1px solid #E0DED9', cursor: 'pointer', color: '#374151', fontSize: 13, fontWeight: 600 }}>
             <FileUp size={16} /> Importer Excel
           </button>
 
           {canEdit && (
             <button
               onClick={() => setShowRecalibration(true)}
-              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', borderRadius: 8, background: 'white', border: '1px solid #E5E7EB', cursor: 'pointer', color: '#374151', fontSize: 13, fontWeight: 600 }}
+              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', borderRadius: 8, background: 'white', border: '1px solid #E0DED9', cursor: 'pointer', color: '#374151', fontSize: 13, fontWeight: 600 }}
               title="Recalibrer le devis vers un montant cible"
             >
               <SlidersHorizontal size={16} /> Recalibrer
             </button>
           )}
-          <button onClick={() => setShowCatalog(true)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', borderRadius: 8, background: 'white', border: '1px solid #E5E7EB', cursor: 'pointer', color: '#374151', fontSize: 13, fontWeight: 600 }}>
+          <button onClick={() => setShowCatalog(true)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', borderRadius: 8, background: 'white', border: '1px solid #E0DED9', cursor: 'pointer', color: '#374151', fontSize: 13, fontWeight: 600 }}>
             <BookOpen size={16} /> Bibliothèque
           </button>
         </div>

@@ -284,7 +284,7 @@ export default function LineDetailPanel({ open, onClose, row, schema, onRowChang
                                             {col.label || col.key}
                                         </Typography>
                                         <div style={{
-                                            border: '1px solid #E5E7EB',
+                                            border: '1px solid #E0DED9',
                                             borderRadius: 8,
                                             padding: 12,
                                             minHeight: 80,
@@ -309,7 +309,7 @@ export default function LineDetailPanel({ open, onClose, row, schema, onRowChang
                                             {col.label || col.key}
                                         </Typography>
                                         <div style={{
-                                            border: '1px solid #E5E7EB',
+                                            border: '1px solid #E0DED9',
                                             borderRadius: 8,
                                             padding: 12,
                                             minHeight: 80,

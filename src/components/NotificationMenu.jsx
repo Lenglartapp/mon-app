@@ -112,7 +112,7 @@ export default function NotificationMenu({ anchorEl, open, onClose, onAction }) 
                             bgcolor: !n.read ? '#F0F9FF' : 'white', // Bleu très pâle si non lu
                             borderBottom: '1px solid #F3F4F6',
                             transition: 'background 0.2s',
-                            '&:hover': { bgcolor: '#F9FAFB' },
+                            '&:hover': { bgcolor: '#F4F4F4' },
                             gap: 2,
                             alignItems: 'flex-start',
                             py: 1.5

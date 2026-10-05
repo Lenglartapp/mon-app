@@ -259,7 +259,7 @@ function toNumOrNull(v) {
               style={{
                 padding: "8px 12px",
                 borderRadius: 8,
-                border: "1px solid #e5e7eb",
+                border: "1px solid #E0DED9",
                 background: "#fff",
               }}
             >

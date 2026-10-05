@@ -362,10 +362,10 @@ const PlanningGrid = ({
                 {/* Body */}
                 <div style={{ flex: 1, overflowY: 'auto', display: 'flex', position: 'relative' }}>
                     {/* Time Sidebar */}
-                    <div style={{ width: 60, flexShrink: 0, borderRight: '1px solid #E5E7EB', background: '#F9FAFB' }}>
+                    <div style={{ width: 60, flexShrink: 0, borderRight: '1px solid #E5E7EB', background: '#F4F4F4' }}>
                         {Array.from({ length: V_END - V_START + 1 }).map((_, i) => (
                             <div key={i} style={{ height: hourHeight, borderBottom: '1px solid #E5E7EB', position: 'relative', overflow: 'visible' }}>
-                                <span style={{ position: 'absolute', top: -10, right: 8, fontSize: 11, color: '#9CA3AF', background: '#F9FAFB', padding: '0 4px', zIndex: 10 }}>
+                                <span style={{ position: 'absolute', top: -10, right: 8, fontSize: 11, color: '#9CA3AF', background: '#F4F4F4', padding: '0 4px', zIndex: 10 }}>
                                     {V_START + i}:00
                                 </span>
                             </div>
@@ -602,7 +602,7 @@ const PlanningGrid = ({
 
     return (
         <div style={{ flex: 1, overflow: 'hidden', padding: '0 24px 24px', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ height: 'fit-content', maxHeight: '100%', overflow: 'auto', background: 'white', border: '1px solid #E5E7EB', borderRadius: 12, position: 'relative' }}>
+            <div style={{ height: 'fit-content', maxHeight: '100%', overflow: 'auto', background: 'white', border: '1px solid #E0DED9', borderRadius: 12, position: 'relative' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: `260px repeat(${gridCols.length}, minmax(${MIN_WIDTH}px, 1fr))`, gridAutoRows: 'max-content', width: (view === 'year' || view === 'quarter' || view === 'month') ? 'max-content' : '100%', minWidth: '100%' }}>
                     <StickyCorner style={{ height: HEADER_HEIGHT_1, borderBottom: 'none' }} />
                     {superHeaders.map((header, i) => (<div key={i} style={{ gridColumn: `span ${header.span}`, position: 'sticky', top: 0, zIndex: 40, background: 'white', borderBottom: '1px solid #E5E7EB', borderRight: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: 1 }}>{header.label}</div>))}
@@ -1052,7 +1052,7 @@ const PlanningGrid = ({
                                                     onClick={() => onCellClick(member.id, col)}
                                                     onDragOver={onDragOver}
                                                     onDrop={(e) => onDrop(e, member.id, col)}
-                                                    style={{ borderBottom: '1px solid #E5E7EB', borderRight: '1px solid #F3F4F6', background: (view !== 'year' && isSameDay(col, new Date())) ? '#F9FAFB' : 'transparent', height: ROW_HEIGHT, position: 'relative' }}
+                                                    style={{ borderBottom: '1px solid #E5E7EB', borderRight: '1px solid #F3F4F6', background: (view !== 'year' && isSameDay(col, new Date())) ? '#F4F4F4' : 'transparent', height: ROW_HEIGHT, position: 'relative' }}
                                                 >
                                                     {renderEventsForCell(member.id, col)}
                                                 </div>

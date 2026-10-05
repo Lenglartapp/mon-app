@@ -158,17 +158,17 @@ export default function HistoryPanel({ isOpen, onClose, projects = [], events = 
                                 value={query}
                                 onChange={(e) => setQuery(e.target.value)}
                                 placeholder="Rechercher un dossier…"
-                                style={{ width: '100%', boxSizing: 'border-box', padding: '9px 10px 9px 32px', fontSize: 14, border: '1px solid #E5E7EB', borderRadius: 8, outline: 'none' }}
+                                style={{ width: '100%', boxSizing: 'border-box', padding: '9px 10px 9px 32px', fontSize: 14, border: '1px solid #E0DED9', borderRadius: 8, outline: 'none' }}
                             />
                         </div>
                         {suggestions.length > 0 && (
-                            <div style={{ marginTop: 6, border: '1px solid #E5E7EB', borderRadius: 8, overflow: 'hidden', maxHeight: 260, overflowY: 'auto' }}>
+                            <div style={{ marginTop: 6, border: '1px solid #E0DED9', borderRadius: 8, overflow: 'hidden', maxHeight: 260, overflowY: 'auto' }}>
                                 {suggestions.map(p => (
                                     <div
                                         key={p.id}
                                         onClick={() => pick(p)}
                                         style={{ padding: '9px 12px', fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, borderBottom: '1px solid #F9FAFB' }}
-                                        onMouseEnter={e => e.currentTarget.style.background = '#F9FAFB'}
+                                        onMouseEnter={e => e.currentTarget.style.background = '#F4F4F4'}
                                         onMouseLeave={e => e.currentTarget.style.background = 'white'}
                                     >
                                         <span style={{ color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>

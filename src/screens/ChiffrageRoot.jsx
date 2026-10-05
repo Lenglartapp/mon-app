@@ -557,7 +557,7 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
               <div style={{
                 position: 'absolute', top: 'calc(100% + 6px)', right: 0,
                 background: 'white', borderRadius: 10, width: 340,
-                boxShadow: '0 10px 25px -5px rgba(0,0,0,0.15)', border: '1px solid #E5E7EB', zIndex: 200,
+                boxShadow: '0 10px 25px -5px rgba(0,0,0,0.15)', border: '1px solid #E0DED9', zIndex: 200,
                 padding: 16,
               }}>
                 <div style={{ fontSize: 12.5, fontWeight: 500, color: '#8A8F98', fontFamily: 'Roboto, system-ui, sans-serif', marginBottom: 14 }}>
@@ -569,7 +569,7 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
                     const availableFields = FILTER_FIELDS.filter(f => !f.adminOnly || showKPIs);
                     const selStyle = {
                       width: '100%', padding: '7px 10px', borderRadius: 6,
-                      border: '1px solid #E5E7EB', fontSize: 13, background: 'white',
+                      border: '1px solid #E0DED9', fontSize: 13, background: 'white',
                       outline: 'none', cursor: 'pointer', color: '#111827',
                     };
                     return (
@@ -601,20 +601,20 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
                               <input
                                 type="number" placeholder="Min" value={cond.value}
                                 onChange={e => updateCondition(cond.id, 'value', e.target.value)}
-                                style={{ flex: 1, padding: '7px 10px', borderRadius: 6, border: '1px solid #E5E7EB', fontSize: 13, outline: 'none' }}
+                                style={{ flex: 1, padding: '7px 10px', borderRadius: 6, border: '1px solid #E0DED9', fontSize: 13, outline: 'none' }}
                               />
                               <span style={{ color: '#9CA3AF', fontSize: 12, flexShrink: 0 }}>et</span>
                               <input
                                 type="number" placeholder="Max" value={cond.value2}
                                 onChange={e => updateCondition(cond.id, 'value2', e.target.value)}
-                                style={{ flex: 1, padding: '7px 10px', borderRadius: 6, border: '1px solid #E5E7EB', fontSize: 13, outline: 'none' }}
+                                style={{ flex: 1, padding: '7px 10px', borderRadius: 6, border: '1px solid #E0DED9', fontSize: 13, outline: 'none' }}
                               />
                             </div>
                           ) : (
                             <input
                               type="number" placeholder="Valeur" value={cond.value}
                               onChange={e => updateCondition(cond.id, 'value', e.target.value)}
-                              style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid #E5E7EB', fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
+                              style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid #E0DED9', fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
                             />
                           )}
                         </div>
@@ -661,7 +661,7 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
                 color: showArchived ? '#1E40AF' : '#6B7280',
                 border: '1px solid #E5E7EB',
                 borderRadius: 2, height: 38, width: 38,
-                '&:hover': { bgcolor: showArchived ? '#BFDBFE' : '#F9FAFB' },
+                '&:hover': { bgcolor: showArchived ? '#BFDBFE' : '#F4F4F4' },
               }}
             >
               <Archive size={20} />
@@ -673,7 +673,7 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
       <div style={{ maxWidth: 1440, width: '100%', margin: '0 auto', background: 'white', borderRadius: 12, boxShadow: '0 1px 3px rgba(0,0,0,0.05), 0 4px 6px rgba(0,0,0,0.02)', overflow: 'hidden' }}>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-            <thead style={{ background: '#F9FAFB', borderBottom: '1px solid #E5E7EB' }}>
+            <thead style={{ background: '#F4F4F4', borderBottom: '1px solid #E5E7EB' }}>
               <tr>
                 <th style={{ padding: '12px 8px', fontSize: 13, fontWeight: 600, color: '#374151' }}>Nom Chiffrage</th>
                 <th style={{ padding: '12px 8px', fontSize: 13, fontWeight: 600, color: '#374151' }}>Client</th>
@@ -719,7 +719,7 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
                     </IconButton>
                   </div>
                 </th>
-                <th style={{ padding: '12px 8px', width: 80, position: 'sticky', right: 0, background: '#F9FAFB' }}></th>
+                <th style={{ padding: '12px 8px', width: 80, position: 'sticky', right: 0, background: '#F4F4F4' }}></th>
               </tr>
             </thead>
             <tbody>
@@ -759,7 +759,7 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
                           background: isChild ? '#FAFAFA' : 'white',
                         }}
                         onClick={() => onOpenMinute?.(m.id)}
-                        onMouseEnter={(e) => e.currentTarget.style.background = isChild ? '#F3F4F6' : '#F9FAFB'}
+                        onMouseEnter={(e) => e.currentTarget.style.background = isChild ? '#F3F4F6' : '#F4F4F4'}
                         onMouseLeave={(e) => e.currentTarget.style.background = isChild ? '#FAFAFA' : 'white'}
                       >
                         <td style={{ padding: '12px 8px' }}>
@@ -882,7 +882,7 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
               onClick={() => setVisibleCount(c => c + 50)}
               style={{
                 background: 'white',
-                border: '1px solid #e5e7eb',
+                border: '1px solid #E0DED9',
                 borderRadius: 8,
                 padding: '10px 24px',
                 cursor: 'pointer',

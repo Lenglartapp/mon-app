@@ -162,7 +162,7 @@ export default function GridPhotoCell({ value, onImageUpload, onCustomAdd, offli
                     border: `1px dashed ${COLORS.border}`,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     cursor: uploading ? 'wait' : 'pointer',
-                    background: '#F9FAFB', color: '#6B7280',
+                    background: '#F4F4F4', color: '#6B7280',
                     opacity: uploading ? 0.5 : 1,
                 }}
             >

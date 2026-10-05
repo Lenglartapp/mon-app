@@ -105,7 +105,7 @@ function CatalogSearch({ globalCatalog, projectMaterials, activeTab, onAdd }) {
         onChange={e => setSearch(e.target.value)}
       />
       {filtered.length > 0 && (
-        <div style={{ marginTop: 4, border: '1px solid #E5E7EB', borderRadius: 8, overflow: 'hidden' }}>
+        <div style={{ marginTop: 4, border: '1px solid #E0DED9', borderRadius: 8, overflow: 'hidden' }}>
           {filtered.map((article, i) => (
             <div
               key={article.id || i}
@@ -171,7 +171,7 @@ function EditRow({ material, onSave, onCancel }) {
   };
 
   return (
-    <div style={{ padding: '10px 12px', background: '#F9FAFB', display: 'flex', flexDirection: 'column', gap: 8 }}>
+    <div style={{ padding: '10px 12px', background: '#F4F4F4', display: 'flex', flexDirection: 'column', gap: 8 }}>
       <TextField
         size="small" label="Nom de l'article" value={form.name}
         onChange={(e) => set('name', e.target.value)} fullWidth autoFocus
@@ -222,7 +222,7 @@ function ManualForm({ activeTab, onAdd, onCancel }) {
 
   return (
     <div style={{
-      background: '#F9FAFB', border: '1px solid #E5E7EB', borderRadius: 8,
+      background: '#F4F4F4', border: '1px solid #E0DED9', borderRadius: 8,
       padding: 12, display: 'flex', flexDirection: 'column', gap: 8,
     }}>
       {/* Name preview */}
@@ -340,7 +340,7 @@ export default function ProjectMaterialsPanel({ open, onClose, materials = [], o
               Aucun article dans cette catégorie.
             </div>
           ) : (
-            <div style={{ border: '1px solid #E5E7EB', borderRadius: 8, overflow: 'hidden' }}>
+            <div style={{ border: '1px solid #E0DED9', borderRadius: 8, overflow: 'hidden' }}>
               {tabMaterials.map((mat, i) => (
                 editingId === mat.id ? (
                   <div key={mat.id} style={{ borderBottom: i < tabMaterials.length - 1 ? '1px solid #F3F4F6' : 'none' }}>

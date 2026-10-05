@@ -46,7 +46,7 @@ function ecartPct(alloc, real) {
 const CHART_STYLE = {
   background: 'white',
   borderRadius: 12,
-  border: '1px solid #E5E7EB',
+  border: '1px solid #E0DED9',
   padding: 20,
 };
 
@@ -60,7 +60,7 @@ function FilterBar({ value, onChange }) {
     { key: 'pose', label: 'Pose' },
   ];
   return (
-    <div style={{ display: 'flex', background: 'white', borderRadius: 9999, padding: 3, gap: 3, border: '1px solid #E5E7EB', width: 'fit-content' }}>
+    <div style={{ display: 'flex', background: 'white', borderRadius: 9999, padding: 3, gap: 3, border: '1px solid #E0DED9', width: 'fit-content' }}>
       {tabs.map(t => (
         <button key={t.key} onClick={() => onChange(t.key)} style={{
           padding: '7px 16px', borderRadius: 9999, fontSize: 13, fontWeight: 500,
@@ -78,7 +78,7 @@ function FilterBar({ value, onChange }) {
 function CustomTooltip({ active, payload, label, suffix = '%' }) {
   if (!active || !payload?.length) return null;
   return (
-    <div style={{ background: 'white', border: '1px solid #E5E7EB', borderRadius: 8, padding: '10px 14px', fontSize: 13, boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}>
+    <div style={{ background: 'white', border: '1px solid #E0DED9', borderRadius: 8, padding: '10px 14px', fontSize: 13, boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}>
       <div style={{ fontWeight: 600, marginBottom: 4, color: '#111827' }}>{label}</div>
       {payload.map(p => (
         <div key={p.dataKey} style={{ color: p.fill || p.stroke || '#374151' }}>

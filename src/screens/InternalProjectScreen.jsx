@@ -20,12 +20,12 @@ const fmtH = (n) => `${Math.round((n || 0) * 10) / 10}`.replace('.', ',');
 
 const S = {
     page: { padding: '24px 32px', maxWidth: 1100, margin: '0 auto' },
-    card: { background: 'white', border: '1px solid #E5E7EB', borderRadius: 12, boxShadow: '0 1px 2px rgba(0,0,0,0.04)' },
+    card: { background: 'white', border: '1px solid #E0DED9', borderRadius: 12, boxShadow: '0 1px 2px rgba(0,0,0,0.04)' },
     th: { textAlign: 'left', fontSize: 12, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: 0.4, padding: '10px 16px', borderBottom: '1px solid #E5E7EB' },
     td: { padding: '12px 16px', fontSize: 14, color: '#111827', borderBottom: '1px solid #F3F4F6' },
     btn: { padding: '7px 14px', borderRadius: 8, border: '1px solid #D1D5DB', background: 'white', fontSize: 13, cursor: 'pointer', fontWeight: 500, color: '#374151' },
     input: { padding: '8px 10px', border: '1px solid #D1D5DB', borderRadius: 8, fontSize: 13, outline: 'none', fontFamily: 'inherit' },
-    select: { border: '1px solid #E5E7EB', borderRadius: 8, padding: '6px 10px', fontSize: 13, outline: 'none', background: 'white', color: '#374151', fontFamily: 'inherit', cursor: 'pointer' },
+    select: { border: '1px solid #E0DED9', borderRadius: 8, padding: '6px 10px', fontSize: 13, outline: 'none', background: 'white', color: '#374151', fontFamily: 'inherit', cursor: 'pointer' },
     filterLabel: { fontSize: 11, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 4, display: 'block' },
     statLabel: { fontSize: 12, color: '#6B7280', fontWeight: 600 },
     subTh: { textAlign: 'left', fontSize: 10, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: 0.4, padding: '4px 8px' },
@@ -72,7 +72,7 @@ function PeriodeDropdown({ preset, custom, onPreset, onCustom }) {
     return (
         <div ref={ref} style={{ position: 'relative' }}>
             <button onClick={() => setOpen(v => !v)} style={{
-                background: 'white', border: '1px solid #E5E7EB', borderRadius: 8,
+                background: 'white', border: '1px solid #E0DED9', borderRadius: 8,
                 padding: '6px 12px', fontSize: 13, fontWeight: 500, cursor: 'pointer',
                 display: 'flex', alignItems: 'center', gap: 8, color: '#374151',
                 boxShadow: open ? '0 0 0 2px #E0E7FF' : 'none',
@@ -80,7 +80,7 @@ function PeriodeDropdown({ preset, custom, onPreset, onCustom }) {
                 {currentLabel} <ChevronDown size={14} color="#9CA3AF" />
             </button>
             {open && (
-                <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, zIndex: 90, background: 'white', border: '1px solid #E5E7EB', borderRadius: 8, boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', width: 220, padding: 4 }}>
+                <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, zIndex: 90, background: 'white', border: '1px solid #E0DED9', borderRadius: 8, boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', width: 220, padding: 4 }}>
                     <div style={{ paddingBottom: 4, borderBottom: '1px solid #F3F4F6' }}>
                         {PERIODE_PRESETS.map(o => (
                             <div key={o.key} onClick={() => { onPreset(o.key); setOpen(false); }} style={{
@@ -95,9 +95,9 @@ function PeriodeDropdown({ preset, custom, onPreset, onCustom }) {
                         <div style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 8 }}>Période personnalisée</div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 8 }}>
                             <input type="date" value={tempFrom} onChange={e => setTempFrom(e.target.value)}
-                                style={{ width: '100%', boxSizing: 'border-box', border: '1px solid #E5E7EB', borderRadius: 6, padding: '5px 8px', fontSize: 12, outline: 'none' }} />
+                                style={{ width: '100%', boxSizing: 'border-box', border: '1px solid #E0DED9', borderRadius: 6, padding: '5px 8px', fontSize: 12, outline: 'none' }} />
                             <input type="date" value={tempTo} onChange={e => setTempTo(e.target.value)}
-                                style={{ width: '100%', boxSizing: 'border-box', border: '1px solid #E5E7EB', borderRadius: 6, padding: '5px 8px', fontSize: 12, outline: 'none' }} />
+                                style={{ width: '100%', boxSizing: 'border-box', border: '1px solid #E0DED9', borderRadius: 6, padding: '5px 8px', fontSize: 12, outline: 'none' }} />
                         </div>
                         <button onClick={applyCustom} style={{ width: '100%', background: '#1E2447', color: 'white', border: 'none', borderRadius: 6, padding: '6px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Appliquer</button>
                     </div>
@@ -202,7 +202,7 @@ export default function InternalProjectScreen({ project, projects = [], events =
             </p>
 
             {/* FILTRES — même présentation que le module Performance */}
-            <div style={{ background: 'white', border: '1px solid #E5E7EB', borderRadius: 10, padding: '14px 18px', marginBottom: 16, display: 'flex', flexWrap: 'wrap', gap: 20, alignItems: 'flex-end' }}>
+            <div style={{ background: 'white', border: '1px solid #E0DED9', borderRadius: 10, padding: '14px 18px', marginBottom: 16, display: 'flex', flexWrap: 'wrap', gap: 20, alignItems: 'flex-end' }}>
                 <div>
                     <label style={S.filterLabel}>Période</label>
                     <PeriodeDropdown preset={preset} custom={custom} onPreset={setPreset} onCustom={setCustom} />
@@ -239,7 +239,7 @@ export default function InternalProjectScreen({ project, projects = [], events =
             <div style={{ ...S.card, overflow: 'hidden' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
-                        <tr style={{ background: '#F9FAFB' }}>
+                        <tr style={{ background: '#F4F4F4' }}>
                             <th style={{ ...S.th, width: 36 }} />
                             <th style={S.th}>Chapitre</th>
                             <th style={S.th}>Statut</th>
@@ -262,7 +262,7 @@ export default function InternalProjectScreen({ project, projects = [], events =
                                 <React.Fragment key={row.name}>
                                     <tr
                                         onClick={() => setExpanded(e => ({ ...e, [row.name]: !isOpen }))}
-                                        style={{ cursor: 'pointer', background: isOpen ? '#F9FAFB' : 'white' }}
+                                        style={{ cursor: 'pointer', background: isOpen ? '#F4F4F4' : 'white' }}
                                     >
                                         <td style={{ ...S.td, paddingRight: 0, color: '#9CA3AF' }}>
                                             {isOpen ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
@@ -297,7 +297,7 @@ export default function InternalProjectScreen({ project, projects = [], events =
                                     </tr>
                                     {isOpen && (
                                         <tr>
-                                            <td colSpan={7} style={{ background: '#F9FAFB', borderBottom: '1px solid #F3F4F6', padding: '4px 16px 14px 52px' }}>
+                                            <td colSpan={7} style={{ background: '#F4F4F4', borderBottom: '1px solid #F3F4F6', padding: '4px 16px 14px 52px' }}>
                                                 <table style={{ width: '100%', maxWidth: 520, borderCollapse: 'collapse' }}>
                                                     <thead>
                                                         <tr>
@@ -363,7 +363,7 @@ function TransferDialog({ chapter, projects, onCancel, onConfirm }) {
                     <button onClick={onCancel} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#6B7280' }}><X size={18} /></button>
                 </div>
 
-                <div style={{ background: '#F9FAFB', border: '1px solid #E5E7EB', borderRadius: 8, padding: 12, fontSize: 13, color: '#374151', marginBottom: 16 }}>
+                <div style={{ background: '#F4F4F4', border: '1px solid #E0DED9', borderRadius: 8, padding: 12, fontSize: 13, color: '#374151', marginBottom: 16 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, color: '#111827' }}>
                         <Clock size={14} /> {chapter.name}
                     </div>
@@ -390,7 +390,7 @@ function TransferDialog({ chapter, projects, onCancel, onConfirm }) {
                     {target && <Check size={16} color="#10B981" />}
                 </div>
                 {!target && results.length > 0 && (
-                    <div style={{ border: '1px solid #E5E7EB', borderRadius: 8, marginTop: 4, maxHeight: 180, overflowY: 'auto' }}>
+                    <div style={{ border: '1px solid #E0DED9', borderRadius: 8, marginTop: 4, maxHeight: 180, overflowY: 'auto' }}>
                         {results.map(p => (
                             <div key={p.id} onClick={() => { setTarget(p); setSearch(p.name); }}
                                 style={{ padding: '9px 12px', fontSize: 14, cursor: 'pointer', borderBottom: '1px solid #F9FAFB' }}>

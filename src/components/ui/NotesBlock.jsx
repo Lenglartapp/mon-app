@@ -46,7 +46,7 @@ const TOOLS = [
 
 function Toolbar() {
   return (
-    <div style={{ display: "flex", gap: 2, padding: 4, borderBottom: "1px solid #EDEDEB" }}>
+    <div style={{ display: "flex", gap: 2, padding: 4, borderBottom: "1px solid #E0DED9" }}>
       {TOOLS.map(({ cmd, icon, title }) => (
         <button
           key={cmd}
@@ -129,7 +129,7 @@ export default function NotesBlock({ value, onSave, editable = true, fill = fals
         style={{
           position: fill ? "absolute" : "relative", inset: fill ? 0 : undefined,
           display: "flex", flexDirection: "column", minHeight: 0,
-          background: "#F7F7F5", borderRadius: 8, padding: "10px 14px 8px",
+          background: "#F4F4F4", borderRadius: 8, padding: "10px 14px 8px",
         }}
       >
         <div style={{ fontSize: 12, fontWeight: 500, color: "#9B9A97", marginBottom: 4 }}>Notes</div>

@@ -282,7 +282,7 @@ function InputCell({
         style={{ display: "flex", gap: 6, flexWrap: "wrap", cursor: readOnly ? "default" : "text" }}
       >
         {asLabels.length ? asLabels.map((t, i) => (
-          <span key={i} style={{ padding: "2px 6px", borderRadius: 8, border: "1px solid #e5e7eb", background: "#f8fafc", fontSize: 12 }}>
+          <span key={i} style={{ padding: "2px 6px", borderRadius: 8, border: "1px solid #E0DED9", background: "#f8fafc", fontSize: 12 }}>
             {t}
           </span>
         )) : "—"}
@@ -310,7 +310,7 @@ function InputCell({
         onDoubleClick={() => !readOnly && onStartEdit?.()}
         style={{
           color: readOnly ? "#9CA3AF" : "inherit",
-          backgroundColor: readOnly ? "#F9FAFB" : "transparent",
+          backgroundColor: readOnly ? "#F4F4F4" : "transparent",
           fontStyle: readOnly ? "italic" : "normal",
           padding: "2px 4px", borderRadius: 4
         }}
@@ -341,7 +341,7 @@ function InputCell({
               height: 40,
               borderRadius: 6,
               overflow: "hidden",
-              border: "1px solid #e5e7eb",
+              border: "1px solid #E0DED9",
               padding: 0,
             }}
             title="Voir"
@@ -377,7 +377,7 @@ function InputCell({
                 height: 40,
                 borderRadius: 6,
                 overflow: "hidden",
-                border: "1px solid #e5e7eb",
+                border: "1px solid #E0DED9",
                 padding: 0,
                 cursor: "pointer",
               }}
@@ -540,7 +540,7 @@ function InputCell({
         style={{
           cursor: readOnly ? "default" : "text",
           color: readOnly ? "#9CA3AF" : "inherit", // Gray text
-          backgroundColor: readOnly ? "#F9FAFB" : "transparent", // Light gray bg
+          backgroundColor: readOnly ? "#F4F4F4" : "transparent", // Light gray bg
           fontStyle: readOnly ? "italic" : "normal",
           padding: "2px 4px",
           borderRadius: 4
@@ -569,7 +569,7 @@ function InputCell({
       style={{
         cursor: readOnly ? "default" : "text",
         color: readOnly ? "#9CA3AF" : "inherit",
-        backgroundColor: readOnly ? "#F9FAFB" : "transparent",
+        backgroundColor: readOnly ? "#F4F4F4" : "transparent",
         fontStyle: readOnly ? "italic" : "normal",
         padding: "2px 4px",
         borderRadius: 4

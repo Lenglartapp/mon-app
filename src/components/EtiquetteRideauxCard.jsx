@@ -185,7 +185,7 @@ function CustomizePanel({ hiddenFields, onChange, onClose }) {
             onClick={() => setDraft([])}
             style={{
               fontSize: 11, color: "#6B7280", background: "none",
-              border: "1px solid #E5E7EB", borderRadius: 5,
+              border: "1px solid #E0DED9", borderRadius: 5,
               padding: "4px 10px", cursor: "pointer",
             }}
           >
@@ -354,7 +354,7 @@ export default function EtiquetteRideauxCard({ row, projectName, index, total, o
             {show("ampleur")              && <Cell label="Ampleur" value={v(row, "ampleur")} />}
           </Row>
           {(show("hauteur_renfort_tete") || show("poids") || show("onglets") || show("bride") || show("type_crochets") || show("ruflette") || show("point_chausson")) && (
-            <Row cols={7} bg="#F9FAFB">
+            <Row cols={7} bg="#F4F4F4">
               {show("hauteur_renfort_tete") && <Cell label="Renfort tête" value={v(row, "hauteur_renfort_tete")} />}
               {show("poids")               && <Cell label="Poids" value={v(row, "poids")} />}
               {show("onglets")             && <Cell label="Onglets" value={v(row, "onglets")} />}
@@ -381,7 +381,7 @@ export default function EtiquetteRideauxCard({ row, projectName, index, total, o
             </Row>
           )}
           {(show("piquage_ourlets_bas_doublure") || show("deduction_doublure") || show("doublure_finition_bas")) && (
-            <Row cols={3} bg="#F9FAFB">
+            <Row cols={3} bg="#F4F4F4">
               {show("piquage_ourlets_bas_doublure") && <Cell label="OB Doublure" value={v(row, "piquage_ourlets_bas_doublure")} />}
               {show("deduction_doublure")           && <Cell label="Déd. Doublure" value={v(row, "deduction_doublure")} />}
               {show("doublure_finition_bas")        && <Cell label="Fin. OB Doublure" value={v(row, "doublure_finition_bas")} />}
@@ -407,7 +407,7 @@ export default function EtiquetteRideauxCard({ row, projectName, index, total, o
             </Row>
           )}
           {(show("hauteur_finie_gauche") || show("hauteur_finie_milieu") || show("hauteur_finie_droite")) && (
-            <Row cols={3} bg="#F9FAFB">
+            <Row cols={3} bg="#F4F4F4">
               {show("hauteur_finie_gauche") && <Cell label="H. Finie G" value={v(row, "hauteur_finie_gauche")} />}
               {show("hauteur_finie_milieu") && <Cell label="H. Finie M" value={v(row, "hauteur_finie_milieu")} />}
               {show("hauteur_finie_droite") && <Cell label="H. Finie D" value={v(row, "hauteur_finie_droite")} />}
@@ -420,7 +420,7 @@ export default function EtiquetteRideauxCard({ row, projectName, index, total, o
             </Row>
           )}
           {(show("hauteur_coupe") || show("hauteur_coupe_motif") || show("hauteur_coupe_doublure")) && (
-            <Row cols={3} bg="#F9FAFB">
+            <Row cols={3} bg="#F4F4F4">
               {show("hauteur_coupe")          && <Cell label="H. Coupe T1" value={v(row, "hauteur_coupe")} />}
               {show("hauteur_coupe_motif")    && <Cell label="H. Coupe motif" value={v(row, "hauteur_coupe_motif")} />}
               {show("hauteur_coupe_doublure") && <Cell label="H. Coupe doubl." value={v(row, "hauteur_coupe_doublure")} />}
@@ -449,7 +449,7 @@ export default function EtiquetteRideauxCard({ row, projectName, index, total, o
             </Row>
           )}
           {(show("doublure") || show("laize_doublure") || show("inter_doublure") || show("laize_inter")) && (
-            <Row cols={4} bg="#F9FAFB">
+            <Row cols={4} bg="#F4F4F4">
               {show("doublure")       && <Cell label="Doublure" value={v(row, "doublure")} accent />}
               {show("laize_doublure") && <Cell label="Laize Doubl." value={v(row, "laize_doublure")} />}
               {show("inter_doublure") && <Cell label="Interdoublure" value={v(row, "inter_doublure")} />}
@@ -501,7 +501,7 @@ export default function EtiquetteRideauxCard({ row, projectName, index, total, o
 
       {/* FOOTER */}
       <div style={{
-        background: "#F9FAFB", borderTop: "1px solid #E5E7EB",
+        background: "#F4F4F4", borderTop: "1px solid #E5E7EB",
         padding: "6px 14px", display: "flex", justifyContent: "space-between", alignItems: "center",
       }}>
         <button
@@ -510,7 +510,7 @@ export default function EtiquetteRideauxCard({ row, projectName, index, total, o
             fontSize: 11, fontWeight: 600,
             color: hiddenCount > 0 ? "#92742A" : "#6B7280",
             background: hiddenCount > 0 ? "#FEF3C7" : "white",
-            border: `1px solid ${hiddenCount > 0 ? "#FCD34D" : "#E5E7EB"}`,
+            border: `1px solid ${hiddenCount > 0 ? "#FCD34D" : "#E0DED9"}`,
             borderRadius: 6, padding: "4px 12px", cursor: "pointer",
             display: "flex", alignItems: "center", gap: 5,
           }}

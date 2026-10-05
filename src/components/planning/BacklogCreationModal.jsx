@@ -48,7 +48,7 @@ const S = {
     },
     statsBox: {
         backgroundColor: '#F3F4F6', borderRadius: 8, padding: 12, marginTop: 8, fontSize: 13, color: '#4B5563',
-        border: '1px solid #E5E7EB'
+        border: '1px solid #E0DED9'
     },
     statRow: { display: 'flex', justifyContent: 'space-between', marginBottom: 4 },
     statValue: { fontWeight: 600, color: '#111827' },
@@ -225,7 +225,7 @@ const BacklogCreationModal = ({ isOpen, onClose, onSave, onDelete, projects, eve
                         {showSuggestions && (filteredProjects.length > 0 || showInternalOption) && (
                             <div style={{
                                 position: 'absolute', top: '100%', left: 0, right: 0,
-                                backgroundColor: 'white', border: '1px solid #E5E7EB',
+                                backgroundColor: 'white', border: '1px solid #E0DED9',
                                 borderRadius: 6, zIndex: 50, maxHeight: 200, overflowY: 'auto',
                                 boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)'
                             }}>
@@ -239,7 +239,7 @@ const BacklogCreationModal = ({ isOpen, onClose, onSave, onDelete, projects, eve
                                             setCustomLabel(p.name); // Default label
                                         }}
                                         style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: '1px solid #F3F4F6' }}
-                                        onMouseEnter={e => e.target.style.backgroundColor = '#F9FAFB'}
+                                        onMouseEnter={e => e.target.style.backgroundColor = '#F4F4F4'}
                                         onMouseLeave={e => e.target.style.backgroundColor = 'white'}
                                     >
                                         <div style={{ fontWeight: 500, fontSize: 14 }}>{p.name}</div>

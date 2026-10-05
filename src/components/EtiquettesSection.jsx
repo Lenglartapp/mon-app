@@ -105,19 +105,19 @@ function OuvrageSelectionPanel({ rows, selected, onChange }) {
           placeholder="Rechercher une zone ou pièce…"
           style={{
             flex: 1, fontSize: 12, padding: "5px 10px",
-            border: "1px solid #E5E7EB", borderRadius: 6,
+            border: "1px solid #E0DED9", borderRadius: 6,
             outline: "none", fontFamily: "inherit",
           }}
         />
         <button
           onClick={() => onChange(new Set(rows.map(ouvrageKey)))}
-          style={{ fontSize: 11, color: "#4B5563", background: "none", border: "1px solid #E5E7EB", borderRadius: 6, padding: "4px 10px", cursor: "pointer" }}
+          style={{ fontSize: 11, color: "#4B5563", background: "none", border: "1px solid #E0DED9", borderRadius: 6, padding: "4px 10px", cursor: "pointer" }}
         >
           Tout
         </button>
         <button
           onClick={() => onChange(new Set())}
-          style={{ fontSize: 11, color: "#4B5563", background: "none", border: "1px solid #E5E7EB", borderRadius: 6, padding: "4px 10px", cursor: "pointer" }}
+          style={{ fontSize: 11, color: "#4B5563", background: "none", border: "1px solid #E0DED9", borderRadius: 6, padding: "4px 10px", cursor: "pointer" }}
         >
           Aucun
         </button>
@@ -142,7 +142,7 @@ function OuvrageSelectionPanel({ rows, selected, onChange }) {
                   display: "flex", alignItems: "center", gap: 1,
                   px: 2, py: "4px",
                   cursor: "pointer",
-                  bgcolor: "#F9FAFB",
+                  bgcolor: "#F4F4F4",
                   borderTop: "1px solid #F3F4F6",
                   "&:hover": { bgcolor: "#F3F4F6" },
                 }}
@@ -170,7 +170,7 @@ function OuvrageSelectionPanel({ rows, selected, onChange }) {
                   sx={{
                     display: "flex", alignItems: "center", gap: 1.5,
                     px: 3, py: "3px", cursor: "pointer",
-                    "&:hover": { bgcolor: "#F9FAFB" },
+                    "&:hover": { bgcolor: "#F4F4F4" },
                   }}
                 >
                   <input
@@ -243,7 +243,7 @@ function BulkCustomizePanel({ fields, initialHidden, count, onApply, onClose }) 
             onClick={() => setDraft([])}
             style={{
               fontSize: 11, color: "#6B7280", background: "none",
-              border: "1px solid #E5E7EB", borderRadius: 6,
+              border: "1px solid #E0DED9", borderRadius: 6,
               padding: "5px 12px", cursor: "pointer",
             }}
           >
@@ -418,7 +418,7 @@ function ColorPanel({ rows, onApply, onClose }) {
       {/* Header */}
       <Box sx={{ p: "10px 14px", borderBottom: "1px solid #F3F4F6", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <span style={{ fontSize: 13, fontWeight: 700, color: "#111827" }}>Couleur du bandeau</span>
-        <button onClick={onClose} style={{ fontSize: 11, color: "#6B7280", background: "none", border: "1px solid #E5E7EB", borderRadius: 6, padding: "4px 10px", cursor: "pointer" }}>
+        <button onClick={onClose} style={{ fontSize: 11, color: "#6B7280", background: "none", border: "1px solid #E0DED9", borderRadius: 6, padding: "4px 10px", cursor: "pointer" }}>
           Fermer
         </button>
       </Box>
@@ -522,7 +522,7 @@ function ColorPanel({ rows, onApply, onClose }) {
             disabled={scopeType !== "all" && (scopeType === "zone" ? selectedZones.size === 0 : selectedProduits.size === 0)}
             style={{
               fontSize: 11, color: "#6B7280", background: "none",
-              border: "1px solid #E5E7EB", borderRadius: 6, padding: "5px 12px", cursor: "pointer",
+              border: "1px solid #E0DED9", borderRadius: 6, padding: "5px 12px", cursor: "pointer",
             }}
           >
             Réinitialiser la sélection

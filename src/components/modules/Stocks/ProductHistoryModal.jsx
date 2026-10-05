@@ -137,7 +137,7 @@ export default function ProductHistoryModal({ open, onClose, product, movements 
 
     return (
         <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-            <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: '#F9FAFB', borderBottom: '1px solid #E5E7EB' }}>
+            <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: '#F4F4F4', borderBottom: '1px solid #E5E7EB' }}>
                 <Box>
                     <Typography variant="h6" sx={{ fontWeight: 700, color: '#111827' }}>
                         Fiche de Vie : {product.product}

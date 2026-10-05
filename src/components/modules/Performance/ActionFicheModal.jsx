@@ -10,7 +10,7 @@ const STATUT_OPTIONS = [
 
 const inputStyle = {
   width: '100%', boxSizing: 'border-box',
-  border: '1px solid #E5E7EB', borderRadius: 8, padding: '8px 12px',
+  border: '1px solid #E0DED9', borderRadius: 8, padding: '8px 12px',
   fontSize: 14, color: '#374151', outline: 'none', fontFamily: 'inherit',
 };
 
@@ -165,7 +165,7 @@ export default function ActionFicheModal({ action, projects, onSave, onClose }) 
         {/* Footer */}
         <div style={{ padding: '16px 24px', borderTop: '1px solid #F3F4F6', display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
           <button onClick={onClose} style={{
-            border: '1px solid #E5E7EB', background: 'white', borderRadius: 8,
+            border: '1px solid #E0DED9', background: 'white', borderRadius: 8,
             padding: '8px 18px', fontSize: 14, cursor: 'pointer', color: '#374151', fontWeight: 500,
           }}>Annuler</button>
           <button onClick={handleSave} disabled={saving || !form.titre.trim()} style={{

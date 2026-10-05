@@ -225,12 +225,12 @@ const AssistantView = ({ stats, onUpdateProject }) => {
     // dessous. Fond opaque obligatoire (sinon les lignes défileraient au travers) et
     // z-index sous les menus déroulants des filtres (z 200).
     // En-têtes : même rendu que les listes Chiffrages / Projets (13 px, demi-gras, quasi noir, sans majuscules)
-    const th = { padding: '12px 10px', fontSize: 13, fontWeight: 600, color: '#374151', whiteSpace: 'nowrap', userSelect: 'none', position: 'sticky', top: filterBarH, background: '#F9FAFB', borderBottom: '1px solid #E5E7EB', zIndex: 20 };
+    const th = { padding: '12px 10px', fontSize: 13, fontWeight: 600, color: '#374151', whiteSpace: 'nowrap', userSelect: 'none', position: 'sticky', top: filterBarH, background: '#F4F4F4', borderBottom: '1px solid #E5E7EB', zIndex: 20 };
     const tdNum = { padding: '8px 16px', textAlign: 'right', fontSize: 13 };
     const iconBtn = (active) => ({
         display: 'flex', alignItems: 'center', gap: 6, height: 38, padding: '0 12px', borderRadius: 8, cursor: 'pointer',
         background: active ? '#EEF2FF' : 'white', color: active ? '#4338CA' : '#6B7280',
-        border: `1px solid ${active ? '#C7D2FE' : '#E5E7EB'}`, fontSize: 13, fontWeight: 600,
+        border: `1px solid ${active ? '#C7D2FE' : '#E0DED9'}`, fontSize: 13, fontWeight: 600,
     });
 
     const ServiceRow = ({ label, pct, svc }) => (
@@ -249,7 +249,7 @@ const AssistantView = ({ stats, onUpdateProject }) => {
 
     const advCount = activeFilters.filter(f => f.matchType === 'advanced').length;
     const statusCount = activeFilters.filter(f => f.field === 'status_exact').length;
-    const inputStyle = { width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid #E5E7EB', fontSize: 13, outline: 'none', boxSizing: 'border-box' };
+    const inputStyle = { width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid #E0DED9', fontSize: 13, outline: 'none', boxSizing: 'border-box' };
 
     return (
         <div style={{ flex: 1, overflowY: 'auto', position: 'relative' }}>
@@ -270,7 +270,7 @@ const AssistantView = ({ stats, onUpdateProject }) => {
                         <Filter size={16} /> Statut{statusCount > 0 ? ` (${statusCount})` : ''}
                     </button>
                     {statusOpen && (
-                        <div style={{ position: 'absolute', top: 'calc(100% + 6px)', right: 0, background: 'white', borderRadius: 10, width: 220, boxShadow: '0 10px 25px -5px rgba(0,0,0,0.15)', border: '1px solid #E5E7EB', zIndex: 200, padding: 6 }}>
+                        <div style={{ position: 'absolute', top: 'calc(100% + 6px)', right: 0, background: 'white', borderRadius: 10, width: 220, boxShadow: '0 10px 25px -5px rgba(0,0,0,0.15)', border: '1px solid #E0DED9', zIndex: 200, padding: 6 }}>
                             {Object.entries(PROJECT_STATUS_OPTIONS).map(([key, opt]) => {
                                 const checked = activeFilters.some(f => f.id === `status_${key}`);
                                 return (
@@ -290,7 +290,7 @@ const AssistantView = ({ stats, onUpdateProject }) => {
                         <SlidersHorizontal size={16} />{advCount > 0 ? ` (${advCount})` : ''}
                     </button>
                     {advOpen && (
-                        <div style={{ position: 'absolute', top: 'calc(100% + 6px)', right: 0, background: 'white', borderRadius: 10, width: 360, boxShadow: '0 10px 25px -5px rgba(0,0,0,0.15)', border: '1px solid #E5E7EB', zIndex: 200, padding: 16 }}>
+                        <div style={{ position: 'absolute', top: 'calc(100% + 6px)', right: 0, background: 'white', borderRadius: 10, width: 360, boxShadow: '0 10px 25px -5px rgba(0,0,0,0.15)', border: '1px solid #E0DED9', zIndex: 200, padding: 16 }}>
                             <div style={{ fontSize: 12.5, fontWeight: 500, color: '#8A8F98', fontFamily: 'Roboto, system-ui, sans-serif', marginBottom: 14 }}>Filtres avancés</div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                                 {conditions.map((cond, i) => {
@@ -347,9 +347,9 @@ const AssistantView = ({ stats, onUpdateProject }) => {
                 Même gabarit que la barre de filtres (padding 24 + inner maxWidth 1440
                 centré) pour que les deux soient parfaitement alignés. */}
             <div style={{ padding: '0 24px 24px' }}>
-            <div style={{ maxWidth: 1440, margin: '0 auto', background: 'white', borderRadius: 12, border: '1px solid #E5E7EB', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', overflow: 'visible' }}>
+            <div style={{ maxWidth: 1440, margin: '0 auto', background: 'white', borderRadius: 12, border: '1px solid #E0DED9', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', overflow: 'visible' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                    <thead style={{ background: '#F9FAFB' }}>
+                    <thead style={{ background: '#F4F4F4' }}>
                         <tr>
                             <th style={{ ...th, textAlign: 'left', borderTopLeftRadius: 12 }}>Nom du Dossier</th>
                             <th style={{ ...th, textAlign: 'left' }}><SortLabel label="Deadline" sortKey="deadline" align="flex-start" /></th>
@@ -387,7 +387,7 @@ const AssistantView = ({ stats, onUpdateProject }) => {
                                         <td style={{ padding: '12px 10px', textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
                                             <div style={{ position: 'relative', display: 'inline-block' }}>
                                                 <select value={proj.projectStatus || "TODO"} onChange={(e) => onUpdateProject && onUpdateProject(proj.id, { status: e.target.value })}
-                                                    style={{ appearance: 'none', padding: "4px 12px 4px 24px", borderRadius: 20, border: "1px solid #E5E7EB", background: 'white', color: "#374151", fontWeight: 600, fontSize: 11, cursor: 'pointer', textAlign: 'center', outline: 'none', boxShadow: "0 1px 2px rgba(0,0,0,0.05)", minWidth: 100 }}>
+                                                    style={{ appearance: 'none', padding: "4px 12px 4px 24px", borderRadius: 20, border: "1px solid #E0DED9", background: 'white', color: "#374151", fontWeight: 600, fontSize: 11, cursor: 'pointer', textAlign: 'center', outline: 'none', boxShadow: "0 1px 2px rgba(0,0,0,0.05)", minWidth: 100 }}>
                                                     {Object.entries(PROJECT_STATUS_OPTIONS).map(([key, opt]) => (<option key={key} value={key}>{opt.label}</option>))}
                                                 </select>
                                                 <div style={{ position: 'absolute', top: '50%', left: 10, transform: 'translateY(-50%)', width: 6, height: 6, borderRadius: '50%', background: statusOpt.color, pointerEvents: 'none' }} />

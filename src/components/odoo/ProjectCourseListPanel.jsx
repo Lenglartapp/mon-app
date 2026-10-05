@@ -125,10 +125,10 @@ export default function ProjectCourseListPanel({ droitfilProjectId, odooProjectI
         </div>
       )}
 
-      <div style={{ overflowX: "auto", border: "1px solid #E5E7EB", borderRadius: 10 }}>
+      <div style={{ overflowX: "auto", border: "1px solid #E0DED9", borderRadius: 10 }}>
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
           <thead>
-            <tr style={{ background: "#F9FAFB" }}>
+            <tr style={{ background: "#F4F4F4" }}>
               {COLS.map((h) => (
                 <th key={h} style={{ textAlign: "left", padding: "8px 10px", borderBottom: "1px solid #E5E7EB", fontWeight: 700, color: "#374151", whiteSpace: "nowrap" }}>{h}</th>
               ))}

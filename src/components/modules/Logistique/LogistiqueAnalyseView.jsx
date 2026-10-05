@@ -41,7 +41,7 @@ function WeekTooltip({ active, payload }) {
   if (!active || !payload?.[0]) return null;
   const d = payload[0].payload;
   return (
-    <div style={{ background: 'white', border: '1px solid #E5E7EB', borderRadius: 8, padding: '10px 14px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', fontSize: 12 }}>
+    <div style={{ background: 'white', border: '1px solid #E0DED9', borderRadius: 8, padding: '10px 14px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', fontSize: 12 }}>
       <div style={{ fontWeight: 700, marginBottom: 4 }}>{d.fullLabel}</div>
       <div style={{ color: '#6B7280' }}>{d.count} expédition{d.count > 1 ? 's' : ''}</div>
       <div style={{ marginTop: 6, color: '#9CA3AF', fontSize: 11 }}>Clic pour le détail</div>
@@ -58,7 +58,7 @@ function ScatterTooltip({ active, payload }) {
     : d.ratio > 0.5 ? '#F59E0B'
     : '#10B981';
   return (
-    <div style={{ background: 'white', border: '1px solid #E5E7EB', borderRadius: 8, padding: '10px 14px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', fontSize: 12, maxWidth: 220 }}>
+    <div style={{ background: 'white', border: '1px solid #E0DED9', borderRadius: 8, padding: '10px 14px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', fontSize: 12, maxWidth: 220 }}>
       <div style={{ fontWeight: 700, color: '#111827', marginBottom: 6 }}>{d.name}</div>
       <div style={{ color: '#6B7280' }}>{d.y} expédition{d.y > 1 ? 's' : ''}</div>
       <div style={{ color: '#6B7280' }}>{d.allocHours > 0 ? `${d.allocHours}h allouées` : 'Budget non renseigné'}</div>
@@ -145,14 +145,14 @@ export default function LogistiqueAnalyseView({ shipments, items, projects, onBa
     setSelectedWeek(prev => prev === item.key ? null : item.key);
   };
 
-  const CARD = { background: 'white', borderRadius: 12, border: '1px solid #E5E7EB', padding: 20 };
+  const CARD = { background: 'white', borderRadius: 12, border: '1px solid #E0DED9', padding: 20 };
 
   // ── Panneau latéral ──────────────────────────────────────────────────────────
   const sidePanel = selectedWeekData && (
     <div style={{
       width: 300, flexShrink: 0,
       ...(embedded
-        ? { border: '1px solid #E5E7EB', borderRadius: 12, background: 'white', overflow: 'hidden', alignSelf: 'flex-start' }
+        ? { border: '1px solid #E0DED9', borderRadius: 12, background: 'white', overflow: 'hidden', alignSelf: 'flex-start' }
         : { borderLeft: '1px solid #E5E7EB', background: 'white', display: 'flex', flexDirection: 'column', overflow: 'hidden' }
       ),
     }}>

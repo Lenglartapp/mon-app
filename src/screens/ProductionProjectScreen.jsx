@@ -935,7 +935,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                   onCommit={(v) => { if (v !== (project?.location || "")) onUpdateProject(project.id, { location: v }); }}
                   placeholder="Saisir une adresse…"
                   style={{ width: 300 }}
-                  inputStyle={{ border: '1px solid #E5E7EB', borderRadius: 6, padding: '4px 8px', background: 'white', color: '#1F2937' }}
+                  inputStyle={{ border: '1px solid #E0DED9', borderRadius: 6, padding: '4px 8px', background: 'white', color: '#1F2937' }}
                 />
                 </MetaItem>
                 <MetaItem label="Type">
@@ -969,10 +969,10 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                     type="date"
                     value={project?.deadline ? project.deadline.split('T')[0] : ''}
                     onChange={(e) => onUpdateProject(project.id, { deadline: e.target.value || null })}
-                    style={{ border: '1px solid #E5E7EB', borderRadius: 6, padding: '3px 6px', fontSize: 13, color: '#374151', background: 'white', outline: 'none', fontFamily: 'inherit' }}
+                    style={{ border: '1px solid #E0DED9', borderRadius: 6, padding: '3px 6px', fontSize: 13, color: '#374151', background: 'white', outline: 'none', fontFamily: 'inherit' }}
                   />
                   {(project?.delivery_phases || []).filter(ph => ph.label || ph.date).map((ph, i) => (
-                    <span key={ph.id || i} style={{ background: 'white', border: '1px solid #E5E7EB', borderRadius: 99, padding: '2px 9px', fontSize: 12, color: '#374151', whiteSpace: 'nowrap' }}>
+                    <span key={ph.id || i} style={{ background: 'white', border: '1px solid #E0DED9', borderRadius: 99, padding: '2px 9px', fontSize: 12, color: '#374151', whiteSpace: 'nowrap' }}>
                       {ph.label || `Phase ${i + 1}`}{ph.date && <> · <b style={{ color: '#2563EB', fontWeight: 600 }}>{new Date(ph.date).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })}</b></>}
                     </span>
                   ))}
@@ -986,7 +986,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                     {deliveryOpen && (
                       <div style={{
                         position: 'absolute', top: 'calc(100% + 6px)', left: 0,
-                        background: 'white', border: '1px solid #E5E7EB', borderRadius: 12,
+                        background: 'white', border: '1px solid #E0DED9', borderRadius: 12,
                         boxShadow: '0 4px 16px rgba(0,0,0,0.1)', padding: 16, minWidth: 290, zIndex: 1000
                       }}>
                         {/* Date globale */}
@@ -998,7 +998,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                             type="date"
                             value={project?.deadline ? project.deadline.split('T')[0] : ''}
                             onChange={(e) => onUpdateProject(project.id, { deadline: e.target.value })}
-                            style={{ width: '100%', border: '1px solid #E5E7EB', borderRadius: 8, padding: '6px 10px', fontSize: 13, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
+                            style={{ width: '100%', border: '1px solid #E0DED9', borderRadius: 8, padding: '6px 10px', fontSize: 13, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
                           />
                         </div>
 
@@ -1026,7 +1026,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                                   const phases = (project.delivery_phases || []).map((p, i) => i === idx ? { ...p, label: e.target.value } : p);
                                   onUpdateProject(project.id, { delivery_phases: phases });
                                 }}
-                                style={{ flex: 1, border: '1px solid #E5E7EB', borderRadius: 8, padding: '5px 8px', fontSize: 12, fontFamily: 'inherit', outline: 'none', minWidth: 0 }}
+                                style={{ flex: 1, border: '1px solid #E0DED9', borderRadius: 8, padding: '5px 8px', fontSize: 12, fontFamily: 'inherit', outline: 'none', minWidth: 0 }}
                               />
                               <input
                                 type="date"
@@ -1035,7 +1035,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                                   const phases = (project.delivery_phases || []).map((p, i) => i === idx ? { ...p, date: e.target.value } : p);
                                   onUpdateProject(project.id, { delivery_phases: phases });
                                 }}
-                                style={{ border: '1px solid #E5E7EB', borderRadius: 8, padding: '5px 8px', fontSize: 12, fontFamily: 'inherit', outline: 'none', width: 130 }}
+                                style={{ border: '1px solid #E0DED9', borderRadius: 8, padding: '5px 8px', fontSize: 12, fontFamily: 'inherit', outline: 'none', width: 130 }}
                               />
                               <button
                                 onClick={() => {
@@ -1073,7 +1073,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
               style={{
                 display: 'flex', alignItems: 'center', gap: 8,
                 background: 'white',
-                border: '1px solid #E5E7EB',
+                border: '1px solid #E0DED9',
                 borderRadius: 8,
                 padding: '8px 14px',
                 cursor: 'pointer',
@@ -1095,7 +1095,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                 style={{
                   display: 'flex', alignItems: 'center', gap: 8,
                   background: 'white',
-                  border: '1px solid #E5E7EB',
+                  border: '1px solid #E0DED9',
                   borderRadius: 8,
                   padding: '8px 14px',
                   cursor: 'pointer',
@@ -1132,7 +1132,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
               style={{
                 display: 'flex', alignItems: 'center', gap: 8,
                 background: 'white',
-                border: '1px solid #E5E7EB',
+                border: '1px solid #E0DED9',
                 borderRadius: 8,
                 padding: '8px 14px',
                 cursor: 'pointer',
@@ -1154,7 +1154,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                 style={{
                 display: 'flex', alignItems: 'center', gap: 8,
                 background: 'white',
-                border: '1px solid #E5E7EB',
+                border: '1px solid #E0DED9',
                 borderRadius: 8,
                 padding: '8px 14px',
                 cursor: 'pointer',
@@ -1234,7 +1234,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
               composer={
                 /* Écrire au mur du projet : une ligne qui s'agrandit avec le texte ; ⌘/Ctrl+Entrée publie */
                 <div>
-                  <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, border: '1px solid #E5E7EB', borderRadius: 8, padding: '6px 6px 6px 10px', background: 'white' }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, border: '1px solid #E0DED9', borderRadius: 8, padding: '6px 6px 6px 10px', background: 'white' }}>
                     <label title={wallUploading ? 'Envoi…' : 'Ajouter une photo'} style={{ cursor: wallUploading ? 'wait' : 'pointer', color: '#9B9A97', display: 'grid', placeItems: 'center', height: 30, opacity: wallUploading ? 0.5 : 1 }}>
                       <ImageIcon size={17} />
                       <input type="file" accept="image/*" hidden disabled={wallUploading} onChange={handleImageSelect} />
@@ -1258,7 +1258,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                   </div>
                   {wallImg && (
                     <div style={{ marginTop: 8, position: 'relative', display: 'inline-block' }}>
-                      <img src={wallImg} alt="Aperçu" style={{ height: 72, borderRadius: 6, border: '1px solid #E5E7EB' }} />
+                      <img src={wallImg} alt="Aperçu" style={{ height: 72, borderRadius: 6, border: '1px solid #E0DED9' }} />
                       <button onClick={() => setWallImg(null)} title="Retirer la photo" style={{ position: 'absolute', top: -6, right: -6, background: '#37352F', color: 'white', borderRadius: '50%', width: 18, height: 18, border: 'none', cursor: 'pointer', fontSize: 11, lineHeight: '18px', padding: 0 }}>×</button>
                     </div>
                   )}
@@ -1323,7 +1323,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                 display: 'flex', alignItems: 'center', gap: 6,
                 background: showAllPrise ? '#1D4ED8' : 'white',
                 color: showAllPrise ? 'white' : '#374151',
-                border: `1px solid ${showAllPrise ? '#1D4ED8' : '#E5E7EB'}`,
+                border: `1px solid ${showAllPrise ? '#1D4ED8' : '#E0DED9'}`,
                 borderRadius: 20, padding: '6px 14px', fontSize: 13, fontWeight: 600,
                 fontFamily: 'inherit', cursor: 'pointer',
                 boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
@@ -1871,7 +1871,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                 })}
               </div>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, padding: '12px 16px', borderTop: '1px solid #E5E7EB' }}>
-                <button onClick={() => setBppPickerOpen(false)} style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid #E5E7EB', background: 'white', cursor: 'pointer', fontSize: 13 }}>Annuler</button>
+                <button onClick={() => setBppPickerOpen(false)} style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid #E0DED9', background: 'white', cursor: 'pointer', fontSize: 13 }}>Annuler</button>
                 <button onClick={runBppPrint} disabled={bppSelected.length === 0} style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: bppSelected.length ? '#1E2447' : '#E5E7EB', color: bppSelected.length ? '#fff' : '#9CA3AF', cursor: bppSelected.length ? 'pointer' : 'not-allowed', fontSize: 13, fontWeight: 600 }}>Imprimer</button>
               </div>
             </div>
@@ -1886,14 +1886,14 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
             <div style={{ padding: '0 18px 10px', fontSize: 13, color: '#8A8F98' }}>Choisis le tableau : l'impression reprend ses réglages (champs, couleurs).</div>
             {etqTablesCfg().map(t => (
               <button key={t.key} onClick={() => printEtiquettes(t.key)} style={{ display: 'flex', width: '100%', alignItems: 'center', gap: 10, padding: '12px 18px', border: 'none', borderTop: '1px solid #F3F4F6', background: 'white', cursor: 'pointer', fontSize: 14, fontFamily: 'inherit', textAlign: 'left' }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = '#F7F7F5'; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'white'; }}>
+                onMouseEnter={(e) => { e.currentTarget.style.background = '#F4F4F4'; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'white'; }}>
                 <Printer size={16} color="#5B616B" />
                 <span style={{ flex: 1, color: '#111827' }}>{t.title}</span>
                 <span style={{ fontSize: 12, color: '#9CA3AF' }}>{t.rows.length} ligne{t.rows.length > 1 ? 's' : ''}</span>
               </button>
             ))}
             <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '10px 16px', borderTop: '1px solid #E5E7EB' }}>
-              <button onClick={() => setEtqPickerOpen(false)} style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid #E5E7EB', background: 'white', cursor: 'pointer', fontSize: 13 }}>Annuler</button>
+              <button onClick={() => setEtqPickerOpen(false)} style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid #E0DED9', background: 'white', cursor: 'pointer', fontSize: 13 }}>Annuler</button>
             </div>
           </div>
         </div>
@@ -1916,7 +1916,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
           fullScreen={isMobile}
           maxWidth="lg"
           fullWidth
-          PaperProps={{ sx: { bgcolor: '#F9FAFB' } }}
+          PaperProps={{ sx: { bgcolor: '#F4F4F4' } }}
         >
           {/* We wrap LineDetailPanel in a Dialog for better mobile/desktop handling if LineDetailPanel is just the content 
                  Wait, LineDetailPanel might already contain a Dialog. Let's checkLineDetailPanel.

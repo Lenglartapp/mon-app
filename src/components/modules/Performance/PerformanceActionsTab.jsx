@@ -28,7 +28,7 @@ function ActionCard({ action, projects, onEdit, onDelete, canEdit }) {
 
   return (
     <div style={{
-      background: 'white', borderRadius: 12, border: '1px solid #E5E7EB',
+      background: 'white', borderRadius: 12, border: '1px solid #E0DED9',
       padding: 16, display: 'flex', flexDirection: 'column', gap: 10,
       borderLeft: `4px solid ${STATUT_CONFIG[action.statut]?.color || '#E5E7EB'}`,
     }}>
@@ -85,7 +85,7 @@ function ActionCard({ action, projects, onEdit, onDelete, canEdit }) {
 
       {/* Notes */}
       {action.notes && (
-        <div style={{ background: '#F9FAFB', borderRadius: 8, padding: '8px 12px', fontSize: 12, color: '#6B7280', borderLeft: '3px solid #E5E7EB' }}>
+        <div style={{ background: '#F4F4F4', borderRadius: 8, padding: '8px 12px', fontSize: 12, color: '#6B7280', borderLeft: '3px solid #E5E7EB' }}>
           {action.notes}
         </div>
       )}
@@ -142,7 +142,7 @@ export default function PerformanceActionsTab({ actions, projects, onAdd, onUpda
     <div>
       {/* Barre de contrôles */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
-        <div style={{ display: 'flex', background: 'white', borderRadius: 9999, padding: 3, gap: 3, border: '1px solid #E5E7EB' }}>
+        <div style={{ display: 'flex', background: 'white', borderRadius: 9999, padding: 3, gap: 3, border: '1px solid #E0DED9' }}>
           {STATUT_TABS.map(t => (
             <button key={t.key} onClick={() => setStatutFilter(t.key)} style={{
               padding: '6px 14px', borderRadius: 9999, fontSize: 13, fontWeight: 500,
@@ -158,7 +158,7 @@ export default function PerformanceActionsTab({ actions, projects, onAdd, onUpda
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Rechercher..."
-            style={{ border: '1px solid #E5E7EB', borderRadius: 8, padding: '6px 12px', fontSize: 13, outline: 'none', width: 180 }}
+            style={{ border: '1px solid #E0DED9', borderRadius: 8, padding: '6px 12px', fontSize: 13, outline: 'none', width: 180 }}
           />
           {canEdit && (
             <button onClick={() => setModal('new')} style={{

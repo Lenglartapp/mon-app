@@ -4,7 +4,7 @@ import React from "react";
 // Kpi : petit libellé gris, grand chiffre fin (Roboto 300), total en gris, barre fine et pastille %.
 
 const FONT = "Roboto, system-ui, sans-serif";
-const SOFT_BG = "#F5F6F7";
+const SOFT_BG = "#F4F4F4";
 
 export function SoftBlock({ title, subtitle, actions, children, style }) {
   return (
@@ -68,7 +68,7 @@ export function Kpi({ label, value, unit, total, pct, note, sub, doneIsGreen = f
             {total != null && <span style={{ fontSize: 14, color: "#A0A5AD" }}>/ {total}</span>}
           </div>
           {pct != null && (
-            <div style={{ height: 3, borderRadius: 2, background: "#E3E5E8", marginTop: 12, overflow: "hidden" }}>
+            <div style={{ height: 3, borderRadius: 2, background: "#E4E4E4", marginTop: 12, overflow: "hidden" }}>
               <div style={{ width: `${Math.max(0, Math.min(pct, 100))}%`, height: "100%", borderRadius: 2, background: BAR[t], transition: "width .4s ease" }} />
             </div>
           )}

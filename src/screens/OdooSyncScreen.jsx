@@ -244,7 +244,7 @@ function StatusCell({ line, hasPreview, hasOdooId }) {
   if (!hasOdooId) return <span style={{ color: "#9CA3AF", fontSize: 13 }}>Non relié — ID à saisir dans le dossier</span>;
   if (!hasPreview) return <span style={{ color: "#9CA3AF", fontSize: 13 }}>— cliquer « Comparer »</span>;
   if (!line) return <span style={{ color: "#9CA3AF" }}>—</span>;
-  const st = STATUS[line.status] || { label: line.status, dot: "#9CA3AF", bg: "#F9FAFB", text: "#374151" };
+  const st = STATUS[line.status] || { label: line.status, dot: "#9CA3AF", bg: "#F4F4F4", text: "#374151" };
 
   const chip = (
     <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "3px 10px", borderRadius: 999, background: st.bg, color: st.text, fontSize: 12, fontWeight: 600 }}>

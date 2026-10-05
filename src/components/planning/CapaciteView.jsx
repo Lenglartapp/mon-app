@@ -38,13 +38,13 @@ function WorkshopSelect({ selected, onChange, disabled }) {
         onChange(ALL_WS.filter(w => next.includes(w)));
     };
     if (disabled) {
-        return <div style={{ padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600, color: '#6B7280', border: '1px solid #E5E7EB', background: 'white' }}>Ateliers : {summary}</div>;
+        return <div style={{ padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600, color: '#6B7280', border: '1px solid #E0DED9', background: 'white' }}>Ateliers : {summary}</div>;
     }
     return (
         <div style={{ position: 'relative' }}>
             <button onClick={() => setOpen(o => !o)} style={{
                 padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600, color: '#374151',
-                border: '1px solid #E5E7EB', background: 'white', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6,
+                border: '1px solid #E0DED9', background: 'white', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6,
             }}>
                 <span>Ateliers : {summary}</span>
                 <span style={{ fontSize: 10, color: '#9CA3AF' }}>▾</span>
@@ -52,13 +52,13 @@ function WorkshopSelect({ selected, onChange, disabled }) {
             {open && (
                 <>
                     <div style={{ position: 'fixed', inset: 0, zIndex: 40 }} onClick={() => setOpen(false)} />
-                    <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, background: 'white', border: '1px solid #E5E7EB', borderRadius: 8, boxShadow: '0 4px 16px rgba(0,0,0,0.12)', zIndex: 41, minWidth: 180, padding: 4 }}>
+                    <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, background: 'white', border: '1px solid #E0DED9', borderRadius: 8, boxShadow: '0 4px 16px rgba(0,0,0,0.12)', zIndex: 41, minWidth: 180, padding: 4 }}>
                         {ALL_WS.map(k => {
                             const cfg = WORKSHOP_CONFIG[k];
                             const checked = selected.includes(k);
                             return (
                                 <label key={k} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 6, cursor: 'pointer', fontSize: 13 }}
-                                    onMouseEnter={e => e.currentTarget.style.background = '#F9FAFB'} onMouseLeave={e => e.currentTarget.style.background = 'white'}>
+                                    onMouseEnter={e => e.currentTarget.style.background = '#F4F4F4'} onMouseLeave={e => e.currentTarget.style.background = 'white'}>
                                     <input type="checkbox" checked={checked} onChange={() => toggle(k)} style={{ accentColor: cfg.color, width: 15, height: 15 }} />
                                     <span style={{ width: 9, height: 9, borderRadius: 3, background: cfg.color }} />
                                     <span style={{ color: '#374151', fontWeight: checked ? 600 : 400 }}>{cfg.label}</span>
@@ -90,7 +90,7 @@ const Tile = ({ label, value, sub, color = '#111827', onClick }) => (
     <div
         onClick={onClick}
         title={onClick ? 'Voir les projets concernés' : undefined}
-        style={{ background: 'white', border: '1px solid #E5E7EB', borderRadius: 12, padding: '14px 16px', cursor: onClick ? 'pointer' : 'default', transition: 'box-shadow .15s, border-color .15s' }}
+        style={{ background: 'white', border: '1px solid #E0DED9', borderRadius: 12, padding: '14px 16px', cursor: onClick ? 'pointer' : 'default', transition: 'box-shadow .15s, border-color .15s' }}
         onMouseEnter={onClick ? (e) => { e.currentTarget.style.boxShadow = '0 2px 10px rgba(0,0,0,0.08)'; e.currentTarget.style.borderColor = '#C7D2FE'; } : undefined}
         onMouseLeave={onClick ? (e) => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.borderColor = '#E5E7EB'; } : undefined}
     >
@@ -138,7 +138,7 @@ const OverModal = ({ type, rows, onClose }) => {
                                 const open = expanded.has(r.id);
                                 return (
                                     <React.Fragment key={r.id}>
-                                        <tr onClick={() => toggle(r.id)} style={{ borderTop: '1px solid #F3F4F6', cursor: 'pointer', background: open ? '#F9FAFB' : 'transparent' }}>
+                                        <tr onClick={() => toggle(r.id)} style={{ borderTop: '1px solid #F3F4F6', cursor: 'pointer', background: open ? '#F4F4F4' : 'transparent' }}>
                                             <td style={{ padding: '8px 10px', fontWeight: 600, color: '#111827' }}>
                                                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                                                     {open ? <ChevronDown size={14} color="#9CA3AF" /> : <ChevronRight size={14} color="#9CA3AF" />}
@@ -150,7 +150,7 @@ const OverModal = ({ type, rows, onClose }) => {
                                             <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 700, color: '#B91C1C' }}>+{r1(r.over)}h</td>
                                         </tr>
                                         {open && (
-                                            <tr style={{ background: '#F9FAFB' }}>
+                                            <tr style={{ background: '#F4F4F4' }}>
                                                 <td colSpan={4} style={{ padding: '2px 10px 12px 28px' }}>
                                                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                                                         <thead>
@@ -572,7 +572,7 @@ const CapaciteView = ({ localUsers, localEvents, projects = [] }) => {
         const d = payload[0]?.payload;
         const over = d.planifie > d.capa;
         return (
-            <div style={{ background: 'white', border: '1px solid #E5E7EB', borderRadius: 8, padding: '10px 14px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', fontSize: 12 }}>
+            <div style={{ background: 'white', border: '1px solid #E0DED9', borderRadius: 8, padding: '10px 14px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', fontSize: 12 }}>
                 <div style={{ fontWeight: 700, marginBottom: 6 }}>{d.weekFullLabel}</div>
                 <div style={{ color: '#6B7280', marginBottom: 2 }}>Capacité : <strong>{d.capa}h</strong></div>
                 <div style={{ fontWeight: 600, color: over ? '#EF4444' : COLOR_PLANIFIE }}>
@@ -602,7 +602,7 @@ const CapaciteView = ({ localUsers, localEvents, projects = [] }) => {
                             padding: '6px 14px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer',
                             background: includeInternal ? '#8B5CF6' : 'white',
                             color:      includeInternal ? 'white'   : '#6B7280',
-                            border:     `1px solid ${includeInternal ? '#8B5CF6' : '#E5E7EB'}`,
+                            border:     `1px solid ${includeInternal ? '#8B5CF6' : '#E0DED9'}`,
                         }}>
                         {includeInternal ? 'Interne dans les taux ✓' : 'Interne dans les taux'}
                     </button>
@@ -613,7 +613,7 @@ const CapaciteView = ({ localUsers, localEvents, projects = [] }) => {
                         <select
                             value={periode}
                             onChange={e => { const v = e.target.value; if (v === 'custom') setPeriode('custom'); else applyPreset(v); }}
-                            style={{ padding: '6px 10px', borderRadius: 8, fontSize: 12, fontWeight: 600, color: '#374151', border: '1px solid #E5E7EB', background: 'white', cursor: 'pointer' }}
+                            style={{ padding: '6px 10px', borderRadius: 8, fontSize: 12, fontWeight: 600, color: '#374151', border: '1px solid #E0DED9', background: 'white', cursor: 'pointer' }}
                         >
                             <optgroup label="À venir">
                                 {PERIODE_PRESETS.filter(p => p.dir === 'future').map(p => <option key={p.key} value={p.key}>{p.label}</option>)}
@@ -664,7 +664,7 @@ const CapaciteView = ({ localUsers, localEvents, projects = [] }) => {
                 </div>
 
                 {/* Courbe */}
-                <div style={{ background: 'white', borderRadius: 12, border: '1px solid #E5E7EB', padding: '20px 16px 8px' }}>
+                <div style={{ background: 'white', borderRadius: 12, border: '1px solid #E0DED9', padding: '20px 16px 8px' }}>
                     <ResponsiveContainer width="100%" height={420}>
                         <ComposedChart data={chartData} onClick={(d) => {
                             if (!d) return;
@@ -702,9 +702,9 @@ const CapaciteView = ({ localUsers, localEvents, projects = [] }) => {
                 </div>
 
                 {/* Tableau */}
-                <div style={{ background: 'white', borderRadius: 12, border: '1px solid #E5E7EB', overflow: 'auto', maxHeight: 380 }}>
+                <div style={{ background: 'white', borderRadius: 12, border: '1px solid #E0DED9', overflow: 'auto', maxHeight: 380 }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                        <thead style={{ background: '#F9FAFB', position: 'sticky', top: 0, zIndex: 1, boxShadow: '0 1px 0 #E5E7EB' }}>
+                        <thead style={{ background: '#F4F4F4', position: 'sticky', top: 0, zIndex: 1, boxShadow: '0 1px 0 #E5E7EB' }}>
                             <tr>
                                 <th rowSpan={2} style={th('left')}>Semaine</th>
                                 <th rowSpan={2} style={th('right')}>Capacité (h)</th>

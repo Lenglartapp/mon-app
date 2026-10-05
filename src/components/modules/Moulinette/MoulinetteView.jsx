@@ -20,7 +20,7 @@ export default function MoulinetteView({ rows, depRows, extraRows, commissionRat
                 position: 'sticky',
                 top: 0,
                 zIndex: 10,
-                background: '#f9fafb',
+                background: '#F4F4F4',
                 paddingBottom: 20,
                 borderBottom: `1px solid ${COLORS.border}`,
                 marginBottom: 20,
@@ -167,7 +167,7 @@ function ExpandableCard({ title, amount, amountSuffix = "", children, defaultOpe
                 onClick={() => setIsOpen(!isOpen)}
                 style={{
                     padding: '12px 16px',
-                    background: '#f9fafb',
+                    background: '#F4F4F4',
                     borderBottom: isOpen ? `1px solid ${COLORS.border}` : 'none',
                     display: 'flex',
                     justifyContent: 'space-between',
@@ -212,7 +212,7 @@ function DrillDownRow({ label, mainValue, subValue, sources, type = 'price' }) {
             </div>
 
             {open && sources && sources.length > 0 && (
-                <div style={{ background: '#f9fafb', padding: '8px 12px', borderRadius: 8, marginBottom: 8, fontSize: 13 }}>
+                <div style={{ background: '#F4F4F4', padding: '8px 12px', borderRadius: 8, marginBottom: 8, fontSize: 13 }}>
                     <table style={{ width: '100%' }}>
                         <tbody>
                             {sources.map((src, i) => (
@@ -346,7 +346,7 @@ function CommissionDrillDownRow({ label, mainValue, rate, onUpdate }) {
             </div>
 
             {open && (
-                <div style={{ background: '#f9fafb', padding: '12px 16px', borderRadius: 8, marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ background: '#F4F4F4', padding: '12px 16px', borderRadius: 8, marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <div style={{ fontSize: 13, color: '#4b5563', fontWeight: 500 }}>Taux de Commission</div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <input

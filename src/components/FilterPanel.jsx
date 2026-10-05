@@ -114,7 +114,7 @@ function FieldSelect({ fields, value, onChange }) {
                     <div style={{ position: 'fixed', inset: 0, zIndex: 9998 }} onClick={() => { setOpen(false); setSearch(''); }} />
                     <div style={{
                         position: 'absolute', top: '100%', left: 0, marginTop: 2,
-                        background: 'white', border: '1px solid #e5e7eb', borderRadius: 6,
+                        background: 'white', border: '1px solid #E0DED9', borderRadius: 6,
                         boxShadow: '0 4px 16px rgba(0,0,0,0.12)', zIndex: 9999,
                         minWidth: 180, maxHeight: 240, overflow: 'hidden',
                         display: 'flex', flexDirection: 'column',
@@ -126,7 +126,7 @@ function FieldSelect({ fields, value, onChange }) {
                                 placeholder="Rechercher un champ..."
                                 value={search}
                                 onChange={e => setSearch(e.target.value)}
-                                style={{ width: '100%', padding: '3px 6px', border: '1px solid #e5e7eb', borderRadius: 3, fontSize: 12, outline: 'none', boxSizing: 'border-box' }}
+                                style={{ width: '100%', padding: '3px 6px', border: '1px solid #E0DED9', borderRadius: 3, fontSize: 12, outline: 'none', boxSizing: 'border-box' }}
                             />
                         </div>
                         <div style={{ overflowY: 'auto', flex: 1 }}>
@@ -140,7 +140,7 @@ function FieldSelect({ fields, value, onChange }) {
                                         fontWeight: f.key === value ? 600 : 400,
                                         color: f.key === value ? '#2563eb' : '#111827',
                                     }}
-                                    onMouseEnter={e => { if (f.key !== value) e.currentTarget.style.background = '#f9fafb'; }}
+                                    onMouseEnter={e => { if (f.key !== value) e.currentTarget.style.background = '#F4F4F4'; }}
                                     onMouseLeave={e => { e.currentTarget.style.background = f.key === value ? '#eff6ff' : 'white'; }}
                                 >
                                     {colLabel(f)}
@@ -192,7 +192,7 @@ export default function FilterPanel({ schema, conditions, onChange, filters, set
 
     return (
         <div style={{
-            background: 'white', border: '1px solid #e5e7eb', borderRadius: 8,
+            background: 'white', border: '1px solid #E0DED9', borderRadius: 8,
             boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
             padding: 16, minWidth: 560,
         }}>

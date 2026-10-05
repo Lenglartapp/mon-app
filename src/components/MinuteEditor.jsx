@@ -1102,7 +1102,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
                 borderColor: '#E5E7EB',
                 color: '#374151',
                 bgcolor: 'white',
-                '&:hover': { bgcolor: '#F9FAFB', borderColor: '#D1D5DB' }
+                '&:hover': { bgcolor: '#F4F4F4', borderColor: '#D1D5DB' }
               }}
             >
               Ajouter un module

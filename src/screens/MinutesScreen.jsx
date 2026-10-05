@@ -169,7 +169,7 @@ export default function MinutesScreen({ onExportToProduction }) {
     <div style={{ display: "grid", gridTemplateColumns: "300px 1fr", gap: 16, height: 'calc(100vh - 80px)' }}>
       {/* LEFT COLUMN: LIST */}
       <div style={{ border: `1px solid ${COLORS.border}`, borderRadius: 12, overflow: "hidden", display: 'flex', flexDirection: 'column', background: 'white' }}>
-        <div style={{ padding: 16, borderBottom: `1px solid ${COLORS.border}`, display: "flex", justifyContent: "space-between", alignItems: "center", background: '#F9FAFB' }}>
+        <div style={{ padding: 16, borderBottom: `1px solid ${COLORS.border}`, display: "flex", justifyContent: "space-between", alignItems: "center", background: '#F4F4F4' }}>
           <span style={{ fontWeight: 600, color: '#1F2937' }}>Minutes ({minutes.length})</span>
           <button
             style={{ ...S.smallBtn, background: '#111827', color: 'white', border: 'none', display: 'flex', gap: 6, padding: '6px 12px' }}
@@ -285,13 +285,13 @@ export default function MinutesScreen({ onExportToProduction }) {
                   style={{
                     width: '100%',
                     minHeight: 60,
-                    border: '1px solid #E5E7EB',
+                    border: '1px solid #E0DED9',
                     borderRadius: 6,
                     padding: 8,
                     fontSize: 13,
                     fontFamily: "inherit",
                     resize: 'vertical',
-                    background: isReadOnly ? '#f9fafb' : 'white',
+                    background: isReadOnly ? '#F4F4F4' : 'white',
                     color: isReadOnly ? '#6b7280' : 'inherit'
                   }}
                   readOnly={isReadOnly}

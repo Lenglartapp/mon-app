@@ -167,7 +167,7 @@ export default function StockInventoryTab({ inventory, projects = [], movements 
                     'IN_PROGRESS': { label: 'EN COURS', color: '#15803D', bg: '#DCFCE7', border: '#86EFAC' }, // Vert
                     'DONE': { label: 'RELIQUAT', color: '#7C3AED', bg: '#F3E8FF', border: '#D8B4FE' }, // Violet
                     'SAV': { label: 'SAV', color: '#B45309', bg: '#FEF3C7', border: '#FDE68A' }, // Orange
-                    'ARCHIVED': { label: 'STOCK MORT', color: '#374151', bg: '#F9FAFB', border: '#E5E7EB' } // Gris
+                    'ARCHIVED': { label: 'STOCK MORT', color: '#374151', bg: '#F4F4F4', border: '#E5E7EB' } // Gris
                 };
 
                 const config = map[proj.status] || { label: proj.status || '?', color: '#4B5563', bg: '#F3F4F6' };
