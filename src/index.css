@@ -160,3 +160,9 @@ body.df-warm [style*="border: 1px solid rgb(229, 231, 235)"] { border-color: var
 body.df-warm [style*="background: rgb(245, 246, 247)"],
 body.df-warm [style*="background: rgb(244, 245, 247)"] { background-color: #F1EFEA !important; }
 body.df-warm [style*="background: rgb(227, 229, 232)"] { background-color: #E3E0DA !important; }
+/* Tous les boutons de l'application en Roboto (cohérence avec titres, chiffres et libellés) */
+body.df-warm button,
+body.df-warm .MuiButton-root,
+body.df-warm [role="button"] {
+  font-family: Roboto, system-ui, -apple-system, "Segoe UI", sans-serif !important;
+}
