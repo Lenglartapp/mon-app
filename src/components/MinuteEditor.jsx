@@ -37,9 +37,13 @@ function SectionPanel({ title, count, expanded, onToggle, onDelete, readOnly, ch
   return (
     <div style={{ marginBottom: 28 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px', height: 44 }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
-          <h3 style={{ margin: 0, fontSize: 20, color: '#111827', fontWeight: 500, fontFamily: 'Roboto, system-ui, sans-serif' }}>{title}</h3>
-          <span style={{ color: '#9B9A97', fontSize: 13, fontFamily: 'Roboto, system-ui, sans-serif' }}>{count} {count > 1 ? 'articles' : 'article'}</span>
+        {/* Flèche à gauche du titre ; le titre lui-même replie / déplie aussi */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <IconButton size="small" onClick={onToggle} title={expanded ? 'Replier' : 'Déplier'} sx={{ color: '#9B9A97', ml: -0.5 }}>
+            <ExpandMoreIcon sx={{ fontSize: 20, transform: expanded ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.2s ease' }} />
+          </IconButton>
+          <h3 onClick={onToggle} style={{ margin: 0, fontSize: 20, color: '#111827', fontWeight: 500, fontFamily: 'Roboto, system-ui, sans-serif', cursor: 'pointer' }}>{title}</h3>
+          <span style={{ color: '#9B9A97', fontSize: 13, fontFamily: 'Roboto, system-ui, sans-serif', marginLeft: 4, alignSelf: 'flex-end', paddingBottom: 3 }}>{count} {count > 1 ? 'articles' : 'article'}</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
           {onDelete && !readOnly && (
@@ -47,9 +51,6 @@ function SectionPanel({ title, count, expanded, onToggle, onDelete, readOnly, ch
               <Trash2 size={16} />
             </IconButton>
           )}
-          <IconButton size="small" onClick={onToggle} sx={{ color: '#6b7280' }}>
-            <ExpandMoreIcon sx={{ transform: expanded ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.2s ease' }} />
-          </IconButton>
         </div>
       </div>
       <Collapse in={expanded} timeout="auto" unmountOnExit>
