@@ -10,10 +10,8 @@ import EtiquettesSection from "../components/EtiquettesSection.jsx";
 import BPPPrintPortal from "../components/print/BPPPrintPortal.jsx";
 import MinutesScreen from "./MinutesScreen.jsx";
 import LineDetailPanel from "../components/LineDetailPanel";
-import StockInventoryTab from "../components/modules/Stocks/StockInventoryTab.jsx";
-import StockRequestsPanel from "../components/modules/Stocks/StockRequestsPanel.jsx";
+import ProjectStockDialog from "../components/stock/ProjectStockDialog.jsx";
 import OdooStatusBadge from "../components/odoo/OdooStatusBadge.jsx";
-import ProjectCourseListPanel from "../components/odoo/ProjectCourseListPanel.jsx";
 
 import { computeFormulas, preserveManualAfterCompute } from "../lib/formulas/compute";
 import { SCHEMA_64 } from "../lib/schemas/production.js";
@@ -201,7 +199,6 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
   const [schema, setSchema] = useState(SCHEMA_64);
   const [openedRowId, setOpenedRowId] = useState(null);
   const [stockOpen, setStockOpen] = useState(false);
-  const [stockTab, setStockTab] = useState('stock'); // 'stock' | 'mad' (mise à disposition)
   const [showDocs, setShowDocs] = useState(false);
   const [deliveryOpen, setDeliveryOpen] = useState(false);
   const [showMaterials, setShowMaterials] = useState(false);
@@ -1913,57 +1910,16 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
         </DialogActions>
       </Dialog>
 
-      {/* MODALE STOCK PROJET */}
-      <Dialog
+      {/* MODALE STOCK PROJET (courses, besoins, comparatif, mise à disposition) */}
+      <ProjectStockDialog
         open={stockOpen}
         onClose={() => setStockOpen(false)}
-        maxWidth="xl"
-        fullWidth
-        PaperProps={{ sx: { height: '80vh' } }}
-      >
-        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span>Stock Projet : {projectName}</span>
-          <Button onClick={() => setStockOpen(false)}>Fermer</Button>
-        </DialogTitle>
-        <DialogContent dividers sx={{ p: 0 }}>
-          <div style={{ padding: 16, borderBottom: '1px solid #E5E7EB', background: '#FCFCFD' }}>
-            <ProjectCourseListPanel
-              droitfilProjectId={project?.id}
-              odooProjectId={project?.id_projet_odoo}
-              projectName={project?.name}
-            />
-          </div>
-          <div style={{ display: 'flex', gap: 4, padding: '12px 16px 0' }}>
-            {[{ key: 'stock', label: 'Stock du dossier' }, { key: 'mad', label: 'Mise à disposition' }].map(t => (
-              <button
-                key={t.key}
-                onClick={() => setStockTab(t.key)}
-                style={{
-                  padding: '6px 16px', borderRadius: 9999, fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer',
-                  background: stockTab === t.key ? '#1E2447' : '#F3F4F6', color: stockTab === t.key ? 'white' : '#4B5563',
-                }}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
-          <div style={{ padding: 16 }}>
-            {stockTab === 'stock' ? (
-              <StockInventoryTab
-                inventory={inventory ? inventory.filter(item => {
-                  if (!item.project) return false;
-                  const pName = project?.name;
-                  return item.project === pName;
-                }) : []}
-                projects={projects}
-                onUpdateItem={onUpdateItem}
-              />
-            ) : (
-              <StockRequestsPanel inventory={inventory || []} project={project?.name} onStockChanged={onStockChanged} />
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
+        project={project}
+        projects={projects}
+        inventory={inventory}
+        onUpdateItem={onUpdateItem}
+        onStockChanged={onStockChanged}
+      />
 
       {/* MODALE DOCUMENTS */}
       {showDocs && (
