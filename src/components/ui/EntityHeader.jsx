@@ -147,7 +147,7 @@ export function HeaderButton({ onClick, title, children }) {
 export function MetaItem({ label, children }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
-      <span style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', color: '#9CA3AF' }}>{label}</span>
+      <span style={{ fontSize: 13, fontWeight: 400, color: '#9B9A97', fontFamily: 'Roboto, system-ui, sans-serif' }}>{label}</span>
       <span style={{ fontSize: 13.5, fontWeight: 600, color: '#1F2937', display: 'flex', alignItems: 'center', gap: 6, minHeight: 26 }}>{children}</span>
     </div>
   );

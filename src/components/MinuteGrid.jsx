@@ -250,6 +250,22 @@ const AG_CUSTOM_CSS = `
   color: #111827;
 }
 .ag-theme-alpine .ag-floating-bottom { background: #ffffff; border-top: none; }
+/* Variante allégée (test) : pas de fond gris, texte atténué, petit cadenas au survol */
+.df-ro-light .ag-cell.ag-cell-read-only {
+  background-color: transparent !important;
+  color: #A8A7A3 !important;
+  position: relative;
+}
+.df-ro-light .ag-cell.ag-cell-read-only::after {
+  content: '';
+  position: absolute; right: 8px; top: 50%;
+  width: 12px; height: 12px; margin-top: -6px;
+  background-color: #B5B4B0;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='11' width='18' height='11' rx='2'/%3E%3Cpath d='M7 11V7a5 5 0 0 1 10 0v4'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='11' width='18' height='11' rx='2'/%3E%3Cpath d='M7 11V7a5 5 0 0 1 10 0v4'/%3E%3C/svg%3E") center / contain no-repeat;
+  opacity: 0; transition: opacity .15s;
+}
+.df-ro-light .ag-cell.ag-cell-read-only:hover::after { opacity: 1; }
 .ag-cell-read-only {
   background-color: #f3f4f6 !important;
   color: #9ca3af !important;
@@ -341,6 +357,7 @@ if (typeof document !== 'undefined' && !document.getElementById('ag-custom-style
 }
 
 function MinuteGrid({
+    lightReadOnly = false, // test UI : cellules non modifiables sans fond gris, cadenas au survol
     rows,
     onRowsChange,
     schema,
@@ -2269,7 +2286,7 @@ function MinuteGrid({
 
             {/* AG Grid + poignée de redimensionnement vertical */}
             <div style={{ position: 'relative' }}>
-            <div ref={gridContainerRef} className={`ag-theme-alpine${reorderBlocked ? ' reorder-blocked' : ''}`} style={{ width: '100%', height: effectiveHeight }}>
+            <div ref={gridContainerRef} className={`ag-theme-alpine${reorderBlocked ? ' reorder-blocked' : ''}${lightReadOnly ? ' df-ro-light' : ''}`} style={{ width: '100%', height: effectiveHeight }}>
                 <AgGridReact
                     ref={gridRef}
                     rowData={rows}

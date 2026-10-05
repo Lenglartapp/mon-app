@@ -13,14 +13,14 @@ const FONT = 'Roboto, system-ui, sans-serif';
 
 function Item({ label, value, muted }) {
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 3, whiteSpace: 'nowrap' }}>
-            <span style={{ fontSize: 13, color: '#9B9A97' }}>{label}</span>
-            <span style={{ fontSize: 18, fontWeight: 400, color: muted ? '#A8A7A3' : '#37352F', fontVariantNumeric: 'tabular-nums' }}>{value}</span>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, whiteSpace: 'nowrap' }}>
+            <span style={{ fontSize: 14, color: '#9B9A97' }}>{label}</span>
+            <span style={{ fontSize: 20, fontWeight: 400, color: muted ? '#A8A7A3' : '#37352F', fontVariantNumeric: 'tabular-nums' }}>{value}</span>
         </div>
     );
 }
 
-const Sep = () => <div style={{ width: 1, alignSelf: 'stretch', background: '#EDEDEB' }} />;
+const Sep = () => <div style={{ width: 1, alignSelf: 'stretch', background: '#EDEDEB', flexShrink: 0 }} />;
 
 export default React.memo(function DashboardSummary({ recap, nf }) {
     const [open, setOpen] = React.useState(readOpen);
@@ -49,7 +49,7 @@ export default React.memo(function DashboardSummary({ recap, nf }) {
     ];
 
     return (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 28, margin: '4px 0 24px', fontFamily: FONT, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 32, margin: '8px 0 28px', fontFamily: FONT }}>
             <button
                 onClick={toggle}
                 title={open ? "Masquer le détail" : "Voir le détail du prix"}
@@ -62,12 +62,19 @@ export default React.memo(function DashboardSummary({ recap, nf }) {
             </button>
 
             {open && (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px 22px', alignItems: 'stretch' }}>
-                    {products.map((i) => <Item key={i.label} label={i.label} value={nf.format(i.value)} />)}
+                <div style={{ flex: 1, minWidth: 0, display: 'flex', gap: 24, alignItems: 'stretch' }}>
+                    {/* Produits : colonnes régulières, seul bloc qui passe à la ligne s'il manque de place */}
+                    <div style={{ flex: 1, minWidth: 0, display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(88px, 1fr))', gap: '14px 16px', alignContent: 'center' }}>
+                        {products.map((i) => <Item key={i.label} label={i.label} value={nf.format(i.value)} />)}
+                    </div>
                     <Sep />
-                    {extras.map((i) => <Item key={i.label} label={i.label} value={nf.format(i.value || 0)} muted={i.muted} />)}
+                    <div style={{ display: 'flex', gap: 24, alignItems: 'center', flexShrink: 0 }}>
+                        {extras.map((i) => <Item key={i.label} label={i.label} value={nf.format(i.value || 0)} muted={i.muted} />)}
+                    </div>
                     <Sep />
-                    {hours.map((i) => <Item key={i.label} label={i.label} value={`${Math.round(i.value || 0)} h`} />)}
+                    <div style={{ display: 'flex', gap: 24, alignItems: 'center', flexShrink: 0 }}>
+                        {hours.map((i) => <Item key={i.label} label={i.label} value={`${Math.round(i.value || 0)} h`} />)}
+                    </div>
                 </div>
             )}
         </div>
