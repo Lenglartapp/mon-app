@@ -26,7 +26,8 @@ const cellValue = (col, row) => {
   return row[col.key];
 };
 
-export default function BPPPrintPortal({ sections = [], projectName, manager, onClose }) {
+// docLabel : « BPP » ou « BPF » (même mise en page tableau A3, réutilisée pour le BPF).
+export default function BPPPrintPortal({ sections = [], projectName, manager, onClose, docLabel = 'BPP' }) {
   const printable = (sections || []).filter(s => s.rows?.length > 0 && s.columns?.length > 0);
   const hasContent = printable.length > 0;
 
@@ -89,7 +90,7 @@ export default function BPPPrintPortal({ sections = [], projectName, manager, on
                     fontSize: '10pt',
                   }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span><strong>BPP — Projet :</strong> {projectName || '—'}</span>
+                      <span><strong>{docLabel} — Projet :</strong> {projectName || '—'}</span>
                       <span><strong>Chargé d'affaires :</strong> {manager || '—'}</span>
                     </div>
                   </th>

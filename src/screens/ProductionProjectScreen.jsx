@@ -142,7 +142,7 @@ const toPrintCol = (col) => ({
 // Construit les colonnes à imprimer pour une section BPP.
 // Priorité à l'état COURANT des colonnes (ce que l'utilisateur voit/masque,
 // persisté par MinuteGrid dans localStorage), sinon visibilité par défaut.
-const buildBppPrintColumns = (schema, tableKey, gridKey) => {
+const buildBppPrintColumns = (schema, tableKey, gridKey, viewKey = 'bpp') => {
   const byKey = new Map((schema || []).map(c => [c.key, c]));
 
   // 1. État courant des colonnes (ordre + visibilité réels à l'écran)
@@ -164,7 +164,7 @@ const buildBppPrintColumns = (schema, tableKey, gridKey) => {
   // `!== false` et non `truthy` : une vue « tout visible » (pas de liste dans
   // views.js) renvoie un modèle quasi vide, et tester la vérité y masquait
   // TOUTES les colonnes — le BPP sortait blanc.
-  const vm = getVisibilityModel('bpp', tableKey, schema);
+  const vm = getVisibilityModel(viewKey, tableKey, schema);
   return (schema || [])
     .filter(col => vm[col.key] !== false && isPrintableCol(col))
     .map(toPrintCol);
@@ -489,9 +489,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
   const [bppPrintSections, setBppPrintSections] = useState([]);
   const [bppPickerOpen, setBppPickerOpen] = useState(false);
   const [bppSelected, setBppSelected] = useState([]); // tableKeys cochés
-
-  const hasAnyBppRows = [rowsRideaux, rowsStores, rowsStoresBateaux, rowsTentureMurale, rowsMobilier]
-    .some(a => (a || []).length > 0);
+  const [tablePrintKind, setTablePrintKind] = useState('bpp'); // 'bpp' | 'bpf' : même impression tableau A3
 
   // Modules BPP possibles (avec leurs lignes courantes).
   const bppModulesCfg = () => [
@@ -502,25 +500,62 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
     { title: 'BPP Mobilier / Tête de Lit',                    rows: rowsMobilier,      schema: MOBILIER_PROD_SCHEMA,       tableKey: 'mobilier' },
   ];
 
+  // Modules BPF (mêmes tableaux que la vue BPF), imprimés comme le BPP : tableau A3.
+  const bpfModulesCfg = () => [
+    { title: 'BPF Rideaux',                rows: bpfRideaux,        schema: RIDEAUX_PROD_SCHEMA,        tableKey: 'rideaux' },
+    { title: 'BPF Stores Bateaux / Velum', rows: bpfStoresBateaux,  schema: STORES_BATEAUX_PROD_SCHEMA, tableKey: 'stores_bateaux' },
+    { title: 'BPF Coussins',               rows: bpfCoussins,       schema: COUSSINS_PROD_SCHEMA,       tableKey: 'coussins' },
+    { title: 'BPF Cache-Sommier',          rows: bpfCacheSommier,   schema: CACHE_SOMMIER_PROD_SCHEMA,  tableKey: 'cache_sommier' },
+    { title: 'BPF Plaids / Chemin de lit', rows: bpfPlaid,          schema: PLAID_PROD_SCHEMA,          tableKey: 'plaid' },
+    { title: 'BPF Mobilier / Tête de Lit', rows: bpfMobilier,       schema: MOBILIER_PROD_SCHEMA,       tableKey: 'mobilier' },
+    { title: 'BPF Tenture Murale',         rows: bpfTentureMurale,  schema: TENTURE_MURALE_PROD_SCHEMA, tableKey: 'tenture_murale' },
+  ];
+  const tablePrintCfg = () => (tablePrintKind === 'bpf' ? bpfModulesCfg() : bppModulesCfg());
+
   // Au clic : on ouvre le choix des modules (ceux qui ont des lignes), tout coché par défaut.
-  const handleOpenBppPrint = () => {
-    const available = bppModulesCfg().filter(s => (s.rows || []).length > 0);
+  const handleOpenBppPrint = (kind = 'bpp') => {
+    const cfg = kind === 'bpf' ? bpfModulesCfg() : bppModulesCfg();
+    const available = cfg.filter(s => (s.rows || []).length > 0);
     if (available.length === 0) return;
+    setTablePrintKind(kind);
     setBppSelected(available.map(s => s.tableKey));
     setBppPickerOpen(true);
   };
+  // --- IMPRESSION DES ÉTIQUETTES : choix du tableau, puis impression de ce tableau ---
+  const [etqPickerOpen, setEtqPickerOpen] = useState(false);
+  const [etqPrintSignal, setEtqPrintSignal] = useState({ key: null, n: 0 });
+  const etqTablesCfg = () => [
+    { key: 'rideaux', title: 'Étiquettes Rideaux', rows: bpfRideaux },
+    { key: 'stores_bateaux', title: 'Étiquettes Stores Bateaux / Velum', rows: bpfStoresBateaux },
+  ].filter(t => (t.rows || []).length > 0);
+  const printEtiquettes = (key) => {
+    setEtqPickerOpen(false);
+    setEtqPrintSignal(prev => ({ key, n: prev.n + 1 }));
+  };
+
+  // Bouton « Imprimer » global : selon la vue ouverte.
+  const handleGlobalPrint = () => {
+    if (stage === 'bpf') return handleOpenBppPrint('bpf');
+    if (stage === 'bpp') return handleOpenBppPrint('bpp');
+    if (stage === 'etiquettes') {
+      const tables = etqTablesCfg();
+      if (tables.length === 1) return printEtiquettes(tables[0].key);
+      if (tables.length > 1) setEtqPickerOpen(true);
+    }
+  };
+
   const toggleBppModule = (key) =>
     setBppSelected(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]);
 
   // Construit les sections des modules cochés (lit l'état courant des colonnes) et imprime.
   const runBppPrint = () => {
     const sel = new Set(bppSelected);
-    const sections = bppModulesCfg()
+    const sections = tablePrintCfg()
       .filter(s => (s.rows || []).length > 0 && sel.has(s.tableKey))
       .map(s => ({
         title: s.title,
         rows: s.rows,
-        columns: buildBppPrintColumns(s.schema, s.tableKey, `bpp_${s.tableKey}`),
+        columns: buildBppPrintColumns(s.schema, s.tableKey, `${tablePrintKind}_${s.tableKey}`, tablePrintKind),
       }))
       .filter(s => s.columns.length > 0);
     setBppPickerOpen(false);
@@ -1028,24 +1063,10 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
           }
         />
 
-        {/* Ligne des vues (au centre) + actions (à droite), comme la ligne des variantes du chiffrage */}
+        {/* Ligne des vues : actions du dossier à gauche, vues au centre, docs + impression à droite */}
         <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'minmax(0,1fr)' : 'minmax(0,1fr) auto minmax(0,1fr)', alignItems: 'center', gap: 16, marginTop: 48, paddingBottom: 8 }}>
-          {!isMobile && <div />}
-          <div className="island-nav-container" style={{ display: 'inline-flex', gap: 2, maxWidth: '100%', overflowX: isMobile ? 'auto' : 'visible', justifySelf: 'center' }}>
-            {visibleStages.map((p) => (
-              <button
-                key={p.key}
-                style={{
-                  ...getNavStyle(stage === p.key),
-                  flex: isMobile ? '1 0 auto' : 'initial' // Allow grow on mobile
-                }}
-                onClick={() => setStage(p.key)}
-              >
-                {p.label}
-              </button>
-            ))}
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: isMobile ? 'flex-start' : 'flex-end', gap: 10, flexWrap: 'wrap' }}>
+          {/* Actions du dossier (à gauche) */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-start' }}>
             {/* Matériauthèque Button */}
             <button
               onClick={() => setShowMaterials(true)}
@@ -1067,26 +1088,6 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
               Matériauthèque{projectMaterials.length > 0 ? ` (${projectMaterials.length})` : ''}
             </button>
 
-            {/* Documents Button - Visible Mobile & Desktop */}
-            <button
-              onClick={() => setShowDocs(true)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 8,
-                background: 'white',
-                border: '1px solid #E5E7EB',
-                borderRadius: 8,
-                padding: '8px 14px',
-                cursor: 'pointer',
-                fontSize: 13,
-                color: '#374151',
-                fontWeight: 600,
-                outline: 'none',
-                flex: 'initial', justifyContent: 'center'
-              }}
-            >
-              <FileText size={16} />
-              Docs ({project?.documents?.length || 0})
-            </button>
             {/* Stock Button (Header) - Hidden on Mobile */}
             {!isMobile && (
               <button
@@ -1108,7 +1109,65 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                 <Package size={16} /> Stock
               </button>
             )}
-
+          </div>
+          <div className="island-nav-container" style={{ display: 'inline-flex', gap: 2, maxWidth: '100%', overflowX: isMobile ? 'auto' : 'visible', justifySelf: 'center' }}>
+            {visibleStages.map((p) => (
+              <button
+                key={p.key}
+                style={{
+                  ...getNavStyle(stage === p.key),
+                  flex: isMobile ? '1 0 auto' : 'initial' // Allow grow on mobile
+                }}
+                onClick={() => setStage(p.key)}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+          {/* Documents + impression (à droite) */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: isMobile ? 'flex-start' : 'flex-end', gap: 10, flexWrap: 'wrap' }}>
+            {/* Documents Button - Visible Mobile & Desktop */}
+            <button
+              onClick={() => setShowDocs(true)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                background: 'white',
+                border: '1px solid #E5E7EB',
+                borderRadius: 8,
+                padding: '8px 14px',
+                cursor: 'pointer',
+                fontSize: 13,
+                color: '#374151',
+                fontWeight: 600,
+                outline: 'none',
+                flex: 'initial', justifyContent: 'center'
+              }}
+            >
+              <FileText size={16} />
+              Docs ({project?.documents?.length || 0})
+            </button>
+            {/* Imprimer : s'adapte à la vue (tableaux BPF / BPP en A3, ou étiquettes) */}
+            {['bpf', 'bpp', 'etiquettes'].includes(stage) && (
+              <button
+                onClick={handleGlobalPrint}
+                title={stage === 'etiquettes' ? 'Imprimer des étiquettes' : `Imprimer le ${stage.toUpperCase()} (A3)`}
+                style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                background: 'white',
+                border: '1px solid #E5E7EB',
+                borderRadius: 8,
+                padding: '8px 14px',
+                cursor: 'pointer',
+                fontSize: 13,
+                color: '#374151',
+                fontWeight: 600,
+                outline: 'none',
+                flex: 'initial', justifyContent: 'center'
+              }}
+              >
+                <Printer size={16} /> Imprimer
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -1230,6 +1289,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
               rows={bpfRideaux}
               onRowsChange={mergeChildRowsFor("rideaux")}
               schema={RIDEAUX_PROD_SCHEMA}
+              printSignal={etqPrintSignal.key === 'rideaux' ? etqPrintSignal.n : 0}
               projectName={projectName}
               project={project}
               onUpdateProject={onUpdateProject}
@@ -1243,6 +1303,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
               rows={bpfStoresBateaux}
               onRowsChange={(nr) => handleSubsetChange(nr, /store (bateau|velum)/i)}
               schema={STORES_BATEAUX_PROD_SCHEMA}
+              printSignal={etqPrintSignal.key === 'stores_bateaux' ? etqPrintSignal.n : 0}
               projectName={projectName}
               project={project}
               onUpdateProject={onUpdateProject}
@@ -1654,23 +1715,6 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
 
       {stage === "bpp" && (
         <>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '0 0 12px' }}>
-            <button
-              onClick={handleOpenBppPrint}
-              disabled={!hasAnyBppRows}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 8,
-                background: !hasAnyBppRows ? '#E5E7EB' : '#1E2447',
-                color: !hasAnyBppRows ? '#9CA3AF' : '#fff',
-                border: 'none', borderRadius: 8, padding: '10px 18px',
-                fontWeight: 600, fontSize: 14,
-                cursor: !hasAnyBppRows ? 'not-allowed' : 'pointer',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-              }}
-            >
-              <Printer size={18} /> Imprimer le BPP (A3)
-            </button>
-          </div>
           {rowsRideaux.length > 0 && (
             <SectionPanel
               title="BPP Rideaux (Préparation Mécanismes)"
@@ -1802,13 +1846,13 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
       )}
 
       {bppPickerOpen && (() => {
-        const available = bppModulesCfg().filter(s => (s.rows || []).length > 0);
+        const available = tablePrintCfg().filter(s => (s.rows || []).length > 0);
         const allChecked = available.length > 0 && available.every(s => bppSelected.includes(s.tableKey));
         return (
           <div onClick={() => setBppPickerOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(17,24,39,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: 16 }}>
             <div onClick={(e) => e.stopPropagation()} style={{ background: 'white', borderRadius: 14, width: 'min(480px, 100%)', boxShadow: '0 20px 50px rgba(0,0,0,0.3)', overflow: 'hidden' }}>
               <div style={{ padding: '16px 18px', borderBottom: '1px solid #E5E7EB', fontWeight: 800, fontSize: 16, color: '#111827' }}>
-                Imprimer le BPP — choisir les tableaux
+                Imprimer le {tablePrintKind === 'bpf' ? 'BPF' : 'BPP'} — choisir les tableaux
               </div>
               <div style={{ padding: '6px 8px 4px', maxHeight: '55vh', overflowY: 'auto' }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', cursor: 'pointer', fontSize: 12, color: '#6B7280' }}>
@@ -1835,11 +1879,32 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
         );
       })()}
 
+      {etqPickerOpen && (
+        <div onClick={() => setEtqPickerOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(17,24,39,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: 16 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: 'white', borderRadius: 14, width: 'min(420px, 100%)', boxShadow: '0 20px 50px rgba(0,0,0,0.3)', overflow: 'hidden', fontFamily: 'Roboto, system-ui, sans-serif' }}>
+            <div style={{ padding: '16px 18px 6px', fontWeight: 500, fontSize: 17, color: '#111827' }}>Imprimer des étiquettes</div>
+            <div style={{ padding: '0 18px 10px', fontSize: 13, color: '#8A8F98' }}>Choisis le tableau : l'impression reprend ses réglages (champs, couleurs).</div>
+            {etqTablesCfg().map(t => (
+              <button key={t.key} onClick={() => printEtiquettes(t.key)} style={{ display: 'flex', width: '100%', alignItems: 'center', gap: 10, padding: '12px 18px', border: 'none', borderTop: '1px solid #F3F4F6', background: 'white', cursor: 'pointer', fontSize: 14, fontFamily: 'inherit', textAlign: 'left' }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = '#F7F7F5'; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'white'; }}>
+                <Printer size={16} color="#5B616B" />
+                <span style={{ flex: 1, color: '#111827' }}>{t.title}</span>
+                <span style={{ fontSize: 12, color: '#9CA3AF' }}>{t.rows.length} ligne{t.rows.length > 1 ? 's' : ''}</span>
+              </button>
+            ))}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '10px 16px', borderTop: '1px solid #E5E7EB' }}>
+              <button onClick={() => setEtqPickerOpen(false)} style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid #E5E7EB', background: 'white', cursor: 'pointer', fontSize: 13 }}>Annuler</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showBppPrint && (
         <BPPPrintPortal
           sections={bppPrintSections}
           projectName={project?.name}
           manager={project?.manager}
+          docLabel={tablePrintKind === 'bpf' ? 'BPF' : 'BPP'}
           onClose={() => setShowBppPrint(false)}
         />
       )}

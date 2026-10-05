@@ -9,6 +9,15 @@ import { COLORS } from '../lib/constants/ui';
 import ImageLightbox from './ui/ImageLightbox'; // <--- IMPORT LIGHTBOX
 import { renderRichText } from '../lib/utils/richText.jsx';
 
+// Avatar : initiales + couleur stable dérivée du nom (même principe que le sélecteur de chargé d'affaires).
+const initialsOf = (name) => String(name || "?").trim().split(/\s+/).map(w => w[0]).join("").slice(0, 2).toUpperCase() || "?";
+const AVATAR_COLORS = ['#5B5BD6', '#0E8A74', '#C2410C', '#B5446E', '#2F6FB5', '#7A5AF8', '#A16207', '#3E7C3A'];
+const avatarColor = (name) => {
+    let h = 0;
+    for (const c of String(name || '')) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+    return AVATAR_COLORS[h % AVATAR_COLORS.length];
+};
+
 const FILTERS = [
     { key: 'all', label: 'Tout' },
     { key: 'messages', label: 'Messages' },
@@ -153,58 +162,66 @@ export default function ProjectActivityFeed({ rows, wall, pinnedIds, onTogglePin
         }
     };
 
+    // Messages des personnes : avatar + bulle (façon conversation).
+    // Activités automatiques (modifs de lignes…) : une ligne compacte et grise.
     const renderEvent = (evt, isPinnedView = false) => {
         const dateObj = new Date(evt.date);
         const canPin = evt.category === 'messages';
-        // Petite icône discrète par type d'événement (plus de pastille de couleur)
-        let Icon = MessageSquare, iconColor = "#9B9A97";
-        if (evt.type === 'system_edit') { Icon = Edit; }
-        else if (evt.type === 'system_create') { Icon = CheckCircle; }
+        const when = (
+            <span style={{ fontSize: 12, color: '#A0A5AD' }} title={format(dateObj, 'dd/MM/yyyy HH:mm', { locale: fr })}>
+                {formatDistanceToNow(dateObj, { addSuffix: true, locale: fr })}
+            </span>
+        );
+        const target = evt.target && (
+            <span style={{ color: '#37352F', background: '#F1F2F4', padding: '1px 6px', borderRadius: 4, fontSize: 12 }}>{evt.target}</span>
+        );
+
+        if (evt.category !== 'messages') {
+            const Icon = evt.type === 'system_create' ? CheckCircle : Edit;
+            return (
+                <div key={`${evt.id}-${isPinnedView ? 'pin' : 'feed'}`} style={{ display: 'flex', alignItems: 'baseline', gap: 8, padding: '6px 0 6px 6px', fontSize: 13, color: '#787774', flexWrap: 'wrap' }}>
+                    <Icon size={13} style={{ flexShrink: 0, alignSelf: 'center', color: '#B4B7BD' }} />
+                    <span><span style={{ color: '#37352F' }}>{evt.user}</span> {evt.actionLabel} {target}</span>
+                    {evt.details && (
+                        <span>
+                            · {evt.details.field} : <span style={{ textDecoration: 'line-through', color: '#C2410C' }}>{evt.details.old}</span>
+                            <ArrowRight size={11} style={{ margin: '0 4px', verticalAlign: 'middle' }} />
+                            <span style={{ color: '#1B7A4B', fontWeight: 500 }}>{evt.details.new}</span>
+                        </span>
+                    )}
+                    <span style={{ marginLeft: 'auto' }}>{when}</span>
+                </div>
+            );
+        }
 
         return (
-            <div key={`${evt.id}-${isPinnedView ? 'pin' : 'feed'}`} style={{ padding: '12px 4px', borderBottom: '1px solid #E6E8EB', display: 'flex', gap: 12 }}>
-                <div style={{ marginTop: 2, color: iconColor, opacity: 0.75 }}><Icon size={15} /></div>
-
-                <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, alignItems: 'flex-start' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                            <span style={{ fontSize: 13, color: '#374151' }}>
-                                <span style={{ fontWeight: 500, color: '#111827' }}>{evt.user}</span> <span style={{ color: '#787774' }}>{evt.actionLabel}</span> {evt.target && <span style={{ color: '#37352F', background: 'white', padding: '1px 6px', borderRadius: 4, fontSize: 12 }}>{evt.target}</span>}
-                            </span>
-                            <span style={{ fontSize: 12, color: '#A8A7A3' }} title={format(dateObj, 'dd/MM/yyyy HH:mm', { locale: fr })}>{formatDistanceToNow(dateObj, { addSuffix: true, locale: fr })} · {format(dateObj, 'dd/MM HH:mm', { locale: fr })}</span>
-                        </div>
+            <div key={`${evt.id}-${isPinnedView ? 'pin' : 'feed'}`} style={{ display: 'flex', gap: 12, padding: '12px 0' }}>
+                <span style={{ width: 30, height: 30, borderRadius: '50%', background: avatarColor(evt.user), color: 'white', fontSize: 11, fontWeight: 600, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+                    {initialsOf(evt.user)}
+                </span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+                        <span style={{ fontWeight: 500, color: '#1F2A37', fontSize: 14 }}>{evt.user}</span>
+                        {evt.target && <span style={{ fontSize: 12, color: '#8A8F98' }}>sur {target}</span>}
+                        {when}
                         {canPin && (
-                            <button onClick={() => onTogglePin && onTogglePin(evt.id)} title={evt.pinned ? "Détacher" : "Épingler"} style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: 4, opacity: evt.pinned ? 1 : 0.3 }}>
-                                <Pin size={15} color={evt.pinned ? "#37352F" : "#9B9A97"} fill={evt.pinned ? "#37352F" : "none"} />
+                            <button onClick={() => onTogglePin && onTogglePin(evt.id)} title={evt.pinned ? "Détacher" : "Épingler"} style={{ marginLeft: 'auto', border: 'none', background: 'transparent', cursor: 'pointer', padding: 2, opacity: evt.pinned ? 1 : 0.35 }}>
+                                <Pin size={14} color={evt.pinned ? "#1E2447" : "#8A8F98"} fill={evt.pinned ? "#1E2447" : "none"} />
                             </button>
                         )}
                     </div>
-
-                    {/* Même rendu que le fil du détail de ligne : mentions + mise en forme légère */}
-                    {evt.text && <div style={{ fontSize: 14, color: '#37352F', lineHeight: 1.5, marginTop: 2, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{renderRichText(evt.text)}</div>}
-                    {evt.details && (
-                        <div style={{ fontSize: 13, color: '#4B5563', marginTop: 2 }}>
-                            Modif <b>{evt.details.field}</b> : <span style={{ textDecoration: 'line-through', color: '#EF4444' }}>{evt.details.old}</span> <ArrowRight size={12} style={{ margin: '0 4px', verticalAlign: 'middle' }} /> <span style={{ fontWeight: 600, color: '#10B981' }}>{evt.details.new}</span>
-                        </div>
-                    )}
-
-                    {/* IMAGE CLIQUABLE */}
-                    {evt.image && (
-                        <div style={{ marginTop: 10 }}>
-                            <img
-                                src={evt.image}
-                                alt="Joint"
-                                onClick={() => handleImageClick(evt.image)}
-                                style={{
-                                    maxHeight: isMobile ? 'none' : 200, // Full height on mobile
-                                    width: isMobile ? '100%' : 'auto', // Full width on mobile
-                                    maxWidth: '100%',
-                                    borderRadius: 8,
-                                    border: '1px solid #E5E7EB',
-                                    objectFit: 'cover',
-                                    cursor: 'zoom-in'
-                                }}
-                            />
+                    {(evt.text || evt.image) && (
+                        <div style={{ marginTop: 6, background: '#F4F5F7', borderRadius: '4px 14px 14px 14px', padding: '10px 14px', display: 'inline-block', maxWidth: '100%', boxSizing: 'border-box' }}>
+                            {/* Même rendu que le fil du détail de ligne : mentions + mise en forme légère */}
+                            {evt.text && <div style={{ fontSize: 14, color: '#2B2F36', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{renderRichText(evt.text)}</div>}
+                            {evt.image && (
+                                <img
+                                    src={evt.image}
+                                    alt="Joint"
+                                    onClick={() => handleImageClick(evt.image)}
+                                    style={{ display: 'block', marginTop: evt.text ? 8 : 0, maxHeight: isMobile ? 'none' : 200, width: isMobile ? '100%' : 'auto', maxWidth: '100%', borderRadius: 8, objectFit: 'cover', cursor: 'zoom-in' }}
+                                />
+                            )}
                         </div>
                     )}
                 </div>
@@ -213,8 +230,7 @@ export default function ProjectActivityFeed({ rows, wall, pinnedIds, onTogglePin
     };
 
     return (
-        // Bloc doux (même famille que Consommation temps / Avancement) : fond gris très clair, arrondi
-        <div style={{ display: 'flex', flexDirection: 'column', fontFamily: 'Roboto, system-ui, sans-serif', background: '#F5F6F7', borderRadius: 16, padding: '20px 24px 12px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', fontFamily: 'Roboto, system-ui, sans-serif', padding: '20px 4px 12px' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingBottom: 8 }}>
                 <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
                     <div>
@@ -241,7 +257,7 @@ export default function ProjectActivityFeed({ rows, wall, pinnedIds, onTogglePin
                     placeholder="Ouvrage, auteur, contenu…"
                 />
             </div>
-            {pinnedPosts.length > 0 && <div style={{ marginBottom: 8 }}><div style={{ padding: '8px 4px 0', fontSize: 12, color: '#9B9A97' }}>Épinglés ({pinnedPosts.length})</div>{pinnedPosts.map(post => renderEvent(post, true))}</div>}
+            {pinnedPosts.length > 0 && <div style={{ marginBottom: 8, paddingBottom: 8, borderBottom: '1px solid #EDEEF0' }}><div style={{ padding: '8px 0 0', fontSize: 12, color: '#8A8F98', display: 'flex', alignItems: 'center', gap: 6 }}><Pin size={12} /> Épinglés ({pinnedPosts.length})</div>{pinnedPosts.map(post => renderEvent(post, true))}</div>}
             <div style={{ maxHeight: 600, overflowY: 'auto' }}>{feedEvents.length === 0 ? <div style={{ padding: '24px 4px', color: '#A8A7A3', fontSize: 14 }}>Aucune activité.</div> : feedEvents.map(evt => renderEvent(evt, false))}</div>
 
             {/* LIGHTBOX COMPONENT */}
