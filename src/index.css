@@ -156,10 +156,11 @@ body.df-warm .ag-theme-alpine .ag-cell { border-right-color: var(--df-line-soft)
 body.df-warm .ag-theme-alpine .ag-row { border-bottom-color: var(--df-line-soft) !important; }
 body.df-warm [style*="border-bottom: 1px solid rgb(237, 237, 235)"] { border-bottom-color: var(--df-line) !important; }
 body.df-warm [style*="border: 1px solid rgb(229, 231, 235)"] { border-color: var(--df-line) !important; }
-/* Blocs doux du dashboard et bulles du journal : même famille chaude que le fond */
-body.df-warm [style*="background: rgb(245, 246, 247)"],
+/* Tuiles du dashboard (Consommation temps, Avancement) : gris clair neutre */
+body.df-warm [style*="background: rgb(245, 246, 247)"] { background-color: var(--df-gray) !important; }
+body.df-warm [style*="background: rgb(227, 229, 232)"] { background-color: #E4E4E4 !important; }
+/* Bulles du journal */
 body.df-warm [style*="background: rgb(244, 245, 247)"] { background-color: #F1EFEA !important; }
-body.df-warm [style*="background: rgb(227, 229, 232)"] { background-color: #E3E0DA !important; }
 /* Tous les boutons de l'application en Roboto (cohérence avec titres, chiffres et libellés) */
 body.df-warm button,
 body.df-warm .MuiButton-root,
