@@ -214,6 +214,7 @@ function AgColumnHeader(props) {
         <span
           ref={menuBtnRef}
           onClick={openMenu}
+          className="df-hdr-icon"
           title="Options de colonne (tri, épingler, regrouper…)"
           style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', flexShrink: 0, color: '#9ca3af' }}
         >
@@ -224,6 +225,7 @@ function AgColumnHeader(props) {
         <span
           ref={filterBtnRef}
           onClick={openFilter}
+          className={filterActive ? 'df-hdr-icon df-hdr-icon-active' : 'df-hdr-icon'}
           title="Filtrer cette colonne"
           style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', flexShrink: 0, color: filterActive ? '#2563eb' : '#9ca3af' }}
         >

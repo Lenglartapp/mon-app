@@ -189,24 +189,77 @@ function computeAgg(rawValues, type) {
 
 
 
+// Hauteur de la barre de regroupement d'AG Grid, sur laquelle la toolbar est posée.
+const GROUP_PANEL_HEIGHT = 44;
+
 // CSS custom pour le thème AG Grid
 const AG_CUSTOM_CSS = `
+/* Style épuré (façon Notion / Airtable) : pas de cadre, traits très clairs, en-têtes blancs */
+.ag-theme-alpine {
+  --ag-border-color: #EDEDEB;
+  --ag-secondary-border-color: #F1F1EF;
+  --ag-row-border-color: #F1F1EF;
+  --ag-header-background-color: #F9FAFB;
+}
+/* Cadre complet du tableau (gauche, droite, haut, bas) */
+.ag-theme-alpine .ag-root-wrapper { border: 1px solid #E5E7EB; border-radius: 8px; }
+/* Hauteur auto : AG Grid impose ~150px mini à la zone des lignes, d'où un grand vide
+   sous une table d'une seule ligne. On ramène le minimum à une ligne. */
+.ag-theme-alpine .ag-layout-auto-height .ag-center-cols-viewport,
+.ag-theme-alpine .ag-layout-auto-height .ag-center-cols-container,
+.ag-theme-alpine .ag-layout-auto-height .ag-center-cols-clipper,
+.ag-theme-alpine .ag-layout-auto-height .ag-body-viewport { min-height: 48px !important; }
+/* En-têtes collants au défilement de la PAGE (hauteur auto, mais aussi hauteur fixe : gros tableaux
+   > 100 lignes ou hauteur réglée à la poignée) : la barre de
+   regroupement puis la ligne des en-têtes restent en haut de l'écran jusqu'à la dernière
+   ligne du tableau. Le sticky exige des ancêtres sans overflow : on rouvre ceux d'AG Grid. */
+.df-sticky .ag-theme-alpine .ag-root-wrapper,
+.df-sticky .ag-theme-alpine .ag-root-wrapper-body,
+.df-sticky .ag-theme-alpine .ag-root { overflow: visible; }
+.df-sticky .ag-theme-alpine .ag-root-wrapper > .ag-column-drop-wrapper {
+  /* Au-dessus du titre de section collant (z 6), sinon son fond blanc masque le trait du haut */
+  position: sticky; top: var(--df-sticky-top, 0px); z-index: 7;
+}
+.df-sticky .ag-theme-alpine .ag-root-wrapper .ag-column-drop-horizontal {
+  border-radius: 8px 8px 0 0;
+  /* Le trait du haut du cadre défile avec le tableau : la barre collante porte le sien (haut + côtés),
+     superposé exactement au cadre quand elle n'est pas collée. */
+  box-shadow: 0 -1px 0 0 #E5E7EB, -1px 0 0 0 #E5E7EB, 1px 0 0 0 #E5E7EB, -1px -1px 0 0 #E5E7EB, 1px -1px 0 0 #E5E7EB;
+}
+.df-sticky .ag-theme-alpine .ag-root > .ag-header {
+  position: sticky; top: calc(var(--df-sticky-top, 0px) + ${GROUP_PANEL_HEIGHT}px); z-index: 3;
+}
+/* La toolbar couvre toute la largeur (pour coller) mais laisse passer les clics / glisser-déposer
+   vers la zone de regroupement ; seuls ses boutons captent la souris. */
+.df-grid-toolbar > * { pointer-events: auto; }
+/* Barre de regroupement : même gris que la ligne des en-têtes */
+.ag-theme-alpine .ag-column-drop-horizontal {
+  background: #F9FAFB;
+  border-bottom: 1px solid #EDEDEB;
+  min-height: ${GROUP_PANEL_HEIGHT}px;
+  height: ${GROUP_PANEL_HEIGHT}px;
+}
+.ag-theme-alpine .ag-column-drop-empty-message { color: #A8A7A3; font-size: 12px; }
+/* Icônes menu / filtre des en-têtes : visibles au survol (ou si un filtre est actif) */
+.ag-theme-alpine .df-hdr-icon { opacity: 0; transition: opacity .15s; }
+.ag-theme-alpine .ag-header-cell:hover .df-hdr-icon,
+.ag-theme-alpine .df-hdr-icon-active { opacity: 1; }
 .ag-theme-alpine .ag-header-cell-label {
   font-size: 13px;
   font-weight: 600;
   color: #374151;
 }
 .ag-theme-alpine .ag-header {
-  background-color: #f9fafb;
-  border-bottom: 1px solid #e5e7eb;
+  background-color: #F9FAFB;
+  border-bottom: 1px solid #E5E7EB;
 }
 .ag-theme-alpine .ag-header-cell {
-  border-right: 1px solid #e5e7eb;
+  border-right: 1px solid #F1F1EF;
 }
 .ag-theme-alpine .ag-cell {
   font-size: 13px;
   color: #111827;
-  border-right: 1px solid #f3f4f6;
+  border-right: 1px solid #F4F4F2;
   display: flex;
   align-items: center;
 }
@@ -214,10 +267,10 @@ const AG_CUSTOM_CSS = `
   background-color: #ffffff;
 }
 .ag-theme-alpine .ag-row-odd {
-  background-color: #fafafa;
+  background-color: #ffffff;
 }
 .ag-theme-alpine .ag-row-hover {
-  background-color: #eff6ff !important;
+  background-color: #F7F7F5 !important;
 }
 .ag-theme-alpine .ag-row-selected {
   background-color: #dbeafe !important;
@@ -225,10 +278,27 @@ const AG_CUSTOM_CSS = `
 .ag-theme-alpine .ag-row-pinned .ag-cell {
   cursor: pointer;
   font-weight: 600;
-  color: #065f46;
+  color: #111827;
 }
+.ag-theme-alpine .ag-floating-bottom { background: #ffffff; border-top: none; }
+/* Variante allégée (test) : pas de fond gris, texte atténué, petit cadenas au survol */
+.df-ro-light .ag-cell.ag-cell-read-only {
+  background-color: transparent !important;
+  color: #A8A7A3 !important;
+  /* pas de position: relative ici — les cellules AG Grid sont déjà positionnées en absolu */
+}
+.df-ro-light .ag-cell.ag-cell-read-only::after {
+  content: '';
+  position: absolute; right: 8px; top: 50%;
+  width: 12px; height: 12px; margin-top: -6px;
+  background-color: #B5B4B0;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='11' width='18' height='11' rx='2'/%3E%3Cpath d='M7 11V7a5 5 0 0 1 10 0v4'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='11' width='18' height='11' rx='2'/%3E%3Cpath d='M7 11V7a5 5 0 0 1 10 0v4'/%3E%3C/svg%3E") center / contain no-repeat;
+  opacity: 0; transition: opacity .15s;
+}
+.df-ro-light .ag-cell.ag-cell-read-only:hover::after { opacity: 1; }
 .ag-cell-read-only {
-  background-color: #f3f4f6 !important;
+  background-color: #F9FAFB !important; /* même gris que les en-têtes */
   color: #9ca3af !important;
   cursor: not-allowed;
 }
@@ -309,15 +379,21 @@ const AG_CUSTOM_CSS = `
 }
 `;
 
-// Injecter le CSS une seule fois
-if (typeof document !== 'undefined' && !document.getElementById('ag-custom-styles')) {
-    const style = document.createElement('style');
-    style.id = 'ag-custom-styles';
+// Injecter le CSS une seule fois (contenu réécrit si la balise existe déjà : rechargement à chaud)
+if (typeof document !== 'undefined') {
+    let style = document.getElementById('ag-custom-styles');
+    if (!style) {
+        style = document.createElement('style');
+        style.id = 'ag-custom-styles';
+        document.head.appendChild(style);
+    }
     style.textContent = AG_CUSTOM_CSS;
-    document.head.appendChild(style);
 }
 
 function MinuteGrid({
+    lightReadOnly = false, // test UI : cellules non modifiables sans fond gris, cadenas au survol
+    fillField = null,      // colonne qui s'étire pour occuper toute la largeur restante du tableau
+    stickyTop = null,      // null = pas d'en-têtes collants ; sinon décalage (px) sous le titre de section collant
     rows,
     onRowsChange,
     schema,
@@ -566,7 +642,8 @@ function MinuteGrid({
         // donc les largeurs ici via applyColumnState.
         if (state?.widths && Object.keys(state.widths).length > 0) {
             api.applyColumnState({
-                state: Object.entries(state.widths).map(([colId, width]) => ({ colId, width })),
+                // La colonne de remplissage (fillField) garde sa largeur élastique.
+                state: Object.entries(state.widths).filter(([colId]) => colId !== fillField).map(([colId, width]) => ({ colId, width })),
             });
         }
 
@@ -634,7 +711,7 @@ function MinuteGrid({
             });
             api.applyColumnState({ state: confState });
         }
-    }, [initialVisibilityModel, mecaGroups, confGroups, schema]);
+    }, [initialVisibilityModel, mecaGroups, confGroups, schema, fillField]);
 
     const onGridReady = useCallback((params) => {
         isGridReadyRef.current = true;
@@ -1257,6 +1334,8 @@ function MinuteGrid({
                 width: undefined,
                 initialWidth: w,
                 aggFunc,
+                // Colonne « de remplissage » : prend toute la largeur restante (jamais moins que sa largeur normale)
+                ...(fillField && col.field === fillField ? { flex: 1, minWidth: w } : {}),
                 // Chevron déplier/replier + indentation sur la colonne identité (paire décentrée)
                 ...(enableDecentree && col.field === 'zone' ? { cellRenderer: decentreeZoneRenderer } : {}),
                 // « voir parent » sur les colonnes techniques du rail pour les lignes enfants
@@ -1305,7 +1384,7 @@ function MinuteGrid({
         // Le glisser-déposer de lignes se fait via une poignée intégrée à la colonne
         // de sélection (voir selectionColumnDef), révélée au survol — pas de colonne dédiée.
         return showExpeditionCol ? [...withWidths, expeditionCol] : withWidths;
-    }, [schema, enableCellFormulas, handleOpenDetail, catalog, railOptions, handlePhotoChange, handleLinkUpdate, onDuplicateRow, hideCroquis, readOnly, title, isMobile, gridId, showExpeditionCol, resolvedUser, colAggregations, enableDecentree, decentreeZoneRenderer, decentreeParentOnlyRenderer]);
+    }, [schema, enableCellFormulas, handleOpenDetail, catalog, railOptions, handlePhotoChange, handleLinkUpdate, onDuplicateRow, hideCroquis, readOnly, title, isMobile, gridId, showExpeditionCol, resolvedUser, colAggregations, enableDecentree, decentreeZoneRenderer, decentreeParentOnlyRenderer, fillField]);
 
     const isExternalFilterPresent = useCallback(() => {
         return filterConditionsRef.current.some(isConditionActive) || collapsedPairsRef.current.size > 0;
@@ -1612,7 +1691,9 @@ function MinuteGrid({
         return params.value;
     }, []);
 
-    const isLargeGrid = rows.length > 100;
+    // Au-delà, hauteur fixe + défilement interne (perf). Avec les en-têtes collants, on laisse le
+    // tableau s'afficher en entier bien plus loin : c'est la page qui défile, en-têtes figés.
+    const isLargeGrid = rows.length > (stickyTop != null ? 400 : 100);
 
     // Hauteur effective : manuelle si l'utilisateur a tiré la poignée, sinon comportement historique.
     const effectiveHeight = manualHeight != null ? manualHeight : (isLargeGrid ? 600 : undefined);
@@ -1753,10 +1834,13 @@ function MinuteGrid({
     );
 
     return (
-        <div style={{ width: '100%' }}>
+        <>
+        <div className={stickyTop != null ? 'df-sticky' : undefined} style={{ width: '100%', position: 'relative', '--df-sticky-top': `${stickyTop ?? 0}px` }}>
 
-            {/* Toolbar */}
-            <div style={{ padding: '8px 10px', borderBottom: '1px solid #e5e7eb', display: 'flex', gap: 8, alignItems: 'center', background: '#fafafa', flexWrap: 'wrap' }}>
+            {/* Toolbar : posée à droite, sur la barre « Glissez un champ ici pour regrouper » d'AG Grid.
+                Collante (comme cette barre) : elle garde sa place dans le flux et c'est la grille qui remonte
+                dessous (marge négative), pour qu'elle se décolle pile en même temps que le bas du tableau. */}
+            <div className="df-grid-toolbar" style={{ ...(stickyTop != null ? { position: 'sticky', top: stickyTop } : { position: 'absolute', top: 0, left: 0, right: 0 }), height: GROUP_PANEL_HEIGHT, zIndex: 8, padding: '0 8px', display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'flex-end', pointerEvents: 'none' }}>
                 {!readOnly && (
                     /* Bouton scindé : clic = 1 ligne (geste habituel inchangé),
                        chevron — ou clic droit — = « combien de lignes ? ». */
@@ -1764,7 +1848,7 @@ function MinuteGrid({
                         <button
                             onClick={() => handleAddRow(1)}
                             title="Ajouter une ligne"
-                            style={{ cursor: 'pointer', padding: '5px 10px', background: '#2563eb', color: 'white', border: 'none', borderRadius: '4px 0 0 4px', display: 'flex', alignItems: 'center', gap: 5, fontSize: 12 }}
+                            style={{ cursor: 'pointer', padding: '5px 10px', background: 'white', color: '#374151', border: '1px solid #d1d5db', borderRight: 'none', borderRadius: '4px 0 0 4px', display: 'flex', alignItems: 'center', gap: 5, fontSize: 12 }}
                         >
                             <Plus size={14} /> Ajouter
                         </button>
@@ -1772,7 +1856,7 @@ function MinuteGrid({
                             onClick={openAddPanel}
                             title="Ajouter plusieurs lignes"
                             aria-label="Ajouter plusieurs lignes"
-                            style={{ cursor: 'pointer', padding: '5px 6px', background: '#2563eb', color: 'white', border: 'none', borderLeft: '1px solid rgba(255,255,255,.35)', borderRadius: '0 4px 4px 0', display: 'flex', alignItems: 'center', fontSize: 12 }}
+                            style={{ cursor: 'pointer', padding: '5px 6px', background: 'white', color: '#374151', border: '1px solid #d1d5db', borderRadius: '0 4px 4px 0', display: 'flex', alignItems: 'center', fontSize: 12 }}
                         >
                             <ChevronDown size={14} />
                         </button>
@@ -1902,13 +1986,13 @@ function MinuteGrid({
                         )}
                     </div>
                 )}
-                {/* Recherche rapide */}
+                {/* Recherche rapide (affichée en dernier, tout à droite) */}
                 <input
                     type="text"
                     placeholder="Rechercher..."
                     value={quickFilter}
                     onChange={e => setQuickFilter(e.target.value)}
-                    style={{ padding: '4px 8px', border: '1px solid #d1d5db', borderRadius: 4, fontSize: 12, width: 160, outline: 'none' }}
+                    style={{ order: 99, padding: '4px 8px', border: '1px solid #d1d5db', borderRadius: 4, fontSize: 12, width: 160, outline: 'none' }}
                 />
                 {/* Bouton Filtrer */}
                 {(() => {
@@ -2043,7 +2127,7 @@ function MinuteGrid({
                 )}
 
                 {/* Bouton colonnes */}
-                <div style={{ position: 'relative', marginLeft: 'auto' }}>
+                <div style={{ position: 'relative' }}>
                     <button
                         ref={colBtnRef}
                         onClick={handleToggleColPanel}
@@ -2245,8 +2329,8 @@ function MinuteGrid({
             )}
 
             {/* AG Grid + poignée de redimensionnement vertical */}
-            <div style={{ position: 'relative' }}>
-            <div ref={gridContainerRef} className={`ag-theme-alpine${reorderBlocked ? ' reorder-blocked' : ''}`} style={{ width: '100%', height: effectiveHeight }}>
+            <div style={{ position: 'relative', ...(stickyTop != null ? { marginTop: -GROUP_PANEL_HEIGHT } : {}) }}>
+            <div ref={gridContainerRef} className={`ag-theme-alpine${reorderBlocked ? ' reorder-blocked' : ''}${lightReadOnly ? ' df-ro-light' : ''}`} style={{ width: '100%', height: effectiveHeight }}>
                 <AgGridReact
                     ref={gridRef}
                     rowData={rows}
@@ -2263,7 +2347,7 @@ function MinuteGrid({
                     context={{ colAggregations, onAggregationChange }}
                     getRowStyle={(params) => {
                         if (params.node.rowPinned === 'bottom') {
-                            return { background: '#f0fdf4', borderTop: '2px solid #10b981' };
+                            return { background: '#ffffff', borderTop: '1px solid #E5E5E3' };
                         }
                         const role = params.data?.pair_role;
                         if (role === 'parent') return { background: '#eef2ff', fontWeight: 600 };
@@ -2318,28 +2402,30 @@ function MinuteGrid({
                     stopEditingWhenCellsLoseFocus
                 />
             </div>
-            {/* Poignée : glisser pour régler la hauteur, double-clic pour revenir en auto */}
-            <div
-                onMouseDown={onResizeHandleMouseDown}
-                onDoubleClick={resetManualHeight}
-                title="Glisser pour ajuster la hauteur — double-clic pour revenir en automatique"
-                style={{
-                    height: 12,
-                    marginTop: 2,
-                    cursor: 'ns-resize',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    borderRadius: 4,
-                    background: manualHeight != null ? '#ecfdf5' : 'transparent',
-                }}
-                onMouseEnter={e => { e.currentTarget.style.background = '#e2e8f0'; }}
-                onMouseLeave={e => { e.currentTarget.style.background = manualHeight != null ? '#ecfdf5' : 'transparent'; }}
-            >
-                <div style={{ width: 44, height: 4, borderRadius: 2, background: '#94a3b8' }} />
-            </div>
+
             </div>
         </div>
+        {/* Poignée (glisser = hauteur, double-clic = auto), HORS du bloc ci-dessus : la barre d'outils collante s'arrête ainsi pile en bas du tableau */}
+        <div
+            onMouseDown={onResizeHandleMouseDown}
+            onDoubleClick={resetManualHeight}
+            title="Glisser pour ajuster la hauteur — double-clic pour revenir en automatique"
+            style={{
+                height: 12,
+                marginTop: 2,
+                cursor: 'ns-resize',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderRadius: 4,
+                background: manualHeight != null ? '#ecfdf5' : 'transparent',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = '#e2e8f0'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = manualHeight != null ? '#ecfdf5' : 'transparent'; }}
+        >
+            <div style={{ width: 44, height: 4, borderRadius: 2, background: '#94a3b8' }} />
+        </div>
+        </>
     );
 }
 

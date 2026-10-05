@@ -25,9 +25,10 @@ import { calculateProfitability } from '../lib/financial/profitabilityCalculator
 
 import MinuteHistoryDialog from "../components/MinuteHistoryDialog";
 import VariantTabs from "../components/VariantTabs";
-import { buildFamilyTabs, nextFamilyVersion, variantShade } from "../lib/minuteFamily";
-import { HeaderCard, HeaderPanel, EditableTitle, StatusPill, HeaderButton, MetaItem, OwnerPicker } from "../components/ui/EntityHeader";
+import { buildFamilyTabs, nextFamilyVersion } from "../lib/minuteFamily";
+import { EditableTitle, StatusPill, HeaderButton, MetaItem, OwnerPicker } from "../components/ui/EntityHeader";
 import { formatAnyDateFR } from "../lib/utils/formatDate";
+import NotesBlock from "../components/ui/NotesBlock";
 import { readVersionContent, mergeVisualsFromCurrent } from "../lib/minuteVersions";
 import { buildSettingsLogs, buildCatalogLogs, buildStatusLog, appendHistory } from "../lib/minuteHistory";
 import { MOBILIER_PRODUIT_RE } from "../lib/constants/productRouting";
@@ -52,52 +53,6 @@ const CHIFFRAGE_STATUS = {
   ORDER_COMPLETED: { label: "Commande terminée", color: "#059669" },
   LOST: { label: "Perdu", color: "#EF4444" },
 };
-
-// Optimisation: Composant Isolé pour les Notes afin d'éviter le re-render global à chaque frappe
-const NotesField = React.memo(({ initialValue, onSave, readOnly, canEdit }) => {
-  const [localNotes, setLocalNotes] = React.useState(initialValue);
-  const notesRef = React.useRef(null);
-
-  React.useEffect(() => {
-    setLocalNotes(initialValue);
-  }, [initialValue]);
-
-  React.useEffect(() => {
-    if (notesRef.current) {
-      notesRef.current.style.height = "auto";
-      notesRef.current.style.height = notesRef.current.scrollHeight + "px";
-    }
-  }, [localNotes]);
-
-  return (
-    <textarea
-      ref={notesRef}
-      value={localNotes}
-      onChange={(e) => setLocalNotes(e.target.value)}
-      onBlur={() => {
-        if (localNotes !== initialValue) {
-          onSave(localNotes);
-        }
-      }}
-      placeholder="Ajouter une note de contexte..."
-      rows={1}
-      style={{
-        width: '100%',
-        minHeight: 60,
-        border: 'none',
-        background: 'transparent',
-        outline: 'none',
-        resize: 'none',
-        fontSize: 13.5,
-        lineHeight: 1.5,
-        color: '#422006',
-        overflow: 'hidden',
-        fontFamily: 'inherit'
-      }}
-      readOnly={!canEdit || readOnly}
-    />
-  );
-});
 
 // Memoize External Components for better performance
 const MemoizedMinuteEditor = React.memo(MinuteEditor);
@@ -603,18 +558,12 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
 
   // Header State
   const [name, setName] = React.useState(minute?.name || "Minute sans nom");
-  const [notes, setNotes] = React.useState(minute?.notes || "");
-  const notesRef = React.useRef(null);
 
   React.useEffect(() => {
     setName(minute?.name || "Minute sans nom");
   }, [minuteId, minute?.name]);
 
   const familyTabs = React.useMemo(() => buildFamilyTabs(minutes, minute), [minutes, minute]);
-  const activeTabShade = React.useMemo(() => {
-    const i = familyTabs.findIndex(t => t.id === minute?.id);
-    return variantShade(Math.max(i, 0), familyTabs.length).bg;
-  }, [familyTabs, minute?.id]);
 
   const handleNotesSave = React.useCallback((newNotes) => {
     updateMinute({ notes: newNotes });
@@ -732,72 +681,77 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
   return (
     <div style={S.contentWide}>
       {/* Header : fiche d'identité (gauche) + notes (droite), actions en dessous */}
-      <div style={{ marginTop: 8, marginBottom: 20 }}>
+      <div style={{ marginTop: 8, marginBottom: 28 }}>
         <button onClick={onBack} style={{ background: 'none', border: 'none', color: '#6B7280', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, padding: 0, fontSize: 13, fontWeight: 500, marginBottom: 12 }}>← Retour</button>
-        <HeaderCard
-          left={
-            <>
-              <EditableTitle
-                value={name}
-                canEdit={canEdit}
-                placeholder="Nom du projet"
-                onSave={(v) => { setName(v); updateMinute({ name: v }); }}
-              />
-              <div style={{ fontSize: 15, color: '#6B7280', marginTop: 2 }}>{minute?.client || "Client non spécifié"}</div>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 14, flexWrap: 'wrap' }}>
-                <StatusPill
-                  value={localStatus}
-                  options={CHIFFRAGE_STATUS}
-                  onChange={handleStatusChange}
-                  disabled={!canEdit && localStatus !== "VALIDATED"}
-                />
-                <HeaderButton onClick={() => setShowHistory(true)} title="Historique des modifications et versions">
-                  <History size={15} /> Historique
-                </HeaderButton>
-              </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px 28px', alignItems: 'flex-start', marginTop: 18 }}>
-                <MetaItem label="Chargé d'affaires">
-                  <OwnerPicker
-                    value={minute?.owner || ""}
-                    users={assignableUsers}
-                    canEdit={canEdit}
-                    onChange={(owner) => updateMinute({ owner })}
-                  />
-                </MetaItem>
-                <MetaItem label="Créé le">{formatAnyDateFR(minute?.createdAt)}</MetaItem>
-                <MetaItem label="Livraison estimée">
-                  {canEdit ? (
-                    <input
-                      type="date"
-                      value={minute?.delivery_date || minute?.deliveryDate || ""}
-                      onChange={(e) => updateMinute({ delivery_date: e.target.value || null })}
-                      style={{ border: '1px solid #E5E7EB', borderRadius: 6, padding: '3px 6px', fontSize: 13, color: '#374151', background: 'white', outline: 'none', fontFamily: 'inherit' }}
-                    />
-                  ) : formatAnyDateFR(minute?.delivery_date || minute?.deliveryDate)}
-                </MetaItem>
-              </div>
-            </>
-          }
-          right={
-            <HeaderPanel title="Notes" tone="notes">
-              <NotesField
-                initialValue={minute?.notes || ""}
-                onSave={handleNotesSave}
-                canEdit={canEdit}
-                readOnly={minute?.status === "VALIDATED"}
-              />
-            </HeaderPanel>
-          }
+        {/* En-tête sans cadre : titre + client, puis infos (gauche) et notes (droite, même hauteur) */}
+        <EditableTitle
+          value={name}
+          canEdit={canEdit}
+          placeholder="Nom du projet"
+          fontSize={34}
+          fontWeight={400}
+          fontFamily="Roboto, system-ui, sans-serif"
+          onSave={(v) => { setName(v); updateMinute({ name: v }); }}
         />
+        <div style={{ fontSize: 15, color: '#6B7280', marginTop: 2 }}>{minute?.client || "Client non spécifié"}</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1.3fr) minmax(0,1fr)', gap: 28, marginTop: 14, alignItems: 'start' }}>
+          {/* Une seule ligne : chargé d'affaires · créé le · livraison · historique · statut */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px 28px', alignItems: 'flex-end', minWidth: 0 }}>
+            <MetaItem label="Chargé d'affaires">
+              <OwnerPicker
+                value={minute?.owner || ""}
+                users={assignableUsers}
+                canEdit={canEdit}
+                onChange={(owner) => updateMinute({ owner })}
+              />
+            </MetaItem>
+            <MetaItem label="Créé le">{formatAnyDateFR(minute?.createdAt)}</MetaItem>
+            <MetaItem label="Livraison estimée">
+              {canEdit ? (
+                <input
+                  type="date"
+                  value={minute?.delivery_date || minute?.deliveryDate || ""}
+                  onChange={(e) => updateMinute({ delivery_date: e.target.value || null })}
+                  style={{ border: '1px solid #E5E7EB', borderRadius: 6, padding: '3px 6px', fontSize: 13, color: '#374151', background: 'white', outline: 'none', fontFamily: 'inherit' }}
+                />
+              ) : formatAnyDateFR(minute?.delivery_date || minute?.deliveryDate)}
+            </MetaItem>
+            <HeaderButton onClick={() => setShowHistory(true)} title="Historique des modifications et versions">
+              <History size={15} /> Historique
+            </HeaderButton>
+            <MetaItem label="Statut">
+              <StatusPill
+                value={localStatus}
+                options={CHIFFRAGE_STATUS}
+                onChange={handleStatusChange}
+                disabled={!canEdit && localStatus !== "VALIDATED"}
+              />
+            </MetaItem>
+          </div>
+          <div style={{ position: 'relative', minWidth: 0, height: 104 }}>
+            <NotesBlock
+              fill
+              value={minute?.notes || ""}
+              onSave={handleNotesSave}
+              editable={canEdit && minute?.status !== "VALIDATED"}
+            />
+          </div>
+        </div>
 
         {/* Intercalaires de variantes (gauche) + actions (droite) */}
-        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16, marginTop: 14, borderBottom: `1px solid ${activeTabShade}` }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) auto minmax(0,1fr)', alignItems: 'flex-end', gap: 16, marginTop: 32, borderBottom: '1px solid #EDEDEB' }}>
           <VariantTabs
             tabs={familyTabs}
             activeId={minute?.id}
             onOpen={(id) => onOpenMinute?.(id)}
             onCreate={canEdit ? handleCreateVariant : undefined}
           />
+        {/* Vues du chiffrage, au centre de la ligne des variantes */}
+        <div style={{ display: 'inline-flex', gap: 2, marginBottom: 8 }}>
+          <button style={getNavStyle(activeTab === "minutes")} onClick={() => setActiveTab("minutes")}>Minutes</button>
+          <button style={getNavStyle(activeTab === "achats")} onClick={() => setActiveTab("achats")}>Liste Achats</button>
+          {can(currentUser, "chiffrage.moulinette") && <button style={getNavStyle(activeTab === "moulinette")} onClick={() => setActiveTab("moulinette")}>Moulinette</button>}
+        </div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10, flexWrap: 'wrap', marginBottom: 8 }}>
           <input
             type="file"
@@ -806,14 +760,14 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
             accept=".xlsx, .xls"
             onChange={handleGlobalImport}
           />
-          <button onClick={() => fileInputRef.current?.click()} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', borderRadius: 8, background: '#10B981', color: 'white', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+          <button onClick={() => fileInputRef.current?.click()} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', borderRadius: 8, background: 'white', border: '1px solid #E5E7EB', cursor: 'pointer', color: '#374151', fontSize: 13, fontWeight: 600 }}>
             <FileUp size={16} /> Importer Excel
           </button>
 
           {canEdit && (
             <button
               onClick={() => setShowRecalibration(true)}
-              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', borderRadius: 8, background: '#1E2447', color: 'white', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, boxShadow: '0 1px 2px rgba(0,0,0,0.1)' }}
+              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', borderRadius: 8, background: 'white', border: '1px solid #E5E7EB', cursor: 'pointer', color: '#374151', fontSize: 13, fontWeight: 600 }}
               title="Recalibrer le devis vers un montant cible"
             >
               <SlidersHorizontal size={16} /> Recalibrer
@@ -852,30 +806,11 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
         />
       )}
 
-      {/* Tabs */}
-      {/* Tabs */}
-      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 24 }}>
-        <div style={{
-          display: 'inline-flex',
-          background: 'white',
-          padding: 5,
-          borderRadius: 99,
-          gap: 4,
-          flexWrap: 'wrap',
-          justifyContent: 'center',
-          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)'
-        }}>
-          <button style={getNavStyle(activeTab === "minutes")} onClick={() => setActiveTab("minutes")}>Minutes</button>
-          <button style={getNavStyle(activeTab === "achats")} onClick={() => setActiveTab("achats")}>Liste Achats</button>
-          {can(currentUser, "chiffrage.moulinette") && <button style={getNavStyle(activeTab === "moulinette")} onClick={() => setActiveTab("moulinette")}>Moulinette</button>}
-        </div>
-      </div>
-
-      {/* Minutes Tab */}
+      {/* Minutes Tab — pas d'overflow sur ces conteneurs : il casserait les en-têtes de tableaux collants (sticky) */}
       {activeTab === "minutes" && (
-        <div style={{ display: "grid", gap: 12, overflow: "hidden" }}>
-          <MemoizedDashboardSummary recap={recap} nf={nfEur0} activeModules={mods} />
-          <div style={{ minWidth: 0, overflowX: "auto" }}>
+        <div style={{ display: "grid", gap: 12, minWidth: 0 }}>
+          <MemoizedDashboardSummary recap={recap} nf={nfEur0} />
+          <div style={{ minWidth: 0 }}>
             <MemoizedMinuteEditor
               key={`${minute?.id}-${restoreNonce}-${Object.keys(mods || {}).filter(k => mods[k]).sort().join('-')}`} // FORCE REMOUNT on module change / restauration
               minute={editorMinute}

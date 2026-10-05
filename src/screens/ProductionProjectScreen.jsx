@@ -5,6 +5,7 @@ import { COLORS, S } from "../lib/constants/ui.js";
 import { slugify } from "../lib/utils/slugify";
 import MinuteGrid from "../components/MinuteGrid.jsx"; // Replaces DataTable
 import DashboardTiles from "../components/DashboardTiles.jsx";
+import { SoftBlock, Kpi, KpiGrid } from "../components/ui/SoftBlock";
 import ProjectActivityFeed from "../components/ProjectActivityFeed.jsx";
 import EtiquettesSection from "../components/EtiquettesSection.jsx";
 import BPPPrintPortal from "../components/print/BPPPrintPortal.jsx";
@@ -32,7 +33,7 @@ import { MOBILIER_PROD_SCHEMA } from "../lib/schemas/production/mobilier";
 import { uid } from "../lib/utils/uid"; // Import uid
 import { compressAndUpload } from "../lib/utils/imageUpload";
 
-import { Search, Filter, Layers3, Star, FlaskConical, Image as ImageIcon, Edit2, FileText, BookOpen, Printer } from "lucide-react";
+import { Search, Filter, Layers3, Star, FlaskConical, Image as ImageIcon, Edit2, FileText, BookOpen, Printer, Package } from "lucide-react";
 import ProjectMaterialsPanel from "../components/ProjectMaterialsPanel";
 import { applyCatalogRenames } from "../lib/utils/catalogRename";
 import AddressAutocomplete from "../components/AddressAutocomplete"; // Added FileText
@@ -42,21 +43,25 @@ import { differenceInMinutes } from "date-fns";
 import DocumentListModal from "../components/DocumentListModal"; // Added import
 import { useAuth } from "../auth";
 import { can, role } from "../lib/authz";
-import { HeaderCard, HeaderPanel, EditableTitle, StatusPill, MetaItem, OwnerPicker } from "../components/ui/EntityHeader";
+import { HeaderCard, EditableTitle, StatusPill, MetaItem, OwnerPicker } from "../components/ui/EntityHeader";
 import { formatAnyDateFR } from "../lib/utils/formatDate";
 import { FORMULES_METRAGE_V2 } from "../lib/formulas/metrageVersion";
 
+// Hauteur du titre de section collant (les barres du tableau se collent juste dessous).
+const STICKY_TITLE_HEIGHT = 44;
+
+// Section de tableau, même rendu que le chiffrage : pas de carte autour, flèche de repli
+// à gauche du titre (titre cliquable aussi), nombre d'articles en simple texte.
 function SectionPanel({ title, count, expanded, onToggle, children }) {
   return (
-    <div style={{ marginBottom: 24, borderRadius: 12, background: 'white', overflow: 'hidden', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', border: '1px solid #f3f4f6' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px', height: 56, borderBottom: expanded ? '1px solid #f3f4f6' : 'none', backgroundColor: '#fff' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <h3 style={{ margin: 0, fontSize: 18, color: '#111827', fontWeight: 700 }}>{title}</h3>
-          <span style={{ background: '#f3f4f6', color: '#4b5563', padding: '2px 8px', borderRadius: 12, fontSize: 12, fontWeight: 600 }}>{count} articles</span>
-        </div>
-        <IconButton size="small" onClick={onToggle} sx={{ color: '#6b7280' }}>
-          <ExpandMoreIcon sx={{ transform: expanded ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.2s ease' }} />
+    <div style={{ marginBottom: 28 }}>
+      {/* Titre collant : reste en haut de l'écran tant qu'on défile dans ce tableau */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 4px', height: STICKY_TITLE_HEIGHT, position: 'sticky', top: 0, zIndex: 6, background: '#ffffff' }}>
+        <IconButton size="small" onClick={onToggle} title={expanded ? 'Replier' : 'Déplier'} sx={{ color: '#9B9A97', ml: -0.5 }}>
+          <ExpandMoreIcon sx={{ fontSize: 20, transform: expanded ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.2s ease' }} />
         </IconButton>
+        <h3 onClick={onToggle} style={{ margin: 0, fontSize: 20, color: '#111827', fontWeight: 500, fontFamily: 'Roboto, system-ui, sans-serif', cursor: 'pointer' }}>{title}</h3>
+        <span style={{ color: '#9B9A97', fontSize: 13, fontFamily: 'Roboto, system-ui, sans-serif', marginLeft: 4, alignSelf: 'flex-end', paddingBottom: 13 }}>{count} {count > 1 ? 'articles' : 'article'}</span>
       </div>
       <Collapse in={expanded} timeout="auto" unmountOnExit>
         {children}
@@ -137,7 +142,7 @@ const toPrintCol = (col) => ({
 // Construit les colonnes à imprimer pour une section BPP.
 // Priorité à l'état COURANT des colonnes (ce que l'utilisateur voit/masque,
 // persisté par MinuteGrid dans localStorage), sinon visibilité par défaut.
-const buildBppPrintColumns = (schema, tableKey, gridKey) => {
+const buildBppPrintColumns = (schema, tableKey, gridKey, viewKey = 'bpp') => {
   const byKey = new Map((schema || []).map(c => [c.key, c]));
 
   // 1. État courant des colonnes (ordre + visibilité réels à l'écran)
@@ -159,7 +164,7 @@ const buildBppPrintColumns = (schema, tableKey, gridKey) => {
   // `!== false` et non `truthy` : une vue « tout visible » (pas de liste dans
   // views.js) renvoie un modèle quasi vide, et tester la vérité y masquait
   // TOUTES les colonnes — le BPP sortait blanc.
-  const vm = getVisibilityModel('bpp', tableKey, schema);
+  const vm = getVisibilityModel(viewKey, tableKey, schema);
   return (schema || [])
     .filter(col => vm[col.key] !== false && isPrintableCol(col))
     .map(toPrintCol);
@@ -484,9 +489,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
   const [bppPrintSections, setBppPrintSections] = useState([]);
   const [bppPickerOpen, setBppPickerOpen] = useState(false);
   const [bppSelected, setBppSelected] = useState([]); // tableKeys cochés
-
-  const hasAnyBppRows = [rowsRideaux, rowsStores, rowsStoresBateaux, rowsTentureMurale, rowsMobilier]
-    .some(a => (a || []).length > 0);
+  const [tablePrintKind, setTablePrintKind] = useState('bpp'); // 'bpp' | 'bpf' : même impression tableau A3
 
   // Modules BPP possibles (avec leurs lignes courantes).
   const bppModulesCfg = () => [
@@ -497,25 +500,62 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
     { title: 'BPP Mobilier / Tête de Lit',                    rows: rowsMobilier,      schema: MOBILIER_PROD_SCHEMA,       tableKey: 'mobilier' },
   ];
 
+  // Modules BPF (mêmes tableaux que la vue BPF), imprimés comme le BPP : tableau A3.
+  const bpfModulesCfg = () => [
+    { title: 'BPF Rideaux',                rows: bpfRideaux,        schema: RIDEAUX_PROD_SCHEMA,        tableKey: 'rideaux' },
+    { title: 'BPF Stores Bateaux / Velum', rows: bpfStoresBateaux,  schema: STORES_BATEAUX_PROD_SCHEMA, tableKey: 'stores_bateaux' },
+    { title: 'BPF Coussins',               rows: bpfCoussins,       schema: COUSSINS_PROD_SCHEMA,       tableKey: 'coussins' },
+    { title: 'BPF Cache-Sommier',          rows: bpfCacheSommier,   schema: CACHE_SOMMIER_PROD_SCHEMA,  tableKey: 'cache_sommier' },
+    { title: 'BPF Plaids / Chemin de lit', rows: bpfPlaid,          schema: PLAID_PROD_SCHEMA,          tableKey: 'plaid' },
+    { title: 'BPF Mobilier / Tête de Lit', rows: bpfMobilier,       schema: MOBILIER_PROD_SCHEMA,       tableKey: 'mobilier' },
+    { title: 'BPF Tenture Murale',         rows: bpfTentureMurale,  schema: TENTURE_MURALE_PROD_SCHEMA, tableKey: 'tenture_murale' },
+  ];
+  const tablePrintCfg = () => (tablePrintKind === 'bpf' ? bpfModulesCfg() : bppModulesCfg());
+
   // Au clic : on ouvre le choix des modules (ceux qui ont des lignes), tout coché par défaut.
-  const handleOpenBppPrint = () => {
-    const available = bppModulesCfg().filter(s => (s.rows || []).length > 0);
+  const handleOpenBppPrint = (kind = 'bpp') => {
+    const cfg = kind === 'bpf' ? bpfModulesCfg() : bppModulesCfg();
+    const available = cfg.filter(s => (s.rows || []).length > 0);
     if (available.length === 0) return;
+    setTablePrintKind(kind);
     setBppSelected(available.map(s => s.tableKey));
     setBppPickerOpen(true);
   };
+  // --- IMPRESSION DES ÉTIQUETTES : choix du tableau, puis impression de ce tableau ---
+  const [etqPickerOpen, setEtqPickerOpen] = useState(false);
+  const [etqPrintSignal, setEtqPrintSignal] = useState({ key: null, n: 0 });
+  const etqTablesCfg = () => [
+    { key: 'rideaux', title: 'Étiquettes Rideaux', rows: bpfRideaux },
+    { key: 'stores_bateaux', title: 'Étiquettes Stores Bateaux / Velum', rows: bpfStoresBateaux },
+  ].filter(t => (t.rows || []).length > 0);
+  const printEtiquettes = (key) => {
+    setEtqPickerOpen(false);
+    setEtqPrintSignal(prev => ({ key, n: prev.n + 1 }));
+  };
+
+  // Bouton « Imprimer » global : selon la vue ouverte.
+  const handleGlobalPrint = () => {
+    if (stage === 'bpf') return handleOpenBppPrint('bpf');
+    if (stage === 'bpp') return handleOpenBppPrint('bpp');
+    if (stage === 'etiquettes') {
+      const tables = etqTablesCfg();
+      if (tables.length === 1) return printEtiquettes(tables[0].key);
+      if (tables.length > 1) setEtqPickerOpen(true);
+    }
+  };
+
   const toggleBppModule = (key) =>
     setBppSelected(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]);
 
   // Construit les sections des modules cochés (lit l'état courant des colonnes) et imprime.
   const runBppPrint = () => {
     const sel = new Set(bppSelected);
-    const sections = bppModulesCfg()
+    const sections = tablePrintCfg()
       .filter(s => (s.rows || []).length > 0 && sel.has(s.tableKey))
       .map(s => ({
         title: s.title,
         rows: s.rows,
-        columns: buildBppPrintColumns(s.schema, s.tableKey, `bpp_${s.tableKey}`),
+        columns: buildBppPrintColumns(s.schema, s.tableKey, `${tablePrintKind}_${s.tableKey}`, tablePrintKind),
       }))
       .filter(s => s.columns.length > 0);
     setBppPickerOpen(false);
@@ -793,25 +833,23 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
     alert("Données de test ajoutées ! (3 lignes)");
   };
 
-  // Helper styles for Header inside Card
+  // Titre de section (Prise de cotes, Suivi de projet) : même rendu que les titres de tableaux
+  // du chiffrage — texte Roboto, pas de majuscules ni de carte autour.
   const cardHeaderStyle = {
-    padding: '16px 20px',
-    borderBottom: `1px solid ${COLORS.border}`,
-    fontWeight: 700,
-    fontSize: 14,
-    color: '#374151',
-    textTransform: 'uppercase'
+    padding: '0 4px',
+    height: STICKY_TITLE_HEIGHT,
+    position: 'sticky', top: 0, zIndex: 6, background: '#ffffff', // titre collant
+    display: 'flex',
+    alignItems: 'center',
+    fontWeight: 500,
+    fontSize: 20,
+    fontFamily: 'Roboto, system-ui, sans-serif',
+    color: '#111827',
   };
 
-  // Card wrapper style
+  // Conteneur de section : sans cadre (le tableau garde son propre contour)
   const cardStyle = {
-    ...S.modernCard,
-    padding: 0,
-    marginBottom: 24,
-    overflow: 'visible', // Visible for shadows of children
-    background: isMobile ? 'transparent' : 'white',
-    boxShadow: isMobile ? 'none' : S.modernCard.boxShadow,
-    border: isMobile ? 'none' : S.modernCard.border
+    marginBottom: 28,
   };
 
   // Helper Style Island Nav (White + Navy Pill)
@@ -838,7 +876,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
   }
 
   return (
-    <div style={isMobile ? { padding: '16px', background: '#F9F7F2', minHeight: '100vh' } : S.contentWide}>
+    <div style={isMobile ? { padding: '16px', background: '#FFFFFF', minHeight: '100vh' } : S.contentWide}>
       {/* CSS Fallback for Island Nav Scroll */}
       <style>{`
         .island-nav-container::-webkit-scrollbar { display: none; }
@@ -857,7 +895,10 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
         >
           ← Retour
         </button>
+        {/* En-tête sans cadre (même modèle que le chiffrage) : titre, puis une seule ligne d'infos
+            (chargé d'affaires, date, statut, adresse, type, livraison + phases) */}
         <HeaderCard
+          bare
           stacked={isMobile}
           left={
             <>
@@ -865,17 +906,12 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                 value={project?.name || ""}
                 canEdit={canEditHeader}
                 placeholder="—"
-                fontSize={isMobile ? 24 : 30}
+                fontSize={isMobile ? 26 : 34}
+                fontWeight={400}
+                fontFamily="Roboto, system-ui, sans-serif"
                 onSave={(v) => onUpdateProject(project.id, { name: v })}
               />
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 14, flexWrap: 'wrap' }}>
-                <StatusPill
-                  value={project?.status || "TODO"}
-                  options={PROJECT_STATUS_OPTIONS}
-                  onChange={(v) => onUpdateProject(project.id, { status: v })}
-                />
-              </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px 28px', alignItems: 'flex-start', marginTop: 18 }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px 28px', alignItems: 'flex-end', marginTop: 16 }}>
                 <MetaItem label="Chargé d'affaires">
                   <OwnerPicker
                     value={project?.manager || ""}
@@ -885,23 +921,24 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                   />
                 </MetaItem>
                 <MetaItem label="Créé le">{formatAnyDateFR(project?.created_at || project?.createdAt)}</MetaItem>
-              </div>
-            </>
-          }
-          right={
-            <HeaderPanel title="Livraison & logistique" tone="logistics">
-              <div style={{ display: 'grid', gridTemplateColumns: '90px minmax(0,1fr)', gap: '16px 18px', alignItems: 'center', fontSize: 13 }}>
-                <span style={{ color: '#6B7280', fontWeight: 500 }}>Adresse</span>
+                <MetaItem label="Statut">
+                  <StatusPill
+                    value={project?.status || "TODO"}
+                    options={PROJECT_STATUS_OPTIONS}
+                    onChange={(v) => onUpdateProject(project.id, { status: v })}
+                  />
+                </MetaItem>
+                <MetaItem label="Adresse">
                 <AddressAutocomplete
                   value={addressDraft}
                   onChange={setAddressDraft}
                   onCommit={(v) => { if (v !== (project?.location || "")) onUpdateProject(project.id, { location: v }); }}
                   placeholder="Saisir une adresse…"
-                  style={{ width: '100%', maxWidth: 420 }}
+                  style={{ width: 300 }}
                   inputStyle={{ border: '1px solid #E5E7EB', borderRadius: 6, padding: '4px 8px', background: 'white', color: '#1F2937' }}
                 />
-
-                <span style={{ color: '#6B7280', fontWeight: 500 }}>Type</span>
+                </MetaItem>
+                <MetaItem label="Type">
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                   <select
                     value={project?.intervention_type || "livraison"}
@@ -925,8 +962,8 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                     </>
                   )}
                 </div>
-
-                <span style={{ color: '#6B7280', fontWeight: 500 }}>Livraison</span>
+                </MetaItem>
+                <MetaItem label="Livraison">
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                   <input
                     type="date"
@@ -1020,26 +1057,28 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                     )}
                   </div>
                 </div>
+                </MetaItem>
               </div>
-            </HeaderPanel>
+            </>
           }
         />
 
-        {/* Actions */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: isMobile ? 'flex-start' : 'flex-end', gap: 10, flexWrap: 'wrap', marginTop: 12 }}>
+        {/* Ligne des vues : actions du dossier à gauche, vues au centre, docs + impression à droite */}
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'minmax(0,1fr)' : 'minmax(0,1fr) auto minmax(0,1fr)', alignItems: 'center', gap: 16, marginTop: 104, paddingBottom: 8 }}>
+          {/* Actions du dossier (à gauche) */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-start' }}>
             {/* Matériauthèque Button */}
             <button
               onClick={() => setShowMaterials(true)}
               style={{
                 display: 'flex', alignItems: 'center', gap: 8,
-                background: projectMaterials.length > 0 ? '#EDE9FE' : 'white',
-                border: `1px solid ${projectMaterials.length > 0 ? '#C4B5FD' : '#E5E7EB'}`,
-                borderRadius: 20,
-                padding: '7px 16px',
-                boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+                background: 'white',
+                border: '1px solid #E5E7EB',
+                borderRadius: 8,
+                padding: '8px 14px',
                 cursor: 'pointer',
                 fontSize: 13,
-                color: projectMaterials.length > 0 ? '#5B21B6' : '#374151',
+                color: '#374151',
                 fontWeight: 600,
                 outline: 'none',
                 flex: 'initial', justifyContent: 'center'
@@ -1049,27 +1088,6 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
               Matériauthèque{projectMaterials.length > 0 ? ` (${projectMaterials.length})` : ''}
             </button>
 
-            {/* Documents Button - Visible Mobile & Desktop */}
-            <button
-              onClick={() => setShowDocs(true)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 8,
-                background: 'white',
-                border: '1px solid #E5E7EB',
-                borderRadius: 20,
-                padding: '7px 16px',
-                boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
-                cursor: 'pointer',
-                fontSize: 13,
-                color: '#374151',
-                fontWeight: 600,
-                outline: 'none',
-                flex: 'initial', justifyContent: 'center'
-              }}
-            >
-              <FileText size={16} color="#4B5563" />
-              Docs ({project?.documents?.length || 0})
-            </button>
             {/* Stock Button (Header) - Hidden on Mobile */}
             {!isMobile && (
               <button
@@ -1078,9 +1096,8 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                   display: 'flex', alignItems: 'center', gap: 8,
                   background: 'white',
                   border: '1px solid #E5E7EB',
-                  borderRadius: 20,
-                  padding: '7px 16px',
-                  boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+                  borderRadius: 8,
+                  padding: '8px 14px',
                   cursor: 'pointer',
                   fontSize: 13,
                   color: '#374151',
@@ -1089,146 +1106,123 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                   flex: 'initial', justifyContent: 'center'
                 }}
               >
-                Stock
+                <Package size={16} /> Stock
               </button>
             )}
-
-        </div>
-      </div>
-
-      {/* Island Navigation */}
-      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 24, position: 'relative' }}>
-
-        <div
-          className="island-nav-container"
-          style={{
-            display: 'inline-flex',
-            background: 'white',
-            padding: 5,
-            borderRadius: 99,
-            gap: 4,
-            flexWrap: isMobile ? 'nowrap' : 'wrap',
-            justifyContent: isMobile ? 'space-between' : 'center',
-            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)',
-            maxWidth: '100%',
-            overflowX: isMobile ? 'auto' : 'visible',
-            width: isMobile ? '100%' : 'auto',
-            position: 'relative', zIndex: 1
-          }}>
-          {visibleStages.map((p) => (
+          </div>
+          <div className="island-nav-container" style={{ display: 'inline-flex', gap: 2, maxWidth: '100%', overflowX: isMobile ? 'auto' : 'visible', justifySelf: 'center' }}>
+            {visibleStages.map((p) => (
+              <button
+                key={p.key}
+                style={{
+                  ...getNavStyle(stage === p.key),
+                  flex: isMobile ? '1 0 auto' : 'initial' // Allow grow on mobile
+                }}
+                onClick={() => setStage(p.key)}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+          {/* Documents + impression (à droite) */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: isMobile ? 'flex-start' : 'flex-end', gap: 10, flexWrap: 'wrap' }}>
+            {/* Documents Button - Visible Mobile & Desktop */}
             <button
-              key={p.key}
+              onClick={() => setShowDocs(true)}
               style={{
-                ...getNavStyle(stage === p.key),
-                flex: isMobile ? '1 0 auto' : 'initial' // Allow grow on mobile
+                display: 'flex', alignItems: 'center', gap: 8,
+                background: 'white',
+                border: '1px solid #E5E7EB',
+                borderRadius: 8,
+                padding: '8px 14px',
+                cursor: 'pointer',
+                fontSize: 13,
+                color: '#374151',
+                fontWeight: 600,
+                outline: 'none',
+                flex: 'initial', justifyContent: 'center'
               }}
-              onClick={() => setStage(p.key)}
             >
-              {p.label}
+              <FileText size={16} />
+              Docs ({project?.documents?.length || 0})
             </button>
-          ))}
+            {/* Imprimer : s'adapte à la vue (tableaux BPF / BPP en A3, ou étiquettes) */}
+            {['bpf', 'bpp', 'etiquettes'].includes(stage) && (
+              <button
+                onClick={handleGlobalPrint}
+                title={stage === 'etiquettes' ? 'Imprimer des étiquettes' : `Imprimer le ${stage.toUpperCase()} (A3)`}
+                style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                background: 'white',
+                border: '1px solid #E5E7EB',
+                borderRadius: 8,
+                padding: '8px 14px',
+                cursor: 'pointer',
+                fontSize: 13,
+                color: '#374151',
+                fontWeight: 600,
+                outline: 'none',
+                flex: 'initial', justifyContent: 'center'
+              }}
+              >
+                <Printer size={16} /> Imprimer
+              </button>
+            )}
+          </div>
         </div>
       </div>
-
-
 
       {stage === "dashboard" && (
         <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 24, alignItems: 'flex-start' }}>
 
           {/* ── COLONNE GAUCHE : stats ── */}
-          <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 16, paddingTop: 4 }}>
 
-            {/* Chapitre 1 : Consommation Temps */}
-            <div style={{ background: 'white', borderRadius: 12, border: `1px solid ${COLORS.border}`, padding: 20 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-                <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0, color: '#111827', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  ⏱️ Consommation Temps
-                </h3>
+            {/* Consommation temps : réalisé vs budget par service (grands chiffres fins) */}
+            <SoftBlock
+              title="Consommation temps"
+              subtitle="Heures réalisées / budget"
+              actions={<>
                 {canEditProd && (
-                  <button onClick={handleOpenBudget} style={{ ...S.smallBtn, padding: 4 }} title="Ajuster le budget">
+                  <button onClick={handleOpenBudget} title="Ajuster le budget" style={{ border: 'none', background: 'white', cursor: 'pointer', color: '#5B616B', width: 28, height: 28, borderRadius: 8, display: 'grid', placeItems: 'center' }}>
                     <Edit2 size={14} />
                   </button>
                 )}
-                <div style={{ marginLeft: 'auto' }}>
-                  <OdooStatusBadge
-                    projectName={project?.name}
-                    projectId={project?.id}
-                    idProjetOdoo={project?.id_projet_odoo}
-                    onLink={(odooId) => onUpdateProject && project && onUpdateProject(project.id, { id_projet_odoo: odooId })}
-                  />
-                </div>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
-                {['prepa', 'conf', 'pose'].map(key => {
+                <OdooStatusBadge
+                  projectName={project?.name}
+                  projectId={project?.id}
+                  idProjetOdoo={project?.id_projet_odoo}
+                  onLink={(odooId) => onUpdateProject && project && onUpdateProject(project.id, { id_projet_odoo: odooId })}
+                />
+              </>}
+            >
+              <KpiGrid min={150}>
+                {[['prepa', 'Préparation'], ['conf', 'Confection'], ['pose', 'Pose']].map(([key, label]) => {
                   const budgetVal = Number(project.budget?.[key] || 0);
                   const realVal = realized[key] || 0;
-                  const percent = budgetVal > 0 ? (realVal / budgetVal) * 100 : 0;
-                  const color = percent > 100 ? '#ef4444' : percent > 80 ? '#f59e0b' : '#10b981';
-                  const labels = { prepa: "Préparation & Métrage", conf: "Atelier / Confection", pose: "Pose & Logistique" };
-
+                  const fmtH = (n) => String(Math.round(n * 10) / 10).replace('.', ',');
                   return (
-                    <div key={key} style={{ background: '#F9FAFB', borderRadius: 8, padding: 12, border: '1px solid #F3F4F6' }}>
-                      <div style={{ fontSize: 12, color: '#6B7280', fontWeight: 600, marginBottom: 4 }}>{labels[key]}</div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
-                        <span style={{ fontSize: 20, fontWeight: 800, color: '#1F2937' }}>{realVal.toFixed(1)}h</span>
-                        <span style={{ fontSize: 13, color: '#9CA3AF' }}>
-                          / {budgetVal}h
-                          {budgetVal > 0 && (
-                            <span style={{ marginLeft: 5, fontSize: 11, color: color, fontWeight: 700 }}>
-                              — {Math.round(percent)}%
-                            </span>
-                          )}
-                        </span>
-                      </div>
-                      <div style={{ height: 6, background: '#E5E7EB', borderRadius: 3, overflow: 'hidden' }}>
-                        <div style={{ width: `${Math.min(percent, 100)}%`, height: '100%', background: color, transition: 'width 0.3s' }} />
-                      </div>
-                    </div>
+                    <Kpi
+                      key={key}
+                      label={label}
+                      value={fmtH(realVal)}
+                      unit="h"
+                      total={`${fmtH(budgetVal)} h`}
+                      pct={budgetVal > 0 ? (realVal / budgetVal) * 100 : null}
+                    />
                   );
                 })}
-              </div>
-            </div>
+              </KpiGrid>
+            </SoftBlock>
 
-            {/* Chapitre 2 : Avancement */}
-            <div style={{ background: 'white', borderRadius: 12, border: `1px solid ${COLORS.border}`, padding: 20 }}>
-              <h3 style={{ fontSize: 16, fontWeight: 700, margin: '0 0 16px', color: '#111827', display: 'flex', alignItems: 'center', gap: 8 }}>
-                📊 Avancement
-              </h3>
-              <DashboardTiles rows={rows} budget={project?.budget || {}} isMobile={isMobile} />
-            </div>
+            {/* Avancement : un indicateur par étape */}
+            <SoftBlock title="Avancement" subtitle="Par étape du dossier">
+              <DashboardTiles rows={rows} budget={project?.budget || {}} />
+            </SoftBlock>
           </div>
 
-          {/* ── COLONNE DROITE : mur + journal ── */}
-          <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>
-
-            {/* Mur du projet */}
-            <div style={{ background: 'white', padding: 16, borderRadius: 12, border: `1px solid ${COLORS.border}` }}>
-              <textarea
-                placeholder="Écrire un message global..."
-                value={wallMsg}
-                onChange={(e) => setWallMsg(e.target.value)}
-                style={{ width: '100%', border: '1px solid #E5E7EB', borderRadius: 8, padding: 12, minHeight: 60, marginBottom: 12, fontFamily: 'inherit', boxSizing: 'border-box' }}
-              />
-              {wallImg && (
-                <div style={{ marginBottom: 12, position: 'relative', display: 'inline-block' }}>
-                  <img src={wallImg} alt="Preview" style={{ height: 80, borderRadius: 6, border: '1px solid #ddd' }} />
-                  <button onClick={() => setWallImg(null)} style={{ position: 'absolute', top: -5, right: -5, background: 'red', color: 'white', borderRadius: '50%', width: 20, height: 20, border: 'none', cursor: 'pointer', fontSize: 12 }}>×</button>
-                </div>
-              )}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
-                <label style={{ cursor: wallUploading ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#4B5563', padding: '10px 12px', borderRadius: 6, background: '#F3F4F6', opacity: wallUploading ? 0.6 : 1 }}>
-                  <ImageIcon size={16} /> {wallUploading ? 'Envoi…' : 'Ajouter photo'}
-                  <input type="file" accept="image/*" hidden disabled={wallUploading} onChange={handleImageSelect} />
-                </label>
-                <button
-                  onClick={handlePostMessage}
-                  disabled={wallUploading}
-                  style={{ background: '#2563EB', color: 'white', border: 'none', padding: '10px 20px', borderRadius: 6, fontWeight: 600, cursor: wallUploading ? 'wait' : 'pointer', opacity: wallUploading ? 0.6 : 1 }}
-                >
-                  Publier
-                </button>
-              </div>
-            </div>
+          {/* ── COLONNE DROITE : journal (avec la zone d'écriture du mur) ── */}
+          <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 16, paddingTop: 4 }}>
 
             <ProjectActivityFeed
               rows={rows}
@@ -1237,6 +1231,39 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
               onTogglePin={handleTogglePin}
               isMobile={isMobile}
               projectId={project?.id}
+              composer={
+                /* Écrire au mur du projet : une ligne qui s'agrandit avec le texte ; ⌘/Ctrl+Entrée publie */
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, border: '1px solid #E5E7EB', borderRadius: 8, padding: '6px 6px 6px 10px', background: 'white' }}>
+                    <label title={wallUploading ? 'Envoi…' : 'Ajouter une photo'} style={{ cursor: wallUploading ? 'wait' : 'pointer', color: '#9B9A97', display: 'grid', placeItems: 'center', height: 30, opacity: wallUploading ? 0.5 : 1 }}>
+                      <ImageIcon size={17} />
+                      <input type="file" accept="image/*" hidden disabled={wallUploading} onChange={handleImageSelect} />
+                    </label>
+                    <textarea
+                      placeholder="Écrire un message…"
+                      value={wallMsg}
+                      rows={Math.min(8, Math.max(1, (wallMsg || '').split('\n').length))}
+                      onChange={(e) => setWallMsg(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); if (!wallUploading) handlePostMessage(); } }}
+                      style={{ flex: 1, border: 'none', outline: 'none', resize: 'none', padding: '6px 0', fontSize: 14, lineHeight: 1.45, fontFamily: 'Roboto, system-ui, sans-serif', color: '#37352F', background: 'transparent' }}
+                    />
+                    <button
+                      onClick={handlePostMessage}
+                      disabled={wallUploading}
+                      title="Publier (⌘ + Entrée)"
+                      style={{ background: (wallMsg || wallImg) ? '#1E2447' : '#EDEDEB', color: (wallMsg || wallImg) ? 'white' : '#9B9A97', border: 'none', padding: '7px 14px', borderRadius: 6, fontSize: 13, fontWeight: 500, cursor: wallUploading ? 'wait' : 'pointer', transition: 'background .15s, color .15s' }}
+                    >
+                      Publier
+                    </button>
+                  </div>
+                  {wallImg && (
+                    <div style={{ marginTop: 8, position: 'relative', display: 'inline-block' }}>
+                      <img src={wallImg} alt="Aperçu" style={{ height: 72, borderRadius: 6, border: '1px solid #E5E7EB' }} />
+                      <button onClick={() => setWallImg(null)} title="Retirer la photo" style={{ position: 'absolute', top: -6, right: -6, background: '#37352F', color: 'white', borderRadius: '50%', width: 18, height: 18, border: 'none', cursor: 'pointer', fontSize: 11, lineHeight: '18px', padding: 0 }}>×</button>
+                    </div>
+                  )}
+                </div>
+              }
             />
           </div>
         </div>
@@ -1262,6 +1289,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
               rows={bpfRideaux}
               onRowsChange={mergeChildRowsFor("rideaux")}
               schema={RIDEAUX_PROD_SCHEMA}
+              printSignal={etqPrintSignal.key === 'rideaux' ? etqPrintSignal.n : 0}
               projectName={projectName}
               project={project}
               onUpdateProject={onUpdateProject}
@@ -1275,6 +1303,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
               rows={bpfStoresBateaux}
               onRowsChange={(nr) => handleSubsetChange(nr, /store (bateau|velum)/i)}
               schema={STORES_BATEAUX_PROD_SCHEMA}
+              printSignal={etqPrintSignal.key === 'stores_bateaux' ? etqPrintSignal.n : 0}
               projectName={projectName}
               project={project}
               onUpdateProject={onUpdateProject}
@@ -1310,6 +1339,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
             <div style={cardStyle}>
               <div style={cardHeaderStyle}>Prise de Cote Rideaux / Voilages</div>
               <MinuteGrid
+                stickyTop={STICKY_TITLE_HEIGHT}
                 rows={rowsRideaux}
                 onRowsChange={mergeChildRowsFor("rideaux")}
                 schema={RIDEAUX_PROD_SCHEMA}
@@ -1333,6 +1363,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
             <div style={cardStyle}>
               <div style={cardHeaderStyle}>Prise de Cote Stores Négoce</div>
               <MinuteGrid
+                stickyTop={STICKY_TITLE_HEIGHT}
                 rows={rowsStores}
                 onRowsChange={mergeChildRowsFor("stores")}
                 schema={STORES_PROD_SCHEMA}
@@ -1353,6 +1384,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
             <div style={cardStyle}>
               <div style={cardHeaderStyle}>Prise de Cote Stores Bateaux / Velum</div>
               <MinuteGrid
+                stickyTop={STICKY_TITLE_HEIGHT}
                 rows={rowsStoresBateaux}
                 onRowsChange={(nr) => handleSubsetChange(nr, /store (bateau|velum)/i)}
                 schema={STORES_BATEAUX_PROD_SCHEMA}
@@ -1373,6 +1405,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
             <div style={cardStyle}>
               <div style={cardHeaderStyle}>Prise de Cote Tenture Murale</div>
               <MinuteGrid
+                stickyTop={STICKY_TITLE_HEIGHT}
                 rows={rowsTentureMurale}
                 onRowsChange={(nr) => handleSubsetChange(nr, /tenture murale/i)}
                 schema={TENTURE_MURALE_PROD_SCHEMA}
@@ -1393,6 +1426,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
             <div style={cardStyle}>
               <div style={cardHeaderStyle}>Prise de Cote Coussins</div>
               <MinuteGrid
+                stickyTop={STICKY_TITLE_HEIGHT}
                 rows={rowsCoussins}
                 onRowsChange={(nr) => handleSubsetChange(nr, /coussin/i)}
                 schema={COUSSINS_PROD_SCHEMA}
@@ -1413,6 +1447,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
             <div style={cardStyle}>
               <div style={cardHeaderStyle}>Prise de Cote Plaids / Chemins de Lit</div>
               <MinuteGrid
+                stickyTop={STICKY_TITLE_HEIGHT}
                 rows={rowsPlaid}
                 onRowsChange={(nr) => handleSubsetChange(nr, /plaid/i)}
                 schema={PLAID_PROD_SCHEMA}
@@ -1433,6 +1468,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
             <div style={cardStyle}>
               <div style={cardHeaderStyle}>Prise de Cote Mobilier / Tête de Lit</div>
               <MinuteGrid
+                stickyTop={STICKY_TITLE_HEIGHT}
                 rows={rowsMobilier}
                 onRowsChange={(nr) => handleSubsetChange(nr, MOBILIER_PRODUIT_RE)}
                 schema={MOBILIER_PROD_SCHEMA}
@@ -1453,6 +1489,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
             <div style={cardStyle}>
               <div style={cardHeaderStyle}>Prise de Cote Cache-Sommier</div>
               <MinuteGrid
+                stickyTop={STICKY_TITLE_HEIGHT}
                 rows={rowsCacheSommier}
                 onRowsChange={(nr) => handleSubsetChange(nr, /cache-sommier/i)}
                 schema={CACHE_SOMMIER_PROD_SCHEMA}
@@ -1476,6 +1513,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
         <div style={cardStyle}>
           <div style={cardHeaderStyle}>Suivi de projet</div>
           <MinuteGrid
+            stickyTop={STICKY_TITLE_HEIGHT}
             rows={filteredRows} // Suivi shows all rows
             onRowsChange={handleRowsChangeInstallation}
             schema={schema}
@@ -1502,6 +1540,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
               onToggle={() => togglePanel('bpf_rideaux')}
             >
                 <MinuteGrid
+                  stickyTop={STICKY_TITLE_HEIGHT}
                   rows={bpfRideaux}
                   onRowsChange={mergeChildRowsFor("rideaux")}
                   schema={RIDEAUX_PROD_SCHEMA}
@@ -1531,6 +1570,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
               onToggle={() => togglePanel('bpf_stores_bateaux')}
             >
                 <MinuteGrid
+                  stickyTop={STICKY_TITLE_HEIGHT}
                   rows={bpfStoresBateaux}
                   onRowsChange={(nr) => handleSubsetChange(nr, /store (bateau|velum)/i, r => /store (bateau|velum)/i.test(String(r.produit || "")) && !isSousTraite(r))}
                   schema={STORES_BATEAUX_PROD_SCHEMA}
@@ -1554,6 +1594,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
               onToggle={() => togglePanel('bpf_coussins')}
             >
                 <MinuteGrid
+                  stickyTop={STICKY_TITLE_HEIGHT}
                   rows={bpfCoussins}
                   onRowsChange={(nr) => handleSubsetChange(nr, /coussin/i)}
                   schema={COUSSINS_PROD_SCHEMA}
@@ -1578,6 +1619,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
               onToggle={() => togglePanel('bpf_cache_sommier')}
             >
                 <MinuteGrid
+                  stickyTop={STICKY_TITLE_HEIGHT}
                   rows={bpfCacheSommier}
                   onRowsChange={(nr) => handleSubsetChange(nr, /cache-sommier/i)}
                   schema={CACHE_SOMMIER_PROD_SCHEMA}
@@ -1602,6 +1644,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
               onToggle={() => togglePanel('bpf_plaid')}
             >
                 <MinuteGrid
+                  stickyTop={STICKY_TITLE_HEIGHT}
                   rows={bpfPlaid}
                   onRowsChange={(nr) => handleSubsetChange(nr, /plaid/i)}
                   schema={PLAID_PROD_SCHEMA}
@@ -1626,6 +1669,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
               onToggle={() => togglePanel('bpf_mobilier')}
             >
                 <MinuteGrid
+                  stickyTop={STICKY_TITLE_HEIGHT}
                   rows={bpfMobilier}
                   onRowsChange={(nr) => handleSubsetChange(nr, MOBILIER_PRODUIT_RE)}
                   schema={MOBILIER_PROD_SCHEMA}
@@ -1650,6 +1694,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
               onToggle={() => togglePanel('bpf_tenture_murale')}
             >
                 <MinuteGrid
+                  stickyTop={STICKY_TITLE_HEIGHT}
                   rows={bpfTentureMurale}
                   onRowsChange={(nr) => handleSubsetChange(nr, /tenture murale/i)}
                   schema={TENTURE_MURALE_PROD_SCHEMA}
@@ -1670,23 +1715,6 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
 
       {stage === "bpp" && (
         <>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '0 0 12px' }}>
-            <button
-              onClick={handleOpenBppPrint}
-              disabled={!hasAnyBppRows}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 8,
-                background: !hasAnyBppRows ? '#E5E7EB' : '#1E2447',
-                color: !hasAnyBppRows ? '#9CA3AF' : '#fff',
-                border: 'none', borderRadius: 8, padding: '10px 18px',
-                fontWeight: 600, fontSize: 14,
-                cursor: !hasAnyBppRows ? 'not-allowed' : 'pointer',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-              }}
-            >
-              <Printer size={18} /> Imprimer le BPP (A3)
-            </button>
-          </div>
           {rowsRideaux.length > 0 && (
             <SectionPanel
               title="BPP Rideaux (Préparation Mécanismes)"
@@ -1695,6 +1723,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
               onToggle={() => togglePanel('bpp_rideaux')}
             >
                 <MinuteGrid
+                  stickyTop={STICKY_TITLE_HEIGHT}
                   rows={rowsRideaux}
                   onRowsChange={mergeChildRowsFor("rideaux")}
                   schema={RIDEAUX_PROD_SCHEMA}
@@ -1722,6 +1751,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
               onToggle={() => togglePanel('bpp_stores')}
             >
                 <MinuteGrid
+                  stickyTop={STICKY_TITLE_HEIGHT}
                   rows={rowsStores}
                   onRowsChange={mergeChildRowsFor("stores")}
                   schema={STORES_PROD_SCHEMA}
@@ -1746,6 +1776,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
               onToggle={() => togglePanel('bpp_stores_bateaux')}
             >
                 <MinuteGrid
+                  stickyTop={STICKY_TITLE_HEIGHT}
                   rows={rowsStoresBateaux}
                   onRowsChange={(nr) => handleSubsetChange(nr, /store (bateau|velum)/i)}
                   schema={STORES_BATEAUX_PROD_SCHEMA}
@@ -1770,6 +1801,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
               onToggle={() => togglePanel('bpp_tenture_murale')}
             >
                 <MinuteGrid
+                  stickyTop={STICKY_TITLE_HEIGHT}
                   rows={rowsTentureMurale}
                   onRowsChange={(nr) => handleSubsetChange(nr, /tenture murale/i)}
                   schema={TENTURE_MURALE_PROD_SCHEMA}
@@ -1794,6 +1826,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
               onToggle={() => togglePanel('bpp_mobilier')}
             >
                 <MinuteGrid
+                  stickyTop={STICKY_TITLE_HEIGHT}
                   rows={rowsMobilier}
                   onRowsChange={(nr) => handleSubsetChange(nr, MOBILIER_PRODUIT_RE)}
                   schema={MOBILIER_PROD_SCHEMA}
@@ -1813,13 +1846,13 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
       )}
 
       {bppPickerOpen && (() => {
-        const available = bppModulesCfg().filter(s => (s.rows || []).length > 0);
+        const available = tablePrintCfg().filter(s => (s.rows || []).length > 0);
         const allChecked = available.length > 0 && available.every(s => bppSelected.includes(s.tableKey));
         return (
           <div onClick={() => setBppPickerOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(17,24,39,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: 16 }}>
             <div onClick={(e) => e.stopPropagation()} style={{ background: 'white', borderRadius: 14, width: 'min(480px, 100%)', boxShadow: '0 20px 50px rgba(0,0,0,0.3)', overflow: 'hidden' }}>
               <div style={{ padding: '16px 18px', borderBottom: '1px solid #E5E7EB', fontWeight: 800, fontSize: 16, color: '#111827' }}>
-                Imprimer le BPP — choisir les tableaux
+                Imprimer le {tablePrintKind === 'bpf' ? 'BPF' : 'BPP'} — choisir les tableaux
               </div>
               <div style={{ padding: '6px 8px 4px', maxHeight: '55vh', overflowY: 'auto' }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', cursor: 'pointer', fontSize: 12, color: '#6B7280' }}>
@@ -1846,11 +1879,32 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
         );
       })()}
 
+      {etqPickerOpen && (
+        <div onClick={() => setEtqPickerOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(17,24,39,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: 16 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: 'white', borderRadius: 14, width: 'min(420px, 100%)', boxShadow: '0 20px 50px rgba(0,0,0,0.3)', overflow: 'hidden', fontFamily: 'Roboto, system-ui, sans-serif' }}>
+            <div style={{ padding: '16px 18px 6px', fontWeight: 500, fontSize: 17, color: '#111827' }}>Imprimer des étiquettes</div>
+            <div style={{ padding: '0 18px 10px', fontSize: 13, color: '#8A8F98' }}>Choisis le tableau : l'impression reprend ses réglages (champs, couleurs).</div>
+            {etqTablesCfg().map(t => (
+              <button key={t.key} onClick={() => printEtiquettes(t.key)} style={{ display: 'flex', width: '100%', alignItems: 'center', gap: 10, padding: '12px 18px', border: 'none', borderTop: '1px solid #F3F4F6', background: 'white', cursor: 'pointer', fontSize: 14, fontFamily: 'inherit', textAlign: 'left' }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = '#F7F7F5'; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'white'; }}>
+                <Printer size={16} color="#5B616B" />
+                <span style={{ flex: 1, color: '#111827' }}>{t.title}</span>
+                <span style={{ fontSize: 12, color: '#9CA3AF' }}>{t.rows.length} ligne{t.rows.length > 1 ? 's' : ''}</span>
+              </button>
+            ))}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '10px 16px', borderTop: '1px solid #E5E7EB' }}>
+              <button onClick={() => setEtqPickerOpen(false)} style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid #E5E7EB', background: 'white', cursor: 'pointer', fontSize: 13 }}>Annuler</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showBppPrint && (
         <BPPPrintPortal
           sections={bppPrintSections}
           projectName={project?.name}
           manager={project?.manager}
+          docLabel={tablePrintKind === 'bpf' ? 'BPF' : 'BPP'}
           onClose={() => setShowBppPrint(false)}
         />
       )}

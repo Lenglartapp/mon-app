@@ -33,13 +33,20 @@ import { MOBILIER_PRODUIT_RE, STORE_CLASSIQUE_DEFAUT } from "../lib/constants/pr
 
 
 
-function SectionPanel({ title, count, expanded, onToggle, onDelete, readOnly, children }) {
+const SECTION_TITLE_HEIGHT = 44;
+
+function SectionPanel({ title, count, expanded, onToggle, onDelete, readOnly, sticky = true, children }) {
   return (
-    <div style={{ marginBottom: 24, borderRadius: 12, background: 'white', overflow: 'hidden', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', border: '1px solid #f3f4f6' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px', height: 56, borderBottom: expanded ? '1px solid #f3f4f6' : 'none', backgroundColor: '#fff' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <h3 style={{ margin: 0, fontSize: 18, color: '#111827', fontWeight: 700 }}>{title}</h3>
-          <span style={{ background: '#f3f4f6', color: '#4b5563', padding: '2px 8px', borderRadius: 12, fontSize: 12, fontWeight: 600 }}>{count} articles</span>
+    <div style={{ marginBottom: 28 }}>
+      {/* Titre collant (sauf sticky=false) : reste en haut de l'écran tant qu'on défile dans ce tableau */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px', height: SECTION_TITLE_HEIGHT, ...(sticky ? { position: 'sticky', top: 0, zIndex: 6, background: '#ffffff' } : {}) }}>
+        {/* Flèche à gauche du titre ; le titre lui-même replie / déplie aussi */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <IconButton size="small" onClick={onToggle} title={expanded ? 'Replier' : 'Déplier'} sx={{ color: '#9B9A97', ml: -0.5 }}>
+            <ExpandMoreIcon sx={{ fontSize: 20, transform: expanded ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.2s ease' }} />
+          </IconButton>
+          <h3 onClick={onToggle} style={{ margin: 0, fontSize: 20, color: '#111827', fontWeight: 500, fontFamily: 'Roboto, system-ui, sans-serif', cursor: 'pointer' }}>{title}</h3>
+          <span style={{ color: '#9B9A97', fontSize: 13, fontFamily: 'Roboto, system-ui, sans-serif', marginLeft: 4, alignSelf: 'flex-end', paddingBottom: 3 }}>{count} {count > 1 ? 'articles' : 'article'}</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
           {onDelete && !readOnly && (
@@ -47,9 +54,6 @@ function SectionPanel({ title, count, expanded, onToggle, onDelete, readOnly, ch
               <Trash2 size={16} />
             </IconButton>
           )}
-          <IconButton size="small" onClick={onToggle} sx={{ color: '#6b7280' }}>
-            <ExpandMoreIcon sx={{ transform: expanded ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.2s ease' }} />
-          </IconButton>
         </div>
       </div>
       <Collapse in={expanded} timeout="auto" unmountOnExit>
@@ -627,6 +631,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
             readOnly={readOnly}
           >
             <MinuteGrid
+              stickyTop={SECTION_TITLE_HEIGHT}
               title=""
               rows={rowsRideaux}
               onRowsChange={mergeChildRowsFor("rideaux")}
@@ -668,6 +673,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
             readOnly={readOnly}
           >
             <MinuteGrid
+              stickyTop={SECTION_TITLE_HEIGHT}
               title=""
               rows={rowsStore}
               onRowsChange={mergeChildRowsFor("store")}
@@ -703,6 +709,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
             readOnly={readOnly}
           >
             <MinuteGrid
+              stickyTop={SECTION_TITLE_HEIGHT}
               title=""
               rows={rowsStoresBateau}
               onRowsChange={mergeChildRowsFor("store_bateau")}
@@ -741,6 +748,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
             readOnly={readOnly}
           >
             <MinuteGrid
+              stickyTop={SECTION_TITLE_HEIGHT}
               title=""
               rows={rowsCoussins}
               onRowsChange={mergeChildRowsFor("coussins")}
@@ -779,6 +787,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
             readOnly={readOnly}
           >
             <MinuteGrid
+              stickyTop={SECTION_TITLE_HEIGHT}
               title=""
               rows={rowsCacheSommier}
               onRowsChange={mergeChildRowsFor("cache_sommier")}
@@ -817,6 +826,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
             readOnly={readOnly}
           >
             <MinuteGrid
+              stickyTop={SECTION_TITLE_HEIGHT}
               title=""
               rows={rowsPlaid}
               onRowsChange={mergeChildRowsFor("plaid")}
@@ -855,6 +865,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
             readOnly={readOnly}
           >
             <MinuteGrid
+              stickyTop={SECTION_TITLE_HEIGHT}
               title=""
               rows={rowsTenture}
               onRowsChange={mergeChildRowsFor("tenture_murale")}
@@ -890,6 +901,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
             readOnly={readOnly}
           >
             <MinuteGrid
+              stickyTop={SECTION_TITLE_HEIGHT}
               title=""
               rows={rowsMobilier}
               onRowsChange={mergeChildRowsFor("mobilier")}
@@ -982,16 +994,19 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
       {/* 1/2/3 tableaux selon modules */}
       <>
         {/* --- NOUVEAUX TABLEAUX : Autres Dépenses & Déplacement (EN HAUT, FIXES) --- */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 24, marginBottom: 24 }}>
+        <div>
           {/* Tableau Autres Dépenses */}
           <SectionPanel
             title="Autres Dépenses"
+            sticky={false}
             count={rowsAutre.length}
             expanded={isPanelExpanded('autre')}
             onToggle={() => togglePanel('autre')}
           >
             <MinuteGrid
               title=""
+              lightReadOnly
+              fillField="commentaire"
               rows={rowsAutre}
               onRowsChange={mergeChildRowsFor("autre")}
               schema={EXTRA_DEPENSES_SCHEMA}
@@ -1016,12 +1031,14 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
           {/* Tableau Déplacement */}
           <SectionPanel
             title="Déplacements & Logistique"
+            sticky={false}
             count={rowsDeplacement.length}
             expanded={isPanelExpanded('deplacement')}
             onToggle={() => togglePanel('deplacement')}
           >
             <MinuteGrid
               title=""
+              lightReadOnly
               rows={rowsDeplacement}
               onRowsChange={mergeChildRowsFor("deplacement")}
               schema={CHIFFRAGE_SCHEMA_DEP}

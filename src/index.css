@@ -5,13 +5,13 @@
 * { box-sizing: border-box; }
 html, body, #root { height: 100%; margin: 0; }
 body {
-  background: #f4ded4 !important; /* fond beige partout */
+  background: #ffffff !important; /* fond blanc partout */
   font-family: system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
 }
 
 /* ---- Variables (couleurs + print) ---- */
 :root{
-  --page-bg: #f4ded4;   /* beige fond */
+  --page-bg: #ffffff;   /* fond blanc */
   --tile-bg: #0a2c3d;   /* bleu foncé tuiles */
   --text: #111827;
   --muted: #4b5563;
@@ -97,4 +97,72 @@ button{ background:none; border:0; padding:0; margin:0; font:inherit; color:inhe
 /* Hide the sort arrow to free up space in headers, user can still sort via the 3-dots menu */
 .MuiDataGrid-iconButtonContainer {
   display: none !important;
+}
+
+/* ---- Thème « blanc chaud » de toute l'application (classe posée sur <body> dans main.jsx) :
+   fond blanc cassé, gris neutre pour en-têtes / cellules verrouillées / blocs, traits un peu plus marqués ---- */
+body.df-warm { --df-bg: #FFFFFF; --df-gray: #F4F4F4; --df-line: #E0DED9; --df-line-soft: #E8E6E2; background: var(--df-bg) !important; }
+body.df-warm [style*="background: white"],
+body.df-warm [style*="background: rgb(255, 255, 255)"],
+body.df-warm [style*="background-color: white"],
+body.df-warm [style*="background-color: rgb(255, 255, 255)"],
+body.df-warm .MuiPaper-root,
+body.df-warm .MuiButton-outlined {
+  background-color: var(--df-bg) !important;
+}
+/* Gris très clairs (en-têtes de tableaux, blocs doux) → beige un ton plus soutenu */
+body.df-warm [style*="background: rgb(249, 250, 251)"],
+body.df-warm [style*="background: rgb(247, 247, 245)"],
+body.df-warm [style*="background-color: rgb(249, 250, 251)"] {
+  background-color: var(--df-gray) !important;
+}
+body.df-warm .ag-theme-alpine {
+  --ag-background-color: var(--df-bg);
+  --ag-header-background-color: var(--df-gray);
+  --ag-odd-row-background-color: var(--df-bg);
+}
+body.df-warm .ag-theme-alpine .ag-root-wrapper,
+body.df-warm .ag-theme-alpine .ag-row-even,
+body.df-warm .ag-theme-alpine .ag-row-odd,
+body.df-warm .ag-theme-alpine .ag-floating-bottom,
+body.df-warm .ag-theme-alpine .ag-row-pinned,
+body.df-warm .ag-theme-alpine .ag-body-viewport,
+body.df-warm .ag-theme-alpine .ag-center-cols-viewport {
+  background-color: var(--df-bg) !important;
+}
+body.df-warm .ag-theme-alpine .ag-header,
+body.df-warm .ag-theme-alpine .ag-column-drop-horizontal,
+body.df-warm .ag-cell-read-only {
+  background-color: var(--df-gray) !important;
+}
+body.df-warm input:not([type="checkbox"]):not([type="radio"]),
+body.df-warm select,
+body.df-warm textarea {
+  background-color: var(--df-bg) !important;
+}
+body.df-warm .ag-theme-alpine .ag-row-hover { background-color: var(--df-gray) !important; }
+body.df-warm .ag-theme-alpine .ag-row-selected { background-color: #dbeafe !important; }
+/* Traits plus marqués (cadre, séparateurs de lignes/colonnes, traits de la page) */
+body.df-warm .ag-theme-alpine {
+  --ag-border-color: var(--df-line);
+  --ag-row-border-color: var(--df-line-soft);
+  --ag-secondary-border-color: var(--df-line-soft);
+}
+body.df-warm .ag-theme-alpine .ag-root-wrapper { border-color: var(--df-line) !important; }
+body.df-warm .ag-theme-alpine .ag-header,
+body.df-warm .ag-theme-alpine .ag-column-drop-horizontal { border-bottom-color: var(--df-line) !important; }
+body.df-warm .ag-theme-alpine .ag-header-cell { border-right-color: var(--df-line-soft) !important; }
+body.df-warm .ag-theme-alpine .ag-cell { border-right-color: var(--df-line-soft) !important; }
+body.df-warm .ag-theme-alpine .ag-row { border-bottom-color: var(--df-line-soft) !important; }
+body.df-warm [style*="border-bottom: 1px solid rgb(237, 237, 235)"] { border-bottom-color: var(--df-line) !important; }
+body.df-warm [style*="border: 1px solid rgb(229, 231, 235)"] { border-color: var(--df-line) !important; }
+/* Blocs doux du dashboard et bulles du journal : même famille chaude que le fond */
+body.df-warm [style*="background: rgb(245, 246, 247)"],
+body.df-warm [style*="background: rgb(244, 245, 247)"] { background-color: #F1EFEA !important; }
+body.df-warm [style*="background: rgb(227, 229, 232)"] { background-color: #E3E0DA !important; }
+/* Tous les boutons de l'application en Roboto (cohérence avec titres, chiffres et libellés) */
+body.df-warm button,
+body.df-warm .MuiButton-root,
+body.df-warm [role="button"] {
+  font-family: Roboto, system-ui, -apple-system, "Segoe UI", sans-serif !important;
 }

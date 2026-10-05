@@ -1,82 +1,39 @@
 import React, { useMemo } from "react";
-import { Activity, Ruler, Scissors, Hammer, Clock } from "lucide-react";
 import { calculateProjectStats } from "../lib/projectMetrics";
+import { Kpi, KpiGrid } from "./ui/SoftBlock";
 
-export default function DashboardTiles({ rows, budget = {}, isMobile = false }) {
+// Avancement du dossier : un indicateur par étape (prise de cotes, préparation, confection,
+// pose) — grand chiffre fin, total, barre fine et pastille %. Vert quand l'étape est terminée.
+export default function DashboardTiles({ rows, budget = {} }) {
   const stats = useMemo(() => calculateProjectStats(rows, budget), [rows, budget]);
 
-  const tileStyle = (bg, color) => ({
-    background: bg, color: color, borderRadius: 16, padding: "20px",
-    flex: isMobile ? "1 1 100%" : "1 1 180px", // Force 100% width on mobile
-    display: "flex", flexDirection: "column", justifyContent: "space-between",
-    boxShadow: "0 2px 5px rgba(0,0,0,0.05)", minHeight: isMobile ? 120 : 110, border: '1px solid rgba(0,0,0,0.03)'
-  });
-  const valStyle = { fontSize: isMobile ? 36 : 28, fontWeight: 800, letterSpacing: "-0.5px" }; // Larger font on mobile
-  const subStyle = { fontSize: 11, fontWeight: 500, marginTop: 4, opacity: 0.7 };
+  if (!stats) return <div style={{ color: "#8A8F98", fontSize: 14 }}>Ajoutez des lignes pour voir l'avancement.</div>;
 
-  if (!stats) return <div style={{ padding: 20, color: '#888' }}>Ajoutez des lignes pour voir les statistiques.</div>;
+  const r = stats.raw;
+  const pct = (v) => (v == null ? null : Number(v));
+
+  const conf = stats.confMode === "not_applicable"
+    ? <Kpi key="conf" label="Confection" note="Non applicable" />
+    : stats.confMode === "all_st"
+      ? <Kpi key="conf" label="Confection" note="Sous-traité" sub={stats.stConfSummary} />
+      : r.confHouresTotal > 0
+        ? <Kpi key="conf" label="Confection" value={String(r.confHouresDone).replace('.', ',')} unit="h" total={`${r.confHouresTotal} h`} pct={pct(stats.pctConf)} doneIsGreen sub={stats.confMode === "mix_st" ? stats.stConfSummary : null} />
+        : <Kpi key="conf" label="Confection" value={r.confHouresDone} total={`${stats.total} terminées`} pct={pct(stats.pctConf)} doneIsGreen sub={stats.confMode === "mix_st" ? stats.stConfSummary : null} />;
+
+  const pose = stats.poseMode === "not_applicable"
+    ? <Kpi key="pose" label="Pose" note="Installation non réalisée par nos soins" />
+    : stats.poseMode === "all_st"
+      ? <Kpi key="pose" label="Pose" note="Sous-traité" sub={stats.stPoseSummary} />
+      : <Kpi key="pose" label="Pose" value={r.poseOk} total={`${r.poseTotal} installées`} pct={pct(stats.pctPose)} doneIsGreen sub={stats.poseMode === "mix_st" ? stats.stPoseSummary : null} />;
 
   return (
-    <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-      <div style={tileStyle("#EFF6FF", "#1E40AF")}>
-        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, display: 'flex', gap: 6 }}><Ruler size={16} /> Prise de Cotes</div>
-        <div>
-          <div style={valStyle}>{stats.pctCotes !== null ? `${stats.pctCotes}%` : '—'}</div>
-          <div style={subStyle}>
-            {stats.cotesTotal > 0
-              ? `${stats.raw.cotesValidees}/${stats.cotesTotal} validées chef de projet`
-              : 'Non applicable'}
-          </div>
-        </div>
-      </div>
-      <div style={tileStyle("#F5F3FF", "#5B21B6")}>
-        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, display: 'flex', gap: 6 }}><Activity size={16} /> Préparation</div>
-        <div><div style={valStyle}>{stats.pctPrepa}%</div><div style={subStyle}>{stats.raw.prepaOk}/{stats.raw.prepaTotal} terminées</div></div>
-      </div>
-      {/* Tuile Confection */}
-      {stats.confMode === 'not_applicable'
-        ? <div style={tileStyle("#F3F4F6", "#9CA3AF")}>
-            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, display: 'flex', gap: 6 }}><Scissors size={16} /> Confection</div>
-            <div><div style={{ ...valStyle, fontSize: 16 }}>Non applicable</div></div>
-          </div>
-        : <div style={tileStyle("#FDF2F8", "#9D174D")}>
-            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, display: 'flex', gap: 6 }}><Scissors size={16} /> Confection</div>
-            <div>
-              <div style={valStyle}>{stats.pctConf}%</div>
-              <div style={subStyle}>
-                {stats.raw.confHouresTotal > 0
-                  ? `${stats.raw.confHouresDone}h / ${stats.raw.confHouresTotal}h`
-                  : stats.confMode === 'all_st' ? 'Sous-traité'
-                  : `${stats.raw.confHouresDone}/${stats.total} terminées`}
-              </div>
-              {(stats.confMode === 'all_st' || stats.confMode === 'mix_st') && stats.stConfSummary && (
-                <div style={{ fontSize: 10, marginTop: 4, opacity: 0.65, fontStyle: 'italic' }}>{stats.stConfSummary}</div>
-              )}
-            </div>
-          </div>
-      }
-
-      {/* Tuile Pose */}
-      {stats.poseMode === 'not_applicable'
-        ? <div style={tileStyle("#F3F4F6", "#9CA3AF")}>
-            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, display: 'flex', gap: 6 }}><Hammer size={16} /> Pose</div>
-            <div><div style={{ ...valStyle, fontSize: 13, fontWeight: 600, lineHeight: 1.4 }}>Installation non réalisée par nos soins</div></div>
-          </div>
-        : <div style={tileStyle("#ECFDF5", "#065F46")}>
-            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, display: 'flex', gap: 6 }}><Hammer size={16} /> Pose</div>
-            <div>
-              <div style={valStyle}>{stats.pctPose}%</div>
-              <div style={subStyle}>
-                {stats.poseMode === 'all_st' ? 'Sous-traité'
-                  : `${stats.raw.poseOk}/${stats.raw.poseTotal} installées`}
-              </div>
-              {(stats.poseMode === 'all_st' || stats.poseMode === 'mix_st') && stats.stPoseSummary && (
-                <div style={{ fontSize: 10, marginTop: 4, opacity: 0.65, fontStyle: 'italic' }}>{stats.stPoseSummary}</div>
-              )}
-            </div>
-          </div>
-      }
-
-    </div>
+    <KpiGrid min={150}>
+      {stats.cotesTotal > 0
+        ? <Kpi label="Prise de cotes" value={r.cotesValidees} total={`${stats.cotesTotal} validées`} pct={pct(stats.pctCotes)} doneIsGreen />
+        : <Kpi label="Prise de cotes" note="Non applicable" />}
+      <Kpi label="Préparation" value={r.prepaOk} total={`${r.prepaTotal} terminées`} pct={pct(stats.pctPrepa)} doneIsGreen />
+      {conf}
+      {pose}
+    </KpiGrid>
   );
 }

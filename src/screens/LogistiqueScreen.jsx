@@ -842,7 +842,7 @@ function ShipmentDetail({ shipment, shipmentItems, colisItems, projects, onBack,
     const projectName = (projectId) => projects.find(p => String(p.id) === String(projectId))?.name || '—';
 
     return (
-        <div style={{ minHeight: '100vh', background: '#F9F7F2', padding: 24 }}>
+        <div style={{ minHeight: '100vh', background: '#FFFFFF', padding: 24 }}>
             <div style={{ maxWidth: 1200, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
                 {/* Header */}
                 <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
@@ -1312,17 +1312,16 @@ export default function LogistiqueScreen({ projects, onUpdateProject, onBack }) 
 
     // ── Vue principale (tabbed) ──
     return (
-        <div style={{ minHeight: '100vh', background: '#F9F7F2', padding: 24, display: 'flex', flexDirection: 'column' }}>
+        <div style={{ minHeight: '100vh', background: '#FFFFFF', padding: 24, display: 'flex', flexDirection: 'column' }}>
             <div style={{ maxWidth: 1600, width: '100%', margin: '0 auto', display: 'flex', flexDirection: 'column', flex: 1 }}>
 
                 {/* Header */}
                 <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
                     <div>
-                        <button onClick={onBack} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6B7280', fontWeight: 600, fontSize: 13, marginBottom: 8, padding: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <button onClick={onBack} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6B7280', fontWeight: 600, fontSize: 13, marginBottom: 4, padding: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
                             ← Retour
                         </button>
-                        <h1 style={{ fontSize: 32, fontWeight: 800, color: '#111827', margin: 0, letterSpacing: '-0.5px' }}>Logistique</h1>
-                        <p style={{ fontSize: 14, color: '#6B7280', margin: '4px 0 0' }}>Gestion des expéditions et suivi logistique</p>
+                        <h1 style={{ fontSize: 32, fontWeight: 400, fontFamily: 'Roboto, system-ui, sans-serif', color: '#111827', margin: 0, letterSpacing: '-0.01em' }}>Logistique</h1>
                     </div>
                     {tabKey === 'expeditions' && canEdit && (
                         <button onClick={() => setShowCreate(true)} style={{ ...btnPrimary, background: '#1E2447', padding: '10px 20px', fontSize: 14, fontWeight: 600, boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>

@@ -554,6 +554,7 @@ export default function EtiquettesSection({
   onEditRow,
   onRowsChange,
   onUpdateProject,
+  printSignal = 0,   // incrémenté par le bouton « Imprimer » global de la page : lance l'impression de ce tableau
 }) {
   const isRideaux = tableKey === "rideaux";
   const isStoresBateaux = tableKey === "stores_bateaux";
@@ -669,6 +670,14 @@ export default function EtiquettesSection({
       setShowPrintPortal(true);
     }
   };
+
+  // Impression déclenchée depuis le bouton global de la page (le bouton local est retiré).
+  const lastPrintSignal = React.useRef(printSignal);
+  useEffect(() => {
+    if (printSignal && printSignal !== lastPrintSignal.current) handlePrint();
+    lastPrintSignal.current = printSignal;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [printSignal]);
 
   useEffect(() => {
     if (showPrintPortal || showBPFPortal) {
@@ -868,14 +877,6 @@ export default function EtiquettesSection({
                 Couleurs
               </Button>
             )}
-            <Button
-              startIcon={<Print />}
-              onClick={handlePrint}
-              disabled={showPrintPortal}
-              size="small" variant="contained"
-            >
-              {showPrintPortal ? '...' : 'Imprimer'}
-            </Button>
           </Box>
         </Box>
 

@@ -19,12 +19,15 @@ function stringToColor(string) {
 
 const initialsOf = (name) => String(name || "?").trim().split(/\s+/).map(w => w[0]).join("").slice(0, 2).toUpperCase() || "?";
 
-export function HeaderCard({ left, right, stacked = false }) {
+// bare : sans cadre (fond, bordure, ombre, marges), posé directement sur la page.
+export function HeaderCard({ left, right, stacked = false, bare = false }) {
   return (
     <div style={{
-      background: 'white', border: '1px solid #E5E7EB', borderRadius: 12,
-      boxShadow: '0 1px 3px rgba(0,0,0,0.04)', padding: stacked ? 16 : '22px 26px',
-      display: 'grid', gridTemplateColumns: stacked ? 'minmax(0,1fr)' : 'minmax(0,1.3fr) minmax(0,1fr)', gap: stacked ? 16 : 28,
+      ...(bare ? {} : {
+        background: 'white', border: '1px solid #E5E7EB', borderRadius: 12,
+        boxShadow: '0 1px 3px rgba(0,0,0,0.04)', padding: stacked ? 16 : '22px 26px',
+      }),
+      display: 'grid', gridTemplateColumns: (stacked || !right) ? 'minmax(0,1fr)' : 'minmax(0,1.3fr) minmax(0,1fr)', gap: stacked ? 16 : 28,
     }}>
       <div style={{ minWidth: 0 }}>{left}</div>
       {right && <div style={{ minWidth: 0, display: 'flex' }}>{right}</div>}
@@ -35,10 +38,20 @@ export function HeaderCard({ left, right, stacked = false }) {
 const PANEL_TONES = {
   notes: { bg: '#FFFBEB', border: '#F3E3A3', accent: '#F59E0B', title: '#92400E' },
   logistics: { bg: '#F5F7FB', border: '#DCE3EF', accent: '#1E2447', title: '#1E2447' },
+  // Bloc discret façon Notion (même rendu que le bloc Notes du chiffrage)
+  soft: { bg: '#F7F7F5', soft: true },
 };
 
 export function HeaderPanel({ title, tone = 'notes', children }) {
   const t = PANEL_TONES[tone] || PANEL_TONES.notes;
+  if (t.soft) {
+    return (
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, background: t.bg, borderRadius: 8, padding: '10px 14px 12px' }}>
+        <div style={{ fontSize: 12, fontWeight: 500, color: '#9B9A97', marginBottom: 10 }}>{title}</div>
+        {children}
+      </div>
+    );
+  }
   return (
     <div style={{
       flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0,
@@ -53,7 +66,7 @@ export function HeaderPanel({ title, tone = 'notes', children }) {
   );
 }
 
-export function EditableTitle({ value, onSave, canEdit, placeholder = "Sans nom", fontSize = 30 }) {
+export function EditableTitle({ value, onSave, canEdit, placeholder = "Sans nom", fontSize = 30, fontWeight = 800, fontFamily = "inherit" }) {
   const [editing, setEditing] = React.useState(false);
   const [draft, setDraft] = React.useState(value || "");
   const [hover, setHover] = React.useState(false);
@@ -80,7 +93,7 @@ export function EditableTitle({ value, onSave, canEdit, placeholder = "Sans nom"
           if (e.key === 'Escape') { setDraft(value || ""); setEditing(false); }
         }}
         style={{
-          fontSize, fontWeight: 800, color: '#111827', fontFamily: 'inherit', letterSpacing: '-0.01em',
+          fontSize, fontWeight, color: '#111827', fontFamily, letterSpacing: '-0.01em',
           border: '2px solid #3B82F6', borderRadius: 6, padding: '0 6px', marginLeft: -8,
           outline: 'none', width: '100%', maxWidth: 900, background: 'white',
         }}
@@ -96,7 +109,7 @@ export function EditableTitle({ value, onSave, canEdit, placeholder = "Sans nom"
       onMouseLeave={() => setHover(false)}
       title={canEdit ? "Double-cliquer pour renommer" : undefined}
       style={{
-        fontSize, fontWeight: 800, color: '#111827', margin: 0, marginLeft: -6, lineHeight: 1.15,
+        fontSize, fontWeight, fontFamily, color: '#111827', margin: 0, marginLeft: -6, lineHeight: 1.15,
         letterSpacing: '-0.01em', padding: '2px 6px', borderRadius: 6, cursor: 'default',
         display: 'inline-flex', alignItems: 'center', gap: 8, maxWidth: '100%',
         background: canEdit && hover ? '#F3F4F6' : 'transparent',
@@ -147,7 +160,7 @@ export function HeaderButton({ onClick, title, children }) {
 export function MetaItem({ label, children }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
-      <span style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', color: '#9CA3AF' }}>{label}</span>
+      <span style={{ fontSize: 13, fontWeight: 400, color: '#9B9A97', fontFamily: 'Roboto, system-ui, sans-serif' }}>{label}</span>
       <span style={{ fontSize: 13.5, fontWeight: 600, color: '#1F2937', display: 'flex', alignItems: 'center', gap: 6, minHeight: 26 }}>{children}</span>
     </div>
   );

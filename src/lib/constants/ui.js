@@ -1,5 +1,5 @@
 // src/lib/constants/ui.js
-export const COLORS = { page: "#FAF5EE", tile: "#1E2447", text: "#111827", border: "#E5E7EB", rowAlt: "#F9FAFB" };
+export const COLORS = { page: "#FFFFFF", tile: "#1E2447", text: "#111827", border: "#E5E7EB", rowAlt: "#F9FAFB" };
 
 export const S = {
   page: { minHeight: "100vh", width: "100%", background: COLORS.page, display: "flex", flexDirection: "column" },

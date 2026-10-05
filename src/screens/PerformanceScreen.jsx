@@ -23,7 +23,7 @@ export default function PerformanceScreen({ projects, events, onBack }) {
   const { actions, addAction, updateAction, deleteAction } = usePerformanceActions();
 
   return (
-    <div style={{ minHeight: '100vh', background: '#F9F7F2', padding: 24, display: 'flex', flexDirection: 'column' }}>
+    <div style={{ minHeight: '100vh', background: '#FFFFFF', padding: 24, display: 'flex', flexDirection: 'column' }}>
       <div style={{ maxWidth: 1600, width: '100%', margin: '0 auto', display: 'flex', flexDirection: 'column', flex: 1 }}>
 
         {/* Header */}
@@ -32,17 +32,14 @@ export default function PerformanceScreen({ projects, events, onBack }) {
             <button onClick={onBack} style={{
               background: 'none', border: 'none', cursor: 'pointer',
               color: '#6B7280', fontWeight: 600, fontSize: 13,
-              marginBottom: 12, padding: 0, display: 'flex', alignItems: 'center', gap: 4,
+              marginBottom: 4, padding: 0, display: 'flex', alignItems: 'center', gap: 4,
             }}>
               ← Retour
             </button>
           )}
-          <h1 style={{ fontSize: 32, fontWeight: 800, color: '#111827', margin: 0, letterSpacing: '-0.5px' }}>
+          <h1 style={{ fontSize: 32, fontWeight: 400, fontFamily: 'Roboto, system-ui, sans-serif', color: '#111827', margin: 0, letterSpacing: '-0.01em' }}>
             Performance
           </h1>
-          <p style={{ fontSize: 14, color: '#6B7280', margin: '4px 0 0' }}>
-            Suivi du budget temps alloué vs consommé par projet et par service
-          </p>
         </div>
 
         {/* Navigation onglets (centré, style Inventaire) */}

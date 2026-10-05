@@ -179,7 +179,7 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
   }, [users]);
 
   return (
-    <div style={{ minHeight: '100vh', background: '#F9F7F2', padding: isMobile ? '16px' : '24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div style={{ minHeight: '100vh', background: '#FFFFFF', padding: isMobile ? '16px' : '24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
       {/* CSS Fallback for Responsive Toggle */}
       <style>{`
         @media (max-width: 768px) {
@@ -194,7 +194,7 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
         }
       `}</style>
 
-      <div style={{ maxWidth: 1200, width: '100%', margin: '0 auto 24px auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div style={{ maxWidth: 1440, width: '100%', margin: '0 auto 24px auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
         <div
           className="header-row"
           style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'flex-end', gap: isMobile ? 12 : 0 }}
@@ -210,7 +210,7 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
             >
               ← Retour
             </button>
-            <h1 style={{ fontSize: 28, fontWeight: 700, color: '#1F2937', margin: 0, letterSpacing: '-0.5px' }}>Projets</h1>
+            <h1 style={{ fontSize: 32, fontWeight: 400, fontFamily: 'Roboto, system-ui, sans-serif', color: '#111827', margin: 0, letterSpacing: '-0.01em' }}>Projets</h1>
           </div>
           {canCreate && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -218,24 +218,25 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
                 className="header-actions"
                 onClick={() => setShowCreate(true)}
                 style={{
-                  background: '#1E2447', color: 'white', padding: '8px 16px', borderRadius: 8, border: 'none',
-                  display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontWeight: 600,
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)', marginBottom: isMobile ? 0 : 4,
+                  // Mêmes dimensions que les boutons d'action du chiffrage (Bibliothèque…), fond bleu nuit conservé
+                  background: '#1E2447', color: 'white', padding: '8px 14px', borderRadius: 8, border: '1px solid #1E2447',
+                  display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap',
+                  marginBottom: isMobile ? 0 : 4,
                   width: isMobile ? '100%' : 'auto', justifyContent: isMobile ? 'center' : 'flex-start'
                 }}
               >
-                <Plus size={18} /> Nouveau Projet
+                <Plus size={16} /> Nouveau Projet
               </button>
               <button
                 onClick={() => setShowImport(true)}
                 title="Importer des projets depuis Excel"
                 style={{
-                  background: '#F3F4F6', color: '#374151', padding: '8px 12px', borderRadius: 8,
-                  border: '1px solid #D1D5DB', display: 'flex', alignItems: 'center', gap: 6,
-                  cursor: 'pointer', fontWeight: 500, fontSize: 13, marginBottom: isMobile ? 0 : 4,
+                  background: 'white', color: '#374151', padding: '8px 14px', borderRadius: 8,
+                  border: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', gap: 8,
+                  cursor: 'pointer', fontWeight: 600, fontSize: 13, whiteSpace: 'nowrap', marginBottom: isMobile ? 0 : 4,
                 }}
               >
-                <Upload size={15} /> Import Excel
+                <Upload size={16} /> Import Excel
               </button>
             </div>
           )}
@@ -309,7 +310,7 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
       {/* --- MOBILE VIEW (CARDS) --- */}
       <div
         style={{
-          maxWidth: 1200, width: '100%', margin: '0 auto',
+          maxWidth: 1440, width: '100%', margin: '0 auto',
           display: isMobile ? 'flex' : 'none', // JS Toggle
           flexDirection: 'column', gap: 12
         }}
@@ -413,25 +414,29 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
       <div
         className="desktop-only"
         style={{
-          maxWidth: 1200, width: '100%', margin: '0 auto',
+          maxWidth: 1440, width: '100%', margin: '0 auto',
           background: 'white', borderRadius: 12, boxShadow: '0 1px 3px rgba(0,0,0,0.05), 0 4px 6px rgba(0,0,0,0.02)', overflow: 'hidden',
           display: isMobile ? 'none' : 'block' // JS Toggle
         }}
       >
+        {/* Écrans étroits : date de création masquée et heures regroupées, pour éviter tout défilement horizontal */}
+        <style>{`.col-hours-merged { display: none; }
+          @media (max-width: 1180px) { .col-created, .col-hours { display: none; } .col-hours-merged { display: table-cell; } }`}</style>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
             <thead style={{ background: '#F9FAFB', borderBottom: '1px solid #E5E7EB' }}>
               <tr>
-                <th style={{ padding: '12px 16px', fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Projet</th>
-                <th style={{ padding: '12px 16px', fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Responsable</th>
-                <th style={{ padding: '12px 16px', fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: 'center' }}>Statut</th>
-                <th style={{ padding: '12px 16px', fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Livraison</th>
-                <th style={{ padding: '12px 16px', fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Odoo</th>
+                <th style={{ padding: '12px 10px', fontSize: 13, fontWeight: 600, color: '#374151' }}>Projet</th>
+                <th style={{ padding: '12px 10px', fontSize: 13, fontWeight: 600, color: '#374151' }}>Responsable</th>
+                <th style={{ padding: '12px 10px', fontSize: 13, fontWeight: 600, color: '#374151', textAlign: 'center' }}>Statut</th>
+                <th style={{ padding: '12px 10px', fontSize: 13, fontWeight: 600, color: '#374151' }}>Livraison</th>
+                <th style={{ padding: '12px 10px', fontSize: 13, fontWeight: 600, color: '#374151' }}>Odoo</th>
 
                 {/* Creation Date */}
                 <th
                   onClick={() => handleSort('created_at')}
-                  style={{ padding: '12px 16px', fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.5px', cursor: 'pointer', userSelect: 'none' }}
+                  className="col-created"
+                  style={{ padding: '12px 10px', fontSize: 13, fontWeight: 600, color: '#374151', cursor: 'pointer', userSelect: 'none' }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                     Création
@@ -448,8 +453,9 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
                 ].map(({ key, label }) => (
                   <th
                     key={key}
+                    className="col-hours"
                     onClick={() => handleSort(key)}
-                    style={{ padding: '12px 16px', fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: 'right', cursor: 'pointer', userSelect: 'none' }}
+                    style={{ padding: '12px 8px', fontSize: 13, fontWeight: 600, color: '#374151', textAlign: 'right', cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
                       {label}
@@ -459,7 +465,9 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
                     </div>
                   </th>
                 ))}
-                <th style={{ padding: '12px 16px', width: 60 }}></th>
+                {/* Écran étroit : les 3 budgets d'heures regroupés en une colonne */}
+                <th className="col-hours-merged" title="Heures budgétées : préparation / confection / pose" style={{ padding: '12px 8px', fontSize: 13, fontWeight: 600, color: '#374151', textAlign: 'right', whiteSpace: 'nowrap' }}>H. P / C / P</th>
+                <th style={{ padding: '12px 10px', width: 64, position: 'sticky', right: 0, background: '#F9FAFB' }}></th>
               </tr>
             </thead>
             <tbody>
@@ -472,15 +480,15 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
                 const internal = isInternalProject(p);
 
                 return (
-                  <tr key={p?.id || idx} className="project-row" style={{ borderBottom: '1px solid #F3F4F6', transition: 'background 0.1s' }} onClick={() => onOpenProject?.(p)} onMouseEnter={(e) => e.currentTarget.style.background = '#F9FAFB'} onMouseLeave={(e) => e.currentTarget.style.background = 'white'}>
+                  <tr key={p?.id || idx} className="project-row" style={{ borderBottom: '1px solid #F3F4F6', transition: 'background 0.1s', background: 'white' }} onClick={() => onOpenProject?.(p)} onMouseEnter={(e) => e.currentTarget.style.background = '#F9FAFB'} onMouseLeave={(e) => e.currentTarget.style.background = 'white'}>
                     {/* DOSSIER */}
-                    <td style={{ padding: '12px 16px' }}>
-                      <div style={{ fontWeight: 600, color: '#111827', fontSize: 14 }}>{p?.name || "Sans nom"}</div>
+                    <td style={{ padding: '12px 10px' }}>
+                      <div style={{ fontWeight: 600, color: '#111827', fontSize: 14, minWidth: 150 }}>{p?.name || "Sans nom"}</div>
                       <div style={{ fontSize: 11, color: '#9CA3AF' }}>#{String(p?.id || "").slice(-4)}</div>
                     </td>
 
                     {/* RESPONSABLE */}
-                    <td style={{ padding: '12px 16px' }} onClick={(e) => e.stopPropagation()}>
+                    <td style={{ padding: '12px 10px' }} onClick={(e) => e.stopPropagation()}>
                       {internal ? <span style={{ color: '#D1D5DB', fontSize: 13 }}>—</span> : (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <Avatar sx={{ width: 24, height: 24, fontSize: 10, bgcolor: stringToColor(p?.manager || "?") }}>{(p?.manager?.[0] || "?").toUpperCase()}</Avatar>
@@ -488,8 +496,8 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
                           value={p?.manager || ""}
                           onChange={(e) => handleUpdate(p.id, { manager: e.target.value })}
                           style={{
-                            border: 'none', background: 'transparent', fontSize: 14, color: '#374151', cursor: 'pointer', outline: 'none',
-                            fontWeight: 500
+                            border: 'none', background: 'transparent', fontSize: 13, color: '#374151', cursor: 'pointer', outline: 'none',
+                            fontWeight: 500, maxWidth: 120, textOverflow: 'ellipsis'
                           }}
                         >
                           <option value="" disabled>—</option>
@@ -508,7 +516,7 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
                     </td>
 
                     {/* STATUT */}
-                    <td style={{ padding: '12px 16px', textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
+                    <td style={{ padding: '12px 10px', textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
                       <div style={{ position: 'relative', display: 'inline-block' }}>
                         <select
                           value={p?.status || "TODO"}
@@ -520,7 +528,7 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
                           title={internal ? "Le dossier interne reste toujours actif" : undefined}
                           style={{
                             appearance: 'none',
-                            padding: "6px 12px 6px 24px",
+                            padding: "5px 10px 5px 22px",
                             borderRadius: 20,
                             border: "1px solid #E5E7EB",
                             background: 'white',
@@ -531,7 +539,7 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
                             textAlign: 'center',
                             outline: 'none',
                             boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
-                            minWidth: 110
+                            minWidth: 96
                           }}
                         >
                           {Object.entries(PROJECT_STATUS_OPTIONS).map(([key, opt]) => (
@@ -549,7 +557,7 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
                     </td>
 
                     {/* LIVRAISON */}
-                    <td style={{ padding: '12px 16px' }} onClick={(e) => e.stopPropagation()}>
+                    <td style={{ padding: '12px 10px' }} onClick={(e) => e.stopPropagation()}>
                       {internal ? <span style={{ color: '#D1D5DB', fontSize: 13 }}>—</span> : (
                       <input
                         type="date"
@@ -559,7 +567,7 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
                           border: 'none',
                           background: 'transparent',
                           color: p?.deadline ? '#374151' : '#9CA3AF',
-                          fontSize: 13,
+                          fontSize: 12.5, width: 112,
                           fontFamily: 'inherit',
                           cursor: 'pointer',
                           outline: 'none'
@@ -569,26 +577,28 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
                     </td>
 
                     {/* ODOO */}
-                    <td style={{ padding: '12px 16px' }} onClick={(e) => e.stopPropagation()}>
+                    <td style={{ padding: '12px 10px' }} onClick={(e) => e.stopPropagation()}>
                       <OdooLinkCell
                         idProjetOdoo={p?.id_projet_odoo || null}
                         internal={internal}
+                        dense
                         onLink={(odooId) => handleUpdate(p.id, { id_projet_odoo: odooId })}
                       />
                     </td>
 
                     {/* CREATION */}
-                    <td style={{ padding: '12px 16px', fontSize: 13, color: '#6B7280' }}>
+                    <td className="col-created" style={{ padding: '12px 10px', fontSize: 13, color: '#6B7280' }}>
                       {new Date(p.created_at || p.createdAt || Date.now()).toLocaleDateString("fr-FR")}
                     </td>
 
                     {/* BUDGETS */}
-                    <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, color: internal ? '#D1D5DB' : '#374151' }}>{internal ? '—' : `${budget.prepa || 0} h`}</td>
-                    <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, color: internal ? '#D1D5DB' : '#374151' }}>{internal ? '—' : `${budget.conf || 0} h`}</td>
-                    <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, color: internal ? '#D1D5DB' : '#374151' }}>{internal ? '—' : `${budget.pose || 0} h`}</td>
+                    <td className="col-hours" style={{ padding: '12px 8px', textAlign: 'right', fontSize: 13, whiteSpace: 'nowrap', color: internal ? '#D1D5DB' : '#374151' }}>{internal ? '—' : `${budget.prepa || 0} h`}</td>
+                    <td className="col-hours" style={{ padding: '12px 8px', textAlign: 'right', fontSize: 13, whiteSpace: 'nowrap', color: internal ? '#D1D5DB' : '#374151' }}>{internal ? '—' : `${budget.conf || 0} h`}</td>
+                    <td className="col-hours" style={{ padding: '12px 8px', textAlign: 'right', fontSize: 13, whiteSpace: 'nowrap', color: internal ? '#D1D5DB' : '#374151' }}>{internal ? '—' : `${budget.pose || 0} h`}</td>
+                    <td className="col-hours-merged" style={{ padding: '12px 8px', textAlign: 'right', fontSize: 13, whiteSpace: 'nowrap', color: internal ? '#D1D5DB' : '#374151' }}>{internal ? '—' : `${budget.prepa || 0} / ${budget.conf || 0} / ${budget.pose || 0} h`}</td>
 
                     {/* ACTIONS */}
-                    <td style={{ padding: '12px 16px' }} onClick={(e) => e.stopPropagation()}>
+                    <td style={{ padding: '12px 10px', position: 'sticky', right: 0, background: 'inherit' }} onClick={(e) => e.stopPropagation()}>
                       <div style={{ display: 'flex', gap: 4, opacity: 0.6 }} className="actions">
                         <Tooltip title="Éditer"><IconButton size="small" onClick={() => onOpenProject?.(p)}><Edit2 size={16} /></IconButton></Tooltip>
                         {currentUser?.role !== 'pose' && (
