@@ -53,7 +53,7 @@ export function HeaderPanel({ title, tone = 'notes', children }) {
   );
 }
 
-export function EditableTitle({ value, onSave, canEdit, placeholder = "Sans nom", fontSize = 30 }) {
+export function EditableTitle({ value, onSave, canEdit, placeholder = "Sans nom", fontSize = 30, fontWeight = 800, fontFamily = "inherit" }) {
   const [editing, setEditing] = React.useState(false);
   const [draft, setDraft] = React.useState(value || "");
   const [hover, setHover] = React.useState(false);
@@ -80,7 +80,7 @@ export function EditableTitle({ value, onSave, canEdit, placeholder = "Sans nom"
           if (e.key === 'Escape') { setDraft(value || ""); setEditing(false); }
         }}
         style={{
-          fontSize, fontWeight: 800, color: '#111827', fontFamily: 'inherit', letterSpacing: '-0.01em',
+          fontSize, fontWeight, color: '#111827', fontFamily, letterSpacing: '-0.01em',
           border: '2px solid #3B82F6', borderRadius: 6, padding: '0 6px', marginLeft: -8,
           outline: 'none', width: '100%', maxWidth: 900, background: 'white',
         }}
@@ -96,7 +96,7 @@ export function EditableTitle({ value, onSave, canEdit, placeholder = "Sans nom"
       onMouseLeave={() => setHover(false)}
       title={canEdit ? "Double-cliquer pour renommer" : undefined}
       style={{
-        fontSize, fontWeight: 800, color: '#111827', margin: 0, marginLeft: -6, lineHeight: 1.15,
+        fontSize, fontWeight, fontFamily, color: '#111827', margin: 0, marginLeft: -6, lineHeight: 1.15,
         letterSpacing: '-0.01em', padding: '2px 6px', borderRadius: 6, cursor: 'default',
         display: 'inline-flex', alignItems: 'center', gap: 8, maxWidth: '100%',
         background: canEdit && hover ? '#F3F4F6' : 'transparent',

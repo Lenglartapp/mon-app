@@ -574,17 +574,16 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
 
   // Helper Style Island Nav
   const getNavStyle = (isActive) => ({
-    padding: '8px 20px',
+    padding: '6px 14px',
     borderRadius: 99,
     border: 'none',
     cursor: 'pointer',
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: 500,
     transition: 'all 0.2s cubic-bezier(0.25, 1, 0.5, 1)',
     outline: 'none',
     background: isActive ? '#1E2447' : 'transparent',
     color: isActive ? '#FFFFFF' : '#4B5563',
-    boxShadow: isActive ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
   });
 
   // Row Opening
@@ -681,13 +680,16 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
   return (
     <div style={S.contentWide}>
       {/* Header : fiche d'identité (gauche) + notes (droite), actions en dessous */}
-      <div style={{ marginTop: 8, marginBottom: 20 }}>
+      <div style={{ marginTop: 8, marginBottom: 28 }}>
         <button onClick={onBack} style={{ background: 'none', border: 'none', color: '#6B7280', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, padding: 0, fontSize: 13, fontWeight: 500, marginBottom: 12 }}>← Retour</button>
         {/* En-tête sans cadre : titre + client, puis infos (gauche) et notes (droite, même hauteur) */}
         <EditableTitle
           value={name}
           canEdit={canEdit}
           placeholder="Nom du projet"
+          fontSize={34}
+          fontWeight={400}
+          fontFamily="Roboto, system-ui, sans-serif"
           onSave={(v) => { setName(v); updateMinute({ name: v }); }}
         />
         <div style={{ fontSize: 15, color: '#6B7280', marginTop: 2 }}>{minute?.client || "Client non spécifié"}</div>
@@ -736,13 +738,19 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
         </div>
 
         {/* Intercalaires de variantes (gauche) + actions (droite) */}
-        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16, marginTop: 14, borderBottom: '1px solid #EDEDEB' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) auto minmax(0,1fr)', alignItems: 'flex-end', gap: 16, marginTop: 8, borderBottom: '1px solid #EDEDEB' }}>
           <VariantTabs
             tabs={familyTabs}
             activeId={minute?.id}
             onOpen={(id) => onOpenMinute?.(id)}
             onCreate={canEdit ? handleCreateVariant : undefined}
           />
+        {/* Vues du chiffrage, au centre de la ligne des variantes */}
+        <div style={{ display: 'inline-flex', gap: 2, marginBottom: 8 }}>
+          <button style={getNavStyle(activeTab === "minutes")} onClick={() => setActiveTab("minutes")}>Minutes</button>
+          <button style={getNavStyle(activeTab === "achats")} onClick={() => setActiveTab("achats")}>Liste Achats</button>
+          {can(currentUser, "chiffrage.moulinette") && <button style={getNavStyle(activeTab === "moulinette")} onClick={() => setActiveTab("moulinette")}>Moulinette</button>}
+        </div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10, flexWrap: 'wrap', marginBottom: 8 }}>
           <input
             type="file"
@@ -797,29 +805,10 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
         />
       )}
 
-      {/* Tabs */}
-      {/* Tabs */}
-      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 24 }}>
-        <div style={{
-          display: 'inline-flex',
-          background: 'white',
-          padding: 5,
-          borderRadius: 99,
-          gap: 4,
-          flexWrap: 'wrap',
-          justifyContent: 'center',
-          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)'
-        }}>
-          <button style={getNavStyle(activeTab === "minutes")} onClick={() => setActiveTab("minutes")}>Minutes</button>
-          <button style={getNavStyle(activeTab === "achats")} onClick={() => setActiveTab("achats")}>Liste Achats</button>
-          {can(currentUser, "chiffrage.moulinette") && <button style={getNavStyle(activeTab === "moulinette")} onClick={() => setActiveTab("moulinette")}>Moulinette</button>}
-        </div>
-      </div>
-
       {/* Minutes Tab */}
       {activeTab === "minutes" && (
         <div style={{ display: "grid", gap: 12, overflow: "hidden" }}>
-          <MemoizedDashboardSummary recap={recap} nf={nfEur0} activeModules={mods} />
+          <MemoizedDashboardSummary recap={recap} nf={nfEur0} />
           <div style={{ minWidth: 0, overflowX: "auto" }}>
             <MemoizedMinuteEditor
               key={`${minute?.id}-${restoreNonce}-${Object.keys(mods || {}).filter(k => mods[k]).sort().join('-')}`} // FORCE REMOUNT on module change / restauration

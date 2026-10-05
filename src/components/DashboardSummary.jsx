@@ -1,80 +1,72 @@
 import React from 'react';
-import { Paper, Typography, Divider, Box } from '@mui/material';
+import { ChevronRight } from 'lucide-react';
 
-export default React.memo(function DashboardSummary({ recap, nf, activeModules }) {
-    // Default modules if undefined (safeguard)
-    const mods = activeModules || { rideau: true, store: true, decor: true };
+// Récap du chiffrage : le CA total en grand, et un dépliant qui détaille sa composition
+// (CA par famille de produits, logistique, frais, heures). L'état ouvert/fermé est
+// mémorisé par poste (confort, best-effort).
 
-    // Items configuration for easier mapping
-    const rawItems = [
-        // 1. Production Categories (Dynamic)
+const OPEN_KEY = 'chiffrage_recap_open';
+const readOpen = () => { try { return localStorage.getItem(OPEN_KEY) === '1'; } catch { return false; } };
+const writeOpen = (v) => { try { localStorage.setItem(OPEN_KEY, v ? '1' : '0'); } catch { /* sans stockage : pas mémorisé */ } };
+
+function Item({ label, value, muted }) {
+    return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <span style={{ fontSize: 12, color: '#9B9A97' }}>{label}</span>
+            <span style={{ fontSize: 16, fontWeight: 400, color: muted ? '#A8A7A3' : '#37352F', fontVariantNumeric: 'tabular-nums' }}>{value}</span>
+        </div>
+    );
+}
+
+export default React.memo(function DashboardSummary({ recap, nf }) {
+    const [open, setOpen] = React.useState(readOpen);
+    const toggle = () => setOpen((o) => { writeOpen(!o); return !o; });
+
+    const products = [
         { label: "Rideaux", value: recap.caRideaux },
-        { label: "Stores Négoce", value: recap.caStores },
-        { label: "Stores Bateau", value: recap.caStoresBateau },
+        { label: "Stores négoce", value: recap.caStores },
+        { label: "Stores bateau", value: recap.caStoresBateau },
         { label: "Coussins", value: recap.caCoussins },
-        { label: "Cache-Sommier", value: recap.caCacheSommier },
+        { label: "Cache-sommier", value: recap.caCacheSommier },
         { label: "Plaids", value: recap.caPlaid },
         { label: "Tenture", value: recap.caTenture },
         { label: "Mobilier", value: recap.caMobilier },
         { label: "Divers", value: recap.caDivers },
+    ].filter((i) => i.value && i.value > 0);
 
-        // 2. Logistics & Extras
-        { label: "Logistique", value: recap.depTotal, forceShow: true },
-        { label: "Frais", value: recap.extrasTotal, color: "text.disabled", forceShow: true },
-
-        // 3. Heures (Suffix 'h')
-        { label: "H. Prépa", value: recap.hPrepa, suffix: "h", forceShow: true },
-        { label: "H. Pose", value: recap.hPose, suffix: "h", forceShow: true },
-        { label: "H. Conf", value: recap.hConf, suffix: "h", forceShow: true },
+    const extras = [
+        { label: "Logistique", value: recap.depTotal },
+        { label: "Frais", value: recap.extrasTotal, muted: true },
+    ];
+    const hours = [
+        { label: "Heures prépa", value: recap.hPrepa },
+        { label: "Heures pose", value: recap.hPose },
+        { label: "Heures conf", value: recap.hConf },
     ];
 
-    // Show item if it has a value > 0 OR if it's explicitly forced (Logistics, Hours, etc.)
-    const items = rawItems.filter(i => i.forceShow || (i.value && i.value > 0));
-
     return (
-        <Paper
-            elevation={2}
-            sx={{
-                p: 2,
-                mb: 3, // Margin bottom to separate from content
-                position: 'sticky',
-                top: 0,
-                zIndex: 100,
-                backgroundColor: 'rgba(255, 255, 255, 0.95)', // Slight transparency for sticky effect
-                backdropFilter: 'blur(8px)',
-                borderBottom: '1px solid #e0e0e0'
-            }}
-        >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                {items.map((item, index) => (
-                    <React.Fragment key={item.label}>
-                        <div style={{ flex: 1, minWidth: 60, textAlign: 'center' }}>
-                            <Typography variant="caption" color="text.secondary" display="block" sx={{ textTransform: 'uppercase', fontWeight: 600, letterSpacing: 0.5 }}>
-                                {item.label}
-                            </Typography>
-                            <Typography variant="h6" component="div" sx={{ fontWeight: 500, color: item.color || 'text.primary' }}>
-                                {item.suffix
-                                    ? `${Math.round(item.value || 0)} ${item.suffix}`
-                                    : nf.format(item.value)}
-                            </Typography>
-                        </div>
-                        {index < items.length - 1 && (
-                            <Divider orientation="vertical" flexItem sx={{ height: 40, my: 'auto' }} />
-                        )}
-                    </React.Fragment>
-                ))}
+        <div style={{ margin: '4px 0 20px' }}>
+            <button
+                onClick={toggle}
+                title={open ? "Masquer le détail" : "Voir le détail du prix"}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 10, border: 'none', background: 'transparent', cursor: 'pointer', padding: '2px 6px 2px 0', borderRadius: 6, fontFamily: 'Roboto, system-ui, sans-serif' }}
+            >
+                <ChevronRight size={18} color="#9B9A97" style={{ transform: open ? 'rotate(90deg)' : 'none', transition: 'transform .15s' }} />
+                <span style={{ fontSize: 34, fontWeight: 400, color: '#111827', letterSpacing: '-0.01em', fontVariantNumeric: 'tabular-nums' }}>
+                    {nf.format(recap.offreTotale)}
+                </span>
+                <span style={{ fontSize: 13, color: '#9B9A97', alignSelf: 'flex-end', marginBottom: 7 }}>CA total</span>
+            </button>
 
-                <Divider orientation="vertical" flexItem sx={{ height: 50, mx: 2 }} />
-
-                <div style={{ textAlign: 'right', paddingLeft: 8 }}>
-                    <Typography variant="body2" color="primary" sx={{ fontWeight: 'bold' }}>
-                        CA TOTAL
-                    </Typography>
-                    <Typography variant="h4" color="primary" sx={{ fontWeight: 800, lineHeight: 1 }}>
-                        {nf.format(recap.offreTotale)}
-                    </Typography>
+            {open && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px 24px', alignItems: 'flex-start', padding: '12px 0 4px 28px', fontFamily: 'Roboto, system-ui, sans-serif' }}>
+                    {products.map((i) => <Item key={i.label} label={i.label} value={nf.format(i.value)} />)}
+                    <div style={{ width: 1, alignSelf: 'stretch', background: '#EDEDEB' }} />
+                    {extras.map((i) => <Item key={i.label} label={i.label} value={nf.format(i.value || 0)} muted={i.muted} />)}
+                    <div style={{ width: 1, alignSelf: 'stretch', background: '#EDEDEB' }} />
+                    {hours.map((i) => <Item key={i.label} label={i.label} value={`${Math.round(i.value || 0)} h`} />)}
                 </div>
-            </div>
-        </Paper>
+            )}
+        </div>
     );
 });
