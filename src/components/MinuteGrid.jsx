@@ -269,7 +269,7 @@ const AG_CUSTOM_CSS = `
 }
 .df-ro-light .ag-cell.ag-cell-read-only:hover::after { opacity: 1; }
 .ag-cell-read-only {
-  background-color: #f3f4f6 !important;
+  background-color: #F9FAFB !important; /* même gris que les en-têtes */
   color: #9ca3af !important;
   cursor: not-allowed;
 }
