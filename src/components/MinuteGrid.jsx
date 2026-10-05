@@ -203,6 +203,12 @@ const AG_CUSTOM_CSS = `
 }
 /* Cadre complet du tableau (gauche, droite, haut, bas) */
 .ag-theme-alpine .ag-root-wrapper { border: 1px solid #E5E7EB; border-radius: 8px; }
+/* Hauteur auto : AG Grid impose ~150px mini à la zone des lignes, d'où un grand vide
+   sous une table d'une seule ligne. On ramène le minimum à une ligne. */
+.ag-theme-alpine .ag-layout-auto-height .ag-center-cols-viewport,
+.ag-theme-alpine .ag-layout-auto-height .ag-center-cols-container,
+.ag-theme-alpine .ag-layout-auto-height .ag-center-cols-clipper,
+.ag-theme-alpine .ag-layout-auto-height .ag-body-viewport { min-height: 48px !important; }
 /* Barre de regroupement : même gris que la ligne des en-têtes */
 .ag-theme-alpine .ag-column-drop-horizontal {
   background: #F9FAFB;
