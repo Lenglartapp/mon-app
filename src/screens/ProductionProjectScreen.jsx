@@ -1064,7 +1064,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
         />
 
         {/* Ligne des vues : actions du dossier à gauche, vues au centre, docs + impression à droite */}
-        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'minmax(0,1fr)' : 'minmax(0,1fr) auto minmax(0,1fr)', alignItems: 'center', gap: 16, marginTop: 48, paddingBottom: 8 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'minmax(0,1fr)' : 'minmax(0,1fr) auto minmax(0,1fr)', alignItems: 'center', gap: 16, marginTop: 104, paddingBottom: 8 }}>
           {/* Actions du dossier (à gauche) */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-start' }}>
             {/* Matériauthèque Button */}
