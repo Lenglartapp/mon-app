@@ -101,7 +101,7 @@ button{ background:none; border:0; padding:0; margin:0; font:inherit; color:inhe
 
 /* ---- Thème « blanc chaud » de toute l'application (classe posée sur <body> dans main.jsx) :
    fond blanc cassé, gris neutre pour en-têtes / cellules verrouillées / blocs, traits un peu plus marqués ---- */
-body.df-warm { --df-bg: #FAF8F4; --df-gray: #ECEBE8; --df-line: #E0DED9; --df-line-soft: #E8E6E2; background: var(--df-bg) !important; }
+body.df-warm { --df-bg: #FFFFFF; --df-gray: #ECEBE8; --df-line: #E0DED9; --df-line-soft: #E8E6E2; background: var(--df-bg) !important; }
 body.df-warm [style*="background: white"],
 body.df-warm [style*="background: rgb(255, 255, 255)"],
 body.df-warm [style*="background-color: white"],

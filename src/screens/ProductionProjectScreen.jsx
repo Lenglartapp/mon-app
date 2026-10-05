@@ -876,7 +876,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
   }
 
   return (
-    <div style={isMobile ? { padding: '16px', background: '#FAF8F4', minHeight: '100vh' } : S.contentWide}>
+    <div style={isMobile ? { padding: '16px', background: '#FFFFFF', minHeight: '100vh' } : S.contentWide}>
       {/* CSS Fallback for Island Nav Scroll */}
       <style>{`
         .island-nav-container::-webkit-scrollbar { display: none; }

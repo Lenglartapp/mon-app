@@ -1397,7 +1397,7 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
     }
 
     return (
-        <div style={{ height: '100vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', background: '#FAF8F4' }}>
+        <div style={{ height: '100vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', background: '#FFFFFF' }}>
             {/* Bandeau de titre : défile normalement et disparaît au scroll */}
             <div style={{ padding: '24px 24px 0', flexShrink: 0 }}>
                 <div style={{ marginBottom: 16 }}>
@@ -1412,7 +1412,7 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
             </div>
 
             {/* Bloc sticky : pastilles de navigation + barre d'outils, toujours visibles au scroll */}
-            <div ref={stickyHeaderRef} style={{ position: 'sticky', top: 0, zIndex: 70, background: '#FAF8F4', flexShrink: 0 }}>
+            <div ref={stickyHeaderRef} style={{ position: 'sticky', top: 0, zIndex: 70, background: '#FFFFFF', flexShrink: 0 }}>
                 {canViewAssistant && (
                     <div style={{ display: 'flex', justifyContent: 'center', padding: '8px 24px 12px' }}>
                         <div style={{

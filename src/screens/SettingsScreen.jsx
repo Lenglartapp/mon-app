@@ -110,7 +110,7 @@ export default function SettingsScreen({ onBack }) {
 
   // --- Render ---
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: '#FAF8F4', py: 4 }}>
+    <Box sx={{ minHeight: '100vh', bgcolor: '#FFFFFF', py: 4 }}>
       <Container maxWidth="lg">
 
         {/* HEADER NAV */}
@@ -196,7 +196,7 @@ export default function SettingsScreen({ onBack }) {
                         bgcolor: '#1F2937',
                         color: 'white',
                         width: 36, height: 36,
-                        border: '3px solid #FAF8F4', // Matches background
+                        border: '3px solid #FFFFFF', // Matches background
                         '&:hover': { bgcolor: '#374151' }
                       }}
                     >

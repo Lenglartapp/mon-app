@@ -23,7 +23,7 @@ export default function PerformanceScreen({ projects, events, onBack }) {
   const { actions, addAction, updateAction, deleteAction } = usePerformanceActions();
 
   return (
-    <div style={{ minHeight: '100vh', background: '#FAF8F4', padding: 24, display: 'flex', flexDirection: 'column' }}>
+    <div style={{ minHeight: '100vh', background: '#FFFFFF', padding: 24, display: 'flex', flexDirection: 'column' }}>
       <div style={{ maxWidth: 1600, width: '100%', margin: '0 auto', display: 'flex', flexDirection: 'column', flex: 1 }}>
 
         {/* Header */}
