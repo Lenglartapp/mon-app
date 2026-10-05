@@ -209,17 +209,18 @@ const AG_CUSTOM_CSS = `
 .ag-theme-alpine .ag-layout-auto-height .ag-center-cols-container,
 .ag-theme-alpine .ag-layout-auto-height .ag-center-cols-clipper,
 .ag-theme-alpine .ag-layout-auto-height .ag-body-viewport { min-height: 48px !important; }
-/* En-têtes collants au défilement de la PAGE (tableaux en hauteur auto) : la barre de
+/* En-têtes collants au défilement de la PAGE (hauteur auto, mais aussi hauteur fixe : gros tableaux
+   > 100 lignes ou hauteur réglée à la poignée) : la barre de
    regroupement puis la ligne des en-têtes restent en haut de l'écran jusqu'à la dernière
    ligne du tableau. Le sticky exige des ancêtres sans overflow : on rouvre ceux d'AG Grid. */
-.df-sticky .ag-theme-alpine .ag-root-wrapper.ag-layout-auto-height,
-.df-sticky .ag-theme-alpine .ag-root-wrapper-body.ag-layout-auto-height,
-.df-sticky .ag-theme-alpine .ag-root.ag-layout-auto-height { overflow: visible; }
-.df-sticky .ag-theme-alpine .ag-root-wrapper.ag-layout-auto-height > .ag-column-drop-wrapper {
+.df-sticky .ag-theme-alpine .ag-root-wrapper,
+.df-sticky .ag-theme-alpine .ag-root-wrapper-body,
+.df-sticky .ag-theme-alpine .ag-root { overflow: visible; }
+.df-sticky .ag-theme-alpine .ag-root-wrapper > .ag-column-drop-wrapper {
   position: sticky; top: var(--df-sticky-top, 0px); z-index: 4;
 }
-.df-sticky .ag-theme-alpine .ag-root-wrapper.ag-layout-auto-height .ag-column-drop-horizontal { border-radius: 8px 8px 0 0; }
-.df-sticky .ag-theme-alpine .ag-root.ag-layout-auto-height > .ag-header {
+.df-sticky .ag-theme-alpine .ag-root-wrapper .ag-column-drop-horizontal { border-radius: 8px 8px 0 0; }
+.df-sticky .ag-theme-alpine .ag-root > .ag-header {
   position: sticky; top: calc(var(--df-sticky-top, 0px) + ${GROUP_PANEL_HEIGHT}px); z-index: 3;
 }
 /* La toolbar couvre toute la largeur (pour coller) mais laisse passer les clics / glisser-déposer
@@ -1684,7 +1685,9 @@ function MinuteGrid({
         return params.value;
     }, []);
 
-    const isLargeGrid = rows.length > 100;
+    // Au-delà, hauteur fixe + défilement interne (perf). Avec les en-têtes collants, on laisse le
+    // tableau s'afficher en entier bien plus loin : c'est la page qui défile, en-têtes figés.
+    const isLargeGrid = rows.length > (stickyTop != null ? 400 : 100);
 
     // Hauteur effective : manuelle si l'utilisateur a tiré la poignée, sinon comportement historique.
     const effectiveHeight = manualHeight != null ? manualHeight : (isLargeGrid ? 600 : undefined);
