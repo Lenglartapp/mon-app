@@ -1161,37 +1161,8 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
             </div>
           </div>
 
-          {/* ── COLONNE DROITE : mur + journal ── */}
-          <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>
-
-            {/* Mur du projet */}
-            <div style={{ background: 'white', padding: 16, borderRadius: 12, border: `1px solid ${COLORS.border}` }}>
-              <textarea
-                placeholder="Écrire un message global..."
-                value={wallMsg}
-                onChange={(e) => setWallMsg(e.target.value)}
-                style={{ width: '100%', border: '1px solid #E5E7EB', borderRadius: 8, padding: 12, minHeight: 60, marginBottom: 12, fontFamily: 'inherit', boxSizing: 'border-box' }}
-              />
-              {wallImg && (
-                <div style={{ marginBottom: 12, position: 'relative', display: 'inline-block' }}>
-                  <img src={wallImg} alt="Preview" style={{ height: 80, borderRadius: 6, border: '1px solid #ddd' }} />
-                  <button onClick={() => setWallImg(null)} style={{ position: 'absolute', top: -5, right: -5, background: 'red', color: 'white', borderRadius: '50%', width: 20, height: 20, border: 'none', cursor: 'pointer', fontSize: 12 }}>×</button>
-                </div>
-              )}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
-                <label style={{ cursor: wallUploading ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#4B5563', padding: '10px 12px', borderRadius: 6, background: '#F3F4F6', opacity: wallUploading ? 0.6 : 1 }}>
-                  <ImageIcon size={16} /> {wallUploading ? 'Envoi…' : 'Ajouter photo'}
-                  <input type="file" accept="image/*" hidden disabled={wallUploading} onChange={handleImageSelect} />
-                </label>
-                <button
-                  onClick={handlePostMessage}
-                  disabled={wallUploading}
-                  style={{ background: '#2563EB', color: 'white', border: 'none', padding: '10px 20px', borderRadius: 6, fontWeight: 600, cursor: wallUploading ? 'wait' : 'pointer', opacity: wallUploading ? 0.6 : 1 }}
-                >
-                  Publier
-                </button>
-              </div>
-            </div>
+          {/* ── COLONNE DROITE : journal (avec la zone d'écriture du mur) ── */}
+          <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 16, paddingTop: 4 }}>
 
             <ProjectActivityFeed
               rows={rows}
@@ -1200,6 +1171,39 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
               onTogglePin={handleTogglePin}
               isMobile={isMobile}
               projectId={project?.id}
+              composer={
+                /* Écrire au mur du projet : une ligne qui s'agrandit avec le texte ; ⌘/Ctrl+Entrée publie */
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, border: '1px solid #E5E7EB', borderRadius: 8, padding: '6px 6px 6px 10px', background: 'white' }}>
+                    <label title={wallUploading ? 'Envoi…' : 'Ajouter une photo'} style={{ cursor: wallUploading ? 'wait' : 'pointer', color: '#9B9A97', display: 'grid', placeItems: 'center', height: 30, opacity: wallUploading ? 0.5 : 1 }}>
+                      <ImageIcon size={17} />
+                      <input type="file" accept="image/*" hidden disabled={wallUploading} onChange={handleImageSelect} />
+                    </label>
+                    <textarea
+                      placeholder="Écrire un message…"
+                      value={wallMsg}
+                      rows={Math.min(8, Math.max(1, (wallMsg || '').split('\n').length))}
+                      onChange={(e) => setWallMsg(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); if (!wallUploading) handlePostMessage(); } }}
+                      style={{ flex: 1, border: 'none', outline: 'none', resize: 'none', padding: '6px 0', fontSize: 14, lineHeight: 1.45, fontFamily: 'Roboto, system-ui, sans-serif', color: '#37352F', background: 'transparent' }}
+                    />
+                    <button
+                      onClick={handlePostMessage}
+                      disabled={wallUploading}
+                      title="Publier (⌘ + Entrée)"
+                      style={{ background: (wallMsg || wallImg) ? '#1E2447' : '#EDEDEB', color: (wallMsg || wallImg) ? 'white' : '#9B9A97', border: 'none', padding: '7px 14px', borderRadius: 6, fontSize: 13, fontWeight: 500, cursor: wallUploading ? 'wait' : 'pointer', transition: 'background .15s, color .15s' }}
+                    >
+                      Publier
+                    </button>
+                  </div>
+                  {wallImg && (
+                    <div style={{ marginTop: 8, position: 'relative', display: 'inline-block' }}>
+                      <img src={wallImg} alt="Aperçu" style={{ height: 72, borderRadius: 6, border: '1px solid #E5E7EB' }} />
+                      <button onClick={() => setWallImg(null)} title="Retirer la photo" style={{ position: 'absolute', top: -6, right: -6, background: '#37352F', color: 'white', borderRadius: '50%', width: 18, height: 18, border: 'none', cursor: 'pointer', fontSize: 11, lineHeight: '18px', padding: 0 }}>×</button>
+                    </div>
+                  )}
+                </div>
+              }
             />
           </div>
         </div>

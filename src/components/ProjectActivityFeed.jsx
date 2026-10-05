@@ -11,8 +11,8 @@ import { renderRichText } from '../lib/utils/richText.jsx';
 
 const FILTERS = [
     { key: 'all', label: 'Tout' },
-    { key: 'messages', label: 'Messages & Photos' },
-    { key: 'activity', label: 'Activités' },
+    { key: 'messages', label: 'Messages' },
+    { key: 'activity', label: 'Activité' },
 ];
 
 const extractActivity = (rows, wall, pinnedIds = []) => {
@@ -87,7 +87,7 @@ const extractActivity = (rows, wall, pinnedIds = []) => {
     return allEvents.sort((a, b) => b.date - a.date);
 };
 
-export default function ProjectActivityFeed({ rows, wall, pinnedIds, onTogglePin, isMobile = false, projectId }) {
+export default function ProjectActivityFeed({ rows, wall, pinnedIds, onTogglePin, isMobile = false, projectId, composer = null }) {
     const [filter, setFilter] = useState('all');
     const [activeFilters, setActiveFilters] = useState([]);
 
@@ -156,35 +156,32 @@ export default function ProjectActivityFeed({ rows, wall, pinnedIds, onTogglePin
     const renderEvent = (evt, isPinnedView = false) => {
         const dateObj = new Date(evt.date);
         const canPin = evt.category === 'messages';
-        let Icon = MessageSquare, iconColor = "#6366f1", bgColor = "#EEF2FF";
-        if (evt.type === 'wall_post') { Icon = MessageSquare; iconColor = "#2563EB"; bgColor = "#EFF6FF"; }
-        else if (evt.type === 'line_comment') { Icon = MessageSquare; iconColor = "#8B5CF6"; bgColor = "#F5F3FF"; }
-        else if (evt.type === 'system_edit') { Icon = Edit; iconColor = "#F59E0B"; bgColor = "#FFFBEB"; }
-        else if (evt.type === 'system_create') { Icon = CheckCircle; iconColor = "#10B981"; bgColor = "#ECFDF5"; }
+        // Petite icône discrète par type d'événement (plus de pastille de couleur)
+        let Icon = MessageSquare, iconColor = "#9B9A97";
+        if (evt.type === 'system_edit') { Icon = Edit; }
+        else if (evt.type === 'system_create') { Icon = CheckCircle; }
 
         return (
-            <div key={`${evt.id}-${isPinnedView ? 'pin' : 'feed'}`} style={{ padding: '16px 20px', borderBottom: '1px solid #f3f4f6', display: 'flex', gap: 16, backgroundColor: evt.pinned && !isPinnedView ? '#FFFBEB' : 'white', transition: 'background 0.2s' }}>
-                <div style={{ marginTop: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                    <div style={{ width: 32, height: 32, borderRadius: '50%', background: bgColor, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Icon size={16} color={iconColor} /></div>
-                </div>
+            <div key={`${evt.id}-${isPinnedView ? 'pin' : 'feed'}`} style={{ padding: '12px 4px', borderBottom: '1px solid #EDEDEB', display: 'flex', gap: 12 }}>
+                <div style={{ marginTop: 2, color: iconColor, opacity: 0.75 }}><Icon size={15} /></div>
 
                 <div style={{ flex: 1 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, alignItems: 'flex-start' }}>
                         <div style={{ display: 'flex', flexDirection: 'column' }}>
                             <span style={{ fontSize: 13, color: '#374151' }}>
-                                <span style={{ fontWeight: 700, color: '#111827' }}>{evt.user}</span> {evt.actionLabel} {evt.target && <span style={{ fontWeight: 600, color: '#4B5563', background: '#F3F4F6', padding: '2px 6px', borderRadius: 4, fontSize: 12 }}>{evt.target}</span>}
+                                <span style={{ fontWeight: 500, color: '#111827' }}>{evt.user}</span> <span style={{ color: '#787774' }}>{evt.actionLabel}</span> {evt.target && <span style={{ color: '#37352F', background: '#F1F1EF', padding: '1px 6px', borderRadius: 4, fontSize: 12 }}>{evt.target}</span>}
                             </span>
-                            <span style={{ fontSize: 11, color: '#9ca3af' }}>{format(dateObj, 'dd/MM/yyyy HH:mm', { locale: fr })} ({formatDistanceToNow(dateObj, { addSuffix: true, locale: fr })})</span>
+                            <span style={{ fontSize: 12, color: '#A8A7A3' }} title={format(dateObj, 'dd/MM/yyyy HH:mm', { locale: fr })}>{formatDistanceToNow(dateObj, { addSuffix: true, locale: fr })} · {format(dateObj, 'dd/MM HH:mm', { locale: fr })}</span>
                         </div>
                         {canPin && (
                             <button onClick={() => onTogglePin && onTogglePin(evt.id)} title={evt.pinned ? "Détacher" : "Épingler"} style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: 4, opacity: evt.pinned ? 1 : 0.3 }}>
-                                <Pin size={16} color={evt.pinned ? "#D97706" : "#6B7280"} fill={evt.pinned ? "#D97706" : "none"} />
+                                <Pin size={15} color={evt.pinned ? "#37352F" : "#9B9A97"} fill={evt.pinned ? "#37352F" : "none"} />
                             </button>
                         )}
                     </div>
 
                     {/* Même rendu que le fil du détail de ligne : mentions + mise en forme légère */}
-                    {evt.text && <div style={{ fontSize: 14, color: '#1F2937', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{renderRichText(evt.text)}</div>}
+                    {evt.text && <div style={{ fontSize: 14, color: '#37352F', lineHeight: 1.5, marginTop: 2, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{renderRichText(evt.text)}</div>}
                     {evt.details && (
                         <div style={{ fontSize: 13, color: '#4B5563', marginTop: 2 }}>
                             Modif <b>{evt.details.field}</b> : <span style={{ textDecoration: 'line-through', color: '#EF4444' }}>{evt.details.old}</span> <ArrowRight size={12} style={{ margin: '0 4px', verticalAlign: 'middle' }} /> <span style={{ fontWeight: 600, color: '#10B981' }}>{evt.details.new}</span>
@@ -216,16 +213,18 @@ export default function ProjectActivityFeed({ rows, wall, pinnedIds, onTogglePin
     };
 
     return (
-        <div style={{ background: '#fff', borderRadius: 12, border: `1px solid ${COLORS.border}`, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ padding: '12px 20px', borderBottom: `1px solid ${COLORS.border}`, background: '#f9fafb', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-                    <div style={{ fontWeight: 500, fontSize: 20, fontFamily: 'Roboto, system-ui, sans-serif', display: 'flex', alignItems: 'center', gap: 8, color: '#111827' }}><Clock size={18} /> Journal & Messages</div>
-                    <div style={{ display: 'flex', gap: 4 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', fontFamily: 'Roboto, system-ui, sans-serif' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingBottom: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+                    <div style={{ fontWeight: 500, fontSize: 20, color: '#111827' }}>Journal</div>
+                    {/* Filtres en onglets texte, l'actif est souligné */}
+                    <div style={{ display: 'flex', gap: 16 }}>
                         {FILTERS.map(f => (
-                            <button key={f.key} onClick={() => setFilter(f.key)} style={{ padding: '4px 12px', borderRadius: 20, border: 'none', fontSize: 12, fontWeight: 500, cursor: 'pointer', background: filter === f.key ? '#374151' : '#E5E7EB', color: filter === f.key ? 'white' : '#4B5563' }}>{f.label}</button>
+                            <button key={f.key} onClick={() => setFilter(f.key)} style={{ padding: '2px 0', border: 'none', borderBottom: `1.5px solid ${filter === f.key ? '#111827' : 'transparent'}`, background: 'transparent', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', color: filter === f.key ? '#111827' : '#9B9A97' }}>{f.label}</button>
                         ))}
                     </div>
                 </div>
+                {composer}
                 <SmartFilterBar
                     fields={[
                         { id: 'user',    label: 'Auteur' },
@@ -238,8 +237,8 @@ export default function ProjectActivityFeed({ rows, wall, pinnedIds, onTogglePin
                     placeholder="Ouvrage, auteur, contenu…"
                 />
             </div>
-            {pinnedPosts.length > 0 && <div style={{ background: '#FFFBEB', borderBottom: '4px solid #F3F4F6' }}><div style={{ padding: '8px 20px', fontSize: 11, fontWeight: 700, color: '#D97706', textTransform: 'uppercase' }}>📌 Épinglés ({pinnedPosts.length})</div>{pinnedPosts.map(post => renderEvent(post, true))}</div>}
-            <div style={{ maxHeight: 600, overflowY: 'auto' }}>{feedEvents.length === 0 ? <div style={{ padding: 40, textAlign: 'center', color: '#9CA3AF', fontStyle: 'italic' }}>Aucune activité.</div> : feedEvents.map(evt => renderEvent(evt, false))}</div>
+            {pinnedPosts.length > 0 && <div style={{ marginBottom: 8 }}><div style={{ padding: '8px 4px 0', fontSize: 12, color: '#9B9A97' }}>Épinglés ({pinnedPosts.length})</div>{pinnedPosts.map(post => renderEvent(post, true))}</div>}
+            <div style={{ maxHeight: 600, overflowY: 'auto' }}>{feedEvents.length === 0 ? <div style={{ padding: '24px 4px', color: '#A8A7A3', fontSize: 14 }}>Aucune activité.</div> : feedEvents.map(evt => renderEvent(evt, false))}</div>
 
             {/* LIGHTBOX COMPONENT */}
             <ImageLightbox
