@@ -5,6 +5,7 @@ import { COLORS, S } from "../lib/constants/ui.js";
 import { slugify } from "../lib/utils/slugify";
 import MinuteGrid from "../components/MinuteGrid.jsx"; // Replaces DataTable
 import DashboardTiles from "../components/DashboardTiles.jsx";
+import ProgressList, { Ratio } from "../components/ui/ProgressList";
 import ProjectActivityFeed from "../components/ProjectActivityFeed.jsx";
 import EtiquettesSection from "../components/EtiquettesSection.jsx";
 import BPPPrintPortal from "../components/print/BPPPrintPortal.jsx";
@@ -45,6 +46,9 @@ import { can, role } from "../lib/authz";
 import { HeaderCard, EditableTitle, StatusPill, MetaItem, OwnerPicker } from "../components/ui/EntityHeader";
 import { formatAnyDateFR } from "../lib/utils/formatDate";
 import { FORMULES_METRAGE_V2 } from "../lib/formulas/metrageVersion";
+
+// Titres des blocs du dashboard (Roboto, sobre)
+const DASH_TITLE = { fontSize: 20, fontWeight: 500, fontFamily: 'Roboto, system-ui, sans-serif', margin: 0, color: '#111827' };
 
 // Hauteur du titre de section collant (les barres du tableau se collent juste dessous).
 const STICKY_TITLE_HEIGHT = 44;
@@ -1116,16 +1120,14 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
         <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 24, alignItems: 'flex-start' }}>
 
           {/* ── COLONNE GAUCHE : stats ── */}
-          <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 16, paddingTop: 4 }}>
 
-            {/* Chapitre 1 : Consommation Temps */}
-            <div style={{ padding: '4px 4px 8px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-                <h3 style={{ fontSize: 20, fontWeight: 500, fontFamily: 'Roboto, system-ui, sans-serif', margin: 0, color: '#111827', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  ⏱️ Consommation Temps
-                </h3>
+            {/* Consommation temps : une ligne par service (barre fine · réalisé / budget · %) */}
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+                <h3 style={DASH_TITLE}>Consommation temps</h3>
                 {canEditProd && (
-                  <button onClick={handleOpenBudget} style={{ ...S.smallBtn, padding: 4 }} title="Ajuster le budget">
+                  <button onClick={handleOpenBudget} title="Ajuster le budget" style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#A8A7A3', padding: 4, borderRadius: 6, display: 'grid', placeItems: 'center' }}>
                     <Edit2 size={14} />
                   </button>
                 )}
@@ -1138,43 +1140,24 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                   />
                 </div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
-                {['prepa', 'conf', 'pose'].map(key => {
+              <ProgressList
+                items={[['prepa', 'Préparation'], ['conf', 'Confection'], ['pose', 'Pose']].map(([key, label]) => {
                   const budgetVal = Number(project.budget?.[key] || 0);
                   const realVal = realized[key] || 0;
-                  const percent = budgetVal > 0 ? (realVal / budgetVal) * 100 : 0;
-                  const color = percent > 100 ? '#ef4444' : percent > 80 ? '#f59e0b' : '#10b981';
-                  const labels = { prepa: "Préparation & Métrage", conf: "Atelier / Confection", pose: "Pose & Logistique" };
-
-                  return (
-                    <div key={key} style={{ background: '#F9FAFB', borderRadius: 8, padding: 12, border: '1px solid #F3F4F6' }}>
-                      <div style={{ fontSize: 12, color: '#6B7280', fontWeight: 600, marginBottom: 4 }}>{labels[key]}</div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
-                        <span style={{ fontSize: 20, fontWeight: 800, color: '#1F2937' }}>{realVal.toFixed(1)}h</span>
-                        <span style={{ fontSize: 13, color: '#9CA3AF' }}>
-                          / {budgetVal}h
-                          {budgetVal > 0 && (
-                            <span style={{ marginLeft: 5, fontSize: 11, color: color, fontWeight: 700 }}>
-                              — {Math.round(percent)}%
-                            </span>
-                          )}
-                        </span>
-                      </div>
-                      <div style={{ height: 6, background: '#E5E7EB', borderRadius: 3, overflow: 'hidden' }}>
-                        <div style={{ width: `${Math.min(percent, 100)}%`, height: '100%', background: color, transition: 'width 0.3s' }} />
-                      </div>
-                    </div>
-                  );
+                  const fmtH = (n) => String(Math.round(n * 10) / 10).replace('.', ',');
+                  return {
+                    key, label,
+                    pct: budgetVal > 0 ? (realVal / budgetVal) * 100 : null,
+                    value: <Ratio done={fmtH(realVal)} total={fmtH(budgetVal)} unit=" h" />,
+                  };
                 })}
-              </div>
+              />
             </div>
 
-            {/* Chapitre 2 : Avancement */}
-            <div style={{ padding: '4px 4px 8px' }}>
-              <h3 style={{ fontSize: 20, fontWeight: 500, fontFamily: 'Roboto, system-ui, sans-serif', margin: '0 0 16px', color: '#111827', display: 'flex', alignItems: 'center', gap: 8 }}>
-                📊 Avancement
-              </h3>
-              <DashboardTiles rows={rows} budget={project?.budget || {}} isMobile={isMobile} />
+            {/* Avancement : une ligne par étape */}
+            <div style={{ marginTop: 20 }}>
+              <h3 style={{ ...DASH_TITLE, marginBottom: 16 }}>Avancement</h3>
+              <DashboardTiles rows={rows} budget={project?.budget || {}} />
             </div>
           </div>
 

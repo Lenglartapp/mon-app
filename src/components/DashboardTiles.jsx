@@ -1,82 +1,42 @@
 import React, { useMemo } from "react";
-import { Activity, Ruler, Scissors, Hammer, Clock } from "lucide-react";
 import { calculateProjectStats } from "../lib/projectMetrics";
+import ProgressList, { Ratio } from "./ui/ProgressList";
 
-export default function DashboardTiles({ rows, budget = {}, isMobile = false }) {
+// Avancement du dossier : une ligne par étape (prise de cotes, préparation, confection, pose)
+// avec barre fine, réalisé / total et %. Vert quand l'étape est terminée.
+export default function DashboardTiles({ rows, budget = {} }) {
   const stats = useMemo(() => calculateProjectStats(rows, budget), [rows, budget]);
 
-  const tileStyle = (bg, color) => ({
-    background: bg, color: color, borderRadius: 16, padding: "20px",
-    flex: isMobile ? "1 1 100%" : "1 1 180px", // Force 100% width on mobile
-    display: "flex", flexDirection: "column", justifyContent: "space-between",
-    boxShadow: "0 2px 5px rgba(0,0,0,0.05)", minHeight: isMobile ? 120 : 110, border: '1px solid rgba(0,0,0,0.03)'
-  });
-  const valStyle = { fontSize: isMobile ? 36 : 28, fontWeight: 800, letterSpacing: "-0.5px" }; // Larger font on mobile
-  const subStyle = { fontSize: 11, fontWeight: 500, marginTop: 4, opacity: 0.7 };
+  if (!stats) return <div style={{ padding: "4px 0", color: "#A8A7A3", fontSize: 14 }}>Ajoutez des lignes pour voir l'avancement.</div>;
 
-  if (!stats) return <div style={{ padding: 20, color: '#888' }}>Ajoutez des lignes pour voir les statistiques.</div>;
+  const r = stats.raw;
+  const items = [
+    stats.cotesTotal > 0
+      ? { key: "cotes", label: "Prise de cotes", pct: stats.pctCotes, value: <Ratio done={r.cotesValidees} total={`${stats.cotesTotal} validées`} /> }
+      : { key: "cotes", label: "Prise de cotes", note: "Non applicable" },
+    { key: "prepa", label: "Préparation", pct: stats.pctPrepa, value: <Ratio done={r.prepaOk} total={r.prepaTotal} /> },
+  ];
 
-  return (
-    <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-      <div style={tileStyle("#EFF6FF", "#1E40AF")}>
-        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, display: 'flex', gap: 6 }}><Ruler size={16} /> Prise de Cotes</div>
-        <div>
-          <div style={valStyle}>{stats.pctCotes !== null ? `${stats.pctCotes}%` : '—'}</div>
-          <div style={subStyle}>
-            {stats.cotesTotal > 0
-              ? `${stats.raw.cotesValidees}/${stats.cotesTotal} validées chef de projet`
-              : 'Non applicable'}
-          </div>
-        </div>
-      </div>
-      <div style={tileStyle("#F5F3FF", "#5B21B6")}>
-        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, display: 'flex', gap: 6 }}><Activity size={16} /> Préparation</div>
-        <div><div style={valStyle}>{stats.pctPrepa}%</div><div style={subStyle}>{stats.raw.prepaOk}/{stats.raw.prepaTotal} terminées</div></div>
-      </div>
-      {/* Tuile Confection */}
-      {stats.confMode === 'not_applicable'
-        ? <div style={tileStyle("#F3F4F6", "#9CA3AF")}>
-            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, display: 'flex', gap: 6 }}><Scissors size={16} /> Confection</div>
-            <div><div style={{ ...valStyle, fontSize: 16 }}>Non applicable</div></div>
-          </div>
-        : <div style={tileStyle("#FDF2F8", "#9D174D")}>
-            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, display: 'flex', gap: 6 }}><Scissors size={16} /> Confection</div>
-            <div>
-              <div style={valStyle}>{stats.pctConf}%</div>
-              <div style={subStyle}>
-                {stats.raw.confHouresTotal > 0
-                  ? `${stats.raw.confHouresDone}h / ${stats.raw.confHouresTotal}h`
-                  : stats.confMode === 'all_st' ? 'Sous-traité'
-                  : `${stats.raw.confHouresDone}/${stats.total} terminées`}
-              </div>
-              {(stats.confMode === 'all_st' || stats.confMode === 'mix_st') && stats.stConfSummary && (
-                <div style={{ fontSize: 10, marginTop: 4, opacity: 0.65, fontStyle: 'italic' }}>{stats.stConfSummary}</div>
-              )}
-            </div>
-          </div>
-      }
+  if (stats.confMode === "not_applicable") {
+    items.push({ key: "conf", label: "Confection", note: "Non applicable" });
+  } else if (stats.confMode === "all_st") {
+    items.push({ key: "conf", label: "Confection", note: `Sous-traité${stats.stConfSummary ? ` · ${stats.stConfSummary}` : ""}` });
+  } else {
+    items.push({
+      key: "conf", label: "Confection", pct: stats.pctConf,
+      value: r.confHouresTotal > 0 ? <Ratio done={r.confHouresDone} total={r.confHouresTotal} unit=" h" /> : <Ratio done={r.confHouresDone} total={stats.total} />,
+    });
+    if (stats.confMode === "mix_st" && stats.stConfSummary) items.push({ key: "conf-st", label: "", note: stats.stConfSummary });
+  }
 
-      {/* Tuile Pose */}
-      {stats.poseMode === 'not_applicable'
-        ? <div style={tileStyle("#F3F4F6", "#9CA3AF")}>
-            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, display: 'flex', gap: 6 }}><Hammer size={16} /> Pose</div>
-            <div><div style={{ ...valStyle, fontSize: 13, fontWeight: 600, lineHeight: 1.4 }}>Installation non réalisée par nos soins</div></div>
-          </div>
-        : <div style={tileStyle("#ECFDF5", "#065F46")}>
-            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, display: 'flex', gap: 6 }}><Hammer size={16} /> Pose</div>
-            <div>
-              <div style={valStyle}>{stats.pctPose}%</div>
-              <div style={subStyle}>
-                {stats.poseMode === 'all_st' ? 'Sous-traité'
-                  : `${stats.raw.poseOk}/${stats.raw.poseTotal} installées`}
-              </div>
-              {(stats.poseMode === 'all_st' || stats.poseMode === 'mix_st') && stats.stPoseSummary && (
-                <div style={{ fontSize: 10, marginTop: 4, opacity: 0.65, fontStyle: 'italic' }}>{stats.stPoseSummary}</div>
-              )}
-            </div>
-          </div>
-      }
+  if (stats.poseMode === "not_applicable") {
+    items.push({ key: "pose", label: "Pose", note: "Installation non réalisée par nos soins" });
+  } else if (stats.poseMode === "all_st") {
+    items.push({ key: "pose", label: "Pose", note: `Sous-traité${stats.stPoseSummary ? ` · ${stats.stPoseSummary}` : ""}` });
+  } else {
+    items.push({ key: "pose", label: "Pose", pct: stats.pctPose, value: <Ratio done={r.poseOk} total={`${r.poseTotal} installées`} /> });
+    if (stats.poseMode === "mix_st" && stats.stPoseSummary) items.push({ key: "pose-st", label: "", note: stats.stPoseSummary });
+  }
 
-    </div>
-  );
+  return <ProgressList items={items} doneIsGreen />;
 }
