@@ -253,7 +253,7 @@ const AssistantView = ({ stats, onUpdateProject }) => {
     return (
         <div style={{ flex: 1, overflowY: 'auto', position: 'relative' }}>
             {/* BARRE DE FILTRES — épinglée en haut du scroll (recherche + statut + avancés) */}
-            <div ref={filterBarRef} style={{ position: 'sticky', top: 0, zIndex: 30, background: '#FAF5EE', padding: '24px 24px 16px' }}>
+            <div ref={filterBarRef} style={{ position: 'sticky', top: 0, zIndex: 30, background: '#FAF8F4', padding: '24px 24px 16px' }}>
             <div style={{ maxWidth: 1100, margin: '0 auto', display: 'flex', gap: 8, alignItems: 'center' }}>
                 <SmartFilterBar
                     fields={SEARCH_FIELDS}

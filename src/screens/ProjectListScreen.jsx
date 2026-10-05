@@ -179,7 +179,7 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
   }, [users]);
 
   return (
-    <div style={{ minHeight: '100vh', background: '#F9F7F2', padding: isMobile ? '16px' : '24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div style={{ minHeight: '100vh', background: '#FAF8F4', padding: isMobile ? '16px' : '24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
       {/* CSS Fallback for Responsive Toggle */}
       <style>{`
         @media (max-width: 768px) {

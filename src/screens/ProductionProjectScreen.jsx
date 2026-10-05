@@ -853,12 +853,6 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
   };
 
   // Helper Style Island Nav (White + Navy Pill)
-  // Thème « blanc chaud » (index.css .df-warm), posé sur <body> tant que l'écran est ouvert.
-  useEffect(() => {
-    document.body.classList.add('df-warm');
-    return () => document.body.classList.remove('df-warm');
-  }, []);
-
   const getNavStyle = (isActive) => ({
     padding: '8px 20px',
     borderRadius: 99,
@@ -882,7 +876,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
   }
 
   return (
-    <div style={isMobile ? { padding: '16px', background: '#F9F7F2', minHeight: '100vh' } : S.contentWide}>
+    <div style={isMobile ? { padding: '16px', background: '#FAF8F4', minHeight: '100vh' } : S.contentWide}>
       {/* CSS Fallback for Island Nav Scroll */}
       <style>{`
         .island-nav-container::-webkit-scrollbar { display: none; }

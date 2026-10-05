@@ -314,7 +314,7 @@ export default function LogistiqueAnalyseView({ shipments, items, projects, onBa
 
   // ── Mode standalone (accès direct) ──────────────────────────────────────────
   return (
-    <div style={{ minHeight: '100vh', background: '#F9F7F2', display: 'flex', overflow: 'hidden' }}>
+    <div style={{ minHeight: '100vh', background: '#FAF8F4', display: 'flex', overflow: 'hidden' }}>
       <div style={{ flex: 1, overflowY: 'auto', padding: 24, display: 'flex', flexDirection: 'column', gap: 24, minWidth: 0 }}>
         <div>
           <button onClick={onBack} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6B7280', fontWeight: 600, fontSize: 13, marginBottom: 4, padding: 0, display: 'flex', alignItems: 'center', gap: 4 }}>

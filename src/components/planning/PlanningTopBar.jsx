@@ -67,7 +67,7 @@ const PlanningTopBar = ({
         color: '#374151', cursor: 'pointer',
     };
     return (
-        <div style={{ display: 'flex', alignItems: 'center', padding: '16px 24px', background: '#FAF5EE' }}>
+        <div style={{ display: 'flex', alignItems: 'center', padding: '16px 24px', background: '#FAF8F4' }}>
             {/* GAUCHE (flex:1 pour centrer la recherche) */}
             <div style={{ flex: 1, display: 'flex', gap: 12, alignItems: 'center', minWidth: 0 }}>
                 <button onClick={onNew} style={{ background: '#111827', color: '#fff', border: 'none', borderRadius: 6, padding: '8px 16px', fontWeight: 600, fontSize: 14, cursor: 'pointer', whiteSpace: 'nowrap' }}>Nouveau</button>

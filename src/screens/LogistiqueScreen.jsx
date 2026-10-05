@@ -842,7 +842,7 @@ function ShipmentDetail({ shipment, shipmentItems, colisItems, projects, onBack,
     const projectName = (projectId) => projects.find(p => String(p.id) === String(projectId))?.name || '—';
 
     return (
-        <div style={{ minHeight: '100vh', background: '#F9F7F2', padding: 24 }}>
+        <div style={{ minHeight: '100vh', background: '#FAF8F4', padding: 24 }}>
             <div style={{ maxWidth: 1200, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
                 {/* Header */}
                 <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
@@ -1312,7 +1312,7 @@ export default function LogistiqueScreen({ projects, onUpdateProject, onBack }) 
 
     // ── Vue principale (tabbed) ──
     return (
-        <div style={{ minHeight: '100vh', background: '#F9F7F2', padding: 24, display: 'flex', flexDirection: 'column' }}>
+        <div style={{ minHeight: '100vh', background: '#FAF8F4', padding: 24, display: 'flex', flexDirection: 'column' }}>
             <div style={{ maxWidth: 1600, width: '100%', margin: '0 auto', display: 'flex', flexDirection: 'column', flex: 1 }}>
 
                 {/* Header */}

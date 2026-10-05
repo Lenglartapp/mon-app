@@ -97,12 +97,6 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
     [minutes, minuteId]
   );
 
-  // Thème « blanc chaud » (index.css .df-warm), posé sur <body> tant que l'écran est ouvert.
-  React.useEffect(() => {
-    document.body.classList.add('df-warm');
-    return () => document.body.classList.remove('df-warm');
-  }, []);
-
   // PERF — La liste des chiffrages est légère (sans `lines`/`deplacements`/`params`…).
   // À l'ouverture, on charge la minute COMPLÈTE par son id et on la fusionne dans la
   // liste globale (via onLoadMinuteDetail). `detailLoadedId` indique quelle minute a

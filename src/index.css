@@ -99,7 +99,7 @@ button{ background:none; border:0; padding:0; margin:0; font:inherit; color:inhe
   display: none !important;
 }
 
-/* ---- Thème « blanc chaud » des écrans Chiffrage et Projet (classe posée sur <body> par ces écrans) :
+/* ---- Thème « blanc chaud » de toute l'application (classe posée sur <body> dans main.jsx) :
    fond blanc cassé, gris neutre pour en-têtes / cellules verrouillées / blocs, traits un peu plus marqués ---- */
 body.df-warm { --df-bg: #FAF8F4; --df-gray: #ECEBE8; --df-line: #E0DED9; --df-line-soft: #E8E6E2; background: var(--df-bg) !important; }
 body.df-warm [style*="background: white"],

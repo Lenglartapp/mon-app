@@ -3,6 +3,9 @@ import React from 'react';
 import ReactDOM from "react-dom/client";
 import "./index.css";
 
+// Thème « blanc chaud » pour toute l'application (voir index.css .df-warm).
+document.body.classList.add("df-warm");
+
 // AG Grid Enterprise
 import { ModuleRegistry, AllCommunityModule } from 'ag-grid-community';
 import { AllEnterpriseModule, LicenseManager } from 'ag-grid-enterprise';
