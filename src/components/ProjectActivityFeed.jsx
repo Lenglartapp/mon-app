@@ -28,7 +28,7 @@ function ExampleMessage() {
                     <span style={{ fontWeight: 500, color: '#5B616B', fontSize: 14 }}>Exemple</span>
                     <span style={{ fontSize: 12, color: '#A0A5AD' }}>aperçu — aucun message pour l'instant</span>
                 </div>
-                <div style={{ marginTop: 6, background: '#F1EFEA', borderRadius: '4px 14px 14px 14px', padding: '10px 14px', display: 'inline-block', maxWidth: '100%', fontSize: 14, color: '#6B7079', lineHeight: 1.5, fontStyle: 'italic' }}>
+                <div style={{ marginTop: 6, background: '#F4F4F4', borderRadius: '4px 14px 14px 14px', padding: '10px 14px', display: 'inline-block', maxWidth: '100%', fontSize: 14, color: '#6B7079', lineHeight: 1.5, fontStyle: 'italic' }}>
                     « Écrivez ici les infos utiles à toute l'équipe : rendez-vous client, contraintes de pose, décisions prises… Ajoutez une photo si besoin, et épinglez les messages importants pour les garder en haut. »
                 </div>
             </div>
@@ -231,7 +231,7 @@ export default function ProjectActivityFeed({ rows, wall, pinnedIds, onTogglePin
                         )}
                     </div>
                     {(evt.text || evt.image) && (
-                        <div style={{ marginTop: 6, background: '#F1EFEA', borderRadius: '4px 14px 14px 14px', padding: '10px 14px', display: 'inline-block', maxWidth: '100%', boxSizing: 'border-box' }}>
+                        <div style={{ marginTop: 6, background: '#F4F4F4', borderRadius: '4px 14px 14px 14px', padding: '10px 14px', display: 'inline-block', maxWidth: '100%', boxSizing: 'border-box' }}>
                             {/* Même rendu que le fil du détail de ligne : mentions + mise en forme légère */}
                             {evt.text && <div style={{ fontSize: 14, color: '#2B2F36', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{renderRichText(evt.text)}</div>}
                             {evt.image && (
