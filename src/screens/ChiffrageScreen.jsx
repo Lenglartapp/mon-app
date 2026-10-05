@@ -25,7 +25,7 @@ import { calculateProfitability } from '../lib/financial/profitabilityCalculator
 
 import MinuteHistoryDialog from "../components/MinuteHistoryDialog";
 import VariantTabs from "../components/VariantTabs";
-import { buildFamilyTabs, nextFamilyVersion, variantShade } from "../lib/minuteFamily";
+import { buildFamilyTabs, nextFamilyVersion } from "../lib/minuteFamily";
 import { EditableTitle, StatusPill, HeaderButton, MetaItem, OwnerPicker } from "../components/ui/EntityHeader";
 import { formatAnyDateFR } from "../lib/utils/formatDate";
 import NotesBlock from "../components/ui/NotesBlock";
@@ -564,10 +564,6 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
   }, [minuteId, minute?.name]);
 
   const familyTabs = React.useMemo(() => buildFamilyTabs(minutes, minute), [minutes, minute]);
-  const activeTabShade = React.useMemo(() => {
-    const i = familyTabs.findIndex(t => t.id === minute?.id);
-    return variantShade(Math.max(i, 0), familyTabs.length).bg;
-  }, [familyTabs, minute?.id]);
 
   const handleNotesSave = React.useCallback((newNotes) => {
     updateMinute({ notes: newNotes });
@@ -740,7 +736,7 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
         </div>
 
         {/* Intercalaires de variantes (gauche) + actions (droite) */}
-        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16, marginTop: 14, borderBottom: `1px solid ${activeTabShade}` }}>
+        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16, marginTop: 14, borderBottom: '1px solid #EDEDEB' }}>
           <VariantTabs
             tabs={familyTabs}
             activeId={minute?.id}
@@ -755,14 +751,14 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
             accept=".xlsx, .xls"
             onChange={handleGlobalImport}
           />
-          <button onClick={() => fileInputRef.current?.click()} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', borderRadius: 8, background: '#10B981', color: 'white', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+          <button onClick={() => fileInputRef.current?.click()} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', borderRadius: 8, background: 'white', border: '1px solid #E5E7EB', cursor: 'pointer', color: '#374151', fontSize: 13, fontWeight: 600 }}>
             <FileUp size={16} /> Importer Excel
           </button>
 
           {canEdit && (
             <button
               onClick={() => setShowRecalibration(true)}
-              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', borderRadius: 8, background: '#1E2447', color: 'white', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, boxShadow: '0 1px 2px rgba(0,0,0,0.1)' }}
+              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', borderRadius: 8, background: 'white', border: '1px solid #E5E7EB', cursor: 'pointer', color: '#374151', fontSize: 13, fontWeight: 600 }}
               title="Recalibrer le devis vers un montant cible"
             >
               <SlidersHorizontal size={16} /> Recalibrer
