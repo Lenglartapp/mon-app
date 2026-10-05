@@ -11,6 +11,7 @@ import TextField from '@mui/material/TextField';
 import InputAdornment from '@mui/material/InputAdornment';
 import SearchIcon from '@mui/icons-material/Search';
 import InputBase from '@mui/material/InputBase';
+import { itemMetaColumns } from './stockColumns';
 // Helper for avatar color
 function stringToColor(string) {
     if (!string) return '#ccc';
@@ -69,18 +70,7 @@ const COLUMNS = [
             );
         }
     },
-    {
-        field: 'product',
-        headerName: 'Produit',
-        flex: 1,
-        minWidth: 200,
-        renderCell: (params) => (
-            <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                <span style={{ fontWeight: 500, lineHeight: 1.2 }}>{params.value}</span>
-                <span style={{ fontSize: 11, color: '#6B7280' }}>Réf: {params.row.ref || '—'}</span>
-            </div>
-        )
-    },
+    ...itemMetaColumns(),
     {
         field: 'qty',
         headerName: 'Quantité',
@@ -142,6 +132,8 @@ export default function StockMovementsTab({ movements, onAddMovement, projects =
         return (
             (m.product || '').toLowerCase().includes(s) ||
             (m.ref || '').toLowerCase().includes(s) ||
+            (m.fournisseur || '').toLowerCase().includes(s) ||
+            (m.coloris || '').toLowerCase().includes(s) ||
             (m.project || '').toLowerCase().includes(s) ||
             (m.location || '').toLowerCase().includes(s) ||
             (m.user_name || '').toLowerCase().includes(s) ||
@@ -155,7 +147,7 @@ export default function StockMovementsTab({ movements, onAddMovement, projects =
             {/* TOOLBAR */}
             <Card sx={{ mb: 3, p: 2, display: 'flex', gap: 2, alignItems: 'center' }}>
                 <TextField
-                    placeholder="Filtrer le journal (Produit, Projet, Opérateur...)"
+                    placeholder="Filtrer le journal (Fournisseur, Référence, Projet, Opérateur...)"
                     size="small"
                     fullWidth
                     value={search}

@@ -58,3 +58,26 @@ export const updateStrippingPhantomColumns = async (supabase, table, id, payload
   }
   return { error, dropped, body };
 };
+
+/**
+ * INSERT Supabase tolérant aux colonnes absentes : même principe que
+ * `updateStrippingPhantomColumns`, appliqué à toutes les lignes du lot.
+ * Sert aux colonnes ajoutées par migration (ex. inventaire `fournisseur`) :
+ * tant que la migration n'est pas jouée, l'écriture passe sans elles.
+ * @returns {Promise<{error: any, dropped: string[]}>}
+ */
+export const insertStrippingPhantomColumns = async (supabase, table, rows) => {
+  const dropped = [];
+  let body = rows.map((r) => ({ ...r }));
+  let guard = 0;
+  let { error } = await supabase.from(table).insert(body);
+  while (error && isSchemaDriftError(error) && guard < 8) {
+    const col = extractMissingColumn(error);
+    if (!col || !body.some((r) => col in r)) break;
+    body = body.map((r) => { const rest = { ...r }; delete rest[col]; return rest; });
+    dropped.push(col);
+    guard++;
+    ({ error } = await supabase.from(table).insert(body));
+  }
+  return { error, dropped };
+};
