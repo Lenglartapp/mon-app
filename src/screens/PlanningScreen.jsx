@@ -1400,9 +1400,10 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
         <div style={{ height: '100vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', background: '#FFFFFF' }}>
             {/* Bandeau de titre : défile normalement et disparaît au scroll */}
             <div style={{ padding: '24px 24px 0', flexShrink: 0 }}>
-                <div style={{ marginBottom: 16 }}>
+                {/* Titre aligné comme les autres modules (bloc centré 1600 px max) */}
+                <div style={{ maxWidth: 1600, width: '100%', margin: '0 auto 16px' }}>
                     {onBack && (
-                        <button onClick={onBack} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6B7280', fontWeight: 600, fontSize: 13, marginBottom: 12, padding: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <button onClick={onBack} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6B7280', fontWeight: 600, fontSize: 13, marginBottom: 4, padding: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
                             ← Retour
                         </button>
                     )}

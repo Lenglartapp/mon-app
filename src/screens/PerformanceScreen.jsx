@@ -32,7 +32,7 @@ export default function PerformanceScreen({ projects, events, onBack }) {
             <button onClick={onBack} style={{
               background: 'none', border: 'none', cursor: 'pointer',
               color: '#6B7280', fontWeight: 600, fontSize: 13,
-              marginBottom: 12, padding: 0, display: 'flex', alignItems: 'center', gap: 4,
+              marginBottom: 4, padding: 0, display: 'flex', alignItems: 'center', gap: 4,
             }}>
               ← Retour
             </button>

@@ -61,7 +61,8 @@ export default function StocksModule({
 
     return (
         <Box sx={{ minHeight: '100vh', bgcolor: '#FFFFFF', p: 3, display: 'flex', flexDirection: 'column', width: '100%' }}>
-            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', flex: 1 }}>
+            {/* Contenu centré (1600 px max), comme Logistique / Performance */}
+            <div style={{ width: '100%', maxWidth: 1600, margin: '0 auto', display: 'flex', flexDirection: 'column', flex: 1 }}>
 
                 {/* 1. Header Row (Back/Title Left, Actions Right) */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
@@ -72,7 +73,7 @@ export default function StocksModule({
                                 style={{
                                     background: 'none', border: 'none', cursor: 'pointer',
                                     color: '#6B7280', fontWeight: 600, fontSize: 13,
-                                    marginBottom: 12, padding: 0, display: 'flex', alignItems: 'center', gap: 4
+                                    marginBottom: 4, padding: 0, display: 'flex', alignItems: 'center', gap: 4
                                 }}
                             >
                                 ← Retour
