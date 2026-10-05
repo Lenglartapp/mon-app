@@ -12,6 +12,11 @@ import InputAdornment from '@mui/material/InputAdornment';
 import Autocomplete from '@mui/material/Autocomplete';
 import IconButton from '@mui/material/IconButton';
 import HistoryIcon from '@mui/icons-material/History';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import List from '@mui/material/List';
+import ListItemButton from '@mui/material/ListItemButton';
+import ListItemText from '@mui/material/ListItemText';
 import ProductHistoryModal from './ProductHistoryModal';
 import EditStockItemModal from './EditStockItemModal';
 import { useMemo, useRef } from 'react';
@@ -20,6 +25,9 @@ import { Download, Upload, Map } from 'lucide-react';
 import { exportInventoryToExcel, processInventoryClearanceImport } from '../../../lib/utils/inventoryExcelUtils';
 import { useAuth } from '../../../auth';
 import WarehouseMap from './WarehouseMap';
+import { itemMetaColumns } from './stockColumns';
+import LocationChips from './LocationChips';
+import { LOC_A_COMPLETER, splitLocations } from '../../../lib/inventory/stockFields';
 
 export default function StockInventoryTab({ inventory, projects = [], movements = [], onBulkMovement, onUpdateItem, zones = [] }) {
     const { currentUser } = useAuth();
@@ -76,12 +84,17 @@ export default function StockInventoryTab({ inventory, projects = [], movements 
     const [historyOpen, setHistoryOpen] = useState(false);
     const [historyProduct, setHistoryProduct] = useState(null);
     const [editItem, setEditItem] = useState(null);
+    const [pickSources, setPickSources] = useState(null); // ligne groupée → choix de l'entrée à éditer
 
     const handleRowDoubleClick = (params) => {
         const src = params.row._sourceItems || [];
-        // Article simple (une seule entrée sous-jacente) → édition ; sinon → historique
+        // Article simple (une seule entrée sous-jacente) → édition ; plusieurs → choisir laquelle
         if (src.length === 1 && onUpdateItem) {
             setEditItem(src[0]);
+            return;
+        }
+        if (src.length > 1 && onUpdateItem) {
+            setPickSources(src);
             return;
         }
         setHistoryProduct(params.row);
@@ -100,21 +113,12 @@ export default function StockInventoryTab({ inventory, projects = [], movements 
     ];
 
     // Extract unique locations for filter
-    const locations = ['ALL', ...new Set(inventory.map(i => i.location).filter(Boolean))];
+    const allLocs = new Set(inventory.flatMap(i => splitLocations(i.location)));
+    const locations = ['ALL', ...(allLocs.has(LOC_A_COMPLETER) ? [LOC_A_COMPLETER] : []), ...[...allLocs].filter(l => l !== LOC_A_COMPLETER).sort()];
+    const toCompleteCount = inventory.filter(i => i.qty !== 0 && splitLocations(i.location).includes(LOC_A_COMPLETER)).length;
 
     const columns = useMemo(() => [
-        {
-            field: 'product',
-            headerName: 'Produit',
-            flex: 1,
-            minWidth: 200,
-            renderCell: (params) => (
-                <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                    <span style={{ fontWeight: 600, color: '#111827' }}>{params.value}</span>
-                    <span style={{ fontSize: 11, color: '#6B7280' }}>Réf: {params.row.ref || '—'}</span>
-                </div>
-            )
-        },
+        ...itemMetaColumns(),
         {
             field: 'category',
             headerName: 'Type',
@@ -134,25 +138,7 @@ export default function StockInventoryTab({ inventory, projects = [], movements 
             field: 'location',
             headerName: 'Emplacement',
             width: 160,
-            renderCell: (params) => {
-                // params.value is already "Loc1, Loc2" from groupedRows
-                const allLocs = (params.value || '').split(', ').filter(Boolean);
-                
-                if (allLocs.length === 0) return <span style={{ color: '#9CA3AF' }}>-</span>;
-                
-                return (
-                    <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', py: 1 }}>
-                        {allLocs.map(loc => (
-                            <Chip 
-                                key={loc} 
-                                label={loc} 
-                                size="small" 
-                                sx={{ bgcolor: '#F3F4F6', fontSize: 10, fontWeight: 700, color: '#374151', borderRadius: 1, height: 20 }} 
-                            />
-                        ))}
-                    </Box>
-                );
-            }
+            renderCell: (params) => <LocationChips value={params.value} />
         },
         {
             field: 'project',
@@ -243,12 +229,12 @@ export default function StockInventoryTab({ inventory, projects = [], movements 
 
     const filteredRows = inventory.filter(item => {
         // 1. Text Search
+        const q = search.toLowerCase();
         const matchSearch = !search ||
-            item.product.toLowerCase().includes(search.toLowerCase()) ||
-            (item.ref || '').toLowerCase().includes(search.toLowerCase());
+            [item.product, item.ref, item.fournisseur, item.coloris].some(v => (v || '').toLowerCase().includes(q));
 
         // 2. Exact Filters
-        const matchLoc = filterLoc === 'ALL' || item.location === filterLoc;
+        const matchLoc = filterLoc === 'ALL' || splitLocations(item.location).includes(filterLoc);
         const matchCat = filterCat === 'ALL' || item.category === filterCat;
 
         // 3. Project Filter (Partial Match allowed if free text, or exact if selected)
@@ -282,14 +268,14 @@ export default function StockInventoryTab({ inventory, projects = [], movements 
                 groups[key] = {
                     ...item,
                     id: key,
-                    allLocations: new Set([item.location, ...pieceLocs].filter(Boolean)),
+                    allLocations: new Set([...splitLocations(item.location), ...pieceLocs]),
                     allProjects: new Set([item.project].filter(Boolean)),
                     allPieces: [...itemPieces],
                     _sourceItems: [item]
                 };
             } else {
                 groups[key].qty += item.qty;
-                if (item.location) groups[key].allLocations.add(item.location);
+                splitLocations(item.location).forEach(l => groups[key].allLocations.add(l));
                 pieceLocs.forEach(l => groups[key].allLocations.add(l));
                 if (item.project) groups[key].allProjects.add(item.project);
                 groups[key].allPieces = [...groups[key].allPieces, ...itemPieces];
@@ -311,7 +297,7 @@ export default function StockInventoryTab({ inventory, projects = [], movements 
             <Card sx={{ mb: 3, p: 2, display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
                 {/* 1. Global Search */}
                 <TextField
-                    placeholder="Recherche rapide (Nom, Réf)..."
+                    placeholder="Recherche (Fournisseur, Réf, Coloris)..."
                     size="small"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
@@ -376,6 +362,21 @@ export default function StockInventoryTab({ inventory, projects = [], movements 
                         <MenuItem key={s.key} value={s.key}>{s.label}</MenuItem>
                     ))}
                 </TextField>
+
+                {toCompleteCount > 0 && (
+                    <Chip
+                        label={`📍 ${toCompleteCount} réception${toCompleteCount > 1 ? 's' : ''} à compléter`}
+                        onClick={() => setFilterLoc(filterLoc === LOC_A_COMPLETER ? 'ALL' : LOC_A_COMPLETER)}
+                        size="small"
+                        sx={{
+                            fontWeight: 700, cursor: 'pointer',
+                            bgcolor: filterLoc === LOC_A_COMPLETER ? '#9A3412' : '#FFEDD5',
+                            color: filterLoc === LOC_A_COMPLETER ? 'white' : '#9A3412',
+                            border: '1px solid #FDBA74',
+                            '&:hover': { bgcolor: filterLoc === LOC_A_COMPLETER ? '#7C2D12' : '#FED7AA' },
+                        }}
+                    />
+                )}
 
                 {/* Reset Button */}
                 {(search || filterLoc !== 'ALL' || filterProj || filterCat !== 'ALL' || filterStatus !== 'ALL') && (
@@ -461,13 +462,32 @@ export default function StockInventoryTab({ inventory, projects = [], movements 
                 />
             </Card>
 
+            {/* CHOIX DE L'ENTRÉE (ligne regroupant plusieurs articles) */}
+            {pickSources && (
+                <Dialog open onClose={() => setPickSources(null)} maxWidth="xs" fullWidth>
+                    <DialogTitle>Quelle entrée éditer ?</DialogTitle>
+                    <List dense sx={{ pb: 2 }}>
+                        {pickSources.map(it => (
+                            <ListItemButton key={it.id} onClick={() => { setPickSources(null); setEditItem(it); }}>
+                                <ListItemText
+                                    primary={`${it.qty} ${it.unit || ''} — ${it.project || 'Stock libre'}`}
+                                    secondary={splitLocations(it.location).join(', ') || 'Sans emplacement'}
+                                    secondaryTypographyProps={splitLocations(it.location).includes(LOC_A_COMPLETER) ? { sx: { color: '#9A3412', fontWeight: 700 } } : undefined}
+                                />
+                            </ListItemButton>
+                        ))}
+                    </List>
+                </Dialog>
+            )}
+
             {/* HISTORY MODAL */}
             {editItem && (
                 <EditStockItemModal
                     item={editItem}
+                    zones={zones}
                     onClose={() => setEditItem(null)}
-                    onSave={async (patch, operator) => {
-                        const r = await onUpdateItem(editItem.id, patch, { operator });
+                    onSave={async (patch, operator, reason) => {
+                        const r = await onUpdateItem(editItem.id, patch, { operator, reason });
                         if (!r || r.success !== false) setEditItem(null);
                     }}
                 />

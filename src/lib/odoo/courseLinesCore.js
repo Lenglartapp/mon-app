@@ -3,6 +3,9 @@
 // côté serveur / job de nuit (clé service). Odoo est maître ; une ligne disparue d'Odoo
 // n'est PAS supprimée (removed_from_odoo=true).
 
+import { insertStrippingPhantomColumns } from "../schemaDrift.js";
+import { LOC_A_COMPLETER, pickItemMeta } from "../inventory/stockFields.js";
+
 const m2oName = (v) => (Array.isArray(v) ? v[1] : null); // Many2one Odoo -> [id, nom]
 const dateOrNull = (v) => (v && typeof v === "string" ? v : null); // Odoo renvoie false si vide
 
@@ -47,23 +50,27 @@ export async function readCourseLinesWith(supabase, droitfilProjectId) {
 
 /**
  * Crée une entrée d'inventaire + une ligne de journal (mouvement IN) pour une ligne
- * de course réceptionnée. Métrage total ; détail des pièces à compléter dans Droitfil.
+ * de course réceptionnée. Métrage total ; l'emplacement vaut « À COMPLÉTER » tant que
+ * les pièces et l'emplacement n'ont pas été saisis dans le stock. Le journal, lui,
+ * n'est plus jamais modifié (trace immuable de la réception Odoo).
  */
 async function createReceptionEntryWith(supabase, line, projectName) {
   const product = [line.reference, line.coloris].filter(Boolean).join(" — ") || line.reference || "Réception";
   const qty = line.quantite ?? 0;
   const unit = line.unite || null;
   const category = TYPE_TO_CATEGORY[line.type_produit] || (line.unite && /m/i.test(line.unite) ? "Tissu" : "Divers");
+  const meta = pickItemMeta({ ref: line.reference, coloris: line.coloris, laize: line.laize, fournisseur: line.fournisseur });
+  // Fournisseur aussi gardé dans le motif : filet de sécurité si la migration des colonnes n'est pas jouée.
   const reason = ["Réception Odoo", line.fournisseur].filter(Boolean).join(" — ");
   const now = new Date().toISOString();
 
-  const { error: itemErr } = await supabase.from("inventory_items").insert([
-    { product, ref: line.reference || null, laize: line.laize || null, qty, unit, project: projectName || null, location: "", category, pieces: [] },
+  const { error: itemErr } = await insertStrippingPhantomColumns(supabase, "inventory_items", [
+    { product, ...meta, qty, qty_recue: qty, unit, project: projectName || null, location: LOC_A_COMPLETER, category, pieces: [] },
   ]);
   if (itemErr) throw itemErr;
 
-  const { error: logErr } = await supabase.from("inventory_logs").insert([
-    { type: "IN", product, qty, unit, user_name: "Synchro Odoo", location: "", project: projectName || null, reason, pieces_names: null, date: now },
+  const { error: logErr } = await insertStrippingPhantomColumns(supabase, "inventory_logs", [
+    { type: "IN", product, ...meta, qty, unit, user_name: "Synchro Odoo", location: "", project: projectName || null, reason, pieces_names: null, date: now },
   ]);
   if (logErr) throw logErr;
 }
