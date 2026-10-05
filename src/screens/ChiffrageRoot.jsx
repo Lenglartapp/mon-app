@@ -507,8 +507,9 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
             <h1 style={{ fontSize: 32, fontWeight: 400, fontFamily: 'Roboto, system-ui, sans-serif', color: '#111827', margin: 0, letterSpacing: '-0.01em' }}>Chiffrages</h1>
           </div>
           <div style={{ display: 'flex', gap: 12 }}>
-            <button onClick={() => setNewMinOpen(true)} style={{ background: '#1E2447', color: 'white', padding: '8px 16px', borderRadius: 8, border: 'none', display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontWeight: 600, boxShadow: '0 2px 4px rgba(0,0,0,0.1)', marginBottom: 4 }}>
-              <Plus size={18} /> Nouveau Chiffrage
+            {/* Mêmes dimensions que les boutons d'action du chiffrage (Bibliothèque…), fond bleu nuit conservé */}
+            <button onClick={() => setNewMinOpen(true)} style={{ background: '#1E2447', color: 'white', padding: '8px 14px', borderRadius: 8, border: '1px solid #1E2447', display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap', marginBottom: 4 }}>
+              <Plus size={16} /> Nouveau Chiffrage
             </button>
           </div>
         </div>

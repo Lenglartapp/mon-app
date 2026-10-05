@@ -218,24 +218,25 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
                 className="header-actions"
                 onClick={() => setShowCreate(true)}
                 style={{
-                  background: '#1E2447', color: 'white', padding: '8px 16px', borderRadius: 8, border: 'none',
-                  display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontWeight: 600,
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)', marginBottom: isMobile ? 0 : 4,
+                  // Mêmes dimensions que les boutons d'action du chiffrage (Bibliothèque…), fond bleu nuit conservé
+                  background: '#1E2447', color: 'white', padding: '8px 14px', borderRadius: 8, border: '1px solid #1E2447',
+                  display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap',
+                  marginBottom: isMobile ? 0 : 4,
                   width: isMobile ? '100%' : 'auto', justifyContent: isMobile ? 'center' : 'flex-start'
                 }}
               >
-                <Plus size={18} /> Nouveau Projet
+                <Plus size={16} /> Nouveau Projet
               </button>
               <button
                 onClick={() => setShowImport(true)}
                 title="Importer des projets depuis Excel"
                 style={{
-                  background: '#F3F4F6', color: '#374151', padding: '8px 12px', borderRadius: 8,
-                  border: '1px solid #D1D5DB', display: 'flex', alignItems: 'center', gap: 6,
-                  cursor: 'pointer', fontWeight: 500, fontSize: 13, marginBottom: isMobile ? 0 : 4,
+                  background: 'white', color: '#374151', padding: '8px 14px', borderRadius: 8,
+                  border: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', gap: 8,
+                  cursor: 'pointer', fontWeight: 600, fontSize: 13, whiteSpace: 'nowrap', marginBottom: isMobile ? 0 : 4,
                 }}
               >
-                <Upload size={15} /> Import Excel
+                <Upload size={16} /> Import Excel
               </button>
             </div>
           )}
