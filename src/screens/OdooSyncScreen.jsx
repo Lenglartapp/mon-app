@@ -1,12 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, RefreshCw, ExternalLink, Info, AlertTriangle, Upload, CheckCircle } from "lucide-react";
 import { COLORS, S } from "../lib/constants/ui";
-import { useLocalStorage } from "../lib/hooks/useLocalStorage";
 import { aggregateConsumed } from "../lib/odoo/aggregateConsumed";
 import { fetchOdooPreview, syncOdoo, odooProjectUrl } from "../lib/odoo/odooPreviewClient";
-import { setConfig } from "../lib/appConfig";
-
-const todayStr = () => new Date().toISOString().slice(0, 10);
+import { getConfig, setConfig } from "../lib/appConfig";
 
 const STATUS = {
   linked:        { label: "Relié",      dot: "#10B981", bg: "#ECFDF5", text: "#065F46" },
@@ -17,9 +14,33 @@ const STATUS = {
 const fmtH = (n) => `${Math.round((n || 0) * 10) / 10}`.replace(".", ",") + " h";
 
 export default function OdooSyncScreen({ events = [], projects = [], onBack }) {
-  const [cutoffDate, setCutoffDate] = useLocalStorage("odoo_cutoff_date", todayStr());
-  // Partage la date de bascule côté serveur (app_config) : le job de nuit lit cette même valeur.
-  useEffect(() => { if (cutoffDate) setConfig("odoo_cutoff_date", cutoffDate); }, [cutoffDate]);
+  // Date de bascule = UNE valeur partagée (app_config), lue aussi par le job de nuit.
+  // On la LIT à l'ouverture ; on ne l'écrit que sur changement volontaire (jamais de défaut
+  // « aujourd'hui » réécrit automatiquement : ça remettait les compteurs Odoo à zéro).
+  const [cutoffDate, setCutoffDate] = useState(null);
+  const [cutoffLoaded, setCutoffLoaded] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    getConfig("odoo_cutoff_date").then((v) => {
+      if (!alive) return;
+      setCutoffDate(v);
+      setCutoffLoaded(true);
+    });
+    return () => { alive = false; };
+  }, []);
+
+  const changeCutoff = async (value) => {
+    if (!value || value === cutoffDate) return;
+    const ok = window.confirm(
+      `Changer la date de bascule pour TOUT LE MONDE (${cutoffDate || "aucune"} → ${value}) ?\n\n` +
+      "Le job de nuit remplacera dans Odoo le total de chaque projet par les heures validées à partir de cette date."
+    );
+    if (!ok) return;
+    const saved = await setConfig("odoo_cutoff_date", value);
+    if (!saved) { setError("Date de bascule non enregistrée (erreur Supabase). Réessaie."); return; }
+    setCutoffDate(value);
+    setPreview(null);
+  };
   const [preview, setPreview] = useState(null); // Map id -> statut Odoo
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -33,8 +54,9 @@ export default function OdooSyncScreen({ events = [], projects = [], onBack }) {
   }, [projects]);
 
   // Agrégat du consommé validé (100% local)
+  // Sans date de bascule, rien n'est calculé (sinon on compterait tout l'historique).
   const rows = useMemo(
-    () => aggregateConsumed(events, projects, { cutoffDate }),
+    () => (cutoffDate ? aggregateConsumed(events, projects, { cutoffDate }) : []),
     [events, projects, cutoffDate]
   );
 
@@ -119,7 +141,11 @@ export default function OdooSyncScreen({ events = [], projects = [], onBack }) {
         <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap", marginBottom: 16 }}>
           <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, color: COLORS.text }}>
             <span style={{ fontWeight: 700 }}>Date de bascule</span>
-            <input type="date" value={cutoffDate} onChange={(e) => { setCutoffDate(e.target.value); setPreview(null); }} style={{ ...S.smallBtn, cursor: "text" }} />
+            {cutoffLoaded ? (
+              <input type="date" value={cutoffDate || ""} onChange={(e) => changeCutoff(e.target.value)} style={{ ...S.smallBtn, cursor: "text" }} />
+            ) : (
+              <span style={{ fontSize: 13, color: "#6B7280" }}>Chargement…</span>
+            )}
           </label>
           <button onClick={runPreview} disabled={loading || rows.length === 0} style={{ ...S.smallBtn, background: COLORS.tile, color: "#fff", display: "flex", alignItems: "center", gap: 8, opacity: loading || rows.length === 0 ? 0.6 : 1 }}>
             <RefreshCw size={16} className={loading ? "spin" : undefined} />
