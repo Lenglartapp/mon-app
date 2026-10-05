@@ -1,82 +1,108 @@
 import React from 'react';
 import { ChevronRight } from 'lucide-react';
 
-// Récap du chiffrage : le CA total en grand et, sur la même rangée à droite, le détail
-// de sa composition (CA par famille de produits, logistique, frais, heures).
-// La flèche masque / affiche le détail ; l'état est mémorisé par poste (confort, best-effort).
+// Récap du chiffrage :
+//  - toujours visible : le CA total en grand, et à côté les heures (conf, pose, prépa) ;
+//  - la flèche déplie EN DESSOUS le détail du prix : CA par produit (avec %), logistique, frais.
+// Dépliage animé (hauteur + fondu). L'état ouvert/fermé est mémorisé par poste (best-effort).
 
 const OPEN_KEY = 'chiffrage_recap_open';
-const readOpen = () => { try { return localStorage.getItem(OPEN_KEY) !== '0'; } catch { return true; } };
+const readOpen = () => { try { return localStorage.getItem(OPEN_KEY) === '1'; } catch { return false; } };
 const writeOpen = (v) => { try { localStorage.setItem(OPEN_KEY, v ? '1' : '0'); } catch { /* sans stockage : pas mémorisé */ } };
 
 const FONT = 'Roboto, system-ui, sans-serif';
+const LABEL = { fontSize: 14, color: '#787774' };
+const BIG = { fontWeight: 400, color: '#111827', fontVariantNumeric: 'tabular-nums', lineHeight: 1.1, letterSpacing: '-0.01em' };
 
-function Item({ label, value, muted }) {
+const PRODUCTS = [
+    { key: 'caRideaux', label: 'Rideaux' },
+    { key: 'caStores', label: 'Stores négoce' },
+    { key: 'caStoresBateau', label: 'Stores bateau' },
+    { key: 'caCoussins', label: 'Coussins' },
+    { key: 'caCacheSommier', label: 'Cache-sommier' },
+    { key: 'caPlaid', label: 'Plaids' },
+    { key: 'caTenture', label: 'Tenture' },
+    { key: 'caMobilier', label: 'Mobilier' },
+    { key: 'caDivers', label: 'Divers' },
+];
+
+const pct = (part, total) => {
+    if (!total || !part) return null;
+    const p = (part / total) * 100;
+    return p < 1 ? '< 1 %' : `${Math.round(p)} %`;
+};
+
+function Hours({ label, value }) {
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, whiteSpace: 'nowrap' }}>
-            <span style={{ fontSize: 14, color: '#9B9A97' }}>{label}</span>
-            <span style={{ fontSize: 20, fontWeight: 400, color: muted ? '#A8A7A3' : '#37352F', fontVariantNumeric: 'tabular-nums' }}>{value}</span>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <span style={LABEL}>{label}</span>
+            <span style={{ ...BIG, fontSize: 30 }}>{Math.round(value || 0)} h</span>
         </div>
     );
 }
 
-const Sep = () => <div style={{ width: 1, alignSelf: 'stretch', background: '#EDEDEB', flexShrink: 0 }} />;
+function Amount({ label, value, share, muted }) {
+    return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, whiteSpace: 'nowrap' }}>
+            <span style={LABEL}>{label}</span>
+            <span style={{ ...BIG, fontSize: 22, color: muted ? '#9B9A97' : '#111827' }}>
+                {value}
+                {share && <span style={{ marginLeft: 8, fontSize: 14, color: '#9B9A97', letterSpacing: 0 }}>{share}</span>}
+            </span>
+        </div>
+    );
+}
 
 export default React.memo(function DashboardSummary({ recap, nf }) {
     const [open, setOpen] = React.useState(readOpen);
     const toggle = () => setOpen((o) => { writeOpen(!o); return !o; });
+    const total = recap.offreTotale || 0;
 
-    const products = [
-        { label: "Rideaux", value: recap.caRideaux },
-        { label: "Stores négoce", value: recap.caStores },
-        { label: "Stores bateau", value: recap.caStoresBateau },
-        { label: "Coussins", value: recap.caCoussins },
-        { label: "Cache-sommier", value: recap.caCacheSommier },
-        { label: "Plaids", value: recap.caPlaid },
-        { label: "Tenture", value: recap.caTenture },
-        { label: "Mobilier", value: recap.caMobilier },
-        { label: "Divers", value: recap.caDivers },
-    ].filter((i) => i.value && i.value > 0);
-
-    const extras = [
-        { label: "Logistique", value: recap.depTotal },
-        { label: "Frais", value: recap.extrasTotal, muted: true },
-    ];
-    const hours = [
-        { label: "H. prépa", value: recap.hPrepa },
-        { label: "H. pose", value: recap.hPose },
-        { label: "H. conf", value: recap.hConf },
-    ];
+    const products = PRODUCTS
+        .map((p) => ({ label: p.label, value: recap[p.key] || 0 }))
+        .filter((i) => i.value > 0)
+        .sort((a, b) => b.value - a.value);
 
     return (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 32, margin: '8px 0 28px', fontFamily: FONT }}>
-            <button
-                onClick={toggle}
-                title={open ? "Masquer le détail" : "Voir le détail du prix"}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 8, border: 'none', background: 'transparent', cursor: 'pointer', padding: '2px 4px 2px 0', borderRadius: 6, fontFamily: FONT, flexShrink: 0 }}
-            >
-                <ChevronRight size={20} color="#9B9A97" style={{ transform: open ? 'rotate(90deg)' : 'none', transition: 'transform .15s' }} />
-                <span style={{ fontSize: 40, fontWeight: 400, color: '#111827', letterSpacing: '-0.01em', fontVariantNumeric: 'tabular-nums', lineHeight: 1.1 }}>
-                    {nf.format(recap.offreTotale)}
-                </span>
-            </button>
+        <div style={{ margin: '8px 0 28px', fontFamily: FONT }}>
+            {/* Ligne principale : prix + heures */}
+            <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 40, flexWrap: 'wrap' }}>
+                <button
+                    onClick={toggle}
+                    title={open ? "Masquer le détail du prix" : "Voir le détail du prix"}
+                    aria-expanded={open}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 8, border: 'none', background: 'transparent', cursor: 'pointer', padding: '2px 6px 2px 0', borderRadius: 6, fontFamily: FONT }}
+                >
+                    <ChevronRight size={20} color="#9B9A97" style={{ transform: open ? 'rotate(90deg)' : 'none', transition: 'transform .2s ease' }} />
+                    <span style={{ ...BIG, fontSize: 40 }}>{nf.format(total)}</span>
+                </button>
+                <div style={{ display: 'flex', gap: 32, alignItems: 'flex-end' }}>
+                    <Hours label="Confection" value={recap.hConf} />
+                    <Hours label="Pose" value={recap.hPose} />
+                    <Hours label="Prépa" value={recap.hPrepa} />
+                </div>
+            </div>
 
-            {open && (
-                <div style={{ flex: 1, minWidth: 0, display: 'flex', gap: 24, alignItems: 'stretch' }}>
-                    {/* Produits : colonnes régulières, seul bloc qui passe à la ligne s'il manque de place */}
-                    <div style={{ flex: 1, minWidth: 0, display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(88px, 1fr))', gap: '14px 16px', alignContent: 'center' }}>
-                        {products.map((i) => <Item key={i.label} label={i.label} value={nf.format(i.value)} />)}
-                    </div>
-                    <Sep />
-                    <div style={{ display: 'flex', gap: 24, alignItems: 'center', flexShrink: 0 }}>
-                        {extras.map((i) => <Item key={i.label} label={i.label} value={nf.format(i.value || 0)} muted={i.muted} />)}
-                    </div>
-                    <Sep />
-                    <div style={{ display: 'flex', gap: 24, alignItems: 'center', flexShrink: 0 }}>
-                        {hours.map((i) => <Item key={i.label} label={i.label} value={`${Math.round(i.value || 0)} h`} />)}
+            {/* Détail du prix, déplié sous le prix (hauteur + fondu animés) */}
+            <div style={{ display: 'grid', gridTemplateRows: open ? '1fr' : '0fr', transition: 'grid-template-rows .25s ease' }}>
+                <div style={{ overflow: 'hidden', minHeight: 0 }}>
+                    <div
+                        aria-hidden={!open}
+                        style={{
+                            display: 'flex', flexWrap: 'wrap', gap: '16px 36px', padding: '18px 0 2px 28px',
+                            opacity: open ? 1 : 0, transform: open ? 'translateY(0)' : 'translateY(-4px)',
+                            transition: 'opacity .22s ease, transform .22s ease',
+                        }}
+                    >
+                        {products.map((p) => (
+                            <Amount key={p.label} label={p.label} value={nf.format(p.value)} share={pct(p.value, total)} />
+                        ))}
+                        <div style={{ width: 1, alignSelf: 'stretch', background: '#EDEDEB' }} />
+                        <Amount label="Logistique" value={nf.format(recap.depTotal || 0)} share={pct(recap.depTotal, total)} />
+                        <Amount label="Frais" value={nf.format(recap.extrasTotal || 0)} muted />
                     </div>
                 </div>
-            )}
+            </div>
         </div>
     );
 });
