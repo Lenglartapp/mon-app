@@ -695,42 +695,41 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
           onSave={(v) => { setName(v); updateMinute({ name: v }); }}
         />
         <div style={{ fontSize: 15, color: '#6B7280', marginTop: 2 }}>{minute?.client || "Client non spécifié"}</div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1.3fr) minmax(0,1fr)', gap: 28, marginTop: 14 }}>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1.3fr) minmax(0,1fr)', gap: 28, marginTop: 14, alignItems: 'start' }}>
+          {/* Une seule ligne : chargé d'affaires · créé le · livraison · historique · statut */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px 28px', alignItems: 'flex-end', minWidth: 0 }}>
+            <MetaItem label="Chargé d'affaires">
+              <OwnerPicker
+                value={minute?.owner || ""}
+                users={assignableUsers}
+                canEdit={canEdit}
+                onChange={(owner) => updateMinute({ owner })}
+              />
+            </MetaItem>
+            <MetaItem label="Créé le">{formatAnyDateFR(minute?.createdAt)}</MetaItem>
+            <MetaItem label="Livraison estimée">
+              {canEdit ? (
+                <input
+                  type="date"
+                  value={minute?.delivery_date || minute?.deliveryDate || ""}
+                  onChange={(e) => updateMinute({ delivery_date: e.target.value || null })}
+                  style={{ border: '1px solid #E5E7EB', borderRadius: 6, padding: '3px 6px', fontSize: 13, color: '#374151', background: 'white', outline: 'none', fontFamily: 'inherit' }}
+                />
+              ) : formatAnyDateFR(minute?.delivery_date || minute?.deliveryDate)}
+            </MetaItem>
+            <HeaderButton onClick={() => setShowHistory(true)} title="Historique des modifications et versions">
+              <History size={15} /> Historique
+            </HeaderButton>
+            <MetaItem label="Statut">
               <StatusPill
                 value={localStatus}
                 options={CHIFFRAGE_STATUS}
                 onChange={handleStatusChange}
                 disabled={!canEdit && localStatus !== "VALIDATED"}
               />
-              <HeaderButton onClick={() => setShowHistory(true)} title="Historique des modifications et versions">
-                <History size={15} /> Historique
-              </HeaderButton>
-            </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px 28px', alignItems: 'flex-start', marginTop: 18 }}>
-              <MetaItem label="Chargé d'affaires">
-                <OwnerPicker
-                  value={minute?.owner || ""}
-                  users={assignableUsers}
-                  canEdit={canEdit}
-                  onChange={(owner) => updateMinute({ owner })}
-                />
-              </MetaItem>
-              <MetaItem label="Créé le">{formatAnyDateFR(minute?.createdAt)}</MetaItem>
-              <MetaItem label="Livraison estimée">
-                {canEdit ? (
-                  <input
-                    type="date"
-                    value={minute?.delivery_date || minute?.deliveryDate || ""}
-                    onChange={(e) => updateMinute({ delivery_date: e.target.value || null })}
-                    style={{ border: '1px solid #E5E7EB', borderRadius: 6, padding: '3px 6px', fontSize: 13, color: '#374151', background: 'white', outline: 'none', fontFamily: 'inherit' }}
-                  />
-                ) : formatAnyDateFR(minute?.delivery_date || minute?.deliveryDate)}
-              </MetaItem>
-            </div>
+            </MetaItem>
           </div>
-          <div style={{ position: 'relative', minWidth: 0, minHeight: 96 }}>
+          <div style={{ position: 'relative', minWidth: 0, height: 104 }}>
             <NotesBlock
               fill
               value={minute?.notes || ""}
