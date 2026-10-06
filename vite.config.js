@@ -8,7 +8,7 @@ import { VitePWA } from 'vite-plugin-pwa'
 function odooApiDevPlugin(env) {
   // Fichiers servables en dev, par préfixe d'URL -> dossier api/.
   const ROUTES = {
-    '/api/odoo/': { dir: './api/odoo/', names: new Set(['ping', 'preview', 'project-status', 'sync', 'course-lines']) },
+    '/api/odoo/': { dir: './api/odoo/', names: new Set(['ping', 'preview', 'project-status', 'sync', 'course-lines', 'quote-data']) },
     '/api/cron/': { dir: './api/cron/', names: new Set(['nightly']) },
   }
   return {
