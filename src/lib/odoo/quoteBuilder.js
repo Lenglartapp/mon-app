@@ -90,7 +90,8 @@ export function defaultConfig() {
     };
   }
   // overrides : { [`${groupBy}|${titreSection}`]: { [componentKey]: article } }
-  return { groupBy: 'zone', mapping, order: [...DEFAULT_ORDER], overrides: {} };
+  // charges : { [chargeKey]: hôte } — absent = hôte par défaut (defaultChargeHost)
+  return { groupBy: 'zone', mapping, order: [...DEFAULT_ORDER], overrides: {}, charges: {} };
 }
 
 /** Complète un réglage sauvegardé avec les nouveautés (colonnes ajoutées depuis). */
@@ -99,10 +100,53 @@ export function normalizeConfig(saved) {
   if (!saved) return base;
   const order = (saved.order || []).filter((k) => base.order.includes(k));
   for (const k of base.order) if (!order.includes(k)) order.push(k);
-  return { ...base, ...saved, mapping: { ...base.mapping, ...(saved.mapping || {}) }, order, overrides: saved.overrides || {} };
+  return { ...base, ...saved, mapping: { ...base.mapping, ...(saved.mapping || {}) }, order, overrides: saved.overrides || {}, charges: saved.charges || {} };
 }
 
 export const overrideKey = (groupBy, title) => `${groupBy}|${title}`;
+
+// ─── Charges annexes (coût sans prix de vente) ─────────────────────────────────
+// Ce que la moulinette compte en charges variables hors lignes : « Autres dépenses »
+// (par catégorie) et la commission dynamique (% du CA). Elles n'ont pas de prix de
+// vente : on les ajoute au COÛT de lignes existantes pour que la marge Odoo soit complète.
+// Hôtes possibles : '@all' (réparti sur tout le devis au prorata du prix), '@conf' /
+// '@prepa' / '@pose' (lignes portant ces heures), un id d'article Odoo, ou 'none'.
+export const CHARGE_HOSTS = [
+  { value: '@all', label: 'Réparti sur tout le devis' },
+  { value: '@conf', label: 'Sur les lignes Confection' },
+  { value: '@pose', label: 'Sur les lignes Pose' },
+  { value: '@prepa', label: 'Sur les lignes Préparation' },
+  { value: 'none', label: 'Ne pas reporter' },
+];
+const DEFAULT_CHARGE_HOST = {
+  'Transport Vente': 'Livraison',
+  'Transport Sous-Traitance': '@all',
+  'Commission Partenaire': '@all',
+  'Intérim': '@pose',
+  'Aide ST Pose': '@pose',
+  'Aide ST Conf': '@conf',
+  __commission: '@all',
+};
+export const defaultChargeHost = (key) => DEFAULT_CHARGE_HOST[key] || '@all';
+
+/** Charges annexes d'une minute : [{ key, label, amount }]. */
+export function collectCharges({ rows = [], depRows = [], extraRows = [], commissionRate = 0 }) {
+  const byCat = new Map();
+  for (const r of extraRows) {
+    const amount = toNum(r.montant_eur ?? r.prix_total);
+    if (!amount) continue;
+    const cat = (r.categorie || '').trim() || 'Autres dépenses';
+    const c = byCat.get(cat) || { key: cat, label: cat, amount: 0, details: [] };
+    c.amount += amount;
+    if (r.libelle) c.details.push(r.libelle);
+    byCat.set(cat, c);
+  }
+  const out = [...byCat.values()];
+  const ca = [...rows, ...depRows].reduce((a, r) => a + toNum(r.prix_total || r.total_eur || r.montant_eur), 0);
+  const rate = toNum(commissionRate);
+  if (rate > 0 && ca > 0) out.push({ key: '__commission', label: `Commission (${String(rate).replace('.', ',')} % du CA)`, amount: (ca * rate) / 100, details: [] });
+  return out.map((c) => ({ ...c, amount: round2(c.amount) }));
+}
 
 // ─── Résolution des articles Odoo ──────────────────────────────────────────────
 function makeResolver(products) {
@@ -227,9 +271,11 @@ function describe(line) {
  * @param {Array} p.rows      lignes de la minute (déjà recalculées, cf. ChiffrageScreen)
  * @param {Array} p.depRows   déplacements
  * @param {object} p.config   { groupBy, mapping: { [componentKey]: { product, placement, unit } } }
+ * @param {Array} p.extraRows « Autres dépenses » (charges sans prix de vente)
+ * @param {number} p.commissionRate commission dynamique en % du CA (cf. moulinette)
  * @param {Array} p.products  articles Odoo [{ id, name, uom }]
  */
-export function buildQuote({ rows = [], depRows = [], config, products = [] }) {
+export function buildQuote({ rows = [], depRows = [], extraRows = [], commissionRate = 0, config, products = [] }) {
   const resolve = makeResolver(products);
   const compByKey = new Map(COMPONENTS.map((c) => [c.key, c]));
   const sections = new Map(); // titre → { title, order, lines: Map }
@@ -316,7 +362,33 @@ export function buildQuote({ rows = [], depRows = [], config, products = [] }) {
     push({ row, comp: depComp, amount: total, cost, sectionTitle: 'DÉPLACEMENTS', sectionOrder: 1e6 - 1 });
   });
 
-  // 3. Mise en forme : PU / quantités, textes, heures par catégorie.
+  // 3. Charges annexes → ajoutées au coût des lignes hôtes, au prorata de leur prix.
+  const allLines = [...sections.values()].flatMap((sec) => [...sec.lines.values()]);
+  const charges = collectCharges({ rows, depRows, extraRows, commissionRate }).map((ch) => {
+    const host = config.charges?.[ch.key] || defaultChargeHost(ch.key);
+    // Le coût « minute » compte TOUTES les charges (comme la moulinette) : une charge non
+    // reportée apparaît donc en écart dans le contrôle, ce qui est voulu.
+    minuteCost += ch.amount;
+    if (host === 'none') return { ...ch, host, applied: false };
+    const resolved = host.startsWith('@') ? host : resolve(host, {}, {})?.id;
+    let targets = allLines.filter((l) => {
+      if (resolved === '@all') return true;
+      if (resolved === '@conf' || resolved === '@prepa' || resolved === '@pose') return l.comp.bucket === resolved.slice(1);
+      return resolved != null && String(l.product?.id) === String(resolved);
+    });
+    let fallback = false;
+    if (!targets.length) { targets = allLines; fallback = true; }
+    const base = targets.reduce((a, l) => a + Math.max(0, l.amount), 0);
+    for (const l of targets) {
+      const share = base > 0 ? (Math.max(0, l.amount) / base) * ch.amount : ch.amount / targets.length;
+      l.cost += share;
+      (l.charges ||= []).push({ label: ch.label, amount: share });
+    }
+    if (fallback && targets.length) warnings.push(`« ${ch.label} » : aucune ligne pour l'article choisi, réparti sur tout le devis.`);
+    return { ...ch, host, applied: true };
+  });
+
+  // 4. Mise en forme : PU / quantités, textes, heures par catégorie.
   const hours = { conf: 0, prepa: 0, pose: 0 };
   let quoteTotal = 0;
   let quoteCost = 0;
@@ -351,6 +423,7 @@ export function buildQuote({ rows = [], depRows = [], config, products = [] }) {
             costUnit, cost,
             hours: round2(l.hours),
             bucket: l.comp.bucket || null,
+            charges: (l.charges || []).map((c) => ({ label: c.label, amount: round2(c.amount) })),
             from: [...l.comps.values()],
             compKeys: [...l.comps.keys()],
             nbRows: l.sources.length,
@@ -373,6 +446,7 @@ export function buildQuote({ rows = [], depRows = [], config, products = [] }) {
     cost: round2(quoteCost),
     minuteCost: round2(minuteCost),
     costDiff: round2(quoteCost - minuteCost),
+    charges,
     hours: { conf: round2(hours.conf), prepa: round2(hours.prepa), pose: round2(hours.pose) },
     warnings: [...new Set(warnings)],
   };

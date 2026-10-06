@@ -796,6 +796,8 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
           minute={minute}
           rows={rows}
           depRows={depRows}
+          extraRows={extraRows}
+          commissionRate={formulaCtx.settings.commission_rate ?? 3.5}
         />
       )}
 

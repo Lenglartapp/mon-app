@@ -6,7 +6,8 @@ import React from 'react';
 import Dialog from '@mui/material/Dialog';
 import { X, Search, Check, ArrowLeft, ArrowRight, AlertTriangle, GripVertical, ChevronUp, ChevronDown, ChevronRight } from 'lucide-react';
 import {
-  COMPONENTS, AUTO_PRODUCTS, GROUP_BY_OPTIONS, defaultConfig, normalizeConfig, overrideKey, buildQuote,
+  COMPONENTS, AUTO_PRODUCTS, GROUP_BY_OPTIONS, CHARGE_HOSTS, defaultConfig, normalizeConfig, overrideKey,
+  defaultChargeHost, buildQuote,
 } from '../../lib/odoo/quoteBuilder';
 
 const PGRID = '1.2fr 2.2fr 0.7fr 0.8fr 0.9fr 0.8fr 0.45fr';
@@ -282,22 +283,42 @@ function ProductSelect({ value, onChange, products, autoKey, emptyLabel = '— �
 function StepArticles({ config, setConfig, presentComps, catalog, amounts, costs, quote }) {
   const products = catalog?.products || [];
   const [openKey, setOpenKey] = React.useState(null);
-  const [dragKey, setDragKey] = React.useState(null);
+  // Articles effectivement présents dans le devis (hôtes possibles d'une charge).
+  const usedProducts = [...new Map(quote.sections.flatMap((sec) => sec.lines)
+    .filter((l) => l.productId).map((l) => [l.productId, { id: l.productId, name: l.productName }])).values()]
+    .sort((a, b) => a.name.localeCompare(b.name, 'fr'));
   const setMap = (key, patch) =>
     setConfig((cfg) => ({ ...cfg, mapping: { ...cfg.mapping, [key]: { ...cfg.mapping[key], ...patch } } }));
 
   // Ordre vertical : uniquement les colonnes présentes dans la minute, dans l'ordre du réglage.
   const present = new Set(presentComps.map((c) => c.key));
-  const ordered = config.order.filter((k) => present.has(k)).map((k) => COMPONENTS.find((c) => c.key === k));
-  const move = (key, toKey) => setConfig((cfg) => {
-    const order = cfg.order.filter((k) => k !== key);
-    order.splice(order.indexOf(toKey) + (cfg.order.indexOf(key) < cfg.order.indexOf(toKey) ? 1 : 0), 0, key);
-    return { ...cfg, order };
+  const savedOrder = config.order.filter((k) => present.has(k));
+  const [drag, setDrag] = React.useState(null); // { key, order } : ordre provisoire pendant le glisser
+  const visibleOrder = drag ? drag.order : savedOrder;
+  const ordered = visibleOrder.map((k) => COMPONENTS.find((c) => c.key === k));
+  const commit = (order) => setConfig((cfg) => {
+    // On réinsère l'ordre des colonnes présentes dans l'ordre complet (les absentes gardent leur place).
+    const it = order[Symbol.iterator]();
+    return { ...cfg, order: cfg.order.map((k) => (present.has(k) ? it.next().value : k)) };
   });
   const step = (key, dir) => {
-    const i = ordered.findIndex((c) => c.key === key);
-    const target = ordered[i + dir];
-    if (target) move(key, target.key);
+    const order = [...savedOrder];
+    const i = order.indexOf(key);
+    const j = i + dir;
+    if (j < 0 || j >= order.length) return;
+    [order[i], order[j]] = [order[j], order[i]];
+    commit(order);
+  };
+  // Pendant le glisser, la ligne se déplace en direct à l'endroit où elle atterrira.
+  const onDragOverRow = (e, overKey) => {
+    e.preventDefault();
+    if (!drag || overKey === drag.key) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const after = e.clientY > rect.top + rect.height / 2;
+    const order = drag.order.filter((k) => k !== drag.key);
+    const idx = order.indexOf(overKey) + (after ? 1 : 0);
+    order.splice(idx, 0, drag.key);
+    if (order.join() !== drag.order.join()) setDrag({ ...drag, order });
   };
 
   // Sections où chaque colonne apparaît, avec l'article retenu (utile pour les choix « Auto »).
@@ -328,9 +349,18 @@ function StepArticles({ config, setConfig, presentComps, catalog, amounts, costs
           const isOpen = openKey === c.key;
           return (
             <div key={c.key}
-              draggable onDragStart={() => setDragKey(c.key)} onDragEnd={() => setDragKey(null)}
-              onDragOver={(e) => e.preventDefault()} onDrop={() => { if (dragKey && dragKey !== c.key) move(dragKey, c.key); setDragKey(null); }}
-              style={{ borderTop: i ? `1px solid ${C.grey}` : 'none', background: dragKey === c.key ? C.grey : 'white' }}>
+              draggable
+              onDragStart={(e) => { e.dataTransfer.effectAllowed = 'move'; setDrag({ key: c.key, order: savedOrder }); }}
+              onDragOver={(e) => onDragOverRow(e, c.key)}
+              onDrop={(e) => { e.preventDefault(); if (drag) commit(drag.order); setDrag(null); }}
+              onDragEnd={() => setDrag(null)}
+              style={{
+                borderTop: i ? `1px solid ${C.grey}` : 'none',
+                transition: 'background .12s',
+                ...(drag?.key === c.key
+                  ? { background: '#F3EEF2', outline: `2px dashed ${C.accent}`, outlineOffset: -2, opacity: 0.85 }
+                  : { background: 'white' }),
+              }}>
               <div style={{ display: 'grid', gridTemplateColumns: GRID, gap: 10, alignItems: 'center', padding: '7px 14px' }}>
                 <GripVertical size={15} color={C.soft} style={{ cursor: 'grab' }} />
                 <div style={{ fontSize: 13.5, color: C.text, minWidth: 0 }}>
@@ -380,6 +410,37 @@ function StepArticles({ config, setConfig, presentComps, catalog, amounts, costs
           );
         })}
       </div>
+
+      {quote.charges.length > 0 && (
+        <div style={{ marginTop: 28 }}>
+          <H sub="Charges de la minute sans prix de vente (autres dépenses, commission). Elles s'ajoutent au coût des lignes choisies, au prorata de leur prix, pour que la marge Odoo soit complète.">Charges annexes</H>
+          <div style={{ border: `1px solid ${C.border}`, borderRadius: 10, overflow: 'hidden' }}>
+            {quote.charges.map((ch, k) => {
+              const host = config.charges?.[ch.key] || defaultChargeHost(ch.key);
+              const hostVal = host.startsWith('@') || host === 'none'
+                ? host
+                : String(products.find((p) => String(p.id) === String(host) || p.name === host)?.id ?? '');
+              return (
+                <div key={ch.key} style={{ display: 'grid', gridTemplateColumns: '1.3fr 0.6fr 1.6fr', gap: 12, alignItems: 'center', padding: '8px 14px', borderTop: k ? `1px solid ${C.grey}` : 'none', opacity: host === 'none' ? 0.55 : 1 }}>
+                  <div style={{ fontSize: 13.5, color: C.text, minWidth: 0 }}>
+                    {ch.label}
+                    {ch.details.length > 0 && <div style={{ fontSize: 11.5, color: C.soft, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ch.details.join(' · ')}</div>}
+                  </div>
+                  <div style={{ fontSize: 13, color: C.muted, textAlign: 'right' }}>{eur(ch.amount)}</div>
+                  <select style={{ ...inputStyle, padding: '6px 8px' }} value={hostVal}
+                    onChange={(e) => setConfig((cfg) => ({ ...cfg, charges: { ...cfg.charges, [ch.key]: e.target.value } }))}>
+                    {CHARGE_HOSTS.filter((h) => h.value !== 'none').map((h) => <option key={h.value} value={h.value}>{h.label}</option>)}
+                    <optgroup label="Sur les lignes de l'article…">
+                      {usedProducts.map((p) => <option key={p.id} value={String(p.id)}>{p.name}</option>)}
+                    </optgroup>
+                    <option value="none">Ne pas reporter</option>
+                  </select>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -395,7 +456,7 @@ function StepPreview({ quote, dest }) {
           ['Client', dest.partner ? (dest.partner.company ? `${dest.partner.company}, ${dest.partner.name}` : dest.partner.name) : '—'],
           ['Heures vendues', `Conf ${num(quote.hours.conf)} · Prépa ${num(quote.hours.prepa)} · Pose ${num(quote.hours.pose)}`],
           ['Prix de vente', ok ? `✅ ${eur(quote.total)} = minute` : `⚠️ Écart ${eur(quote.diff)}`],
-          ['Coûts reportés', Math.abs(quote.costDiff) < 1 ? `✅ ${eur(quote.cost)} = minute` : `⚠️ Écart ${eur(quote.costDiff)}`],
+          ['Coûts reportés (achats + charges)', Math.abs(quote.costDiff) < 1 ? `✅ ${eur(quote.cost)} = moulinette` : `⚠️ ${eur(quote.cost)} · écart ${eur(quote.costDiff)}`],
           ['Marge', quote.total ? `${eur(quote.total - quote.cost)} · ${(((quote.total - quote.cost) / quote.total) * 100).toFixed(1).replace('.', ',')} %` : '—'],
         ].map(([k, v]) => (
           <div key={k} style={{ background: C.grey, borderRadius: 10, padding: '10px 12px' }}>
@@ -430,7 +491,9 @@ function StepPreview({ quote, dest }) {
                 <div style={{ textAlign: 'right' }}>{num(l.qty)} {l.uom}</div>
                 <div style={{ textAlign: 'right' }}>{eur(l.priceUnit)}</div>
                 <div style={{ textAlign: 'right', fontWeight: 600 }}>{eur(l.subtotal)}</div>
-                <div style={{ textAlign: 'right', color: l.cost ? C.muted : C.soft }} title={l.cost ? `Coût unitaire Odoo : ${eur(l.costUnit)}` : ''}>{l.cost ? eur(l.cost) : '—'}</div>
+                <div style={{ textAlign: 'right', color: l.cost ? C.muted : C.soft }} title={l.cost ? [`Coût unitaire Odoo : ${eur(l.costUnit)}`, ...l.charges.map((c) => `dont ${c.label} : ${eur(c.amount)}`)].join('\n') : ''}>
+                  {l.cost ? eur(l.cost) : '—'}{l.charges.length > 0 && <sup style={{ color: C.accent }}> +</sup>}
+                </div>
                 <div style={{ textAlign: 'right', color: l.hours ? C.text : C.soft }}>{l.hours ? num(l.hours) : '—'}</div>
               </div>
             ))}
@@ -446,7 +509,7 @@ function StepPreview({ quote, dest }) {
 }
 
 // ─── Module ────────────────────────────────────────────────────────────────────
-export default function OdooQuoteWizard({ open, onClose, minute, rows = [], depRows = [] }) {
+export default function OdooQuoteWizard({ open, onClose, minute, rows = [], depRows = [], extraRows = [], commissionRate = 0 }) {
   const [step, setStep] = React.useState(0);
   const [catalog, setCatalog] = React.useState(null);
   const [catalogError, setCatalogError] = React.useState(null);
@@ -478,8 +541,8 @@ export default function OdooQuoteWizard({ open, onClose, minute, rows = [], depR
   }, [rows, depRows]);
 
   const quote = React.useMemo(
-    () => buildQuote({ rows, depRows, config, products: catalog?.products || [] }),
-    [rows, depRows, config, catalog]
+    () => buildQuote({ rows, depRows, extraRows, commissionRate, config, products: catalog?.products || [] }),
+    [rows, depRows, extraRows, commissionRate, config, catalog]
   );
 
   const canNext = step !== 0 || ((dest.mode === 'existing' ? !!dest.opportunity : !!(dest.newName ?? minute?.name)) && !!dest.partner);
