@@ -36,6 +36,10 @@ import { applyCatalogRenames } from "../lib/utils/catalogRename";
 import RecalibrationModal from "../components/RecalibrationModal";
 import OdooQuoteWizard from "../components/odoo/OdooQuoteWizard";
 import { BookOpen, History, FileUp, SlidersHorizontal, FileOutput } from 'lucide-react';
+
+// Module « Devis Odoo » encore en chantier (branche odoo/devis-depuis-minute) :
+// masqué en production tant qu'il n'est pas terminé.
+const ODOO_QUOTE_ENABLED = false;
 import { importGlobalExcel } from "../lib/utils/importGlobalExcel";
 
 const toNum = (v) => {
@@ -778,13 +782,15 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
           <button onClick={() => setShowCatalog(true)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', borderRadius: 8, background: 'white', border: '1px solid #E0DED9', cursor: 'pointer', color: '#374151', fontSize: 13, fontWeight: 600 }}>
             <BookOpen size={16} /> Bibliothèque
           </button>
-          <button
-            onClick={() => setShowOdooQuote(true)}
-            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', borderRadius: 8, background: 'white', border: '1px solid #E0DED9', cursor: 'pointer', color: '#374151', fontSize: 13, fontWeight: 600 }}
-            title="Préparer le devis Odoo à partir de cette minute"
-          >
-            <FileOutput size={16} /> Devis Odoo
-          </button>
+          {ODOO_QUOTE_ENABLED && (
+            <button
+              onClick={() => setShowOdooQuote(true)}
+              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', borderRadius: 8, background: 'white', border: '1px solid #E0DED9', cursor: 'pointer', color: '#374151', fontSize: 13, fontWeight: 600 }}
+              title="Préparer le devis Odoo à partir de cette minute"
+            >
+              <FileOutput size={16} /> Devis Odoo
+            </button>
+          )}
         </div>
         </div>
       </div>
