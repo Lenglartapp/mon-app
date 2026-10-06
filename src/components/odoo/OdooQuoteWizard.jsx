@@ -6,7 +6,7 @@ import React from 'react';
 import Dialog from '@mui/material/Dialog';
 import { X, Search, Check, ArrowLeft, ArrowRight, AlertTriangle, GripVertical, ChevronUp, ChevronDown, ChevronRight } from 'lucide-react';
 import {
-  COMPONENTS, AUTO_PRODUCTS, GROUP_BY_OPTIONS, CHARGE_HOSTS, defaultConfig, normalizeConfig, overrideKey,
+  COMPONENTS, AUTO_PRODUCTS, GROUP_BY_OPTIONS, CHARGE_SPECIAL_HOSTS, defaultConfig, normalizeConfig, overrideKey,
   defaultChargeHost, buildQuote,
 } from '../../lib/odoo/quoteBuilder';
 
@@ -214,9 +214,11 @@ function StepStructure({ config, setConfig, presentComps, rows, depRows, quote }
   // Noms des sections que produirait chaque regroupement (hors sections « à part »).
   const titlesFor = (g) => buildQuote({ rows, depRows: [], config: { ...config, groupBy: g }, products: [] })
     .sections.filter((sec) => !sec.apart).map((sec) => sec.title);
-  const families = [...new Set(presentComps.map((c) => c.family))];
+  const placeable = presentComps.filter((c) => c.key !== 'livraison' && c.key !== '__deplacement');
+  const families = [...new Set(placeable.map((c) => c.family))];
   const setPlacement = (key, placement) =>
     setConfig((cfg) => ({ ...cfg, mapping: { ...cfg.mapping, [key]: { ...cfg.mapping[key], placement } } }));
+  const logi = config.logistique || 'fondu';
 
   return (
     <div>
@@ -239,12 +241,23 @@ function StepStructure({ config, setConfig, presentComps, rows, depRows, quote }
       </div>
 
       <div style={{ marginTop: 28 }}>
+        <H sub="Déplacements (main-d'œuvre, heures et frais : hôtels, repas, billets), livraison et transport.">Déplacement & transport</H>
+        <Seg value={logi} onChange={(v) => setConfig((c) => ({ ...c, logistique: v }))}
+          options={[{ value: 'fondu', label: 'Fondus dans chaque section' }, { value: 'isole', label: 'Isolés dans une section' }]} />
+        <div style={{ fontSize: 12.5, color: C.muted, marginTop: 8, lineHeight: 1.5 }}>
+          {logi === 'fondu'
+            ? "Chaque section reçoit sa part de déplacement (au prorata de son montant) ; la livraison reste dans sa section et porte les coûts de transport."
+            : "Une section « DÉPLACEMENT & TRANSPORT » en fin de devis porte toute la livraison, les déplacements, leurs heures et tous leurs coûts (transport, location…)."}
+        </div>
+      </div>
+
+      <div style={{ marginTop: 28 }}>
         <H sub="« À part » sort ce coût des sections et le regroupe dans une section dédiée en fin de devis.">Coûts inclus ou à part</H>
         <div style={{ border: `1px solid ${C.border}`, borderRadius: 10, overflow: 'hidden' }}>
           {families.map((fam) => (
             <React.Fragment key={fam}>
               <div style={{ background: C.grey, padding: '7px 14px', fontSize: 12, fontWeight: 600, color: C.muted, textTransform: 'uppercase', letterSpacing: 0.4 }}>{fam}</div>
-              {presentComps.filter((c) => c.family === fam).map((c) => (
+              {placeable.filter((c) => c.family === fam).map((c) => (
                 <div key={c.key} style={{ display: 'flex', alignItems: 'center', padding: '8px 14px', borderTop: `1px solid ${C.grey}` }}>
                   <div style={{ flex: 1, fontSize: 13.5, color: C.text }}>{c.label}</div>
                   <Seg value={config.mapping[c.key]?.placement || 'section'} onChange={(v) => setPlacement(c.key, v)}
@@ -275,18 +288,21 @@ function ProductSelect({ value, onChange, products, autoKey, emptyLabel = '— �
     <select style={{ ...inputStyle, padding: '6px 8px', ...style }} value={val} onChange={(e) => onChange(e.target.value)}>
       {autoKey && <option value={autoKey}>{AUTO_PRODUCTS[autoKey]}</option>}
       {(!val || allowEmpty) && <option value="">{emptyLabel}</option>}
-      {products.map((p) => <option key={p.id} value={String(p.id)}>{p.name}{p.uom === 'ml' ? ' (ml)' : ''}</option>)}
+      {products.map((p) => <option key={p.id} value={String(p.id)}>{p.name}{p.uom === 'ml' ? ' (ml)' : ''}{p.tag ? `  ·  ${p.tag}` : ''}</option>)}
     </select>
   );
+}
+
+// Étiquette analytique Odoo de l'article choisi (« Auto » : celle des articles retenus).
+function TagHint({ names }) {
+  const tags = [...new Set(names.filter(Boolean))];
+  if (!tags.length) return null;
+  return <div style={{ fontSize: 11.5, color: C.accent, marginTop: 3 }}>Étiquette analytique : {tags.join(', ')}</div>;
 }
 
 function StepArticles({ config, setConfig, presentComps, catalog, amounts, costs, quote }) {
   const products = catalog?.products || [];
   const [openKey, setOpenKey] = React.useState(null);
-  // Articles effectivement présents dans le devis (hôtes possibles d'une charge).
-  const usedProducts = [...new Map(quote.sections.flatMap((sec) => sec.lines)
-    .filter((l) => l.productId).map((l) => [l.productId, { id: l.productId, name: l.productName }])).values()]
-    .sort((a, b) => a.name.localeCompare(b.name, 'fr'));
   const setMap = (key, patch) =>
     setConfig((cfg) => ({ ...cfg, mapping: { ...cfg.mapping, [key]: { ...cfg.mapping[key], ...patch } } }));
 
@@ -343,7 +359,7 @@ function StepArticles({ config, setConfig, presentComps, catalog, amounts, costs
         {ordered.map((c, i) => {
           const m = config.mapping[c.key] || {};
           const autoKey = AUTO_PRODUCTS[c.defaultProduct] ? c.defaultProduct : null;
-          const apart = m.placement === 'apart';
+          const apart = m.placement === 'apart' && c.key !== 'livraison' && c.key !== '__deplacement';
           const secs = apart ? [] : sectionsOf(c.key);
           const nbOverrides = secs.filter((x) => config.overrides?.[overrideKey(config.groupBy, x.title)]?.[c.key]).length;
           const isOpen = openKey === c.key;
@@ -366,12 +382,15 @@ function StepArticles({ config, setConfig, presentComps, catalog, amounts, costs
                 <div style={{ fontSize: 13.5, color: C.text, minWidth: 0 }}>
                   {c.label}
                   <div style={{ fontSize: 11.5, color: C.soft }}>
-                    {c.family}{c.hoursKey ? ' · porte les heures' : ''}{apart ? ' · à part' : ''}
+                    {c.family}{c.hoursKey ? ' · porte les heures' : ''}{apart && c.key !== 'livraison' && c.key !== '__deplacement' ? ' · à part' : ''}
                   </div>
                 </div>
                 <div style={{ fontSize: 13, color: C.muted, textAlign: 'right' }}>{eur(amounts[c.key])}</div>
                 <div style={{ fontSize: 13, color: costs[c.key] ? C.muted : C.soft, textAlign: 'right' }}>{costs[c.key] ? eur(costs[c.key]) : '—'}</div>
-                <ProductSelect value={m.product} products={products} autoKey={autoKey} onChange={(v) => setMap(c.key, { product: v })} />
+                <div>
+                  <ProductSelect value={m.product} products={products} autoKey={autoKey} onChange={(v) => setMap(c.key, { product: v })} />
+                  <TagHint names={quote.sections.flatMap((sec) => sec.lines).filter((l) => l.compKeys.includes(c.key)).map((l) => products.find((p) => p.id === l.productId)?.tag)} />
+                </div>
                 <div>
                   {c.mlKey ? (
                     <Seg value={m.unit || 'ml'} onChange={(v) => setMap(c.key, { unit: v })}
@@ -413,13 +432,15 @@ function StepArticles({ config, setConfig, presentComps, catalog, amounts, costs
 
       {quote.charges.length > 0 && (
         <div style={{ marginTop: 28 }}>
-          <H sub="Charges de la minute sans prix de vente (autres dépenses, commission). Elles s'ajoutent au coût des lignes choisies, au prorata de leur prix, pour que la marge Odoo soit complète.">Charges annexes</H>
+          <H sub="Autres dépenses de la minute (sans prix de vente). Chacune est portée par un article dont l'étiquette analytique correspond à sa nature ; s'il n'y a pas encore de ligne de cet article, une ligne « coût seul » à 0 € est créée. La commission partenaire part dans le taux du devis Odoo.">Charges annexes</H>
           <div style={{ border: `1px solid ${C.border}`, borderRadius: 10, overflow: 'hidden' }}>
             {quote.charges.map((ch, k) => {
               const host = config.charges?.[ch.key] || defaultChargeHost(ch.key);
-              const hostVal = host.startsWith('@') || host === 'none'
+              const hostVal = CHARGE_SPECIAL_HOSTS[host]
                 ? host
-                : String(products.find((p) => String(p.id) === String(host) || p.name === host)?.id ?? '');
+                : String(products.find((p) => String(p.id) === String(host) || p.name === host)?.id ?? 'none');
+              const hostTag = products.find((p) => String(p.id) === hostVal)?.tag
+                || (host === '@manufacture' ? 'ST Confection' : null);
               return (
                 <div key={ch.key} style={{ display: 'grid', gridTemplateColumns: '1.3fr 0.6fr 1.6fr', gap: 12, alignItems: 'center', padding: '8px 14px', borderTop: k ? `1px solid ${C.grey}` : 'none', opacity: host === 'none' ? 0.55 : 1 }}>
                   <div style={{ fontSize: 13.5, color: C.text, minWidth: 0 }}>
@@ -427,14 +448,20 @@ function StepArticles({ config, setConfig, presentComps, catalog, amounts, costs
                     {ch.details.length > 0 && <div style={{ fontSize: 11.5, color: C.soft, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ch.details.join(' · ')}</div>}
                   </div>
                   <div style={{ fontSize: 13, color: C.muted, textAlign: 'right' }}>{eur(ch.amount)}</div>
-                  <select style={{ ...inputStyle, padding: '6px 8px' }} value={hostVal}
-                    onChange={(e) => setConfig((cfg) => ({ ...cfg, charges: { ...cfg.charges, [ch.key]: e.target.value } }))}>
-                    {CHARGE_HOSTS.filter((h) => h.value !== 'none').map((h) => <option key={h.value} value={h.value}>{h.label}</option>)}
-                    <optgroup label="Sur les lignes de l'article…">
-                      {usedProducts.map((p) => <option key={p.id} value={String(p.id)}>{p.name}</option>)}
-                    </optgroup>
-                    <option value="none">Ne pas reporter</option>
-                  </select>
+                  <div>
+                    <select style={{ ...inputStyle, padding: '6px 8px' }} value={hostVal}
+                      onChange={(e) => setConfig((cfg) => ({ ...cfg, charges: { ...cfg.charges, [ch.key]: e.target.value } }))}>
+                      <option value="@commission">{CHARGE_SPECIAL_HOSTS['@commission']}</option>
+                      <option value="@manufacture">{CHARGE_SPECIAL_HOSTS['@manufacture']}</option>
+                      <optgroup label="Coût porté par l'article…">
+                        {products.map((p) => <option key={p.id} value={String(p.id)}>{p.name}{p.tag ? `  ·  ${p.tag}` : ''}</option>)}
+                      </optgroup>
+                      <option value="none">{CHARGE_SPECIAL_HOSTS.none}</option>
+                    </select>
+                    {host === '@commission'
+                      ? <div style={{ fontSize: 11.5, color: C.accent, marginTop: 3 }}>Taux commission partenaire du devis : {num(quote.commissionPartenaire.rate)} %</div>
+                      : hostTag && host !== 'none' && <div style={{ fontSize: 11.5, color: C.accent, marginTop: 3 }}>Étiquette analytique : {hostTag}</div>}
+                  </div>
                 </div>
               );
             })}
@@ -454,10 +481,10 @@ function StepPreview({ quote, dest }) {
         {[
           ['Opportunité', dest.mode === 'existing' ? (dest.opportunity?.name || '—') : `Nouvelle : ${dest.newName || '—'}`],
           ['Client', dest.partner ? (dest.partner.company ? `${dest.partner.company}, ${dest.partner.name}` : dest.partner.name) : '—'],
-          ['Heures vendues', `Conf ${num(quote.hours.conf)} · Prépa ${num(quote.hours.prepa)} · Pose ${num(quote.hours.pose)}`],
+          ['Heures vendues', `Conf ${num(quote.hours.conf)} · Prépa ${num(quote.hours.prepa)} · Pose ${num(quote.hours.pose)}${quote.hours.depl ? ` · Dépl. ${num(quote.hours.depl)}` : ''}`],
           ['Prix de vente', ok ? `✅ ${eur(quote.total)} = minute` : `⚠️ Écart ${eur(quote.diff)}`],
-          ['Coûts reportés (achats + charges)', Math.abs(quote.costDiff) < 1 ? `✅ ${eur(quote.cost)} = moulinette` : `⚠️ ${eur(quote.cost)} · écart ${eur(quote.costDiff)}`],
-          ['Marge', quote.total ? `${eur(quote.total - quote.cost)} · ${(((quote.total - quote.cost) / quote.total) * 100).toFixed(1).replace('.', ',')} %` : '—'],
+          ['Coûts reportés (achats + charges)', Math.abs(quote.costDiff) < 1 ? `✅ ${eur(quote.cost + quote.commissionPartenaire.amount)} = minute` : `⚠️ écart ${eur(quote.costDiff)} avec la minute`],
+          ['Commission partenaire', quote.commissionPartenaire.amount ? `${eur(quote.commissionPartenaire.amount)} → taux ${num(quote.commissionPartenaire.rate)} %` : 'Aucune'],
         ].map(([k, v]) => (
           <div key={k} style={{ background: C.grey, borderRadius: 10, padding: '10px 12px' }}>
             <div style={{ fontSize: 12, color: C.soft }}>{k}</div>
@@ -486,7 +513,10 @@ function StepPreview({ quote, dest }) {
             )}
             {s.lines.map((l) => (
               <div key={l.key} style={{ display: 'grid', gridTemplateColumns: PGRID, gap: 10, padding: '9px 14px', borderTop: `1px solid ${C.grey}`, fontSize: 13, color: C.text, alignItems: 'start' }}>
-                <div style={{ fontWeight: 600, color: l.productId ? C.text : '#B91C1C' }}>{l.productName}</div>
+                <div style={{ fontWeight: 600, color: l.productId ? C.text : '#B91C1C' }}>
+                  {l.productName}
+                  {l.costOnly && <div style={{ fontSize: 11, fontWeight: 500, color: C.accent }}>coût seul</div>}
+                </div>
                 <div style={{ whiteSpace: 'pre-line', color: '#374151', lineHeight: 1.45 }}>{l.description.split('\n').slice(1).join('\n') || '—'}</div>
                 <div style={{ textAlign: 'right' }}>{num(l.qty)} {l.uom}</div>
                 <div style={{ textAlign: 'right' }}>{eur(l.priceUnit)}</div>
@@ -509,7 +539,7 @@ function StepPreview({ quote, dest }) {
 }
 
 // ─── Module ────────────────────────────────────────────────────────────────────
-export default function OdooQuoteWizard({ open, onClose, minute, rows = [], depRows = [], extraRows = [], commissionRate = 0 }) {
+export default function OdooQuoteWizard({ open, onClose, minute, rows = [], depRows = [], extraRows = [] }) {
   const [step, setStep] = React.useState(0);
   const [catalog, setCatalog] = React.useState(null);
   const [catalogError, setCatalogError] = React.useState(null);
@@ -541,8 +571,8 @@ export default function OdooQuoteWizard({ open, onClose, minute, rows = [], depR
   }, [rows, depRows]);
 
   const quote = React.useMemo(
-    () => buildQuote({ rows, depRows, extraRows, commissionRate, config, products: catalog?.products || [] }),
-    [rows, depRows, extraRows, commissionRate, config, catalog]
+    () => buildQuote({ rows, depRows, extraRows, config, products: catalog?.products || [] }),
+    [rows, depRows, extraRows, config, catalog]
   );
 
   const canNext = step !== 0 || ((dest.mode === 'existing' ? !!dest.opportunity : !!(dest.newName ?? minute?.name)) && !!dest.partner);

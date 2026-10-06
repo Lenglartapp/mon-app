@@ -9,12 +9,25 @@ import { searchRead } from '../_odooClient.js';
 const PARASITES = /^(tva|acompte|loyer|facture oxyg|prise$|\[fact\]|ajustement contrat|service on timesheet|remise|frais de port|bonus)/i;
 
 async function catalog() {
-  const [products, teams, tags, users] = await Promise.all([
+  const [products, teams, tags, users, analytic, distrib] = await Promise.all([
     searchRead('product.product', [['sale_ok', '=', true]], ['id', 'name', 'uom_id', 'categ_id']),
     searchRead('crm.team', [], ['id', 'name']),
     searchRead('crm.tag', [], ['id', 'name']),
     searchRead('res.users', [['share', '=', false]], ['id', 'name']),
+    // Étiquettes analytiques : c'est l'article qui décide de la case du contrôle de gestion
+    // Odoo (modèles de distribution analytique, 1 étiquette à 100 % par article).
+    searchRead('account.analytic.account', [], ['id', 'name']),
+    searchRead('account.analytic.distribution.model', [['product_id', '!=', false]], ['product_id', 'analytic_distribution']),
   ]);
+  const accountName = new Map(analytic.map((a) => [String(a.id), (a.name || '').trim()]));
+  const tagOf = new Map();
+  for (const d of distrib) {
+    const names = Object.keys(d.analytic_distribution || {})
+      .flatMap((k) => k.split(','))
+      .map((id) => accountName.get(id))
+      .filter(Boolean);
+    if (names.length && !tagOf.has(d.product_id[0])) tagOf.set(d.product_id[0], names[0]);
+  }
   return {
     products: products
       .filter((p) => !PARASITES.test((p.name || '').trim()))
@@ -23,6 +36,7 @@ async function catalog() {
         name: p.name,
         uom: p.uom_id ? p.uom_id[1] : '',
         categ: p.categ_id ? p.categ_id[1] : '',
+        tag: tagOf.get(p.id) || null,
       }))
       .sort((a, b) => a.name.localeCompare(b.name, 'fr')),
     teams,

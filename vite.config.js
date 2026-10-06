@@ -1,4 +1,5 @@
 import { defineConfig, loadEnv } from 'vite'
+import { statSync } from 'node:fs'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
@@ -52,6 +53,8 @@ function odooApiDevPlugin(env) {
         }
         try {
           const modUrl = new URL(`${dir}${route}.js`, import.meta.url)
+          // Cache-busting sur la date de modif : un handler édité est rechargé sans redémarrer.
+          modUrl.search = `?t=${statSync(modUrl).mtimeMs}`
           const handler = (await import(modUrl.href)).default
           await handler(vreq, vres)
         } catch (e) {

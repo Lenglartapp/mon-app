@@ -44,17 +44,18 @@ export const COMPONENTS = [
   { key: 'pv_baguette_1', paKey: 'pa_baguette_1', label: 'Baguette 1', family: 'Autres fournitures', defaultProduct: 'Article Générique UNITÉS' },
   { key: 'pv_baguette_2', paKey: 'pa_baguette_2', label: 'Baguette 2', family: 'Autres fournitures', defaultProduct: 'Article Générique UNITÉS' },
   { key: 'pv_confection', label: 'Confection', family: "Main-d'œuvre", hoursKey: 'heures_confection', bucket: 'conf', defaultProduct: '@confection' },
-  { key: 'st_conf_pv', paKey: 'st_conf_pa', label: 'Sous-traitance confection', family: "Main-d'œuvre", bucket: 'conf', defaultProduct: '@confection' },
+  { key: 'st_conf_pv', paKey: 'st_conf_pa', label: 'Sous-traitance confection', family: 'Sous-traitance', defaultProduct: '@manufacture' },
   { key: 'pv_prepa', label: 'Préparation', family: "Main-d'œuvre", hoursKey: 'heures_prepa', bucket: 'prepa', defaultProduct: 'Préparation et équipement' },
   { key: 'pv_pose', label: 'Pose', family: "Main-d'œuvre", hoursKey: 'heures_pose', bucket: 'pose', defaultProduct: 'Pose' },
-  { key: 'st_pose_pv', paKey: 'st_pose_pa', label: 'Sous-traitance pose', family: "Main-d'œuvre", bucket: 'pose', defaultProduct: 'Pose' },
+  { key: 'st_pose_pv', paKey: 'st_pose_pa', label: 'Sous-traitance pose', family: 'Sous-traitance', defaultProduct: 'Installation' },
   { key: 'livraison', label: 'Livraison', family: 'Logistique', defaultProduct: 'Livraison' },
-  { key: '__deplacement', label: 'Déplacements / prise de cotes', family: 'Logistique', apartTitle: 'Déplacements', defaultProduct: '@deplacement', defaultPlacement: 'apart' },
+  { key: '__deplacement', label: 'Déplacements / prise de cotes', family: 'Logistique', bucket: 'depl', defaultProduct: '@deplacement' },
 ];
 
 // Articles « intelligents » : choisis ligne par ligne selon le contenu de la minute.
 export const AUTO_PRODUCTS = {
   '@confection': 'Auto — Confection selon le produit',
+  '@manufacture': 'Auto — Manufacture (sous-traitance) selon le produit',
   '@meca': 'Auto — Rail / mécanisme selon le modèle',
   '@deplacement': 'Auto — Prise de cotes / Frais de déplacement',
 };
@@ -106,46 +107,44 @@ export function normalizeConfig(saved) {
 export const overrideKey = (groupBy, title) => `${groupBy}|${title}`;
 
 // ─── Charges annexes (coût sans prix de vente) ─────────────────────────────────
-// Ce que la moulinette compte en charges variables hors lignes : « Autres dépenses »
-// (par catégorie) et la commission dynamique (% du CA). Elles n'ont pas de prix de
-// vente : on les ajoute au COÛT de lignes existantes pour que la marge Odoo soit complète.
-// Hôtes possibles : '@all' (réparti sur tout le devis au prorata du prix), '@conf' /
-// '@prepa' / '@pose' (lignes portant ces heures), un id d'article Odoo, ou 'none'.
-export const CHARGE_HOSTS = [
-  { value: '@all', label: 'Réparti sur tout le devis' },
-  { value: '@conf', label: 'Sur les lignes Confection' },
-  { value: '@pose', label: 'Sur les lignes Pose' },
-  { value: '@prepa', label: 'Sur les lignes Préparation' },
-  { value: 'none', label: 'Ne pas reporter' },
-];
+// « Autres dépenses » de la minute. Règle : chaque coût doit être porté par un article
+// dont l'étiquette analytique Odoo correspond à sa nature (c'est l'article qui décide de
+// la case du contrôle de gestion Odoo : Transport sur ventes = coût des lignes Livraison,
+// Location / outillage = article Location, ST Conf = Manufacture…, etc.).
+// La commission partenaire n'est PAS un coût de ligne : Odoo la calcule depuis le champ
+// `commission_partenaire_taux` (% du CA HT) du devis. La commission commerciale interne
+// est calculée par Odoo lui-même → jamais reportée.
+// Hôte = un article (nom ou id), '@manufacture', '@commission' ou 'none'.
+export const CHARGE_SPECIAL_HOSTS = {
+  '@commission': 'Commission partenaire (taux % du devis Odoo)',
+  '@manufacture': 'Manufacture (sous-traitance) selon le produit',
+  none: 'Ne pas reporter',
+};
 const DEFAULT_CHARGE_HOST = {
   'Transport Vente': 'Livraison',
-  'Transport Sous-Traitance': '@all',
-  'Commission Partenaire': '@all',
-  'Intérim': '@pose',
-  'Aide ST Pose': '@pose',
-  'Aide ST Conf': '@conf',
-  __commission: '@all',
+  'Transport Sous-Traitance': 'Livraison',
+  Location: 'Location',
+  'Intérim': 'Pose',
+  'Aide ST Pose': 'Installation',
+  'Aide ST Conf': '@manufacture',
+  'Commission Partenaire': '@commission',
 };
-export const defaultChargeHost = (key) => DEFAULT_CHARGE_HOST[key] || '@all';
+export const defaultChargeHost = (key) => DEFAULT_CHARGE_HOST[key] || 'none';
 
-/** Charges annexes d'une minute : [{ key, label, amount }]. */
-export function collectCharges({ rows = [], depRows = [], extraRows = [], commissionRate = 0 }) {
+/** Charges annexes d'une minute (autres dépenses regroupées) : [{ key, label, amount, details }]. */
+export function collectCharges({ extraRows = [] }) {
   const byCat = new Map();
   for (const r of extraRows) {
     const amount = toNum(r.montant_eur ?? r.prix_total);
     if (!amount) continue;
-    const cat = (r.categorie || '').trim() || 'Autres dépenses';
+    let cat = (r.categorie || '').trim() || 'Autres dépenses';
+    if (/location|outillage/i.test(`${cat} ${r.libelle || ''}`) && !/commission/i.test(cat)) cat = 'Location';
     const c = byCat.get(cat) || { key: cat, label: cat, amount: 0, details: [] };
     c.amount += amount;
     if (r.libelle) c.details.push(r.libelle);
     byCat.set(cat, c);
   }
-  const out = [...byCat.values()];
-  const ca = [...rows, ...depRows].reduce((a, r) => a + toNum(r.prix_total || r.total_eur || r.montant_eur), 0);
-  const rate = toNum(commissionRate);
-  if (rate > 0 && ca > 0) out.push({ key: '__commission', label: `Commission (${String(rate).replace('.', ',')} % du CA)`, amount: (ca * rate) / 100, details: [] });
-  return out.map((c) => ({ ...c, amount: round2(c.amount) }));
+  return [...byCat.values()].map((c) => ({ ...c, amount: round2(c.amount) }));
 }
 
 // ─── Résolution des articles Odoo ──────────────────────────────────────────────
@@ -167,6 +166,22 @@ function makeResolver(products) {
     ];
     for (const [re, name] of rules) if (re.test(p) && named(name)) return named(name);
     return named('Confection');
+  };
+
+  const manufactureFor = (row) => {
+    const p = norm(row?.produit);
+    const rules = [
+      [/voilage/, 'Manufacture Voilage'],
+      [/rideau/, 'Manufacture Rideau'],
+      [/coussin/, 'Manufacture Coussins'],
+      [/plaid/, 'Manufacture Plaids'],
+      [/cache.?sommier/, 'Manufacture Cache-sommier'],
+      [/t[eê]te/, 'Manufacture Tête de Lit'],
+      [/bateau/, 'Manufacture Store Bateau'],
+      [/velum/, 'Manufacture Store Velum'],
+    ];
+    for (const [re, name] of rules) if (re.test(p) && named(name)) return named(name);
+    return named('Manufacture');
   };
 
   // Rails / mécanismes : on cherche l'article dont le mot distinctif apparaît dans le
@@ -191,6 +206,7 @@ function makeResolver(products) {
 
   return (choice, row, comp) => {
     if (choice === '@confection') return confectionFor(row);
+    if (choice === '@manufacture') return manufactureFor(row);
     if (choice === '@meca') return mecaFor(row, comp.refKey);
     if (choice === '@deplacement') return named(/cotes/i.test(row.type_deplacement || '') ? 'Prise de cotes' : 'Frais de déplacement');
     return byId.get(String(choice)) || named(choice);
@@ -270,12 +286,11 @@ function describe(line) {
  * @param {object} p
  * @param {Array} p.rows      lignes de la minute (déjà recalculées, cf. ChiffrageScreen)
  * @param {Array} p.depRows   déplacements
- * @param {object} p.config   { groupBy, mapping: { [componentKey]: { product, placement, unit } } }
+ * @param {object} p.config   cf. defaultConfig()
  * @param {Array} p.extraRows « Autres dépenses » (charges sans prix de vente)
- * @param {number} p.commissionRate commission dynamique en % du CA (cf. moulinette)
  * @param {Array} p.products  articles Odoo [{ id, name, uom }]
  */
-export function buildQuote({ rows = [], depRows = [], extraRows = [], commissionRate = 0, config, products = [] }) {
+export function buildQuote({ rows = [], depRows = [], extraRows = [], config, products = [] }) {
   const resolve = makeResolver(products);
   const compByKey = new Map(COMPONENTS.map((c) => [c.key, c]));
   const sections = new Map(); // titre → { title, order, lines: Map }
@@ -291,19 +306,24 @@ export function buildQuote({ rows = [], depRows = [], extraRows = [], commission
   const order = config.order || DEFAULT_ORDER;
   const rank = (key) => { const i = order.indexOf(key); return i < 0 ? 999 : i; };
 
-  const push = ({ row, comp, amount, cost, ml, hours, sectionTitle, sectionOrder }) => {
+  const isolate = config.logistique === 'isole';
+  const LOGI_TITLE = 'DÉPLACEMENT & TRANSPORT';
+  const isLogi = (key) => key === 'livraison' || key === '__deplacement';
+
+  const push = ({ row, comp, amount, cost, ml, hours, sectionTitle, sectionOrder, product: forced }) => {
     const m = config.mapping[comp.key] || {};
-    const apartPlacement = m.placement === 'apart';
-    const ov = !apartPlacement && config.overrides?.[overrideKey(config.groupBy, sectionTitle)]?.[comp.key];
-    const product = resolve(ov || m.product, row, comp);
+    // Livraison / déplacement : leur place dépend de l'option « logistique », pas de « à part ».
+    const toLogi = isolate && isLogi(comp.key);
+    const apartPlacement = !isLogi(comp.key) && m.placement === 'apart';
+    const ov = !apartPlacement && !toLogi && config.overrides?.[overrideKey(config.groupBy, sectionTitle)]?.[comp.key];
+    const product = forced || resolve(ov || m.product, row, comp);
     if (!product) warnings.push(`Aucun article Odoo pour « ${comp.label} » (${row.produit || row.libelle || 'ligne'}).`);
-    const apart = apartPlacement;
-    const title = apart ? (comp.apartTitle || comp.label).toUpperCase() : sectionTitle;
-    const sec = sectionFor(title, apart ? 1e6 + rank(comp.key) : sectionOrder);
+    const title = toLogi ? LOGI_TITLE : apartPlacement ? (comp.apartTitle || comp.label).toUpperCase() : sectionTitle;
+    const sec = sectionFor(title, toLogi ? 2e6 : apartPlacement ? 1e6 + rank(comp.key) : sectionOrder);
     const byMl = m.unit === 'ml' && comp.mlKey;
     const ref = byMl ? norm(row[comp.refKey]) : '';
     const lineKey = `${product?.id ?? comp.key}|${byMl ? 'ml' : 'f'}|${ref}`;
-    const line = sec.lines.get(lineKey) || { key: lineKey, product, comp, byMl, amount: 0, cost: 0, ml: 0, hours: 0, sources: [], comps: new Map() };
+    const line = sec.lines.get(lineKey) || { key: lineKey, product, comp, byMl, amount: 0, cost: 0, ml: 0, hours: 0, sources: [], comps: new Map(), charges: [] };
     line.amount += amount;
     line.cost += cost || 0;
     line.ml += ml || 0;
@@ -350,53 +370,88 @@ export function buildQuote({ rows = [], depRows = [], extraRows = [], commission
     }
   });
 
-  // 2. Déplacements.
+  // Poids de chaque section « normale » (hors à part / logistique), pour répartir.
+  const weights = () => {
+    const secs = [...sections.values()].filter((sec) => sec.order < 1e6);
+    const amt = secs.map((sec) => [...sec.lines.values()].reduce((a, l) => a + l.amount, 0));
+    const tot = amt.reduce((a, x) => a + x, 0);
+    return secs.map((sec, i) => ({ sec, w: tot > 0 ? amt[i] / tot : 1 / secs.length }));
+  };
+
+  // 2. Déplacements. Une ligne de déplacement = main-d'œuvre (heures facturées) + frais
+  //    (nuits + repas + billets, revendus à prix coûtant). On les sépare pour l'analytique :
+  //    la main-d'œuvre va sur l'article auto (Prise de cotes → étiquette Pose, sinon Frais de
+  //    déplacement), les frais TOUJOURS sur « Frais de déplacement » (étiquette Frais de
+  //    Déplacement). Isolés → section logistique ; fondus → répartis au prorata des sections.
   const depComp = compByKey.get('__deplacement');
+  const fraisProduct = resolve('Frais de déplacement', {}, {});
+  const ws = weights();
   depRows.forEach((row) => {
     const total = toNum(row.prix_total ?? row.total_price);
-    if (!total) return;
+    const frais = toNum(row.cout_nuits) + toNum(row.cout_repas) + toNum(row.cout_billet_total);
+    if (!total && !frais) return;
     minuteTotal += total;
-    // Coût d'un déplacement = nuits + repas + billets (la main-d'œuvre n'est pas un achat).
-    const cost = toNum(row.cout_nuits) + toNum(row.cout_repas) + toNum(row.cout_billet_total);
-    minuteCost += cost;
-    push({ row, comp: depComp, amount: total, cost, sectionTitle: 'DÉPLACEMENTS', sectionOrder: 1e6 - 1 });
+    minuteCost += frais;
+    const hours = toNum(row.heures_facturees);
+    const mo = total - frais;
+    const dest = isolate || !ws.length ? [{ sec: { title: LOGI_TITLE, order: 2e6 }, w: 1 }] : ws;
+    for (const { sec, w } of dest) {
+      if (mo || hours) push({ row, comp: depComp, amount: mo * w, cost: 0, hours: hours * w, sectionTitle: sec.title, sectionOrder: sec.order });
+      if (frais) push({ row, comp: depComp, amount: frais * w, cost: frais * w, hours: 0, sectionTitle: sec.title, sectionOrder: sec.order, product: fraisProduct });
+    }
   });
 
-  // 3. Charges annexes → ajoutées au coût des lignes hôtes, au prorata de leur prix.
-  const allLines = [...sections.values()].flatMap((sec) => [...sec.lines.values()]);
-  const charges = collectCharges({ rows, depRows, extraRows, commissionRate }).map((ch) => {
+  // 3. Charges annexes → coût des lignes de l'article hôte (même étiquette analytique).
+  let commissionPartenaire = 0;
+  const charges = collectCharges({ extraRows }).map((ch) => {
     const host = config.charges?.[ch.key] || defaultChargeHost(ch.key);
-    // Le coût « minute » compte TOUTES les charges (comme la moulinette) : une charge non
-    // reportée apparaît donc en écart dans le contrôle, ce qui est voulu.
-    minuteCost += ch.amount;
+    minuteCost += ch.amount; // une charge non reportée apparaît en écart dans le contrôle (voulu)
     if (host === 'none') return { ...ch, host, applied: false };
-    const resolved = host.startsWith('@') ? host : resolve(host, {}, {})?.id;
-    let targets = allLines.filter((l) => {
-      if (resolved === '@all') return true;
-      if (resolved === '@conf' || resolved === '@prepa' || resolved === '@pose') return l.comp.bucket === resolved.slice(1);
-      return resolved != null && String(l.product?.id) === String(resolved);
-    });
-    let fallback = false;
-    if (!targets.length) { targets = allLines; fallback = true; }
-    const base = targets.reduce((a, l) => a + Math.max(0, l.amount), 0);
-    for (const l of targets) {
-      const share = base > 0 ? (Math.max(0, l.amount) / base) * ch.amount : ch.amount / targets.length;
-      l.cost += share;
-      (l.charges ||= []).push({ label: ch.label, amount: share });
+    if (host === '@commission') { commissionPartenaire += ch.amount; return { ...ch, host, applied: true }; }
+
+    const isManuf = host === '@manufacture';
+    const hostProduct = isManuf ? null : resolve(host, {}, {});
+    if (!isManuf && !hostProduct) {
+      warnings.push(`« ${ch.label} » : article « ${host} » introuvable dans Odoo, coût non reporté.`);
+      return { ...ch, host, applied: false };
     }
-    if (fallback && targets.length) warnings.push(`« ${ch.label} » : aucune ligne pour l'article choisi, réparti sur tout le devis.`);
+    const matches = (l) => (isManuf ? /^manufacture/i.test(l.product?.name || '') : String(l.product?.id) === String(hostProduct.id));
+    const targets = [...sections.values()].flatMap((sec) => [...sec.lines.values()]).filter(matches);
+    const addTo = (l, amount) => { l.cost += amount; l.charges.push({ label: ch.label, amount }); };
+
+    if (targets.length) {
+      const base = targets.reduce((a, l) => a + Math.max(0, l.amount), 0);
+      for (const l of targets) addTo(l, base > 0 ? (Math.max(0, l.amount) / base) * ch.amount : ch.amount / targets.length);
+    } else {
+      // Aucune ligne de cet article : on crée des lignes « coût seul » (0 €) — dans la
+      // section logistique si isolée et que c'est un coût logistique, sinon une par section.
+      const chComp = { key: `__charge:${ch.key}`, label: ch.label, family: 'Charges' };
+      const logiHost = !isManuf && /^(livraison|location|frais de deplacement)$/.test(norm(hostProduct.name));
+      const dest = (isolate && logiHost) || !ws.length ? [{ sec: { title: LOGI_TITLE, order: 2e6 }, w: 1 }] : ws;
+      for (const { sec, w } of dest) {
+        const row = isManuf ? ([...(sections.get(sec.title)?.lines.values() || [])][0]?.sources[0]?.row || {}) : {};
+        const product = isManuf ? resolve('@manufacture', row, chComp) : hostProduct;
+        const s2 = sectionFor(sec.title, sec.order);
+        const key = `${product?.id ?? chComp.key}|f|`;
+        const l = s2.lines.get(key) || { key, product, comp: chComp, byMl: false, amount: 0, cost: 0, ml: 0, hours: 0, sources: [], comps: new Map([[chComp.key, chComp.label]]), charges: [], costOnly: true };
+        s2.lines.set(key, l);
+        addTo(l, ch.amount * w);
+      }
+    }
     return { ...ch, host, applied: true };
   });
 
   // 4. Mise en forme : PU / quantités, textes, heures par catégorie.
-  const hours = { conf: 0, prepa: 0, pose: 0 };
+  const hours = { conf: 0, prepa: 0, pose: 0, depl: 0 };
+  // Lignes « coût seul » créées pour une charge : rangées juste après la livraison.
+  const rankOf = (k) => (k.startsWith('__charge:') ? rank('livraison') + 0.5 : rank(k));
   let quoteTotal = 0;
   let quoteCost = 0;
   const outSections = [...sections.values()]
     .sort((a, b) => a.order - b.order)
     .map((sec) => {
       const lines = [...sec.lines.values()]
-        .map((l) => ({ ...l, rank: Math.min(...[...l.comps.keys()].map(rank)) }))
+        .map((l) => ({ ...l, rank: Math.min(...[...l.comps.keys()].map(rankOf)) }))
         .sort((a, b) => a.rank - b.rank)
         .map((l) => {
           const subtotal = round2(l.amount);
@@ -424,6 +479,7 @@ export function buildQuote({ rows = [], depRows = [], extraRows = [], commission
             hours: round2(l.hours),
             bucket: l.comp.bucket || null,
             charges: (l.charges || []).map((c) => ({ label: c.label, amount: round2(c.amount) })),
+            costOnly: !!l.costOnly,
             from: [...l.comps.values()],
             compKeys: [...l.comps.keys()],
             nbRows: l.sources.length,
@@ -431,7 +487,7 @@ export function buildQuote({ rows = [], depRows = [], extraRows = [], commission
         });
       return {
         title: sec.title,
-        apart: sec.order >= 1e6 - 1,
+        apart: sec.order >= 1e6,
         lines,
         total: round2(lines.reduce((a, l) => a + l.subtotal, 0)),
         cost: round2(lines.reduce((a, l) => a + l.cost, 0)),
@@ -445,9 +501,14 @@ export function buildQuote({ rows = [], depRows = [], extraRows = [], commission
     diff: round2(quoteTotal - minuteTotal),
     cost: round2(quoteCost),
     minuteCost: round2(minuteCost),
-    costDiff: round2(quoteCost - minuteCost),
+    // Contrôle : coûts des lignes + commission partenaire (portée par le taux du devis).
+    costDiff: round2(quoteCost + commissionPartenaire - minuteCost),
     charges,
-    hours: { conf: round2(hours.conf), prepa: round2(hours.prepa), pose: round2(hours.pose) },
+    commissionPartenaire: {
+      amount: round2(commissionPartenaire),
+      rate: quoteTotal > 0 ? Math.round((commissionPartenaire / quoteTotal) * 1e6) / 1e4 : 0,
+    },
+    hours: { conf: round2(hours.conf), prepa: round2(hours.prepa), pose: round2(hours.pose), depl: round2(hours.depl) },
     warnings: [...new Set(warnings)],
   };
 }
