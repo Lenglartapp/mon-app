@@ -4,15 +4,15 @@
 
 import React from 'react';
 import Dialog from '@mui/material/Dialog';
-import { X, Search, Check, ArrowLeft, ArrowRight, AlertTriangle, GripVertical, ChevronUp, ChevronDown, ChevronRight } from 'lucide-react';
+import { X, Search, Check, ArrowLeft, ArrowRight, AlertTriangle, GripVertical, ChevronUp, ChevronDown, ChevronRight, Plus, Trash2 } from 'lucide-react';
 import {
-  COMPONENTS, AUTO_PRODUCTS, GROUP_BY_OPTIONS, CHARGE_SPECIAL_HOSTS, defaultConfig, normalizeConfig, overrideKey,
-  defaultChargeHost, buildQuote,
+  COMPONENTS, COMPONENT_BY_KEY, AUTO_PRODUCTS, GROUP_BY_OPTIONS, PRODUCT_TYPES, CHARGE_SPECIAL_HOSTS,
+  defaultConfig, normalizeConfig, overrideKey, recipeOf, chargeSetting, buildQuote,
 } from '../../lib/odoo/quoteBuilder';
 
 const PGRID = '1.2fr 2.2fr 0.7fr 0.8fr 0.9fr 0.8fr 0.45fr';
-const PROFILE_KEY = 'df.odooQuote.profile.v1';
-const STEPS = ['Destinataire', 'Structure', 'Articles', 'Aperçu'];
+const PROFILE_KEY = 'df.odooQuote.profile.v2';
+const STEPS = ['Destinataire', 'Structure', 'Recettes', 'Aperçu'];
 const C = { border: '#E0DED9', grey: '#F4F4F4', text: '#1F2937', muted: '#6B7280', soft: '#9B9A97', accent: '#714B67' };
 const eur = (n) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(n || 0);
 const num = (n) => new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 3 }).format(n || 0);
@@ -214,10 +214,10 @@ function StepStructure({ config, setConfig, presentComps, rows, depRows, quote }
   // Noms des sections que produirait chaque regroupement (hors sections « à part »).
   const titlesFor = (g) => buildQuote({ rows, depRows: [], config: { ...config, groupBy: g }, products: [] })
     .sections.filter((sec) => !sec.apart).map((sec) => sec.title);
-  const placeable = presentComps.filter((c) => c.key !== 'livraison' && c.key !== '__deplacement');
+  const placeable = presentComps.filter((c) => c.key !== 'livraison');
   const families = [...new Set(placeable.map((c) => c.family))];
   const setPlacement = (key, placement) =>
-    setConfig((cfg) => ({ ...cfg, mapping: { ...cfg.mapping, [key]: { ...cfg.mapping[key], placement } } }));
+    setConfig((cfg) => ({ ...cfg, placement: { ...cfg.placement, [key]: placement } }));
   const logi = config.logistique || 'fondu';
 
   return (
@@ -260,7 +260,7 @@ function StepStructure({ config, setConfig, presentComps, rows, depRows, quote }
               {placeable.filter((c) => c.family === fam).map((c) => (
                 <div key={c.key} style={{ display: 'flex', alignItems: 'center', padding: '8px 14px', borderTop: `1px solid ${C.grey}` }}>
                   <div style={{ flex: 1, fontSize: 13.5, color: C.text }}>{c.label}</div>
-                  <Seg value={config.mapping[c.key]?.placement || 'section'} onChange={(v) => setPlacement(c.key, v)}
+                  <Seg value={config.placement?.[c.key] || 'section'} onChange={(v) => setPlacement(c.key, v)}
                     options={[{ value: 'section', label: 'Dans la section' }, { value: 'apart', label: 'À part' }]} />
                 </div>
               ))}
@@ -275,10 +275,10 @@ function StepStructure({ config, setConfig, presentComps, rows, depRows, quote }
   );
 }
 
-// ─── Étape 3 : articles ────────────────────────────────────────────────────────
-const GRID = '22px 1.15fr 0.55fr 0.55fr 1.7fr 0.75fr 26px';
+// ─── Étape 3 : recettes ────────────────────────────────────────────────────────
+const RGRID = '22px 1.1fr 1.3fr 1.6fr 0.75fr 0.6fr 0.55fr 44px';
 
-function ProductSelect({ value, onChange, products, autoKey, emptyLabel = '— à choisir —', allowEmpty = false, style }) {
+function ProductSelect({ value, onChange, products, autoKeys = [], emptyLabel = '— à choisir —', allowEmpty = false, style }) {
   const val = (() => {
     if (!value || String(value).startsWith('@')) return value || '';
     const p = products.find((x) => String(x.id) === String(value) || x.name === value);
@@ -286,138 +286,175 @@ function ProductSelect({ value, onChange, products, autoKey, emptyLabel = '— �
   })();
   return (
     <select style={{ ...inputStyle, padding: '6px 8px', ...style }} value={val} onChange={(e) => onChange(e.target.value)}>
-      {autoKey && <option value={autoKey}>{AUTO_PRODUCTS[autoKey]}</option>}
       {(!val || allowEmpty) && <option value="">{emptyLabel}</option>}
-      {products.map((p) => <option key={p.id} value={String(p.id)}>{p.name}{p.uom === 'ml' ? ' (ml)' : ''}{p.tag ? `  ·  ${p.tag}` : ''}</option>)}
+      {autoKeys.map((k) => <option key={k} value={k}>{AUTO_PRODUCTS[k]}</option>)}
+      <optgroup label="Articles Odoo">
+        {products.map((p) => <option key={p.id} value={String(p.id)}>{p.name}{p.uom === 'ml' ? ' (ml)' : ''}{p.tag ? `  ·  ${p.tag}` : ''}</option>)}
+      </optgroup>
     </select>
   );
 }
 
-// Étiquette analytique Odoo de l'article choisi (« Auto » : celle des articles retenus).
+// Étiquette analytique Odoo de l'article choisi (« Auto » : celles des articles retenus).
 function TagHint({ names }) {
   const tags = [...new Set(names.filter(Boolean))];
   if (!tags.length) return null;
-  return <div style={{ fontSize: 11.5, color: C.accent, marginTop: 3 }}>Étiquette analytique : {tags.join(', ')}</div>;
+  return <div style={{ fontSize: 11.5, color: C.accent, marginTop: 3 }}>Étiquette : {tags.join(', ')}</div>;
 }
 
-function StepArticles({ config, setConfig, presentComps, catalog, amounts, costs, quote }) {
-  const products = catalog?.products || [];
-  const [openKey, setOpenKey] = React.useState(null);
-  const setMap = (key, patch) =>
-    setConfig((cfg) => ({ ...cfg, mapping: { ...cfg.mapping, [key]: { ...cfg.mapping[key], ...patch } } }));
+function ColChips({ cols, onRemove, onAdd, available }) {
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
+      {cols.map((k) => (
+        <span key={k} style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 11.5, background: C.grey, borderRadius: 5, padding: '2px 4px 2px 7px', color: '#374151' }}>
+          {COMPONENT_BY_KEY.get(k)?.label || k}
+          <button onClick={() => onRemove(k)} title="Retirer cette colonne" style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 0, color: C.soft, display: 'inline-flex' }}><X size={12} /></button>
+        </span>
+      ))}
+      {available.length > 0 && (
+        <select value="" onChange={(e) => e.target.value && onAdd(e.target.value)}
+          style={{ border: `1px dashed ${C.border}`, borderRadius: 5, fontSize: 11.5, color: C.muted, background: 'white', padding: '1px 2px', fontFamily: 'inherit', maxWidth: 110 }}>
+          <option value="">+ colonne</option>
+          {available.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
+        </select>
+      )}
+    </div>
+  );
+}
 
-  // Ordre vertical : uniquement les colonnes présentes dans la minute, dans l'ordre du réglage.
-  const present = new Set(presentComps.map((c) => c.key));
-  const savedOrder = config.order.filter((k) => present.has(k));
-  const [drag, setDrag] = React.useState(null); // { key, order } : ordre provisoire pendant le glisser
-  const visibleOrder = drag ? drag.order : savedOrder;
-  const ordered = visibleOrder.map((k) => COMPONENTS.find((c) => c.key === k));
-  const commit = (order) => setConfig((cfg) => {
-    // On réinsère l'ordre des colonnes présentes dans l'ordre complet (les absentes gardent leur place).
-    const it = order[Symbol.iterator]();
-    return { ...cfg, order: cfg.order.map((k) => (present.has(k) ? it.next().value : k)) };
-  });
-  const step = (key, dir) => {
-    const order = [...savedOrder];
-    const i = order.indexOf(key);
+function StepRecipes({ config, setConfig, catalog, quote }) {
+  const products = catalog?.products || [];
+  const tagOf = (id) => products.find((p) => p.id === id)?.tag;
+  const types = quote.types.length ? quote.types : [{ key: PRODUCT_TYPES[0].key, label: PRODUCT_TYPES[0].label, rows: 0 }];
+  const [typeKey, setTypeKey] = React.useState(types[0].key);
+  const activeType = types.find((t) => t.key === typeKey) ? typeKey : types[0].key;
+  const slots = recipeOf(config, activeType);
+  const [openId, setOpenId] = React.useState(null);
+  const [drag, setDrag] = React.useState(null); // { id, order } : ordre provisoire pendant le glisser
+
+  const setSlots = (fn) => setConfig((cfg) => ({ ...cfg, recipes: { ...cfg.recipes, [activeType]: fn(recipeOf(cfg, activeType)) } }));
+  const patchSlot = (id, patch) => setSlots((list) => list.map((sl) => (sl.id === id ? { ...sl, ...patch } : sl)));
+  const usedCols = new Set(slots.flatMap((sl) => sl.cols));
+  const freeCols = COMPONENTS.filter((c) => !usedCols.has(c.key));
+
+  // Lignes du devis produites par chaque ligne de recette (montants, articles retenus).
+  const linesOf = (slotId) => quote.sections.flatMap((sec) => sec.lines.map((l) => ({ ...l, section: sec.title, apart: sec.apart })))
+    .filter((l) => l.typeKey === activeType && l.slotId === slotId);
+
+  // Ordre (avec aperçu en direct pendant le glisser-déposer).
+  const visible = drag ? drag.order.map((id) => slots.find((sl) => sl.id === id)) : slots;
+  const commit = (order) => setSlots((list) => order.map((id) => list.find((sl) => sl.id === id)));
+  const stepMove = (id, dir) => {
+    const order = slots.map((sl) => sl.id);
+    const i = order.indexOf(id);
     const j = i + dir;
     if (j < 0 || j >= order.length) return;
     [order[i], order[j]] = [order[j], order[i]];
     commit(order);
   };
-  // Pendant le glisser, la ligne se déplace en direct à l'endroit où elle atterrira.
-  const onDragOverRow = (e, overKey) => {
+  const onDragOverRow = (e, overId) => {
     e.preventDefault();
-    if (!drag || overKey === drag.key) return;
+    if (!drag || overId === drag.id) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const after = e.clientY > rect.top + rect.height / 2;
-    const order = drag.order.filter((k) => k !== drag.key);
-    const idx = order.indexOf(overKey) + (after ? 1 : 0);
-    order.splice(idx, 0, drag.key);
+    const order = drag.order.filter((id) => id !== drag.id);
+    order.splice(order.indexOf(overId) + (after ? 1 : 0), 0, drag.id);
     if (order.join() !== drag.order.join()) setDrag({ ...drag, order });
   };
 
-  // Sections où chaque colonne apparaît, avec l'article retenu (utile pour les choix « Auto »).
-  const sectionsOf = (key) => quote.sections
-    .filter((sec) => !sec.apart)
-    .map((sec) => ({ title: sec.title, line: sec.lines.find((l) => l.compKeys.includes(key)) }))
-    .filter((x) => x.line);
-  const setOverride = (title, key, product) => setConfig((cfg) => {
+  const setOverride = (title, slotId, product) => setConfig((cfg) => {
     const ok = overrideKey(cfg.groupBy, title);
     const cur = { ...(cfg.overrides?.[ok] || {}) };
-    if (product) cur[key] = product; else delete cur[key];
+    const k = `${activeType}:${slotId}`;
+    if (product) cur[k] = product; else delete cur[k];
     return { ...cfg, overrides: { ...cfg.overrides, [ok]: cur } };
   });
+  const addSlot = () => setSlots((list) => [...list, { id: `perso_${Date.now()}`, label: 'Nouvelle ligne', cols: [], product: '' }]);
+  const resetType = () => setConfig((cfg) => { const r = { ...cfg.recipes }; delete r[activeType]; return { ...cfg, recipes: r }; });
+
+  const sectionTitles = quote.sections.filter((sec) => !sec.apart).map((sec) => sec.title);
 
   return (
     <div>
-      <H sub="L'ordre de cette liste est l'ordre des lignes dans chaque section (glisse-dépose ou flèches). Deux colonnes vers le même article = une seule ligne.">Colonnes Droitfil → articles Odoo</H>
+      <H sub="Une recette par type de produit : la liste ordonnée des lignes Odoo qui le composent, chacune alimentée par une ou plusieurs colonnes de la minute. Dans une section avec plusieurs produits, les recettes s'empilent ; une ligne sans montant n'apparaît pas.">Recettes par type de produit</H>
+
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
+        {types.map((t) => (
+          <button key={t.key} onClick={() => { setTypeKey(t.key); setOpenId(null); }}
+            style={{ border: `1px solid ${t.key === activeType ? C.text : C.border}`, background: t.key === activeType ? C.text : 'white', color: t.key === activeType ? 'white' : '#374151',
+              borderRadius: 999, padding: '6px 12px', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 500 }}>
+            {t.label} <span style={{ opacity: 0.6 }}>· {t.rows}</span>
+          </button>
+        ))}
+      </div>
+
       <div style={{ border: `1px solid ${C.border}`, borderRadius: 10, overflow: 'hidden' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: GRID, gap: 10, padding: '8px 14px', fontSize: 12, color: C.soft, borderBottom: `1px solid ${C.border}` }}>
-          <div /><div>Colonne de la minute</div><div style={{ textAlign: 'right' }}>Prix de vente</div><div style={{ textAlign: 'right' }}>Coût</div><div>Article Odoo</div><div>Unité</div><div />
+        <div style={{ display: 'grid', gridTemplateColumns: RGRID, gap: 10, padding: '8px 14px', fontSize: 12, color: C.soft, borderBottom: `1px solid ${C.border}` }}>
+          <div /><div>Ligne</div><div>Colonnes de la minute</div><div>Article Odoo</div><div>Unité</div><div style={{ textAlign: 'right' }}>Prix</div><div style={{ textAlign: 'right' }}>Coût</div><div />
         </div>
-        {ordered.map((c, i) => {
-          const m = config.mapping[c.key] || {};
-          const autoKey = AUTO_PRODUCTS[c.defaultProduct] ? c.defaultProduct : null;
-          const apart = m.placement === 'apart' && c.key !== 'livraison' && c.key !== '__deplacement';
-          const secs = apart ? [] : sectionsOf(c.key);
-          const nbOverrides = secs.filter((x) => config.overrides?.[overrideKey(config.groupBy, x.title)]?.[c.key]).length;
-          const isOpen = openKey === c.key;
+        {visible.map((sl, i) => {
+          const lines = linesOf(sl.id);
+          const pv = lines.reduce((a, l) => a + l.subtotal, 0);
+          const cost = lines.reduce((a, l) => a + l.cost, 0);
+          const empty = !lines.length;
+          const mlCapable = sl.cols.some((k) => COMPONENT_BY_KEY.get(k)?.mlKey);
+          const secs = [...new Map(lines.filter((l) => !l.apart).map((l) => [l.section, l])).values()];
+          const nbOv = secs.filter((l) => config.overrides?.[overrideKey(config.groupBy, l.section)]?.[`${activeType}:${sl.id}`]).length;
+          const isOpen = openId === sl.id;
           return (
-            <div key={c.key}
+            <div key={sl.id}
               draggable
-              onDragStart={(e) => { e.dataTransfer.effectAllowed = 'move'; setDrag({ key: c.key, order: savedOrder }); }}
-              onDragOver={(e) => onDragOverRow(e, c.key)}
+              onDragStart={(e) => { e.dataTransfer.effectAllowed = 'move'; setDrag({ id: sl.id, order: slots.map((x) => x.id) }); }}
+              onDragOver={(e) => onDragOverRow(e, sl.id)}
               onDrop={(e) => { e.preventDefault(); if (drag) commit(drag.order); setDrag(null); }}
               onDragEnd={() => setDrag(null)}
-              style={{
-                borderTop: i ? `1px solid ${C.grey}` : 'none',
-                transition: 'background .12s',
-                ...(drag?.key === c.key
-                  ? { background: '#F3EEF2', outline: `2px dashed ${C.accent}`, outlineOffset: -2, opacity: 0.85 }
-                  : { background: 'white' }),
-              }}>
-              <div style={{ display: 'grid', gridTemplateColumns: GRID, gap: 10, alignItems: 'center', padding: '7px 14px' }}>
+              style={{ borderTop: i ? `1px solid ${C.grey}` : 'none', ...(drag?.id === sl.id
+                ? { background: '#F3EEF2', outline: `2px dashed ${C.accent}`, outlineOffset: -2 }
+                : { background: 'white' }) }}>
+              <div style={{ display: 'grid', gridTemplateColumns: RGRID, gap: 10, alignItems: 'center', padding: '7px 14px', opacity: empty ? 0.5 : 1 }}>
                 <GripVertical size={15} color={C.soft} style={{ cursor: 'grab' }} />
-                <div style={{ fontSize: 13.5, color: C.text, minWidth: 0 }}>
-                  {c.label}
-                  <div style={{ fontSize: 11.5, color: C.soft }}>
-                    {c.family}{c.hoursKey ? ' · porte les heures' : ''}{apart && c.key !== 'livraison' && c.key !== '__deplacement' ? ' · à part' : ''}
-                  </div>
-                </div>
-                <div style={{ fontSize: 13, color: C.muted, textAlign: 'right' }}>{eur(amounts[c.key])}</div>
-                <div style={{ fontSize: 13, color: costs[c.key] ? C.muted : C.soft, textAlign: 'right' }}>{costs[c.key] ? eur(costs[c.key]) : '—'}</div>
+                <input value={sl.label} onChange={(e) => patchSlot(sl.id, { label: e.target.value })}
+                  style={{ ...inputStyle, padding: '5px 7px', fontSize: 13, fontWeight: 600 }} title="Nom de la ligne (pour toi ; n'apparaît pas sur le devis)" />
+                <ColChips cols={sl.cols} available={freeCols}
+                  onRemove={(k) => patchSlot(sl.id, { cols: sl.cols.filter((x) => x !== k) })}
+                  onAdd={(k) => patchSlot(sl.id, { cols: [...sl.cols, k] })} />
                 <div>
-                  <ProductSelect value={m.product} products={products} autoKey={autoKey} onChange={(v) => setMap(c.key, { product: v })} />
-                  <TagHint names={quote.sections.flatMap((sec) => sec.lines).filter((l) => l.compKeys.includes(c.key)).map((l) => products.find((p) => p.id === l.productId)?.tag)} />
+                  <ProductSelect value={sl.product} products={products} autoKeys={Object.keys(AUTO_PRODUCTS)} onChange={(v) => patchSlot(sl.id, { product: v })} />
+                  <TagHint names={lines.map((l) => tagOf(l.productId))} />
                 </div>
                 <div>
-                  {c.mlKey ? (
-                    <Seg value={m.unit || 'ml'} onChange={(v) => setMap(c.key, { unit: v })}
+                  {mlCapable ? (
+                    <Seg value={sl.unit || 'forfait'} onChange={(v) => patchSlot(sl.id, { unit: v })}
                       options={[{ value: 'ml', label: 'ml' }, { value: 'forfait', label: 'Forfait' }]} />
                   ) : <span style={{ fontSize: 12.5, color: C.soft }}>Forfait</span>}
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                  <button onClick={() => step(c.key, -1)} disabled={i === 0} style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', color: i === 0 ? C.border : C.muted }}><ChevronUp size={15} /></button>
-                  <button onClick={() => step(c.key, 1)} disabled={i === ordered.length - 1} style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', color: i === ordered.length - 1 ? C.border : C.muted }}><ChevronDown size={15} /></button>
+                <div style={{ fontSize: 12.5, color: C.muted, textAlign: 'right' }}>{empty ? '—' : eur(pv)}</div>
+                <div style={{ fontSize: 12.5, color: cost ? C.muted : C.soft, textAlign: 'right' }}>{cost ? eur(cost) : '—'}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <button onClick={() => stepMove(sl.id, -1)} disabled={i === 0} style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', color: i === 0 ? C.border : C.muted }}><ChevronUp size={15} /></button>
+                    <button onClick={() => stepMove(sl.id, 1)} disabled={i === visible.length - 1} style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', color: i === visible.length - 1 ? C.border : C.muted }}><ChevronDown size={15} /></button>
+                  </div>
+                  <button onClick={() => setSlots((list) => list.filter((x) => x.id !== sl.id))} title="Supprimer cette ligne de la recette (ses colonnes iront en fin de recette)"
+                    style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', color: C.soft }}><Trash2 size={14} /></button>
                 </div>
               </div>
               {secs.length > 1 && (
                 <div style={{ padding: '0 14px 8px 46px' }}>
-                  <button onClick={() => setOpenKey(isOpen ? null : c.key)}
+                  <button onClick={() => setOpenId(isOpen ? null : sl.id)}
                     style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', fontSize: 12.5, color: C.accent, display: 'inline-flex', alignItems: 'center', gap: 3 }}>
                     <ChevronRight size={13} style={{ transform: isOpen ? 'rotate(90deg)' : 'none', transition: 'transform .15s' }} />
-                    Article différent selon la section{nbOverrides ? ` (${nbOverrides} personnalisée${nbOverrides > 1 ? 's' : ''})` : ''}
+                    Article différent selon la section{nbOv ? ` (${nbOv} personnalisée${nbOv > 1 ? 's' : ''})` : ''}
                   </button>
                   {isOpen && (
                     <div style={{ marginTop: 8, border: `1px solid ${C.border}`, borderRadius: 8, overflow: 'hidden' }}>
-                      {secs.map(({ title, line }, j) => {
-                        const ov = config.overrides?.[overrideKey(config.groupBy, title)]?.[c.key] || '';
+                      {secs.map((l, j) => {
+                        const ov = config.overrides?.[overrideKey(config.groupBy, l.section)]?.[`${activeType}:${sl.id}`] || '';
                         return (
-                          <div key={title} style={{ display: 'grid', gridTemplateColumns: '1fr 1.4fr', gap: 10, alignItems: 'center', padding: '6px 10px', borderTop: j ? `1px solid ${C.grey}` : 'none', background: ov ? '#FBF8FA' : 'white' }}>
-                            <div style={{ fontSize: 13, color: C.text }}>{title || '(section unique)'}</div>
-                            <ProductSelect value={ov} products={products} onChange={(v) => setOverride(title, c.key, v)}
-                              allowEmpty emptyLabel={ov ? '= Règle générale' : `= Règle générale (${line.productName})`} />
+                          <div key={l.section} style={{ display: 'grid', gridTemplateColumns: '1fr 1.4fr', gap: 10, alignItems: 'center', padding: '6px 10px', borderTop: j ? `1px solid ${C.grey}` : 'none', background: ov ? '#FBF8FA' : 'white' }}>
+                            <div style={{ fontSize: 13, color: C.text }}>{l.section || '(section unique)'}</div>
+                            <ProductSelect value={ov} products={products} onChange={(v) => setOverride(l.section, sl.id, v)}
+                              allowEmpty emptyLabel={ov ? '= Règle de la recette' : `= Règle de la recette (${l.productName})`} />
                           </div>
                         );
                       })}
@@ -429,28 +466,32 @@ function StepArticles({ config, setConfig, presentComps, catalog, amounts, costs
           );
         })}
       </div>
+      <div style={{ display: 'flex', gap: 14, marginTop: 10 }}>
+        <button onClick={addSlot} style={{ border: 'none', background: 'none', color: C.accent, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', padding: 0, display: 'inline-flex', alignItems: 'center', gap: 4 }}><Plus size={14} /> Ajouter une ligne</button>
+        <button onClick={resetType} style={{ border: 'none', background: 'none', color: C.muted, fontSize: 12.5, cursor: 'pointer', fontFamily: 'inherit', padding: 0, textDecoration: 'underline' }}>Rétablir la recette par défaut</button>
+      </div>
 
       {quote.charges.length > 0 && (
         <div style={{ marginTop: 28 }}>
-          <H sub="Autres dépenses de la minute (sans prix de vente). Chacune est portée par un article dont l'étiquette analytique correspond à sa nature ; s'il n'y a pas encore de ligne de cet article, une ligne « coût seul » à 0 € est créée. La commission partenaire part dans le taux du devis Odoo.">Charges annexes</H>
+          <H sub="Autres dépenses de la minute (sans prix de vente). Chacune est portée par un article dont l'étiquette analytique correspond à sa nature. La commission partenaire part dans le taux du devis Odoo.">Charges annexes</H>
           <div style={{ border: `1px solid ${C.border}`, borderRadius: 10, overflow: 'hidden' }}>
             {quote.charges.map((ch, k) => {
-              const host = config.charges?.[ch.key] || defaultChargeHost(ch.key);
+              const { host, place } = chargeSetting(config, ch.key);
+              const set = (patch) => setConfig((cfg) => ({ ...cfg, charges: { ...cfg.charges, [ch.key]: { ...chargeSetting(cfg, ch.key), ...patch } } }));
               const hostVal = CHARGE_SPECIAL_HOSTS[host]
                 ? host
                 : String(products.find((p) => String(p.id) === String(host) || p.name === host)?.id ?? 'none');
-              const hostTag = products.find((p) => String(p.id) === hostVal)?.tag
-                || (host === '@manufacture' ? 'ST Confection' : null);
+              const hostTag = products.find((p) => String(p.id) === hostVal)?.tag || (host === '@manufacture' ? 'ST Confection' : null);
+              const showPlace = host !== 'none' && host !== '@commission';
               return (
-                <div key={ch.key} style={{ display: 'grid', gridTemplateColumns: '1.3fr 0.6fr 1.6fr', gap: 12, alignItems: 'center', padding: '8px 14px', borderTop: k ? `1px solid ${C.grey}` : 'none', opacity: host === 'none' ? 0.55 : 1 }}>
-                  <div style={{ fontSize: 13.5, color: C.text, minWidth: 0 }}>
+                <div key={ch.key} style={{ display: 'grid', gridTemplateColumns: '1.1fr 0.5fr 1.4fr 1.4fr', gap: 12, alignItems: 'start', padding: '8px 14px', borderTop: k ? `1px solid ${C.grey}` : 'none', opacity: host === 'none' ? 0.6 : 1 }}>
+                  <div style={{ fontSize: 13.5, color: C.text, minWidth: 0, paddingTop: 6 }}>
                     {ch.label}
                     {ch.details.length > 0 && <div style={{ fontSize: 11.5, color: C.soft, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ch.details.join(' · ')}</div>}
                   </div>
-                  <div style={{ fontSize: 13, color: C.muted, textAlign: 'right' }}>{eur(ch.amount)}</div>
+                  <div style={{ fontSize: 13, color: C.muted, textAlign: 'right', paddingTop: 6 }}>{eur(ch.amount)}</div>
                   <div>
-                    <select style={{ ...inputStyle, padding: '6px 8px' }} value={hostVal}
-                      onChange={(e) => setConfig((cfg) => ({ ...cfg, charges: { ...cfg.charges, [ch.key]: e.target.value } }))}>
+                    <select style={{ ...inputStyle, padding: '6px 8px' }} value={hostVal} onChange={(e) => set({ host: e.target.value })}>
                       <option value="@commission">{CHARGE_SPECIAL_HOSTS['@commission']}</option>
                       <option value="@manufacture">{CHARGE_SPECIAL_HOSTS['@manufacture']}</option>
                       <optgroup label="Coût porté par l'article…">
@@ -460,8 +501,20 @@ function StepArticles({ config, setConfig, presentComps, catalog, amounts, costs
                     </select>
                     {host === '@commission'
                       ? <div style={{ fontSize: 11.5, color: C.accent, marginTop: 3 }}>Taux commission partenaire du devis : {num(quote.commissionPartenaire.rate)} %</div>
-                      : hostTag && host !== 'none' && <div style={{ fontSize: 11.5, color: C.accent, marginTop: 3 }}>Étiquette analytique : {hostTag}</div>}
+                      : host === 'none'
+                        ? <div style={{ fontSize: 11.5, color: '#B45309', marginTop: 3 }}>Non reportée : la marge Odoo sera surestimée de {eur(ch.amount)}</div>
+                        : hostTag && <div style={{ fontSize: 11.5, color: C.accent, marginTop: 3 }}>Étiquette : {hostTag}</div>}
                   </div>
+                  {showPlace ? (
+                    <select style={{ ...inputStyle, padding: '6px 8px' }} value={place} onChange={(e) => set({ place: e.target.value })}>
+                      <option value="lignes">Sur les lignes existantes de l'article (sinon section isolée)</option>
+                      <option value="isole">Ligne dans une section isolée en fin de devis</option>
+                      <option value="reparti">Une ligne dans chaque section (au prorata)</option>
+                      <optgroup label="Ligne dans la section…">
+                        {sectionTitles.map((t) => <option key={t} value={`section:${t}`}>{t || '(section unique)'}</option>)}
+                      </optgroup>
+                    </select>
+                  ) : <div />}
                 </div>
               );
             })}
@@ -553,7 +606,7 @@ export default function OdooQuoteWizard({ open, onClose, minute, rows = [], depR
   React.useEffect(() => { saveProfile(config); }, [config]);
 
   // Colonnes réellement utilisées par cette minute (+ montants pour l'étape Articles).
-  const { presentComps, amounts, costs } = React.useMemo(() => {
+  const { presentComps } = React.useMemo(() => {
     const amounts = {};
     const costs = {};
     for (const r of rows) {
@@ -564,11 +617,9 @@ export default function OdooQuoteWizard({ open, onClose, minute, rows = [], depR
         if (c.paKey) costs[c.key] = (costs[c.key] || 0) + toNum(r[c.paKey]) * q;
       }
     }
-    amounts.__deplacement = depRows.reduce((a, r) => a + toNum(r.prix_total), 0);
-    costs.__deplacement = depRows.reduce((a, r) => a + toNum(r.cout_nuits) + toNum(r.cout_repas) + toNum(r.cout_billet_total), 0);
     const presentComps = COMPONENTS.filter((c) => Math.abs(amounts[c.key] || 0) > 0.001 || Math.abs(costs[c.key] || 0) > 0.001);
-    return { presentComps, amounts, costs };
-  }, [rows, depRows]);
+    return { presentComps };
+  }, [rows]);
 
   const quote = React.useMemo(
     () => buildQuote({ rows, depRows, extraRows, config, products: catalog?.products || [] }),
@@ -612,7 +663,7 @@ export default function OdooQuoteWizard({ open, onClose, minute, rows = [], depR
           {step === 0 && <StepRecipient minute={minute} catalog={catalog} dest={dest} setDest={setDest} />}
           {step === 1 && <StepStructure config={config} setConfig={setConfig} presentComps={presentComps} rows={rows} depRows={depRows} quote={quote} />}
           {step === 2 && (catalog
-            ? <StepArticles config={config} setConfig={setConfig} presentComps={presentComps} catalog={catalog} amounts={amounts} costs={costs} quote={quote} />
+            ? <StepRecipes config={config} setConfig={setConfig} catalog={catalog} quote={quote} />
             : <div style={{ fontSize: 13, color: C.muted }}>Chargement des articles Odoo…</div>)}
           {step === 3 && <StepPreview quote={quote} dest={dest} />}
         </div>
