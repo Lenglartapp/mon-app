@@ -670,10 +670,10 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
         </div>
       </div>
 
-      <div style={{ maxWidth: 1440, width: '100%', margin: '0 auto', background: 'white', borderRadius: 12, boxShadow: '0 1px 3px rgba(0,0,0,0.05), 0 4px 6px rgba(0,0,0,0.02)', overflow: 'hidden' }}>
+      <div style={{ maxWidth: 1440, width: '100%', margin: '0 auto', background: 'white', border: '1px solid #E0DED9', borderRadius: 8, overflow: 'hidden' }}>
         <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-            <thead style={{ background: '#F4F4F4', borderBottom: '1px solid #E5E7EB' }}>
+          <table className="df-list-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+            <thead style={{ background: '#F4F4F4', borderBottom: '1px solid #E0DED9' }}>
               <tr>
                 <th style={{ padding: '12px 8px', fontSize: 13, fontWeight: 600, color: '#374151' }}>Nom Chiffrage</th>
                 <th style={{ padding: '12px 8px', fontSize: 13, fontWeight: 600, color: '#374151' }}>Client</th>
@@ -753,7 +753,7 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
                       <tr
                         className="minute-row"
                         style={{
-                          borderBottom: '1px solid #F3F4F6',
+                          borderBottom: '1px solid #E8E6E2',
                           cursor: 'pointer',
                           transition: 'background 0.1s',
                           background: isChild ? '#FAFAFA' : 'white',

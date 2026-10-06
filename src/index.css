@@ -101,6 +101,8 @@ button{ background:none; border:0; padding:0; margin:0; font:inherit; color:inhe
 
 /* ---- Thème de l'application : les couleurs (gris #F4F4F4, traits #E0DED9 / #E8E6E2)
    sont définies directement dans les composants et dans le CSS AG Grid de MinuteGrid. ---- */
+/* Listes (Chiffrages, Projets) : même cadre que les tableaux AG Grid, sans double trait sous la dernière ligne */
+.df-list-table tbody tr:last-child { border-bottom: none !important; }
 /* Tous les boutons de l'application en Roboto (cohérence avec titres, chiffres et libellés) */
 button,
 .MuiButton-root,
