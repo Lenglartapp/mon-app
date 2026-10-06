@@ -466,6 +466,10 @@ function StepRecipes({ config, setConfig, catalog, quote }) {
           );
         })}
       </div>
+      <div style={{ fontSize: 12.5, color: C.muted, marginTop: 8, lineHeight: 1.5 }}>
+        <b>Location</b> et <b>Déplacement</b> ne sont pas liés à une ligne de la minute : ils s'ajoutent en bas de section, après les recettes
+        (ou dans la section « DÉPLACEMENT & TRANSPORT » si tu les isoles à l'étape Structure).
+      </div>
       <div style={{ display: 'flex', gap: 14, marginTop: 10 }}>
         <button onClick={addSlot} style={{ border: 'none', background: 'none', color: C.accent, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', padding: 0, display: 'inline-flex', alignItems: 'center', gap: 4 }}><Plus size={14} /> Ajouter une ligne</button>
         <button onClick={resetType} style={{ border: 'none', background: 'none', color: C.muted, fontSize: 12.5, cursor: 'pointer', fontFamily: 'inherit', padding: 0, textDecoration: 'underline' }}>Rétablir la recette par défaut</button>

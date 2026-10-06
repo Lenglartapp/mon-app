@@ -56,6 +56,7 @@ const DEP_COMP = { key: '__deplacement', label: 'Déplacements / prise de cotes'
 
 // Articles « intelligents » : choisis ligne par ligne selon le contenu de la minute.
 export const AUTO_PRODUCTS = {
+  '@col': 'Auto — selon la colonne (Pose / Installation, Confection / Manufacture…)',
   '@confection': 'Auto — Confection selon le produit',
   '@manufacture': 'Auto — Manufacture (sous-traitance) selon le produit',
   '@meca': 'Auto — Rail / mécanisme / store selon le modèle',
@@ -71,41 +72,44 @@ export const GROUP_BY_OPTIONS = [
 ];
 
 // ─── Recettes par type de produit ──────────────────────────────────────────────
-// Séquences relevées dans les devis Odoo réels (mars–oct. 2026) :
-//   Rideau/Voilage : Pose › Rail › Préparation › Confection › Tissu (› Doublure)
-//   Store bateau   : Pose › Mécanisme Store Bateau › Confection Store Bateau › Tissu
-//   Store enrouleur: Pose › Store Enrouleur (› Préparation)
-//   Coussins…      : Livraison › Manufacture › Tissu
+// Recettes validées par l'utilisateur (tableau du 2026-10-06). « Pose / Installation » et
+// « Conf / Manufacture » sont UNE position mais DEUX articles selon la colonne ('@col') :
+// notre pose → Pose, la sous-traitance → Installation ; notre atelier → Confection, la
+// sous-traitance → Manufacture (étiquettes analytiques différentes dans Odoo).
+// Location et Déplacement sont des coûts de niveau SECTION (pas d'une ligne de minute) :
+// ils s'ajoutent en bas de section, après les recettes.
 const L = (id, label, cols, product, extra = {}) => ({ id, label, cols, product, ...extra });
 const S = {
-  pose: () => L('pose', 'Pose', ['pv_pose'], 'Pose'),
-  livraison: () => L('livraison', 'Livraison', ['livraison'], 'Livraison'),
-  rail: () => L('rail', 'Rail / mécanisme', ['pv_mecanisme', 'pv_mecanisme_bis'], '@meca'),
-  store: () => L('store', 'Store / mécanisme', ['pv_mecanisme_store', 'pv_mecanisme', 'pv_mecanisme_bis'], '@meca'),
-  prepa: () => L('prepa', 'Préparation', ['pv_prepa'], 'Préparation et équipement'),
-  conf: () => L('conf', 'Confection', ['pv_confection'], '@confection'),
-  manuf: () => L('manuf', 'Sous-traitance confection', ['st_conf_pv'], '@manufacture'),
-  tissu: () => L('tissu', 'Tissu', ['pv_tissu1', 'pv_tissu2', 'pv_tissu_1', 'pv_tissu_2', 'pv_toile_finition_1'], 'Tissu', { unit: 'ml' }),
+  pose: () => L('pose', 'Pose / Installation', ['pv_pose', 'st_pose_pv'], '@col'),
+  rail: () => L('rail', 'Rail', ['pv_mecanisme', 'pv_mecanisme_bis', 'pv_baguette_1', 'pv_baguette_2'], '@meca'),
+  meca: () => L('meca', 'Mécanismes', ['pv_mecanisme_store', 'pv_mecanisme', 'pv_mecanisme_bis', 'pv_baguette_1', 'pv_baguette_2'], '@meca'),
+  prepa: () => L('prepa', 'Prépa', ['pv_prepa'], 'Préparation et équipement'),
+  conf: () => L('conf', 'Conf / Manufacture', ['pv_confection', 'st_conf_pv'], '@col'),
+  tissu1: () => L('tissu1', 'Tissu 1', ['pv_tissu1', 'pv_tissu_1', 'pv_toile_finition_1'], 'Tissu', { unit: 'ml' }),
+  tissu2: () => L('tissu2', 'Tissu 2', ['pv_tissu2', 'pv_tissu_2'], 'Tissu', { unit: 'ml' }),
   doublure: () => L('doublure', 'Doublure', ['pv_doublure'], 'Doublure', { unit: 'ml' }),
-  interdoublure: () => L('interdoublure', 'Interdoublure', ['pv_interdoublure'], 'Interdoublure', { unit: 'ml' }),
-  molleton: () => L('molleton', 'Molleton', ['pv_molleton'], 'Tissu', { unit: 'forfait' }),
-  pass: () => L('pass', 'Passementerie', ['pv_pass1', 'pv_pass2', 'pv_pass_1', 'pv_pass_2'], 'Article Générique ML', { unit: 'ml' }),
-  embrasse: () => L('embrasse', 'Embrasses', ['pv_embrasse'], 'Accessoire'),
-  baguette: () => L('baguette', 'Baguettes', ['pv_baguette_1', 'pv_baguette_2'], 'Mécanisme'),
+  interdoublure: () => L('interdoublure', 'Interdoublure', ['pv_interdoublure', 'pv_molleton'], 'Interdoublure', { unit: 'ml' }),
+  pass1: () => L('pass1', 'Passementerie 1', ['pv_pass1', 'pv_pass_1'], 'Article Générique ML', { unit: 'ml' }),
+  pass2: () => L('pass2', 'Passementerie 2', ['pv_pass2', 'pv_pass_2'], 'Article Générique ML', { unit: 'ml' }),
+  embrasse: () => L('embrasse', 'Embrasse', ['pv_embrasse'], 'Accessoire'),
   interieur: () => L('interieur', 'Intérieurs', ['pv_interieur'], 'Article Générique UNITÉS'),
-  install: () => L('install', 'Sous-traitance pose', ['st_pose_pv'], 'Installation'),
+  livraison: () => L('livraison', 'Livraison', ['livraison'], 'Livraison'),
 };
 const recipe = (...ids) => ids.map((id) => S[id]());
 
 export const PRODUCT_TYPES = [
-  { key: 'rideau', label: 'Rideau', match: /rideau/, recipe: () => recipe('pose', 'livraison', 'rail', 'prepa', 'conf', 'manuf', 'tissu', 'doublure', 'interdoublure', 'pass', 'embrasse', 'install') },
-  { key: 'voilage', label: 'Voilage', match: /voilage/, recipe: () => recipe('pose', 'livraison', 'rail', 'prepa', 'conf', 'manuf', 'tissu', 'doublure', 'pass', 'install') },
-  { key: 'cantonniere', label: 'Cantonnière', match: /cantonni/, recipe: () => recipe('pose', 'livraison', 'rail', 'prepa', 'conf', 'manuf', 'tissu', 'molleton', 'doublure', 'pass', 'install') },
-  { key: 'store_bateau', label: 'Store bateau / velum', match: /bateau|velum/, recipe: () => recipe('pose', 'livraison', 'store', 'prepa', 'conf', 'manuf', 'tissu', 'doublure', 'pass', 'install') },
-  { key: 'store', label: 'Store (enrouleur, vénitien…)', match: /store/, recipe: () => recipe('pose', 'livraison', 'store', 'prepa', 'install') },
-  { key: 'tete_tenture', label: 'Tête de lit / tenture', match: /t[eê]te|tenture/, recipe: () => recipe('pose', 'livraison', 'baguette', 'conf', 'manuf', 'tissu', 'molleton', 'pass', 'install') },
-  { key: 'deco', label: 'Coussins / plaids / cache-sommier', match: /coussin|plaid|sommier/, recipe: () => recipe('livraison', 'conf', 'manuf', 'tissu', 'pass', 'interieur', 'install') },
-  { key: 'autre', label: 'Autre produit', match: /.*/, recipe: () => recipe('pose', 'livraison', 'rail', 'store', 'baguette', 'prepa', 'conf', 'manuf', 'tissu', 'doublure', 'interdoublure', 'molleton', 'pass', 'embrasse', 'interieur', 'install') },
+  { key: 'rideau', label: 'Rideaux', match: /rideau/, recipe: () => recipe('pose', 'rail', 'prepa', 'conf', 'tissu1', 'tissu2', 'doublure', 'interdoublure', 'pass1', 'pass2', 'embrasse', 'livraison') },
+  { key: 'voilage', label: 'Voilages', match: /voilage/, recipe: () => recipe('pose', 'rail', 'prepa', 'conf', 'tissu1', 'tissu2', 'doublure', 'interdoublure', 'pass1', 'pass2', 'embrasse', 'livraison') },
+  { key: 'store_bateau', label: 'Store bateau / velum', match: /bateau|velum/, recipe: () => recipe('pose', 'meca', 'prepa', 'conf', 'tissu1', 'tissu2', 'doublure', 'interdoublure', 'pass1', 'pass2', 'livraison') },
+  { key: 'store', label: 'Store négoce', match: /store/, recipe: () => recipe('pose', 'prepa', 'meca', 'livraison') },
+  { key: 'deco', label: 'Cache-sommier, coussins, plaids', match: /coussin|plaid|sommier/, recipe: () => recipe('livraison', 'conf', 'tissu1', 'tissu2', 'doublure', 'interdoublure', 'pass1', 'pass2', 'interieur') },
+  { key: 'mobilier', label: 'Mobilier (tête de lit, cantonnière, siège…)', match: /t[eê]te|mobilier|si[eè]ge|cantonni/, recipe: () => recipe('pose', 'meca', 'prepa', 'conf', 'tissu1', 'tissu2', 'doublure', 'interdoublure', 'pass1', 'pass2', 'livraison') },
+  { key: 'tenture', label: 'Tenture murale', match: /tenture/, recipe: () => {
+    const r = recipe('pose', 'meca', 'prepa', 'conf', 'tissu1', 'doublure', 'pass1', 'pass2', 'livraison');
+    r.find((sl) => sl.id === 'doublure').cols.push('pv_molleton'); // molleton : 56 % des tentures
+    return r;
+  } },
+  { key: 'autre', label: 'Autre produit', match: /.*/, recipe: () => recipe('pose', 'meca', 'prepa', 'conf', 'tissu1', 'tissu2', 'doublure', 'interdoublure', 'pass1', 'pass2', 'embrasse', 'interieur', 'livraison') },
 ];
 export const typeOfRow = (row) => {
   const p = norm(row?.produit);
@@ -260,13 +264,24 @@ export function makeResolver(products) {
     return named(motor ? 'Mécanisme Motorisé' : 'Mécanisme');
   };
 
-  return (choice, row) => {
+  // '@col' : article par défaut de la COLONNE (Pose / Installation, Confection / Manufacture…).
+  const COL_DEFAULT = {
+    pv_pose: 'Pose', st_pose_pv: 'Installation',
+    pv_confection: '@confection', st_conf_pv: '@manufacture',
+    pv_prepa: 'Préparation et équipement', livraison: 'Livraison',
+    pv_mecanisme: '@meca', pv_mecanisme_bis: '@meca', pv_mecanisme_store: '@meca', pv_baguette_1: '@meca', pv_baguette_2: '@meca',
+    pv_doublure: 'Doublure', pv_interdoublure: 'Interdoublure', pv_embrasse: 'Accessoire', pv_interieur: 'Article Générique UNITÉS',
+    pv_pass1: 'Article Générique ML', pv_pass2: 'Article Générique ML', pv_pass_1: 'Article Générique ML', pv_pass_2: 'Article Générique ML',
+  };
+  const resolve = (choice, row, comp) => {
+    if (choice === '@col') return resolve(COL_DEFAULT[comp?.key] || 'Tissu', row, comp);
     if (choice === '@confection') return confectionFor(row);
     if (choice === '@manufacture') return manufactureFor(row);
     if (choice === '@meca') return mecaFor(row);
     if (choice === '@deplacement') return named(/cotes/i.test(row?.type_deplacement || '') ? 'Prise de cotes' : 'Frais de déplacement');
     return byId.get(String(choice)) || named(choice);
   };
+  return resolve;
 }
 
 // ─── Sections ──────────────────────────────────────────────────────────────────
@@ -435,7 +450,7 @@ export function buildQuote({ rows = [], depRows = [], extraRows = [], config, pr
       if (c.key === 'livraison' && isolate) sec = sectionFor(LOGI_TITLE, ORDER_LOGI);
       else if (config.placement?.[c.key] === 'apart') sec = sectionFor(slot.label.toUpperCase(), ORDER_APART + slotIdx);
       const ov = config.overrides?.[overrideKey(config.groupBy, sec.title)]?.[`${type.key}:${slot.id}`];
-      const product = resolve(ov || slot.product || '@meca', row);
+      const product = resolve(ov || slot.product || '@col', row, c);
       if (!product) warnings.push(`Aucun article Odoo pour « ${slot.label} » (${type.label}).`);
       const byMl = (slot.unit || 'forfait') === 'ml' && !!c.mlKey;
       push({
@@ -457,7 +472,9 @@ export function buildQuote({ rows = [], depRows = [], extraRows = [], config, pr
     return secs.map((sec, i) => ({ sec, w: tot > 0 ? amt[i] / tot : 1 / secs.length }));
   };
   const LOGI_SLOT = { id: 'deplacement', label: 'Déplacement' };
-  const LOGI_RANK = 950; // les lignes de déplacement / charges vont en bas de la section
+  // Bas de section, après les recettes : Location (charges) puis Déplacement.
+  const CHARGE_RANK = 950;
+  const LOGI_RANK = 960;
 
   // 2. Déplacements. Main-d'œuvre (heures facturées) sur l'article auto (Prise de cotes →
   //    étiquette Pose, sinon Frais de déplacement) ; frais (nuits + repas + billets, revendus
@@ -514,7 +531,7 @@ export function buildQuote({ rows = [], depRows = [], extraRows = [], config, pr
     for (const { sec, w } of dest) {
       const firstRow = [...sec.lines.values()].find((l) => l.sources.length)?.sources[0]?.row || rows[0] || {};
       const product = isManuf ? resolve('@manufacture', firstRow) : hostProduct;
-      const line = push({ sec, typeKey: '__logi', slot: { id: `charge_${ch.key}`, label: ch.label }, slotIdx: LOGI_RANK + 2, comp: chComp, row: null, product, amount: 0, cost: 0 });
+      const line = push({ sec, typeKey: '__logi', slot: { id: `charge_${ch.key}`, label: ch.label }, slotIdx: CHARGE_RANK, comp: chComp, row: null, product, amount: 0, cost: 0 });
       line.costOnly = true;
       addTo(line, ch.amount * w);
     }
