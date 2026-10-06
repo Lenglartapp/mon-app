@@ -229,6 +229,10 @@ const AG_CUSTOM_CSS = `
      superposé exactement au cadre quand elle n'est pas collée. */
   box-shadow: 0 -1px 0 0 #E0DED9, -1px 0 0 0 #E0DED9, 1px 0 0 0 #E0DED9, -1px -1px 0 0 #E0DED9, 1px -1px 0 0 #E0DED9;
 }
+/* Listes déroulantes, menus et filtres d'AG Grid (z-index 5 par défaut) : au-dessus de la barre
+   de regroupement collante (z 7) et du titre de section collant (z 6), sinon le haut de la liste
+   (ex. « Rail » dans Type Méca) passe dessous et devient invisible / non cliquable. */
+.df-sticky .ag-theme-alpine .ag-popup-child { z-index: 20; }
 .df-sticky .ag-theme-alpine .ag-root > .ag-header {
   position: sticky; top: calc(var(--df-sticky-top, 0px) + ${GROUP_PANEL_HEIGHT}px); z-index: 3;
 }
