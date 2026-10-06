@@ -4,13 +4,14 @@
 // Un seul fichier pour plusieurs actions → ménage le quota de fonctions Vercel (plan Hobby).
 
 import { searchRead } from '../_odooClient.js';
+import { quoteWriteStatus } from './quote-create.js';
 
 // Articles vendables qui ne sont pas des articles de devis (TVA, acompte, loyer…).
-const PARASITES = /^(tva|acompte|loyer|facture oxyg|prise$|\[fact\]|ajustement contrat|service on timesheet|remise|frais de port|bonus)/i;
+const PARASITES = /^(tva|acompte|loyer|facture oxyg|prise$|\[fact\]|ajustement contrat|service on timesheet|remise|bonus)|\(erreur/i;
 
 async function catalog() {
   const [products, teams, tags, users, analytic, distrib] = await Promise.all([
-    searchRead('product.product', [['sale_ok', '=', true]], ['id', 'name', 'uom_id', 'categ_id']),
+    searchRead('product.product', [['sale_ok', '=', true]], ['id', 'name', 'uom_id', 'categ_id', 'all_product_tag_ids']),
     searchRead('crm.team', [], ['id', 'name']),
     searchRead('crm.tag', [], ['id', 'name']),
     searchRead('res.users', [['share', '=', false]], ['id', 'name']),
@@ -19,6 +20,11 @@ async function catalog() {
     searchRead('account.analytic.account', [], ['id', 'name']),
     searchRead('account.analytic.distribution.model', [['product_id', '!=', false]], ['product_id', 'analytic_distribution']),
   ]);
+  // Étiquettes d'ARTICLE (product.tag) : c'est avec elles que le contrôle de gestion Odoo
+  // (module lenglart_controle_gestion) classe chaque coût — pas avec l'analytique.
+  const tagIds = [...new Set(products.flatMap((p) => p.all_product_tag_ids || []))];
+  const productTags = tagIds.length ? await searchRead('product.tag', [['id', 'in', tagIds]], ['id', 'name']) : [];
+  const productTagName = new Map(productTags.map((t) => [t.id, t.name]));
   const accountName = new Map(analytic.map((a) => [String(a.id), (a.name || '').trim()]));
   const tagOf = new Map();
   for (const d of distrib) {
@@ -37,11 +43,13 @@ async function catalog() {
         uom: p.uom_id ? p.uom_id[1] : '',
         categ: p.categ_id ? p.categ_id[1] : '',
         tag: tagOf.get(p.id) || null,
+        cgTags: (p.all_product_tag_ids || []).map((id) => productTagName.get(id)).filter(Boolean),
       }))
       .sort((a, b) => a.name.localeCompare(b.name, 'fr')),
     teams,
     tags,
     users,
+    write: quoteWriteStatus(),
   };
 }
 

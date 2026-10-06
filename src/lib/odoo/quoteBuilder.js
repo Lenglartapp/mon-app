@@ -89,10 +89,13 @@ const S = {
   tissu2: () => L('tissu2', 'Tissu 2', ['pv_tissu2', 'pv_tissu_2'], 'Tissu', { unit: 'ml' }),
   doublure: () => L('doublure', 'Doublure', ['pv_doublure'], 'Doublure', { unit: 'ml' }),
   interdoublure: () => L('interdoublure', 'Interdoublure', ['pv_interdoublure', 'pv_molleton'], 'Interdoublure', { unit: 'ml' }),
-  pass1: () => L('pass1', 'Passementerie 1', ['pv_pass1', 'pv_pass_1'], 'Article Générique ML', { unit: 'ml' }),
-  pass2: () => L('pass2', 'Passementerie 2', ['pv_pass2', 'pv_pass_2'], 'Article Générique ML', { unit: 'ml' }),
-  embrasse: () => L('embrasse', 'Embrasse', ['pv_embrasse'], 'Accessoire'),
-  interieur: () => L('interieur', 'Intérieurs', ['pv_interieur'], 'Article Générique UNITÉS'),
+  // Passementerie, embrasses, intérieurs : article « Tissu » (étiquette CG Tissu). Les articles
+  // génériques (Article Générique ML/UNITÉS, Accessoire) n'ont AUCUNE étiquette de contrôle de
+  // gestion : leur coût ne serait compté nulle part (réponse ERP du 2026-10-06).
+  pass1: () => L('pass1', 'Passementerie 1', ['pv_pass1', 'pv_pass_1'], 'Tissu', { unit: 'ml' }),
+  pass2: () => L('pass2', 'Passementerie 2', ['pv_pass2', 'pv_pass_2'], 'Tissu', { unit: 'ml' }),
+  embrasse: () => L('embrasse', 'Embrasse', ['pv_embrasse'], 'Tissu'),
+  interieur: () => L('interieur', 'Intérieurs', ['pv_interieur'], 'Tissu'),
   livraison: () => L('livraison', 'Livraison', ['livraison'], 'Livraison'),
 };
 const recipe = (...ids) => ids.map((id) => S[id]());
@@ -270,8 +273,8 @@ export function makeResolver(products) {
     pv_confection: '@confection', st_conf_pv: '@manufacture',
     pv_prepa: 'Préparation et équipement', livraison: 'Livraison',
     pv_mecanisme: '@meca', pv_mecanisme_bis: '@meca', pv_mecanisme_store: '@meca', pv_baguette_1: '@meca', pv_baguette_2: '@meca',
-    pv_doublure: 'Doublure', pv_interdoublure: 'Interdoublure', pv_embrasse: 'Accessoire', pv_interieur: 'Article Générique UNITÉS',
-    pv_pass1: 'Article Générique ML', pv_pass2: 'Article Générique ML', pv_pass_1: 'Article Générique ML', pv_pass_2: 'Article Générique ML',
+    pv_doublure: 'Doublure', pv_interdoublure: 'Interdoublure', pv_embrasse: 'Tissu', pv_interieur: 'Tissu',
+    pv_pass1: 'Tissu', pv_pass2: 'Tissu', pv_pass_1: 'Tissu', pv_pass_2: 'Tissu',
   };
   const resolve = (choice, row, comp) => {
     if (choice === '@col') return resolve(COL_DEFAULT[comp?.key] || 'Tissu', row, comp);
@@ -352,6 +355,61 @@ function describe(line) {
     out.push('Soit :', ...dimsList(sources));
   }
   return out.join('\n');
+}
+
+// ─── Contrôle de gestion Odoo ──────────────────────────────────────────────────
+// Étiquettes d'ARTICLE (product.tag) → champ du contrôle de gestion du devis.
+export const CG_COST_FIELD = {
+  Tissu: 'cg_montant_tissu',
+  'Mécanisme': 'cg_montant_meca',
+  Store: 'cg_montant_store',
+  'Location / outillage': 'cg_montant_location',
+  'Frais déplacement': 'cg_frais_deplacement',
+  'Transport sur ventes': 'cg_transport',
+  'ST Conf': 'cg_st_conf',
+  'ST Pose': 'cg_st_pose',
+};
+const HOUR_TAGS = new Set(['Pose', 'Conf', 'Prépa']);
+
+/**
+ * Payload de `sale.order.droitfil_upsert_devis` (méthode Odoo, module lenglart_controle_gestion).
+ * dest : { mode: 'existing'|'new', opportunity, newName, teamId, userId, sectorTag, typeTag, partner }
+ */
+export function toOdooPayload({ quote, dest, minute }) {
+  const tagIds = [dest.sectorTag, dest.typeTag].filter(Boolean);
+  return {
+    minute_id: minute.id,
+    partner: { id: dest.partner.id },
+    ...(dest.mode === 'existing' && dest.opportunity
+      ? { opportunity: { id: dest.opportunity.id } }
+      : {
+        opportunity: {
+          create: {
+            name: dest.newName || minute.name,
+            ...(dest.teamId ? { team_id: dest.teamId } : {}),
+            ...(dest.userId ? { user_id: dest.userId } : {}),
+            ...(tagIds.length ? { tag_ids: tagIds } : {}),
+          },
+        },
+      }),
+    ...(dest.mode === 'new' && dest.userId ? { user_id: dest.userId } : {}),
+    objet: minute.name,
+    commission_partenaire_taux: Math.round((quote.commissionPartenaire.rate / 100) * 1e6) / 1e6, // fraction
+    sections: quote.sections
+      .filter((sec) => sec.lines.length)
+      .map((sec) => ({
+        name: sec.title || minute.name,
+        lines: sec.lines.map((l) => ({
+          ref: l.key,
+          product_id: l.productId,
+          name: l.description,
+          quantity: l.qty,
+          price_unit: l.priceUnit,
+          cost: l.costUnit, // coût UNITAIRE → purchase_price
+          ...(l.hours ? { heures_vendues: l.hours } : {}),
+        })),
+      })),
+  };
 }
 
 // ─── Construction ──────────────────────────────────────────────────────────────
@@ -571,6 +629,7 @@ export function buildQuote({ rows = [], depRows = [], extraRows = [], config, pr
             productId: l.product?.id ?? null,
             productName: l.product?.name ?? '— article manquant —',
             productTag: l.product?.tag ?? null,
+            cgTags: l.product?.cgTags || [],
             description: describe(l),
             qty, uom, priceUnit,
             subtotal: odooSubtotal,
@@ -593,8 +652,34 @@ export function buildQuote({ rows = [], depRows = [], extraRows = [], config, pr
       };
     });
 
+  // 5. Contrôles exigés par Odoo (module lenglart_controle_gestion) :
+  //    - article étiqueté Pose / Conf / Prépa → heures vendues ≠ 0, sinon Odoo REFUSE le devis ;
+  //    - autre article → coût ≠ 0, sinon impression et confirmation bloquées ;
+  //    - coût sur un article sans étiquette de coût → compté nulle part dans le contrôle de gestion.
+  const blocking = [];
+  if (products.length) {
+    for (const sec of outSections) for (const l of sec.lines) {
+      if (!l.productId) continue;
+      const where = `${sec.title ? `${sec.title} › ` : ''}${l.productName}`;
+      const hourTag = l.cgTags.some((t) => HOUR_TAGS.has(t));
+      const costTag = l.cgTags.some((t) => CG_COST_FIELD[t]);
+      if (hourTag && !l.hours) { l.check = 'hours'; blocking.push(`${where} : heures vendues à 0 (obligatoires sur un article ${l.cgTags.join('/')}).`); }
+      else if (!hourTag && !l.cost) { l.check = 'cost'; warnings.push(`${where} : coût à 0 → la confirmation du devis sera bloquée dans Odoo.`); }
+      else if (l.cost && !costTag) { l.check = 'untagged'; warnings.push(`${where} : article sans étiquette de coût → ce coût ne sera compté nulle part dans le contrôle de gestion.`); }
+    }
+  }
+
+  // Contrôle de gestion attendu, calculé côté Droitfil (à comparer au retour d'Odoo).
+  const cg = {};
+  for (const sec of outSections) for (const l of sec.lines) {
+    const field = l.cgTags.map((t) => CG_COST_FIELD[t]).find(Boolean);
+    if (field) cg[field] = round2((cg[field] || 0) + l.cost);
+  }
+
   return {
     sections: outSections,
+    blocking,
+    cg,
     types: [...typesUsed.values()].map(({ type, rows: n }) => ({ key: type.key, label: type.label, rows: n })),
     total: round2(quoteTotal),
     minuteTotal: round2(minuteTotal),

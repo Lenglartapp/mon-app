@@ -7,7 +7,7 @@ import Dialog from '@mui/material/Dialog';
 import { X, Search, Check, ArrowLeft, ArrowRight, AlertTriangle, GripVertical, ChevronUp, ChevronDown, ChevronRight, Plus, Trash2 } from 'lucide-react';
 import {
   COMPONENTS, COMPONENT_BY_KEY, AUTO_PRODUCTS, GROUP_BY_OPTIONS, PRODUCT_TYPES, CHARGE_SPECIAL_HOSTS,
-  defaultConfig, normalizeConfig, overrideKey, recipeOf, chargeSetting, buildQuote,
+  defaultConfig, normalizeConfig, overrideKey, recipeOf, chargeSetting, buildQuote, toOdooPayload,
 } from '../../lib/odoo/quoteBuilder';
 
 const PGRID = '1.2fr 2.2fr 0.7fr 0.8fr 0.9fr 0.8fr 0.45fr';
@@ -530,7 +530,63 @@ function StepRecipes({ config, setConfig, catalog, quote }) {
 }
 
 // ─── Étape 4 : aperçu ──────────────────────────────────────────────────────────
-function StepPreview({ quote, dest }) {
+// Retour d'Odoo (simulation ou création) comparé au calcul Droitfil.
+const CG_ROWS = [
+  ['cg_montant_tissu', 'Achat tissu'], ['cg_montant_meca', 'Achat mécanisme'], ['cg_montant_store', 'Achat store'],
+  ['cg_st_conf', 'ST Conf'], ['cg_st_pose', 'ST Pose'], ['cg_transport', 'Transport sur ventes'],
+  ['cg_frais_deplacement', 'Frais de déplacement'], ['cg_montant_location', 'Location / outillage'],
+  ['cg_commission_partenaire', 'Commission partenaire'],
+];
+function OdooPanel({ quote, odoo }) {
+  if (!odoo) return null;
+  if (odoo.error) {
+    return <div style={{ border: '1px solid #FCA5A5', background: '#FEF2F2', borderRadius: 10, padding: '10px 14px', marginBottom: 16, fontSize: 13, color: '#991B1B' }}>Odoo a refusé : {odoo.error}</div>;
+  }
+  const r = odoo.result;
+  const dfCg = { ...quote.cg, cg_commission_partenaire: quote.commissionPartenaire.amount };
+  const rows = [
+    ['Total HT', quote.total, r.amount_untaxed, true],
+    ['Heures confection', quote.hours.conf, r.heures?.confection],
+    ['Heures préparation', quote.hours.prepa, r.heures?.preparation],
+    ['Heures pose (+ prise de cotes)', quote.hours.pose + (quote.hours.depl || 0), r.heures?.pose],
+    ...CG_ROWS.map(([k, label]) => [label, dfCg[k] || 0, r.cg?.[k] || 0, true]),
+  ].filter(([, a, b]) => a || b);
+  const corrected = (r.lines || []).filter((l) => l.corrige_apres_creation?.length);
+  const created = r.action !== 'dry_run';
+  return (
+    <div style={{ border: `1px solid ${created ? '#86EFAC' : C.border}`, background: created ? '#F0FDF4' : 'white', borderRadius: 10, padding: '12px 14px', marginBottom: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+        <div style={{ fontSize: 14, fontWeight: 600, color: C.text, flex: 1 }}>
+          {created ? `✅ Devis ${r.name} ${r.action === 'updated' ? 'mis à jour' : 'créé'} en brouillon` : 'Simulation Odoo (rien n\'a été créé)'}
+          <span style={{ fontSize: 12, fontWeight: 400, color: C.muted }}> · {odoo.target}</span>
+        </div>
+        {created && r.url && <a href={r.url} target="_blank" rel="noreferrer" style={{ fontSize: 13, color: C.accent, fontWeight: 600 }}>Ouvrir dans Odoo ↗</a>}
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr 1fr 0.4fr', fontSize: 13, rowGap: 4 }}>
+        <div style={{ color: C.soft }} /><div style={{ color: C.soft, textAlign: 'right' }}>Droitfil</div><div style={{ color: C.soft, textAlign: 'right' }}>Odoo</div><div />
+        {rows.map(([label, a, b, money]) => {
+          const same = Math.abs((a || 0) - (b || 0)) < (money ? 1 : 0.05);
+          return (
+            <React.Fragment key={label}>
+              <div style={{ color: C.text }}>{label}</div>
+              <div style={{ textAlign: 'right', color: C.muted }}>{money ? eur(a) : num(a)}</div>
+              <div style={{ textAlign: 'right', color: C.text, fontWeight: 600 }}>{money ? eur(b) : num(b)}</div>
+              <div style={{ textAlign: 'center' }}>{same ? '✅' : '⚠️'}</div>
+            </React.Fragment>
+          );
+        })}
+      </div>
+      {(r.warnings || []).length > 0 && (
+        <div style={{ marginTop: 10, fontSize: 12.5, color: '#92400E' }}>{r.warnings.map((w) => <div key={w}>⚠️ Odoo : {w}</div>)}</div>
+      )}
+      {corrected.length > 0 && (
+        <div style={{ marginTop: 6, fontSize: 12.5, color: '#92400E' }}>Valeurs rétablies par Odoo après création : {corrected.map((l) => `${l.ref} (${l.corrige_apres_creation.join(', ')})`).join(' ; ')}</div>
+      )}
+    </div>
+  );
+}
+
+function StepPreview({ quote, dest, odoo }) {
   const ok = Math.abs(quote.diff) < 1;
   return (
     <div>
@@ -549,6 +605,15 @@ function StepPreview({ quote, dest }) {
           </div>
         ))}
       </div>
+
+      <OdooPanel quote={quote} odoo={odoo} />
+
+      {quote.blocking?.length > 0 && (
+        <div style={{ border: '1px solid #FCA5A5', background: '#FEF2F2', borderRadius: 8, padding: '8px 12px', marginBottom: 14, fontSize: 13, color: '#991B1B' }}>
+          <b>Odoo refusera ce devis :</b>
+          {quote.blocking.map((w) => <div key={w}>• {w}</div>)}
+        </div>
+      )}
 
       {quote.warnings.length > 0 && (
         <div style={{ border: '1px solid #FCD34D', background: '#FFFBEB', borderRadius: 8, padding: '8px 12px', marginBottom: 14, fontSize: 13, color: '#92400E' }}>
@@ -602,6 +667,8 @@ export default function OdooQuoteWizard({ open, onClose, minute, rows = [], depR
   const [catalogError, setCatalogError] = React.useState(null);
   const [config, setConfig] = React.useState(loadProfile);
   const [dest, setDest] = React.useState({ mode: 'existing', opportunity: null, partner: null });
+  const [odooResult, setOdooResult] = React.useState(null);
+  const [sending, setSending] = React.useState(false);
 
   React.useEffect(() => {
     if (!open || catalog) return;
@@ -630,6 +697,30 @@ export default function OdooQuoteWizard({ open, onClose, minute, rows = [], depR
     [rows, depRows, extraRows, config, catalog]
   );
 
+  // Simulation (dry_run : Odoo calcule puis annule) ou création réelle du devis brouillon.
+  const write = catalog?.write;
+  const sendToOdoo = async (dryRun) => {
+    if (!dryRun && !window.confirm(`Créer (ou mettre à jour) le devis BROUILLON dans Odoo ?\n\nInstance : ${write?.target}\nLe devis n'est ni confirmé ni envoyé.`)) return;
+    setSending(true);
+    try {
+      const payload = toOdooPayload({ quote, dest, minute });
+      const res = await fetch('/api/odoo/quote-create', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ payload, dryRun }) });
+      const json = await res.json().catch(() => ({ ok: false, error: `HTTP ${res.status}` }));
+      setOdooResult(json.ok ? { result: json.result, target: json.target } : { error: json.error });
+    } catch (e) {
+      setOdooResult({ error: e.message });
+    } finally {
+      setSending(false);
+    }
+  };
+  // Un nouveau calcul invalide le dernier retour Odoo.
+  React.useEffect(() => { setOdooResult(null); }, [quote]);
+  const sendBlocked = !write?.enabled
+    ? (write?.isProd ? 'Bloqué : Droitfil est branché sur la PRODUCTION Odoo (module en test).' : "Écriture Odoo désactivée sur cet environnement.")
+    : !dest.partner ? 'Choisis un client (étape Destinataire).'
+      : quote.blocking?.length ? 'Corrige les points bloquants signalés en rouge.'
+        : quote.sections.some((sec) => sec.lines.some((l) => !l.productId)) ? 'Certaines lignes n\'ont pas d\'article Odoo.' : '';
+
   const canNext = step !== 0 || ((dest.mode === 'existing' ? !!dest.opportunity : !!(dest.newName ?? minute?.name)) && !!dest.partner);
 
   return (
@@ -640,7 +731,14 @@ export default function OdooQuoteWizard({ open, onClose, minute, rows = [], depR
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 20, fontWeight: 500, color: C.text }}>Créer le devis dans Odoo</div>
-              <div style={{ fontSize: 13, color: C.muted, marginTop: 2 }}>{minute?.name} · {rows.length} ligne(s) · maquette (aucune écriture dans Odoo)</div>
+              <div style={{ fontSize: 13, color: C.muted, marginTop: 2 }}>{minute?.name} · {rows.length} ligne(s)
+                {catalog?.write && (
+                  <span style={{ marginLeft: 8, fontSize: 12, padding: '2px 8px', borderRadius: 999, fontWeight: 600,
+                    background: catalog.write.isProd ? '#FEE2E2' : catalog.write.enabled ? '#FEF3C7' : C.grey,
+                    color: catalog.write.isProd ? '#991B1B' : catalog.write.enabled ? '#92400E' : C.muted }}>
+                    {catalog.write.isProd ? 'Odoo PRODUCTION · lecture seule' : catalog.write.enabled ? `Odoo PRÉPROD · ${catalog.write.target}` : 'Odoo · lecture seule'}
+                  </span>
+                )}</div>
             </div>
             <button onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', color: C.muted }}><X size={20} /></button>
           </div>
@@ -669,7 +767,7 @@ export default function OdooQuoteWizard({ open, onClose, minute, rows = [], depR
           {step === 2 && (catalog
             ? <StepRecipes config={config} setConfig={setConfig} catalog={catalog} quote={quote} />
             : <div style={{ fontSize: 13, color: C.muted }}>Chargement des articles Odoo…</div>)}
-          {step === 3 && <StepPreview quote={quote} dest={dest} />}
+          {step === 3 && <StepPreview quote={quote} dest={dest} odoo={odooResult} />}
         </div>
 
         {/* Pied */}
@@ -683,7 +781,16 @@ export default function OdooQuoteWizard({ open, onClose, minute, rows = [], depR
           {step > 0 && <Btn onClick={() => setStep(step - 1)}><ArrowLeft size={15} /> Retour</Btn>}
           {step < STEPS.length - 1
             ? <Btn primary disabled={!canNext} onClick={() => setStep(step + 1)} title={canNext ? '' : 'Choisis une opportunité et un client'}>Suivant <ArrowRight size={15} /></Btn>
-            : <Btn primary disabled title="Maquette : la création réelle sera branchée à l'étape suivante">Créer le devis brouillon dans Odoo</Btn>}
+            : (
+              <>
+                <Btn disabled={!!sendBlocked || sending} title={sendBlocked || 'Odoo calcule tout puis annule : rien n\'est créé'} onClick={() => sendToOdoo(true)}>
+                  {sending ? 'Envoi…' : 'Simuler dans Odoo'}
+                </Btn>
+                <Btn primary disabled={!!sendBlocked || sending} title={sendBlocked || `Instance : ${write?.target}`} onClick={() => sendToOdoo(false)}>
+                  Créer le devis brouillon{write?.target && !write?.isProd ? ' (préprod)' : ''}
+                </Btn>
+              </>
+            )}
         </div>
       </div>
     </Dialog>

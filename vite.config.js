@@ -9,7 +9,7 @@ import { VitePWA } from 'vite-plugin-pwa'
 function odooApiDevPlugin(env) {
   // Fichiers servables en dev, par préfixe d'URL -> dossier api/.
   const ROUTES = {
-    '/api/odoo/': { dir: './api/odoo/', names: new Set(['ping', 'preview', 'project-status', 'sync', 'course-lines', 'quote-data']) },
+    '/api/odoo/': { dir: './api/odoo/', names: new Set(['ping', 'preview', 'project-status', 'sync', 'course-lines', 'quote-data', 'quote-create']) },
     '/api/cron/': { dir: './api/cron/', names: new Set(['nightly']) },
   }
   return {
@@ -17,7 +17,7 @@ function odooApiDevPlugin(env) {
     apply: 'serve',
     configureServer(server) {
       // Rendre les variables serveur (du .env) visibles aux handlers via process.env
-      const passthru = ['ODOO_URL', 'ODOO_DB', 'ODOO_LOGIN', 'ODOO_KEY',
+      const passthru = ['ODOO_URL', 'ODOO_DB', 'ODOO_LOGIN', 'ODOO_KEY', 'ODOO_QUOTE_WRITE',
         'SUPABASE_URL', 'SUPABASE_SERVICE_KEY', 'VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY', 'CRON_SECRET']
       for (const k of passthru) {
         if (env[k] && !process.env[k]) process.env[k] = env[k]
