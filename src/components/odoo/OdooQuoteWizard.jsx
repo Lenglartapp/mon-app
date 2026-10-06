@@ -4,11 +4,12 @@
 
 import React from 'react';
 import Dialog from '@mui/material/Dialog';
-import { X, Search, Check, ArrowLeft, ArrowRight, AlertTriangle } from 'lucide-react';
+import { X, Search, Check, ArrowLeft, ArrowRight, AlertTriangle, GripVertical, ChevronUp, ChevronDown, ChevronRight } from 'lucide-react';
 import {
-  COMPONENTS, AUTO_PRODUCTS, GROUP_BY_OPTIONS, defaultConfig, buildQuote,
+  COMPONENTS, AUTO_PRODUCTS, GROUP_BY_OPTIONS, defaultConfig, normalizeConfig, overrideKey, buildQuote,
 } from '../../lib/odoo/quoteBuilder';
 
+const PGRID = '1.2fr 2.2fr 0.7fr 0.8fr 0.9fr 0.8fr 0.45fr';
 const PROFILE_KEY = 'df.odooQuote.profile.v1';
 const STEPS = ['Destinataire', 'Structure', 'Articles', 'Aperçu'];
 const C = { border: '#E0DED9', grey: '#F4F4F4', text: '#1F2937', muted: '#6B7280', soft: '#9B9A97', accent: '#714B67' };
@@ -24,12 +25,8 @@ async function odoo(action, q = '') {
 }
 
 function loadProfile() {
-  try {
-    const saved = JSON.parse(localStorage.getItem(PROFILE_KEY) || 'null');
-    if (!saved) return defaultConfig();
-    const base = defaultConfig();
-    return { ...base, ...saved, mapping: { ...base.mapping, ...(saved.mapping || {}) } };
-  } catch { return defaultConfig(); }
+  try { return normalizeConfig(JSON.parse(localStorage.getItem(PROFILE_KEY) || 'null')); }
+  catch { return defaultConfig(); }
 }
 function saveProfile(cfg) {
   try { localStorage.setItem(PROFILE_KEY, JSON.stringify(cfg)); } catch { /* navigation privée */ }
@@ -70,7 +67,9 @@ function Btn({ primary, disabled, onClick, children, title }) {
 }
 
 // Champ de recherche Odoo avec résultats (opportunités ou clients).
-function OdooSearch({ action, initial = '', placeholder, render, onPick, selectedId }) {
+function OdooSearch({ action, initial = '', placeholder, render, onPick, selected }) {
+  const selectedId = selected?.id;
+  const [editing, setEditing] = React.useState(!selected);
   const [q, setQ] = React.useState(initial);
   const [items, setItems] = React.useState([]);
   const [state, setState] = React.useState('idle');
@@ -84,6 +83,17 @@ function OdooSearch({ action, initial = '', placeholder, render, onPick, selecte
     }, 300);
     return () => { alive = false; clearTimeout(t); };
   }, [q, action]);
+
+  // Une fois choisi, la liste se replie sur une carte « sélectionné » + bouton Changer.
+  if (selected && !editing) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, border: `1px solid ${C.text}`, background: C.grey, borderRadius: 8, padding: '10px 12px' }}>
+        <Check size={16} color={C.text} />
+        <div style={{ flex: 1, minWidth: 0 }}>{render(selected)}</div>
+        <button onClick={() => setEditing(true)} style={{ border: `1px solid ${C.border}`, background: 'white', borderRadius: 6, padding: '5px 10px', fontSize: 12.5, cursor: 'pointer', fontFamily: 'inherit', color: '#374151' }}>Changer</button>
+      </div>
+    );
+  }
   return (
     <div>
       <div style={{ position: 'relative' }}>
@@ -95,7 +105,7 @@ function OdooSearch({ action, initial = '', placeholder, render, onPick, selecte
         {state !== 'loading' && state !== 'idle' && <div style={{ padding: 12, fontSize: 13, color: '#B91C1C' }}>{state}</div>}
         {state === 'idle' && items.length === 0 && <div style={{ padding: 12, fontSize: 13, color: C.muted }}>Aucun résultat.</div>}
         {items.map((it, i) => (
-          <div key={it.id} onClick={() => onPick(it)}
+          <div key={it.id} onClick={() => { onPick(it); setEditing(false); }}
             style={{ padding: '9px 12px', cursor: 'pointer', borderTop: i ? `1px solid ${C.grey}` : 'none',
               background: selectedId === it.id ? '#F3EEF2' : 'white', display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{ flex: 1, minWidth: 0 }}>{render(it)}</div>
@@ -113,7 +123,6 @@ function StepRecipient({ minute, catalog, dest, setDest }) {
   const sectorTags = (catalog?.tags || []).filter((t) => /^Sct\./.test(t.name));
   const typeTags = (catalog?.tags || []).filter((t) => /^Tp\./.test(t.name));
   const set = (patch) => setDest((d) => ({ ...d, ...patch }));
-  const partnerLabel = (p) => (p ? (p.company ? `${p.company}, ${p.name}` : p.name) : null);
 
   return (
     <div>
@@ -126,7 +135,7 @@ function StepRecipient({ minute, catalog, dest, setDest }) {
           <div>
             <Label>Opportunité</Label>
             <OdooSearch action="opportunities" initial={baseName} placeholder="Nom de l'opportunité ou du client…"
-              selectedId={dest.opportunity?.id}
+              selected={dest.opportunity}
               onPick={(o) => set({ opportunity: o, partner: o.partner ? { id: o.partner.id, name: o.partner.name } : dest.partner })}
               render={(o) => (
                 <>
@@ -163,16 +172,17 @@ function StepRecipient({ minute, catalog, dest, setDest }) {
         )}
 
         <div>
-          <Label>Client du devis {dest.partner && <b style={{ color: C.text }}>— {partnerLabel(dest.partner)}</b>}</Label>
+          <Label>Client du devis{dest.mode === 'existing' && dest.partner && dest.opportunity?.partner?.id === dest.partner.id ? ' (repris de l\'opportunité)' : ''}</Label>
           <OdooSearch action="partners" initial={minute?.client || ''} placeholder="Société ou contact…"
-            selectedId={dest.partner?.id}
+            selected={dest.partner}
             onPick={(p) => set({ partner: p })}
+            key={dest.partner?.id || 'none'}
             render={(p) => (
               <>
                 <div style={{ fontSize: 13.5, fontWeight: p.isCompany ? 600 : 500, color: C.text }}>
                   {p.isCompany ? '🏢 ' : '👤 '}{p.name}{p.company && <span style={{ color: C.muted, fontWeight: 400 }}> · {p.company}</span>}
                 </div>
-                <div style={{ fontSize: 12.5, color: C.muted, marginTop: 2 }}>{[p.email, p.city].filter(Boolean).join(' · ') || '—'}</div>
+                {(p.email || p.city) && <div style={{ fontSize: 12.5, color: C.muted, marginTop: 2 }}>{[p.email, p.city].filter(Boolean).join(' · ')}</div>}
               </>
             )} />
           <div style={{ fontSize: 12, color: C.soft, marginTop: 8 }}>
@@ -185,23 +195,43 @@ function StepRecipient({ minute, catalog, dest, setDest }) {
 }
 
 // ─── Étape 2 : structure ───────────────────────────────────────────────────────
-function StepStructure({ config, setConfig, presentComps, rows }) {
-  const countFor = (g) => new Set(buildQuote({ rows, depRows: [], config: { ...config, groupBy: g }, products: [] }).sections.map((s) => s.title)).size;
+function SectionNames({ titles, max = 8 }) {
+  const shown = titles.slice(0, max);
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 8 }}>
+      {shown.map((t) => (
+        <span key={t || '_'} style={{ fontSize: 11.5, background: 'white', border: `1px solid ${C.border}`, borderRadius: 5, padding: '2px 6px', color: '#374151' }}>
+          {t || '(sans titre)'}
+        </span>
+      ))}
+      {titles.length > max && <span style={{ fontSize: 11.5, color: C.muted, padding: '2px 4px' }}>+{titles.length - max}</span>}
+    </div>
+  );
+}
+
+function StepStructure({ config, setConfig, presentComps, rows, depRows, quote }) {
+  // Noms des sections que produirait chaque regroupement (hors sections « à part »).
+  const titlesFor = (g) => buildQuote({ rows, depRows: [], config: { ...config, groupBy: g }, products: [] })
+    .sections.filter((sec) => !sec.apart).map((sec) => sec.title);
   const families = [...new Set(presentComps.map((c) => c.family))];
   const setPlacement = (key, placement) =>
     setConfig((cfg) => ({ ...cfg, mapping: { ...cfg.mapping, [key]: { ...cfg.mapping[key], placement } } }));
 
   return (
     <div>
-      <H sub="Chaque section du devis Odoo regroupe les lignes de la minute selon ce critère.">Regroupement des sections</H>
+      <H sub="Chaque section du devis Odoo regroupe les lignes de la minute selon ce critère. Les étiquettes montrent les sections obtenues.">Regroupement des sections</H>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0,1fr))', gap: 10 }}>
         {GROUP_BY_OPTIONS.map((o) => {
           const on = config.groupBy === o.value;
+          const titles = titlesFor(o.value);
           return (
             <div key={o.value} onClick={() => setConfig((c) => ({ ...c, groupBy: o.value }))}
               style={{ border: `1px solid ${on ? C.text : C.border}`, borderRadius: 10, padding: '12px 14px', cursor: 'pointer', background: on ? C.grey : 'white' }}>
-              <div style={{ fontSize: 13.5, fontWeight: 600, color: C.text }}>{o.label}</div>
-              <div style={{ fontSize: 12.5, color: C.muted, marginTop: 3 }}>{countFor(o.value)} section(s)</div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: 13.5, fontWeight: 600, color: C.text }}>{o.label}</span>
+                <span style={{ fontSize: 12.5, color: C.muted }}>{titles.length} section{titles.length > 1 ? 's' : ''}</span>
+              </div>
+              <SectionNames titles={titles} max={on ? 30 : 6} />
             </div>
           );
         })}
@@ -223,59 +253,132 @@ function StepStructure({ config, setConfig, presentComps, rows }) {
             </React.Fragment>
           ))}
         </div>
+        <div style={{ fontSize: 12.5, color: C.muted, marginTop: 10 }}>
+          Résultat : <SectionNames titles={quote.sections.map((x) => x.title)} max={40} />
+        </div>
       </div>
     </div>
   );
 }
 
 // ─── Étape 3 : articles ────────────────────────────────────────────────────────
-function StepArticles({ config, setConfig, presentComps, catalog, amounts }) {
+const GRID = '22px 1.15fr 0.55fr 0.55fr 1.7fr 0.75fr 26px';
+
+function ProductSelect({ value, onChange, products, autoKey, emptyLabel = '— à choisir —', allowEmpty = false, style }) {
+  const val = (() => {
+    if (!value || String(value).startsWith('@')) return value || '';
+    const p = products.find((x) => String(x.id) === String(value) || x.name === value);
+    return p ? String(p.id) : '';
+  })();
+  return (
+    <select style={{ ...inputStyle, padding: '6px 8px', ...style }} value={val} onChange={(e) => onChange(e.target.value)}>
+      {autoKey && <option value={autoKey}>{AUTO_PRODUCTS[autoKey]}</option>}
+      {(!val || allowEmpty) && <option value="">{emptyLabel}</option>}
+      {products.map((p) => <option key={p.id} value={String(p.id)}>{p.name}{p.uom === 'ml' ? ' (ml)' : ''}</option>)}
+    </select>
+  );
+}
+
+function StepArticles({ config, setConfig, presentComps, catalog, amounts, costs, quote }) {
   const products = catalog?.products || [];
+  const [openKey, setOpenKey] = React.useState(null);
+  const [dragKey, setDragKey] = React.useState(null);
   const setMap = (key, patch) =>
     setConfig((cfg) => ({ ...cfg, mapping: { ...cfg.mapping, [key]: { ...cfg.mapping[key], ...patch } } }));
-  const optionValue = (v) => {
-    if (!v || v.startsWith?.('@')) return v || '';
-    const p = products.find((x) => String(x.id) === String(v) || x.name === v);
-    return p ? String(p.id) : '';
+
+  // Ordre vertical : uniquement les colonnes présentes dans la minute, dans l'ordre du réglage.
+  const present = new Set(presentComps.map((c) => c.key));
+  const ordered = config.order.filter((k) => present.has(k)).map((k) => COMPONENTS.find((c) => c.key === k));
+  const move = (key, toKey) => setConfig((cfg) => {
+    const order = cfg.order.filter((k) => k !== key);
+    order.splice(order.indexOf(toKey) + (cfg.order.indexOf(key) < cfg.order.indexOf(toKey) ? 1 : 0), 0, key);
+    return { ...cfg, order };
+  });
+  const step = (key, dir) => {
+    const i = ordered.findIndex((c) => c.key === key);
+    const target = ordered[i + dir];
+    if (target) move(key, target.key);
   };
-  const families = [...new Set(presentComps.map((c) => c.family))];
+
+  // Sections où chaque colonne apparaît, avec l'article retenu (utile pour les choix « Auto »).
+  const sectionsOf = (key) => quote.sections
+    .filter((sec) => !sec.apart)
+    .map((sec) => ({ title: sec.title, line: sec.lines.find((l) => l.compKeys.includes(key)) }))
+    .filter((x) => x.line);
+  const setOverride = (title, key, product) => setConfig((cfg) => {
+    const ok = overrideKey(cfg.groupBy, title);
+    const cur = { ...(cfg.overrides?.[ok] || {}) };
+    if (product) cur[key] = product; else delete cur[key];
+    return { ...cfg, overrides: { ...cfg.overrides, [ok]: cur } };
+  });
 
   return (
     <div>
-      <H sub="Choisis sous quel article Odoo part chaque colonne de prix. Deux colonnes vers le même article = une seule ligne (ex. méca + méca bis).">Colonnes Droitfil → articles Odoo</H>
+      <H sub="L'ordre de cette liste est l'ordre des lignes dans chaque section (glisse-dépose ou flèches). Deux colonnes vers le même article = une seule ligne.">Colonnes Droitfil → articles Odoo</H>
       <div style={{ border: `1px solid ${C.border}`, borderRadius: 10, overflow: 'hidden' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 0.6fr 1.8fr 0.7fr', gap: 12, padding: '8px 14px', fontSize: 12, color: C.soft, borderBottom: `1px solid ${C.border}` }}>
-          <div>Colonne de la minute</div><div style={{ textAlign: 'right' }}>Montant</div><div>Article Odoo</div><div>Unité</div>
+        <div style={{ display: 'grid', gridTemplateColumns: GRID, gap: 10, padding: '8px 14px', fontSize: 12, color: C.soft, borderBottom: `1px solid ${C.border}` }}>
+          <div /><div>Colonne de la minute</div><div style={{ textAlign: 'right' }}>Prix de vente</div><div style={{ textAlign: 'right' }}>Coût</div><div>Article Odoo</div><div>Unité</div><div />
         </div>
-        {families.map((fam) => (
-          <React.Fragment key={fam}>
-            <div style={{ background: C.grey, padding: '7px 14px', fontSize: 12, fontWeight: 600, color: C.muted, textTransform: 'uppercase', letterSpacing: 0.4 }}>{fam}</div>
-            {presentComps.filter((c) => c.family === fam).map((c) => {
-              const m = config.mapping[c.key] || {};
-              const autoKeys = Object.keys(AUTO_PRODUCTS).filter((k) => k === c.defaultProduct);
-              return (
-                <div key={c.key} style={{ display: 'grid', gridTemplateColumns: '1.1fr 0.6fr 1.8fr 0.7fr', gap: 12, alignItems: 'center', padding: '7px 14px', borderTop: `1px solid ${C.grey}` }}>
-                  <div style={{ fontSize: 13.5, color: C.text }}>
-                    {c.label}{c.hoursKey && <span style={{ fontSize: 11.5, color: C.soft }}> · porte les heures</span>}
-                  </div>
-                  <div style={{ fontSize: 13, color: C.muted, textAlign: 'right' }}>{eur(amounts[c.key])}</div>
-                  <select style={{ ...inputStyle, padding: '6px 8px' }} value={optionValue(m.product)}
-                    onChange={(e) => setMap(c.key, { product: e.target.value })}>
-                    {autoKeys.map((k) => <option key={k} value={k}>{AUTO_PRODUCTS[k]}</option>)}
-                    {!optionValue(m.product) && <option value="">— à choisir —</option>}
-                    {products.map((p) => <option key={p.id} value={String(p.id)}>{p.name}{p.uom === 'ml' ? ' (ml)' : ''}</option>)}
-                  </select>
-                  <div>
-                    {c.mlKey ? (
-                      <Seg value={m.unit || 'ml'} onChange={(v) => setMap(c.key, { unit: v })}
-                        options={[{ value: 'ml', label: 'ml' }, { value: 'forfait', label: 'Forfait' }]} />
-                    ) : <span style={{ fontSize: 12.5, color: C.soft }}>Forfait</span>}
+        {ordered.map((c, i) => {
+          const m = config.mapping[c.key] || {};
+          const autoKey = AUTO_PRODUCTS[c.defaultProduct] ? c.defaultProduct : null;
+          const apart = m.placement === 'apart';
+          const secs = apart ? [] : sectionsOf(c.key);
+          const nbOverrides = secs.filter((x) => config.overrides?.[overrideKey(config.groupBy, x.title)]?.[c.key]).length;
+          const isOpen = openKey === c.key;
+          return (
+            <div key={c.key}
+              draggable onDragStart={() => setDragKey(c.key)} onDragEnd={() => setDragKey(null)}
+              onDragOver={(e) => e.preventDefault()} onDrop={() => { if (dragKey && dragKey !== c.key) move(dragKey, c.key); setDragKey(null); }}
+              style={{ borderTop: i ? `1px solid ${C.grey}` : 'none', background: dragKey === c.key ? C.grey : 'white' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: GRID, gap: 10, alignItems: 'center', padding: '7px 14px' }}>
+                <GripVertical size={15} color={C.soft} style={{ cursor: 'grab' }} />
+                <div style={{ fontSize: 13.5, color: C.text, minWidth: 0 }}>
+                  {c.label}
+                  <div style={{ fontSize: 11.5, color: C.soft }}>
+                    {c.family}{c.hoursKey ? ' · porte les heures' : ''}{apart ? ' · à part' : ''}
                   </div>
                 </div>
-              );
-            })}
-          </React.Fragment>
-        ))}
+                <div style={{ fontSize: 13, color: C.muted, textAlign: 'right' }}>{eur(amounts[c.key])}</div>
+                <div style={{ fontSize: 13, color: costs[c.key] ? C.muted : C.soft, textAlign: 'right' }}>{costs[c.key] ? eur(costs[c.key]) : '—'}</div>
+                <ProductSelect value={m.product} products={products} autoKey={autoKey} onChange={(v) => setMap(c.key, { product: v })} />
+                <div>
+                  {c.mlKey ? (
+                    <Seg value={m.unit || 'ml'} onChange={(v) => setMap(c.key, { unit: v })}
+                      options={[{ value: 'ml', label: 'ml' }, { value: 'forfait', label: 'Forfait' }]} />
+                  ) : <span style={{ fontSize: 12.5, color: C.soft }}>Forfait</span>}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  <button onClick={() => step(c.key, -1)} disabled={i === 0} style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', color: i === 0 ? C.border : C.muted }}><ChevronUp size={15} /></button>
+                  <button onClick={() => step(c.key, 1)} disabled={i === ordered.length - 1} style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', color: i === ordered.length - 1 ? C.border : C.muted }}><ChevronDown size={15} /></button>
+                </div>
+              </div>
+              {secs.length > 1 && (
+                <div style={{ padding: '0 14px 8px 46px' }}>
+                  <button onClick={() => setOpenKey(isOpen ? null : c.key)}
+                    style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', fontSize: 12.5, color: C.accent, display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                    <ChevronRight size={13} style={{ transform: isOpen ? 'rotate(90deg)' : 'none', transition: 'transform .15s' }} />
+                    Article différent selon la section{nbOverrides ? ` (${nbOverrides} personnalisée${nbOverrides > 1 ? 's' : ''})` : ''}
+                  </button>
+                  {isOpen && (
+                    <div style={{ marginTop: 8, border: `1px solid ${C.border}`, borderRadius: 8, overflow: 'hidden' }}>
+                      {secs.map(({ title, line }, j) => {
+                        const ov = config.overrides?.[overrideKey(config.groupBy, title)]?.[c.key] || '';
+                        return (
+                          <div key={title} style={{ display: 'grid', gridTemplateColumns: '1fr 1.4fr', gap: 10, alignItems: 'center', padding: '6px 10px', borderTop: j ? `1px solid ${C.grey}` : 'none', background: ov ? '#FBF8FA' : 'white' }}>
+                            <div style={{ fontSize: 13, color: C.text }}>{title || '(section unique)'}</div>
+                            <ProductSelect value={ov} products={products} onChange={(v) => setOverride(title, c.key, v)}
+                              allowEmpty emptyLabel={ov ? '= Règle générale' : `= Règle générale (${line.productName})`} />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -286,12 +389,14 @@ function StepPreview({ quote, dest }) {
   const ok = Math.abs(quote.diff) < 1;
   return (
     <div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0,1fr))', gap: 10, marginBottom: 18 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0,1fr))', gap: 10, marginBottom: 18 }}>
         {[
           ['Opportunité', dest.mode === 'existing' ? (dest.opportunity?.name || '—') : `Nouvelle : ${dest.newName || '—'}`],
           ['Client', dest.partner ? (dest.partner.company ? `${dest.partner.company}, ${dest.partner.name}` : dest.partner.name) : '—'],
           ['Heures vendues', `Conf ${num(quote.hours.conf)} · Prépa ${num(quote.hours.prepa)} · Pose ${num(quote.hours.pose)}`],
-          ['Contrôle', ok ? `✅ Devis = minute (${eur(quote.minuteTotal)})` : `⚠️ Écart ${eur(quote.diff)}`],
+          ['Prix de vente', ok ? `✅ ${eur(quote.total)} = minute` : `⚠️ Écart ${eur(quote.diff)}`],
+          ['Coûts reportés', Math.abs(quote.costDiff) < 1 ? `✅ ${eur(quote.cost)} = minute` : `⚠️ Écart ${eur(quote.costDiff)}`],
+          ['Marge', quote.total ? `${eur(quote.total - quote.cost)} · ${(((quote.total - quote.cost) / quote.total) * 100).toFixed(1).replace('.', ',')} %` : '—'],
         ].map(([k, v]) => (
           <div key={k} style={{ background: C.grey, borderRadius: 10, padding: '10px 12px' }}>
             <div style={{ fontSize: 12, color: C.soft }}>{k}</div>
@@ -308,8 +413,8 @@ function StepPreview({ quote, dest }) {
 
       {/* Rendu « façon Odoo » */}
       <div style={{ border: `1px solid ${C.border}`, borderRadius: 10, overflow: 'hidden' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 2.4fr 0.7fr 0.8fr 0.9fr 0.5fr', gap: 10, padding: '9px 14px', fontSize: 12, fontWeight: 600, color: C.muted, borderBottom: `1px solid ${C.border}` }}>
-          <div>Article</div><div>Description</div><div style={{ textAlign: 'right' }}>Quantité</div><div style={{ textAlign: 'right' }}>Prix unitaire</div><div style={{ textAlign: 'right' }}>Montant HT</div><div style={{ textAlign: 'right' }}>H.</div>
+        <div style={{ display: 'grid', gridTemplateColumns: PGRID, gap: 10, padding: '9px 14px', fontSize: 12, fontWeight: 600, color: C.muted, borderBottom: `1px solid ${C.border}` }}>
+          <div>Article</div><div>Description</div><div style={{ textAlign: 'right' }}>Quantité</div><div style={{ textAlign: 'right' }}>Prix unitaire</div><div style={{ textAlign: 'right' }}>Montant HT</div><div style={{ textAlign: 'right' }}>Coût</div><div style={{ textAlign: 'right' }}>H.</div>
         </div>
         {quote.sections.map((s) => (
           <React.Fragment key={s.title || '_'}>
@@ -319,18 +424,20 @@ function StepPreview({ quote, dest }) {
               </div>
             )}
             {s.lines.map((l) => (
-              <div key={l.key} style={{ display: 'grid', gridTemplateColumns: '1.3fr 2.4fr 0.7fr 0.8fr 0.9fr 0.5fr', gap: 10, padding: '9px 14px', borderTop: `1px solid ${C.grey}`, fontSize: 13, color: C.text, alignItems: 'start' }}>
+              <div key={l.key} style={{ display: 'grid', gridTemplateColumns: PGRID, gap: 10, padding: '9px 14px', borderTop: `1px solid ${C.grey}`, fontSize: 13, color: C.text, alignItems: 'start' }}>
                 <div style={{ fontWeight: 600, color: l.productId ? C.text : '#B91C1C' }}>{l.productName}</div>
                 <div style={{ whiteSpace: 'pre-line', color: '#374151', lineHeight: 1.45 }}>{l.description.split('\n').slice(1).join('\n') || '—'}</div>
                 <div style={{ textAlign: 'right' }}>{num(l.qty)} {l.uom}</div>
                 <div style={{ textAlign: 'right' }}>{eur(l.priceUnit)}</div>
                 <div style={{ textAlign: 'right', fontWeight: 600 }}>{eur(l.subtotal)}</div>
+                <div style={{ textAlign: 'right', color: l.cost ? C.muted : C.soft }} title={l.cost ? `Coût unitaire Odoo : ${eur(l.costUnit)}` : ''}>{l.cost ? eur(l.cost) : '—'}</div>
                 <div style={{ textAlign: 'right', color: l.hours ? C.text : C.soft }}>{l.hours ? num(l.hours) : '—'}</div>
               </div>
             ))}
           </React.Fragment>
         ))}
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 24, padding: '12px 14px', borderTop: `1px solid ${C.border}`, fontSize: 14.5, fontWeight: 700 }}>
+          <span style={{ color: C.muted, fontWeight: 500 }}>Coût {eur(quote.cost)}</span>
           <span style={{ color: C.muted, fontWeight: 500 }}>Total HT</span><span>{eur(quote.total)}</span>
         </div>
       </div>
@@ -353,11 +460,21 @@ export default function OdooQuoteWizard({ open, onClose, minute, rows = [], depR
   React.useEffect(() => { saveProfile(config); }, [config]);
 
   // Colonnes réellement utilisées par cette minute (+ montants pour l'étape Articles).
-  const { presentComps, amounts } = React.useMemo(() => {
+  const { presentComps, amounts, costs } = React.useMemo(() => {
     const amounts = {};
-    for (const r of rows) for (const c of COMPONENTS) if (c.key !== '__deplacement') amounts[c.key] = (amounts[c.key] || 0) + toNum(r[c.key]);
+    const costs = {};
+    for (const r of rows) {
+      const q = Math.max(1, toNum(r.quantite));
+      for (const c of COMPONENTS) {
+        if (c.key === '__deplacement') continue;
+        amounts[c.key] = (amounts[c.key] || 0) + toNum(r[c.key]);
+        if (c.paKey) costs[c.key] = (costs[c.key] || 0) + toNum(r[c.paKey]) * q;
+      }
+    }
     amounts.__deplacement = depRows.reduce((a, r) => a + toNum(r.prix_total), 0);
-    return { presentComps: COMPONENTS.filter((c) => Math.abs(amounts[c.key] || 0) > 0.001), amounts };
+    costs.__deplacement = depRows.reduce((a, r) => a + toNum(r.cout_nuits) + toNum(r.cout_repas) + toNum(r.cout_billet_total), 0);
+    const presentComps = COMPONENTS.filter((c) => Math.abs(amounts[c.key] || 0) > 0.001 || Math.abs(costs[c.key] || 0) > 0.001);
+    return { presentComps, amounts, costs };
   }, [rows, depRows]);
 
   const quote = React.useMemo(
@@ -400,9 +517,9 @@ export default function OdooQuoteWizard({ open, onClose, minute, rows = [], depR
             </div>
           )}
           {step === 0 && <StepRecipient minute={minute} catalog={catalog} dest={dest} setDest={setDest} />}
-          {step === 1 && <StepStructure config={config} setConfig={setConfig} presentComps={presentComps} rows={rows} />}
+          {step === 1 && <StepStructure config={config} setConfig={setConfig} presentComps={presentComps} rows={rows} depRows={depRows} quote={quote} />}
           {step === 2 && (catalog
-            ? <StepArticles config={config} setConfig={setConfig} presentComps={presentComps} catalog={catalog} amounts={amounts} />
+            ? <StepArticles config={config} setConfig={setConfig} presentComps={presentComps} catalog={catalog} amounts={amounts} costs={costs} quote={quote} />
             : <div style={{ fontSize: 13, color: C.muted }}>Chargement des articles Odoo…</div>)}
           {step === 3 && <StepPreview quote={quote} dest={dest} />}
         </div>
