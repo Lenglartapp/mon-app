@@ -673,10 +673,11 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
         </div>
       </div>
 
-      {/* Seul le tableau défile (la page reste fixe) : hauteur = place restante à l'écran,
+      {/* Seul le tableau défile (la page reste fixe) : hauteur MAX = place restante à l'écran
+          (avec peu de lignes, le cadre se referme juste sous la dernière),
           en-têtes de colonnes collés en haut, « Charger plus » au bas de la liste. */}
       <div style={{ maxWidth: 1440, width: '100%', margin: '0 auto', background: 'white', border: '1px solid #E0DED9', borderRadius: 8, overflow: 'hidden' }}>
-        <div ref={listScrollRef} className="df-list-scroll" style={{ overflow: 'auto', height: listHeight ?? undefined }}>
+        <div ref={listScrollRef} className="df-list-scroll" style={{ overflow: 'auto', maxHeight: listHeight ?? undefined }}>
           <table className="df-list-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
             <thead style={{ background: '#F4F4F4', borderBottom: '1px solid #E0DED9' }}>
               <tr>

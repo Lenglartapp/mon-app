@@ -1,6 +1,6 @@
 import { useLayoutEffect, useState } from "react";
 
-// Hauteur disponible entre le haut d'un élément et le bas de la fenêtre (moins `bottomGap`).
+// Hauteur disponible (à utiliser en maxHeight) entre le haut d'un élément et le bas de la fenêtre (moins `bottomGap`).
 // Sert aux listes dont SEUL le tableau défile : l'entête de page (titre, recherche, boutons)
 // reste en place, la page elle-même ne défile plus et il n'y a qu'une barre de défilement.
 // Recalculée au redimensionnement et quand le haut de l'élément bouge (filtres ajoutés…).
