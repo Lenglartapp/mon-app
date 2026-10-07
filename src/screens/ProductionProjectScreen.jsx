@@ -196,6 +196,16 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
   }, [propProject, projects, urlProjectId]);
 
   const [stage, setStage] = useState(initialStage || "dashboard");
+  // Téléphone : la rangée d'onglets défile ; on garde l'onglet actif visible (ex. arrivée sur « Prise de cotes »).
+  const stageNavRef = useRef(null);
+  useEffect(() => {
+    const nav = stageNavRef.current;
+    const active = nav?.querySelector('[data-active="true"]');
+    if (active && nav.scrollWidth > nav.clientWidth) {
+      const left = active.getBoundingClientRect().left - nav.getBoundingClientRect().left + nav.scrollLeft - 16;
+      nav.scrollTo({ left: Math.max(0, left), behavior: 'smooth' });
+    }
+  }, [stage]);
   // Ouverture ciblée sur un onglet (ex. depuis l'agenda mobile → prise de cotes)
   useEffect(() => { if (initialStage) setStage(initialStage); }, [initialStage]);
   const [panelsExpanded, setPanelsExpanded] = useState({});
@@ -1112,7 +1122,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
               </button>
             )}
           </div>
-          <div className="island-nav-container df-prj-views" style={{ display: 'inline-flex', gap: 2, maxWidth: '100%', overflowX: isMobile ? 'auto' : 'visible', justifySelf: 'center' }}>
+          <div ref={stageNavRef} className="island-nav-container df-prj-views" style={{ display: 'inline-flex', gap: 2, maxWidth: '100%', overflowX: isMobile ? 'auto' : 'visible', justifySelf: 'center' }}>
             {visibleStages.map((p) => (
               <button
                 key={p.key}

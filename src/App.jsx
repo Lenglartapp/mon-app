@@ -370,7 +370,7 @@ function AppShell() {
           Synchronisation des modifications hors ligne…
         </div>
       )}
-      <header style={{ display: "flex", alignItems: "center", padding: "14px 32px", gap: 16 }}>
+      <header className="df-app-header" style={{ display: "flex", alignItems: "center", padding: "14px 32px", gap: 16 }}>
         {/* Gauche : logo */}
         <button style={S.brandBtn} onClick={() => navigate("/")} aria-label="Retour à l'accueil">
           {logoOk ? (
@@ -381,7 +381,7 @@ function AppShell() {
         </button>
 
         {/* Centre : barre de recherche */}
-        <div style={{ flex: 1, display: "flex", justifyContent: "center" }}>
+        <div style={{ flex: 1, minWidth: 0, display: "flex", justifyContent: "center" }}>
           <button
             onClick={() => cmdRef.current?.open()}
             style={{
@@ -396,7 +396,7 @@ function AppShell() {
           >
             <Search size={14} color="#CEAB95" />
             <span style={{ flex: 1, textAlign: "left", color: "#B0A396" }}>Rechercher…</span>
-            <kbd style={{
+            <kbd className="df-hide-mobile" style={{
               background: "#F5EFE6", border: "1px solid #E6DDD2",
               borderRadius: 6, padding: "1px 6px",
               fontSize: 11, color: "#B0A396",

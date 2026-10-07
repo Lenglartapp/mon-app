@@ -109,6 +109,10 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
         if (!project?.id) return;
         navigate(`/production/${project.id.slice(0, 8)}-${slugify(project.name)}?stage=prise`);
     };
+    const handleOpenProject = (project) => {
+        if (!project?.id) return;
+        navigate(`/production/${project.id.slice(0, 8)}-${slugify(project.name)}`);
+    };
     const canEdit = can(currentUser, 'planning.edit');
     const canDelete = can(currentUser, 'planning.delete'); // suppression réservée ordo/admin
     const showGauges = can(currentUser, 'planning.view_gauges');
@@ -1398,6 +1402,7 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                 onChangeDate={setCurrentDate}
                 onBack={onBack}
                 onOpenPrise={handleOpenPrise}
+                onOpenProject={handleOpenProject}
             />
         );
     }
