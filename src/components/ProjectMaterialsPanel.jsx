@@ -1,9 +1,8 @@
 import React, { useMemo, useState } from 'react';
-import {
-  Dialog, DialogTitle, DialogContent, DialogActions,
-  Button, IconButton, TextField, Tooltip,
-} from '@mui/material';
-import { X, Plus, Trash2, Package, Pencil, Check } from 'lucide-react';
+import { Button, IconButton, TextField, Tooltip } from '@mui/material';
+import { Plus, Trash2, Pencil, Check } from 'lucide-react';
+import DaDialog, { DaTabs } from './ui/DaDialog';
+import { ToolbarSearch, ToolbarButton } from './ui/ToolbarControls';
 import { uid } from '../lib/utils/uid';
 import { useCatalog, useCatalogRail } from '../hooks/useSupabase';
 
@@ -13,6 +12,10 @@ const TABS = [
   { key: 'Store',         label: 'Stores',         categories: ['Store', 'Stores', 'Mecanisme Store'] },
   { key: 'Passementerie', label: 'Passementerie',  categories: ['Passementerie'] },
 ];
+
+// Boutons des formulaires (DA) : action principale bleu nuit, secondaire blanche à trait fin
+const BTN_PRIMARY = { textTransform: 'none', fontWeight: 600, borderRadius: '8px', bgcolor: '#1E2447', '&:hover': { bgcolor: '#2A3260' } };
+const BTN_GHOST = { textTransform: 'none', fontWeight: 600, borderRadius: '8px', color: '#374151', border: '1px solid #E5E7EB', bgcolor: 'white', px: 1.5 };
 
 const BLANK_FORM = { fournisseur: '', reference: '', coloris: '', width: '', raccord_v: '', raccord_h: '' };
 
@@ -25,43 +28,13 @@ function buildName(fournisseur, reference, coloris) {
   return parts.join(' ');
 }
 
-// ─── Tab bar (single capsule) ────────────────────────────────────────────────
+// ─── Onglets (pastilles de la DA, nombre d'articles par catégorie) ─────────
 function TabBar({ tabs, activeKey, materials, onChange }) {
-  return (
-    <div style={{
-      display: 'flex', padding: '10px 20px',
-      borderBottom: '1px solid #E5E7EB', background: '#fff',
-    }}>
-      <div style={{
-        display: 'flex', gap: 2,
-        background: '#F3F4F6', borderRadius: 99,
-        padding: '3px',
-      }}>
-        {tabs.map(tab => {
-          const count = materials.filter(m =>
-            tab.categories.some(c => c.toLowerCase() === (m.category || '').toLowerCase())
-          ).length;
-          const isActive = tab.key === activeKey;
-          return (
-            <button
-              key={tab.key}
-              onClick={() => onChange(tab.key)}
-              style={{
-                padding: '5px 14px', borderRadius: 99, border: 'none', cursor: 'pointer',
-                fontSize: 13, fontWeight: 600, fontFamily: 'inherit',
-                background: isActive ? '#111827' : 'transparent',
-                color: isActive ? '#fff' : '#6B7280',
-                transition: 'all 0.15s',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {tab.label}{count > 0 ? ` (${count})` : ''}
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
+  const withCounts = tabs.map(tab => {
+    const count = materials.filter(m => tab.categories.some(c => c.toLowerCase() === (m.category || '').toLowerCase())).length;
+    return { key: tab.key, label: `${tab.label}${count > 0 ? ` (${count})` : ''}` };
+  });
+  return <DaTabs tabs={withCounts} value={activeKey} onChange={onChange} />;
 }
 
 // ─── Catalog search ──────────────────────────────────────────────────────────
@@ -98,14 +71,14 @@ function CatalogSearch({ globalCatalog, projectMaterials, activeTab, onAdd }) {
 
   return (
     <div>
-      <TextField
-        size="small" fullWidth variant="outlined"
-        placeholder={`Rechercher dans le catalogue global (${activeTab.label})…`}
+      <ToolbarSearch
         value={search}
-        onChange={e => setSearch(e.target.value)}
+        onChange={setSearch}
+        placeholder={`Rechercher dans le catalogue global (${activeTab.label.toLowerCase()})…`}
+        width="100%"
       />
       {filtered.length > 0 && (
-        <div style={{ marginTop: 4, border: '1px solid #E0DED9', borderRadius: 8, overflow: 'hidden' }}>
+        <div style={{ marginTop: 6, border: '1px solid #E0DED9', borderRadius: 8, overflow: 'hidden' }}>
           {filtered.map((article, i) => (
             <div
               key={article.id || i}
@@ -114,9 +87,9 @@ function CatalogSearch({ globalCatalog, projectMaterials, activeTab, onAdd }) {
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 padding: '8px 12px', cursor: 'pointer', fontSize: 13,
                 background: '#fff',
-                borderBottom: i < filtered.length - 1 ? '1px solid #F3F4F6' : 'none',
+                borderBottom: i < filtered.length - 1 ? '1px solid #E8E6E2' : 'none',
               }}
-              onMouseEnter={e => e.currentTarget.style.background = '#EFF6FF'}
+              onMouseEnter={e => e.currentTarget.style.background = '#F7F7F5'}
               onMouseLeave={e => e.currentTarget.style.background = '#fff'}
             >
               <div style={{ flex: 1, minWidth: 0 }}>
@@ -129,7 +102,7 @@ function CatalogSearch({ globalCatalog, projectMaterials, activeTab, onAdd }) {
                   </span>
                 )}
               </div>
-              <Plus size={14} color="#3B82F6" style={{ flexShrink: 0, marginLeft: 8 }} />
+              <Plus size={14} color="#1E2447" style={{ flexShrink: 0, marginLeft: 8 }} />
             </div>
           ))}
         </div>
@@ -171,7 +144,7 @@ function EditRow({ material, onSave, onCancel }) {
   };
 
   return (
-    <div style={{ padding: '10px 12px', background: '#F4F4F4', display: 'flex', flexDirection: 'column', gap: 8 }}>
+    <div style={{ padding: '12px', background: '#F7F7F5', display: 'flex', flexDirection: 'column', gap: 8 }}>
       <TextField
         size="small" label="Nom de l'article" value={form.name}
         onChange={(e) => set('name', e.target.value)} fullWidth autoFocus
@@ -190,9 +163,9 @@ function EditRow({ material, onSave, onCancel }) {
         </div>
       )}
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-        <Button size="small" onClick={onCancel} style={{ textTransform: 'none', color: '#6B7280' }}>Annuler</Button>
-        <Button size="small" variant="contained" onClick={save} disabled={!form.name.trim()}
-          startIcon={<Check size={14} />} style={{ textTransform: 'none' }}>Enregistrer</Button>
+        <Button size="small" onClick={onCancel} sx={BTN_GHOST}>Annuler</Button>
+        <Button size="small" variant="contained" disableElevation onClick={save} disabled={!form.name.trim()}
+          startIcon={<Check size={14} />} sx={BTN_PRIMARY}>Enregistrer</Button>
       </div>
     </div>
   );
@@ -222,8 +195,8 @@ function ManualForm({ activeTab, onAdd, onCancel }) {
 
   return (
     <div style={{
-      background: '#F4F4F4', border: '1px solid #E0DED9', borderRadius: 8,
-      padding: 12, display: 'flex', flexDirection: 'column', gap: 8,
+      background: '#F7F7F5', border: '1px solid #E0DED9', borderRadius: 8,
+      padding: 12, display: 'flex', flexDirection: 'column', gap: 10,
     }}>
       {/* Name preview */}
       {namePreview && (
@@ -255,8 +228,8 @@ function ManualForm({ activeTab, onAdd, onCancel }) {
         </div>
       )}
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-        <Button size="small" onClick={onCancel}>Annuler</Button>
-        <Button size="small" variant="contained" onClick={handleSubmit} disabled={!canSubmit}>
+        <Button size="small" onClick={onCancel} sx={BTN_GHOST}>Annuler</Button>
+        <Button size="small" variant="contained" disableElevation onClick={handleSubmit} disabled={!canSubmit} sx={BTN_PRIMARY}>
           Ajouter
         </Button>
       </div>
@@ -296,101 +269,84 @@ export default function ProjectMaterialsPanel({ open, onClose, materials = [], o
   const handleTabChange = (key) => { setActiveTabKey(key); setShowForm(false); setEditingId(null); };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 12 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, fontSize: 18 }}>
-          <Package size={20} />
-          Matériauthèque du projet
-        </div>
-        <IconButton size="small" onClick={onClose}><X size={18} /></IconButton>
-      </DialogTitle>
-
-      <DialogContent dividers style={{ padding: 0, display: 'flex', flexDirection: 'column' }}>
-
-        <TabBar tabs={TABS} activeKey={activeTabKey} materials={materials} onChange={handleTabChange} />
-
-        <div style={{ padding: '16px 20px', flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 12 }}>
-
-          <CatalogSearch
-            globalCatalog={allGlobal}
-            projectMaterials={materials}
-            activeTab={activeTab}
-            onAdd={handleAdd}
-          />
-
-          {showForm ? (
-            <ManualForm activeTab={activeTab} onAdd={handleAdd} onCancel={() => setShowForm(false)} />
-          ) : (
-            <button
-              onClick={() => setShowForm(true)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 6,
-                background: 'none', border: '1px dashed #D1D5DB', borderRadius: 8,
-                padding: '7px 12px', cursor: 'pointer', fontSize: 13, color: '#6B7280',
-                fontFamily: 'inherit', fontWeight: 500,
-              }}
-            >
-              <Plus size={14} />
-              Ajouter manuellement
-            </button>
-          )}
-
-          {tabMaterials.length === 0 ? (
-            <div style={{ color: '#9CA3AF', fontSize: 13, textAlign: 'center', padding: '24px 0' }}>
-              Aucun article dans cette catégorie.
-            </div>
-          ) : (
-            <div style={{ border: '1px solid #E0DED9', borderRadius: 8, overflow: 'hidden' }}>
-              {tabMaterials.map((mat, i) => (
-                editingId === mat.id ? (
-                  <div key={mat.id} style={{ borderBottom: i < tabMaterials.length - 1 ? '1px solid #F3F4F6' : 'none' }}>
-                    <EditRow material={mat} onSave={handleUpdate} onCancel={() => setEditingId(null)} />
-                  </div>
-                ) : (
-                <div
-                  key={mat.id}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px',
-                    borderBottom: i < tabMaterials.length - 1 ? '1px solid #F3F4F6' : 'none',
-                    background: '#fff',
-                  }}
-                >
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 600, fontSize: 13, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {mat.name}
-                    </div>
-                    <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 1 }}>
-                      {[
-                        mat.width > 0 && `Laize : ${mat.width} cm`,
-                        mat.raccord_v > 0 && `Raccord V : ${mat.raccord_v} cm`,
-                        mat.raccord_h > 0 && `Raccord H : ${mat.raccord_h} cm`,
-                      ].filter(Boolean).join(' · ') || '—'}
-                    </div>
-                  </div>
-                  <Tooltip title="Modifier">
-                    <IconButton size="small" onClick={() => setEditingId(mat.id)} style={{ color: '#6B7280' }}>
-                      <Pencil size={14} />
-                    </IconButton>
-                  </Tooltip>
-                  <Tooltip title="Supprimer">
-                    <IconButton size="small" onClick={() => handleDelete(mat.id)} style={{ color: '#EF4444' }}>
-                      <Trash2 size={14} />
-                    </IconButton>
-                  </Tooltip>
-                </div>
-                )
-              ))}
-            </div>
-          )}
-        </div>
-      </DialogContent>
-
-      <DialogActions style={{ padding: '12px 20px' }}>
-        <div style={{ flex: 1, fontSize: 12, color: '#9CA3AF' }}>
+    <DaDialog
+      open={open}
+      onClose={onClose}
+      title="Matériauthèque du projet"
+      subtitle="Articles utilisés par ce dossier : la laize et les raccords se reportent sur les lignes."
+      maxWidth="sm"
+      tabs={<TabBar tabs={TABS} activeKey={activeTabKey} materials={materials} onChange={handleTabChange} />}
+      footer={<>
+        <div style={{ flex: 1, fontSize: 13, color: '#6B7280' }}>
           {materials.length} article{materials.length !== 1 ? 's' : ''} au total
         </div>
-        <Button onClick={onClose} variant="contained">Fermer</Button>
-      </DialogActions>
-    </Dialog>
+        <ToolbarButton primary onClick={onClose}>Fermer</ToolbarButton>
+      </>}
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <CatalogSearch
+          globalCatalog={allGlobal}
+          projectMaterials={materials}
+          activeTab={activeTab}
+          onAdd={handleAdd}
+        />
+
+        {showForm ? (
+          <ManualForm activeTab={activeTab} onAdd={handleAdd} onCancel={() => setShowForm(false)} />
+        ) : (
+          <div>
+            <ToolbarButton icon={<Plus size={16} />} onClick={() => setShowForm(true)}>Ajouter manuellement</ToolbarButton>
+          </div>
+        )}
+
+        {tabMaterials.length === 0 ? (
+          <div style={{ color: '#9CA3AF', fontSize: 13, textAlign: 'center', padding: '24px 0' }}>
+            Aucun article dans cette catégorie.
+          </div>
+        ) : (
+          <div style={{ border: '1px solid #E0DED9', borderRadius: 8, overflow: 'hidden' }}>
+            {tabMaterials.map((mat, i) => (
+              editingId === mat.id ? (
+                <div key={mat.id} style={{ borderBottom: i < tabMaterials.length - 1 ? '1px solid #E8E6E2' : 'none' }}>
+                  <EditRow material={mat} onSave={handleUpdate} onCancel={() => setEditingId(null)} />
+                </div>
+              ) : (
+              <div
+                key={mat.id}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px',
+                  borderBottom: i < tabMaterials.length - 1 ? '1px solid #E8E6E2' : 'none',
+                  background: '#fff',
+                }}
+              >
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 500, fontSize: 14, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {mat.name}
+                  </div>
+                  <div style={{ fontSize: 12, color: '#6B7280', marginTop: 2 }}>
+                    {[
+                      mat.width > 0 && `Laize ${mat.width} cm`,
+                      mat.raccord_v > 0 && `Raccord V ${mat.raccord_v} cm`,
+                      mat.raccord_h > 0 && `Raccord H ${mat.raccord_h} cm`,
+                    ].filter(Boolean).join(' · ') || '—'}
+                  </div>
+                </div>
+                <Tooltip title="Modifier">
+                  <IconButton size="small" onClick={() => setEditingId(mat.id)} style={{ color: '#6B7280' }}>
+                    <Pencil size={15} />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title="Supprimer">
+                  <IconButton size="small" onClick={() => handleDelete(mat.id)} style={{ color: '#9CA3AF' }}>
+                    <Trash2 size={15} />
+                  </IconButton>
+                </Tooltip>
+              </div>
+              )
+            ))}
+          </div>
+        )}
+      </div>
+    </DaDialog>
   );
 }

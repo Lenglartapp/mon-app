@@ -1,19 +1,20 @@
 import React, { useState, useMemo } from 'react';
-import {
-    Dialog, DialogTitle, DialogContent, DialogActions,
-    Button, TextField, IconButton, Typography, Box, Tooltip,
-    InputAdornment, Popover
-} from '@mui/material';
-import { ExternalLink, Trash2, Plus, FileText, FolderOpen, Search, SlidersHorizontal, Check } from 'lucide-react';
+import { TextField, IconButton, Typography, Box, Tooltip, Popover } from '@mui/material';
+import { ExternalLink, Trash2, Plus, FolderOpen, SlidersHorizontal, Check } from 'lucide-react';
+
+import DaDialog from './ui/DaDialog';
+import { ToolbarSearch, ToolbarButton, TonePill } from './ui/ToolbarControls';
+import { toneColors } from '../lib/constants/daStyles';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
+// Catégories : pastilles du nuancier bleu de la DA (« Autre » en gris neutre)
 const DOC_TYPES = [
-    { value: 'plan',      label: 'Plan',             bg: '#EFF6FF', color: '#1D4ED8', border: '#BFDBFE' },
-    { value: 'reperage',  label: 'Plan de repérage', bg: '#FFF7ED', color: '#C2410C', border: '#FED7AA' },
-    { value: 'fiche',     label: 'Fiche technique',  bg: '#F0FDF4', color: '#15803D', border: '#BBF7D0' },
-    { value: 'autre',     label: 'Autre',            bg: '#F3F4F6', color: '#4B5563', border: '#E5E7EB' },
-];
+    { value: 'plan',      label: 'Plan',             tone: 1 },
+    { value: 'reperage',  label: 'Plan de repérage', tone: 3 },
+    { value: 'fiche',     label: 'Fiche technique',  tone: 2 },
+    { value: 'autre',     label: 'Autre',            tone: null },
+].map(t => ({ ...t, bg: toneColors(t.tone).bg, color: toneColors(t.tone).color, border: 'transparent' }));
 
 function getType(value) {
     return DOC_TYPES.find(t => t.value === value) || DOC_TYPES[3];
@@ -21,17 +22,7 @@ function getType(value) {
 
 function TypeBadge({ type }) {
     const def = getType(type);
-    return (
-        <span style={{
-            display: 'inline-flex', alignItems: 'center',
-            background: def.bg, color: def.color,
-            border: `1px solid ${def.border}`,
-            borderRadius: 20, fontWeight: 600, fontSize: 11,
-            padding: '3px 10px', whiteSpace: 'nowrap', flexShrink: 0,
-        }}>
-            {def.label}
-        </span>
-    );
+    return <TonePill tone={def.tone}>{def.label}</TonePill>;
 }
 
 // ─── Sélecteur de catégorie style Airtable ───────────────────────────────────
@@ -158,13 +149,19 @@ function AddDocDialog({ open, onClose, onAdd }) {
     };
 
     return (
-        <Dialog open={open} onClose={handleClose} maxWidth="xs" fullWidth
-            PaperProps={{ sx: { borderRadius: 3 } }}>
-            <DialogTitle sx={{ px: 3, pt: 2.5, pb: 1.5, fontWeight: 700, fontSize: 15, color: '#111827', borderBottom: '1px solid #F3F4F6' }}>
-                Ajouter un document
-            </DialogTitle>
-            <DialogContent sx={{ px: 3, pt: 1, pb: 1, overflow: 'visible' }}>
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1.5 }}>
+        <DaDialog
+            open={open}
+            onClose={handleClose}
+            title="Ajouter un document"
+            subtitle="Lien vers un plan, une fiche technique…"
+            maxWidth="xs"
+            footer={<>
+                <div style={{ flex: 1 }} />
+                <ToolbarButton onClick={handleClose}>Annuler</ToolbarButton>
+                <ToolbarButton primary onClick={handleSubmit}>Ajouter</ToolbarButton>
+            </>}
+        >
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 0.5 }}>
 
                     {/* Nom */}
                     <TextField
@@ -205,15 +202,7 @@ function AddDocDialog({ open, onClose, onAdd }) {
                     />
 
                 </Box>
-            </DialogContent>
-            <DialogActions sx={{ px: 3, py: 2, gap: 1, borderTop: '1px solid #F3F4F6' }}>
-                <Button onClick={handleClose} sx={{ color: '#6B7280', fontWeight: 600 }}>Annuler</Button>
-                <Button variant="contained" onClick={handleSubmit}
-                    sx={{ bgcolor: '#1F2937', borderRadius: 2, fontWeight: 600, '&:hover': { bgcolor: '#111827' } }}>
-                    Ajouter
-                </Button>
-            </DialogActions>
-        </Dialog>
+        </DaDialog>
     );
 }
 
@@ -261,88 +250,28 @@ export default function DocumentListModal({ open, onClose, documents = [], onUpd
 
     return (
         <>
-            <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth
-                PaperProps={{ sx: { borderRadius: 3, overflow: 'hidden', maxHeight: '80vh' } }}>
-
-                {/* ── HEADER ── */}
-                <DialogTitle sx={{
-                    display: 'flex', alignItems: 'center', gap: 1.5,
-                    px: 3, py: 2, borderBottom: '1px solid #F3F4F6',
-                }}>
-                    <Box sx={{
-                        width: 32, height: 32, borderRadius: 1.5,
-                        background: '#F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                    }}>
-                        <FileText size={16} color="#374151" />
-                    </Box>
-                    <Typography sx={{ fontWeight: 700, fontSize: 16, color: '#111827' }}>
-                        Documents &amp; Plans
-                    </Typography>
-
-                    {/* Bouton ajout */}
-                    <Button
-                        variant="contained"
-                        startIcon={<Plus size={15} />}
-                        onClick={() => setAddOpen(true)}
-                        size="small"
-                        sx={{
-                            ml: 1, bgcolor: '#1F2937', borderRadius: 2, fontWeight: 600,
-                            fontSize: 12, textTransform: 'none', px: 1.5,
-                            '&:hover': { bgcolor: '#111827' },
-                        }}
-                    >
-                        Ajouter un document
-                    </Button>
-
-                    {/* Compteur */}
-                    <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Box sx={{
-                            minWidth: 26, height: 26, borderRadius: '50%',
-                            background: documents.length > 0 ? '#1F2937' : '#F3F4F6',
-                            color: documents.length > 0 ? 'white' : '#9CA3AF',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            fontSize: 12, fontWeight: 700,
-                        }}>
-                            {documents.length}
-                        </Box>
-                    </Box>
-                </DialogTitle>
-
-                <DialogContent sx={{ px: 3, py: 2.5, display: 'flex', flexDirection: 'column', gap: 2 }}>
-
-                    {/* ── BARRE RECHERCHE + FILTRE ── */}
-                    <Box sx={{ display: 'flex', gap: 1 }}>
-                        <TextField
-                            placeholder="Rechercher un document…"
-                            size="small" fullWidth
-                            value={search} onChange={e => setSearch(e.target.value)}
-                            InputProps={{
-                                startAdornment: (
-                                    <InputAdornment position="start">
-                                        <Search size={15} color="#9CA3AF" />
-                                    </InputAdornment>
-                                ),
-                                style: { fontSize: 13, borderRadius: 8 },
-                            }}
-                        />
-                        <Tooltip title="Filtrer par catégorie">
-                            <Button
-                                variant="outlined"
-                                onClick={e => setFilterAnchor(e.currentTarget)}
-                                startIcon={<SlidersHorizontal size={14} />}
-                                sx={{
-                                    borderColor: activeFilter ? '#1F2937' : '#E5E7EB',
-                                    color: activeFilter ? '#1F2937' : '#6B7280',
-                                    bgcolor: activeFilter ? '#F4F4F4' : 'white',
-                                    borderRadius: 2, fontWeight: 600, fontSize: 12,
-                                    textTransform: 'none', px: 1.5, whiteSpace: 'nowrap',
-                                    '&:hover': { borderColor: '#1F2937', bgcolor: '#F4F4F4' },
-                                }}
-                            >
-                                {activeFilter ? getType(activeFilter).label : 'Filtrer'}
-                            </Button>
-                        </Tooltip>
-                    </Box>
+            <DaDialog
+                open={open}
+                onClose={onClose}
+                title="Documents & plans"
+                subtitle={`${documents.length} document${documents.length > 1 ? 's' : ''} lié${documents.length > 1 ? 's' : ''} au projet`}
+                maxWidth="md"
+                headerExtra={<ToolbarButton primary icon={<Plus size={16} />} onClick={() => setAddOpen(true)}>Ajouter un document</ToolbarButton>}
+                footer={<><div style={{ flex: 1 }} /><ToolbarButton onClick={onClose}>Fermer</ToolbarButton></>}
+            >
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                    {/* Recherche + filtre par catégorie (style des barres d'outils) */}
+                    <div style={{ display: 'flex', gap: 10 }}>
+                        <ToolbarSearch value={search} onChange={setSearch} placeholder="Rechercher un document…" width="100%" grow />
+                        <ToolbarButton
+                            icon={<SlidersHorizontal size={15} />}
+                            active={Boolean(activeFilter)}
+                            onClick={e => setFilterAnchor(e.currentTarget)}
+                            title="Filtrer par catégorie"
+                        >
+                            {activeFilter ? getType(activeFilter).label : 'Catégorie'}
+                        </ToolbarButton>
+                    </div>
 
                     {/* ── LISTE ── */}
                     {documents.length === 0 ? (
@@ -365,26 +294,25 @@ export default function DocumentListModal({ open, onClose, documents = [], onUpd
                             </Typography>
                         </Box>
                     ) : (
-                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                            {filtered.map((doc) => (
+                        <Box sx={{ border: '1px solid #E0DED9', borderRadius: '8px', overflow: 'hidden' }}>
+                            {filtered.map((doc, i) => (
                                 <Box key={doc.id} sx={{
                                     display: 'flex', alignItems: 'center', gap: 2,
                                     px: 2, py: 1.5,
-                                    border: '1px solid #F3F4F6', borderRadius: 2,
-                                    bgcolor: '#FAFAFA',
-                                    transition: 'all 0.12s',
-                                    '&:hover': { borderColor: '#E5E7EB', bgcolor: 'white', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' },
+                                    borderBottom: i < filtered.length - 1 ? '1px solid #E8E6E2' : 'none',
+                                    bgcolor: 'white',
+                                    '&:hover': { bgcolor: '#F7F7F5' },
                                 }}>
                                     {/* Nom + hostname */}
                                     <Box sx={{ flex: '0 0 220px', minWidth: 0 }}>
                                         <a href={doc.url} target="_blank" rel="noopener noreferrer"
-                                            style={{ color: '#1D4ED8', textDecoration: 'none', fontWeight: 600, fontSize: 13, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                            style={{ color: '#1E2447', textDecoration: 'none', fontWeight: 500, fontSize: 14, display: 'flex', alignItems: 'center', gap: 4 }}>
                                             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                                 {doc.name}
                                             </span>
                                             <ExternalLink size={11} style={{ flexShrink: 0 }} />
                                         </a>
-                                        <Typography variant="caption" sx={{ color: '#9CA3AF', fontSize: 10 }}>
+                                        <Typography variant="caption" sx={{ color: '#9CA3AF', fontSize: 11 }}>
                                             {getHostname(doc.url)}
                                         </Typography>
                                     </Box>
@@ -399,7 +327,7 @@ export default function DocumentListModal({ open, onClose, documents = [], onUpd
                                         <Typography variant="caption" sx={{ color: '#6B7280', fontSize: 11 }}>
                                             Ajouté le
                                         </Typography>
-                                        <Typography variant="body2" sx={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>
+                                        <Typography variant="body2" sx={{ fontSize: 13, fontWeight: 500, color: '#374151' }}>
                                             {formatDate(doc.createdAt)}
                                         </Typography>
                                     </Box>
@@ -428,7 +356,7 @@ export default function DocumentListModal({ open, onClose, documents = [], onUpd
                                     {/* Delete */}
                                     <Tooltip title="Supprimer" placement="left">
                                         <IconButton size="small" onClick={() => handleDelete(doc.id)} sx={{
-                                            color: '#D1D5DB', flexShrink: 0,
+                                            color: '#9CA3AF', flexShrink: 0,
                                             '&:hover': { color: '#EF4444', bgcolor: '#FEF2F2' },
                                         }}>
                                             <Trash2 size={15} />
@@ -438,12 +366,8 @@ export default function DocumentListModal({ open, onClose, documents = [], onUpd
                             ))}
                         </Box>
                     )}
-                </DialogContent>
-
-                <DialogActions sx={{ px: 3, py: 2, borderTop: '1px solid #F3F4F6' }}>
-                    <Button onClick={onClose} sx={{ color: '#6B7280', fontWeight: 600 }}>Fermer</Button>
-                </DialogActions>
-            </Dialog>
+                </div>
+            </DaDialog>
 
             {/* ── POPOVER FILTRE ── */}
             <Popover

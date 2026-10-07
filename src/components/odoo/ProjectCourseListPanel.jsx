@@ -1,52 +1,42 @@
 import React, { useEffect, useState } from "react";
 import { RefreshCw, ShoppingCart, AlertTriangle, Link2Off } from "lucide-react";
 import { readCourseLines, refreshCourseLines } from "../../lib/odoo/courseLinesClient";
+import { TonePill, ToolbarButton } from "../ui/ToolbarControls";
 
 // Liste de courses Odoo affichée dans le dossier (module Stock). Odoo maître, lecture.
 // Pré-affichage pour les équipes (qui n'ont pas Odoo) : commandé + statut de réception.
 
+// Statut de la ligne de courses : pastille du nuancier bleu, de « à commander » (bleu ciel)
+// à « réceptionné » (bleu nuit) ; « problème » reste signalé en rouge.
 const STATUT = {
-  a_commander:     { label: "À commander",    bg: "#F3F4F6", color: "#374151" },
-  verifier_stock:  { label: "Vérifier stock", bg: "#F3F4F6", color: "#374151" },
-  en_stock:        { label: "En stock",       bg: "#EFF6FF", color: "#1D4ED8" },
-  achete_client:   { label: "Acheté client",  bg: "#F5F3FF", color: "#6D28D9" },
-  commande_passee: { label: "Commandée",      bg: "#FFFBEB", color: "#B45309" },
-  receptionne:     { label: "Réceptionné",    bg: "#ECFDF5", color: "#047857" },
-  probleme:        { label: "Problème",       bg: "#FEF2F2", color: "#B91C1C" },
+  a_commander:     { label: "À commander",    tone: 5 },
+  verifier_stock:  { label: "Vérifier stock", tone: 4 },
+  en_stock:        { label: "En stock",       tone: 3 },
+  achete_client:   { label: "Acheté client",  tone: null },
+  commande_passee: { label: "Commandée",      tone: 2 },
+  receptionne:     { label: "Réceptionné",    tone: 0 },
+  probleme:        { label: "Problème",       alert: true },
 };
 
-const TYPE = {
-  tissu: { label: "Tissu", bg: "#DBEAFE", color: "#1E40AF" },
-  rail: { label: "Rail", bg: "#F3F4F6", color: "#374151" },
-  mecanisme: { label: "Mécanisme", bg: "#FEF3C7", color: "#92400E" },
-  store: { label: "Store", bg: "#ECFEFF", color: "#155E75" },
-  consommable: { label: "Consommable", bg: "#FCE7F3", color: "#9D174D" },
-  autre: { label: "Autre", bg: "#F3F4F6", color: "#6B7280" },
-};
+const TYPE = { tissu: "Tissu", rail: "Rail", mecanisme: "Mécanisme", store: "Store", consommable: "Consommable", autre: "Autre" };
 
 const COLS = ["Fournisseur", "Référence", "Type", "Coloris", "Laize", "Qté", "Unité", "Date de livraison estimée", "Statut", "Date de réception"];
 const fmtDate = (d) => (d ? new Date(d).toLocaleDateString("fr-FR") : "—");
 
 function StatutBadge({ statut }) {
-  const s = STATUT[statut] || { label: statut || "—", bg: "#F3F4F6", color: "#374151" };
-  return (
-    <span style={{ display: "inline-block", padding: "2px 8px", borderRadius: 999, background: s.bg, color: s.color, fontSize: 12, fontWeight: 600, whiteSpace: "nowrap" }}>
-      {s.label}
-    </span>
-  );
+  const s = STATUT[statut];
+  if (!s) return <TonePill tone={null}>{statut || "—"}</TonePill>;
+  if (s.alert) return <span style={{ display: "inline-flex", alignItems: "center", height: 22, padding: "0 10px", borderRadius: 99, background: "#FEE2E2", color: "#B91C1C", fontSize: 12, fontWeight: 600, whiteSpace: "nowrap" }}>{s.label}</span>;
+  return <TonePill tone={s.tone}>{s.label}</TonePill>;
 }
 
+// Type en texte simple (comme l'état du stock)
 function TypeBadge({ type }) {
   if (!type) return <span style={{ color: "#9CA3AF" }}>—</span>;
-  const t = TYPE[type] || { label: type, bg: "#F3F4F6", color: "#374151" };
-  return (
-    <span style={{ display: "inline-block", padding: "2px 8px", borderRadius: 999, background: t.bg, color: t.color, fontSize: 12, fontWeight: 600, whiteSpace: "nowrap" }}>
-      {t.label}
-    </span>
-  );
+  return <span style={{ color: "#374151" }}>{TYPE[type] || type}</span>;
 }
 
-const td = { padding: "8px 10px", verticalAlign: "top" };
+const td = { padding: "10px 12px", verticalAlign: "middle" };
 
 export default function ProjectCourseListPanel({ droitfilProjectId, odooProjectId, projectName }) {
   const [lines, setLines] = useState([]);
@@ -100,16 +90,16 @@ export default function ProjectCourseListPanel({ droitfilProjectId, odooProjectI
   const removed = tissuLines.filter((l) => l.removed_from_odoo);
 
   return (
-    <div style={{ padding: "8px 4px" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10, flexWrap: "wrap", gap: 8 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 700, color: "#111827" }}>
-          <ShoppingCart size={16} /> Liste de courses <span style={{ fontWeight: 400, color: "#9CA3AF", fontSize: 13 }}>({active.length})</span>
+    <div>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
+        <div style={{ fontFamily: "Roboto, system-ui, sans-serif", fontSize: 20, fontWeight: 500, color: "#111827" }}>
+          Liste de courses <span style={{ fontWeight: 400, color: "#9B9A97", fontSize: 13 }}>{active.length} {active.length > 1 ? "lignes" : "ligne"}</span>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, opacity: refreshing ? 0.6 : 1 }}>
           {lastSync && <span style={{ fontSize: 12, color: "#9CA3AF" }}>synchro {new Date(lastSync).toLocaleString("fr-FR")}</span>}
-          <button onClick={refresh} disabled={refreshing} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 10px", borderRadius: 8, border: "1px solid #D1D5DB", background: "#fff", cursor: "pointer", fontSize: 13, opacity: refreshing ? 0.6 : 1 }}>
-            <RefreshCw size={14} className={refreshing ? "spin" : undefined} /> Rafraîchir depuis Odoo
-          </button>
+          <ToolbarButton icon={<RefreshCw size={14} className={refreshing ? "spin" : undefined} />} onClick={refreshing ? undefined : refresh}>
+            Rafraîchir depuis Odoo
+          </ToolbarButton>
         </div>
       </div>
 
@@ -125,12 +115,12 @@ export default function ProjectCourseListPanel({ droitfilProjectId, odooProjectI
         </div>
       )}
 
-      <div style={{ overflowX: "auto", border: "1px solid #E0DED9", borderRadius: 10 }}>
+      <div style={{ overflowX: "auto", border: "1px solid #E0DED9", borderRadius: 8 }}>
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
           <thead>
             <tr style={{ background: "#F4F4F4" }}>
               {COLS.map((h) => (
-                <th key={h} style={{ textAlign: "left", padding: "8px 10px", borderBottom: "1px solid #E5E7EB", fontWeight: 700, color: "#374151", whiteSpace: "nowrap" }}>{h}</th>
+                <th key={h} style={{ textAlign: "left", padding: "10px 12px", borderBottom: "1px solid #E0DED9", fontWeight: 600, color: "#374151", whiteSpace: "nowrap" }}>{h}</th>
               ))}
             </tr>
           </thead>
@@ -142,9 +132,9 @@ export default function ProjectCourseListPanel({ droitfilProjectId, odooProjectI
               <tr><td colSpan={COLS.length} style={{ padding: 14, color: "#9CA3AF" }}>Aucune ligne. Clique « Rafraîchir depuis Odoo ».</td></tr>
             )}
             {active.map((l) => (
-              <tr key={l.odoo_id} style={{ borderBottom: "1px solid #F3F4F6" }}>
+              <tr key={l.odoo_id} style={{ borderBottom: "1px solid #E8E6E2" }}>
                 <td style={td}>{l.fournisseur || "—"}</td>
-                <td style={{ ...td, fontWeight: 600 }}>{l.reference || "—"}</td>
+                <td style={{ ...td, fontWeight: 500 }}>{l.reference || "—"}</td>
                 <td style={td}><TypeBadge type={l.type_produit} /></td>
                 <td style={td}>{l.coloris || "—"}</td>
                 <td style={td}>{l.laize || "—"}</td>
@@ -156,7 +146,7 @@ export default function ProjectCourseListPanel({ droitfilProjectId, odooProjectI
               </tr>
             ))}
             {removed.map((l) => (
-              <tr key={l.odoo_id} style={{ borderBottom: "1px solid #F3F4F6", opacity: 0.55, color: "#9CA3AF" }} title="Cette ligne n'existe plus dans Odoo (gardée ici).">
+              <tr key={l.odoo_id} style={{ borderBottom: "1px solid #E8E6E2", opacity: 0.55, color: "#9CA3AF" }} title="Cette ligne n'existe plus dans Odoo (gardée ici).">
                 <td style={td}>{l.fournisseur || "—"}</td>
                 <td style={{ ...td, textDecoration: "line-through" }}>{l.reference || "—"}</td>
                 <td style={td}><TypeBadge type={l.type_produit} /></td>

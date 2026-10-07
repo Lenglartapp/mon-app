@@ -50,7 +50,7 @@ function stockStatusOf(projectName, projects) {
     return STOCK_STATUS[code] || { label: proj.status || '?', tone: 4 };
 }
 
-export default function StockInventoryTab({ inventory, projects = [], movements = [], onBulkMovement, onUpdateItem, zones = [] }) {
+export default function StockInventoryTab({ inventory, projects = [], movements = [], onBulkMovement, onUpdateItem, zones = [], embedded = false }) {
     const { currentUser } = useAuth();
     const fileInputRef = useRef(null);
     const [search, setSearch] = useState('');
@@ -350,8 +350,9 @@ export default function StockInventoryTab({ inventory, projects = [], movements 
                 l'emplacement reste à compléter. Repliée par défaut ; filtre le tableau à la demande. */}
             {toCompleteCount > 0 && (
                 <div style={{
-                    // En bas à GAUCHE : la pagination du tableau occupe le bas à droite
-                    position: 'fixed', bottom: 24, left: 24, zIndex: 1200,
+                    // En bas à GAUCHE : la pagination du tableau occupe le bas à droite.
+                    // Dans une fenêtre (stock d'un dossier) : posée dans le flux, au-dessus du tableau.
+                    ...(embedded ? { display: 'inline-block', marginBottom: 12 } : { position: 'fixed', bottom: 24, left: 24, zIndex: 1200 }),
                     background: '#FEF3C7', border: '1px solid #F59E0B', borderRadius: 10,
                     fontSize: 13, color: '#92400E', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', maxWidth: 360,
                 }}>

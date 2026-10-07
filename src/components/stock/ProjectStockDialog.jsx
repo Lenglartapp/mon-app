@@ -1,8 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import Dialog from '@mui/material/Dialog';
-import DialogTitle from '@mui/material/DialogTitle';
-import DialogContent from '@mui/material/DialogContent';
-import Button from '@mui/material/Button';
+import DaDialog, { DaTabs } from '../ui/DaDialog';
 import { supabase } from '../../lib/supabaseClient';
 import { readCourseLines } from '../../lib/odoo/courseLinesClient';
 import { computeNeeds } from '../../lib/stock/projectStock';
@@ -68,26 +65,16 @@ export default function ProjectStockDialog({ open, onClose, project, projects, i
     };
 
     return (
-        <Dialog open={open} onClose={onClose} maxWidth="xl" fullWidth PaperProps={{ sx: { height: '85vh' } }}>
-            <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
-                <span>Stock Projet : {project?.name}</span>
-                <Button onClick={onClose}>Fermer</Button>
-            </DialogTitle>
-            <div style={{ display: 'flex', gap: 4, padding: '0 24px 12px', borderBottom: '1px solid #E5E7EB' }}>
-                {TABS.map((t) => (
-                    <button
-                        key={t.key}
-                        onClick={() => setTab(t.key)}
-                        style={{
-                            padding: '7px 18px', borderRadius: 9999, fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer',
-                            background: tab === t.key ? '#1E2447' : '#F3F4F6', color: tab === t.key ? 'white' : '#4B5563',
-                        }}
-                    >
-                        {t.label}
-                    </button>
-                ))}
-            </div>
-            <DialogContent sx={{ p: 2, bgcolor: '#FCFCFD' }}>
+        <DaDialog
+            open={open}
+            onClose={onClose}
+            title="Stock du projet"
+            subtitle={project?.name}
+            maxWidth="xl"
+            height="85vh"
+            bodyPadding="20px 28px"
+            tabs={<DaTabs tabs={TABS} value={tab} onChange={setTab} />}
+        >
                 {tab === 'courses' && (
                     <>
                         <div style={{ marginBottom: 16 }}>
@@ -97,8 +84,8 @@ export default function ProjectStockDialog({ open, onClose, project, projects, i
                                 projectName={project?.name}
                             />
                         </div>
-                        <div style={{ fontWeight: 700, fontSize: 15, margin: '8px 0 12px', color: '#111827' }}>Stock en cours</div>
-                        <StockInventoryTab inventory={projectInventory} projects={projects} onUpdateItem={onUpdateItem} />
+                        <div style={{ fontFamily: 'Roboto, system-ui, sans-serif', fontWeight: 500, fontSize: 20, margin: '24px 0 12px', color: '#111827' }}>Stock en cours</div>
+                        <StockInventoryTab embedded inventory={projectInventory} projects={projects} onUpdateItem={onUpdateItem} />
                     </>
                 )}
                 {tab === 'needs' && <ProjectNeedsTab needs={needs} />}
@@ -113,7 +100,6 @@ export default function ProjectStockDialog({ open, onClose, project, projects, i
                     />
                 )}
                 {tab === 'mad' && <StockRequestsPanel inventory={inventory || []} project={project?.name} onStockChanged={onStockChanged} />}
-            </DialogContent>
-        </Dialog>
+        </DaDialog>
     );
 }
