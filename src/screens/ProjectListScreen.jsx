@@ -29,7 +29,7 @@ import { uid } from "../lib/utils/uid";
 import { extractMaterialsFromLines } from "../lib/data/demo";
 
 import { PROJECT_STATUS_OPTIONS } from "../lib/constants/projectStatus";
-import { PROJECT_STATUS_TONE, toneColors } from "../lib/constants/daStyles";
+import { PROJECT_STATUS_TONE } from "../lib/constants/daStyles";
 import { TonePill } from "../components/ui/ToolbarControls";
 import { isInternalProject } from "../lib/planning/internalProject";
 
@@ -513,32 +513,27 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
 
                     {/* STATUT */}
                     <td style={{ padding: '12px 10px', textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
-                      {/* Statut : pastille du nuancier bleu (même code que l'inventaire et le chiffrage), modifiable */}
-                      {(() => {
-                        const tc = toneColors(PROJECT_STATUS_TONE[p?.status || 'TODO']);
-                        return (
-                          <select
-                            value={p?.status || "TODO"}
-                            onChange={(e) => handleUpdate(p.id, { status: e.target.value })}
-                            // Le dossier interne ne doit jamais pouvoir être archivé par
-                            // mégarde : il recueille du temps en continu et disparaîtrait
-                            // de la liste, avec tout son historique de chapitres.
-                            disabled={internal}
-                            title={internal ? "Le dossier interne reste toujours actif" : undefined}
-                            style={{
-                              appearance: 'none', WebkitAppearance: 'none',
-                              height: 24, padding: '0 12px', borderRadius: 99, border: 'none',
-                              background: tc.bg, color: tc.color,
-                              fontWeight: 600, fontSize: 12, fontFamily: 'inherit',
-                              cursor: internal ? 'default' : 'pointer', textAlign: 'center', outline: 'none',
-                            }}
-                          >
-                            {Object.entries(PROJECT_STATUS_OPTIONS).map(([key, opt]) => (
-                              <option key={key} value={key} style={{ background: 'white', color: '#111827' }}>{opt.label}</option>
-                            ))}
-                          </select>
-                        );
-                      })()}
+                      {/* Statut : MÊME pastille que le chiffrage et l'état du stock (TonePill, largeur du mot) ;
+                          la liste déroulante native, invisible, est posée par-dessus pour le modifier. */}
+                      <div style={{ position: 'relative', display: 'inline-flex' }}>
+                        <TonePill tone={PROJECT_STATUS_TONE[p?.status || 'TODO']}>
+                          {(PROJECT_STATUS_OPTIONS[p?.status] || PROJECT_STATUS_OPTIONS.TODO).label}
+                        </TonePill>
+                        <select
+                          value={p?.status || "TODO"}
+                          onChange={(e) => handleUpdate(p.id, { status: e.target.value })}
+                          // Le dossier interne ne doit jamais pouvoir être archivé par
+                          // mégarde : il recueille du temps en continu et disparaîtrait
+                          // de la liste, avec tout son historique de chapitres.
+                          disabled={internal}
+                          title={internal ? "Le dossier interne reste toujours actif" : "Changer le statut"}
+                          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: internal ? 'default' : 'pointer', appearance: 'none', border: 'none' }}
+                        >
+                          {Object.entries(PROJECT_STATUS_OPTIONS).map(([key, opt]) => (
+                            <option key={key} value={key}>{opt.label}</option>
+                          ))}
+                        </select>
+                      </div>
                     </td>
 
                     {/* LIVRAISON */}
