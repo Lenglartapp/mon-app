@@ -1,4 +1,5 @@
 import React from "react";
+import { CHIFFRAGE_STATUS_TONE } from "../lib/constants/daStyles";
 import { useNavigate, useLocation } from "react-router-dom";
 
 import { slugify } from "../lib/utils/slugify";
@@ -729,6 +730,7 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
               <StatusPill
                 value={localStatus}
                 options={CHIFFRAGE_STATUS}
+                tones={CHIFFRAGE_STATUS_TONE}
                 onChange={handleStatusChange}
                 disabled={!canEdit && localStatus !== "VALIDATED"}
               />

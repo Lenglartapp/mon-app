@@ -31,7 +31,7 @@ import { extractMaterialsFromLines } from "../lib/data/demo";
 
 import { PROJECT_STATUS_OPTIONS } from "../lib/constants/projectStatus";
 import { PROJECT_STATUS_TONE } from "../lib/constants/daStyles";
-import { TonePill } from "../components/ui/ToolbarControls";
+import { TonePill, StatusSelectPill } from "../components/ui/ToolbarControls";
 import { isInternalProject } from "../lib/planning/internalProject";
 
 const PROJECT_FILTER_SCHEMA = [
@@ -517,27 +517,17 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
 
                     {/* STATUT */}
                     <td style={{ padding: '12px 10px', textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
-                      {/* Statut : MÊME pastille que le chiffrage et l'état du stock (TonePill, largeur du mot) ;
-                          la liste déroulante native, invisible, est posée par-dessus pour le modifier. */}
-                      <div style={{ position: 'relative', display: 'inline-flex' }}>
-                        <TonePill tone={PROJECT_STATUS_TONE[p?.status || 'TODO']}>
-                          {(PROJECT_STATUS_OPTIONS[p?.status] || PROJECT_STATUS_OPTIONS.TODO).label}
-                        </TonePill>
-                        <select
-                          value={p?.status || "TODO"}
-                          onChange={(e) => handleUpdate(p.id, { status: e.target.value })}
-                          // Le dossier interne ne doit jamais pouvoir être archivé par
-                          // mégarde : il recueille du temps en continu et disparaîtrait
-                          // de la liste, avec tout son historique de chapitres.
-                          disabled={internal}
-                          title={internal ? "Le dossier interne reste toujours actif" : "Changer le statut"}
-                          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: internal ? 'default' : 'pointer', appearance: 'none', border: 'none' }}
-                        >
-                          {Object.entries(PROJECT_STATUS_OPTIONS).map(([key, opt]) => (
-                            <option key={key} value={key}>{opt.label}</option>
-                          ))}
-                        </select>
-                      </div>
+                      {/* Statut : pastille + liste déroulante, identique partout (StatusSelectPill).
+                          Le dossier interne ne doit jamais pouvoir être archivé par mégarde : il recueille
+                          du temps en continu et disparaîtrait de la liste, avec tout son historique. */}
+                      <StatusSelectPill
+                        value={p?.status || "TODO"}
+                        options={PROJECT_STATUS_OPTIONS}
+                        tones={PROJECT_STATUS_TONE}
+                        onChange={(v) => handleUpdate(p.id, { status: v })}
+                        disabled={internal}
+                        title={internal ? "Le dossier interne reste toujours actif" : "Changer le statut"}
+                      />
                     </td>
 
                     {/* LIVRAISON */}

@@ -5,7 +5,7 @@ import { ArrowUpDown, ArrowUp, ArrowDown, ChevronRight, ChevronDown, Filter, Sli
 
 import { PROJECT_STATUS_OPTIONS } from "../../lib/constants/projectStatus";
 import { PROJECT_STATUS_TONE } from "../../lib/constants/daStyles";
-import { TonePill } from "../ui/ToolbarControls";
+import { StatusSelectPill } from "../ui/ToolbarControls";
 import { useFillViewportHeight } from "../../lib/hooks/useFillViewportHeight";
 import { SmartFilterBar } from "../ui/SmartFilterBar";
 
@@ -359,7 +359,6 @@ const AssistantView = ({ stats, onUpdateProject }) => {
                     </thead>
                     <tbody>
                         {sortedStats.map(proj => {
-                            const statusOpt = PROJECT_STATUS_OPTIONS[proj.projectStatus] || PROJECT_STATUS_OPTIONS.TODO;
                             const isOpen = expanded.has(proj.id);
                             const adv = proj.advancement;
                             const bs = proj.byService || { prepa: {}, conf: {}, pose: {} };
@@ -381,15 +380,13 @@ const AssistantView = ({ stats, onUpdateProject }) => {
                                             {proj.deadline ? format(new Date(proj.deadline), 'dd MMM yyyy', { locale: fr }) : '-'}
                                         </td>
                                         <td style={{ padding: '12px 10px', textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
-                                            {/* Même pastille que la liste Projets ; liste déroulante invisible par-dessus pour modifier */}
-                                            <div style={{ position: 'relative', display: 'inline-flex' }}>
-                                                <TonePill tone={PROJECT_STATUS_TONE[proj.projectStatus || 'TODO']}>{statusOpt.label}</TonePill>
-                                                <select value={proj.projectStatus || "TODO"} onChange={(e) => onUpdateProject && onUpdateProject(proj.id, { status: e.target.value })}
-                                                    title="Changer le statut"
-                                                    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer', appearance: 'none', border: 'none' }}>
-                                                    {Object.entries(PROJECT_STATUS_OPTIONS).map(([key, opt]) => (<option key={key} value={key}>{opt.label}</option>))}
-                                                </select>
-                                            </div>
+                                            {/* Même pastille et même liste déroulante que la liste Projets */}
+                                            <StatusSelectPill
+                                                value={proj.projectStatus || "TODO"}
+                                                options={PROJECT_STATUS_OPTIONS}
+                                                tones={PROJECT_STATUS_TONE}
+                                                onChange={(v) => onUpdateProject && onUpdateProject(proj.id, { status: v })}
+                                            />
                                         </td>
                                         <td />
                                         <td style={{ padding: '12px 10px', textAlign: 'right', fontWeight: 600, color: '#374151' }}>{proj.totalSold}h</td>
