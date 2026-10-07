@@ -8,13 +8,14 @@ import { stripMarks } from '../../lib/utils/richText';
 import { computeProjectHours } from '../../lib/projectMetrics';
 
 // --- STICKY CELLS ---
+const ROBOTO = 'Roboto, system-ui, sans-serif';
 const StickyLeftCell = ({ children, bg = 'white', borderBottom = true, onClick, style }) => (
     <div onClick={onClick} style={{ position: 'sticky', left: 0, zIndex: 50, background: bg, borderRight: '2px solid #E5E7EB', borderBottom: borderBottom ? '1px solid #E5E7EB' : 'none', display: 'flex', alignItems: 'center', padding: '0 16px', fontSize: 13, fontWeight: 600, color: '#374151', cursor: onClick ? 'pointer' : 'default', height: style?.height ?? ROW_HEIGHT, minWidth: 260, maxWidth: 260, ...style }}>
         {children}
     </div>
 );
 const StickyTopCell = ({ children, bg = 'white', style }) => (
-    <div style={{ position: 'sticky', top: 0, zIndex: 40, background: bg, borderBottom: '1px solid #E5E7EB', borderRight: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 600, color: '#4B5563', ...style }}>
+    <div style={{ position: 'sticky', top: 0, zIndex: 40, background: bg, borderBottom: '1px solid #E5E7EB', borderRight: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: ROBOTO, fontSize: 13, fontWeight: 500, color: '#4B5563', ...style }}>
         {children}
     </div>
 );
@@ -353,7 +354,7 @@ const PlanningGrid = ({
                 {/* Header Dates */}
                 <div style={{ display: 'flex', borderBottom: '1px solid #E5E7EB', paddingLeft: 60 }}>
                     {gridCols.map(col => (
-                        <div key={col.toString()} style={{ flex: 1, textAlign: 'center', padding: '12px', fontWeight: 700, textTransform: 'uppercase', fontSize: 13, color: '#374151' }}>
+                        <div key={col.toString()} style={{ flex: 1, textAlign: 'center', padding: '12px', fontFamily: ROBOTO, fontWeight: 500, fontSize: 14, color: '#374151', textTransform: 'capitalize' }}>
                             {format(col, 'EEEE d', { locale: fr })}
                         </div>
                     ))}
@@ -605,8 +606,8 @@ const PlanningGrid = ({
             <div style={{ height: 'fit-content', maxHeight: '100%', overflow: 'auto', background: 'white', border: '1px solid #E0DED9', borderRadius: 12, position: 'relative' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: `260px repeat(${gridCols.length}, minmax(${MIN_WIDTH}px, 1fr))`, gridAutoRows: 'max-content', width: (view === 'year' || view === 'quarter' || view === 'month') ? 'max-content' : '100%', minWidth: '100%' }}>
                     <StickyCorner style={{ height: HEADER_HEIGHT_1, borderBottom: 'none' }} />
-                    {superHeaders.map((header, i) => (<div key={i} style={{ gridColumn: `span ${header.span}`, position: 'sticky', top: 0, zIndex: 40, background: 'white', borderBottom: '1px solid #E5E7EB', borderRight: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: 1 }}>{header.label}</div>))}
-                    <StickyCorner style={{ top: HEADER_HEIGHT_1, height: HEADER_HEIGHT_2 }}>Ressources</StickyCorner>
+                    {superHeaders.map((header, i) => (<div key={i} style={{ gridColumn: `span ${header.span}`, position: 'sticky', top: 0, zIndex: 40, background: 'white', borderBottom: '1px solid #E5E7EB', borderRight: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: ROBOTO, fontSize: 13, fontWeight: 500, color: '#6B7280' }}>{header.label}</div>))}
+                    <StickyCorner style={{ top: HEADER_HEIGHT_1, height: HEADER_HEIGHT_2 }} />
                     {gridCols.map(col => (<StickyTopCell key={col.toString()} style={{ top: HEADER_HEIGHT_1, height: HEADER_HEIGHT_2, background: isSameDay(col, new Date()) && view !== 'year' ? '#EFF6FF' : 'white', color: isSameDay(col, new Date()) && view !== 'year' ? '#2563EB' : '#4B5563' }}>{getCellContent(col)}</StickyTopCell>))}
 
                     {Object.entries(filteredGroups).map(([key, group]) => {
@@ -616,7 +617,7 @@ const PlanningGrid = ({
 
                         return (
                             <React.Fragment key={key}>
-                                <StickyLeftCell onClick={() => onToggleGroup(key)} bg={group.bg} style={{ fontWeight: 800, color: '#111827' }}>
+                                <StickyLeftCell onClick={() => onToggleGroup(key)} bg={group.bg} style={{ fontFamily: ROBOTO, fontWeight: 500, fontSize: 17, color: '#111827' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
                                         {expandedGroups[key] > 0 ? <ChevronDown size={14} style={{ marginRight: 8 }} /> : <ChevronRightIcon size={14} style={{ marginRight: 8 }} />}
                                         {group.label}
@@ -832,7 +833,7 @@ const PlanningGrid = ({
                                                                     padding: '3px 10px', background: 'rgba(255,255,255,0.5)', borderBottom: '1px dashed #FECDD3',
                                                                     fontSize: 11, fontWeight: 700, color: '#9F1239', height: 24
                                                                 }}>
-                                                                    <span>SEM {weekNum}</span>
+                                                                    <span style={{ fontFamily: ROBOTO, fontWeight: 500 }}>Semaine {weekNum}</span>
                                                                     <span style={{ color: isOverloaded ? '#EF4444' : '#9F1239' }}>
                                                                         {binLoadHours}h / {binCapHours}h
                                                                     </span>
@@ -1077,10 +1078,10 @@ const PlanningGrid = ({
                             <>
                                 <StickyLeftCell
                                     bg="#FFF"
-                                    style={{ fontWeight: 800, color: '#111827', borderTop: '2px solid #E5E7EB' }}
+                                    style={{ fontFamily: ROBOTO, fontWeight: 500, color: '#111827', borderTop: '2px solid #E5E7EB' }}
                                 >
-                                    <div style={{ display: 'flex', alignItems: 'center', flex: 1, fontSize: 14 }}>
-                                        TOTAL
+                                    <div style={{ display: 'flex', alignItems: 'center', flex: 1, fontSize: 17 }}>
+                                        Total
                                     </div>
                                     <div style={{ fontSize: 12, fontWeight: 700, color: globalStats.percent > 100 ? '#EF4444' : '#374151', background: '#F3F4F6', padding: '2px 8px', borderRadius: 4 }}>
                                         {Math.round(globalStats.percent)}%
