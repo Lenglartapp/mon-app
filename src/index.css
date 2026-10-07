@@ -119,6 +119,10 @@ button{ background:none; border:0; padding:0; margin:0; font:inherit; color:inhe
 .df-list-scroll::-webkit-scrollbar { display: none; }
 /* Tableaux MUI DataGrid dans un FitGridFrame : barre verticale masquée (la molette suffit) */
 .df-grid-fit .MuiDataGrid-scrollbar--vertical { display: none; }
+/* Moulinette : chaque bandeau de chapitre (sauf le premier, collé au cadre) a un trait au-dessus ;
+   la dernière ligne d'un chapitre n'a pas de trait (pas de double trait avec le bandeau / le cadre) */
+div:not(:first-child) > .df-moul-chapter { border-top: 1px solid #E0DED9; }
+.df-moul-row:last-child { border-bottom: none !important; }
 /* Tous les boutons de l'application en Roboto (cohérence avec titres, chiffres et libellés) */
 button,
 .MuiButton-root,
