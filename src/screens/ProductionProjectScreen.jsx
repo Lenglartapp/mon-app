@@ -56,7 +56,7 @@ function SectionPanel({ title, count, expanded, onToggle, children }) {
   return (
     <div style={{ marginBottom: 28 }}>
       {/* Titre collant : reste en haut de l'écran tant qu'on défile dans ce tableau */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 4px', height: STICKY_TITLE_HEIGHT, position: 'sticky', top: 0, zIndex: 6, background: '#ffffff' }}>
+      <div className="df-section-head" style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 4px', height: STICKY_TITLE_HEIGHT, position: 'sticky', top: 0, zIndex: 6, background: '#ffffff' }}>
         <IconButton size="small" onClick={onToggle} title={expanded ? 'Replier' : 'Déplier'} sx={{ color: '#9B9A97', ml: -0.5 }}>
           <ExpandMoreIcon sx={{ fontSize: 20, transform: expanded ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.2s ease' }} />
         </IconButton>
@@ -1336,8 +1336,12 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
           </div>
 
           {(showAllPrise || rowsRideaux.length > 0) && (
-            <div style={cardStyle}>
-              <div style={cardHeaderStyle}>Prise de Cote Rideaux / Voilages</div>
+            <SectionPanel
+              title="Prise de Cote Rideaux / Voilages"
+              count={rowsRideaux.length}
+              expanded={isPanelExpanded('prise_rideaux')}
+              onToggle={() => togglePanel('prise_rideaux')}
+            >
               <MinuteGrid
                 stickyTop={STICKY_TITLE_HEIGHT}
                 rows={rowsRideaux}
@@ -1356,12 +1360,16 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                 onRowClick={(id) => setOpenedRowId(id)}
                 isMobile={isMobile}
               />
-            </div>
+            </SectionPanel>
           )}
 
           {(showAllPrise || rowsStores.length > 0) && (
-            <div style={cardStyle}>
-              <div style={cardHeaderStyle}>Prise de Cote Stores Négoce</div>
+            <SectionPanel
+              title="Prise de Cote Stores Négoce"
+              count={rowsStores.length}
+              expanded={isPanelExpanded('prise_stores')}
+              onToggle={() => togglePanel('prise_stores')}
+            >
               <MinuteGrid
                 stickyTop={STICKY_TITLE_HEIGHT}
                 rows={rowsStores}
@@ -1377,12 +1385,16 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                 onRowClick={(id) => setOpenedRowId(id)}
                 isMobile={isMobile}
               />
-            </div>
+            </SectionPanel>
           )}
 
           {(showAllPrise || rowsStoresBateaux.length > 0) && (
-            <div style={cardStyle}>
-              <div style={cardHeaderStyle}>Prise de Cote Stores Bateaux / Velum</div>
+            <SectionPanel
+              title="Prise de Cote Stores Bateaux / Velum"
+              count={rowsStoresBateaux.length}
+              expanded={isPanelExpanded('prise_storesbateaux')}
+              onToggle={() => togglePanel('prise_storesbateaux')}
+            >
               <MinuteGrid
                 stickyTop={STICKY_TITLE_HEIGHT}
                 rows={rowsStoresBateaux}
@@ -1398,12 +1410,16 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                 onRowClick={(id) => setOpenedRowId(id)}
                 isMobile={isMobile}
               />
-            </div>
+            </SectionPanel>
           )}
 
           {(showAllPrise || rowsTentureMurale.length > 0) && (
-            <div style={cardStyle}>
-              <div style={cardHeaderStyle}>Prise de Cote Tenture Murale</div>
+            <SectionPanel
+              title="Prise de Cote Tenture Murale"
+              count={rowsTentureMurale.length}
+              expanded={isPanelExpanded('prise_tenturemurale')}
+              onToggle={() => togglePanel('prise_tenturemurale')}
+            >
               <MinuteGrid
                 stickyTop={STICKY_TITLE_HEIGHT}
                 rows={rowsTentureMurale}
@@ -1419,12 +1435,16 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                 onRowClick={(id) => setOpenedRowId(id)}
                 isMobile={isMobile}
               />
-            </div>
+            </SectionPanel>
           )}
 
           {showAllPrise && (
-            <div style={cardStyle}>
-              <div style={cardHeaderStyle}>Prise de Cote Coussins</div>
+            <SectionPanel
+              title="Prise de Cote Coussins"
+              count={rowsCoussins.length}
+              expanded={isPanelExpanded('prise_coussins')}
+              onToggle={() => togglePanel('prise_coussins')}
+            >
               <MinuteGrid
                 stickyTop={STICKY_TITLE_HEIGHT}
                 rows={rowsCoussins}
@@ -1440,12 +1460,16 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                 onRowClick={(id) => setOpenedRowId(id)}
                 isMobile={isMobile}
               />
-            </div>
+            </SectionPanel>
           )}
 
           {showAllPrise && (
-            <div style={cardStyle}>
-              <div style={cardHeaderStyle}>Prise de Cote Plaids / Chemins de Lit</div>
+            <SectionPanel
+              title="Prise de Cote Plaids / Chemins de Lit"
+              count={rowsPlaid.length}
+              expanded={isPanelExpanded('prise_plaid')}
+              onToggle={() => togglePanel('prise_plaid')}
+            >
               <MinuteGrid
                 stickyTop={STICKY_TITLE_HEIGHT}
                 rows={rowsPlaid}
@@ -1461,12 +1485,16 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                 onRowClick={(id) => setOpenedRowId(id)}
                 isMobile={isMobile}
               />
-            </div>
+            </SectionPanel>
           )}
 
           {showAllPrise && (
-            <div style={cardStyle}>
-              <div style={cardHeaderStyle}>Prise de Cote Mobilier / Tête de Lit</div>
+            <SectionPanel
+              title="Prise de Cote Mobilier / Tête de Lit"
+              count={rowsMobilier.length}
+              expanded={isPanelExpanded('prise_mobilier')}
+              onToggle={() => togglePanel('prise_mobilier')}
+            >
               <MinuteGrid
                 stickyTop={STICKY_TITLE_HEIGHT}
                 rows={rowsMobilier}
@@ -1482,12 +1510,16 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                 onRowClick={(id) => setOpenedRowId(id)}
                 isMobile={isMobile}
               />
-            </div>
+            </SectionPanel>
           )}
 
           {showAllPrise && (
-            <div style={cardStyle}>
-              <div style={cardHeaderStyle}>Prise de Cote Cache-Sommier</div>
+            <SectionPanel
+              title="Prise de Cote Cache-Sommier"
+              count={rowsCacheSommier.length}
+              expanded={isPanelExpanded('prise_cachesommier')}
+              onToggle={() => togglePanel('prise_cachesommier')}
+            >
               <MinuteGrid
                 stickyTop={STICKY_TITLE_HEIGHT}
                 rows={rowsCacheSommier}
@@ -1503,7 +1535,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                 onRowClick={(id) => setOpenedRowId(id)}
                 isMobile={isMobile}
               />
-            </div>
+            </SectionPanel>
           )}
 
         </>

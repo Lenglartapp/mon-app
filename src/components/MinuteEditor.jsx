@@ -39,7 +39,7 @@ function SectionPanel({ title, count, expanded, onToggle, onDelete, readOnly, st
   return (
     <div style={{ marginBottom: 28 }}>
       {/* Titre collant (sauf sticky=false) : reste en haut de l'écran tant qu'on défile dans ce tableau */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px', height: SECTION_TITLE_HEIGHT, ...(sticky ? { position: 'sticky', top: 0, zIndex: 6, background: '#ffffff' } : {}) }}>
+      <div className="df-section-head" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px', height: SECTION_TITLE_HEIGHT, ...(sticky ? { position: 'sticky', top: 0, zIndex: 6, background: '#ffffff' } : {}) }}>
         {/* Flèche à gauche du titre ; le titre lui-même replie / déplie aussi */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <IconButton size="small" onClick={onToggle} title={expanded ? 'Replier' : 'Déplier'} sx={{ color: '#9B9A97', ml: -0.5 }}>
