@@ -839,11 +839,13 @@ const PlanningGrid = ({
                                                                     </span>
                                                                 </div>
 
-                                                                {/* Cards Container */}
+                                                                {/* Cards Container : grille à colonnes égales, les cartes s'alignent
+                                                                    en colonnes quelle que soit la longueur des titres ; le nombre de
+                                                                    colonnes suit la largeur de l'écran. */}
                                                                 <div style={{
                                                                     flex: 1,
-                                                                    display: 'flex',
-                                                                    flexWrap: 'wrap',
+                                                                    display: 'grid',
+                                                                    gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))',
                                                                     alignItems: 'center',
                                                                     alignContent: 'center',
                                                                     padding: '4px',
@@ -976,10 +978,8 @@ const PlanningGrid = ({
                                                                                 }}
                                                                                 onClick={(e) => { e.stopPropagation(); onEventClick(evt); }}
                                                                                 style={{
-                                                                                    minWidth: 170,
-                                                                                    maxWidth: 190,
+                                                                                    minWidth: 0,
                                                                                     height: 124,
-                                                                                    flexShrink: 0,
                                                                                     background: 'white',
                                                                                     border: '1px solid #FECDD3',
                                                                                     borderRadius: 4,
@@ -1033,7 +1033,7 @@ const PlanningGrid = ({
                                                                         style={{
                                                                             minWidth: 30, height: 30, borderRadius: '50%', background: 'white',
                                                                             border: '1px dashed #FECDD3', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                                            cursor: 'pointer', color: '#FDA4AF', marginLeft: 4
+                                                                            cursor: 'pointer', color: '#FDA4AF', marginLeft: 4, width: 30, justifySelf: 'start'
                                                                         }}
                                                                     >
                                                                         <PlusIcon size={16} />
