@@ -18,14 +18,13 @@ export default function MoulinetteView({ rows, depRows, extraRows, commissionRat
 
     return (
         <div style={{ position: 'relative' }}>
-            {/* Bandeau des chiffres clés, collant : fond blanc, sans cadre ni ombre, trait fin dessous */}
+            {/* Bandeau des chiffres clés, collant : fond blanc, sans cadre, sans ombre ni trait */}
             <div style={{
                 position: 'sticky',
                 top: 0,
                 zIndex: 10,
                 background: '#FFFFFF',
                 padding: '16px 0',
-                borderBottom: '1px solid #E8E6E2',
                 marginBottom: 8,
             }}>
                 <Dashboard data={data} onOpenSimulator={() => setShowSimulator(true)} />
@@ -78,21 +77,22 @@ export default function MoulinetteView({ rows, depRows, extraRows, commissionRat
 // COMPONENTS
 // —————————————————————————————————————————————————————————
 
+// 7 chiffres clés, tous au même format et sur une seule ligne (les pourcentages sont des
+// indicateurs à part entière), puis le bouton Objectif.
 function Dashboard({ data, onOpenSimulator }) {
     const { kpis } = data;
     return (
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 40, flexWrap: 'wrap' }}>
-            <KPI label="CA total" value={nfEur0.format(kpis.ca_total)} size="lg" />
-            <KPI
-                label="Marge brute"
-                value={nfEur0.format(kpis.marge_brute)}
-                sub={pct(kpis.marge_brute_pct)}
-                alert={kpis.marge_brute_pct < 30}
-            />
-            <KPI label="Contribution" value={nfEur0.format(kpis.contribution)} sub={pct(kpis.contribution_pct)} />
-            <KPI label="Total heures" value={nf0.format(kpis.total_heures) + ' h'} />
-            <KPI label="Contribution horaire" value={<>{nfEur0.format(kpis.contribution_horaire)}<span style={{ fontSize: 16, color: '#6B7280' }}> /h</span></>} highlight />
-            <div style={{ marginLeft: 'auto', paddingBottom: 4 }}>
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16 }}>
+            <div style={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, auto))', justifyContent: 'space-between', gap: 24 }}>
+                <KPI label="CA total" value={nfEur0.format(kpis.ca_total)} />
+                <KPI label="Marge brute" value={nfEur0.format(kpis.marge_brute)} />
+                <KPI label="% marge brute" value={pct(kpis.marge_brute_pct)} alert={kpis.marge_brute_pct < 30} />
+                <KPI label="Contribution" value={nfEur0.format(kpis.contribution)} />
+                <KPI label="% contribution" value={pct(kpis.contribution_pct)} />
+                <KPI label="Total heures" value={nf0.format(kpis.total_heures) + ' h'} />
+                <KPI label="Contribution horaire" value={<>{nfEur0.format(kpis.contribution_horaire)}<span style={{ fontSize: 16, color: '#6B7280' }}> /h</span></>} highlight />
+            </div>
+            <div style={{ paddingBottom: 2, marginLeft: 16 }}>
                 <ToolbarButton primary icon={<Target size={16} />} onClick={onOpenSimulator} title="Simuler un objectif de rentabilité">
                     Objectif
                 </ToolbarButton>
@@ -101,16 +101,15 @@ function Dashboard({ data, onOpenSimulator }) {
     );
 }
 
-// Chiffre clé : libellé gris, grand chiffre Roboto fin ; pourcentage en dessous.
+// Chiffre clé : libellé gris, grand chiffre Roboto fin (même taille pour tous).
 // `alert` : marge sous le seuil (rouge) ; `highlight` : indicateur principal (bleu nuit).
-function KPI({ label, value, sub, size = 'md', alert, highlight }) {
+function KPI({ label, value, alert, highlight }) {
     return (
-        <div>
+        <div style={{ whiteSpace: 'nowrap' }}>
             <div style={{ fontSize: 13, color: '#9B9A97', fontFamily: ROBOTO, marginBottom: 2 }}>{label}</div>
-            <div style={{ fontFamily: ROBOTO, fontSize: size === 'lg' ? 34 : 28, fontWeight: 300, lineHeight: 1.1, color: alert ? '#DC2626' : highlight ? '#1E2447' : '#111827' }}>
+            <div style={{ fontFamily: ROBOTO, fontSize: 28, fontWeight: 300, lineHeight: 1.15, color: alert ? '#DC2626' : highlight ? '#1E2447' : '#111827' }}>
                 {value}
             </div>
-            {sub && <div style={{ fontSize: 13, color: alert ? '#DC2626' : '#6B7280', fontFamily: ROBOTO, marginTop: 2 }}>{sub}</div>}
         </div>
     );
 }
