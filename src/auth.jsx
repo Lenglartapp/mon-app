@@ -29,9 +29,12 @@ export const AuthProvider = ({ children }) => {
     });
 
     // 2. Auth State Changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (session?.user) {
         syncUser(session.user);
+        // L'équipe (profiles) n'est lisible qu'une fois connecté (RLS) : on la recharge
+        // à la connexion, sinon la liste chargée avant le login resterait vide.
+        if (event === 'SIGNED_IN') fetchUsers();
       } else {
         setCurrentUser(null);
         setLoading(false);

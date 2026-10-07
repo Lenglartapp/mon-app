@@ -600,15 +600,26 @@ function AppShell() {
   );
 }
 
+// Les données ne sont lisibles qu'une fois connecté (RLS réservée aux connectés) :
+// on ne monte les chargements (projets, chiffrages, planning, activité, notifications)
+// QU'APRÈS la connexion. `key` : changer d'utilisateur repart d'un état propre.
+function AuthGate() {
+  const { currentUser } = useAuth();
+  if (!currentUser) return <LoginScreen />;
+  return (
+    <ActivityProvider key={currentUser.id || currentUser.email}>
+      <NotificationProvider>
+        <AppShell />
+      </NotificationProvider>
+    </ActivityProvider>
+  );
+}
+
 export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <ActivityProvider>
-          <NotificationProvider>
-            <AppShell />
-          </NotificationProvider>
-        </ActivityProvider>
+        <AuthGate />
       </AuthProvider>
     </BrowserRouter>
   );
