@@ -189,7 +189,7 @@ export default function MobilePlanningAgenda({
                             {list.length === 0 ? (
                                 <div style={{ fontSize: 13, color: '#9CA3AF', padding: '2px 2px 4px' }}>Rien de prévu</div>
                             ) : (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                <div className="df-agenda-list" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                                     {list.map(evt => {
                                         const isMine = evt.resourceId === currentUser?.id;
                                         const decouche = !!evt.meta?.decouche;

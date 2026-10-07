@@ -150,7 +150,7 @@ export default function StockDashboardTab({ inventory = [], projects = [], movem
         <div style={{ width: '100%', boxSizing: 'border-box' }}>
 
             {/* ── LIGNE 1 : 4 blocs égaux ── */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 20, marginBottom: 20 }}>
+            <div className="df-inv-kpis" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 20, marginBottom: 20 }}>
 
                 {/* Occupation générale */}
                 <div style={card}>

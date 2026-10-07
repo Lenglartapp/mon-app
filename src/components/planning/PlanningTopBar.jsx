@@ -67,9 +67,9 @@ const PlanningTopBar = ({
         color: '#374151', cursor: 'pointer',
     };
     return (
-        <div style={{ display: 'flex', alignItems: 'center', padding: '16px 24px', background: '#FFFFFF' }}>
+        <div className="df-plan-bar" style={{ display: 'flex', alignItems: 'center', padding: '16px 24px', background: '#FFFFFF' }}>
             {/* GAUCHE (flex:1 pour centrer la recherche) */}
-            <div style={{ flex: 1, display: 'flex', gap: 12, alignItems: 'center', minWidth: 0 }}>
+            <div className="df-plan-left" style={{ flex: 1, display: 'flex', gap: 12, alignItems: 'center', minWidth: 0 }}>
                 <button onClick={onNew} style={{ background: '#111827', color: '#fff', border: 'none', borderRadius: 6, padding: '8px 16px', fontWeight: 600, fontSize: 14, cursor: 'pointer', whiteSpace: 'nowrap' }}>Nouveau</button>
                 {canManageTeam && (
                     <button onClick={onManageTeam} style={{ background: 'white', color: '#374151', border: '1px solid #D1D5DB', borderRadius: 6, padding: '8px 16px', fontWeight: 600, fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap' }}>
@@ -126,7 +126,7 @@ const PlanningTopBar = ({
             </div>
 
             {/* CENTRE : recherche centrée */}
-            <div style={{ flexShrink: 0, width: 'min(520px, 40vw)' }}>
+            <div className="df-plan-search" style={{ flexShrink: 0, width: 'min(520px, 40vw)' }}>
                 <SmartFilterBar
                     fields={PLANNING_SEARCH_FIELDS}
                     activeFilters={activeFilters}
@@ -140,6 +140,7 @@ const PlanningTopBar = ({
             {onToggleHistory && (
                 <button
                     onClick={onToggleHistory}
+                    className="df-plan-hist"
                     title="Historique des créneaux par dossier"
                     style={{
                         flexShrink: 0, marginLeft: 10,
@@ -155,7 +156,7 @@ const PlanningTopBar = ({
             )}
 
             {/* DROITE (flex:1) */}
-            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 12, minWidth: 0 }}>
+            <div className="df-plan-right" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 12, minWidth: 0 }}>
                 <div style={{ display: 'flex', background: '#fff', borderRadius: 6, border: '1px solid #E0DED9', padding: 2 }}>
                     <button onClick={onPrev} style={{ border: 'none', background: 'transparent', padding: '6px 8px', cursor: 'pointer' }}><ChevronLeft size={16} /></button>
                     <button onClick={onNext} style={{ border: 'none', background: 'transparent', padding: '6px 8px', cursor: 'pointer' }}><ChevronRight size={16} /></button>
@@ -175,14 +176,15 @@ const PlanningTopBar = ({
                         alignItems: 'center',
                         gap: 8,
                         fontWeight: 600,
-                        fontSize: 13
+                        fontSize: 13,
+                        whiteSpace: 'nowrap'
                     }}
                 >
                     <User size={16} /> Ma Vue
                 </button>
 
                 <ViewSelector view={view} onViewChange={onViewChange} customRange={customRange} onCustomRangeChange={onCustomRangeChange} showWeekends={showWeekends} onToggleWeekends={onToggleWeekends} />
-                <button onClick={onToday} style={{ background: 'transparent', color: '#111827', border: 'none', padding: '0 8px', fontSize: 13, fontWeight: 700, cursor: 'pointer', textDecoration: 'underline' }}>Aujourd'hui</button>
+                <button onClick={onToday} style={{ background: 'transparent', color: '#111827', border: 'none', padding: '0 8px', fontSize: 13, fontWeight: 700, cursor: 'pointer', textDecoration: 'underline', whiteSpace: 'nowrap' }}>Aujourd'hui</button>
             </div>
         </div>
     );

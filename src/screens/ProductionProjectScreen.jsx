@@ -1064,9 +1064,9 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
         />
 
         {/* Ligne des vues : actions du dossier à gauche, vues au centre, docs + impression à droite */}
-        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'minmax(0,1fr)' : 'minmax(0,1fr) auto minmax(0,1fr)', alignItems: 'center', gap: 16, marginTop: 104, paddingBottom: 8 }}>
+        <div className="df-prj-nav" style={{ display: 'grid', gridTemplateColumns: isMobile ? 'minmax(0,1fr)' : 'minmax(0,1fr) auto minmax(0,1fr)', alignItems: 'center', gap: 16, marginTop: 104, paddingBottom: 8 }}>
           {/* Actions du dossier (à gauche) */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-start' }}>
+          <div className="df-prj-left" style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-start' }}>
             {/* Matériauthèque Button */}
             <button
               onClick={() => setShowMaterials(true)}
@@ -1110,7 +1110,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
               </button>
             )}
           </div>
-          <div className="island-nav-container" style={{ display: 'inline-flex', gap: 2, maxWidth: '100%', overflowX: isMobile ? 'auto' : 'visible', justifySelf: 'center' }}>
+          <div className="island-nav-container df-prj-views" style={{ display: 'inline-flex', gap: 2, maxWidth: '100%', overflowX: isMobile ? 'auto' : 'visible', justifySelf: 'center' }}>
             {visibleStages.map((p) => (
               <button
                 key={p.key}
@@ -1125,7 +1125,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
             ))}
           </div>
           {/* Documents + impression (à droite) */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: isMobile ? 'flex-start' : 'flex-end', gap: 10, flexWrap: 'wrap' }}>
+          <div className="df-prj-right" style={{ display: 'flex', alignItems: 'center', justifyContent: isMobile ? 'flex-start' : 'flex-end', gap: 10, flexWrap: 'wrap' }}>
             {/* Documents Button - Visible Mobile & Desktop */}
             <button
               onClick={() => setShowDocs(true)}
@@ -1173,7 +1173,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
       </div>
 
       {stage === "dashboard" && (
-        <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 24, alignItems: 'flex-start' }}>
+        <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 24, alignItems: isMobile ? 'stretch' : 'flex-start' }}>
 
           {/* ── COLONNE GAUCHE : stats ── */}
           <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 16, paddingTop: 4 }}>

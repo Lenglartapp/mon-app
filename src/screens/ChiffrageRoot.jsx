@@ -698,6 +698,7 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
                   <th
                     key={key}
                     title={title}
+                    className={key === 'marge_eur' || key === 'renta_hh' ? 'df-col-tab-hide' : undefined}
                     onClick={() => handleSort(key)}
                     style={{ padding: '12px 8px', fontSize: 13, fontWeight: 600, color: '#374151', textAlign: 'right', cursor: 'pointer', userSelect: 'none' }}
                   >
@@ -710,7 +711,7 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
                   </th>
                 ))}
 
-                <th style={{ padding: '12px 8px', fontSize: 13, fontWeight: 600, color: '#374151' }}>Mise à jour</th>
+                <th className="df-col-tab-hide" style={{ padding: '12px 8px', fontSize: 13, fontWeight: 600, color: '#374151' }}>Mise à jour</th>
                 <th style={{ padding: '12px 8px', fontSize: 13, fontWeight: 600, color: '#374151' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <span title="Chargé d'affaires">Chargé d'aff.</span>
@@ -817,23 +818,23 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
                             <td style={{ padding: '12px 8px', textAlign: 'right', whiteSpace: 'nowrap' }}>
                               <div style={{ fontWeight: 700, color: mColor, fontSize: 14 }}>{Math.round(m.marge_pct)} %</div>
                             </td>
-                            <td style={{ padding: '12px 8px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                            <td className="df-col-tab-hide" style={{ padding: '12px 8px', textAlign: 'right', whiteSpace: 'nowrap' }}>
                               <div style={{ fontSize: 14, color: '#4B5563' }}>{Math.round(m.marge_eur).toLocaleString("fr-FR")} €</div>
                             </td>
-                            <td style={{ padding: '12px 8px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                            <td className="df-col-tab-hide" style={{ padding: '12px 8px', textAlign: 'right', whiteSpace: 'nowrap' }}>
                               <div style={{ fontWeight: 700, color: '#1E3A8A', fontSize: 14 }}>
                                 {Math.round(m.renta_hh).toLocaleString("fr-FR")} <small style={{ fontSize: 10, color: '#9CA3AF' }}>€/h</small>
                               </div>
                             </td>
                           </>
                         )}
-                        <td style={{ padding: '12px 8px', color: '#6B7280', fontSize: 13 }}>
+                        <td className="df-col-tab-hide" style={{ padding: '12px 8px', color: '#6B7280', fontSize: 13 }}>
                           {new Date(m.updatedAt || m.createdAt).toLocaleDateString("fr-FR")} <small>{new Date(m.updatedAt || m.createdAt).toLocaleTimeString("fr-FR", { hour: '2-digit', minute: '2-digit' })}</small>
                         </td>
                         <td style={{ padding: '12px 8px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }} onClick={(e) => handleOwnerClick(e, m.id)}>
                             <Avatar sx={{ width: 26, height: 26, fontSize: 11, bgcolor: stringToColor(m.owner || "?") }}>{(m.owner?.[0] || "?").toUpperCase()}</Avatar>
-                            <span style={{ fontSize: 13, color: '#374151', fontWeight: 500 }}>{m.owner || "—"}</span>
+                            <span className="df-col-tab-hide" style={{ fontSize: 13, color: '#374151', fontWeight: 500 }}>{m.owner || "—"}</span>
                           </div>
                         </td>
                         <td style={{ padding: '12px 8px', textAlign: 'right', whiteSpace: 'nowrap', position: 'sticky', right: 0, background: 'inherit' }} onClick={(e) => e.stopPropagation()}>

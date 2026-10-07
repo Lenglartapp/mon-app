@@ -700,7 +700,7 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
           onSave={(v) => { setName(v); updateMinute({ name: v }); }}
         />
         <div style={{ fontSize: 15, color: '#6B7280', marginTop: 2 }}>{minute?.client || "Client non spécifié"}</div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1.3fr) minmax(0,1fr)', gap: 28, marginTop: 14, alignItems: 'start' }}>
+        <div className="df-chf-head" style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1.3fr) minmax(0,1fr)', gap: 28, marginTop: 14, alignItems: 'start' }}>
           {/* Une seule ligne : chargé d'affaires · créé le · livraison · historique · statut */}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px 28px', alignItems: 'flex-end', minWidth: 0 }}>
             <MetaItem label="Chargé d'affaires">
@@ -745,20 +745,22 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
         </div>
 
         {/* Intercalaires de variantes (gauche) + actions (droite) */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) auto minmax(0,1fr)', alignItems: 'flex-end', gap: 16, marginTop: 32, borderBottom: '1px solid #E0DED9' }}>
-          <VariantTabs
-            tabs={familyTabs}
-            activeId={minute?.id}
-            onOpen={(id) => onOpenMinute?.(id)}
-            onCreate={canEdit ? handleCreateVariant : undefined}
-          />
+        <div className="df-chf-nav" style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) auto minmax(0,1fr)', alignItems: 'flex-end', gap: 16, marginTop: 32, borderBottom: '1px solid #E0DED9' }}>
+          <div className="df-chf-tabs" style={{ minWidth: 0 }}>
+            <VariantTabs
+              tabs={familyTabs}
+              activeId={minute?.id}
+              onOpen={(id) => onOpenMinute?.(id)}
+              onCreate={canEdit ? handleCreateVariant : undefined}
+            />
+          </div>
         {/* Vues du chiffrage, au centre de la ligne des variantes */}
-        <div style={{ display: 'inline-flex', gap: 2, marginBottom: 8 }}>
+        <div className="df-chf-views" style={{ display: 'inline-flex', gap: 2, marginBottom: 8 }}>
           <button style={getNavStyle(activeTab === "minutes")} onClick={() => setActiveTab("minutes")}>Minutes</button>
           <button style={getNavStyle(activeTab === "achats")} onClick={() => setActiveTab("achats")}>Liste Achats</button>
           {can(currentUser, "chiffrage.moulinette") && <button style={getNavStyle(activeTab === "moulinette")} onClick={() => setActiveTab("moulinette")}>Moulinette</button>}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10, flexWrap: 'wrap', marginBottom: 8 }}>
+        <div className="df-chf-actions" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10, flexWrap: 'wrap', marginBottom: 8 }}>
           <input
             type="file"
             ref={fileInputRef}
