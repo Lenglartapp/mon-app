@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { COLORS } from '../../../lib/constants/ui';
+import { X } from 'lucide-react';
+
+const ROBOTO = 'Roboto, system-ui, sans-serif';
 
 const nfEur0 = new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
 const nf2 = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 2 });
@@ -84,80 +86,65 @@ export default function ProfitabilitySimulatorModal({ currentData, onClose }) {
     const delta = targetCA - currentData.kpis.ca_total;
 
     return (
-        <div style={{
-            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-            background: 'rgba(0,0,0,0.5)', zIndex: 9999,
+        <div onClick={onClose} style={{
+            position: 'fixed', inset: 0,
+            background: 'rgba(17,24,39,0.4)', zIndex: 9999,
             display: 'flex', alignItems: 'center', justifyContent: 'center'
         }}>
-            <div style={{
-                background: 'white', borderRadius: 16, padding: '24px 32px', width: 500,
-                boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)'
+            <div onClick={(e) => e.stopPropagation()} style={{
+                background: 'white', borderRadius: 12, width: 540, overflow: 'hidden',
+                boxShadow: '0 20px 40px rgba(17,24,39,0.18)', fontFamily: ROBOTO,
             }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 24 }}>
+                {/* En-tête : titre Roboto + sous-titre, croix de fermeture */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '22px 28px 16px', borderBottom: '1px solid #E8E6E2' }}>
                     <div>
-                        <h2 style={{ margin: 0, fontSize: 20 }}>🎯 Simulateur de Rentabilité</h2>
-                        <div style={{ fontSize: 13, color: '#6b7280', marginTop: 4 }}>
+                        <div style={{ fontSize: 24, fontWeight: 400, color: '#111827' }}>Simulateur de rentabilité</div>
+                        <div style={{ fontSize: 13, color: '#6B7280', marginTop: 4 }}>
                             Modifiez un paramètre, les autres s'ajustent.
                         </div>
                     </div>
-                    <button onClick={onClose} style={{ border: 'none', background: 'transparent', fontSize: 24, cursor: 'pointer', color: '#9ca3af' }}>×</button>
+                    <button onClick={onClose} title="Fermer" style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#9B9A97', display: 'flex', padding: 4 }}>
+                        <X size={20} />
+                    </button>
                 </div>
 
-                {/* INPUT GRID */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 24 }}>
-
-                    {/* INPUT A: HOURLY */}
-                    <InputBlock
-                        label="Contrib. Horaire"
-                        suffix="€/h"
-                        value={values.hourly}
-                        onChange={handleChangeHourly}
-                        color="blue"
-                    />
-
-                    {/* INPUT B: VALUE */}
-                    <InputBlock
-                        label="Contrib. Valeur"
-                        suffix="€"
-                        value={values.value}
-                        onChange={handleChangeValue}
-                    />
-
-                    {/* INPUT C: PERCENT */}
-                    <InputBlock
-                        label="Contrib. %"
-                        suffix="%"
-                        value={values.percent}
-                        onChange={handleChangePercent}
-                        max={100 - (Com_Rate * 100) - 1} // max safety
-                    />
-                </div>
-
-                {/* RESULT CARD */}
-                <div style={{ background: '#f0f9ff', padding: 20, borderRadius: 12, marginBottom: 24, border: '1px solid #bae6fd' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 8 }}>
-                        <div style={{ fontSize: 13, color: '#0369a1', fontWeight: 600, textTransform: 'uppercase' }}>
-                            Chiffre d'Affaires Cible
-                        </div>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: delta > 0 ? '#dc2626' : '#16a34a' }}>
-                            {delta > 0 ? '+' : ''}{nfEur0.format(delta)}
-                        </div>
+                <div style={{ padding: '20px 28px 24px' }}>
+                    {/* Les 3 leviers : chacun recalcule les deux autres et le CA cible */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14, marginBottom: 24 }}>
+                        <InputBlock label="Contribution horaire" suffix="€/h" value={values.hourly} onChange={handleChangeHourly} />
+                        <InputBlock label="Contribution" suffix="€" value={values.value} onChange={handleChangeValue} />
+                        <InputBlock
+                            label="% contribution"
+                            suffix="%"
+                            value={values.percent}
+                            onChange={handleChangePercent}
+                            max={100 - (Com_Rate * 100) - 1} // max safety
+                        />
                     </div>
 
-                    <div style={{ fontSize: 36, fontWeight: 800, color: '#0c4a6e', lineHeight: 1 }}>
-                        {targetCA === Infinity ? "IMPOSSIBLE" : nfEur0.format(targetCA)}
+                    {/* Résultat : grand chiffre, sans encadré coloré */}
+                    <div style={{ fontSize: 13, color: '#9B9A97' }}>Chiffre d'affaires cible</div>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 14, flexWrap: 'wrap', marginTop: 2 }}>
+                        <div style={{ fontSize: 40, fontWeight: 300, color: '#1E2447', lineHeight: 1.1 }}>
+                            {targetCA === Infinity ? 'Impossible' : nfEur0.format(targetCA)}
+                        </div>
+                        {targetCA !== Infinity && (
+                            <div style={{ fontSize: 14, color: '#6B7280' }}>
+                                {delta > 0 ? '+' : ''}{nfEur0.format(delta)} par rapport au CA actuel
+                            </div>
+                        )}
                     </div>
-                </div>
 
-                <div style={{ fontSize: 12, color: '#6b7280', lineHeight: 1.5, background: '#F4F4F4', padding: 12, borderRadius: 8 }}>
-                    <strong>Paramètres fixes :</strong> Heures ({nf2.format(H)}h), Coûts Fixes (+Matériel) ({nfEur0.format(Fixed_Costs)}) et Taux Commission ({(Com_Rate * 100).toFixed(1)}%).
+                    <div style={{ fontSize: 12, color: '#6B7280', lineHeight: 1.5, marginTop: 20, paddingTop: 14, borderTop: '1px solid #E8E6E2' }}>
+                        Paramètres fixes : heures ({nf2.format(H)} h), coûts fixes matériel compris ({nfEur0.format(Fixed_Costs)}) et taux de commission ({(Com_Rate * 100).toFixed(1).replace('.', ',')} %).
+                    </div>
                 </div>
             </div>
         </div>
     );
 }
 
-function InputBlock({ label, suffix, value, onChange, color = 'gray', max }) {
+function InputBlock({ label, suffix, value, onChange, max }) {
     const [localValue, setLocalValue] = useState(Number(value).toFixed(2));
     const focused = useRef(false);
 
@@ -185,7 +172,7 @@ function InputBlock({ label, suffix, value, onChange, color = 'gray', max }) {
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <label style={{ fontSize: 12, fontWeight: 600, color: '#4b5563', whiteSpace: 'nowrap' }}>{label}</label>
+            <label style={{ fontSize: 13, color: '#6B7280', whiteSpace: 'nowrap' }}>{label}</label>
             <div style={{ position: 'relative' }}>
                 <input
                     type="number"
@@ -198,9 +185,10 @@ function InputBlock({ label, suffix, value, onChange, color = 'gray', max }) {
                         padding: '10px 12px',
                         paddingRight: 30,
                         borderRadius: 8,
-                        border: `2px solid ${color === 'blue' ? COLORS.primary : '#e5e7eb'}`,
+                        border: '1px solid #E0DED9',
                         fontSize: 16,
-                        fontWeight: 700,
+                        fontWeight: 500,
+                        fontFamily: 'inherit',
                         color: '#111827',
                         outline: 'none',
                         boxSizing: 'border-box'
@@ -213,7 +201,7 @@ function InputBlock({ label, suffix, value, onChange, color = 'gray', max }) {
                     transform: 'translateY(-50%)',
                     fontSize: 12,
                     fontWeight: 600,
-                    color: '#9ca3af'
+                    color: '#9B9A97'
                 }}>
                     {suffix}
                 </span>

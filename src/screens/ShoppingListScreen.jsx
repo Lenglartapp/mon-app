@@ -1,20 +1,7 @@
-import React, { useMemo } from 'react';
-import {
-    Accordion,
-    AccordionSummary,
-    AccordionDetails,
-    Typography,
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableRow,
-    Box,
-    Chip
-} from '@mui/material';
-import { ChevronDown, Download } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { ChevronDown, ChevronRight, Download } from 'lucide-react';
 import { aggregatePurchaseChapters, PURCHASE_CHAPTERS, sumPA } from '../lib/purchases/chapters';
-import { COLORS, S } from '../lib/constants/ui';
+import { ToolbarButton } from '../components/ui/ToolbarControls';
 
 const formatPrice = (p) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(p);
 const formatQty = (q) => Number(q).toLocaleString('fr-FR', { maximumFractionDigits: 2 });
@@ -68,112 +55,115 @@ export default function ShoppingListScreen({ minutes = [] }) {
         document.body.removeChild(link);
     };
 
-    // Un chapitre reste affiché même vide, avec un total à 0.
-    const Section = ({ title, items }) => (
-        <div style={{ ...S.modernCard, padding: 24, marginBottom: 24 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', mb: 3 }}>
-                <Typography variant="h6" sx={{ fontWeight: 700, fontSize: 16, color: '#374151', textTransform: 'uppercase' }}>
-                    {title}
-                </Typography>
-                <Typography sx={{ fontWeight: 700, fontSize: 15, color: '#166534' }}>
-                    {formatPrice(sumPA(items))}
-                </Typography>
-            </Box>
-
-            {items.length === 0 ? (
-                <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
-                    Aucun article dans ce chapitre.
-                </Typography>
-            ) : (
-                items.map((item, idx) => (
-                    <Accordion key={`${item.label}-${idx}`} disableGutters elevation={0} sx={{ border: `1px solid ${COLORS.border}`, '&:before': { display: 'none' }, mb: 1, borderRadius: '8px !important' }}>
-                        <AccordionSummary expandIcon={<ChevronDown size={20} />}>
-                            <Box sx={{ display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'space-between', pr: 2 }}>
-                                <Typography sx={{ fontWeight: 600 }}>{item.label}</Typography>
-                                <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-                                    {/* L'unité est portée par la ligne, pas par le chapitre : un même
-                                        chapitre mélange des articles au mètre et à l'unité. */}
-                                    <Chip
-                                        label={`Total : ${formatQty(item.qty)} ${item.unit}`}
-                                        size="small"
-                                        color="primary"
-                                        variant="outlined"
-                                    />
-                                    <Chip
-                                        label={`Coût : ${formatPrice(item.pa)}`}
-                                        size="small"
-                                        color="default"
-                                        variant="outlined"
-                                        sx={{ fontWeight: 600, bgcolor: '#f0fdf4', borderColor: '#bbf7d0', color: '#166534' }}
-                                    />
-                                </div>
-                            </Box>
-                        </AccordionSummary>
-                        <AccordionDetails sx={{ bgcolor: '#f8fafc', borderTop: `1px solid ${COLORS.border}` }}>
-                            <Table size="small">
-
-                                <TableHead>
-                                    <TableRow>
-                                        <TableCell>Minute</TableCell>
-                                        <TableCell>Zone</TableCell>
-                                        <TableCell>Pièce</TableCell>
-                                        <TableCell>Produit</TableCell>
-                                        <TableCell>Détail / Dimensions</TableCell>
-                                        <TableCell align="right">Qté ({item.unit})</TableCell>
-                                        <TableCell align="right">Coût (€)</TableCell>
-                                    </TableRow>
-                                </TableHead>
-                                <TableBody>
-                                    {item.sources.map((src, i) => (
-                                        <TableRow key={i}>
-                                            <TableCell sx={{ color: 'text.secondary' }}>{src.minute}</TableCell>
-                                            <TableCell>{src.zone}</TableCell>
-                                            <TableCell>{src.piece}</TableCell>
-                                            <TableCell>{src.produit}</TableCell>
-                                            <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>{src.detail}</TableCell>
-                                            <TableCell align="right" sx={{ fontWeight: 500 }}>
-                                                {formatQty(src.qty)}
-                                            </TableCell>
-                                            <TableCell align="right" sx={{ fontWeight: 500 }}>
-                                                {formatPrice(src.pa)}
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </AccordionDetails>
-                    </Accordion>
-                ))
-            )}
-        </div>
-    );
-
     return (
-        <Box sx={{ p: 0 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                <Typography variant="h5" sx={{ fontWeight: 700 }}>Liste des Achats Consolidée</Typography>
-                <button
-                    onClick={exportCSV}
-                    style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 8,
-                        padding: '8px 16px',
-                        background: '#fff',
-                        border: `1px solid ${COLORS.border}`,
-                        borderRadius: 6,
-                        cursor: 'pointer',
-                        fontWeight: 500
-                    }}
-                >
-                    <Download size={16} /> Export CSV
-                </button>
-            </Box>
+        <div>
+            {/* Barre du haut : export (même style que les autres barres) */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: 8 }}>
+                <ToolbarButton icon={<Download size={16} />} onClick={exportCSV} title="Exporter le détail en CSV">
+                    Exporter CSV
+                </ToolbarButton>
+            </div>
 
             {PURCHASE_CHAPTERS.map(ch => (
                 <Section key={ch.key} title={ch.label} items={chapters[ch.key]} />
             ))}
-            <Section title="Sous-traitance (Pose & Confection)" items={chapters.sous_traitance} />
-        </Box >
+            <Section title="Sous-traitance (pose & confection)" items={chapters.sous_traitance} />
+        </div>
+    );
+}
+
+const ROBOTO = 'Roboto, system-ui, sans-serif';
+const TH = { padding: '10px 12px', fontSize: 13, fontWeight: 600, color: '#374151', background: '#F4F4F4', borderBottom: '1px solid #E0DED9', textAlign: 'left', whiteSpace: 'nowrap' };
+const TD = { padding: '10px 12px', fontSize: 13, color: '#111827', borderBottom: '1px solid #E8E6E2', verticalAlign: 'middle' };
+
+// Chapitre : titre repliable (même rendu que les sections du chiffrage) + tableau au contour des listes.
+// Un chapitre reste affiché même vide, avec un total à 0.
+function Section({ title, items }) {
+    const [open, setOpen] = useState(true);
+    return (
+        <div style={{ marginTop: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, height: 44 }}>
+                <button onClick={() => setOpen(o => !o)} title={open ? 'Replier' : 'Déplier'} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#9B9A97', display: 'flex', padding: 4, marginLeft: -4 }}>
+                    <ChevronDown size={20} style={{ transform: open ? 'none' : 'rotate(-90deg)', transition: 'transform .2s ease' }} />
+                </button>
+                <h3 onClick={() => setOpen(o => !o)} style={{ margin: 0, fontSize: 20, fontWeight: 500, color: '#111827', fontFamily: ROBOTO, cursor: 'pointer' }}>{title}</h3>
+                <span style={{ color: '#9B9A97', fontSize: 13, fontFamily: ROBOTO, marginLeft: 4, alignSelf: 'flex-end', paddingBottom: 13 }}>
+                    {items.length} {items.length > 1 ? 'articles' : 'article'}
+                </span>
+                <span style={{ marginLeft: 'auto', fontFamily: ROBOTO, fontSize: 18, fontWeight: 500, color: '#111827' }}>{formatPrice(sumPA(items))}</span>
+            </div>
+            {open && (
+                <div style={{ border: '1px solid #E0DED9', borderRadius: 8, overflow: 'hidden', background: 'white' }}>
+                    {items.length === 0 ? (
+                        <div style={{ padding: '14px 12px', fontSize: 13, color: '#9CA3AF' }}>Aucun article dans ce chapitre.</div>
+                    ) : (
+                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                            <thead>
+                                <tr>
+                                    <th style={{ ...TH, width: 36 }} />
+                                    <th style={TH}>Article</th>
+                                    <th style={{ ...TH, textAlign: 'right', width: 160 }}>Quantité</th>
+                                    <th style={{ ...TH, textAlign: 'right', width: 160 }}>Coût</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {items.map((item, idx) => <ItemRows key={`${item.label}-${idx}`} item={item} last={idx === items.length - 1} />)}
+                            </tbody>
+                        </table>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+}
+
+// Ligne d'article : clic pour déplier le détail par ligne de minute (zone, pièce, produit, dimensions).
+function ItemRows({ item, last }) {
+    const [open, setOpen] = useState(false);
+    const lastBorder = last && !open ? { borderBottom: 'none' } : null;
+    return (
+        <>
+            <tr onClick={() => setOpen(o => !o)} style={{ cursor: 'pointer', background: open ? '#F7F7F5' : 'white' }}>
+                <td style={{ ...TD, ...lastBorder, color: '#9B9A97', textAlign: 'center' }}>{open ? <ChevronDown size={16} /> : <ChevronRight size={16} />}</td>
+                <td style={{ ...TD, ...lastBorder, fontWeight: 500 }}>{item.label}</td>
+                {/* L'unité est portée par la ligne, pas par le chapitre : un même
+                    chapitre mélange des articles au mètre et à l'unité. */}
+                <td style={{ ...TD, ...lastBorder, textAlign: 'right' }}>{formatQty(item.qty)} <span style={{ color: '#6B7280' }}>{item.unit}</span></td>
+                <td style={{ ...TD, ...lastBorder, textAlign: 'right', fontWeight: 600 }}>{formatPrice(item.pa)}</td>
+            </tr>
+            {open && (
+                <tr>
+                    <td colSpan={4} style={{ ...TD, padding: '4px 12px 12px 48px', background: '#F7F7F5', ...(last ? { borderBottom: 'none' } : null) }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                            <thead>
+                                <tr>
+                                    {['Minute', 'Zone', 'Pièce', 'Produit', 'Détail / dimensions'].map(h => (
+                                        <th key={h} style={{ ...TH, background: 'transparent', fontSize: 12, color: '#6B7280', padding: '8px 8px' }}>{h}</th>
+                                    ))}
+                                    <th style={{ ...TH, background: 'transparent', fontSize: 12, color: '#6B7280', padding: '8px 8px', textAlign: 'right' }}>Qté ({item.unit})</th>
+                                    <th style={{ ...TH, background: 'transparent', fontSize: 12, color: '#6B7280', padding: '8px 8px', textAlign: 'right' }}>Coût</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {item.sources.map((src, i) => {
+                                    const cell = { padding: '7px 8px', fontSize: 13, color: '#374151', borderBottom: i === item.sources.length - 1 ? 'none' : '1px solid #E8E6E2' };
+                                    return (
+                                        <tr key={i}>
+                                            <td style={{ ...cell, color: '#6B7280' }}>{src.minute}</td>
+                                            <td style={cell}>{src.zone}</td>
+                                            <td style={cell}>{src.piece}</td>
+                                            <td style={cell}>{src.produit}</td>
+                                            <td style={{ ...cell, color: '#6B7280' }}>{src.detail}</td>
+                                            <td style={{ ...cell, textAlign: 'right' }}>{formatQty(src.qty)}</td>
+                                            <td style={{ ...cell, textAlign: 'right', fontWeight: 500 }}>{formatPrice(src.pa)}</td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </td>
+                </tr>
+            )}
+        </>
     );
 }

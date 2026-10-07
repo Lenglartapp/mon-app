@@ -133,6 +133,7 @@ export default function StockMovementsTab({ movements, onAddMovement, projects =
                     onChange={setSearch}
                     placeholder="Fournisseur, référence, projet, opérateur…"
                     width={420}
+                    grow
                 />
                 {actions && <div style={{ marginLeft: 'auto', display: 'flex', gap: 10, flexWrap: 'wrap' }}>{actions}</div>}
             </div>

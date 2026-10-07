@@ -2,7 +2,10 @@ import React, { useState, useMemo } from 'react';
 import { calculateProfitability, calculateTargetCA } from '../../../lib/financial/profitabilityCalculator';
 import { PURCHASE_CHAPTERS, ST_LABELS, sumPA } from '../../../lib/purchases/chapters';
 import ProfitabilitySimulatorModal from './ProfitabilitySimulatorModal';
-import { COLORS, S } from '../../../lib/constants/ui';
+import { ChevronDown, ChevronRight, Target } from 'lucide-react';
+import { ToolbarButton } from '../../ui/ToolbarControls';
+
+const ROBOTO = 'Roboto, system-ui, sans-serif';
 
 // Formatters
 const nfEur0 = new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
@@ -15,24 +18,22 @@ export default function MoulinetteView({ rows, depRows, extraRows, commissionRat
 
     return (
         <div style={{ position: 'relative' }}>
-            {/* STICKY HEADER DASHBOARD */}
+            {/* Bandeau des chiffres clés, collant : fond blanc, sans cadre, sans ombre ni trait */}
             <div style={{
                 position: 'sticky',
                 top: 0,
                 zIndex: 10,
-                background: '#F4F4F4',
-                paddingBottom: 20,
-                borderBottom: `1px solid ${COLORS.border}`,
-                marginBottom: 20,
-                backgroundColor: "#F3F4F6"
+                background: '#FFFFFF',
+                padding: '16px 0',
+                marginBottom: 8,
             }}>
                 <Dashboard data={data} onOpenSimulator={() => setShowSimulator(true)} />
             </div>
 
-            <div style={{ display: "grid", gap: 16 }}>
+            <div>
                 {/* SECTION 1: ACHATS FIXES */}
                 <ExpandableCard
-                    title="ACHATS FIXES (Matières)"
+                    title="Achats fixes (matières)"
                     amount={data.achats_fixes_details.total}
                     defaultOpen={true}
                 >
@@ -43,7 +44,7 @@ export default function MoulinetteView({ rows, depRows, extraRows, commissionRat
 
                 {/* SECTION 2: CHARGES VARIABLES */}
                 <ExpandableCard
-                    title="CHARGES VARIABLES"
+                    title="Charges variables"
                     amount={data.charges_details.total}
                     defaultOpen={true}
                 >
@@ -52,7 +53,7 @@ export default function MoulinetteView({ rows, depRows, extraRows, commissionRat
 
                 {/* SECTION 3: HEURES DE PRODUCTION */}
                 <ExpandableCard
-                    title="HEURES DE PRODUCTION"
+                    title="Heures de production"
                     amount={data.hours_details.total}
                     amountSuffix="h"
                     defaultOpen={true}
@@ -76,114 +77,60 @@ export default function MoulinetteView({ rows, depRows, extraRows, commissionRat
 // COMPONENTS
 // —————————————————————————————————————————————————————————
 
+// 7 chiffres clés, tous au même format, sur une seule ligne quand la place le permet (les pourcentages sont des
+// indicateurs à part entière), puis le bouton Objectif.
 function Dashboard({ data, onOpenSimulator }) {
     const { kpis } = data;
     return (
-        <div style={{
-            background: 'white',
-            borderRadius: 12,
-            padding: 16,
-            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-            display: 'grid',
-            gridTemplateColumns: 'repeat(5, 1fr) auto',
-            gap: 16,
-            alignItems: 'center'
-        }}>
-            <KPI label="CA Total" value={nfEur0.format(kpis.ca_total)} size="lg" />
-
-            <KPI
-                label="Marge Brute"
-                value={nfEur0.format(kpis.marge_brute)}
-                sub={pct(kpis.marge_brute_pct)}
-                color={kpis.marge_brute_pct < 30 ? 'red' : 'green'}
-            />
-
-            <KPI
-                label="Contribution"
-                value={nfEur0.format(kpis.contribution)}
-                sub={pct(kpis.contribution_pct)}
-                color="blue"
-            />
-
-            <KPI label="Total Heures" value={nf0.format(kpis.total_heures) + ' h'} />
-
-            <div style={{
-                background: '#eff6ff',
-                border: '1px solid #bfdbfe',
-                borderRadius: 8,
-                padding: '8px 12px'
-            }}>
-                <div style={{ fontSize: 11, color: '#1e40af', fontWeight: 600, textTransform: 'uppercase' }}>Contribution Horaire</div>
-                <div style={{ fontSize: 24, fontWeight: 800, color: '#1e3a8a' }}>
-                    {nfEur0.format(kpis.contribution_horaire)}<small style={{ fontSize: 14 }}>/h</small>
-                </div>
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16 }}>
+            {/* Une ligne sur ordinateur ; passe à la ligne sur tablette au lieu de se chevaucher */}
+            <div style={{ flex: 1, display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: '14px 28px' }}>
+                <KPI label="CA total" value={nfEur0.format(kpis.ca_total)} />
+                <KPI label="Marge brute" value={nfEur0.format(kpis.marge_brute)} />
+                <KPI label="% marge brute" value={pct(kpis.marge_brute_pct)} alert={kpis.marge_brute_pct < 30} />
+                <KPI label="Contribution" value={nfEur0.format(kpis.contribution)} />
+                <KPI label="% contribution" value={pct(kpis.contribution_pct)} />
+                <KPI label="Total heures" value={nf0.format(kpis.total_heures) + ' h'} />
+                <KPI label="Contribution horaire" value={<>{nfEur0.format(kpis.contribution_horaire)}<span style={{ fontSize: 16, color: '#6B7280' }}> /h</span></>} highlight />
             </div>
-
-            {/* BUTTON */}
-            <div>
-                <button
-                    onClick={onOpenSimulator}
-                    style={{
-                        background: COLORS.primary,
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: 8,
-                        padding: '10px 16px',
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 8,
-                        boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-                    }}
-                >
-                    <span>🎯</span> Objectif
-                </button>
+            <div style={{ paddingBottom: 2, marginLeft: 16 }}>
+                <ToolbarButton primary icon={<Target size={16} />} onClick={onOpenSimulator} title="Simuler un objectif de rentabilité">
+                    Objectif
+                </ToolbarButton>
             </div>
         </div>
     );
 }
 
-function KPI({ label, value, sub, size = 'md', color }) {
-    const styleVal = {
-        fontSize: size === 'lg' ? 20 : 18,
-        fontWeight: 700,
-        color: color === 'red' ? '#dc2626' : color === 'green' ? '#16a34a' : color === 'blue' ? '#2563eb' : '#111827'
-    };
+// Chiffre clé : libellé gris, grand chiffre Roboto fin (même taille pour tous).
+// `alert` : marge sous le seuil (rouge) ; `highlight` : indicateur principal (bleu nuit).
+function KPI({ label, value, alert, highlight }) {
     return (
-        <div>
-            <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 2 }}>{label}</div>
-            <div style={styleVal}>{value}</div>
-            {sub && <div style={{ fontSize: 12, color: '#6b7280', fontWeight: 500 }}>{sub}</div>}
+        <div style={{ whiteSpace: 'nowrap' }}>
+            <div style={{ fontSize: 13, color: '#9B9A97', fontFamily: ROBOTO, marginBottom: 2 }}>{label}</div>
+            <div style={{ fontFamily: ROBOTO, fontSize: 28, fontWeight: 300, lineHeight: 1.15, color: alert ? '#DC2626' : highlight ? '#1E2447' : '#111827' }}>
+                {value}
+            </div>
         </div>
     );
 }
 
+// Section repliable : même rendu que les sections de tableaux du chiffrage (flèche, titre Roboto,
+// montant en texte) ; le contenu est posé dans un cadre fin, comme les tableaux.
 function ExpandableCard({ title, amount, amountSuffix = "", children, defaultOpen }) {
     const [isOpen, setIsOpen] = useState(defaultOpen);
     return (
-        <div style={{ background: 'white', borderRadius: 12, border: `1px solid ${COLORS.border}`, overflow: 'hidden' }}>
-            <div
-                onClick={() => setIsOpen(!isOpen)}
-                style={{
-                    padding: '12px 16px',
-                    background: '#F4F4F4',
-                    borderBottom: isOpen ? `1px solid ${COLORS.border}` : 'none',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    cursor: 'pointer'
-                }}
-            >
-                <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                    <span style={{ fontWeight: 700, fontSize: 15 }}>{title}</span>
-                    <span style={{ background: '#e5e7eb', padding: '2px 8px', borderRadius: 99, fontSize: 12, fontWeight: 600 }}>
-                        {nfEur0.format(amount).replace('€', amountSuffix || '€')}
-                    </span>
-                </div>
-                <div style={{ color: '#9ca3af' }}>{isOpen ? '▲' : '▼'}</div>
+        <div style={{ marginTop: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, height: 44 }}>
+                <button onClick={() => setIsOpen(!isOpen)} title={isOpen ? 'Replier' : 'Déplier'} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#9B9A97', display: 'flex', padding: 4, marginLeft: -4 }}>
+                    <ChevronDown size={20} style={{ transform: isOpen ? 'none' : 'rotate(-90deg)', transition: 'transform .2s ease' }} />
+                </button>
+                <h3 onClick={() => setIsOpen(!isOpen)} style={{ margin: 0, fontSize: 20, fontWeight: 500, color: '#111827', fontFamily: ROBOTO, cursor: 'pointer' }}>{title}</h3>
+                <span style={{ marginLeft: 'auto', fontFamily: ROBOTO, fontSize: 18, fontWeight: 500, color: '#111827' }}>
+                    {nfEur0.format(amount).replace('€', amountSuffix || '€')}
+                </span>
             </div>
-            {isOpen && <div style={{ padding: 16 }}>{children}</div>}
+            {isOpen && <div style={{ border: '1px solid #E0DED9', borderRadius: 8, background: 'white', padding: '4px 16px' }}>{children}</div>}
         </div>
     );
 }
@@ -196,23 +143,23 @@ function DrillDownRow({ label, mainValue, subValue, sources, type = 'price' }) {
     const [open, setOpen] = useState(false);
 
     return (
-        <div style={{ borderBottom: '1px solid #f3f4f6' }}>
+        <div className="df-moul-row" style={{ borderBottom: '1px solid #E8E6E2' }}>
             <div
-                style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', cursor: 'pointer', alignItems: 'center' }}
+                style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', cursor: 'pointer', alignItems: 'center', fontSize: 14 }}
                 onClick={() => setOpen(!open)}
             >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 10, color: '#9ca3af' }}>{open ? '▼' : '▶'}</span>
-                    <span style={{ fontWeight: 500 }}>{label}</span>
+                    <span style={{ color: '#9B9A97', display: 'flex' }}>{open ? <ChevronDown size={15} /> : <ChevronRight size={15} />}</span>
+                    <span style={{ fontWeight: 500, color: '#111827' }}>{label}</span>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontWeight: 600 }}>{mainValue}</div>
-                    {subValue && <div style={{ fontSize: 11, color: '#6b7280' }}>{subValue}</div>}
+                    <div style={{ fontWeight: 600, color: '#111827' }}>{mainValue}</div>
+                    {subValue && <div style={{ fontSize: 12, color: '#6B7280' }}>{subValue}</div>}
                 </div>
             </div>
 
             {open && sources && sources.length > 0 && (
-                <div style={{ background: '#F4F4F4', padding: '8px 12px', borderRadius: 8, marginBottom: 8, fontSize: 13 }}>
+                <div style={{ background: '#F7F7F5', padding: '8px 12px', borderRadius: 8, marginBottom: 10, fontSize: 13 }}>
                     <table style={{ width: '100%' }}>
                         <tbody>
                             {sources.map((src, i) => (
@@ -243,13 +190,13 @@ function DrillDownRow({ label, mainValue, subValue, sources, type = 'price' }) {
 // d'un chiffrage à l'autre.
 function DetailGroup({ title, items = [] }) {
     return (
-        <div style={{ marginBottom: 16 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', color: '#9ca3af' }}>{title}</div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: '#6b7280' }}>{nfEur0.format(sumPA(items))}</div>
+        <div style={{ marginBottom: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '12px 0 4px', borderBottom: '1px solid #E0DED9' }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: '#374151', fontFamily: ROBOTO }}>{title}</div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: '#374151', fontFamily: ROBOTO }}>{nfEur0.format(sumPA(items))}</div>
             </div>
             {items.length === 0 ? (
-                <div style={{ fontSize: 13, color: '#9ca3af', fontStyle: 'italic' }}>Aucun achat dans ce chapitre.</div>
+                <div style={{ fontSize: 13, color: '#9CA3AF', padding: '8px 0' }}>Aucun achat dans ce chapitre.</div>
             ) : items.map((item, idx) => (
                 <DrillDownRow
                     key={idx}
@@ -271,8 +218,8 @@ function ChargesTable({ details, commissionRate, onUpdateCommission }) {
         { label: 'Déplacements', ...raw.deplacements },
         { label: ST_LABELS.pose, ...raw.st_pose },
         { label: ST_LABELS.confection, ...raw.st_conf },
-        { label: 'Commission Commerciale', isCommission: true, ...raw.commissions },
-        { label: 'Autres Extras', ...raw.autres },
+        { label: 'Commission commerciale', isCommission: true, ...raw.commissions },
+        { label: 'Autres extras', ...raw.autres },
     ];
 
     return (
@@ -298,9 +245,9 @@ function ChargesTable({ details, commissionRate, onUpdateCommission }) {
                     />
                 );
             })}
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderTop: '2px solid #e5e7eb', marginTop: 8 }}>
-                <div style={{ fontWeight: 700 }}>TOTAL</div>
-                <div style={{ fontWeight: 800 }}>{nfEur0.format(details.total)}</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', fontFamily: ROBOTO, fontSize: 15 }}>
+                <div style={{ fontWeight: 600, color: '#111827' }}>Total</div>
+                <div style={{ fontWeight: 600, color: '#111827' }}>{nfEur0.format(details.total)}</div>
             </div>
         </div>
     );
@@ -331,23 +278,23 @@ function CommissionDrillDownRow({ label, mainValue, rate, onUpdate }) {
     };
 
     return (
-        <div style={{ borderBottom: '1px solid #f3f4f6' }}>
+        <div style={{ borderBottom: '1px solid #E8E6E2' }}>
             <div
-                style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', cursor: 'pointer', alignItems: 'center' }}
+                style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', cursor: 'pointer', alignItems: 'center', fontSize: 14 }}
                 onClick={() => setOpen(!open)}
             >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 10, color: '#9ca3af' }}>{open ? '▼' : '▶'}</span>
-                    <span style={{ fontWeight: 500 }}>{label}</span>
+                    <span style={{ color: '#9B9A97', display: 'flex' }}>{open ? <ChevronDown size={15} /> : <ChevronRight size={15} />}</span>
+                    <span style={{ fontWeight: 500, color: '#111827' }}>{label} <span style={{ color: '#6B7280', fontWeight: 400 }}>· {String(rate).replace('.', ',')} %</span></span>
                 </div>
-                <div style={{ textAlign: 'right', fontWeight: 600 }}>
+                <div style={{ textAlign: 'right', fontWeight: 600, color: '#111827' }}>
                     {mainValue}
                 </div>
             </div>
 
             {open && (
-                <div style={{ background: '#F4F4F4', padding: '12px 16px', borderRadius: 8, marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div style={{ fontSize: 13, color: '#4b5563', fontWeight: 500 }}>Taux de Commission</div>
+                <div style={{ background: '#F7F7F5', padding: '10px 14px', borderRadius: 8, marginBottom: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ fontSize: 13, color: '#374151', fontWeight: 500 }}>Taux de commission</div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <input
                             type="number"
@@ -362,7 +309,7 @@ function CommissionDrillDownRow({ label, mainValue, rate, onUpdate }) {
                                 textAlign: 'right',
                                 padding: '6px 8px',
                                 borderRadius: 6,
-                                border: '1px solid #d1d5db',
+                                border: '1px solid #E0DED9',
                                 fontSize: 14,
                                 fontWeight: 600
                             }}
@@ -383,7 +330,7 @@ function HoursTable({ details }) {
         { label: 'Déplacements (Trajet)', ...details.deplacements },
     ].filter(r => r.total > 0);
 
-    if (items.length === 0) return <div style={{ color: '#9ca3af', fontStyle: 'italic' }}>Aucune heure saisie.</div>;
+    if (items.length === 0) return <div style={{ color: '#9CA3AF', fontSize: 13, padding: '10px 0' }}>Aucune heure saisie.</div>;
 
     return (
         <div>
