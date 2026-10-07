@@ -1,5 +1,6 @@
 // src/screens/ChiffrageRoot.jsx
 import React, { useState, useMemo, useEffect, useRef } from "react";
+import { useFillViewportHeight } from "../lib/hooks/useFillViewportHeight";
 import { Plus, Copy, Trash2, FileText, ArrowUpDown, ArrowUp, ArrowDown, Archive, Filter, ChevronDown, ChevronRight, ChevronLeft, GitBranch, SlidersHorizontal } from "lucide-react";
 import Chip from '@mui/material/Chip';
 import Avatar from '@mui/material/Avatar';
@@ -226,6 +227,8 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
   const [expandedGroups, setExpandedGroups] = useState(new Set());
   // Pagination client-side (les données sont déjà en mémoire → instantané)
   const [visibleCount, setVisibleCount] = useState(50);
+  const listScrollRef = useRef(null);
+  const listHeight = useFillViewportHeight(listScrollRef);
 
   const toggleGroup = (parentId) => {
     setExpandedGroups(prev => {
@@ -490,7 +493,7 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: '#FFFFFF', padding: '24px', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ background: '#FFFFFF', padding: '24px', display: 'flex', flexDirection: 'column' }}>
       <div style={{ maxWidth: 1440, width: '100%', margin: '0 auto 24px auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
           <div>
@@ -670,8 +673,10 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
         </div>
       </div>
 
+      {/* Seul le tableau défile (la page reste fixe) : hauteur = place restante à l'écran,
+          en-têtes de colonnes collés en haut, « Charger plus » au bas de la liste. */}
       <div style={{ maxWidth: 1440, width: '100%', margin: '0 auto', background: 'white', border: '1px solid #E0DED9', borderRadius: 8, overflow: 'hidden' }}>
-        <div style={{ overflowX: 'auto' }}>
+        <div ref={listScrollRef} className="df-list-scroll" style={{ overflow: 'auto', height: listHeight ?? undefined }}>
           <table className="df-list-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
             <thead style={{ background: '#F4F4F4', borderBottom: '1px solid #E0DED9' }}>
               <tr>
@@ -874,31 +879,31 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
               })()}
             </tbody>
           </table>
+          {/* Charger plus — tranche client-side, instantané (données déjà en mémoire) */}
+          {hasMore && (
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '24px 0' }}>
+              <button
+                onClick={() => setVisibleCount(c => c + 50)}
+                style={{
+                  background: 'white',
+                  border: '1px solid #E0DED9',
+                  borderRadius: 8,
+                  padding: '10px 24px',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  fontSize: 14,
+                  color: '#374151',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                }}
+              >
+                Charger plus ({filteredList.length - visibleCount} restants)
+              </button>
+            </div>
+          )}
         </div>
 
-        {/* Charger plus — tranche client-side, instantané (données déjà en mémoire) */}
-        {hasMore && (
-          <div style={{ display: 'flex', justifyContent: 'center', padding: '24px 0' }}>
-            <button
-              onClick={() => setVisibleCount(c => c + 50)}
-              style={{
-                background: 'white',
-                border: '1px solid #E0DED9',
-                borderRadius: 8,
-                padding: '10px 24px',
-                cursor: 'pointer',
-                fontWeight: 600,
-                fontSize: 14,
-                color: '#374151',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-              }}
-            >
-              Charger plus ({filteredList.length - visibleCount} restants)
-            </button>
-          </div>
-        )}
       </div>
       {
         newMinOpen && (
