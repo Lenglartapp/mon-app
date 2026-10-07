@@ -504,19 +504,7 @@ export function schemaToGridCols(
         gridCol.cellRenderer = (params) => {
           if (params.node?.rowPinned) return null;
           if (!params.value) return '';
-          return (
-            <Chip
-              label={params.value}
-              size="small"
-              style={{
-                backgroundColor: getThemedColor(params.value, col.key, gridTitle),
-                color: '#1F2937',
-                fontWeight: 600,
-                fontSize: '0.75rem',
-                border: '1px solid rgba(0,0,0,0.05)',
-              }}
-            />
-          );
+          return <GridSelectChip value={params.value} colKey={col.key} gridTitle={gridTitle} />;
         };
       }
     }
@@ -590,10 +578,28 @@ export function schemaToGridCols(
   });
 }
 
+// Pastille d'une valeur de liste dans les tableaux (même rendu pour toutes les colonnes à liste,
+// y compris la colonne Expédition ajoutée par MinuteGrid).
+export function GridSelectChip({ value, colKey, gridTitle }) {
+  return (
+    <Chip
+      label={value}
+      size="small"
+      style={{
+        backgroundColor: getThemedColor(value, colKey, gridTitle),
+        color: '#1F2937',
+        fontWeight: 600,
+        fontSize: '0.75rem',
+        border: '1px solid rgba(0,0,0,0.05)',
+      }}
+    />
+  );
+}
+
 // Cache pour getThemedColor — même value+colKey+gridTitle → même couleur, calculée une seule fois
 const _colorCache = new Map();
 
-function getThemedColor(value, colKey, gridTitle) {
+export function getThemedColor(value, colKey, gridTitle) {
   const cacheKey = `${value}|${colKey}|${gridTitle}`;
   if (_colorCache.has(cacheKey)) return _colorCache.get(cacheKey);
   const strValue = String(value || '');
