@@ -8,13 +8,14 @@ import { stripMarks } from '../../lib/utils/richText';
 import { computeProjectHours } from '../../lib/projectMetrics';
 
 // --- STICKY CELLS ---
+const ROBOTO = 'Roboto, system-ui, sans-serif';
 const StickyLeftCell = ({ children, bg = 'white', borderBottom = true, onClick, style }) => (
     <div onClick={onClick} style={{ position: 'sticky', left: 0, zIndex: 50, background: bg, borderRight: '2px solid #E5E7EB', borderBottom: borderBottom ? '1px solid #E5E7EB' : 'none', display: 'flex', alignItems: 'center', padding: '0 16px', fontSize: 13, fontWeight: 600, color: '#374151', cursor: onClick ? 'pointer' : 'default', height: style?.height ?? ROW_HEIGHT, minWidth: 260, maxWidth: 260, ...style }}>
         {children}
     </div>
 );
 const StickyTopCell = ({ children, bg = 'white', style }) => (
-    <div style={{ position: 'sticky', top: 0, zIndex: 40, background: bg, borderBottom: '1px solid #E5E7EB', borderRight: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 600, color: '#4B5563', ...style }}>
+    <div style={{ position: 'sticky', top: 0, zIndex: 40, background: bg, borderBottom: '1px solid #E5E7EB', borderRight: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: ROBOTO, fontSize: 13, fontWeight: 500, color: '#4B5563', ...style }}>
         {children}
     </div>
 );
@@ -353,14 +354,14 @@ const PlanningGrid = ({
                 {/* Header Dates */}
                 <div style={{ display: 'flex', borderBottom: '1px solid #E5E7EB', paddingLeft: 60 }}>
                     {gridCols.map(col => (
-                        <div key={col.toString()} style={{ flex: 1, textAlign: 'center', padding: '12px', fontWeight: 700, textTransform: 'uppercase', fontSize: 13, color: '#374151' }}>
+                        <div key={col.toString()} style={{ flex: 1, textAlign: 'center', padding: '12px', fontFamily: ROBOTO, fontWeight: 500, fontSize: 14, color: '#374151', textTransform: 'capitalize' }}>
                             {format(col, 'EEEE d', { locale: fr })}
                         </div>
                     ))}
                 </div>
 
                 {/* Body */}
-                <div style={{ flex: 1, overflowY: 'auto', display: 'flex', position: 'relative' }}>
+                <div className="df-noscrollbar" style={{ flex: 1, overflowY: 'auto', display: 'flex', position: 'relative' }}>
                     {/* Time Sidebar */}
                     <div style={{ width: 60, flexShrink: 0, borderRight: '1px solid #E5E7EB', background: '#F4F4F4' }}>
                         {Array.from({ length: V_END - V_START + 1 }).map((_, i) => (
@@ -602,12 +603,22 @@ const PlanningGrid = ({
 
     return (
         <div style={{ flex: 1, overflow: 'hidden', padding: '0 24px 24px', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ height: 'fit-content', maxHeight: '100%', overflow: 'auto', background: 'white', border: '1px solid #E0DED9', borderRadius: 12, position: 'relative' }}>
+            <div className="df-noscrollbar" style={{ height: 'fit-content', maxHeight: '100%', overflow: 'auto', background: 'white', border: '1px solid #E0DED9', borderRadius: 12, position: 'relative' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: `260px repeat(${gridCols.length}, minmax(${MIN_WIDTH}px, 1fr))`, gridAutoRows: 'max-content', width: (view === 'year' || view === 'quarter' || view === 'month') ? 'max-content' : '100%', minWidth: '100%' }}>
                     <StickyCorner style={{ height: HEADER_HEIGHT_1, borderBottom: 'none' }} />
-                    {superHeaders.map((header, i) => (<div key={i} style={{ gridColumn: `span ${header.span}`, position: 'sticky', top: 0, zIndex: 40, background: 'white', borderBottom: '1px solid #E5E7EB', borderRight: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: 1 }}>{header.label}</div>))}
-                    <StickyCorner style={{ top: HEADER_HEIGHT_1, height: HEADER_HEIGHT_2 }}>Ressources</StickyCorner>
-                    {gridCols.map(col => (<StickyTopCell key={col.toString()} style={{ top: HEADER_HEIGHT_1, height: HEADER_HEIGHT_2, background: isSameDay(col, new Date()) && view !== 'year' ? '#EFF6FF' : 'white', color: isSameDay(col, new Date()) && view !== 'year' ? '#2563EB' : '#4B5563' }}>{getCellContent(col)}</StickyTopCell>))}
+                    {superHeaders.map((header, i) => (<div key={i} style={{ gridColumn: `span ${header.span}`, position: 'sticky', top: 0, zIndex: 40, background: 'white', borderBottom: '1px solid #E5E7EB', borderRight: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: ROBOTO, fontSize: 13, fontWeight: 500, color: '#6B7280' }}>{header.label}</div>))}
+                    <StickyCorner style={{ top: HEADER_HEIGHT_1, height: HEADER_HEIGHT_2 }} />
+                    {gridCols.map(col => {
+                        // Jour actuel : pastille bleu nuit de la charte autour du libellé.
+                        const today = view !== 'year' && isSameDay(col, new Date());
+                        return (
+                            <StickyTopCell key={col.toString()} style={{ top: HEADER_HEIGHT_1, height: HEADER_HEIGHT_2, background: 'white', color: '#4B5563' }}>
+                                {today
+                                    ? <span style={{ background: '#1E2447', color: 'white', borderRadius: 99, padding: '4px 12px', fontWeight: 600 }}>{getCellContent(col)}</span>
+                                    : getCellContent(col)}
+                            </StickyTopCell>
+                        );
+                    })}
 
                     {Object.entries(filteredGroups).map(([key, group]) => {
                         const activeMembers = group.members.filter(m => !hiddenResources.includes(m.id));
@@ -616,7 +627,7 @@ const PlanningGrid = ({
 
                         return (
                             <React.Fragment key={key}>
-                                <StickyLeftCell onClick={() => onToggleGroup(key)} bg={group.bg} style={{ fontWeight: 800, color: '#111827' }}>
+                                <StickyLeftCell onClick={() => onToggleGroup(key)} bg={group.bg} style={{ fontFamily: ROBOTO, fontWeight: 500, fontSize: 17, color: '#111827' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
                                         {expandedGroups[key] > 0 ? <ChevronDown size={14} style={{ marginRight: 8 }} /> : <ChevronRightIcon size={14} style={{ marginRight: 8 }} />}
                                         {group.label}
@@ -653,18 +664,29 @@ const PlanningGrid = ({
                                 .filter(member => expandedGroups[key] >= 2 || member.id === 'backlog_confection')
                                 .map(member => (
                                     <React.Fragment key={member.id}>
-                                        <StickyLeftCell style={{ paddingLeft: 42, color: member.id === 'backlog_confection' ? '#BE123C' : '#4B5563', fontWeight: member.id === 'backlog_confection' ? 700 : 500, display: 'flex', justifyContent: 'space-between', alignItems: 'center', ...(member.id === 'backlog_confection' ? { minHeight: PROGRAMME_ROW_HEIGHT, height: 'auto', alignSelf: 'stretch' } : { height: ROW_HEIGHT }) }}>
+                                        <StickyLeftCell style={{ paddingLeft: 42, color: member.id === 'backlog_confection' ? '#BE123C' : '#4B5563', fontWeight: 500, display: 'flex', ...(member.id === 'backlog_confection'
+                                            ? { flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'center', gap: 4, fontFamily: ROBOTO, minHeight: PROGRAMME_ROW_HEIGHT, height: 'auto', alignSelf: 'stretch' }
+                                            : { justifyContent: 'space-between', alignItems: 'center', height: ROW_HEIGHT }) }}>
                                             {member.id === 'backlog_confection' ? (
-                                                <span style={{ display: 'flex', alignItems: 'center' }}>
-                                                    <span
-                                                        onClick={(e) => { e.stopPropagation(); onToggleMembers?.(key); }}
-                                                        title={expandedGroups[key] >= 2 ? 'Masquer la répartition par personne' : 'Afficher la répartition par personne'}
-                                                        style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer', marginRight: 6 }}
-                                                    >
-                                                        {expandedGroups[key] >= 2 ? <ChevronDown size={13} /> : <ChevronRightIcon size={13} />}
+                                                <>
+                                                    {/* Titre aligné sur les prénoms ; la flèche se place à sa gauche */}
+                                                    <span style={{ position: 'relative', fontSize: 14 }}>
+                                                        <span
+                                                            onClick={(e) => { e.stopPropagation(); onToggleMembers?.(key); }}
+                                                            title={expandedGroups[key] >= 2 ? 'Masquer la répartition par personne' : 'Afficher la répartition par personne'}
+                                                            style={{ position: 'absolute', left: -20, top: '50%', transform: 'translateY(-50%)', display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }}
+                                                        >
+                                                            {expandedGroups[key] >= 2 ? <ChevronDown size={14} /> : <ChevronRightIcon size={14} />}
+                                                        </span>
+                                                        Programme
                                                     </span>
-                                                    Programme semaine
-                                                </span>
+                                                    <span style={{ fontSize: 13, color: '#6B7280' }}>
+                                                        {(() => {
+                                                            const weeks = [...new Set(gridCols.map(c => getISOWeek(c)))];
+                                                            return weeks.length > 1 ? `Semaines ${weeks[0]} – ${weeks[weeks.length - 1]}` : `Semaine ${weeks[0]}`;
+                                                        })()}
+                                                    </span>
+                                                </>
                                             ) : (
                                                 <span>{`${member.first_name} ${member.last_name?.charAt(0)}.`}</span>
                                             )}
@@ -706,7 +728,7 @@ const PlanningGrid = ({
                                                 const cHours = Math.round(groupStats.cap); // Group Capacity
 
                                                 return (
-                                                    <span style={{ fontSize: 11, background: '#FFE4E6', color: '#BE123C', padding: '1px 6px', borderRadius: 4, marginLeft: 8 }}>
+                                                    <span style={{ fontSize: 12, fontWeight: 600, background: '#FFE4E6', color: '#BE123C', padding: '2px 8px', borderRadius: 4, whiteSpace: 'nowrap', marginTop: 10 }}>
                                                         {bHours}h / {cHours}h
                                                     </span>
                                                 );
@@ -781,7 +803,7 @@ const PlanningGrid = ({
                                                                     minHeight: PROGRAMME_ROW_HEIGHT,
                                                                     display: 'flex',
                                                                     flexDirection: 'column',
-                                                                    background: binIndex % 2 === 0 ? '#FFF1F2' : '#FDF2F8',
+                                                                    background: 'white', // sans fond : les cartes suffisent
                                                                     borderBottom: '1px solid #E5E7EB',
                                                                     borderRight: '1px solid #E5E7EB',
                                                                     position: 'relative',
@@ -793,12 +815,12 @@ const PlanningGrid = ({
                                                                     e.currentTarget.style.background = '#FCE7F3';
                                                                 }}
                                                                 onDragLeave={(e) => {
-                                                                    e.currentTarget.style.background = binIndex % 2 === 0 ? '#FFF1F2' : '#FDF2F8';
+                                                                    e.currentTarget.style.background = 'white';
                                                                 }}
                                                                 onDrop={(e) => {
                                                                     e.preventDefault();
                                                                     e.stopPropagation();
-                                                                    e.currentTarget.style.background = binIndex % 2 === 0 ? '#FFF1F2' : '#FDF2F8';
+                                                                    e.currentTarget.style.background = 'white';
 
                                                                     const type = e.dataTransfer.getData('type');
                                                                     if (type !== 'backlog-sort') return;
@@ -826,23 +848,26 @@ const PlanningGrid = ({
                                                                     });
                                                                 }}
                                                             >
-                                                                {/* Bin Header */}
-                                                                <div style={{
+                                                                {/* Bandeau de semaine : seulement quand plusieurs semaines sont affichées
+                                                                    (sinon il répète l'en-tête et la charge de la colonne de gauche). */}
+                                                                {weeklyBins.length > 1 && <div style={{
                                                                     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                                                                     padding: '3px 10px', background: 'rgba(255,255,255,0.5)', borderBottom: '1px dashed #FECDD3',
                                                                     fontSize: 11, fontWeight: 700, color: '#9F1239', height: 24
                                                                 }}>
-                                                                    <span>SEM {weekNum}</span>
+                                                                    <span style={{ fontFamily: ROBOTO, fontWeight: 500 }}>Semaine {weekNum}</span>
                                                                     <span style={{ color: isOverloaded ? '#EF4444' : '#9F1239' }}>
                                                                         {binLoadHours}h / {binCapHours}h
                                                                     </span>
-                                                                </div>
+                                                                </div>}
 
-                                                                {/* Cards Container */}
+                                                                {/* Cards Container : grille à colonnes égales, les cartes s'alignent
+                                                                    en colonnes quelle que soit la longueur des titres ; le nombre de
+                                                                    colonnes suit la largeur de l'écran. */}
                                                                 <div style={{
                                                                     flex: 1,
-                                                                    display: 'flex',
-                                                                    flexWrap: 'wrap',
+                                                                    display: 'grid',
+                                                                    gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))',
                                                                     alignItems: 'center',
                                                                     alignContent: 'center',
                                                                     padding: '4px',
@@ -975,10 +1000,8 @@ const PlanningGrid = ({
                                                                                 }}
                                                                                 onClick={(e) => { e.stopPropagation(); onEventClick(evt); }}
                                                                                 style={{
-                                                                                    minWidth: 170,
-                                                                                    maxWidth: 190,
+                                                                                    minWidth: 0,
                                                                                     height: 124,
-                                                                                    flexShrink: 0,
                                                                                     background: 'white',
                                                                                     border: '1px solid #FECDD3',
                                                                                     borderRadius: 4,
@@ -1032,7 +1055,7 @@ const PlanningGrid = ({
                                                                         style={{
                                                                             minWidth: 30, height: 30, borderRadius: '50%', background: 'white',
                                                                             border: '1px dashed #FECDD3', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                                            cursor: 'pointer', color: '#FDA4AF', marginLeft: 4
+                                                                            cursor: 'pointer', color: '#FDA4AF', marginLeft: 4, width: 30, justifySelf: 'start'
                                                                         }}
                                                                     >
                                                                         <PlusIcon size={16} />
@@ -1052,7 +1075,7 @@ const PlanningGrid = ({
                                                     onClick={() => onCellClick(member.id, col)}
                                                     onDragOver={onDragOver}
                                                     onDrop={(e) => onDrop(e, member.id, col)}
-                                                    style={{ borderBottom: '1px solid #E5E7EB', borderRight: '1px solid #F3F4F6', background: (view !== 'year' && isSameDay(col, new Date())) ? '#F4F4F4' : 'transparent', height: ROW_HEIGHT, position: 'relative' }}
+                                                    style={{ borderBottom: '1px solid #E5E7EB', borderRight: '1px solid #F3F4F6', background: 'transparent', height: ROW_HEIGHT, position: 'relative' }}
                                                 >
                                                     {renderEventsForCell(member.id, col)}
                                                 </div>
@@ -1077,10 +1100,10 @@ const PlanningGrid = ({
                             <>
                                 <StickyLeftCell
                                     bg="#FFF"
-                                    style={{ fontWeight: 800, color: '#111827', borderTop: '2px solid #E5E7EB' }}
+                                    style={{ fontFamily: ROBOTO, fontWeight: 500, color: '#111827', borderTop: '2px solid #E5E7EB' }}
                                 >
-                                    <div style={{ display: 'flex', alignItems: 'center', flex: 1, fontSize: 14 }}>
-                                        TOTAL
+                                    <div style={{ display: 'flex', alignItems: 'center', flex: 1, fontSize: 17 }}>
+                                        Total
                                     </div>
                                     <div style={{ fontSize: 12, fontWeight: 700, color: globalStats.percent > 100 ? '#EF4444' : '#374151', background: '#F3F4F6', padding: '2px 8px', borderRadius: 4 }}>
                                         {Math.round(globalStats.percent)}%

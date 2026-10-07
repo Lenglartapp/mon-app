@@ -35,7 +35,7 @@ const COLUMNS = [
     {
         field: 'date',
         headerName: 'Date / Heure',
-        width: 160,
+        width: 115,
         valueFormatter: (value) => {
             if (!value) return '';
             return new Date(value).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
@@ -44,7 +44,7 @@ const COLUMNS = [
     {
         field: 'type',
         headerName: 'Flux',
-        width: 120,
+        width: 110,
         // Flux dans le nuancier bleu : entrée (bleu nuit) → édition (bleu ciel)
         renderCell: (params) => {
             const f = FLUX[params.value] || FLUX.OUT;
@@ -52,11 +52,11 @@ const COLUMNS = [
             return <TonePill tone={f.tone}>{f.label}</TonePill>;
         }
     },
-    ...itemMetaColumns(),
+    ...itemMetaColumns({ compact: true }),
     {
         field: 'qty',
         headerName: 'Quantité',
-        width: 100,
+        width: 95,
         align: 'right',
         headerAlign: 'right',
         renderCell: (params) => (
@@ -65,11 +65,12 @@ const COLUMNS = [
             </span>
         )
     },
-    { field: 'location', headerName: 'Emplacement', width: 150 },
+    { field: 'location', headerName: 'Emplacement', width: 110 },
     {
         field: 'project',
         headerName: 'Affectation',
-        width: 180,
+        flex: 0.8,
+        minWidth: 130,
         renderCell: (params) => params.value
             ? <span title={params.value} style={{ color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis' }}>{params.value}</span>
             : <span style={{ color: '#9CA3AF' }}>Stock libre</span>
@@ -77,15 +78,16 @@ const COLUMNS = [
     {
         field: 'reason',
         headerName: 'Motif / Détail',
-        width: 250,
+        flex: 1,
+        minWidth: 160,
         renderCell: (params) => (
-            <span style={{ fontSize: 13, color: '#4B5563' }}>{params.value || '-'}</span>
+            <span title={params.value || ''} style={{ fontSize: 13, color: '#4B5563', overflow: 'hidden', textOverflow: 'ellipsis' }}>{params.value || '-'}</span>
         )
     },
     {
         field: 'pieces_names',
         headerName: 'Pièce / Rouleau',
-        width: 150,
+        width: 115,
         renderCell: (params) => (
             <span style={{ fontSize: 12, fontWeight: 700, color: '#4338CA' }}>{params.value || '-'}</span>
         )
@@ -93,13 +95,13 @@ const COLUMNS = [
     {
         field: 'user_name',
         headerName: 'Opérateur',
-        width: 180,
+        width: 140,
         renderCell: (params) => (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
                 <Avatar sx={{ width: 24, height: 24, fontSize: 11, bgcolor: stringToColor(params.value) }}>
                     {params.value?.[0]}
                 </Avatar>
-                <span>{params.value}</span>
+                <span title={params.value} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{params.value}</span>
             </div>
         )
     },
