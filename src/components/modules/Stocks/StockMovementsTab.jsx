@@ -9,7 +9,8 @@ import Avatar from '@mui/material/Avatar';
 import InputBase from '@mui/material/InputBase';
 import { itemMetaColumns } from './stockColumns';
 import { ToolbarSearch, TonePill } from '../../ui/ToolbarControls';
-import { DATAGRID_DA_SX, TABLE_FRAME_STYLE, FLUX_TONES } from '../../../lib/constants/daStyles';
+import FitGridFrame from '../../ui/FitGridFrame';
+import { DATAGRID_DA_SX, FLUX_TONES } from '../../../lib/constants/daStyles';
 // Helper for avatar color
 function stringToColor(string) {
     if (!string) return '#ccc';
@@ -138,7 +139,7 @@ export default function StockMovementsTab({ movements, onAddMovement, projects =
 
             {/* Journal — même contour que les listes Chiffrages / Projets.
                 Tablette (< 1200 px) : le tableau occupe la hauteur d'écran disponible au lieu de 600 px fixes. */}
-            <Box sx={{ ...TABLE_FRAME_STYLE, height: { xs: 'max(480px, calc(100vh - 330px))', lg: 600 } }}>
+            <FitGridFrame>
                 <DataGrid
                     rows={filteredMovements}
                     columns={COLUMNS}
@@ -153,7 +154,7 @@ export default function StockMovementsTab({ movements, onAddMovement, projects =
                     localeText={frFR.components.MuiDataGrid.defaultProps.localeText}
                     sx={DATAGRID_DA_SX}
                 />
-            </Box>
+            </FitGridFrame>
         </Box>
     );
 }

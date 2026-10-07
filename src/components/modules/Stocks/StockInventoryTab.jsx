@@ -21,7 +21,8 @@ import { itemMetaColumns } from './stockColumns';
 import LocationChips from './LocationChips';
 import { ToolbarSearch, ToolbarButton, TonePill } from '../../ui/ToolbarControls';
 import FilterPanel, { isConditionActive, evaluateCondition } from '../../FilterPanel';
-import { DATAGRID_DA_SX, TABLE_FRAME_STYLE } from '../../../lib/constants/daStyles';
+import FitGridFrame from '../../ui/FitGridFrame';
+import { DATAGRID_DA_SX } from '../../../lib/constants/daStyles';
 import { LOC_A_COMPLETER, splitLocations } from '../../../lib/inventory/stockFields';
 
 // Statut du stock d'après le dossier affecté : une pastille du nuancier bleu, du plus engagé
@@ -390,7 +391,7 @@ export default function StockInventoryTab({ inventory, projects = [], movements 
             {/* INVENTORY GRID */}
             {/* Tablette (< 1200 px) : le tableau occupe la hauteur d'écran disponible au lieu de 600 px fixes
                 (en portrait on ne voyait que 7 lignes, avec un grand vide dessous). */}
-            <Box sx={{ ...TABLE_FRAME_STYLE, height: { xs: 'max(480px, calc(100vh - 400px))', lg: 600 } }}>
+            <FitGridFrame>
                 <DataGrid
                     rows={groupedRows}
                     columns={columns}
@@ -400,7 +401,7 @@ export default function StockInventoryTab({ inventory, projects = [], movements 
                     localeText={frFR.components.MuiDataGrid.defaultProps.localeText}
                     sx={DATAGRID_DA_SX}
                 />
-            </Box>
+            </FitGridFrame>
 
             {/* CHOIX DE L'ENTRÉE (ligne regroupant plusieurs articles) */}
             {pickSources && (

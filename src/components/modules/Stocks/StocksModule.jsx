@@ -61,7 +61,7 @@ export default function StocksModule({
     ];
 
     return (
-        <Box sx={{ minHeight: '100vh', bgcolor: '#FFFFFF', p: 3, display: 'flex', flexDirection: 'column', width: '100%' }}>
+        <Box sx={{ bgcolor: '#FFFFFF', p: 3, display: 'flex', flexDirection: 'column', width: '100%' }}>
             {/* Contenu centré (1600 px max), comme Logistique / Performance */}
             <div style={{ width: '100%', maxWidth: 1600, margin: '0 auto', display: 'flex', flexDirection: 'column', flex: 1 }}>
 

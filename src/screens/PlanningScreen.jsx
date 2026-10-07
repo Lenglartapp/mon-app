@@ -1397,7 +1397,11 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
     }
 
     return (
-        <div style={{ height: '100vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', background: '#FFFFFF' }}>
+        // Programmation : la page reste fixe et seul son tableau défile (comme les listes Chiffrages /
+        // Projets) ; Planning et Capacité gardent leur zone défilante de 100vh.
+        <div style={assistantMode === 'programmation'
+            ? { display: 'flex', flexDirection: 'column', background: '#FFFFFF' }
+            : { height: '100vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', background: '#FFFFFF' }}>
             {/* Bandeau de titre : défile normalement et disparaît au scroll */}
             <div style={{ padding: '24px 24px 0', flexShrink: 0 }}>
                 {/* Titre aligné comme les autres modules (bloc centré 1600 px max) */}
@@ -1637,7 +1641,9 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
 
             {/* Zone de contenu : 100vh moins le bloc sticky, pour que le tableau
                 profite de tout l'écran une fois le bandeau de titre scrollé */}
-            <div style={{ height: `calc(100vh - ${stickyHeaderHeight}px)`, flexShrink: 0, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+            <div style={assistantMode === 'programmation'
+                ? { flexShrink: 0, display: 'flex', flexDirection: 'column' }
+                : { height: `calc(100vh - ${stickyHeaderHeight}px)`, flexShrink: 0, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
             {assistantMode === 'programmation' ? (
                 <AssistantView stats={stats} onUpdateProject={onUpdateProject} />
             ) : assistantMode === 'capacite' ? (

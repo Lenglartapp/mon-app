@@ -4,6 +4,9 @@ import { fr } from 'date-fns/locale';
 import { ArrowUpDown, ArrowUp, ArrowDown, ChevronRight, ChevronDown, Filter, SlidersHorizontal } from 'lucide-react';
 
 import { PROJECT_STATUS_OPTIONS } from "../../lib/constants/projectStatus";
+import { PROJECT_STATUS_TONE } from "../../lib/constants/daStyles";
+import { TonePill } from "../ui/ToolbarControls";
+import { useFillViewportHeight } from "../../lib/hooks/useFillViewportHeight";
 import { SmartFilterBar } from "../ui/SmartFilterBar";
 
 // Champs de recherche texte (chips)
@@ -57,19 +60,10 @@ const AssistantView = ({ stats, onUpdateProject }) => {
     const [sortConfig, setSortConfig] = useState({ key: 'remainingBudget', direction: 'asc' });
     const [expanded, setExpanded] = useState(() => new Set());
 
-    // La barre de filtres reste épinglée en haut ; l'en-tête du tableau se colle
-    // juste en dessous. On mesure sa hauteur (elle varie si les filtres passent à la
-    // ligne sur écran étroit) pour caler le « top » du thead pile sous elle.
     const filterBarRef = useRef(null);
-    const [filterBarH, setFilterBarH] = useState(78);
-    useEffect(() => {
-        const el = filterBarRef.current;
-        if (!el || typeof ResizeObserver === 'undefined') return;
-        const ro = new ResizeObserver(() => setFilterBarH(el.offsetHeight));
-        ro.observe(el);
-        setFilterBarH(el.offsetHeight);
-        return () => ro.disconnect();
-    }, []);
+    // Seul le tableau défile : sa hauteur max = place restante jusqu'en bas de l'écran.
+    const listScrollRef = useRef(null);
+    const listHeight = useFillViewportHeight(listScrollRef);
 
     // --- FILTRES ---
     const [activeFilters, setActiveFilters] = useState([{ id: 'hide_archived', label: 'Hors archivés', field: 'hide_archived' }]);
@@ -225,7 +219,7 @@ const AssistantView = ({ stats, onUpdateProject }) => {
     // dessous. Fond opaque obligatoire (sinon les lignes défileraient au travers) et
     // z-index sous les menus déroulants des filtres (z 200).
     // En-têtes : même rendu que les listes Chiffrages / Projets (13 px, demi-gras, quasi noir, sans majuscules)
-    const th = { padding: '12px 10px', fontSize: 13, fontWeight: 600, color: '#374151', whiteSpace: 'nowrap', userSelect: 'none', position: 'sticky', top: filterBarH, background: '#F4F4F4', borderBottom: '1px solid #E5E7EB', zIndex: 20 };
+    const th = { padding: '12px 10px', fontSize: 13, fontWeight: 600, color: '#374151', whiteSpace: 'nowrap', userSelect: 'none', position: 'sticky', top: 0, background: '#F4F4F4', zIndex: 20 };
     const tdNum = { padding: '8px 16px', textAlign: 'right', fontSize: 13 };
     const iconBtn = (active) => ({
         display: 'flex', alignItems: 'center', gap: 6, height: 38, padding: '0 12px', borderRadius: 8, cursor: 'pointer',
@@ -252,9 +246,9 @@ const AssistantView = ({ stats, onUpdateProject }) => {
     const inputStyle = { width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid #E0DED9', fontSize: 13, outline: 'none', boxSizing: 'border-box' };
 
     return (
-        <div style={{ flex: 1, overflowY: 'auto', position: 'relative' }}>
-            {/* BARRE DE FILTRES — épinglée en haut du scroll (recherche + statut + avancés) */}
-            <div ref={filterBarRef} style={{ position: 'sticky', top: 0, zIndex: 30, background: '#FFFFFF', padding: '24px 24px 16px' }}>
+        <div style={{ position: 'relative' }}>
+            {/* BARRE DE FILTRES (fixe : seule la liste défile en dessous) */}
+            <div ref={filterBarRef} style={{ position: 'relative', zIndex: 30, background: '#FFFFFF', padding: '24px 24px 16px' }}>
             <div style={{ maxWidth: 1440, margin: '0 auto', display: 'flex', gap: 8, alignItems: 'center' }}>
                 <SmartFilterBar
                     fields={SEARCH_FIELDS}
@@ -347,18 +341,20 @@ const AssistantView = ({ stats, onUpdateProject }) => {
                 Même gabarit que la barre de filtres (padding 24 + inner maxWidth 1440
                 centré) pour que les deux soient parfaitement alignés. */}
             <div style={{ padding: '0 24px 24px' }}>
-            <div style={{ maxWidth: 1440, margin: '0 auto', background: 'white', borderRadius: 12, border: '1px solid #E0DED9', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', overflow: 'visible' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            {/* Même cadre que les listes Chiffrages / Projets ; seul le tableau défile (en-têtes collés, barre masquée) */}
+            <div style={{ maxWidth: 1440, margin: '0 auto', background: 'white', borderRadius: 8, border: '1px solid #E0DED9', overflow: 'hidden' }}>
+                <div ref={listScrollRef} className="df-list-scroll" style={{ overflow: 'auto', maxHeight: listHeight ?? undefined }}>
+                <table className="df-list-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead style={{ background: '#F4F4F4' }}>
                         <tr>
-                            <th style={{ ...th, textAlign: 'left', borderTopLeftRadius: 12 }}>Nom du Dossier</th>
+                            <th style={{ ...th, textAlign: 'left' }}>Nom du Dossier</th>
                             <th style={{ ...th, textAlign: 'left' }}><SortLabel label="Deadline" sortKey="deadline" align="flex-start" /></th>
                             <th style={{ ...th, textAlign: 'center' }}><SortLabel label="Statut" sortKey="projectStatus" align="center" /></th>
                             <th style={{ ...th, textAlign: 'center' }}>Avancement</th>
                             <th style={{ ...th, textAlign: 'right' }}><SortLabel label="Budget (h)" sortKey="totalSold" /></th>
                             <th style={{ ...th, textAlign: 'right' }}><SortLabel label="Conso. (h)" sortKey="totalConsumed" /></th>
                             <th style={{ ...th, textAlign: 'right' }}><SortLabel label="Restant (h)" sortKey="remainingBudget" /></th>
-                            <th style={{ ...th, textAlign: 'right', borderTopRightRadius: 12 }}><SortLabel label="Planifié (h)" sortKey="totalFuture" /></th>
+                            <th style={{ ...th, textAlign: 'right' }}><SortLabel label="Planifié (h)" sortKey="totalFuture" /></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -369,7 +365,7 @@ const AssistantView = ({ stats, onUpdateProject }) => {
                             const bs = proj.byService || { prepa: {}, conf: {}, pose: {} };
                             return (
                                 <React.Fragment key={proj.id}>
-                                    <tr style={{ borderBottom: '1px solid #F3F4F6', background: 'white' }}>
+                                    <tr style={{ borderBottom: '1px solid #E8E6E2', background: 'white' }}>
                                         <td style={{ padding: '12px 10px', fontWeight: 600, color: '#111827' }}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                                 <button onClick={() => toggleExpand(proj.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, color: '#6B7280', display: 'flex', alignItems: 'center' }} aria-label={isOpen ? 'Replier' : 'Déplier'}>
@@ -385,12 +381,14 @@ const AssistantView = ({ stats, onUpdateProject }) => {
                                             {proj.deadline ? format(new Date(proj.deadline), 'dd MMM yyyy', { locale: fr }) : '-'}
                                         </td>
                                         <td style={{ padding: '12px 10px', textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
-                                            <div style={{ position: 'relative', display: 'inline-block' }}>
+                                            {/* Même pastille que la liste Projets ; liste déroulante invisible par-dessus pour modifier */}
+                                            <div style={{ position: 'relative', display: 'inline-flex' }}>
+                                                <TonePill tone={PROJECT_STATUS_TONE[proj.projectStatus || 'TODO']}>{statusOpt.label}</TonePill>
                                                 <select value={proj.projectStatus || "TODO"} onChange={(e) => onUpdateProject && onUpdateProject(proj.id, { status: e.target.value })}
-                                                    style={{ appearance: 'none', padding: "4px 12px 4px 24px", borderRadius: 20, border: "1px solid #E0DED9", background: 'white', color: "#374151", fontWeight: 600, fontSize: 11, cursor: 'pointer', textAlign: 'center', outline: 'none', boxShadow: "0 1px 2px rgba(0,0,0,0.05)", minWidth: 100 }}>
+                                                    title="Changer le statut"
+                                                    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer', appearance: 'none', border: 'none' }}>
                                                     {Object.entries(PROJECT_STATUS_OPTIONS).map(([key, opt]) => (<option key={key} value={key}>{opt.label}</option>))}
                                                 </select>
-                                                <div style={{ position: 'absolute', top: '50%', left: 10, transform: 'translateY(-50%)', width: 6, height: 6, borderRadius: '50%', background: statusOpt.color, pointerEvents: 'none' }} />
                                             </div>
                                         </td>
                                         <td />
@@ -425,6 +423,7 @@ const AssistantView = ({ stats, onUpdateProject }) => {
                         )}
                     </tbody>
                 </table>
+                </div>
             </div>
             </div>
         </div>

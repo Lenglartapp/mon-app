@@ -1,5 +1,6 @@
 // src/screens/ProjectListScreen.jsx
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useRef } from "react";
+import { useFillViewportHeight } from "../lib/hooks/useFillViewportHeight";
 import Chip from '@mui/material/Chip';
 import Avatar from '@mui/material/Avatar';
 import IconButton from '@mui/material/IconButton';
@@ -55,6 +56,8 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
   const [sortConfig, setSortConfig] = useState({ key: 'created_at', direction: 'desc' });
   const [filterConditions, setFilterConditions] = useState([]);
   const [filterPanelOpen, setFilterPanelOpen] = useState(false);
+  const listScrollRef = useRef(null);
+  const listHeight = useFillViewportHeight(listScrollRef);
 
   const [showArchived, setShowArchived] = useState(false);
 
@@ -181,7 +184,7 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
   }, [users]);
 
   return (
-    <div style={{ minHeight: '100vh', background: '#FFFFFF', padding: isMobile ? '16px' : '24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div style={{ minHeight: isMobile ? '100vh' : undefined, background: '#FFFFFF', padding: isMobile ? '16px' : '24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
       {/* CSS Fallback for Responsive Toggle */}
       <style>{`
         @media (max-width: 768px) {
@@ -419,7 +422,8 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
         {/* Écrans étroits : date de création masquée et heures regroupées, pour éviter tout défilement horizontal */}
         <style>{`.col-hours-merged { display: none; }
           @media (max-width: 1180px) { .col-created, .col-hours { display: none; } .col-hours-merged { display: table-cell; } }`}</style>
-        <div style={{ overflowX: 'auto' }}>
+        {/* Seul le tableau défile (page fixe, en-têtes collés, barre masquée) — comme la liste Chiffrages */}
+        <div ref={listScrollRef} className="df-list-scroll" style={{ overflow: 'auto', maxHeight: listHeight ?? undefined }}>
           <table className="df-list-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
             <thead style={{ background: '#F4F4F4', borderBottom: '1px solid #E0DED9' }}>
               <tr>
