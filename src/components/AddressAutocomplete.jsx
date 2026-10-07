@@ -1,28 +1,45 @@
 // src/components/AddressAutocomplete.jsx
-// Autocomplétion d'adresse via Google Places API (New)
+// Autocomplétion d'adresse, sans clé d'API :
+//  1. France  — Base Adresse Nationale (api-adresse.data.gouv.fr, service de l'État) ;
+//  2. Monde   — Photon (photon.komoot.io, données OpenStreetMap).
+// La France passe en premier, puis le reste du monde. (Avant : Google Places, dont la clé
+// était refusée en prod — « permission refusée » — d'où l'absence de suggestions.)
 import React, { useEffect, useRef, useState } from 'react';
 import { X, MapPin } from 'lucide-react';
 
-const GKEY = import.meta.env.VITE_GOOGLE_PLACES_KEY;
-
-async function fetchPlaces(q) {
+async function fetchFrance(q) {
     try {
-        const res = await fetch('https://places.googleapis.com/v1/places:autocomplete', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Goog-Api-Key': GKEY,
-            },
-            body: JSON.stringify({ input: q, languageCode: 'fr' }),
-        });
+        const res = await fetch(`https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(q)}&limit=5`);
         const data = await res.json();
-        return (data.suggestions ?? []).map(s => s.placePrediction?.text?.text).filter(Boolean);
+        return (data.features ?? []).map(f => ({ label: f.properties?.label, sub: f.properties?.context })).filter(s => s.label);
     } catch { return []; }
 }
 
+async function fetchWorld(q) {
+    try {
+        const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=6&lang=fr`);
+        const data = await res.json();
+        return (data.features ?? []).map(f => {
+            const p = f.properties || {};
+            const street = [p.housenumber, p.street].filter(Boolean).join(' ');
+            const first = p.name && p.name !== p.street ? p.name : street;
+            const line = [first, p.name && street && p.name !== street ? street : null, [p.postcode, p.city].filter(Boolean).join(' ')].filter(Boolean).join(', ');
+            return { label: line, sub: p.country, country: p.countrycode };
+        }).filter(s => s.label);
+    } catch { return []; }
+}
+
+// France d'abord, puis le monde (hors France si la France a déjà répondu), sans doublons.
+async function fetchPlaces(q) {
+    const [fr, world] = await Promise.all([fetchFrance(q), fetchWorld(q)]);
+    const others = world.filter(w => !(fr.length && w.country === 'FR'));
+    const seen = new Set();
+    return [...fr, ...others].filter(s => (seen.has(s.label) ? false : seen.add(s.label))).slice(0, 8);
+}
+
 /**
- * Champ adresse avec autocomplétion Google Places (New).
- * Après sélection dans la liste, l'adresse s'affiche sous forme de chip.
+ * Champ adresse avec autocomplétion (France puis monde).
+ * Une adresse renseignée s'affiche en texte précédé d'une petite icône de localisation.
  * Props:
  *   value       – valeur courante (string)
  *   onChange    – (string) => void
@@ -36,7 +53,8 @@ async function fetchPlaces(q) {
 export default function AddressAutocomplete({ value, onChange, onCommit, placeholder = "Ex: 20 rue du Renard, Paris…", style, inputStyle }) {
     const [suggestions, setSuggestions] = useState([]);
     const [open, setOpen] = useState(false);
-    const [isConfirmed, setIsConfirmed] = useState(false);
+    // Adresse déjà renseignée (enregistrée) : affichée comme confirmée dès l'ouverture
+    const [isConfirmed, setIsConfirmed] = useState(() => Boolean(value));
     const inputRef = useRef(null);
     const timerRef = useRef(null);
 
@@ -54,7 +72,8 @@ export default function AddressAutocomplete({ value, onChange, onCommit, placeho
         }, 250);
     };
 
-    const pick = (addr) => {
+    const pick = (s) => {
+        const addr = s.label;
         onChange(addr);
         onCommit?.(addr);
         setIsConfirmed(true);
@@ -70,39 +89,28 @@ export default function AddressAutocomplete({ value, onChange, onCommit, placeho
         setTimeout(() => inputRef.current?.focus(), 50);
     };
 
-    // ── Vue chip (adresse confirmée) ──────────────────────────────────────────
+    // ── Vue confirmée : petite icône de localisation + adresse (clic = modifier) ────
     if (isConfirmed && value) {
         return (
             <div style={{ position: 'relative', ...style }}>
-                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, maxWidth: '100%' }}>
-                    <span style={{
-                        display: 'inline-flex', alignItems: 'center', gap: 5,
-                        padding: '3px 8px 3px 7px', borderRadius: 999,
-                        border: '1px solid #D1D5DB', background: '#fff',
-                        fontSize: 12, color: '#374151', fontWeight: 500,
-                        maxWidth: '100%', overflow: 'hidden',
-                    }}>
-                        <MapPin size={11} color="#9CA3AF" style={{ flexShrink: 0 }} />
-                        <span
-                            onClick={() => { setIsConfirmed(false); setTimeout(() => inputRef.current?.focus(), 50); }}
-                            title="Modifier l'adresse"
-                            style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'text' }}
-                        >
-                            {value}
-                        </span>
-                        <button
-                            type="button"
-                            onClick={clear}
-                            style={{
-                                border: 'none', background: 'none', cursor: 'pointer',
-                                padding: 0, display: 'flex', alignItems: 'center',
-                                color: '#9CA3AF', flexShrink: 0, marginLeft: 2,
-                            }}
-                        >
-                            <X size={12} />
-                        </button>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, maxWidth: '100%', fontSize: 13, color: '#111827', fontWeight: 500 }}>
+                    <MapPin size={13} color="#1E2447" style={{ flexShrink: 0 }} />
+                    <span
+                        onClick={() => { setIsConfirmed(false); setTimeout(() => inputRef.current?.focus(), 50); }}
+                        title="Modifier l'adresse"
+                        style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'text' }}
+                    >
+                        {value}
                     </span>
-                </div>
+                    <button
+                        type="button"
+                        onClick={clear}
+                        title="Effacer l'adresse"
+                        style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', color: '#9CA3AF', flexShrink: 0 }}
+                    >
+                        <X size={12} />
+                    </button>
+                </span>
             </div>
         );
     }
@@ -128,18 +136,22 @@ export default function AddressAutocomplete({ value, onChange, onCommit, placeho
             {open && (
                 <div style={{
                     position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, zIndex: 1000,
-                    background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8,
-                    boxShadow: '0 4px 16px rgba(0,0,0,0.10)', maxHeight: 220, overflowY: 'auto',
+                    background: '#fff', border: '1px solid #E0DED9', borderRadius: 8,
+                    boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', maxHeight: 280, overflowY: 'auto', minWidth: 320,
                 }}>
                     {suggestions.map((s, i) => (
                         <div
                             key={i}
                             onMouseDown={() => pick(s)}
-                            style={{ padding: '8px 12px', cursor: 'pointer', fontSize: 13, borderBottom: '1px solid #f1f5f9' }}
-                            onMouseEnter={e => e.currentTarget.style.background = '#f8fafc'}
+                            style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '8px 12px', cursor: 'pointer', fontSize: 13, borderBottom: i < suggestions.length - 1 ? '1px solid #E8E6E2' : 'none' }}
+                            onMouseEnter={e => e.currentTarget.style.background = '#F7F7F5'}
                             onMouseLeave={e => e.currentTarget.style.background = '#fff'}
                         >
-                            {s}
+                            <MapPin size={13} color="#9B9A97" style={{ flexShrink: 0, marginTop: 2 }} />
+                            <div style={{ minWidth: 0 }}>
+                                <div style={{ color: '#111827' }}>{s.label}</div>
+                                {s.sub && <div style={{ fontSize: 11, color: '#9CA3AF' }}>{s.sub}</div>}
+                            </div>
                         </div>
                     ))}
                 </div>
