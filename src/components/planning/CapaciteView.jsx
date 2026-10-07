@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { format, startOfWeek, endOfWeek, eachWeekOfInterval, eachDayOfInterval, isWeekend, addMonths, subMonths } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { X, ChevronRight, ChevronDown } from 'lucide-react';
+import { X, ChevronRight, ChevronDown, Check } from 'lucide-react';
 import {
     ComposedChart, Line, Area, XAxis, YAxis, CartesianGrid, Tooltip,
     ResponsiveContainer, ReferenceLine, Legend,
@@ -11,17 +11,33 @@ import { productionGroup } from '../../lib/authz';
 import { isMemberActiveOnDay, dailyHoursForGroup } from './constants';
 import { findInternalProject } from '../../lib/planning/internalProject';
 import { computeProjectHours } from '../../lib/projectMetrics';
+import DaDialog from '../ui/DaDialog';
+import { TonePill } from '../ui/ToolbarControls';
+import { DA_INPUT_STYLE } from '../../lib/constants/daStyles';
 
-// Couleurs des trois séries — franchement distinctes.
-const COLOR_CAPA     = '#10B981'; // Capacité → vert
-const COLOR_PLANIFIE = '#2563EB'; // Planifié → bleu
-const COLOR_CHARGE   = '#111827'; // Charge   → noir
+// DA : nuancier bleu de la charte ; le rouge est réservé aux dépassements.
+const ROBOTO = 'Roboto, system-ui, sans-serif';
+const NAVY = '#1E2447';
+const COLOR_CAPA     = '#A8C2EC'; // Capacité → bleu ciel (aire)
+const COLOR_PLANIFIE = NAVY;      // Planifié → bleu nuit
+const COLOR_CHARGE   = '#5B7FC4'; // Consommé → bleu moyen
+const COLOR_INTERNE  = '#9B9A97'; // Interne Lenglart (non vendu) → gris
+const COLOR_OVER     = '#DC2626'; // Dépassement
 
 const WORKSHOP_CONFIG = {
-    conf:  { label: 'Confection',   color: '#3B82F6' },
-    pose:  { label: 'Pose',         color: '#10B981' },
-    prepa: { label: 'Préparation',  color: '#F59E0B' },
+    conf:  { label: 'Confection',   color: NAVY },
+    pose:  { label: 'Pose',         color: '#5B7FC4' },
+    prepa: { label: 'Préparation',  color: '#A8C2EC' },
 };
+
+// Contrôles de barre : même gabarit que la barre du Planning (36 px, coins 8, trait #E0DED9).
+const BTN = {
+    display: 'inline-flex', alignItems: 'center', gap: 8, height: 36, padding: '0 14px', borderRadius: 8,
+    background: 'white', border: '1px solid #E0DED9', color: '#374151', fontSize: 13, fontWeight: 600,
+    fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap', boxSizing: 'border-box',
+};
+const MENU = { position: 'absolute', top: '100%', marginTop: 4, background: 'white', border: '1px solid #E0DED9', borderRadius: 8, boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', zIndex: 41, padding: 4 };
+const menuItem = (on) => ({ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '8px 12px', borderRadius: 6, cursor: 'pointer', fontSize: 13, color: '#111827', background: on ? '#EEF4FD' : 'transparent', fontWeight: on ? 600 : 400 });
 const ALL_WS = ['conf', 'pose', 'prepa'];
 
 // Sélecteur d'ateliers : menu déroulant à cases à cocher (conf / pose / prépa).
@@ -38,31 +54,28 @@ function WorkshopSelect({ selected, onChange, disabled }) {
         onChange(ALL_WS.filter(w => next.includes(w)));
     };
     if (disabled) {
-        return <div style={{ padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600, color: '#6B7280', border: '1px solid #E0DED9', background: 'white' }}>Ateliers : {summary}</div>;
+        return <div style={{ ...BTN, cursor: 'default' }}><span style={{ color: '#9B9A97', fontWeight: 400 }}>Ateliers</span> {summary}</div>;
     }
     return (
         <div style={{ position: 'relative' }}>
-            <button onClick={() => setOpen(o => !o)} style={{
-                padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600, color: '#374151',
-                border: '1px solid #E0DED9', background: 'white', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6,
-            }}>
-                <span>Ateliers : {summary}</span>
-                <span style={{ fontSize: 10, color: '#9CA3AF' }}>▾</span>
+            <button onClick={() => setOpen(o => !o)} style={BTN}>
+                <span style={{ color: '#9B9A97', fontWeight: 400 }}>Ateliers</span> {summary}
+                <ChevronDown size={14} color="#6B7280" />
             </button>
             {open && (
                 <>
                     <div style={{ position: 'fixed', inset: 0, zIndex: 40 }} onClick={() => setOpen(false)} />
-                    <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, background: 'white', border: '1px solid #E0DED9', borderRadius: 8, boxShadow: '0 4px 16px rgba(0,0,0,0.12)', zIndex: 41, minWidth: 180, padding: 4 }}>
+                    <div style={{ ...MENU, left: 0, minWidth: 200 }}>
                         {ALL_WS.map(k => {
                             const cfg = WORKSHOP_CONFIG[k];
                             const checked = selected.includes(k);
                             return (
-                                <label key={k} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 6, cursor: 'pointer', fontSize: 13 }}
-                                    onMouseEnter={e => e.currentTarget.style.background = '#F4F4F4'} onMouseLeave={e => e.currentTarget.style.background = 'white'}>
-                                    <input type="checkbox" checked={checked} onChange={() => toggle(k)} style={{ accentColor: cfg.color, width: 15, height: 15 }} />
-                                    <span style={{ width: 9, height: 9, borderRadius: 3, background: cfg.color }} />
-                                    <span style={{ color: '#374151', fontWeight: checked ? 600 : 400 }}>{cfg.label}</span>
-                                </label>
+                                <div key={k} onClick={() => toggle(k)} style={{ ...menuItem(checked), justifyContent: 'flex-start' }}>
+                                    <span style={{ width: 16, height: 16, borderRadius: 4, flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', border: `1.5px solid ${checked ? NAVY : '#C9C7C2'}`, background: checked ? NAVY : 'white' }}>
+                                        {checked && <Check size={11} color="white" strokeWidth={3} />}
+                                    </span>
+                                    {cfg.label}
+                                </div>
                             );
                         })}
                     </div>
@@ -85,20 +98,23 @@ const PERIODE_PRESETS = [
     { key: 'last_year',    label: 'Dernière année',    dir: 'past',   months: 12 },
 ];
 
-// Tuile de synthèse du dashboard.
-const Tile = ({ label, value, sub, color = '#111827', onClick }) => (
+// Tuile de synthèse : titre Roboto sans majuscules (comme les tuiles de l'Inventaire),
+// grand chiffre, pastille de couleur de la série, ligne d'aide en gris.
+const Tile = ({ label, value, sub, color = '#111827', dot, onClick }) => (
     <div
         onClick={onClick}
         title={onClick ? 'Voir les projets concernés' : undefined}
-        style={{ background: 'white', border: '1px solid #E0DED9', borderRadius: 12, padding: '14px 16px', cursor: onClick ? 'pointer' : 'default', transition: 'box-shadow .15s, border-color .15s' }}
-        onMouseEnter={onClick ? (e) => { e.currentTarget.style.boxShadow = '0 2px 10px rgba(0,0,0,0.08)'; e.currentTarget.style.borderColor = '#C7D2FE'; } : undefined}
-        onMouseLeave={onClick ? (e) => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.borderColor = '#E5E7EB'; } : undefined}
+        style={{ background: 'white', border: '1px solid #E0DED9', borderRadius: 12, padding: '16px 18px', cursor: onClick ? 'pointer' : 'default', transition: 'border-color .15s', fontFamily: ROBOTO }}
+        onMouseEnter={onClick ? (e) => { e.currentTarget.style.borderColor = '#A8C2EC'; } : undefined}
+        onMouseLeave={onClick ? (e) => { e.currentTarget.style.borderColor = '#E0DED9'; } : undefined}
     >
-        <div style={{ fontSize: 11, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: 0.3, display: 'flex', alignItems: 'center', gap: 4 }}>
-            {label}{onClick && <span style={{ fontSize: 13, color: '#9CA3AF', lineHeight: 1 }}>›</span>}
+        <div style={{ fontSize: 15, fontWeight: 500, color: '#374151', display: 'flex', alignItems: 'center', gap: 8 }}>
+            {dot && <span style={{ width: 10, height: 10, borderRadius: 3, background: dot, flexShrink: 0 }} />}
+            {label}
+            {onClick && <ChevronRight size={15} color="#9B9A97" style={{ marginLeft: 'auto' }} />}
         </div>
-        <div style={{ fontSize: 24, fontWeight: 800, color, marginTop: 6, lineHeight: 1 }}>{value}</div>
-        {sub && <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 4 }}>{sub}</div>}
+        <div style={{ fontSize: 30, fontWeight: 400, color, marginTop: 10, lineHeight: 1 }}>{value}</div>
+        {sub && <div style={{ fontSize: 12, color: '#9B9A97', marginTop: 8 }}>{sub}</div>}
     </div>
 );
 
@@ -111,26 +127,26 @@ const OverModal = ({ type, rows, onClose }) => {
     const title = isPlan ? 'Surplanification — projets concernés' : 'Surconsommation — projets concernés';
     const suffix = isPlan ? 'au-delà du budget restant' : 'au-delà du budget vendu';
     const totalOver = rows.reduce((s, r) => s + r.over, 0);
-    const dth = { textAlign: 'right', padding: '4px 8px', fontSize: 10, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase' };
+    const dth = { textAlign: 'right', padding: '4px 8px', fontSize: 12, fontWeight: 600, color: '#6B7280' };
     const dtd = { textAlign: 'right', padding: '4px 8px', color: '#4B5563' };
+    const hth = (align) => ({ textAlign: align, padding: '9px 10px', fontSize: 13, fontWeight: 600, color: '#374151', background: '#F4F4F4' });
     return (
-        <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(17,24,39,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 }}>
-            <div onClick={(e) => e.stopPropagation()} style={{ background: 'white', borderRadius: 14, width: 'min(720px, 100%)', maxHeight: '80vh', display: 'flex', flexDirection: 'column', boxShadow: '0 20px 50px rgba(0,0,0,0.3)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '16px 18px', borderBottom: '1px solid #E5E7EB' }}>
-                    <div>
-                        <div style={{ fontWeight: 800, fontSize: 16, color: '#111827' }}>{title}</div>
-                        <div style={{ fontSize: 12, color: '#6B7280', marginTop: 2 }}>{rows.length} projet{rows.length > 1 ? 's' : ''} · total +{r1(totalOver)}h {suffix} · <span style={{ color: '#9CA3AF' }}>clique un projet pour le détail par service</span></div>
-                    </div>
-                    <button onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#6B7280', padding: 4 }}><X size={20} /></button>
-                </div>
-                <div style={{ overflowY: 'auto', padding: '4px 8px 10px' }}>
+        <DaDialog
+            open
+            onClose={onClose}
+            title={title}
+            subtitle={`${rows.length} projet${rows.length > 1 ? 's' : ''} · total +${r1(totalOver)}h ${suffix} · cliquer un projet pour le détail par service`}
+            maxWidth="md"
+            bodyPadding="16px 28px 24px"
+        >
+                <div style={{ border: '1px solid #E0DED9', borderRadius: 8, overflow: 'hidden' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                         <thead>
-                            <tr style={{ color: '#9CA3AF', fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.3 }}>
-                                <th style={{ textAlign: 'left', padding: '8px 10px' }}>Projet</th>
-                                <th style={{ textAlign: 'right', padding: '8px 10px' }}>{isPlan ? 'Planifié futur' : 'Consommé'}</th>
-                                <th style={{ textAlign: 'right', padding: '8px 10px' }}>{isPlan ? 'Budget restant' : 'Budget vendu'}</th>
-                                <th style={{ textAlign: 'right', padding: '8px 10px' }}>{isPlan ? 'Surplanif' : 'Surconso'}</th>
+                            <tr style={{ borderBottom: '1px solid #E0DED9' }}>
+                                <th style={hth('left')}>Projet</th>
+                                <th style={hth('right')}>{isPlan ? 'Planifié futur' : 'Consommé'}</th>
+                                <th style={hth('right')}>{isPlan ? 'Budget restant' : 'Budget vendu'}</th>
+                                <th style={hth('right')}>{isPlan ? 'Surplanif' : 'Surconso'}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -138,8 +154,8 @@ const OverModal = ({ type, rows, onClose }) => {
                                 const open = expanded.has(r.id);
                                 return (
                                     <React.Fragment key={r.id}>
-                                        <tr onClick={() => toggle(r.id)} style={{ borderTop: '1px solid #F3F4F6', cursor: 'pointer', background: open ? '#F4F4F4' : 'transparent' }}>
-                                            <td style={{ padding: '8px 10px', fontWeight: 600, color: '#111827' }}>
+                                        <tr onClick={() => toggle(r.id)} style={{ borderTop: '1px solid #E8E6E2', cursor: 'pointer', background: open ? '#EEF4FD' : 'transparent' }}>
+                                            <td style={{ padding: '9px 10px', fontWeight: 500, color: '#111827' }}>
                                                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                                                     {open ? <ChevronDown size={14} color="#9CA3AF" /> : <ChevronRight size={14} color="#9CA3AF" />}
                                                     {r.name}
@@ -147,15 +163,15 @@ const OverModal = ({ type, rows, onClose }) => {
                                             </td>
                                             <td style={{ padding: '8px 10px', textAlign: 'right', color: '#374151' }}>{r1(r.a)}h</td>
                                             <td style={{ padding: '8px 10px', textAlign: 'right', color: '#374151' }}>{r1(r.b)}h</td>
-                                            <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 700, color: '#B91C1C' }}>+{r1(r.over)}h</td>
+                                            <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 600, color: COLOR_OVER }}>+{r1(r.over)}h</td>
                                         </tr>
                                         {open && (
-                                            <tr style={{ background: '#F4F4F4' }}>
+                                            <tr style={{ background: '#EEF4FD' }}>
                                                 <td colSpan={4} style={{ padding: '2px 10px 12px 28px' }}>
                                                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                                                         <thead>
                                                             <tr>
-                                                                <th style={{ textAlign: 'left', padding: '4px 8px', fontSize: 10, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase' }}>Service</th>
+                                                                <th style={{ ...dth, textAlign: 'left' }}>Service</th>
                                                                 <th style={dth}>{isPlan ? 'Planifié futur' : 'Consommé'}</th>
                                                                 <th style={dth}>{isPlan ? 'Budget restant' : 'Budget vendu'}</th>
                                                                 <th style={dth}>{isPlan ? 'Surplanif' : 'Surconso'}</th>
@@ -167,11 +183,11 @@ const OverModal = ({ type, rows, onClose }) => {
                                                                 const bWs = isPlan ? s.remaining : s.budget;
                                                                 const overWs = Math.max(0, aWs - bWs);
                                                                 return (
-                                                                    <tr key={s.key} style={{ borderTop: '1px solid #EEF0F3' }}>
-                                                                        <td style={{ textAlign: 'left', padding: '4px 8px', color: '#374151', fontWeight: 600 }}>{s.label}</td>
+                                                                    <tr key={s.key} style={{ borderTop: '1px solid #D6E4F8' }}>
+                                                                        <td style={{ textAlign: 'left', padding: '4px 8px', color: '#374151', fontWeight: 500 }}>{s.label}</td>
                                                                         <td style={dtd}>{r1(aWs)}h</td>
                                                                         <td style={dtd}>{r1(bWs)}h</td>
-                                                                        <td style={{ ...dtd, fontWeight: 700, color: overWs > 0 ? '#B91C1C' : '#9CA3AF' }}>{overWs > 0 ? `+${r1(overWs)}h` : '—'}</td>
+                                                                        <td style={{ ...dtd, fontWeight: 600, color: overWs > 0 ? COLOR_OVER : '#9CA3AF' }}>{overWs > 0 ? `+${r1(overWs)}h` : '—'}</td>
                                                                     </tr>
                                                                 );
                                                             })}
@@ -187,8 +203,7 @@ const OverModal = ({ type, rows, onClose }) => {
                         </tbody>
                     </table>
                 </div>
-            </div>
-        </div>
+        </DaDialog>
     );
 };
 
@@ -197,8 +212,8 @@ const OverModal = ({ type, rows, onClose }) => {
 const ProjectBreakdown = ({ title, items, total, barColor, emptyText, overFn, overLabel = 'dépassement', overSuffix = 'au-delà du budget' }) => (
     <div style={{ marginBottom: 20 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
-            <span style={{ fontSize: 11, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase' }}>{title} ({items.length})</span>
-            <span style={{ fontSize: 12, fontWeight: 700, color: barColor }}>{Math.round(total * 10) / 10}h</span>
+            <span style={{ fontSize: 15, fontWeight: 500, color: '#111827', fontFamily: ROBOTO }}>{title} <span style={{ fontSize: 13, fontWeight: 400, color: '#9B9A97' }}>{items.length}</span></span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: '#111827' }}>{Math.round(total * 10) / 10}h</span>
         </div>
         {items.length === 0 ? (
             <div style={{ color: '#9CA3AF', fontSize: 12, textAlign: 'center', margin: '8px 0 14px' }}>{emptyText}</div>
@@ -206,18 +221,18 @@ const ProjectBreakdown = ({ title, items, total, barColor, emptyText, overFn, ov
             const pct = total > 0 ? Math.round(p.hours / total * 100) : 0;
             const over = overFn ? overFn(p) : 0;
             return (
-                <div key={i} style={{ padding: '9px 0', borderBottom: '1px solid #F3F4F6' }}>
+                <div key={i} style={{ padding: '9px 0', borderBottom: '1px solid #E8E6E2' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
-                        <span style={{ fontWeight: 600, fontSize: 13, color: p.internal ? '#8B5CF6' : (over > 0 ? '#B91C1C' : '#111827') }}>{p.name}</span>
-                        <span style={{ fontWeight: 700, fontSize: 13, color: '#374151' }}>{Math.round(p.hours * 10) / 10}h</span>
+                        <span style={{ fontWeight: 500, fontSize: 13, color: p.internal ? COLOR_INTERNE : (over > 0 ? COLOR_OVER : '#111827') }}>{p.name}</span>
+                        <span style={{ fontWeight: 600, fontSize: 13, color: '#374151' }}>{Math.round(p.hours * 10) / 10}h</span>
                     </div>
-                    <div style={{ height: 4, background: '#F3F4F6', borderRadius: 2 }}>
-                        <div style={{ height: 4, width: `${Math.min(pct, 100)}%`, background: p.internal ? '#8B5CF6' : (over > 0 ? '#EF4444' : barColor), borderRadius: 2 }} />
+                    <div style={{ height: 4, background: '#F4F4F4', borderRadius: 2 }}>
+                        <div style={{ height: 4, width: `${Math.min(pct, 100)}%`, background: p.internal ? COLOR_INTERNE : (over > 0 ? COLOR_OVER : barColor), borderRadius: 2 }} />
                     </div>
-                    <div style={{ fontSize: 10, marginTop: 2 }}>
-                        <span style={{ color: '#9CA3AF' }}>{pct}%</span>
-                        {p.internal && <span style={{ color: '#8B5CF6', fontWeight: 700, marginLeft: 6 }}>· interne (non vendu)</span>}
-                        {over > 0 && <span style={{ color: '#EF4444', fontWeight: 700, marginLeft: 6 }}>· {overLabel} +{over}h {overSuffix}</span>}
+                    <div style={{ fontSize: 11, marginTop: 3 }}>
+                        <span style={{ color: '#9B9A97' }}>{pct}%</span>
+                        {p.internal && <span style={{ color: COLOR_INTERNE, fontWeight: 600, marginLeft: 6 }}>· interne (non vendu)</span>}
+                        {over > 0 && <span style={{ color: COLOR_OVER, fontWeight: 600, marginLeft: 6 }}>· {overLabel} +{over}h {overSuffix}</span>}
                     </div>
                 </div>
             );
@@ -509,8 +524,9 @@ const CapaciteView = ({ localUsers, localEvents, projects = [] }) => {
     const curveColor = direction === 'future' ? COLOR_PLANIFIE : COLOR_CHARGE;
 
     // Style d'en-tête de tableau (aligné, compact).
-    const th = (align = 'right', extra = {}) => ({ padding: '8px 14px', textAlign: align, fontSize: 11, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', whiteSpace: 'nowrap', ...extra });
-    const rateColor = (r) => r > 100 ? '#EF4444' : r > 80 ? '#F59E0B' : '#10B981';
+    const th = (align = 'right', extra = {}) => ({ padding: '9px 14px', textAlign: align, fontSize: 13, fontWeight: 600, color: '#374151', whiteSpace: 'nowrap', ...extra });
+    // Taux : bleu nuit dans la cible, rouge seulement au-delà de 100 % (dépassement).
+    const rateColor = (r) => r > 100 ? COLOR_OVER : '#111827';
 
     // Synthèse (tuiles) : conglomérat sur toute la période affichée.
     const totals = useMemo(() => {
@@ -558,7 +574,7 @@ const CapaciteView = ({ localUsers, localEvents, projects = [] }) => {
             <g transform={`translate(${x},${y})`}>
                 <text x={0} y={0} dy={12} textAnchor="middle" fontSize={11} fill="#6B7280">{payload.value}</text>
                 {item?.monthLabel && (
-                    <text x={0} y={0} dy={26} textAnchor="middle" fontSize={10} fill="#374151" fontWeight={700}
+                    <text x={0} y={0} dy={26} textAnchor="middle" fontSize={11} fill="#374151" fontWeight={500}
                         style={{ textTransform: 'capitalize' }}>
                         {item.monthLabel.charAt(0).toUpperCase() + item.monthLabel.slice(1)}
                     </text>
@@ -572,10 +588,10 @@ const CapaciteView = ({ localUsers, localEvents, projects = [] }) => {
         const d = payload[0]?.payload;
         const over = d.planifie > d.capa;
         return (
-            <div style={{ background: 'white', border: '1px solid #E0DED9', borderRadius: 8, padding: '10px 14px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', fontSize: 12 }}>
-                <div style={{ fontWeight: 700, marginBottom: 6 }}>{d.weekFullLabel}</div>
+            <div style={{ background: 'white', border: '1px solid #E0DED9', borderRadius: 8, padding: '10px 14px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', fontSize: 12, fontFamily: ROBOTO }}>
+                <div style={{ fontWeight: 500, fontSize: 13, marginBottom: 6 }}>{d.weekFullLabel}</div>
                 <div style={{ color: '#6B7280', marginBottom: 2 }}>Capacité : <strong>{d.capa}h</strong></div>
-                <div style={{ fontWeight: 600, color: over ? '#EF4444' : COLOR_PLANIFIE }}>
+                <div style={{ fontWeight: 600, color: over ? COLOR_OVER : COLOR_PLANIFIE }}>
                     Planifié : {d.planifie}h{over ? ` (+${Math.round((d.planifie - d.capa) * 10) / 10}h)` : ''}
                 </div>
                 <div style={{ marginTop: 2, color: COLOR_CHARGE }}>Charge : {d.charge}h</div>
@@ -598,13 +614,8 @@ const CapaciteView = ({ localUsers, localEvents, projects = [] }) => {
                     {/* Interne Lenglart : compté ou non dans les taux (toujours visible sur la courbe/détail) */}
                     <button onClick={() => setIncludeInternal(v => !v)}
                         title="Compter le dossier interne Lenglart (non vendu) dans les taux d'occupation / planification"
-                        style={{
-                            padding: '6px 14px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                            background: includeInternal ? '#8B5CF6' : 'white',
-                            color:      includeInternal ? 'white'   : '#6B7280',
-                            border:     `1px solid ${includeInternal ? '#8B5CF6' : '#E0DED9'}`,
-                        }}>
-                        {includeInternal ? 'Interne dans les taux ✓' : 'Interne dans les taux'}
+                        style={includeInternal ? { ...BTN, background: NAVY, borderColor: NAVY, color: 'white' } : BTN}>
+                        {includeInternal && <Check size={14} />} Interne dans les taux
                     </button>
 
                     {/* Sélecteur de période : direction (Futur/Passé) + menu déroulant + perso */}
@@ -613,7 +624,7 @@ const CapaciteView = ({ localUsers, localEvents, projects = [] }) => {
                         <select
                             value={periode}
                             onChange={e => { const v = e.target.value; if (v === 'custom') setPeriode('custom'); else applyPreset(v); }}
-                            style={{ padding: '6px 10px', borderRadius: 8, fontSize: 12, fontWeight: 600, color: '#374151', border: '1px solid #E0DED9', background: 'white', cursor: 'pointer' }}
+                            style={{ ...BTN, padding: '0 10px', appearance: 'auto' }}
                         >
                             <optgroup label="À venir">
                                 {PERIODE_PRESETS.filter(p => p.dir === 'future').map(p => <option key={p.key} value={p.key}>{p.label}</option>)}
@@ -626,37 +637,37 @@ const CapaciteView = ({ localUsers, localEvents, projects = [] }) => {
                         {periode === 'custom' && (
                             <>
                                 <input type="date" value={rangeStart} onChange={e => { setPeriode('custom'); setRangeStart(e.target.value); }}
-                                    style={{ padding: '5px 8px', border: '1px solid #D1D5DB', borderRadius: 6, fontSize: 12 }} />
-                                <span style={{ color: '#9CA3AF', fontSize: 12 }}>→</span>
+                                    style={{ ...DA_INPUT_STYLE, width: 'auto', height: 36, fontSize: 13 }} />
+                                <span style={{ color: '#9B9A97', fontSize: 13 }}>→</span>
                                 <input type="date" value={rangeEnd} onChange={e => { setPeriode('custom'); setRangeEnd(e.target.value); }}
-                                    style={{ padding: '5px 8px', border: '1px solid #D1D5DB', borderRadius: 6, fontSize: 12 }} />
+                                    style={{ ...DA_INPUT_STYLE, width: 'auto', height: 36, fontSize: 13 }} />
                             </>
                         )}
                     </div>
                 </div>
 
                 {/* Dashboard — synthèse sur toute la période sélectionnée */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 }}>
-                    <Tile label="Capacité" value={`${totals.capa}h`} sub="disponible sur la période" />
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16 }}>
+                    <Tile label="Capacité" value={`${totals.capa}h`} dot={COLOR_CAPA} sub="disponible sur la période" />
                     {direction === 'future' ? (
                         <>
-                            <Tile label="Planifié" value={`${totals.planifieShown}h`} color={COLOR_PLANIFIE}
+                            <Tile label="Planifié" value={`${totals.planifieShown}h`} dot={COLOR_PLANIFIE}
                                 sub={includeInternal && totals.internalPlanifie > 0 ? `à faire · dont ${totals.internalPlanifie}h interne` : 'à faire sur la période'} />
                             <Tile label="Taux de planification" value={`${totals.ratePlan}%`} color={rateColor(totals.ratePlan)}
                                 sub={`écart ${totals.ecartPlan >= 0 ? '+' : ''}${totals.ecartPlan}h`} />
                             <Tile label="Surplanification" value={`${totals.surplanif}h`}
-                                color={totals.surplanif > 0 ? '#EF4444' : '#10B981'}
+                                color={totals.surplanif > 0 ? COLOR_OVER : '#111827'}
                                 onClick={totals.surplanif > 0 ? () => setOverModal('surplanif') : undefined}
                                 sub={totals.surplanif > 0 ? `${totals.nbOver} projet${totals.nbOver > 1 ? 's' : ''} au-delà du budget · ${totals.pctSurplanif}% du planifié` : 'aucun dépassement de budget'} />
                         </>
                     ) : (
                         <>
-                            <Tile label="Consommé" value={`${totals.chargeShown}h`} color={COLOR_CHARGE}
+                            <Tile label="Consommé" value={`${totals.chargeShown}h`} dot={COLOR_CHARGE}
                                 sub={includeInternal && totals.internalCharge > 0 ? `réalisé · dont ${totals.internalCharge}h interne` : 'réalisé sur la période'} />
                             <Tile label="Taux d'occupation" value={`${totals.rateOcc}%`} color={rateColor(totals.rateOcc)}
                                 sub={`écart ${totals.ecartOcc >= 0 ? '+' : ''}${totals.ecartOcc}h`} />
                             <Tile label="Surconsommation" value={`${totals.suroccup}h`}
-                                color={totals.suroccup > 0 ? '#EF4444' : '#10B981'}
+                                color={totals.suroccup > 0 ? COLOR_OVER : '#111827'}
                                 onClick={totals.suroccup > 0 ? () => setOverModal('surocc') : undefined}
                                 sub={totals.suroccup > 0 ? `${totals.nbOverOcc} projet${totals.nbOverOcc > 1 ? 's' : ''} au-delà du budget · ${totals.pctSuroccup}% du consommé` : 'aucun dépassement de budget'} />
                         </>
@@ -664,21 +675,21 @@ const CapaciteView = ({ localUsers, localEvents, projects = [] }) => {
                 </div>
 
                 {/* Courbe */}
-                <div style={{ background: 'white', borderRadius: 12, border: '1px solid #E0DED9', padding: '20px 16px 8px' }}>
+                <div style={{ background: 'white', borderRadius: 12, border: '1px solid #E0DED9', padding: '20px 16px 8px', fontFamily: ROBOTO }}>
                     <ResponsiveContainer width="100%" height={420}>
                         <ComposedChart data={chartData} onClick={(d) => {
                             if (!d) return;
                             const item = d.activePayload?.[0]?.payload ?? chartData.find(w => w.weekLabel === d.activeLabel);
                             if (item) setSelectedWeekData(item);
                         }} style={{ cursor: 'pointer' }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
+                            <CartesianGrid strokeDasharray="3 3" stroke="#E8E6E2" vertical={false} />
                             <XAxis dataKey="weekLabel" tick={<CustomXAxisTick />} height={45} />
-                            <YAxis tick={{ fontSize: 11 }} unit="h" width={45} />
+                            <YAxis tick={{ fontSize: 11, fill: '#6B7280' }} unit="h" width={50} axisLine={false} tickLine={false} />
                             <Tooltip content={<CustomTooltip />} />
-                            <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
+                            <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 13, paddingTop: 8, color: '#374151' }} />
                             <Area
                                 type="monotone" dataKey="capa" name="Capacité"
-                                fill="#ECFDF5" stroke={COLOR_CAPA} strokeWidth={2} dot={false}
+                                fill="#EEF4FD" stroke={COLOR_CAPA} strokeWidth={2} dot={false}
                             />
                             {/* Une seule ligne : planifié (période à venir) ou consommé (période passée) */}
                             <Line
@@ -689,35 +700,35 @@ const CapaciteView = ({ localUsers, localEvents, projects = [] }) => {
                                     const { cx, cy, payload } = props;
                                     const val = payload[curveKey];
                                     return <circle key={`cv-${cx}`} cx={cx} cy={cy} r={4}
-                                        fill={val > payload.capa ? '#EF4444' : curveColor}
+                                        fill={val > payload.capa ? COLOR_OVER : curveColor}
                                         stroke="white" strokeWidth={1.5} />;
                                 }}
                             />
                             <ReferenceLine
-                                x={todayWeekLabel} stroke="#F59E0B" strokeDasharray="4 4"
-                                label={{ value: 'Auj.', position: 'insideTopRight', fontSize: 10, fill: '#F59E0B' }}
+                                x={todayWeekLabel} stroke="#9B9A97" strokeDasharray="4 4"
+                                label={{ value: "Aujourd'hui", position: 'insideTopLeft', fontSize: 11, fill: '#6B7280' }}
                             />
                         </ComposedChart>
                     </ResponsiveContainer>
                 </div>
 
                 {/* Tableau */}
-                <div style={{ background: 'white', borderRadius: 12, border: '1px solid #E0DED9', overflow: 'auto', maxHeight: 380 }}>
+                <div className="df-list-scroll" style={{ background: 'white', borderRadius: 12, border: '1px solid #E0DED9', overflow: 'auto', maxHeight: 380, fontFamily: ROBOTO }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                        <thead style={{ background: '#F4F4F4', position: 'sticky', top: 0, zIndex: 1, boxShadow: '0 1px 0 #E5E7EB' }}>
+                        <thead style={{ background: '#F4F4F4', position: 'sticky', top: 0, zIndex: 1, boxShadow: '0 1px 0 #E0DED9' }}>
                             <tr>
                                 <th rowSpan={2} style={th('left')}>Semaine</th>
                                 <th rowSpan={2} style={th('right')}>Capacité (h)</th>
-                                <th rowSpan={2} style={th('right', { color: COLOR_PLANIFIE })}>Planifié (h)</th>
-                                <th rowSpan={2} style={th('right', { color: COLOR_CHARGE })}>Charge (h)</th>
-                                <th colSpan={2} style={th('center', { color: COLOR_PLANIFIE, borderLeft: '1px solid #E5E7EB' })}>Planification</th>
-                                <th colSpan={2} style={th('center', { color: COLOR_CHARGE, borderLeft: '1px solid #E5E7EB' })}>Occupation</th>
+                                <th rowSpan={2} style={th('right')}>Planifié (h)</th>
+                                <th rowSpan={2} style={th('right')}>Consommé (h)</th>
+                                <th colSpan={2} style={th('center', { borderLeft: '1px solid #E0DED9' })}>Planification</th>
+                                <th colSpan={2} style={th('center', { borderLeft: '1px solid #E0DED9' })}>Occupation</th>
                             </tr>
                             <tr>
-                                <th style={th('right', { borderLeft: '1px solid #E5E7EB' })}>Taux</th>
-                                <th style={th('right')}>Écart</th>
-                                <th style={th('right', { borderLeft: '1px solid #E5E7EB' })}>Taux</th>
-                                <th style={th('right')}>Écart</th>
+                                <th style={th('right', { borderLeft: '1px solid #E0DED9', fontWeight: 500, color: '#6B7280' })}>Taux</th>
+                                <th style={th('right', { fontWeight: 500, color: '#6B7280' })}>Écart</th>
+                                <th style={th('right', { borderLeft: '1px solid #E0DED9', fontWeight: 500, color: '#6B7280' })}>Taux</th>
+                                <th style={th('right', { fontWeight: 500, color: '#6B7280' })}>Écart</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -732,29 +743,31 @@ const CapaciteView = ({ localUsers, localEvents, projects = [] }) => {
                                 const isSel   = selectedWeekData?.weekLabel === row.weekLabel;
                                 return (
                                     <tr key={i} onClick={() => setSelectedWeekData(row)} style={{
-                                        borderBottom: '1px solid #F3F4F6', cursor: 'pointer',
-                                        background: isSel ? '#F0F9FF' : isCurr ? '#FFFBEB' : 'white',
+                                        borderBottom: '1px solid #E8E6E2', cursor: 'pointer',
+                                        background: isSel ? '#EEF4FD' : 'white',
                                     }}>
-                                        <td style={{ padding: '9px 14px', fontSize: 12, fontWeight: isCurr ? 700 : 500 }}>
-                                            {row.weekFullLabel}
-                                            {isCurr && <span style={{ marginLeft: 6, fontSize: 9, background: '#F59E0B', color: 'white', padding: '1px 5px', borderRadius: 4, fontWeight: 700 }}>ACTUEL</span>}
+                                        <td style={{ padding: '9px 14px', fontSize: 13, fontWeight: isCurr ? 600 : 400, color: '#111827' }}>
+                                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                                                {row.weekFullLabel}
+                                                {isCurr && <TonePill tone={0}>Actuelle</TonePill>}
+                                            </span>
                                         </td>
-                                        <td style={{ padding: '9px 14px', textAlign: 'right', fontSize: 12, color: '#374151' }}>{row.capa}h</td>
-                                        <td style={{ padding: '9px 14px', textAlign: 'right', fontSize: 12, fontWeight: 600, color: overPlan ? '#EF4444' : COLOR_PLANIFIE }}>{row.planifie}h</td>
-                                        <td style={{ padding: '9px 14px', textAlign: 'right', fontSize: 12, fontWeight: 600, color: COLOR_CHARGE }}>{row.charge}h</td>
-                                        <td style={{ padding: '9px 14px', textAlign: 'right', fontSize: 12, borderLeft: '1px solid #F3F4F6' }}>
-                                            <span style={{ fontWeight: 700, color: rateColor(ratePlan) }}>{ratePlan}%</span>
+                                        <td style={{ padding: '9px 14px', textAlign: 'right', fontSize: 13, color: '#374151' }}>{row.capa}h</td>
+                                        <td style={{ padding: '9px 14px', textAlign: 'right', fontSize: 13, fontWeight: 600, color: overPlan ? COLOR_OVER : '#111827' }}>{row.planifie}h</td>
+                                        <td style={{ padding: '9px 14px', textAlign: 'right', fontSize: 13, fontWeight: 600, color: '#111827' }}>{row.charge}h</td>
+                                        <td style={{ padding: '9px 14px', textAlign: 'right', fontSize: 13, borderLeft: '1px solid #E8E6E2' }}>
+                                            <span style={{ fontWeight: 600, color: rateColor(ratePlan) }}>{ratePlan}%</span>
                                         </td>
-                                        <td style={{ padding: '9px 14px', textAlign: 'right', fontSize: 12, fontWeight: 600, color: overPlan ? '#EF4444' : '#10B981' }}>{overPlan ? `+${ecartPlan}` : ecartPlan}h</td>
-                                        <td style={{ padding: '9px 14px', textAlign: 'right', fontSize: 12, borderLeft: '1px solid #F3F4F6' }}>
-                                            <span style={{ fontWeight: 700, color: rateColor(rateChg) }}>{rateChg}%</span>
+                                        <td style={{ padding: '9px 14px', textAlign: 'right', fontSize: 13, color: overPlan ? COLOR_OVER : '#6B7280' }}>{overPlan ? `+${ecartPlan}` : ecartPlan}h</td>
+                                        <td style={{ padding: '9px 14px', textAlign: 'right', fontSize: 13, borderLeft: '1px solid #E8E6E2' }}>
+                                            <span style={{ fontWeight: 600, color: rateColor(rateChg) }}>{rateChg}%</span>
                                         </td>
-                                        <td style={{ padding: '9px 14px', textAlign: 'right', fontSize: 12, fontWeight: 600, color: overChg ? '#EF4444' : '#10B981' }}>{overChg ? `+${ecartChg}` : ecartChg}h</td>
+                                        <td style={{ padding: '9px 14px', textAlign: 'right', fontSize: 13, color: overChg ? COLOR_OVER : '#6B7280' }}>{overChg ? `+${ecartChg}` : ecartChg}h</td>
                                     </tr>
                                 );
                             })}
                             {chartData.length === 0 && (
-                                <tr><td colSpan={8} style={{ padding: 24, textAlign: 'center', color: '#9CA3AF', fontSize: 12 }}>Aucune donnée sur cette période.</td></tr>
+                                <tr><td colSpan={8} style={{ padding: 24, textAlign: 'center', color: '#9B9A97', fontSize: 13 }}>Aucune donnée sur cette période.</td></tr>
                             )}
                         </tbody>
                     </table>
@@ -763,25 +776,25 @@ const CapaciteView = ({ localUsers, localEvents, projects = [] }) => {
 
             {/* ── Panneau latéral détail semaine ── */}
             {selectedWeekData && (
-                <div style={{ width: 320, borderLeft: '1px solid #E5E7EB', background: 'white', display: 'flex', flexDirection: 'column', overflow: 'hidden', flexShrink: 0 }}>
-                    <div style={{ padding: '16px 20px', borderBottom: '1px solid #E5E7EB', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div style={{ width: 340, borderLeft: '1px solid #E0DED9', background: 'white', display: 'flex', flexDirection: 'column', overflow: 'hidden', flexShrink: 0, fontFamily: ROBOTO }}>
+                    <div style={{ padding: '20px 20px 16px', borderBottom: '1px solid #E8E6E2', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                         <div>
-                            <div style={{ fontWeight: 700, fontSize: 14, color: '#111827' }}>{selectedWeekData.weekFullLabel}</div>
-                            <div style={{ fontSize: 12, color: '#6B7280', marginTop: 3 }}>
+                            <div style={{ fontWeight: 400, fontSize: 20, color: '#111827' }}>{selectedWeekData.weekFullLabel}</div>
+                            <div style={{ fontSize: 12, color: '#6B7280', marginTop: 4 }}>
                                 Capa {selectedWeekData.capa}h &nbsp;·&nbsp; Planifié {selectedWeekData.planifie}h &nbsp;·&nbsp; Consommé {selectedWeekData.charge}h
                             </div>
                             {selectedWeekData.planifie > selectedWeekData.capa && (
-                                <div style={{ marginTop: 4, fontSize: 11, fontWeight: 700, color: '#EF4444' }}>
+                                <div style={{ marginTop: 4, fontSize: 12, fontWeight: 600, color: COLOR_OVER }}>
                                     Dépassement +{Math.round((selectedWeekData.planifie - selectedWeekData.capa) * 10) / 10}h
                                 </div>
                             )}
                         </div>
                         <button onClick={() => setSelectedWeekData(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2 }}>
-                            <X size={18} color="#9CA3AF" />
+                            <X size={18} color="#9B9A97" />
                         </button>
                     </div>
 
-                    <div style={{ flex: 1, overflowY: 'auto', padding: '12px 20px' }}>
+                    <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px' }}>
                         <ProjectBreakdown
                             title="Planifié"
                             items={selectedWeekData.plannedProjects}
