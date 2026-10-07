@@ -4,7 +4,7 @@ import { AgGridReact } from 'ag-grid-react';
 import 'ag-grid-community/styles/ag-grid.css';
 import 'ag-grid-community/styles/ag-theme-alpine.css';
 
-import { schemaToGridCols } from '../lib/utils/schemaToGridCols.jsx';
+import { schemaToGridCols, GridSelectChip } from '../lib/utils/schemaToGridCols.jsx';
 import { recomputeRow } from '../lib/formulas/recomputeRow';
 import { generateRowLogs } from '../lib/utils/logUtils';
 import { uid } from '../lib/utils/uid';
@@ -1338,15 +1338,7 @@ function MinuteGrid({
         });
 
         // Colonne expédition toujours présente (pinned right)
-        const EXPEDITION_STYLES = {
-            'Non expédié':           { bg: '#F3F4F6', color: '#6B7280' },
-            'En préparation':        { bg: '#FEF3C7', color: '#92400E' },
-            'Expédié':               { bg: '#D1FAE5', color: '#065F46' },
-            'Rail expédié':          { bg: '#DBEAFE', color: '#1E40AF' },
-            'Rideau expédié':        { bg: '#EDE9FE', color: '#5B21B6' },
-            'Rail + Rideau expédié': { bg: '#D1FAE5', color: '#065F46' },
-        };
-        const ALL_EXPEDITION_STATUTS = Object.keys(EXPEDITION_STYLES);
+        const ALL_EXPEDITION_STATUTS = ['Non expédié', 'En préparation', 'Expédié', 'Rail expédié', 'Rideau expédié', 'Rail + Rideau expédié'];
 
         const expeditionCol = {
             field: 'statut_expedition',
@@ -1356,12 +1348,10 @@ function MinuteGrid({
             cellEditor: 'agSelectCellEditor',
             cellEditorParams: { values: ALL_EXPEDITION_STATUTS },
             pinned: 'right',
+            // Même pastille que les autres colonnes à liste (Produit, statuts…)
             cellRenderer: (params) => {
-                const val = params.value || 'Non expédié';
-                const s = EXPEDITION_STYLES[val] || EXPEDITION_STYLES['Non expédié'];
-                return React.createElement('span', {
-                    style: { display: 'inline-block', padding: '2px 8px', borderRadius: 99, fontSize: 11, fontWeight: 700, background: s.bg, color: s.color }
-                }, val);
+                if (params.node?.rowPinned) return null;
+                return React.createElement(GridSelectChip, { value: params.value || 'Non expédié', colKey: 'statut_expedition', gridTitle: title });
             },
         };
 
