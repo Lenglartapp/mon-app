@@ -678,7 +678,7 @@ const PlanningGrid = ({
                                                         >
                                                             {expandedGroups[key] >= 2 ? <ChevronDown size={14} /> : <ChevronRightIcon size={14} />}
                                                         </span>
-                                                        Programme semaine
+                                                        Programme
                                                     </span>
                                                     <span style={{ fontSize: 13, color: '#6B7280' }}>
                                                         {(() => {
@@ -728,7 +728,7 @@ const PlanningGrid = ({
                                                 const cHours = Math.round(groupStats.cap); // Group Capacity
 
                                                 return (
-                                                    <span style={{ fontSize: 12, fontWeight: 600, background: '#FFE4E6', color: '#BE123C', padding: '2px 8px', borderRadius: 4, whiteSpace: 'nowrap' }}>
+                                                    <span style={{ fontSize: 12, fontWeight: 600, background: '#FFE4E6', color: '#BE123C', padding: '2px 8px', borderRadius: 4, whiteSpace: 'nowrap', marginTop: 10 }}>
                                                         {bHours}h / {cHours}h
                                                     </span>
                                                 );
@@ -803,7 +803,7 @@ const PlanningGrid = ({
                                                                     minHeight: PROGRAMME_ROW_HEIGHT,
                                                                     display: 'flex',
                                                                     flexDirection: 'column',
-                                                                    background: binIndex % 2 === 0 ? '#FFF1F2' : '#FDF2F8',
+                                                                    background: 'white', // sans fond : les cartes suffisent
                                                                     borderBottom: '1px solid #E5E7EB',
                                                                     borderRight: '1px solid #E5E7EB',
                                                                     position: 'relative',
@@ -815,12 +815,12 @@ const PlanningGrid = ({
                                                                     e.currentTarget.style.background = '#FCE7F3';
                                                                 }}
                                                                 onDragLeave={(e) => {
-                                                                    e.currentTarget.style.background = binIndex % 2 === 0 ? '#FFF1F2' : '#FDF2F8';
+                                                                    e.currentTarget.style.background = 'white';
                                                                 }}
                                                                 onDrop={(e) => {
                                                                     e.preventDefault();
                                                                     e.stopPropagation();
-                                                                    e.currentTarget.style.background = binIndex % 2 === 0 ? '#FFF1F2' : '#FDF2F8';
+                                                                    e.currentTarget.style.background = 'white';
 
                                                                     const type = e.dataTransfer.getData('type');
                                                                     if (type !== 'backlog-sort') return;
