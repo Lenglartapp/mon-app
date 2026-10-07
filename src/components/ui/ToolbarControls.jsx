@@ -17,9 +17,11 @@ const INPUT = {
 };
 
 /** Champ de recherche (loupe à gauche, croix pour vider). `list` : id d'un <datalist> de suggestions. */
-export function ToolbarSearch({ value, onChange, placeholder, width = 320, list, icon = true }) {
+export function ToolbarSearch({ value, onChange, placeholder, width = 320, list, icon = true, grow = false }) {
+  // `grow` : prend la place libre (jusqu'à `width`) et rétrécit sur petit écran au lieu de pousser
+  // les boutons voisins à la ligne.
   return (
-    <div style={{ ...BOX, width }}>
+    <div style={{ ...BOX, ...(grow ? { flex: '1 1 200px', maxWidth: width, minWidth: 180 } : { width }) }}>
       {icon && <Search size={16} color="#9CA3AF" style={{ flexShrink: 0 }} />}
       <input value={value || ''} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} list={list} style={INPUT} />
       {value ? (

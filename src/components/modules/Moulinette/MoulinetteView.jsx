@@ -77,13 +77,14 @@ export default function MoulinetteView({ rows, depRows, extraRows, commissionRat
 // COMPONENTS
 // —————————————————————————————————————————————————————————
 
-// 7 chiffres clés, tous au même format et sur une seule ligne (les pourcentages sont des
+// 7 chiffres clés, tous au même format, sur une seule ligne quand la place le permet (les pourcentages sont des
 // indicateurs à part entière), puis le bouton Objectif.
 function Dashboard({ data, onOpenSimulator }) {
     const { kpis } = data;
     return (
         <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16 }}>
-            <div style={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, auto))', justifyContent: 'space-between', gap: 24 }}>
+            {/* Une ligne sur ordinateur ; passe à la ligne sur tablette au lieu de se chevaucher */}
+            <div style={{ flex: 1, display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: '14px 28px' }}>
                 <KPI label="CA total" value={nfEur0.format(kpis.ca_total)} />
                 <KPI label="Marge brute" value={nfEur0.format(kpis.marge_brute)} />
                 <KPI label="% marge brute" value={pct(kpis.marge_brute_pct)} alert={kpis.marge_brute_pct < 30} />
