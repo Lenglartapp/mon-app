@@ -9,7 +9,7 @@ import Avatar from '@mui/material/Avatar';
 import InputBase from '@mui/material/InputBase';
 import { itemMetaColumns } from './stockColumns';
 import { ToolbarSearch, TonePill } from '../../ui/ToolbarControls';
-import { DATAGRID_DA_SX, TABLE_FRAME_STYLE } from '../../../lib/constants/daStyles';
+import { DATAGRID_DA_SX, TABLE_FRAME_STYLE, FLUX_TONES } from '../../../lib/constants/daStyles';
 // Helper for avatar color
 function stringToColor(string) {
     if (!string) return '#ccc';
@@ -21,11 +21,13 @@ function stringToColor(string) {
     return '#' + "00000".substring(0, 6 - c.length) + c;
 }
 
+// Flux : mêmes couleurs que les boutons Entrée / Changer d'emplacement / Sortie (FLUX_TONES) ;
+// l'édition manuelle, sans bouton, reste en gris neutre.
 const FLUX = {
-    IN: { label: 'Entrée', tone: 0 },
-    OUT: { label: 'Sortie', tone: 1 },
-    MOVE: { label: 'Déplacement', tone: 3 },
-    ADJUST: { label: 'Édition', tone: 4 },
+    IN: { label: 'Entrée', tone: FLUX_TONES.IN },
+    OUT: { label: 'Sortie', tone: FLUX_TONES.OUT },
+    MOVE: { label: 'Déplacement', tone: FLUX_TONES.MOVE },
+    ADJUST: { label: 'Édition', tone: null },
 };
 
 const COLUMNS = [
@@ -45,6 +47,7 @@ const COLUMNS = [
         // Flux dans le nuancier bleu : entrée (bleu nuit) → édition (bleu ciel)
         renderCell: (params) => {
             const f = FLUX[params.value] || FLUX.OUT;
+            if (f.tone == null) return <span style={{ display: 'inline-flex', alignItems: 'center', height: 22, padding: '0 10px', borderRadius: 99, background: '#F4F4F4', color: '#374151', fontSize: 12, fontWeight: 600 }}>{f.label}</span>;
             return <TonePill tone={f.tone}>{f.label}</TonePill>;
         }
     },

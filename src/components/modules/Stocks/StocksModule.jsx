@@ -15,6 +15,7 @@ import MovementModal from './MovementModal'; // Imported Modal
 import { useWarehouseZones } from '../../../hooks/useSupabase';
 import { PackagePlus, PackageMinus, ArrowLeftRight } from 'lucide-react'; // Icons
 import { ToolbarButton } from '../../ui/ToolbarControls';
+import { FLUX_TONES } from '../../../lib/constants/daStyles';
 
 // Mock Data for initial state
 export default function StocksModule({
@@ -130,9 +131,9 @@ export default function StocksModule({
                             canEdit={canEdit}
                             actions={canEdit ? (
                                 <>
-                                    <ToolbarButton icon={<PackagePlus size={16} />} onClick={() => handleOpenModal('IN')}>Entrée</ToolbarButton>
-                                    <ToolbarButton icon={<PackageMinus size={16} />} onClick={() => handleOpenModal('OUT')}>Sortie</ToolbarButton>
-                                    <ToolbarButton icon={<ArrowLeftRight size={16} />} onClick={() => handleOpenModal('MOVE')}>Changer d'emplacement</ToolbarButton>
+                                    <ToolbarButton tone={FLUX_TONES.IN} icon={<PackagePlus size={16} />} onClick={() => handleOpenModal('IN')}>Entrée</ToolbarButton>
+                                    <ToolbarButton tone={FLUX_TONES.OUT} icon={<PackageMinus size={16} />} onClick={() => handleOpenModal('OUT')}>Sortie</ToolbarButton>
+                                    <ToolbarButton tone={FLUX_TONES.MOVE} icon={<ArrowLeftRight size={16} />} onClick={() => handleOpenModal('MOVE')}>Changer d'emplacement</ToolbarButton>
                                 </>
                             ) : null}
                         />

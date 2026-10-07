@@ -29,3 +29,7 @@ export const BLUE_TONES = [
   { bg: '#D6E4F8', color: '#111827' },
   { bg: '#EEF4FD', color: '#111827' }, // 5 — le plus clair
 ];
+
+/** Teintes des flux de stock (boutons du journal et pastilles « Flux ») : entrée bleu nuit,
+    déplacement bleu moyen, sortie bleu ciel — trois niveaux bien distincts du nuancier. */
+export const FLUX_TONES = { IN: 0, MOVE: 2, OUT: 4 };
