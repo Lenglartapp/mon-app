@@ -1,26 +1,14 @@
 import React, { useState, useMemo } from 'react';
-import {
-    Dialog, DialogTitle, DialogContent, DialogActions,
-    Button, Tabs, Tab, TextField, Autocomplete, MenuItem,
-    Typography, Box, Checkbox, FormControlLabel, ToggleButton, ToggleButtonGroup
-} from '@mui/material';
-import { FolderPlus, FileJson } from 'lucide-react';
+import { TextField, Autocomplete } from '@mui/material';
+import DaDialog, { DaTabs } from './ui/DaDialog';
+import { ToolbarButton } from './ui/ToolbarControls';
+import { DA_FIELD_SX } from '../lib/constants/daStyles';
+import { DaField, ChoicePill } from './ui/DaForm';
 import { createBlankProject } from "../lib/import/createBlankProject";
 import { computeFormulas } from "../lib/formulas/compute";
 import AddressAutocomplete from "./AddressAutocomplete";
 
-function TabPanel({ children, value, index, ...other }) {
-    return (
-        <div
-            role="tabpanel"
-            hidden={value !== index}
-            {...other}
-            style={{ padding: '24px 0' }}
-        >
-            {value === index && children}
-        </div>
-    );
-}
+const ROBOTO = 'Roboto, system-ui, sans-serif';
 
 export default function CreateProjectDialog({
     open,
@@ -147,207 +135,126 @@ export default function CreateProjectDialog({
 
 
     return (
-        <Dialog
+        <DaDialog
             open={open}
             onClose={onClose}
+            title="Nouveau projet"
+            subtitle="À partir d'une minute chiffrée ou d'un projet vierge."
             maxWidth="sm"
-            fullWidth
-            TransitionProps={{ timeout: 300 }}
+            tabs={<DaTabs
+                tabs={[
+                    { key: 0, label: "Import d'une minute", disabled: minutes.length === 0 },
+                    { key: 1, label: 'Projet vierge' },
+                ]}
+                value={tab}
+                onChange={setTab}
+            />}
+            footer={<>
+                <div style={{ flex: 1 }} />
+                <ToolbarButton onClick={onClose}>Annuler</ToolbarButton>
+                {tab === 0 ? (
+                    <ToolbarButton primary onClick={handleImport} disabled={!selectedMinute || !deliveryDate || loadingMinute}>
+                        {loadingMinute ? 'Chargement…' : 'Importer le projet'}
+                    </ToolbarButton>
+                ) : (
+                    <ToolbarButton primary onClick={handleCreateBlank} disabled={!projectName.trim() || !deliveryDate}>
+                        Créer le projet
+                    </ToolbarButton>
+                )}
+            </>}
         >
-            <DialogTitle sx={{ textAlign: 'center', pb: 0, fontWeight: 800 }}>
-                Nouveau Projet Production
-            </DialogTitle>
-
-            <DialogContent>
-                <Tabs value={tab} onChange={(e, v) => setTab(v)} centered sx={{ borderBottom: 1, borderColor: 'divider' }}>
-                    <Tab label="Import Minute" disabled={minutes.length === 0} icon={<FileJson size={16} />} iconPosition="start" />
-                    <Tab label="Projet Vierge" icon={<FolderPlus size={16} />} iconPosition="start" />
-                </Tabs>
-
-                {/* TAB 0: IMPORT */}
-                <TabPanel value={tab} index={0}>
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2, textAlign: 'center' }}>
-                        Créez un projet de production directement à partir d'un devis / minute chiffrée validée.
-                    </Typography>
-
-                    <Autocomplete
-                        options={minutes}
-                        getOptionLabel={(m) => `${m.name || "Sans nom"} (${m.client || "Client ?"})`}
-                        value={selectedMinute}
-                        onChange={(e, v) => handleSelectMinute(v)}
-                        renderInput={(params) => <TextField {...params} label="Rechercher une minute..." placeholder="Tapez le nom..." autoFocus />}
-                        renderOption={(props, option) => (
-                            <li {...props}>
-                                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                    <span style={{ fontWeight: 600 }}>{option.name || "Sans nom"}</span>
-                                    <span style={{ fontSize: 12, opacity: 0.7 }}>
-                                        {option.client || "Client inconnu"} — {new Date(option.ts || Date.now()).toLocaleDateString()}
-                                    </span>
-                                </div>
-                            </li>
-                        )}
-                    />
-
-                    <TextField
-                        type="date"
-                        label="Date de livraison prévue"
-                        value={deliveryDate}
-                        onChange={(e) => setDeliveryDate(e.target.value)}
-                        fullWidth
-                        InputLabelProps={{ shrink: true }}
-                        sx={{ mt: 3 }}
-                    />
-
-                    {selectedMinute && (
-                        <Box sx={{ mt: 2, p: 2, bgcolor: '#F4F4F4', borderRadius: 2, border: '1px solid #E5E7EB' }}>
-                            <Typography variant="caption" fontWeight={700} color="text.secondary" display="block">RÉSUMÉ</Typography>
-                            <Typography variant="body2"><strong>Client :</strong> {selectedMinute.client || "—"}</Typography>
-                            <Typography variant="body2"><strong>Lignes :</strong> {loadingMinute ? "chargement…" : minuteLoadFailed ? "non chargées" : `${((selectedFull || selectedMinute).lines || []).length} ouvrages`}</Typography>
-                            {minuteLoadFailed && !loadingMinute && (
-                                <Typography variant="body2" sx={{ color: '#B91C1C', mt: 0.5 }}>
-                                    Le chiffrage n'a pas pu être chargé (serveur lent ou connexion interrompue). Cliquez sur « Importer le projet » pour réessayer.
-                                </Typography>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                {/* ONGLET 0 : IMPORT D'UNE MINUTE */}
+                {tab === 0 && (<>
+                    <DaField label="Minute chiffrée" hint="Créez le projet directement à partir d'une minute validée.">
+                        <Autocomplete
+                            options={minutes}
+                            getOptionLabel={(m) => `${m.name || "Sans nom"} (${m.client || "Client ?"})`}
+                            value={selectedMinute}
+                            onChange={(e, v) => handleSelectMinute(v)}
+                            renderInput={(params) => <TextField {...params} placeholder="Rechercher une minute…" autoFocus size="small" sx={DA_FIELD_SX} />}
+                            renderOption={(props, option) => (
+                                <li {...props}>
+                                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                        <span style={{ fontWeight: 500, fontSize: 14 }}>{option.name || "Sans nom"}</span>
+                                        <span style={{ fontSize: 12, color: '#6B7280' }}>
+                                            {option.client || "Client inconnu"} — {new Date(option.ts || Date.now()).toLocaleDateString()}
+                                        </span>
+                                    </div>
+                                </li>
                             )}
-                        </Box>
+                        />
+                    </DaField>
+                    <DaField label="Date de livraison prévue">
+                        <TextField type="date" value={deliveryDate} onChange={(e) => setDeliveryDate(e.target.value)} fullWidth size="small" sx={DA_FIELD_SX} />
+                    </DaField>
+                    {selectedMinute && (
+                        <div style={{ padding: '12px 14px', background: '#F7F7F5', borderRadius: 8, fontSize: 13, color: '#374151', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            <div style={{ fontWeight: 600, color: '#111827' }}>Résumé</div>
+                            <div>Client : {selectedMinute.client || "—"}</div>
+                            <div>Lignes : {loadingMinute ? "chargement…" : minuteLoadFailed ? "non chargées" : `${((selectedFull || selectedMinute).lines || []).length} ouvrages`}</div>
+                            {minuteLoadFailed && !loadingMinute && (
+                                <div style={{ color: '#B91C1C', marginTop: 2 }}>
+                                    Le chiffrage n'a pas pu être chargé (serveur lent ou connexion interrompue). Cliquez sur « Importer le projet » pour réessayer.
+                                </div>
+                            )}
+                        </div>
                     )}
-                </TabPanel>
+                </>)}
 
-                {/* TAB 1: BLANK */}
-                <TabPanel value={tab} index={1}>
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2, textAlign: 'center' }}>
-                        Créez un projet vide et ajoutez vos ouvrages manuellement.
-                    </Typography>
+                {/* ONGLET 1 : PROJET VIERGE */}
+                {tab === 1 && (<>
+                    <DaField label="Nom du projet / client" hint="Créez un projet vide et ajoutez vos ouvrages ensuite.">
+                        <TextField autoFocus fullWidth size="small" sx={DA_FIELD_SX} value={projectName} onChange={(e) => setProjectName(e.target.value)} placeholder="Ex : M. Martin - Salon" />
+                    </DaField>
+                    <DaField label="Date de livraison prévue">
+                        <TextField type="date" value={deliveryDate} onChange={(e) => setDeliveryDate(e.target.value)} fullWidth size="small" sx={DA_FIELD_SX} />
+                    </DaField>
+                    <DaField label="Types de produits prévus">
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                            {[
+                                ['Rideaux', useRideaux, setUseRideaux],
+                                ['Stores classiques', useStoresClassiques, setUseStoresClassiques],
+                                ['Stores bateau', useStoresBateau, setUseStoresBateau],
+                                ['Tentures', useTentures, setUseTentures],
+                                ['Cache-sommier', useCacheSommier, setUseCacheSommier],
+                                ['Plaid', usePlaid, setUsePlaid],
+                                ['Coussins', useCoussins, setUseCoussins],
+                                ['Mobilier', useMobilier, setUseMobilier],
+                            ].map(([label, on, set]) => (
+                                <ChoicePill key={label} active={on} onClick={() => set(!on)}>{label}</ChoicePill>
+                            ))}
+                        </div>
+                    </DaField>
+                </>)}
 
-                    <TextField
-                        autoFocus
-                        label="Nom du Projet / Client"
-                        fullWidth
-                        value={projectName}
-                        onChange={(e) => setProjectName(e.target.value)}
-                        placeholder="Ex: Mr. Martin - Salon"
-                        sx={{ mb: 2 }}
-                    />
-
-                    <TextField
-                        type="date"
-                        label="Date de livraison prévue"
-                        value={deliveryDate}
-                        onChange={(e) => setDeliveryDate(e.target.value)}
-                        fullWidth
-                        InputLabelProps={{ shrink: true }}
-                        sx={{ mb: 3 }}
-                    />
-
-                    <Typography variant="subtitle2" fontWeight={700} gutterBottom>
-                        Types de produits prévus :
-                    </Typography>
-                    <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
-                        <FormControlLabel
-                            control={<Checkbox checked={useRideaux} onChange={e => setUseRideaux(e.target.checked)} />}
-                            label="Rideaux"
-                        />
-                        <FormControlLabel
-                            control={<Checkbox checked={useStoresClassiques} onChange={e => setUseStoresClassiques(e.target.checked)} />}
-                            label="Stores Classiques"
-                        />
-                        <FormControlLabel
-                            control={<Checkbox checked={useStoresBateau} onChange={e => setUseStoresBateau(e.target.checked)} />}
-                            label="Stores Bateau"
-                        />
-                         <FormControlLabel
-                            control={<Checkbox checked={useTentures} onChange={e => setUseTentures(e.target.checked)} />}
-                            label="Tentures"
-                        />
-                        <FormControlLabel
-                            control={<Checkbox checked={useCacheSommier} onChange={e => setUseCacheSommier(e.target.checked)} />}
-                            label="Cache Sommier"
-                        />
-                        <FormControlLabel
-                            control={<Checkbox checked={usePlaid} onChange={e => setUsePlaid(e.target.checked)} />}
-                            label="Plaid"
-                        />
-                        <FormControlLabel
-                            control={<Checkbox checked={useCoussins} onChange={e => setUseCoussins(e.target.checked)} />}
-                            label="Coussins"
-                        />
-                        <FormControlLabel
-                            control={<Checkbox checked={useMobilier} onChange={e => setUseMobilier(e.target.checked)} />}
-                            label="Mobilier"
-                        />
-                    </Box>
-                </TabPanel>
-
-                {/* ── Emplacement & logistique (commun aux deux onglets) ── */}
-                <Box sx={{ mt: 1, pt: 2, borderTop: '1px solid #f0f0f0', display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    <Typography variant="subtitle2" fontWeight={700}>Emplacement & logistique</Typography>
-
-                    <Box>
-                        <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.5 }}>
-                            Emplacement du projet
-                        </Typography>
+                {/* Emplacement & logistique (commun aux deux onglets) */}
+                <div style={{ marginTop: 4, paddingTop: 16, borderTop: '1px solid #E8E6E2', display: 'flex', flexDirection: 'column', gap: 16 }}>
+                    <div style={{ fontFamily: ROBOTO, fontSize: 18, fontWeight: 500, color: '#111827' }}>Emplacement et logistique</div>
+                    <DaField label="Emplacement du projet">
                         <AddressAutocomplete
                             value={location}
                             onChange={setLocation}
-                            placeholder="Ex: 20 rue du Renard, Paris…"
-                            inputStyle={{ border: '1px solid #c4c4c4', borderRadius: 4, padding: '8px 10px', fontSize: 14, width: '100%', background: '#fff' }}
+                            placeholder="Ex : 20 rue du Renard, Paris…"
+                            inputStyle={{ border: '1px solid #E0DED9', borderRadius: 8, padding: '0 12px', height: 38, fontSize: 14, width: '100%', background: '#fff', boxSizing: 'border-box' }}
                         />
-                    </Box>
-
-                    <Box>
-                        <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.5 }}>
-                            Type d'intervention
-                        </Typography>
-                        <ToggleButtonGroup
-                            value={interventionType}
-                            exclusive
-                            onChange={(e, v) => v && setInterventionType(v)}
-                            size="small"
-                        >
-                            <ToggleButton value="livraison">Livraison</ToggleButton>
-                            <ToggleButton value="installation">Installation</ToggleButton>
-                        </ToggleButtonGroup>
-                    </Box>
-
+                    </DaField>
+                    <DaField label="Type d'intervention">
+                        <div style={{ display: 'flex', gap: 8 }}>
+                            <ChoicePill active={interventionType === 'livraison'} onClick={() => setInterventionType('livraison')}>Livraison</ChoicePill>
+                            <ChoicePill active={interventionType === 'installation'} onClick={() => setInterventionType('installation')}>Installation</ChoicePill>
+                        </div>
+                    </DaField>
                     {interventionType === "installation" && (
-                        <Box>
-                            <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.5 }}>
-                                Comment la marchandise arrive sur place ?
-                            </Typography>
-                            <ToggleButtonGroup
-                                value={expeditionType}
-                                exclusive
-                                onChange={(e, v) => v && setExpeditionType(v)}
-                                size="small"
-                            >
-                                <ToggleButton value="depart_nantes">Départ depuis Nantes</ToggleButton>
-                                <ToggleButton value="expedition">Expédition transporteur</ToggleButton>
-                            </ToggleButtonGroup>
-                        </Box>
+                        <DaField label="Comment la marchandise arrive sur place ?">
+                            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                                <ChoicePill active={expeditionType === 'depart_nantes'} onClick={() => setExpeditionType('depart_nantes')}>Départ depuis Nantes</ChoicePill>
+                                <ChoicePill active={expeditionType === 'expedition'} onClick={() => setExpeditionType('expedition')}>Expédition transporteur</ChoicePill>
+                            </div>
+                        </DaField>
                     )}
-                </Box>
-            </DialogContent>
-
-            <DialogActions sx={{ p: 3, pt: 0, justifyContent: 'space-between' }}>
-                <Button onClick={onClose} color="inherit">Annuler</Button>
-
-                {tab === 0 ? (
-                    <Button
-                        variant="contained"
-                        onClick={handleImport}
-                        disabled={!selectedMinute || !deliveryDate || loadingMinute}
-                    >
-                        {loadingMinute ? "Chargement…" : "Importer le projet"}
-                    </Button>
-                ) : (
-                    <Button
-                        variant="contained"
-                        onClick={handleCreateBlank}
-                        disabled={!projectName.trim() || !deliveryDate}
-                    >
-                        Créer le projet
-                    </Button>
-                )}
-            </DialogActions>
-        </Dialog>
+                </div>
+            </div>
+        </DaDialog>
     );
 }

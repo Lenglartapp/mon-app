@@ -1,9 +1,11 @@
 // src/screens/ChiffrageRoot.jsx
 import React, { useState, useMemo, useEffect, useRef } from "react";
-import { TonePill, StatusSelectPill } from "../components/ui/ToolbarControls";
+import { TonePill, StatusSelectPill, ToolbarButton } from "../components/ui/ToolbarControls";
+import DaDialog from "../components/ui/DaDialog";
+import { DaField, ChoicePill } from "../components/ui/DaForm";
 import ConditionFilterButton from "../components/ui/ConditionFilterButton";
 import { isConditionActive, matchConditions } from "../components/FilterPanel";
-import { CHIFFRAGE_STATUS_TONE } from "../lib/constants/daStyles";
+import { CHIFFRAGE_STATUS_TONE, DA_INPUT_STYLE } from "../lib/constants/daStyles";
 import { Plus, Copy, Trash2, FileText, ArrowUpDown, ArrowUp, ArrowDown, Archive, Filter, ChevronDown, ChevronRight, ChevronLeft, GitBranch } from "lucide-react";
 import Chip from '@mui/material/Chip';
 import { useFillViewportHeight } from "../lib/hooks/useFillViewportHeight";
@@ -715,80 +717,63 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
       </div>
       {
         newMinOpen && (
-          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={() => setNewMinOpen(false)}>
-            <div onClick={(e) => e.stopPropagation()} style={{ width: 480, background: "#fff", borderRadius: 12, padding: 24, boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1)" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Nouvelle minute</h3>
-                <IconButton onClick={() => setNewMinOpen(false)} size="small"><Trash2 size={18} style={{ transform: 'rotate(45deg)' }} /></IconButton>
+          <DaDialog
+            open={newMinOpen}
+            onClose={() => setNewMinOpen(false)}
+            title="Nouvelle minute"
+            subtitle="Un nouveau chiffrage, avec les modules dont vous avez besoin."
+            maxWidth="sm"
+            footer={<>
+              <div style={{ flex: 1 }} />
+              <ToolbarButton onClick={() => setNewMinOpen(false)}>Annuler</ToolbarButton>
+              <ToolbarButton
+                primary
+                onClick={handleCreateMinute}
+                disabled={isCreating || !newMin.charge.trim() || !newMin.projet.trim() || !newMin.client.trim() || !newMin.deliveryDate || !Object.values(newMin.modules).some(v => v === true)}
+              >
+                {isCreating ? "Création…" : "Créer la minute"}
+              </ToolbarButton>
+            </>}
+          >
+            <div style={{ display: "grid", gap: 16 }}>
+              <DaField label="Nom du chiffrage *">
+                <input autoFocus style={DA_INPUT_STYLE} value={newMin.projet} onChange={(e) => setNewMin(m => ({ ...m, projet: e.target.value }))} placeholder="Ex : Villa Saint-Tropez" />
+              </DaField>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <DaField label="Client *">
+                  <input style={DA_INPUT_STYLE} value={newMin.client} onChange={(e) => setNewMin(m => ({ ...m, client: e.target.value }))} placeholder="Ex : M. Dupont" />
+                </DaField>
+                <DaField label="Chargé·e d’affaires *">
+                  <input style={DA_INPUT_STYLE} value={newMin.charge} onChange={(e) => setNewMin(m => ({ ...m, charge: e.target.value }))} />
+                </DaField>
               </div>
-              <div style={{ display: "grid", gap: 16 }}>
-                {/* Charge d'affaire */}
-                <label>
-                  <div style={{ fontSize: 13, fontWeight: 500, color: "#374151", marginBottom: 4 }}>Chargé·e d’affaires</div>
-                  <input style={{ width: "100%", padding: "8px 12px", borderRadius: 6, border: "1px solid #D1D5DB" }} value={newMin.charge} onChange={(e) => setNewMin(m => ({ ...m, charge: e.target.value }))} />
-                </label>
-
-                {/* Nom Projet */}
-                <label>
-                  <div style={{ fontSize: 13, fontWeight: 500, color: "#374151", marginBottom: 4 }}>Nom du chiffrage *</div>
-                  <input autoFocus style={{ width: "100%", padding: "8px 12px", borderRadius: 6, border: "1px solid #D1D5DB" }} value={newMin.projet} onChange={(e) => setNewMin(m => ({ ...m, projet: e.target.value }))} placeholder={`Ex: Villa Saint-Tropez`} />
-                </label>
-
-                {/* Client (New) */}
-                <label>
-                  <div style={{ fontSize: 13, fontWeight: 500, color: "#374151", marginBottom: 4 }}>Client *</div>
-                  <input style={{ width: "100%", padding: "8px 12px", borderRadius: 6, border: "1px solid #D1D5DB" }} value={newMin.client} onChange={(e) => setNewMin(m => ({ ...m, client: e.target.value }))} placeholder="Ex: M. Dupont" />
-                </label>
-
-                {/* Date de livraison estimée */}
-                <label>
-                  <div style={{ fontSize: 13, fontWeight: 500, color: "#374151", marginBottom: 4 }}>Date de livraison estimée *</div>
-                  <input type="date" style={{ width: "100%", padding: "8px 12px", borderRadius: 6, border: "1px solid #D1D5DB" }} value={newMin.deliveryDate} onChange={(e) => setNewMin(m => ({ ...m, deliveryDate: e.target.value }))} />
-                </label>
-
-                {/* Status */}
-                <label>
-                  <div style={{ fontSize: 13, fontWeight: 500, color: "#374151", marginBottom: 4 }}>Statut</div>
-                  <select
-                    style={{ width: "100%", padding: "8px 12px", borderRadius: 6, border: "1px solid #D1D5DB" }}
-                    value={newMin.status}
-                    onChange={(e) => setNewMin(m => ({ ...m, status: e.target.value }))}
-                  >
-                    {Object.entries(STATUS_OPTIONS).map(([k, v]) => (
-                      <option key={k} value={k}>{v.label}</option>
-                    ))}
-                  </select>
-                </label>
-
-                {/* Modules */}
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 500, color: "#374151", marginBottom: 8 }}>Modules à inclure</div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px 16px' }}>
-                    <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}><input type="checkbox" checked={newMin.modules.rideau} onChange={(e) => setNewMin(m => ({ ...m, modules: { ...m.modules, rideau: e.target.checked } }))} /> Rideaux</label>
-                    <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}><input type="checkbox" checked={newMin.modules.store} onChange={(e) => setNewMin(m => ({ ...m, modules: { ...m.modules, store: e.target.checked } }))} /> Stores</label>
-                    <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}><input type="checkbox" checked={newMin.modules.store_bateau} onChange={(e) => setNewMin(m => ({ ...m, modules: { ...m.modules, store_bateau: e.target.checked } }))} /> Stores Bateaux/Velum</label>
-                    <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}><input type="checkbox" checked={newMin.modules.coussins} onChange={(e) => setNewMin(m => ({ ...m, modules: { ...m.modules, coussins: e.target.checked } }))} /> Coussins</label>
-                    <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}><input type="checkbox" checked={newMin.modules.cache_sommier} onChange={(e) => setNewMin(m => ({ ...m, modules: { ...m.modules, cache_sommier: e.target.checked } }))} /> Cache Sommier</label>
-                    <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}><input type="checkbox" checked={newMin.modules.mobilier} onChange={(e) => setNewMin(m => ({ ...m, modules: { ...m.modules, mobilier: e.target.checked } }))} /> Mobilier</label>
-                    <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}><input type="checkbox" checked={newMin.modules.tenture_murale} onChange={(e) => setNewMin(m => ({ ...m, modules: { ...m.modules, tenture_murale: e.target.checked } }))} /> Tenture Murale</label>
-                    <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}><input type="checkbox" checked={newMin.modules.plaid} onChange={(e) => setNewMin(m => ({ ...m, modules: { ...m.modules, plaid: e.target.checked } }))} /> Plaids Chemin de lit</label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <DaField label="Date de livraison estimée *">
+                  <input type="date" style={DA_INPUT_STYLE} value={newMin.deliveryDate} onChange={(e) => setNewMin(m => ({ ...m, deliveryDate: e.target.value }))} />
+                </DaField>
+                <DaField label="Statut">
+                  <div style={{ height: 38, display: 'flex', alignItems: 'center' }}>
+                    <StatusSelectPill
+                      value={newMin.status}
+                      options={STATUS_OPTIONS}
+                      tones={CHIFFRAGE_STATUS_TONE}
+                      onChange={(v) => setNewMin(m => ({ ...m, status: v }))}
+                    />
                   </div>
-                </div>
-
-                {/* Note */}
-                <label>
-                  <div style={{ fontSize: 13, fontWeight: 500, color: "#374151", marginBottom: 4 }}>Note</div>
-                  <textarea rows={3} style={{ width: "100%", padding: "8px 12px", borderRadius: 6, border: "1px solid #D1D5DB" }} value={newMin.note} onChange={(e) => setNewMin(m => ({ ...m, note: e.target.value }))} placeholder="Commentaire interne…" />
-                </label>
-
-                {/* Actions */}
-                <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, marginTop: 8 }}>
-                  <button onClick={() => setNewMinOpen(false)} style={{ background: 'white', border: '1px solid #D1D5DB', padding: '8px 16px', borderRadius: 6, cursor: 'pointer' }}>Annuler</button>
-                  <button onClick={handleCreateMinute} disabled={isCreating || !newMin.charge.trim() || !newMin.projet.trim() || !newMin.client.trim() || !newMin.deliveryDate || !Object.values(newMin.modules).some(v => v === true)} style={{ background: '#1F2937', color: 'white', border: 'none', padding: '8px 16px', borderRadius: 6, cursor: 'pointer', opacity: (isCreating || !newMin.projet.trim() || !newMin.client.trim() || !newMin.deliveryDate) ? 0.5 : 1 }}>{isCreating ? "Création..." : "Créer"}</button>
-                </div>
+                </DaField>
               </div>
+              <DaField label="Modules à inclure *">
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  {[['rideau', 'Rideaux'], ['store', 'Stores'], ['store_bateau', 'Stores bateaux / velum'], ['coussins', 'Coussins'], ['cache_sommier', 'Cache-sommier'], ['mobilier', 'Mobilier'], ['tenture_murale', 'Tenture murale'], ['plaid', 'Plaids / chemins de lit']].map(([k, label]) => (
+                    <ChoicePill key={k} active={!!newMin.modules[k]} onClick={() => setNewMin(m => ({ ...m, modules: { ...m.modules, [k]: !m.modules[k] } }))}>{label}</ChoicePill>
+                  ))}
+                </div>
+              </DaField>
+              <DaField label="Note">
+                <textarea rows={3} style={{ ...DA_INPUT_STYLE, height: 'auto', padding: '10px 12px', resize: 'vertical' }} value={newMin.note} onChange={(e) => setNewMin(m => ({ ...m, note: e.target.value }))} placeholder="Commentaire interne…" />
+              </DaField>
             </div>
-          </div>
+          </DaDialog>
         )
       }
 

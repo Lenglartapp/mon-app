@@ -47,9 +47,12 @@ export function DaTabs({ tabs, value, onChange }) {
         return (
           <button
             key={t.key}
-            onClick={() => onChange(t.key)}
+            type="button"
+            onClick={() => !t.disabled && onChange(t.key)}
+            disabled={t.disabled}
             style={{
-              padding: '7px 16px', borderRadius: 99, border: 'none', cursor: 'pointer', fontSize: 14, fontWeight: 500,
+              opacity: t.disabled ? 0.4 : 1,
+              padding: '7px 16px', borderRadius: 99, border: 'none', cursor: t.disabled ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 500,
               fontFamily: 'inherit', whiteSpace: 'nowrap', transition: 'all 0.2s cubic-bezier(0.25, 1, 0.5, 1)',
               background: active ? '#1E2447' : 'transparent', color: active ? '#FFFFFF' : '#4B5563',
               boxShadow: active ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',

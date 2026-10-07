@@ -52,18 +52,20 @@ export function ToolbarSelect({ label, value, onChange, options }) {
 
 /** Bouton d'action : blanc à trait (par défaut) ou bleu nuit (`primary`, ou `active` pour une bascule). */
 /** `tone` (0 à 5) : bouton plein dans le nuancier bleu, aux couleurs des pastilles correspondantes. */
-export function ToolbarButton({ icon, children, onClick, primary = false, active = false, tone = null, title }) {
+export function ToolbarButton({ icon, children, onClick, primary = false, active = false, tone = null, title, disabled = false }) {
   const dark = primary || active;
   const t = tone != null ? BLUE_TONES[tone] : null;
   const bg = t ? t.bg : dark ? '#1E2447' : 'white';
   return (
     <button
-      onClick={onClick}
+      onClick={disabled ? undefined : onClick}
+      disabled={disabled}
       title={title}
       style={{
+        opacity: disabled ? 0.45 : 1, cursor: disabled ? 'not-allowed' : 'pointer',
         display: 'flex', alignItems: 'center', gap: 8, height: 38, padding: '0 14px', borderRadius: 8,
         background: bg, color: t ? t.color : dark ? 'white' : '#374151',
-        border: `1px solid ${t || dark ? bg : '#E5E7EB'}`, cursor: 'pointer',
+        border: `1px solid ${t || dark ? bg : '#E5E7EB'}`,
         fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap', fontFamily: 'inherit',
       }}
     >
