@@ -1,6 +1,6 @@
 // src/screens/ChiffrageRoot.jsx
 import React, { useState, useMemo, useEffect, useRef } from "react";
-import { TonePill } from "../components/ui/ToolbarControls";
+import { TonePill, StatusSelectPill } from "../components/ui/ToolbarControls";
 import { CHIFFRAGE_STATUS_TONE } from "../lib/constants/daStyles";
 import { Plus, Copy, Trash2, FileText, ArrowUpDown, ArrowUp, ArrowDown, Archive, Filter, ChevronDown, ChevronRight, ChevronLeft, GitBranch, SlidersHorizontal } from "lucide-react";
 import Chip from '@mui/material/Chip';
@@ -99,7 +99,6 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
   const [newMinOpen, setNewMinOpen] = useState(false);
 
   // Status Menu State
-  const [statusMenu, setStatusMenu] = useState({ anchor: null, minuteId: null });
   // Owner Menu State
   const [ownerMenu, setOwnerMenu] = useState({ anchor: null, minuteId: null });
 
@@ -109,16 +108,7 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
 
   const showKPIs = currentUser?.role === ROLES.ADMIN;
 
-  const handleStatusClick = (event, id) => {
-    event.stopPropagation();
-    setStatusMenu({ anchor: event.currentTarget, minuteId: id });
-  };
-
-  const handleStatusClose = () => setStatusMenu({ anchor: null, minuteId: null });
-
-  const handleStatusSelect = async (status) => {
-    const id = statusMenu.minuteId;
-    handleStatusClose();
+  const handleStatusSelect = async (id, status) => {
     if (!id || !onUpdate) return;
 
     const from = (minutes || []).find(m => m.id === id)?.status || 'DRAFT';
@@ -748,7 +738,6 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
                 const orphans = displayList.filter(m => m.parentId && !visibleParentIds.has(m.parentId));
 
                 const renderRow = (m, isChild = false) => {
-                  const statusInfo = STATUS_OPTIONS[m.status] || STATUS_OPTIONS.DRAFT;
                   const mpct = m.marge_pct || 0;
                   let mColor = '#F59E0B';
                   if (mpct > 60) mColor = '#10B981';
@@ -809,12 +798,12 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
                           {m.client || "Client inconnu"}
                         </td>
                         <td style={{ padding: '12px 8px' }}>
-                          <button
-                            onClick={(e) => handleStatusClick(e, m.id)}
-                            style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer' }}
-                          >
-                            <TonePill tone={CHIFFRAGE_STATUS_TONE[m.status] ?? CHIFFRAGE_STATUS_TONE.DRAFT}>{statusInfo.label}</TonePill>
-                          </button>
+                          <StatusSelectPill
+                            value={m.status || 'DRAFT'}
+                            options={STATUS_OPTIONS}
+                            tones={CHIFFRAGE_STATUS_TONE}
+                            onChange={(v) => handleStatusSelect(m.id, v)}
+                          />
                         </td>
                         <td style={{ padding: '12px 8px', textAlign: 'right', whiteSpace: 'nowrap' }}>
                           <div style={{ fontWeight: 700, color: '#111827', fontSize: 14 }}>
@@ -987,17 +976,6 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
         )
       }
 
-      <Menu
-        anchorEl={statusMenu.anchor}
-        open={Boolean(statusMenu.anchor)}
-        onClose={handleStatusClose}
-      >
-        {Object.entries(STATUS_OPTIONS).map(([key, opt]) => (
-          <MenuItem key={key} onClick={() => handleStatusSelect(key)}>
-            <TonePill tone={CHIFFRAGE_STATUS_TONE[key]}>{opt.label}</TonePill>
-          </MenuItem>
-        ))}
-      </Menu>
 
       {/* OWNER MENU */}
       <Menu

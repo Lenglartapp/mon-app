@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { PROJECT_STATUS_TONE } from "../lib/constants/daStyles";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { COLORS, S } from "../lib/constants/ui.js";
 
@@ -925,6 +926,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                   <StatusPill
                     value={project?.status || "TODO"}
                     options={PROJECT_STATUS_OPTIONS}
+                    tones={PROJECT_STATUS_TONE}
                     onChange={(v) => onUpdateProject(project.id, { status: v })}
                   />
                 </MetaItem>
