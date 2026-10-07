@@ -664,18 +664,29 @@ const PlanningGrid = ({
                                 .filter(member => expandedGroups[key] >= 2 || member.id === 'backlog_confection')
                                 .map(member => (
                                     <React.Fragment key={member.id}>
-                                        <StickyLeftCell style={{ paddingLeft: 42, color: member.id === 'backlog_confection' ? '#BE123C' : '#4B5563', fontWeight: member.id === 'backlog_confection' ? 700 : 500, display: 'flex', justifyContent: 'space-between', alignItems: 'center', ...(member.id === 'backlog_confection' ? { minHeight: PROGRAMME_ROW_HEIGHT, height: 'auto', alignSelf: 'stretch' } : { height: ROW_HEIGHT }) }}>
+                                        <StickyLeftCell style={{ paddingLeft: 42, color: member.id === 'backlog_confection' ? '#BE123C' : '#4B5563', fontWeight: 500, display: 'flex', ...(member.id === 'backlog_confection'
+                                            ? { flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'center', gap: 4, fontFamily: ROBOTO, minHeight: PROGRAMME_ROW_HEIGHT, height: 'auto', alignSelf: 'stretch' }
+                                            : { justifyContent: 'space-between', alignItems: 'center', height: ROW_HEIGHT }) }}>
                                             {member.id === 'backlog_confection' ? (
-                                                <span style={{ display: 'flex', alignItems: 'center' }}>
-                                                    <span
-                                                        onClick={(e) => { e.stopPropagation(); onToggleMembers?.(key); }}
-                                                        title={expandedGroups[key] >= 2 ? 'Masquer la répartition par personne' : 'Afficher la répartition par personne'}
-                                                        style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer', marginRight: 6 }}
-                                                    >
-                                                        {expandedGroups[key] >= 2 ? <ChevronDown size={13} /> : <ChevronRightIcon size={13} />}
+                                                <>
+                                                    {/* Titre aligné sur les prénoms ; la flèche se place à sa gauche */}
+                                                    <span style={{ position: 'relative', fontSize: 14 }}>
+                                                        <span
+                                                            onClick={(e) => { e.stopPropagation(); onToggleMembers?.(key); }}
+                                                            title={expandedGroups[key] >= 2 ? 'Masquer la répartition par personne' : 'Afficher la répartition par personne'}
+                                                            style={{ position: 'absolute', left: -20, top: '50%', transform: 'translateY(-50%)', display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }}
+                                                        >
+                                                            {expandedGroups[key] >= 2 ? <ChevronDown size={14} /> : <ChevronRightIcon size={14} />}
+                                                        </span>
+                                                        Programme semaine
                                                     </span>
-                                                    Programme semaine
-                                                </span>
+                                                    <span style={{ fontSize: 13, color: '#6B7280' }}>
+                                                        {(() => {
+                                                            const weeks = [...new Set(gridCols.map(c => getISOWeek(c)))];
+                                                            return weeks.length > 1 ? `Semaines ${weeks[0]} – ${weeks[weeks.length - 1]}` : `Semaine ${weeks[0]}`;
+                                                        })()}
+                                                    </span>
+                                                </>
                                             ) : (
                                                 <span>{`${member.first_name} ${member.last_name?.charAt(0)}.`}</span>
                                             )}
@@ -717,7 +728,7 @@ const PlanningGrid = ({
                                                 const cHours = Math.round(groupStats.cap); // Group Capacity
 
                                                 return (
-                                                    <span style={{ fontSize: 11, background: '#FFE4E6', color: '#BE123C', padding: '1px 6px', borderRadius: 4, marginLeft: 8 }}>
+                                                    <span style={{ fontSize: 12, fontWeight: 600, background: '#FFE4E6', color: '#BE123C', padding: '2px 8px', borderRadius: 4, whiteSpace: 'nowrap' }}>
                                                         {bHours}h / {cHours}h
                                                     </span>
                                                 );
@@ -837,8 +848,9 @@ const PlanningGrid = ({
                                                                     });
                                                                 }}
                                                             >
-                                                                {/* Bin Header */}
-                                                                <div style={{
+                                                                {/* Bandeau de semaine : seulement quand plusieurs semaines sont affichées
+                                                                    (sinon il répète l'en-tête et la charge de la colonne de gauche). */}
+                                                                {weeklyBins.length > 1 && <div style={{
                                                                     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                                                                     padding: '3px 10px', background: 'rgba(255,255,255,0.5)', borderBottom: '1px dashed #FECDD3',
                                                                     fontSize: 11, fontWeight: 700, color: '#9F1239', height: 24
@@ -847,7 +859,7 @@ const PlanningGrid = ({
                                                                     <span style={{ color: isOverloaded ? '#EF4444' : '#9F1239' }}>
                                                                         {binLoadHours}h / {binCapHours}h
                                                                     </span>
-                                                                </div>
+                                                                </div>}
 
                                                                 {/* Cards Container : grille à colonnes égales, les cartes s'alignent
                                                                     en colonnes quelle que soit la longueur des titres ; le nombre de
@@ -1063,7 +1075,7 @@ const PlanningGrid = ({
                                                     onClick={() => onCellClick(member.id, col)}
                                                     onDragOver={onDragOver}
                                                     onDrop={(e) => onDrop(e, member.id, col)}
-                                                    style={{ borderBottom: '1px solid #E5E7EB', borderRight: '1px solid #F3F4F6', background: (view !== 'year' && isSameDay(col, new Date())) ? '#F4F4F4' : 'transparent', height: ROW_HEIGHT, position: 'relative' }}
+                                                    style={{ borderBottom: '1px solid #E5E7EB', borderRight: '1px solid #F3F4F6', background: 'transparent', height: ROW_HEIGHT, position: 'relative' }}
                                                 >
                                                     {renderEventsForCell(member.id, col)}
                                                 </div>
