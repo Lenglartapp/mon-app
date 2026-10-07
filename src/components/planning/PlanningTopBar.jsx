@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useLayoutEffect } from 'react';
 import { ChevronLeft, ChevronRight, ChevronDown, Check, User, Download, Upload, FileSpreadsheet, History, CheckCircle2 } from 'lucide-react';
 import { S } from '../../lib/constants/ui';
 import { SmartFilterBar } from '../ui/SmartFilterBar';
@@ -42,6 +42,19 @@ const ViewSelector = ({ view, onViewChange, customRange, onCustomRangeChange, sh
     );
 };
 
+// Largeur minimale de la recherche avant qu'elle passe sous les boutons.
+const SEARCH_MIN = 300;
+const BAR_GAP = 16;
+
+/** Largeur du contenu d'un groupe de boutons (somme des enfants + écarts), indépendante de
+    la place que le flex lui donne. */
+const contentWidth = (el) => {
+    if (!el) return 0;
+    const kids = [...el.children];
+    const gap = parseFloat(getComputedStyle(el).columnGap) || 0;
+    return kids.reduce((w, c) => w + c.getBoundingClientRect().width, 0) + gap * Math.max(0, kids.length - 1);
+};
+
 const PlanningTopBar = ({
     view, onViewChange, currentDate, onPrev, onNext, onToday,
     customRange, onCustomRangeChange, onNew, onManageTeam,
@@ -55,6 +68,31 @@ const PlanningTopBar = ({
 }) => {
     const fileInputRef = useRef(null);
     const [showImportMenu, setShowImportMenu] = useState(false);
+
+    // Recherche au centre tant qu'elle tient entre les boutons ; sinon elle passe sur sa
+    // propre ligne (jamais par-dessus Validation / Import).
+    const barRef = useRef(null);
+    const leftRef = useRef(null);
+    const rightRef = useRef(null);
+    const histRef = useRef(null);
+    const [stacked, setStacked] = useState(false);
+    useLayoutEffect(() => {
+        const bar = barRef.current;
+        if (!bar) return;
+        const measure = () => {
+            const cs = getComputedStyle(bar);
+            const inner = bar.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+            const hist = histRef.current ? histRef.current.getBoundingClientRect().width + 10 : 0;
+            const need = contentWidth(leftRef.current) + contentWidth(rightRef.current) + hist + SEARCH_MIN + BAR_GAP * 2;
+            setStacked(need > inner);
+        };
+        measure();
+        const ro = new ResizeObserver(measure);
+        ro.observe(bar);
+        if (leftRef.current) ro.observe(leftRef.current);
+        if (rightRef.current) ro.observe(rightRef.current);
+        return () => ro.disconnect();
+    }, []);
     const handleFileChange = (e) => {
         const file = e.target.files[0];
         if (file && onImport) onImport(file);
@@ -67,9 +105,9 @@ const PlanningTopBar = ({
         color: '#374151', cursor: 'pointer',
     };
     return (
-        <div className="df-plan-bar" style={{ display: 'flex', alignItems: 'center', padding: '16px 24px', background: '#FFFFFF' }}>
+        <div ref={barRef} style={{ display: 'flex', alignItems: 'center', flexWrap: stacked ? 'wrap' : 'nowrap', rowGap: 10, padding: '16px 24px', background: '#FFFFFF' }}>
             {/* GAUCHE (flex:1 pour centrer la recherche) */}
-            <div className="df-plan-left" style={{ flex: 1, display: 'flex', gap: 12, alignItems: 'center', minWidth: 0 }}>
+            <div ref={leftRef} style={{ flex: '1 1 auto', display: 'flex', gap: 12, alignItems: 'center', minWidth: 'max-content', order: 1 }}>
                 <button onClick={onNew} style={{ background: '#111827', color: '#fff', border: 'none', borderRadius: 6, padding: '8px 16px', fontWeight: 600, fontSize: 14, cursor: 'pointer', whiteSpace: 'nowrap' }}>Nouveau</button>
                 {canManageTeam && (
                     <button onClick={onManageTeam} style={{ background: 'white', color: '#374151', border: '1px solid #D1D5DB', borderRadius: 6, padding: '8px 16px', fontWeight: 600, fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap' }}>
@@ -126,7 +164,9 @@ const PlanningTopBar = ({
             </div>
 
             {/* CENTRE : recherche centrée */}
-            <div className="df-plan-search" style={{ flexShrink: 0, width: 'min(520px, 40vw)' }}>
+            <div style={stacked
+                ? { order: 3, flex: '1 1 calc(100% - 60px)', minWidth: 0 }
+                : { order: 2, flex: '0 1 520px', minWidth: SEARCH_MIN, margin: `0 ${BAR_GAP}px` }}>
                 <SmartFilterBar
                     fields={PLANNING_SEARCH_FIELDS}
                     activeFilters={activeFilters}
@@ -139,11 +179,11 @@ const PlanningTopBar = ({
             {/* Bouton Historique — à côté de la recherche */}
             {onToggleHistory && (
                 <button
+                    ref={histRef}
                     onClick={onToggleHistory}
-                    className="df-plan-hist"
                     title="Historique des créneaux par dossier"
                     style={{
-                        flexShrink: 0, marginLeft: 10,
+                        flexShrink: 0, marginLeft: stacked ? 10 : -6, marginRight: stacked ? 0 : BAR_GAP, order: stacked ? 4 : 2,
                         background: historyOpen ? '#2563EB' : 'white',
                         color: historyOpen ? 'white' : '#374151',
                         border: '1px solid #E0DED9', borderRadius: 6,
@@ -156,7 +196,7 @@ const PlanningTopBar = ({
             )}
 
             {/* DROITE (flex:1) */}
-            <div className="df-plan-right" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 12, minWidth: 0 }}>
+            <div ref={rightRef} style={{ flex: '1 1 auto', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 12, minWidth: 'max-content', order: stacked ? 2 : 3 }}>
                 <div style={{ display: 'flex', background: '#fff', borderRadius: 6, border: '1px solid #E0DED9', padding: 2 }}>
                     <button onClick={onPrev} style={{ border: 'none', background: 'transparent', padding: '6px 8px', cursor: 'pointer' }}><ChevronLeft size={16} /></button>
                     <button onClick={onNext} style={{ border: 'none', background: 'transparent', padding: '6px 8px', cursor: 'pointer' }}><ChevronRight size={16} /></button>
