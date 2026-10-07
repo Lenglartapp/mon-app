@@ -146,4 +146,6 @@ button,
 /* Écrans tactiles : pas de survol → icônes menu / filtre des en-têtes de tableau toujours visibles */
 @media (hover: none) {
   .ag-theme-alpine .df-hdr-icon { opacity: 1; }
+  /* Boutons d'action des listes (éditer, supprimer…) : zone de toucher d'au moins 36 px */
+  .df-list-table td button, .df-list-table td .MuiIconButton-root { min-width: 36px; min-height: 36px; }
 }

@@ -456,7 +456,9 @@ export default function StockInventoryTab({ inventory, projects = [], movements 
             )}
 
             {/* INVENTORY GRID */}
-            <Card sx={{ height: 600, width: '100%', borderRadius: 3, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+            {/* Tablette (< 1200 px) : le tableau occupe la hauteur d'écran disponible au lieu de 600 px fixes
+                (en portrait on ne voyait que 7 lignes, avec un grand vide dessous). */}
+            <Card sx={{ height: { xs: 'max(480px, calc(100vh - 500px))', lg: 600 }, width: '100%', borderRadius: 3, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
                 <DataGrid
                     rows={groupedRows}
                     columns={columns}
