@@ -195,7 +195,9 @@ export default function StockRequestsPanel({ inventory = [], project = null, onS
 }
 
 // Pastille de statut de demande dans le nuancier bleu (annulée : gris neutre).
-const STATUS_TONE = { open: 0, in_progress: 2, done: 4 };
+// À faire clair, en cours un cran plus soutenu, faite très claire : le bleu nuit reste aux actions
+// principales (onglet actif, Nouvelle demande), le bleu moyen à « Confirmer la mise à dispo ».
+const STATUS_TONE = { open: 4, in_progress: 3, done: 5 };
 const ROBOTO = 'Roboto, system-ui, sans-serif';
 
 function RequestCard({ request: r, showProject, onConfirm, onCancel }) {
@@ -242,7 +244,7 @@ function RequestCard({ request: r, showProject, onConfirm, onCancel }) {
                             {l.status === 'pending' && (
                                 <Stack direction="row" spacing={1} justifyContent="flex-end">
                                     <Button size="small" onClick={() => onCancel(l)} sx={{ color: '#374151', textTransform: 'none', fontWeight: 600, border: '1px solid #E5E7EB', borderRadius: '8px', px: 1.5, bgcolor: 'white' }}>Annuler</Button>
-                                    <Button size="small" variant="contained" disableElevation onClick={() => onConfirm(l)} sx={{ textTransform: 'none', fontWeight: 600, borderRadius: '8px', px: 1.5, bgcolor: '#1E2447', '&:hover': { bgcolor: '#2A3260' } }}>
+                                    <Button size="small" variant="contained" disableElevation onClick={() => onConfirm(l)} sx={{ textTransform: 'none', fontWeight: 600, borderRadius: '8px', px: 1.5, bgcolor: '#5B7FC4', '&:hover': { bgcolor: '#4A6DB0' } }}>
                                         Confirmer la mise à dispo
                                     </Button>
                                 </Stack>

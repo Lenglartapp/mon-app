@@ -1,7 +1,7 @@
 import React from 'react';
 import { useState } from 'react';
 import { Search, X, ChevronDown, Check } from 'lucide-react';
-import { BLUE_TONES } from '../../lib/constants/daStyles';
+import { BLUE_TONES, toneColors } from '../../lib/constants/daStyles';
 
 // Contrôles de barre d'outils au style de la DA (listes Chiffrages / Projets) :
 // hauteur 38 px, fond blanc, trait #E0DED9, coins 8 px, texte 13 px, sans cadre autour.
@@ -70,9 +70,9 @@ export function ToolbarButton({ icon, children, onClick, primary = false, active
   );
 }
 
-/** Pastille arrondie dans le nuancier bleu (`tone` de 0 = foncé à 5 = clair). */
+/** Pastille arrondie dans le nuancier bleu (`tone` de 0 = foncé à 5 = clair ; null = gris neutre). */
 export function TonePill({ tone = 4, children, title }) {
-  const t = BLUE_TONES[Math.max(0, Math.min(BLUE_TONES.length - 1, tone))];
+  const t = toneColors(tone); // null → gris neutre
   return (
     <span title={title} style={{
       display: 'inline-flex', alignItems: 'center', height: 22, padding: '0 10px', borderRadius: 99,
