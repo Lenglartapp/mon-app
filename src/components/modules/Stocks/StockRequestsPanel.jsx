@@ -23,7 +23,7 @@ import { fetchRequests, createRequest, confirmLine, cancelLine, requestLabel, LO
 import { splitLocations } from '../../../lib/inventory/stockFields';
 import OperatorInput from './OperatorInput';
 import LocationChips from './LocationChips';
-import { ToolbarSearch, ToolbarButton, ToolbarMenu } from '../../ui/ToolbarControls';
+import { ToolbarSearch, ToolbarButton, ToolbarMenu, TonePill } from '../../ui/ToolbarControls';
 
 // « Mise à disposition » : l'atelier demande des pièces du stock, la logistique les
 // dépose à l'atelier et confirme ligne par ligne (les pièces passent en ATELIER).
@@ -192,61 +192,68 @@ export default function StockRequestsPanel({ inventory = [], project = null, onS
     );
 }
 
+// Pastille de statut de demande dans le nuancier bleu (annulée : gris neutre).
+const STATUS_TONE = { open: 0, in_progress: 2, done: 4 };
+const ROBOTO = 'Roboto, system-ui, sans-serif';
+
 function RequestCard({ request: r, showProject, onConfirm, onCancel }) {
     const late = r.status === 'open' && r.requested_for && r.requested_for < todayISO();
-    const st = STATUS[displayStatusOf(r)] || STATUS.open;
+    const statusKey = displayStatusOf(r);
+    const st = STATUS[statusKey] || STATUS.open;
     const pendingCount = r.lines.filter(l => l.status === 'pending').length;
     return (
-        <Card sx={{ p: 2, borderRadius: 3, boxShadow: '0 1px 3px rgba(0,0,0,0.08)', borderLeft: `4px solid ${late ? '#DC2626' : r.status === 'open' ? '#F59E0B' : r.status === 'done' ? '#10B981' : '#D1D5DB'}` }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mb: 1 }}>
-                <Chip label={requestLabel(r)} size="small" sx={{ fontWeight: 800, bgcolor: '#1E2447', color: 'white' }} />
-                {showProject && r.project && <Chip label={r.project} size="small" variant="outlined" sx={{ borderColor: '#6366F1', color: '#4F46E5' }} />}
-                <Typography sx={{ fontWeight: 700, color: late ? '#DC2626' : '#111827' }}>
+        <Box sx={{ p: 2.5, borderRadius: '8px', border: '1px solid #E0DED9', bgcolor: 'white' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap', mb: 0.5 }}>
+                <Typography sx={{ fontFamily: ROBOTO, fontSize: 16, fontWeight: 600, color: '#1E2447' }}>{requestLabel(r)}</Typography>
+                <Typography sx={{ fontFamily: ROBOTO, fontSize: 16, fontWeight: 400, color: late ? '#DC2626' : '#111827' }}>
                     {r.requested_for ? `Pour le ${fmtDate(r.requested_for)}` : 'Sans date'}{late ? ' — en retard' : ''}
                 </Typography>
+                {showProject && r.project && <Typography sx={{ fontSize: 13, color: '#6B7280' }}>· {r.project}</Typography>}
                 <Box sx={{ flexGrow: 1 }} />
                 {r.status === 'open' && r.lines.length > 1 && (
-                    <Typography variant="caption" sx={{ color: '#6B7280' }}>{r.lines.length - pendingCount}/{r.lines.length} livrée(s)</Typography>
+                    <Typography sx={{ fontSize: 12, color: '#6B7280' }}>{r.lines.length - pendingCount}/{r.lines.length} livrée(s)</Typography>
                 )}
-                <Chip label={st.label} size="small" sx={{ fontWeight: 700, bgcolor: st.bg, color: st.color }} />
+                {STATUS_TONE[statusKey] != null
+                    ? <TonePill tone={STATUS_TONE[statusKey]}>{st.label}</TonePill>
+                    : <span style={{ display: 'inline-flex', alignItems: 'center', height: 22, padding: '0 10px', borderRadius: 99, background: '#F4F4F4', color: '#374151', fontSize: 12, fontWeight: 600 }}>{st.label}</span>}
             </Box>
-            <Typography variant="body2" sx={{ color: '#6B7280', mb: r.comment ? 0.5 : 1.5 }}>
-                Demandé par <b>{r.requested_by}</b> le {fmtDateTime(r.created_at)}
+            <Typography sx={{ fontSize: 13, color: '#6B7280', mb: r.comment ? 0.5 : 1.5 }}>
+                Demandé par <b style={{ color: '#374151', fontWeight: 600 }}>{r.requested_by}</b> le {fmtDateTime(r.created_at)}
             </Typography>
-            {r.comment && <Typography variant="body2" sx={{ mb: 1.5, fontStyle: 'italic', color: '#374151' }}>« {r.comment} »</Typography>}
+            {r.comment && <Typography sx={{ fontSize: 13, mb: 1.5, color: '#374151' }}>« {r.comment} »</Typography>}
 
             <Stack spacing={1}>
                 {r.lines.map(l => (
-                    <Box key={l.id} sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 1.25, borderRadius: 2, bgcolor: l.status === 'pending' ? '#F4F4F4' : 'white', border: '1px solid #E5E7EB', flexWrap: 'wrap', opacity: l.status === 'cancelled' ? 0.55 : 1 }}>
+                    <Box key={l.id} sx={{ display: 'flex', alignItems: 'center', gap: 2, px: 1.5, py: 1.25, borderRadius: '8px', bgcolor: l.status === 'pending' ? '#F7F7F5' : 'white', border: '1px solid #E8E6E2', flexWrap: 'wrap', opacity: l.status === 'cancelled' ? 0.55 : 1 }}>
                         <Box sx={{ flex: '1 1 260px', minWidth: 0 }}>
-                            <Typography sx={{ fontWeight: 600, fontSize: 14 }}>{itemTitle(l)}</Typography>
-                            <Typography variant="caption" sx={{ color: '#6B7280' }}>
+                            <Typography sx={{ fontFamily: ROBOTO, fontWeight: 500, fontSize: 14, color: '#111827' }}>{itemTitle(l)}</Typography>
+                            <Typography sx={{ fontSize: 12, color: '#6B7280' }}>
                                 {showProject && l.project && !r.project ? `${l.project} · ` : ''}{l.laize ? `Laize ${l.laize} · ` : ''}depuis {splitLocations(l.from_location).join(', ') || '—'}
                             </Typography>
                         </Box>
-                        <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', alignItems: 'center' }}>
+                        <Box sx={{ display: 'flex', gap: 0.75, flexWrap: 'wrap', alignItems: 'center' }}>
                             {(l.pieces || []).length > 0
-                                ? l.pieces.map(p => <Chip key={p.id} size="small" label={`${p.name || 'Pièce'} · ${p.qty} ${l.unit || 'ml'}`} sx={{ bgcolor: '#EEF2FF', color: '#3730A3', fontWeight: 600 }} />)
-                                : <Chip size="small" label={`${l.qty} ${l.unit || 'ml'}`} sx={{ bgcolor: '#EEF2FF', color: '#3730A3', fontWeight: 600 }} />}
+                                ? l.pieces.map(p => <TonePill key={p.id} tone={5}>{`${p.name || 'Pièce'} · ${p.qty} ${l.unit || 'ml'}`}</TonePill>)
+                                : <TonePill tone={5}>{`${l.qty} ${l.unit || 'ml'}`}</TonePill>}
                         </Box>
                         <Box sx={{ minWidth: 200, textAlign: 'right' }}>
                             {l.status === 'pending' && (
                                 <Stack direction="row" spacing={1} justifyContent="flex-end">
-                                    <Button size="small" onClick={() => onCancel(l)} sx={{ color: '#6B7280', textTransform: 'none' }}>Annuler</Button>
-                                    <Button size="small" variant="contained" onClick={() => onConfirm(l)} sx={{ textTransform: 'none', fontWeight: 700, bgcolor: '#059669', '&:hover': { bgcolor: '#047857' } }}>
+                                    <Button size="small" onClick={() => onCancel(l)} sx={{ color: '#374151', textTransform: 'none', fontWeight: 600, border: '1px solid #E5E7EB', borderRadius: '8px', px: 1.5, bgcolor: 'white' }}>Annuler</Button>
+                                    <Button size="small" variant="contained" disableElevation onClick={() => onConfirm(l)} sx={{ textTransform: 'none', fontWeight: 600, borderRadius: '8px', px: 1.5, bgcolor: '#1E2447', '&:hover': { bgcolor: '#2A3260' } }}>
                                         Confirmer la mise à dispo
                                     </Button>
                                 </Stack>
                             )}
                             {l.status === 'done' && (
-                                <Typography variant="body2" sx={{ color: '#065F46', fontWeight: 600 }}>✓ En atelier — {l.done_by}, {fmtDateTime(l.done_at)}</Typography>
+                                <Typography sx={{ fontSize: 13, color: '#374151' }}><span style={{ color: '#1E2447', fontWeight: 700 }}>✓</span> En atelier — {l.done_by}, {fmtDateTime(l.done_at)}</Typography>
                             )}
-                            {l.status === 'cancelled' && <Typography variant="body2" sx={{ color: '#6B7280' }}>Annulée</Typography>}
+                            {l.status === 'cancelled' && <Typography sx={{ fontSize: 13, color: '#6B7280' }}>Annulée</Typography>}
                         </Box>
                     </Box>
                 ))}
             </Stack>
-        </Card>
+        </Box>
     );
 }
 
