@@ -1,8 +1,10 @@
 // src/screens/ChiffrageRoot.jsx
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { TonePill, StatusSelectPill } from "../components/ui/ToolbarControls";
+import ConditionFilterButton from "../components/ui/ConditionFilterButton";
+import { isConditionActive, matchConditions } from "../components/FilterPanel";
 import { CHIFFRAGE_STATUS_TONE } from "../lib/constants/daStyles";
-import { Plus, Copy, Trash2, FileText, ArrowUpDown, ArrowUp, ArrowDown, Archive, Filter, ChevronDown, ChevronRight, ChevronLeft, GitBranch, SlidersHorizontal } from "lucide-react";
+import { Plus, Copy, Trash2, FileText, ArrowUpDown, ArrowUp, ArrowDown, Archive, Filter, ChevronDown, ChevronRight, ChevronLeft, GitBranch } from "lucide-react";
 import Chip from '@mui/material/Chip';
 import { useFillViewportHeight } from "../lib/hooks/useFillViewportHeight";
 import Avatar from '@mui/material/Avatar';
@@ -31,22 +33,6 @@ const SEARCH_FIELDS = [
   { id: 'status', label: 'Statut' },
 ];
 
-const FILTER_FIELDS = [
-  { id: 'ca_ht',    label: 'Montant HT',           unit: '€',   adminOnly: false },
-  { id: 'marge_pct', label: 'Contribution %',       unit: '%',   adminOnly: true },
-  { id: 'renta_hh',  label: 'Contribution Horaire', unit: '€/h', adminOnly: true },
-];
-
-const OPERATORS = [
-  { id: 'gt',      label: 'est supérieur à' },
-  { id: 'gte',     label: 'est supérieur ou égal à' },
-  { id: 'lt',      label: 'est inférieur à' },
-  { id: 'lte',     label: 'est inférieur ou égal à' },
-  { id: 'eq',      label: 'est égal à' },
-  { id: 'between', label: 'est compris entre' },
-];
-
-const newCondition = () => ({ id: `c${Date.now()}${Math.random()}`, field: 'ca_ht', operator: 'gt', value: '', value2: '' });
 
 const STATUS_OPTIONS = {
   DRAFT: { label: "À faire", color: "#9CA3AF", bg: "#F3F4F6", text: "#374151" }, // Gray
@@ -197,20 +183,8 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
   const [isCreating, setIsCreating] = useState(false);
 
   const [activeFilters, setActiveFilters] = useState([]);
-  const [conditions, setConditions] = useState([newCondition()]);
-  const [showAdvancedPanel, setShowAdvancedPanel] = useState(false);
-  const advancedPanelRef = useRef(null);
-
-  useEffect(() => {
-    const handler = (e) => {
-      if (advancedPanelRef.current && !advancedPanelRef.current.contains(e.target)) {
-        setShowAdvancedPanel(false);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
-
+  // Conditions du bouton « Filtrer » (panneau partagé avec la liste Projets)
+  const [filterConditions, setFilterConditions] = useState([]);
   useEffect(() => {
     setActiveFilters([{ id: 'my_minutes', label: '👤 Mes chiffrages', field: 'owner' }]);
   }, []);
@@ -270,37 +244,19 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
     return [...prev, filter];
   });
 
-  const updateCondition = (id, key, val) =>
-    setConditions(prev => prev.map(c =>
-      c.id === id ? { ...c, [key]: val, ...(key === 'operator' && val !== 'between' ? { value2: '' } : {}) } : c
-    ));
-  const removeCondition = (id) =>
-    setConditions(prev => prev.length > 1 ? prev.filter(c => c.id !== id) : prev);
-
-  const applyConditions = () => {
-    const valid = conditions.filter(c => c.value !== '' && !isNaN(Number(c.value)));
-    if (valid.length === 0) return;
-    valid.forEach(cond => {
-      const fieldDef = FILTER_FIELDS.find(f => f.id === cond.field);
-      const opDef = OPERATORS.find(o => o.id === cond.operator);
-      const v1 = Number(cond.value).toLocaleString('fr-FR');
-      const label = cond.operator === 'between'
-        ? `${fieldDef.label} entre ${v1} et ${Number(cond.value2 || 0).toLocaleString('fr-FR')} ${fieldDef.unit}`
-        : `${fieldDef.label} ${opDef.label} ${v1} ${fieldDef.unit}`;
-      addFilter({
-        id: `adv_${cond.id}`,
-        label,
-        field: 'advanced',
-        matchType: 'advanced',
-        filterField: cond.field,
-        operator: cond.operator,
-        value: cond.value,
-        value2: cond.value2 || '',
-      });
-    });
-    setConditions([newCondition()]);
-    setShowAdvancedPanel(false);
-  };
+  // Champs proposés dans le panneau « Filtrer » (contributions réservées aux admins, comme les colonnes)
+  const filterSchema = [
+    { key: 'name', label: 'Nom du chiffrage', type: 'text' },
+    { key: 'client', label: 'Client', type: 'text' },
+    { key: 'owner', label: "Chargé d'affaires", type: 'text' },
+    { key: 'status', label: 'Statut', type: 'select', options: Object.entries(STATUS_OPTIONS).map(([k, v]) => ({ value: k, label: v.label })) },
+    { key: 'ca_ht', label: 'Montant HT', type: 'number' },
+    ...(showKPIs ? [
+      { key: 'marge_pct', label: 'Contribution %', type: 'number' },
+      { key: 'marge_eur', label: 'Contribution €', type: 'number' },
+      { key: 'renta_hh', label: 'Contribution €/h', type: 'number' },
+    ] : []),
+  ];
 
   // Filtrage + tri 100% côté client (données déjà en mémoire → instantané).
   const filteredList = useMemo(() => {
@@ -341,23 +297,9 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
       });
     }
 
-    // Conditions avancées (toutes AND)
-    const advancedConds = activeFilters.filter(f => f.matchType === 'advanced');
-    if (advancedConds.length > 0) {
-      res = res.filter(m => advancedConds.every(f => {
-        const mVal = m[f.filterField];
-        const v1 = Number(f.value);
-        const v2 = Number(f.value2 || 0);
-        switch (f.operator) {
-          case 'gt':      return mVal > v1;
-          case 'gte':     return mVal >= v1;
-          case 'lt':      return mVal < v1;
-          case 'lte':     return mVal <= v1;
-          case 'eq':      return Math.abs(mVal - v1) < 0.5;
-          case 'between': return mVal >= Math.min(v1, v2) && mVal <= Math.max(v1, v2);
-          default:        return true;
-        }
-      }));
+    // Conditions du bouton « Filtrer » (même panneau que la liste Projets)
+    if (filterConditions.some(isConditionActive)) {
+      res = res.filter(m => matchConditions(filterConditions, m));
     }
 
     // Archives vs actifs
@@ -379,7 +321,7 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
     }
 
     return res;
-  }, [list, activeFilters, currentUser, sortConfig, showArchived]);
+  }, [list, activeFilters, filterConditions, currentUser, sortConfig, showArchived]);
 
   // Tranche visible (pagination client-side)
   const displayList = useMemo(() => filteredList.slice(0, visibleCount), [filteredList, visibleCount]);
@@ -518,136 +460,9 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
             onRemoveFilter={removeFilter}
           />
 
-          {/* Constructeur de conditions */}
-          <div ref={advancedPanelRef} style={{ position: 'relative' }}>
-            {(() => {
-              const activeCount = activeFilters.filter(f => f.matchType === 'advanced').length;
-              return (
-                <Tooltip title="Filtres avancés">
-                  <IconButton
-                    onClick={() => setShowAdvancedPanel(p => !p)}
-                    sx={{
-                      position: 'relative',
-                      bgcolor: showAdvancedPanel || activeCount > 0 ? '#EEF2FF' : 'white',
-                      color: showAdvancedPanel || activeCount > 0 ? '#4338CA' : '#6B7280',
-                      border: `1px solid ${showAdvancedPanel || activeCount > 0 ? '#C7D2FE' : '#E5E7EB'}`,
-                      borderRadius: 2, height: 38, width: 38,
-                      '&:hover': { bgcolor: '#EEF2FF' },
-                    }}
-                  >
-                    <SlidersHorizontal size={18} />
-                    {activeCount > 0 && (
-                      <span style={{
-                        position: 'absolute', top: 4, right: 4,
-                        width: 8, height: 8, borderRadius: '50%',
-                        background: '#6366F1', border: '1px solid white',
-                      }} />
-                    )}
-                  </IconButton>
-                </Tooltip>
-              );
-            })()}
-
-            {showAdvancedPanel && (
-              <div style={{
-                position: 'absolute', top: 'calc(100% + 6px)', right: 0,
-                background: 'white', borderRadius: 10, width: 340,
-                boxShadow: '0 10px 25px -5px rgba(0,0,0,0.15)', border: '1px solid #E0DED9', zIndex: 200,
-                padding: 16,
-              }}>
-                <div style={{ fontSize: 12.5, fontWeight: 500, color: '#8A8F98', fontFamily: 'Roboto, system-ui, sans-serif', marginBottom: 14 }}>
-                  Filtres avancés
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {conditions.map((cond, i) => {
-                    const availableFields = FILTER_FIELDS.filter(f => !f.adminOnly || showKPIs);
-                    const selStyle = {
-                      width: '100%', padding: '7px 10px', borderRadius: 6,
-                      border: '1px solid #E0DED9', fontSize: 13, background: 'white',
-                      outline: 'none', cursor: 'pointer', color: '#111827',
-                    };
-                    return (
-                      <div key={cond.id}>
-                        {i > 0 && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                            <div style={{ flex: 1, height: 1, background: '#F3F4F6' }} />
-                            <span style={{ fontSize: 11, color: '#9CA3AF', fontWeight: 600 }}>ET</span>
-                            <div style={{ flex: 1, height: 1, background: '#F3F4F6' }} />
-                          </div>
-                        )}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                            <select value={cond.field} onChange={e => updateCondition(cond.id, 'field', e.target.value)} style={{ ...selStyle, flex: 1 }}>
-                              {availableFields.map(f => <option key={f.id} value={f.id}>{f.label}</option>)}
-                            </select>
-                            {conditions.length > 1 && (
-                              <button
-                                onClick={() => removeCondition(cond.id)}
-                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', padding: 4, fontSize: 16, lineHeight: 1, flexShrink: 0 }}
-                              >×</button>
-                            )}
-                          </div>
-                          <select value={cond.operator} onChange={e => updateCondition(cond.id, 'operator', e.target.value)} style={selStyle}>
-                            {OPERATORS.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
-                          </select>
-                          {cond.operator === 'between' ? (
-                            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                              <input
-                                type="number" placeholder="Min" value={cond.value}
-                                onChange={e => updateCondition(cond.id, 'value', e.target.value)}
-                                style={{ flex: 1, padding: '7px 10px', borderRadius: 6, border: '1px solid #E0DED9', fontSize: 13, outline: 'none' }}
-                              />
-                              <span style={{ color: '#9CA3AF', fontSize: 12, flexShrink: 0 }}>et</span>
-                              <input
-                                type="number" placeholder="Max" value={cond.value2}
-                                onChange={e => updateCondition(cond.id, 'value2', e.target.value)}
-                                style={{ flex: 1, padding: '7px 10px', borderRadius: 6, border: '1px solid #E0DED9', fontSize: 13, outline: 'none' }}
-                              />
-                            </div>
-                          ) : (
-                            <input
-                              type="number" placeholder="Valeur" value={cond.value}
-                              onChange={e => updateCondition(cond.id, 'value', e.target.value)}
-                              style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid #E0DED9', fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
-                            />
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
-                  <button
-                    onClick={applyConditions}
-                    disabled={conditions.every(c => c.value === '')}
-                    style={{
-                      flex: 1, padding: '8px 0', borderRadius: 6, border: 'none',
-                      background: conditions.every(c => c.value === '') ? '#E5E7EB' : '#1E2447',
-                      color: conditions.every(c => c.value === '') ? '#9CA3AF' : 'white',
-                      cursor: conditions.every(c => c.value === '') ? 'not-allowed' : 'pointer',
-                      fontSize: 13, fontWeight: 700, letterSpacing: '0.03em',
-                    }}
-                  >
-                    APPLIQUER
-                  </button>
-                  <button
-                    onClick={() => setConditions(prev => [...prev, newCondition()])}
-                    style={{
-                      flex: 1, padding: '8px 0', borderRadius: 6,
-                      border: '1px solid #1E2447', background: 'white',
-                      color: '#1E2447', cursor: 'pointer',
-                      fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
-                    }}
-                  >
-                    <span style={{ fontSize: 16, lineHeight: 1 }}>+</span> Ajouter une condition
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-
+          {/* Filtrer + Archives alignés sur le bord droit du tableau (comme la liste Projets) */}
+          <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
+          <ConditionFilterButton schema={filterSchema} conditions={filterConditions} onChange={setFilterConditions} />
           <Tooltip title={showArchived ? "Retour aux dossiers actifs" : "Voir archives (Terminés/Perdus)"}>
             <IconButton
               onClick={() => setShowArchived(!showArchived)}
@@ -662,6 +477,7 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
               <Archive size={20} />
             </IconButton>
           </Tooltip>
+          </div>
         </div>
       </div>
 

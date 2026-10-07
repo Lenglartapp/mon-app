@@ -8,7 +8,8 @@ import Tooltip from '@mui/material/Tooltip';
 import { Edit2, Plus, FileText, Trash2, ArrowUpDown, ArrowUp, ArrowDown, Archive, Upload, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
 
 import { SmartFilterBar } from "../components/ui/SmartFilterBar.jsx";
-import FilterPanel, { isConditionActive, evaluateCondition } from "../components/FilterPanel.jsx";
+import { isConditionActive, evaluateCondition } from "../components/FilterPanel.jsx";
+import ConditionFilterButton from "../components/ui/ConditionFilterButton";
 import { useViewportWidth } from "../lib/hooks/useViewportWidth";
 import { formatDateFR } from "../lib/utils/format";
 import { truncate } from "../lib/utils/truncate";
@@ -55,7 +56,6 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
   const [activeFilters, setActiveFilters] = useState([]);
   const [sortConfig, setSortConfig] = useState({ key: 'created_at', direction: 'desc' });
   const [filterConditions, setFilterConditions] = useState([]);
-  const [filterPanelOpen, setFilterPanelOpen] = useState(false);
   const listScrollRef = useRef(null);
   const listHeight = useFillViewportHeight(listScrollRef);
 
@@ -255,44 +255,9 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
             onRemoveFilter={handleRemoveFilter}
             placeholder="Nom, responsable, statut..."
           />
-          <div style={{ position: 'relative' }}>
-            {(() => {
-              const hasActive = filterConditions.some(isConditionActive);
-              return (
-                <button
-                  onClick={() => setFilterPanelOpen(o => !o)}
-                  style={{
-                    cursor: 'pointer', padding: '5px 12px', height: 38,
-                    background: hasActive ? '#dcfce7' : (filterPanelOpen ? '#eff6ff' : 'white'),
-                    color: hasActive ? '#15803d' : '#374151',
-                    border: `1px solid ${hasActive ? '#86efac' : (filterPanelOpen ? '#2563eb' : '#d1d5db')}`,
-                    borderRadius: 6, display: 'flex', alignItems: 'center', gap: 6, fontSize: 13,
-                    fontWeight: hasActive ? 600 : 400,
-                  }}
-                >
-                  <Filter size={14} />
-                  Filtrer
-                  {hasActive && (
-                    <span style={{ background: '#16a34a', color: 'white', borderRadius: 10, fontSize: 11, fontWeight: 700, padding: '0 6px', lineHeight: '18px' }}>
-                      {filterConditions.filter(isConditionActive).length}
-                    </span>
-                  )}
-                </button>
-              );
-            })()}
-            {filterPanelOpen && (
-              <>
-                <div style={{ position: 'fixed', inset: 0, zIndex: 1000 }} onClick={() => setFilterPanelOpen(false)} />
-                <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, zIndex: 1001 }}>
-                  <FilterPanel
-                    schema={PROJECT_FILTER_SCHEMA}
-                    conditions={filterConditions}
-                    onChange={setFilterConditions}
-                  />
-                </div>
-              </>
-            )}
-          </div>
+          {/* Filtrer + Archives alignés sur le bord droit du tableau */}
+          <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
+          <ConditionFilterButton schema={PROJECT_FILTER_SCHEMA} conditions={filterConditions} onChange={setFilterConditions} />
           <Tooltip title={showArchived ? "Retour aux dossiers actifs" : "Voir archives"}>
             <IconButton
               onClick={() => setShowArchived(!showArchived)}
@@ -309,6 +274,7 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
               <Archive size={20} />
             </IconButton>
           </Tooltip>
+          </div>
         </div>
       </div>
 
