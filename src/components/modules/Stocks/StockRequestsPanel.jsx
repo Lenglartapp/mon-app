@@ -48,10 +48,10 @@ const STATUS = {
 const ARCHIVE_AFTER_DAYS = 14;
 // Date de réalisation d'une demande : dernière ligne mise à disposition (à défaut, dernière mise à jour).
 const doneAtOf = (r) => r.lines.map(l => l.done_at).filter(Boolean).sort().pop() || r.updated_at || r.created_at;
-// Catégorie d'affichage : « à faire / en cours » (ouverte, même partiellement servie), faite
+// Catégorie d'affichage : à faire, en cours (ouverte mais déjà partiellement servie), faite
 // récemment, annulée, ou archivée (faite il y a plus de 2 semaines).
 const bucketOf = (r) => {
-    if (r.status === 'open') return 'active';
+    if (r.status === 'open') return r.lines.some(l => l.status === 'done') ? 'in_progress' : 'todo';
     if (r.status === 'cancelled') return 'cancelled';
     const ageDays = (Date.now() - new Date(doneAtOf(r)).getTime()) / 86400000;
     return ageDays > ARCHIVE_AFTER_DAYS ? 'archived' : 'done';
@@ -59,7 +59,8 @@ const bucketOf = (r) => {
 // Statut affiché sur la carte : une demande ouverte dont une partie est déjà servie est « en cours ».
 const displayStatusOf = (r) => (r.status === 'open' && r.lines.some(l => l.status === 'done') ? 'in_progress' : r.status);
 const FILTERS = [
-    { key: 'active', label: 'À faire / en cours', showCount: true },
+    { key: 'todo', label: 'À faire', showCount: true },
+    { key: 'in_progress', label: 'En cours', showCount: true },
     { key: 'done', label: 'Faites' },
     { key: 'cancelled', label: 'Annulées' },
     { key: 'archived', label: 'Archivées' },
@@ -69,7 +70,7 @@ export default function StockRequestsPanel({ inventory = [], project = null, onS
     const [requests, setRequests] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [filter, setFilter] = useState('active');
+    const [filter, setFilter] = useState(['todo']); // plusieurs listes cochables ; « À faire » par défaut
     const [search, setSearch] = useState('');
     const [newOpen, setNewOpen] = useState(false);
     const [confirming, setConfirming] = useState(null); // { request, line }
@@ -102,16 +103,16 @@ export default function StockRequestsPanel({ inventory = [], project = null, onS
         return map;
     }, [requests]);
 
-    const activeCount = useMemo(() => requests.filter(r => bucketOf(r) === 'active').length, [requests]);
+    const counts = useMemo(() => requests.reduce((acc, r) => { const b = bucketOf(r); acc[b] = (acc[b] || 0) + 1; return acc; }, {}), [requests]);
 
     const visible = useMemo(() => {
         const q = search.trim().toLowerCase();
         return requests
-            .filter(r => bucketOf(r) === filter)
+            .filter(r => filter.includes(bucketOf(r)))
             .filter(r => !q || [requestLabel(r), r.project, r.requested_by, r.comment, ...r.lines.flatMap(l => [l.product, l.ref, l.coloris, l.fournisseur, l.project])]
                 .some(v => (v || '').toLowerCase().includes(q)))
             // À faire : la date souhaitée la plus proche d'abord
-            .sort((a, b) => (filter === 'active'
+            .sort((a, b) => (filter.every(f => f === 'todo' || f === 'in_progress')
                 ? String(a.requested_for || '9999').localeCompare(String(b.requested_for || '9999'))
                 : String(b.created_at).localeCompare(String(a.created_at))));
     }, [requests, filter, search]);
@@ -131,9 +132,10 @@ export default function StockRequestsPanel({ inventory = [], project = null, onS
             {/* Barre d'outils sans cadre : choix de la liste (menu), recherche, nouvelle demande à droite */}
             <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 16 }}>
                 <ToolbarMenu
+                    multiple
                     value={filter}
                     onChange={setFilter}
-                    options={FILTERS.map(f => ({ value: f.key, label: f.label, count: f.showCount ? activeCount : undefined }))}
+                    options={FILTERS.map(f => ({ value: f.key, label: f.label, count: f.showCount ? (counts[f.key] || 0) : undefined }))}
                 />
                 <ToolbarSearch
                     value={search}
@@ -156,7 +158,7 @@ export default function StockRequestsPanel({ inventory = [], project = null, onS
             {!loading && !error && visible.length === 0 && (
                 <Box sx={{ textAlign: 'center', py: 8, color: '#9CA3AF' }}>
                     <Truck size={32} />
-                    <Typography sx={{ mt: 1 }}>{filter === 'active' ? 'Aucune demande en attente.' : 'Aucune demande.'}</Typography>
+                    <Typography sx={{ mt: 1 }}>{filter.every(f => f === 'todo' || f === 'in_progress') ? 'Aucune demande en attente.' : 'Aucune demande.'}</Typography>
                 </Box>
             )}
 
@@ -178,7 +180,7 @@ export default function StockRequestsPanel({ inventory = [], project = null, onS
                     project={project}
                     reserved={reserved}
                     onClose={() => setNewOpen(false)}
-                    onCreated={async () => { setNewOpen(false); setFilter('active'); await load(); }}
+                    onCreated={async () => { setNewOpen(false); setFilter(['todo']); await load(); }}
                 />
             )}
             {confirming && (

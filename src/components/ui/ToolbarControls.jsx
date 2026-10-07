@@ -83,19 +83,27 @@ export function TonePill({ tone = 4, children, title }) {
   );
 }
 
-/** Menu déroulant à choix unique (même principe que le sélecteur de vue du Planning).
-    options : [{ value, label, count? }] — le nombre s'affiche s'il est fourni. */
-export function ToolbarMenu({ value, onChange, options, width = 240 }) {
+/** Menu déroulant (même principe que le sélecteur de vue du Planning).
+    options : [{ value, label, count? }] — le nombre s'affiche s'il est fourni.
+    `multiple` : `value` est un tableau, chaque clic coche / décoche (au moins un choix reste coché). */
+export function ToolbarMenu({ value, onChange, options, width = 240, multiple = false }) {
   const [open, setOpen] = useState(false);
-  const current = options.find(o => o.value === value) || options[0];
+  const isOn = (v) => (multiple ? value.includes(v) : value === v);
   const text = (o) => (o.count != null ? `${o.label} (${o.count})` : o.label);
+  const selected = options.filter(o => isOn(o.value));
+  const buttonText = selected.length ? selected.map(text).join(' + ') : options[0]?.label;
+  const pick = (v) => {
+    if (!multiple) { onChange(v); setOpen(false); return; }
+    const next = value.includes(v) ? value.filter(x => x !== v) : [...value, v];
+    if (next.length) onChange(options.map(o => o.value).filter(x => next.includes(x))); // ordre du menu
+  };
   return (
     <div style={{ position: 'relative' }}>
       <button
         onClick={() => setOpen(o => !o)}
         style={{ ...BOX, cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit', whiteSpace: 'nowrap' }}
       >
-        {text(current)} <ChevronDown size={14} color="#6B7280" />
+        {buttonText} <ChevronDown size={14} color="#6B7280" />
       </button>
       {open && (
         <>
@@ -104,11 +112,16 @@ export function ToolbarMenu({ value, onChange, options, width = 240 }) {
             {options.map(o => (
               <div
                 key={o.value}
-                onClick={() => { onChange(o.value); setOpen(false); }}
-                style={{ padding: '8px 12px', fontSize: 13, cursor: 'pointer', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: o.value === value ? '#EEF4FD' : 'transparent', color: '#111827', fontWeight: o.value === value ? 600 : 400 }}
+                onClick={() => pick(o.value)}
+                style={{ padding: '8px 12px', fontSize: 13, cursor: 'pointer', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, background: isOn(o.value) ? '#EEF4FD' : 'transparent', color: '#111827', fontWeight: isOn(o.value) ? 600 : 400 }}
               >
-                {text(o)}
-                {o.value === value && <Check size={14} color="#1E2447" />}
+                {multiple && (
+                  <span style={{ width: 16, height: 16, borderRadius: 4, flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', border: `1.5px solid ${isOn(o.value) ? '#1E2447' : '#C9C7C2'}`, background: isOn(o.value) ? '#1E2447' : 'white' }}>
+                    {isOn(o.value) && <Check size={11} color="white" strokeWidth={3} />}
+                  </span>
+                )}
+                <span style={{ flex: 1 }}>{text(o)}</span>
+                {!multiple && isOn(o.value) && <Check size={14} color="#1E2447" />}
               </div>
             ))}
           </div>
