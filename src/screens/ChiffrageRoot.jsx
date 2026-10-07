@@ -1,5 +1,7 @@
 // src/screens/ChiffrageRoot.jsx
 import React, { useState, useMemo, useEffect, useRef } from "react";
+import { TonePill } from "../components/ui/ToolbarControls";
+import { CHIFFRAGE_STATUS_TONE } from "../lib/constants/daStyles";
 import { Plus, Copy, Trash2, FileText, ArrowUpDown, ArrowUp, ArrowDown, Archive, Filter, ChevronDown, ChevronRight, ChevronLeft, GitBranch, SlidersHorizontal } from "lucide-react";
 import Chip from '@mui/material/Chip';
 import { useFillViewportHeight } from "../lib/hooks/useFillViewportHeight";
@@ -807,12 +809,12 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
                           {m.client || "Client inconnu"}
                         </td>
                         <td style={{ padding: '12px 8px' }}>
-                          <Chip
-                            label={statusInfo.label}
-                            size="small"
+                          <button
                             onClick={(e) => handleStatusClick(e, m.id)}
-                            sx={{ bgcolor: statusInfo.bg, color: statusInfo.text, fontWeight: 700, fontSize: 11, height: 24, cursor: 'pointer', '&:hover': { opacity: 0.8 } }}
-                          />
+                            style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer' }}
+                          >
+                            <TonePill tone={CHIFFRAGE_STATUS_TONE[m.status] ?? CHIFFRAGE_STATUS_TONE.DRAFT}>{statusInfo.label}</TonePill>
+                          </button>
                         </td>
                         <td style={{ padding: '12px 8px', textAlign: 'right', whiteSpace: 'nowrap' }}>
                           <div style={{ fontWeight: 700, color: '#111827', fontSize: 14 }}>
@@ -992,7 +994,7 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
       >
         {Object.entries(STATUS_OPTIONS).map(([key, opt]) => (
           <MenuItem key={key} onClick={() => handleStatusSelect(key)}>
-            <Chip label={opt.label} size="small" sx={{ bgcolor: opt.bg, color: opt.text, fontWeight: 700, fontSize: 11, height: 24 }} />
+            <TonePill tone={CHIFFRAGE_STATUS_TONE[key]}>{opt.label}</TonePill>
           </MenuItem>
         ))}
       </Menu>
@@ -1027,7 +1029,7 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
           <MenuItem key={key} onClick={() => toggleFilter('status', key, `Statut: ${opt.label}`)}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%' }}>
               <input type="checkbox" checked={activeFilters.some(f => f.id === `status_${key}`)} readOnly />
-              <Chip label={opt.label} size="small" sx={{ bgcolor: opt.bg, color: opt.text, fontWeight: 700, fontSize: 11, height: 24 }} />
+              <TonePill tone={CHIFFRAGE_STATUS_TONE[key]}>{opt.label}</TonePill>
             </div>
           </MenuItem>
         ))}

@@ -29,6 +29,8 @@ import { uid } from "../lib/utils/uid";
 import { extractMaterialsFromLines } from "../lib/data/demo";
 
 import { PROJECT_STATUS_OPTIONS } from "../lib/constants/projectStatus";
+import { PROJECT_STATUS_TONE } from "../lib/constants/daStyles";
+import { TonePill } from "../components/ui/ToolbarControls";
 import { isInternalProject } from "../lib/planning/internalProject";
 
 const PROJECT_FILTER_SCHEMA = [
@@ -334,12 +336,7 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
                   <div style={{ fontSize: 11, color: '#9CA3AF' }}>#{String(p.id).slice(-4)}</div>
                 </div>
                 {/* STATUS BADGE SIMPLIFIED */}
-                <div style={{
-                  padding: "4px 10px", borderRadius: 16, background: statusOpt.bg, color: statusOpt.color,
-                  fontSize: 11, fontWeight: 700
-                }}>
-                  {statusOpt.label}
-                </div>
+                <TonePill tone={PROJECT_STATUS_TONE[p?.status || 'TODO']}>{statusOpt.label}</TonePill>
               </div>
 
               {/* BODY: Manager + Date */}
@@ -472,7 +469,6 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
             </thead>
             <tbody>
               {filteredProjects.map((p, idx) => {
-                const statusOpt = PROJECT_STATUS_OPTIONS[p?.status] || PROJECT_STATUS_OPTIONS.TODO;
                 const budget = p.budget || { prepa: 0, conf: 0, pose: 0 };
                 // Dossier interne : ni responsable, ni livraison, ni budget vendu.
                 // Afficher des champs éditables vides laisserait croire qu'il manque
@@ -517,7 +513,12 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
 
                     {/* STATUT */}
                     <td style={{ padding: '12px 10px', textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
-                      <div style={{ position: 'relative', display: 'inline-block' }}>
+                      {/* Statut : MÊME pastille que le chiffrage et l'état du stock (TonePill, largeur du mot) ;
+                          la liste déroulante native, invisible, est posée par-dessus pour le modifier. */}
+                      <div style={{ position: 'relative', display: 'inline-flex' }}>
+                        <TonePill tone={PROJECT_STATUS_TONE[p?.status || 'TODO']}>
+                          {(PROJECT_STATUS_OPTIONS[p?.status] || PROJECT_STATUS_OPTIONS.TODO).label}
+                        </TonePill>
                         <select
                           value={p?.status || "TODO"}
                           onChange={(e) => handleUpdate(p.id, { status: e.target.value })}
@@ -525,34 +526,13 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
                           // mégarde : il recueille du temps en continu et disparaîtrait
                           // de la liste, avec tout son historique de chapitres.
                           disabled={internal}
-                          title={internal ? "Le dossier interne reste toujours actif" : undefined}
-                          style={{
-                            appearance: 'none',
-                            padding: "5px 10px 5px 22px",
-                            borderRadius: 20,
-                            border: "1px solid #E0DED9",
-                            background: 'white',
-                            color: "#374151",
-                            fontWeight: 600,
-                            fontSize: 12,
-                            cursor: 'pointer',
-                            textAlign: 'center',
-                            outline: 'none',
-                            boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
-                            minWidth: 96
-                          }}
+                          title={internal ? "Le dossier interne reste toujours actif" : "Changer le statut"}
+                          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: internal ? 'default' : 'pointer', appearance: 'none', border: 'none' }}
                         >
                           {Object.entries(PROJECT_STATUS_OPTIONS).map(([key, opt]) => (
                             <option key={key} value={key}>{opt.label}</option>
                           ))}
                         </select>
-                        {/* Dot Overlay */}
-                        <div style={{
-                          position: 'absolute', top: '50%', left: 10, transform: 'translateY(-50%)',
-                          width: 6, height: 6, borderRadius: '50%',
-                          background: statusOpt.color,
-                          pointerEvents: 'none'
-                        }} />
                       </div>
                     </td>
 

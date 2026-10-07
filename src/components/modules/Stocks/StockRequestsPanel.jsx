@@ -23,6 +23,7 @@ import { fetchRequests, createRequest, confirmLine, cancelLine, requestLabel, LO
 import { splitLocations } from '../../../lib/inventory/stockFields';
 import OperatorInput from './OperatorInput';
 import LocationChips from './LocationChips';
+import { ToolbarSearch, ToolbarButton, ToolbarMenu, TonePill } from '../../ui/ToolbarControls';
 
 // « Mise à disposition » : l'atelier demande des pièces du stock, la logistique les
 // dépose à l'atelier et confirme ligne par ligne (les pièces passent en ATELIER).
@@ -39,21 +40,37 @@ const round2 = (n) => Math.round(Number(n) * 100) / 100;
 
 const STATUS = {
     open: { label: 'À faire', bg: '#FEF3C7', color: '#92400E' },
+    in_progress: { label: 'En cours', bg: '#DBEAFE', color: '#1E40AF' },
     done: { label: 'Mise à disposition', bg: '#D1FAE5', color: '#065F46' },
     cancelled: { label: 'Annulée', bg: '#F3F4F6', color: '#6B7280' },
 };
+// Délai après lequel une demande faite passe dans les archives.
+const ARCHIVE_AFTER_DAYS = 14;
+// Date de réalisation d'une demande : dernière ligne mise à disposition (à défaut, dernière mise à jour).
+const doneAtOf = (r) => r.lines.map(l => l.done_at).filter(Boolean).sort().pop() || r.updated_at || r.created_at;
+// Catégorie d'affichage : à faire, en cours (ouverte mais déjà partiellement servie), faite
+// récemment, annulée, ou archivée (faite il y a plus de 2 semaines).
+const bucketOf = (r) => {
+    if (r.status === 'open') return r.lines.some(l => l.status === 'done') ? 'in_progress' : 'todo';
+    if (r.status === 'cancelled') return 'cancelled';
+    const ageDays = (Date.now() - new Date(doneAtOf(r)).getTime()) / 86400000;
+    return ageDays > ARCHIVE_AFTER_DAYS ? 'archived' : 'done';
+};
+// Statut affiché sur la carte : une demande ouverte dont une partie est déjà servie est « en cours ».
+const displayStatusOf = (r) => (r.status === 'open' && r.lines.some(l => l.status === 'done') ? 'in_progress' : r.status);
 const FILTERS = [
-    { key: 'open', label: 'À faire' },
+    { key: 'todo', label: 'À faire', showCount: true },
+    { key: 'in_progress', label: 'En cours', showCount: true },
     { key: 'done', label: 'Faites' },
     { key: 'cancelled', label: 'Annulées' },
-    { key: 'all', label: 'Toutes' },
+    { key: 'archived', label: 'Archivées' },
 ];
 
 export default function StockRequestsPanel({ inventory = [], project = null, onStockChanged }) {
     const [requests, setRequests] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [filter, setFilter] = useState('open');
+    const [filter, setFilter] = useState(['todo']); // plusieurs listes cochables ; « À faire » par défaut
     const [search, setSearch] = useState('');
     const [newOpen, setNewOpen] = useState(false);
     const [confirming, setConfirming] = useState(null); // { request, line }
@@ -86,21 +103,16 @@ export default function StockRequestsPanel({ inventory = [], project = null, onS
         return map;
     }, [requests]);
 
-    const counts = useMemo(() => ({
-        open: requests.filter(r => r.status === 'open').length,
-        done: requests.filter(r => r.status === 'done').length,
-        cancelled: requests.filter(r => r.status === 'cancelled').length,
-        all: requests.length,
-    }), [requests]);
+    const counts = useMemo(() => requests.reduce((acc, r) => { const b = bucketOf(r); acc[b] = (acc[b] || 0) + 1; return acc; }, {}), [requests]);
 
     const visible = useMemo(() => {
         const q = search.trim().toLowerCase();
         return requests
-            .filter(r => filter === 'all' || r.status === filter)
+            .filter(r => filter.includes(bucketOf(r)))
             .filter(r => !q || [requestLabel(r), r.project, r.requested_by, r.comment, ...r.lines.flatMap(l => [l.product, l.ref, l.coloris, l.fournisseur, l.project])]
                 .some(v => (v || '').toLowerCase().includes(q)))
             // À faire : la date souhaitée la plus proche d'abord
-            .sort((a, b) => (filter === 'open'
+            .sort((a, b) => (filter.every(f => f === 'todo' || f === 'in_progress')
                 ? String(a.requested_for || '9999').localeCompare(String(b.requested_for || '9999'))
                 : String(b.created_at).localeCompare(String(a.created_at))));
     }, [requests, filter, search]);
@@ -117,35 +129,24 @@ export default function StockRequestsPanel({ inventory = [], project = null, onS
 
     return (
         <Box>
-            <Card sx={{ mb: 3, p: 2, display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
-                <Stack direction="row" spacing={1}>
-                    {FILTERS.map(f => (
-                        <Chip
-                            key={f.key}
-                            label={`${f.label} (${counts[f.key]})`}
-                            onClick={() => setFilter(f.key)}
-                            sx={{ fontWeight: 700, bgcolor: filter === f.key ? '#1E2447' : '#F3F4F6', color: filter === f.key ? 'white' : '#374151', '&:hover': { bgcolor: filter === f.key ? '#1E2447' : '#E5E7EB' } }}
-                        />
-                    ))}
-                </Stack>
-                <TextField
-                    placeholder="Rechercher (MAD-, dossier, tissu, demandeur…)"
-                    size="small"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    sx={{ width: 300 }}
-                    InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon color="action" /></InputAdornment> }}
+            {/* Barre d'outils sans cadre : choix de la liste (menu), recherche, nouvelle demande à droite */}
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 16 }}>
+                <ToolbarMenu
+                    multiple
+                    value={filter}
+                    onChange={setFilter}
+                    options={FILTERS.map(f => ({ value: f.key, label: f.label, count: f.showCount ? (counts[f.key] || 0) : undefined }))}
                 />
-                <Box sx={{ flexGrow: 1 }} />
-                <Button
-                    variant="contained"
-                    startIcon={<Plus size={18} />}
-                    onClick={() => setNewOpen(true)}
-                    sx={{ fontWeight: 700, textTransform: 'none', borderRadius: 2, bgcolor: '#1E2447', '&:hover': { bgcolor: '#2D3561' } }}
-                >
-                    Nouvelle demande
-                </Button>
-            </Card>
+                <ToolbarSearch
+                    value={search}
+                    onChange={setSearch}
+                    placeholder="MAD-, dossier, tissu, demandeur…"
+                    width={320}
+                />
+                <div style={{ marginLeft: 'auto' }}>
+                    <ToolbarButton primary icon={<Plus size={16} />} onClick={() => setNewOpen(true)}>Nouvelle demande</ToolbarButton>
+                </div>
+            </div>
 
             {error && (
                 <Alert severity="error" sx={{ mb: 2 }}>
@@ -157,7 +158,7 @@ export default function StockRequestsPanel({ inventory = [], project = null, onS
             {!loading && !error && visible.length === 0 && (
                 <Box sx={{ textAlign: 'center', py: 8, color: '#9CA3AF' }}>
                     <Truck size={32} />
-                    <Typography sx={{ mt: 1 }}>{filter === 'open' ? 'Aucune demande en attente.' : 'Aucune demande.'}</Typography>
+                    <Typography sx={{ mt: 1 }}>{filter.every(f => f === 'todo' || f === 'in_progress') ? 'Aucune demande en attente.' : 'Aucune demande.'}</Typography>
                 </Box>
             )}
 
@@ -179,7 +180,7 @@ export default function StockRequestsPanel({ inventory = [], project = null, onS
                     project={project}
                     reserved={reserved}
                     onClose={() => setNewOpen(false)}
-                    onCreated={async () => { setNewOpen(false); setFilter('open'); await load(); }}
+                    onCreated={async () => { setNewOpen(false); setFilter(['todo']); await load(); }}
                 />
             )}
             {confirming && (
@@ -193,61 +194,70 @@ export default function StockRequestsPanel({ inventory = [], project = null, onS
     );
 }
 
+// Pastille de statut de demande dans le nuancier bleu (annulée : gris neutre).
+// À faire clair, en cours un cran plus soutenu, faite très claire : le bleu nuit reste aux actions
+// principales (onglet actif, Nouvelle demande), le bleu moyen à « Confirmer la mise à dispo ».
+const STATUS_TONE = { open: 4, in_progress: 3, done: 5 };
+const ROBOTO = 'Roboto, system-ui, sans-serif';
+
 function RequestCard({ request: r, showProject, onConfirm, onCancel }) {
     const late = r.status === 'open' && r.requested_for && r.requested_for < todayISO();
-    const st = STATUS[r.status] || STATUS.open;
+    const statusKey = displayStatusOf(r);
+    const st = STATUS[statusKey] || STATUS.open;
     const pendingCount = r.lines.filter(l => l.status === 'pending').length;
     return (
-        <Card sx={{ p: 2, borderRadius: 3, boxShadow: '0 1px 3px rgba(0,0,0,0.08)', borderLeft: `4px solid ${late ? '#DC2626' : r.status === 'open' ? '#F59E0B' : r.status === 'done' ? '#10B981' : '#D1D5DB'}` }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mb: 1 }}>
-                <Chip label={requestLabel(r)} size="small" sx={{ fontWeight: 800, bgcolor: '#1E2447', color: 'white' }} />
-                {showProject && r.project && <Chip label={r.project} size="small" variant="outlined" sx={{ borderColor: '#6366F1', color: '#4F46E5' }} />}
-                <Typography sx={{ fontWeight: 700, color: late ? '#DC2626' : '#111827' }}>
+        <Box sx={{ p: 2.5, borderRadius: '8px', border: '1px solid #E0DED9', bgcolor: 'white' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap', mb: 0.5 }}>
+                <Typography sx={{ fontFamily: ROBOTO, fontSize: 16, fontWeight: 600, color: '#1E2447' }}>{requestLabel(r)}</Typography>
+                <Typography sx={{ fontFamily: ROBOTO, fontSize: 16, fontWeight: 400, color: late ? '#DC2626' : '#111827' }}>
                     {r.requested_for ? `Pour le ${fmtDate(r.requested_for)}` : 'Sans date'}{late ? ' — en retard' : ''}
                 </Typography>
+                {showProject && r.project && <Typography sx={{ fontSize: 13, color: '#6B7280' }}>· {r.project}</Typography>}
                 <Box sx={{ flexGrow: 1 }} />
                 {r.status === 'open' && r.lines.length > 1 && (
-                    <Typography variant="caption" sx={{ color: '#6B7280' }}>{r.lines.length - pendingCount}/{r.lines.length} livrée(s)</Typography>
+                    <Typography sx={{ fontSize: 12, color: '#6B7280' }}>{r.lines.length - pendingCount}/{r.lines.length} livrée(s)</Typography>
                 )}
-                <Chip label={st.label} size="small" sx={{ fontWeight: 700, bgcolor: st.bg, color: st.color }} />
+                {STATUS_TONE[statusKey] != null
+                    ? <TonePill tone={STATUS_TONE[statusKey]}>{st.label}</TonePill>
+                    : <span style={{ display: 'inline-flex', alignItems: 'center', height: 22, padding: '0 10px', borderRadius: 99, background: '#F4F4F4', color: '#374151', fontSize: 12, fontWeight: 600 }}>{st.label}</span>}
             </Box>
-            <Typography variant="body2" sx={{ color: '#6B7280', mb: r.comment ? 0.5 : 1.5 }}>
-                Demandé par <b>{r.requested_by}</b> le {fmtDateTime(r.created_at)}
+            <Typography sx={{ fontSize: 13, color: '#6B7280', mb: r.comment ? 0.5 : 1.5 }}>
+                Demandé par <b style={{ color: '#374151', fontWeight: 600 }}>{r.requested_by}</b> le {fmtDateTime(r.created_at)}
             </Typography>
-            {r.comment && <Typography variant="body2" sx={{ mb: 1.5, fontStyle: 'italic', color: '#374151' }}>« {r.comment} »</Typography>}
+            {r.comment && <Typography sx={{ fontSize: 13, mb: 1.5, color: '#374151' }}>« {r.comment} »</Typography>}
 
             <Stack spacing={1}>
                 {r.lines.map(l => (
-                    <Box key={l.id} sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 1.25, borderRadius: 2, bgcolor: l.status === 'pending' ? '#F4F4F4' : 'white', border: '1px solid #E5E7EB', flexWrap: 'wrap', opacity: l.status === 'cancelled' ? 0.55 : 1 }}>
+                    <Box key={l.id} sx={{ display: 'flex', alignItems: 'center', gap: 2, px: 1.5, py: 1.25, borderRadius: '8px', bgcolor: l.status === 'pending' ? '#F7F7F5' : 'white', border: '1px solid #E8E6E2', flexWrap: 'wrap', opacity: l.status === 'cancelled' ? 0.55 : 1 }}>
                         <Box sx={{ flex: '1 1 260px', minWidth: 0 }}>
-                            <Typography sx={{ fontWeight: 600, fontSize: 14 }}>{itemTitle(l)}</Typography>
-                            <Typography variant="caption" sx={{ color: '#6B7280' }}>
+                            <Typography sx={{ fontFamily: ROBOTO, fontWeight: 500, fontSize: 14, color: '#111827' }}>{itemTitle(l)}</Typography>
+                            <Typography sx={{ fontSize: 12, color: '#6B7280' }}>
                                 {showProject && l.project && !r.project ? `${l.project} · ` : ''}{l.laize ? `Laize ${l.laize} · ` : ''}depuis {splitLocations(l.from_location).join(', ') || '—'}
                             </Typography>
                         </Box>
-                        <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', alignItems: 'center' }}>
+                        <Box sx={{ display: 'flex', gap: 0.75, flexWrap: 'wrap', alignItems: 'center' }}>
                             {(l.pieces || []).length > 0
-                                ? l.pieces.map(p => <Chip key={p.id} size="small" label={`${p.name || 'Pièce'} · ${p.qty} ${l.unit || 'ml'}`} sx={{ bgcolor: '#EEF2FF', color: '#3730A3', fontWeight: 600 }} />)
-                                : <Chip size="small" label={`${l.qty} ${l.unit || 'ml'}`} sx={{ bgcolor: '#EEF2FF', color: '#3730A3', fontWeight: 600 }} />}
+                                ? l.pieces.map(p => <TonePill key={p.id} tone={5}>{`${p.name || 'Pièce'} · ${p.qty} ${l.unit || 'ml'}`}</TonePill>)
+                                : <TonePill tone={5}>{`${l.qty} ${l.unit || 'ml'}`}</TonePill>}
                         </Box>
                         <Box sx={{ minWidth: 200, textAlign: 'right' }}>
                             {l.status === 'pending' && (
                                 <Stack direction="row" spacing={1} justifyContent="flex-end">
-                                    <Button size="small" onClick={() => onCancel(l)} sx={{ color: '#6B7280', textTransform: 'none' }}>Annuler</Button>
-                                    <Button size="small" variant="contained" onClick={() => onConfirm(l)} sx={{ textTransform: 'none', fontWeight: 700, bgcolor: '#059669', '&:hover': { bgcolor: '#047857' } }}>
+                                    <Button size="small" onClick={() => onCancel(l)} sx={{ color: '#374151', textTransform: 'none', fontWeight: 600, border: '1px solid #E5E7EB', borderRadius: '8px', px: 1.5, bgcolor: 'white' }}>Annuler</Button>
+                                    <Button size="small" variant="contained" disableElevation onClick={() => onConfirm(l)} sx={{ textTransform: 'none', fontWeight: 600, borderRadius: '8px', px: 1.5, bgcolor: '#5B7FC4', '&:hover': { bgcolor: '#4A6DB0' } }}>
                                         Confirmer la mise à dispo
                                     </Button>
                                 </Stack>
                             )}
                             {l.status === 'done' && (
-                                <Typography variant="body2" sx={{ color: '#065F46', fontWeight: 600 }}>✓ En atelier — {l.done_by}, {fmtDateTime(l.done_at)}</Typography>
+                                <Typography sx={{ fontSize: 13, color: '#374151' }}><span style={{ color: '#1E2447', fontWeight: 700 }}>✓</span> En atelier — {l.done_by}, {fmtDateTime(l.done_at)}</Typography>
                             )}
-                            {l.status === 'cancelled' && <Typography variant="body2" sx={{ color: '#6B7280' }}>Annulée</Typography>}
+                            {l.status === 'cancelled' && <Typography sx={{ fontSize: 13, color: '#6B7280' }}>Annulée</Typography>}
                         </Box>
                     </Box>
                 ))}
             </Stack>
-        </Card>
+        </Box>
     );
 }
 
