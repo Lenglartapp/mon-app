@@ -62,7 +62,7 @@ function FilterBar({ value, onChange }) {
   return (
     <div style={{ display: 'flex', background: 'white', borderRadius: 9999, padding: 3, gap: 3, border: '1px solid #E0DED9', width: 'fit-content' }}>
       {tabs.map(t => (
-        <button key={t.key} onClick={() => onChange(t.key)} style={{
+        <button key={t.key} className="df-pill-tab" data-active={value === t.key} onClick={() => onChange(t.key)} style={{
           padding: '7px 16px', borderRadius: 9999, fontSize: 13, fontWeight: 500,
           border: 'none', cursor: 'pointer',
           background: value === t.key ? '#1E2447' : 'transparent',

@@ -758,9 +758,9 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
           </div>
         {/* Vues du chiffrage, au centre de la ligne des variantes */}
         <div className="df-chf-views" style={{ display: 'inline-flex', gap: 2, marginBottom: 8 }}>
-          <button style={getNavStyle(activeTab === "minutes")} onClick={() => setActiveTab("minutes")}>Minutes</button>
-          <button style={getNavStyle(activeTab === "achats")} onClick={() => setActiveTab("achats")}>Liste Achats</button>
-          {can(currentUser, "chiffrage.moulinette") && <button style={getNavStyle(activeTab === "moulinette")} onClick={() => setActiveTab("moulinette")}>Moulinette</button>}
+          <button className="df-pill-tab" data-active={activeTab === "minutes"} style={getNavStyle(activeTab === "minutes")} onClick={() => setActiveTab("minutes")}>Minutes</button>
+          <button className="df-pill-tab" data-active={activeTab === "achats"} style={getNavStyle(activeTab === "achats")} onClick={() => setActiveTab("achats")}>Liste Achats</button>
+          {can(currentUser, "chiffrage.moulinette") && <button className="df-pill-tab" data-active={activeTab === "moulinette"} style={getNavStyle(activeTab === "moulinette")} onClick={() => setActiveTab("moulinette")}>Moulinette</button>}
         </div>
         <div className="df-chf-actions" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10, flexWrap: 'wrap', marginBottom: 8 }}>
           <input

@@ -1338,7 +1338,7 @@ export default function LogistiqueScreen({ projects, onUpdateProject, onBack }) 
                         border: '1px solid rgba(0,0,0,0.05)',
                     }}>
                         {TABS.map(t => (
-                            <button key={t.key} onClick={() => setTabKey(t.key)} style={{
+                            <button key={t.key} className="df-pill-tab" data-active={tabKey === t.key} onClick={() => setTabKey(t.key)} style={{
                                 padding: '8px 28px', borderRadius: 9999, fontSize: 14, fontWeight: 500,
                                 border: 'none', cursor: 'pointer',
                                 background: tabKey === t.key ? '#1E2447' : 'transparent',

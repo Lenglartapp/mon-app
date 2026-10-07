@@ -91,6 +91,7 @@ export default function StocksModule({
                     {TABS.map(t => (
                         <button
                             key={t.key}
+                            className="df-pill-tab" data-active={tabIndex === t.key}
                             onClick={() => setTabIndex(t.key)}
                             style={{
                                 padding: '8px 20px',

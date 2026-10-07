@@ -117,6 +117,10 @@ button{ background:none; border:0; padding:0; margin:0; font:inherit; color:inhe
 /* Pas de barre de défilement visible : la molette / le pavé / le doigt suffisent */
 .df-list-scroll { scrollbar-width: none; -ms-overflow-style: none; }
 .df-list-scroll::-webkit-scrollbar { display: none; }
+/* Onglets en pastille (vues des modules, onglets des fenêtres) : au survol, l'onglet inactif
+   prend une pastille gris clair (façon Notion) pour montrer qu'il est cliquable. */
+.df-pill-tab { transition: background-color .15s ease, color .15s ease; }
+.df-pill-tab[data-active="false"]:not(:disabled):hover { background-color: #EFEFED !important; color: #111827 !important; }
 /* Planning : il défile seul (molette, pavé, doigt), sans barre visible */
 .df-noscrollbar { scrollbar-width: none; -ms-overflow-style: none; }
 .df-noscrollbar::-webkit-scrollbar { display: none; }

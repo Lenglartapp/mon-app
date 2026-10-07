@@ -144,7 +144,7 @@ export default function PerformanceActionsTab({ actions, projects, onAdd, onUpda
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
         <div style={{ display: 'flex', background: 'white', borderRadius: 9999, padding: 3, gap: 3, border: '1px solid #E0DED9' }}>
           {STATUT_TABS.map(t => (
-            <button key={t.key} onClick={() => setStatutFilter(t.key)} style={{
+            <button key={t.key} className="df-pill-tab" data-active={statutFilter === t.key} onClick={() => setStatutFilter(t.key)} style={{
               padding: '6px 14px', borderRadius: 9999, fontSize: 13, fontWeight: 500,
               border: 'none', cursor: 'pointer',
               background: statutFilter === t.key ? '#1E2447' : 'transparent',
