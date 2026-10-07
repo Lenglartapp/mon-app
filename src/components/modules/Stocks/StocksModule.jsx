@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
-import Button from '@mui/material/Button';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 
 import { S } from '../../../lib/constants/ui';
@@ -15,6 +14,7 @@ import { can } from '../../../lib/authz';
 import MovementModal from './MovementModal'; // Imported Modal
 import { useWarehouseZones } from '../../../hooks/useSupabase';
 import { PackagePlus, PackageMinus, ArrowLeftRight } from 'lucide-react'; // Icons
+import { ToolbarButton } from '../../ui/ToolbarControls';
 
 // Mock Data for initial state
 export default function StocksModule({
@@ -82,40 +82,6 @@ export default function StocksModule({
                         <h1 style={{ fontSize: 32, fontWeight: 400, fontFamily: 'Roboto, system-ui, sans-serif', color: '#111827', margin: 0, letterSpacing: '-0.01em' }}>Inventaire</h1>
                     </div>
 
-                    {/* Actions (Aligned with Title) */}
-                    <div style={{ display: 'flex', gap: 12, paddingTop: 32 }}>
-                        {canEdit && tabIndex === 1 && (
-                            <>
-                                <Button
-                                    variant="contained"
-                                    color="success"
-                                    startIcon={<PackagePlus size={18} />}
-                                    onClick={() => handleOpenModal('IN')}
-                                    sx={{ fontWeight: 700, textTransform: 'none', borderRadius: 2 }}
-                                >
-                                    Entrée
-                                </Button>
-                                <Button
-                                    variant="contained"
-                                    color="warning"
-                                    startIcon={<PackageMinus size={18} />}
-                                    onClick={() => handleOpenModal('OUT')}
-                                    sx={{ fontWeight: 700, px: 3, color: 'white', textTransform: 'none', borderRadius: 2 }}
-                                >
-                                    Sortie
-                                </Button>
-                                <Button
-                                    variant="contained"
-                                    color="primary"
-                                    startIcon={<ArrowLeftRight size={18} />}
-                                    onClick={() => handleOpenModal('MOVE')}
-                                    sx={{ fontWeight: 700, px: 3, textTransform: 'none', borderRadius: 2 }}
-                                >
-                                    Changer Emplacement
-                                </Button>
-                            </>
-                        )}
-                    </div>
                 </div>
 
                 {/* 2. Nav Row (Centered) */}
@@ -171,6 +137,13 @@ export default function StocksModule({
                             projects={projects}
                             inventory={inventory}
                             canEdit={canEdit}
+                            actions={canEdit ? (
+                                <>
+                                    <ToolbarButton icon={<PackagePlus size={16} />} onClick={() => handleOpenModal('IN')}>Entrée</ToolbarButton>
+                                    <ToolbarButton icon={<PackageMinus size={16} />} onClick={() => handleOpenModal('OUT')}>Sortie</ToolbarButton>
+                                    <ToolbarButton icon={<ArrowLeftRight size={16} />} onClick={() => handleOpenModal('MOVE')}>Changer d'emplacement</ToolbarButton>
+                                </>
+                            ) : null}
                         />
                     )}
                     {tabIndex === 2 && (

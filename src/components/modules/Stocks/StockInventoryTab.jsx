@@ -1,15 +1,8 @@
 import React, { useState } from 'react';
 import Box from '@mui/material/Box';
-import Card from '@mui/material/Card';
 import { DataGrid } from '@mui/x-data-grid';
 import { frFR } from '@mui/x-data-grid/locales';
 import Chip from '@mui/material/Chip';
-import TextField from '@mui/material/TextField';
-import MenuItem from '@mui/material/MenuItem';
-import Stack from '@mui/material/Stack';
-import SearchIcon from '@mui/icons-material/Search';
-import InputAdornment from '@mui/material/InputAdornment';
-import Autocomplete from '@mui/material/Autocomplete';
 import IconButton from '@mui/material/IconButton';
 import HistoryIcon from '@mui/icons-material/History';
 import Dialog from '@mui/material/Dialog';
@@ -20,13 +13,13 @@ import ListItemText from '@mui/material/ListItemText';
 import ProductHistoryModal from './ProductHistoryModal';
 import EditStockItemModal from './EditStockItemModal';
 import { useMemo, useRef } from 'react';
-import Button from '@mui/material/Button';
 import { Download, Upload, Map as MapIcon } from 'lucide-react';
 import { exportInventoryToExcel, processInventoryClearanceImport } from '../../../lib/utils/inventoryExcelUtils';
 import { useAuth } from '../../../auth';
 import WarehouseMap from './WarehouseMap';
 import { itemMetaColumns } from './stockColumns';
 import LocationChips from './LocationChips';
+import { ToolbarSearch, ToolbarSelect, ToolbarButton, DATAGRID_DA_SX, TABLE_FRAME_STYLE } from '../../ui/ToolbarControls';
 import { LOC_A_COMPLETER, splitLocations } from '../../../lib/inventory/stockFields';
 
 export default function StockInventoryTab({ inventory, projects = [], movements = [], onBulkMovement, onUpdateItem, zones = [] }) {
@@ -299,75 +292,43 @@ export default function StockInventoryTab({ inventory, projects = [], movements 
 
     return (
         <Box>
-            {/* FILTERS TOOLBAR */}
-            <Card sx={{ mb: 3, p: 2, display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
-                {/* 1. Global Search */}
-                <TextField
-                    placeholder="Recherche (Fournisseur, Réf, Coloris)..."
-                    size="small"
+            {/* Barre de filtres (sans cadre, style des listes Chiffrages / Projets) : filtres à gauche, actions à droite */}
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 16 }}>
+                <ToolbarSearch
                     value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    sx={{ width: 250 }}
-                    InputProps={{
-                        startAdornment: (
-                            <InputAdornment position="start">
-                                <SearchIcon color="action" />
-                            </InputAdornment>
-                        ),
-                    }}
+                    onChange={setSearch}
+                    placeholder="Fournisseur, référence, coloris…"
+                    width={220}
                 />
-
-                {/* 2. Project Filter (Autocomplete) */}
-                <Autocomplete
-                    options={projects.map(p => p.name)}
-                    value={filterProj}
-                    onChange={(e, val) => setFilterProj(val)}
-                    renderInput={(params) => <TextField {...params} label="Filtrer par Projet" size="small" />}
-                    sx={{ width: 250 }}
-                    freeSolo // Users might want to type a manual project name to filter
+                <ToolbarSearch
+                    value={filterProj || ''}
+                    onChange={(v) => setFilterProj(v || null)}
+                    placeholder="Projet"
+                    width={150}
+                    list="df-stock-projects"
+                    icon={false}
                 />
-
-                {/* 3. Category Filter */}
-                <TextField
-                    select
+                <datalist id="df-stock-projects">
+                    {projects.map(p => <option key={p.id || p.name} value={p.name} />)}
+                </datalist>
+                <ToolbarSelect
                     label="Catégorie"
-                    size="small"
                     value={filterCat}
-                    onChange={(e) => setFilterCat(e.target.value)}
-                    sx={{ width: 150 }}
-                >
-                    {CATEGORIES.map(c => (
-                        <MenuItem key={c} value={c}>{c === 'ALL' ? 'Toutes' : c}</MenuItem>
-                    ))}
-                </TextField>
-
-                {/* 4. Location Filter */}
-                <TextField
-                    select
+                    onChange={setFilterCat}
+                    options={CATEGORIES.map(c => ({ value: c, label: c === 'ALL' ? 'Toutes' : c }))}
+                />
+                <ToolbarSelect
                     label="Emplacement"
-                    size="small"
                     value={filterLoc}
-                    onChange={(e) => setFilterLoc(e.target.value)}
-                    sx={{ width: 150 }}
-                >
-                    {locations.map(loc => (
-                        <MenuItem key={loc} value={loc}>{loc === 'ALL' ? 'Tous' : loc}</MenuItem>
-                    ))}
-                </TextField>
-
-                {/* 5. Status Filter */}
-                <TextField
-                    select
+                    onChange={setFilterLoc}
+                    options={locations.map(loc => ({ value: loc, label: loc === 'ALL' ? 'Tous' : loc }))}
+                />
+                <ToolbarSelect
                     label="Statut"
-                    size="small"
                     value={filterStatus}
-                    onChange={(e) => setFilterStatus(e.target.value)}
-                    sx={{ width: 150 }}
-                >
-                    {STATUSES.map(s => (
-                        <MenuItem key={s.key} value={s.key}>{s.label}</MenuItem>
-                    ))}
-                </TextField>
+                    onChange={setFilterStatus}
+                    options={STATUSES.map(st => ({ value: st.key, label: st.label }))}
+                />
 
                 {toCompleteCount > 0 && (
                     <Chip
@@ -384,60 +345,32 @@ export default function StockInventoryTab({ inventory, projects = [], movements 
                     />
                 )}
 
-                {/* Reset Button */}
                 {(search || filterLoc !== 'ALL' || filterProj || filterCat !== 'ALL' || filterStatus !== 'ALL') && (
-                    <Chip
-                        label="Réinitialiser"
-                        onDelete={() => { 
-                            setSearch(''); 
-                            setFilterLoc('ALL'); 
-                            setFilterProj(null); 
-                            setFilterCat('ALL'); 
+                    <button
+                        onClick={() => {
+                            setSearch('');
+                            setFilterLoc('ALL');
+                            setFilterProj(null);
+                            setFilterCat('ALL');
                             setFilterStatus('ALL');
                         }}
-                        color="default"
-                        size="small"
-                    />
+                        style={{ border: 'none', background: 'none', color: '#6B7280', fontSize: 13, fontWeight: 600, cursor: 'pointer', textDecoration: 'underline', padding: '0 4px', fontFamily: 'inherit' }}
+                    >
+                        Réinitialiser
+                    </button>
                 )}
 
-                <Box sx={{ flexGrow: 1 }} />
-
-                {/* BULK ACTIONS */}
-                <Stack direction="row" spacing={1}>
-                    <Button
-                        variant={showMap ? 'contained' : 'outlined'}
-                        size="small"
-                        startIcon={<MapIcon size={16} />}
-                        onClick={() => setShowMap(v => !v)}
-                        sx={{
-                            textTransform: 'none', fontWeight: 700, borderRadius: 2,
-                            ...(showMap
-                                ? { bgcolor: '#0F172A', color: 'white', '&:hover': { bgcolor: '#1E293B' } }
-                                : { borderColor: '#CBD5E1', color: '#374151' })
-                        }}
-                    >
-                        Vue Entrepôt
-                    </Button>
-                    <Button
-                        variant="outlined"
-                        size="small"
-                        startIcon={<Download size={16} />}
-                        onClick={handleExport}
-                        sx={{ textTransform: 'none', fontWeight: 700, borderRadius: 2 }}
-                    >
-                        Exporter le Stock (Solde)
-                    </Button>
-                    <Button
-                        variant="contained"
-                        size="small"
-                        color="secondary"
-                        startIcon={<Upload size={16} />}
-                        onClick={handleImportClick}
-                        sx={{ textTransform: 'none', fontWeight: 700, borderRadius: 2, bgcolor: '#4F46E5', '&:hover': { bgcolor: '#4338CA' } }}
-                    >
-                        Importer Mise à jour (Solde)
-                    </Button>
-                </Stack>
+                <div style={{ marginLeft: 'auto', display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                    <ToolbarButton icon={<MapIcon size={16} />} active={showMap} onClick={() => setShowMap(v => !v)}>
+                        Vue entrepôt
+                    </ToolbarButton>
+                    <ToolbarButton icon={<Download size={16} />} onClick={handleExport} title="Exporter le stock (solde) en Excel">
+                        Exporter
+                    </ToolbarButton>
+                    <ToolbarButton icon={<Upload size={16} />} onClick={handleImportClick} title="Importer une mise à jour du stock (solde)">
+                        Importer
+                    </ToolbarButton>
+                </div>
 
                 <input
                     type="file"
@@ -446,7 +379,7 @@ export default function StockInventoryTab({ inventory, projects = [], movements 
                     accept=".xlsx, .xls"
                     onChange={handleImportFile}
                 />
-            </Card>
+            </div>
 
             {/* VUE ENTREPÔT */}
             {showMap && (
@@ -458,7 +391,7 @@ export default function StockInventoryTab({ inventory, projects = [], movements 
             {/* INVENTORY GRID */}
             {/* Tablette (< 1200 px) : le tableau occupe la hauteur d'écran disponible au lieu de 600 px fixes
                 (en portrait on ne voyait que 7 lignes, avec un grand vide dessous). */}
-            <Card sx={{ height: { xs: 'max(480px, calc(100vh - 500px))', lg: 600 }, width: '100%', borderRadius: 3, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+            <Box sx={{ ...TABLE_FRAME_STYLE, height: { xs: 'max(480px, calc(100vh - 400px))', lg: 600 } }}>
                 <DataGrid
                     rows={groupedRows}
                     columns={columns}
@@ -466,9 +399,9 @@ export default function StockInventoryTab({ inventory, projects = [], movements 
                     disableSelectionOnClick
                     onRowDoubleClick={handleRowDoubleClick}
                     localeText={frFR.components.MuiDataGrid.defaultProps.localeText}
-                    sx={{ border: 'none' }}
+                    sx={DATAGRID_DA_SX}
                 />
-            </Card>
+            </Box>
 
             {/* CHOIX DE L'ENTRÉE (ligne regroupant plusieurs articles) */}
             {pickSources && (

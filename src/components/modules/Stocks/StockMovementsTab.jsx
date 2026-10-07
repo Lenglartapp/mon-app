@@ -1,17 +1,14 @@
 import React, { useState } from 'react';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
-import Card from '@mui/material/Card';
 import Typography from '@mui/material/Typography';
 import { DataGrid } from '@mui/x-data-grid';
 import { frFR } from '@mui/x-data-grid/locales';
 import Chip from '@mui/material/Chip';
 import Avatar from '@mui/material/Avatar';
-import TextField from '@mui/material/TextField';
-import InputAdornment from '@mui/material/InputAdornment';
-import SearchIcon from '@mui/icons-material/Search';
 import InputBase from '@mui/material/InputBase';
 import { itemMetaColumns } from './stockColumns';
+import { ToolbarSearch, DATAGRID_DA_SX, TABLE_FRAME_STYLE } from '../../ui/ToolbarControls';
 // Helper for avatar color
 function stringToColor(string) {
     if (!string) return '#ccc';
@@ -123,7 +120,7 @@ const COLUMNS = [
     },
 ];
 
-export default function StockMovementsTab({ movements, onAddMovement, projects = [], inventory = [], canEdit = false }) {
+export default function StockMovementsTab({ movements, onAddMovement, projects = [], inventory = [], canEdit = false, actions = null }) {
     const [search, setSearch] = useState('');
 
     const filteredMovements = movements.filter(m => {
@@ -144,29 +141,20 @@ export default function StockMovementsTab({ movements, onAddMovement, projects =
 
     return (
         <Box>
-            {/* TOOLBAR */}
-            <Card sx={{ mb: 3, p: 2, display: 'flex', gap: 2, alignItems: 'center' }}>
-                <TextField
-                    placeholder="Filtrer le journal (Fournisseur, Référence, Projet, Opérateur...)"
-                    size="small"
-                    fullWidth
+            {/* Barre d'outils (sans cadre) : recherche à gauche, actions de mouvement à droite */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
+                <ToolbarSearch
                     value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    InputProps={{
-                        startAdornment: (
-                            <InputAdornment position="start">
-                                <SearchIcon color="action" />
-                            </InputAdornment>
-                        ),
-                    }}
-                    sx={{ maxWidth: 500 }}
+                    onChange={setSearch}
+                    placeholder="Fournisseur, référence, projet, opérateur…"
+                    width={420}
                 />
-            </Card>
+                {actions && <div style={{ marginLeft: 'auto', display: 'flex', gap: 10, flexWrap: 'wrap' }}>{actions}</div>}
+            </div>
 
-            {/* HISTORY GRID */}
-            {/* Tablette (< 1200 px) : le tableau occupe la hauteur d'écran disponible au lieu de 600 px fixes
-                (en portrait on ne voyait que 7 lignes, avec un grand vide dessous). */}
-            <Card sx={{ height: { xs: 'max(480px, calc(100vh - 364px))', lg: 600 }, width: '100%', borderRadius: 3, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+            {/* Journal — même contour que les listes Chiffrages / Projets.
+                Tablette (< 1200 px) : le tableau occupe la hauteur d'écran disponible au lieu de 600 px fixes. */}
+            <Box sx={{ ...TABLE_FRAME_STYLE, height: { xs: 'max(480px, calc(100vh - 330px))', lg: 600 } }}>
                 <DataGrid
                     rows={filteredMovements}
                     columns={COLUMNS}
@@ -179,9 +167,9 @@ export default function StockMovementsTab({ movements, onAddMovement, projects =
                         },
                     }}
                     localeText={frFR.components.MuiDataGrid.defaultProps.localeText}
-                    sx={{ border: 'none' }}
+                    sx={DATAGRID_DA_SX}
                 />
-            </Card>
+            </Box>
         </Box>
     );
 }
