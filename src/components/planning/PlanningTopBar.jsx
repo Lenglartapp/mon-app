@@ -1,6 +1,6 @@
 import React, { useState, useRef, useLayoutEffect } from 'react';
 import { ChevronLeft, ChevronRight, ChevronDown, Check, User, Download, Upload, FileSpreadsheet, History, CheckCircle2 } from 'lucide-react';
-import { S } from '../../lib/constants/ui';
+import { DA_INPUT_STYLE } from '../../lib/constants/daStyles';
 import { SmartFilterBar } from '../ui/SmartFilterBar';
 
 const PLANNING_SEARCH_FIELDS = [
@@ -8,6 +8,15 @@ const PLANNING_SEARCH_FIELDS = [
     { id: 'person',  label: 'Personne' },
     { id: 'service', label: 'Service' },
 ];
+
+// Boutons de la barre : même gabarit que ceux du Chiffrage (Importer Excel, Recalibrer…).
+const BTN = {
+    display: 'flex', alignItems: 'center', gap: 8, height: 36, padding: '0 14px', borderRadius: 8,
+    background: 'white', border: '1px solid #E0DED9', color: '#374151', fontSize: 13, fontWeight: 600,
+    fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap', boxSizing: 'border-box',
+};
+const NAVY = '#1E2447';
+const btn = (on = false) => (on ? { ...BTN, background: NAVY, borderColor: NAVY, color: 'white' } : BTN);
 
 const ViewSelector = ({ view, onViewChange, customRange, onCustomRangeChange, showWeekends, onToggleWeekends }) => {
     const [isOpen, setIsOpen] = useState(false);
@@ -17,23 +26,32 @@ const ViewSelector = ({ view, onViewChange, customRange, onCustomRangeChange, sh
     const options = [{ id: 'day', label: 'Jour' }, { id: 'week', label: 'Semaine' }, { id: 'twoweeks', label: '2 Semaines' }, { id: 'month', label: 'Mois' }, { id: 'quarter', label: 'Trimestre' }, { id: 'year', label: 'Année' }];
     return (
         <div style={{ position: 'relative' }}>
-            <button onClick={() => setIsOpen(!isOpen)} style={{ background: '#fff', border: '1px solid #E0DED9', borderRadius: 6, padding: '8px 12px', fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
-                {view === 'custom' ? 'Période' : options.find(o => o.id === view)?.label || 'Vue'} <ChevronDown size={14} />
+            <button onClick={() => setIsOpen(!isOpen)} style={BTN}>
+                {view === 'custom' ? 'Période' : options.find(o => o.id === view)?.label || 'Vue'} <ChevronDown size={14} color="#6B7280" />
             </button>
             {isOpen && (
                 <>
                     <div style={{ position: 'fixed', inset: 0, zIndex: 80 }} onClick={() => setIsOpen(false)} />
                     <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 4, width: 280, background: 'white', borderRadius: 8, boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', border: '1px solid #E0DED9', zIndex: 90, padding: 4 }}>
                         <div style={{ paddingBottom: 4, borderBottom: '1px solid #F3F4F6' }}>
-                            {options.map(opt => (<div key={opt.id} onClick={() => { onViewChange(opt.id); setIsOpen(false); }} style={{ padding: '8px 12px', fontSize: 13, cursor: 'pointer', borderRadius: 4, background: view === opt.id ? '#EFF6FF' : 'transparent', color: view === opt.id ? '#2563EB' : '#374151', fontWeight: view === opt.id ? 600 : 400 }}>{opt.label}</div>))}
-                            <div onClick={() => onToggleWeekends(!showWeekends)} style={{ padding: '8px 12px', fontSize: 13, cursor: 'pointer', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: '#374151' }}>
+                            {options.map(opt => (<div key={opt.id} onClick={() => { onViewChange(opt.id); setIsOpen(false); }} style={{ padding: '8px 12px', fontSize: 13, cursor: 'pointer', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: view === opt.id ? '#EEF4FD' : 'transparent', color: '#111827', fontWeight: view === opt.id ? 600 : 400 }}>{opt.label}{view === opt.id && <Check size={14} color={NAVY} />}</div>))}
+                            <div onClick={() => onToggleWeekends(!showWeekends)} style={{ padding: '8px 12px', fontSize: 13, cursor: 'pointer', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: '#111827' }}>
                                 Afficher les week-ends
-                                {showWeekends && <Check size={14} color="#111827" />}
+                                {showWeekends && <Check size={14} color={NAVY} />}
                             </div>
                         </div>
-                        <div style={{ padding: 12 }}>
-                            <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}> <input type="date" style={{ ...S.input, padding: 4, fontSize: 12 }} onChange={e => setTempStart(e.target.value)} /> <input type="date" style={{ ...S.input, padding: 4, fontSize: 12 }} onChange={e => setTempEnd(e.target.value)} /> </div>
-                            <button onClick={handleApply} style={{ width: '100%', background: '#1F2937', color: 'white', border: 'none', padding: '6px', borderRadius: 4, fontSize: 12, cursor: 'pointer' }}>Appliquer</button>
+                        {/* Période libre : mêmes champs que le reste de l'appli (Roboto, 34 px, coins 8 px) */}
+                        <div style={{ padding: '10px 8px 8px' }}>
+                            <div style={{ fontSize: 13, color: '#6B7280', margin: '0 4px 8px' }}>Période personnalisée</div>
+                            <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                                <label style={{ flex: 1, fontSize: 12, color: '#9B9A97' }}>Du
+                                    <input type="date" style={{ ...DA_INPUT_STYLE, height: 34, padding: '0 8px', fontSize: 13, marginTop: 4 }} onChange={e => setTempStart(e.target.value)} />
+                                </label>
+                                <label style={{ flex: 1, fontSize: 12, color: '#9B9A97' }}>Au
+                                    <input type="date" style={{ ...DA_INPUT_STYLE, height: 34, padding: '0 8px', fontSize: 13, marginTop: 4 }} onChange={e => setTempEnd(e.target.value)} />
+                                </label>
+                            </div>
+                            <button onClick={handleApply} style={{ ...btn(true), width: '100%', justifyContent: 'center', height: 34 }}>Appliquer</button>
                         </div>
                     </div>
                 </>
@@ -108,9 +126,9 @@ const PlanningTopBar = ({
         <div ref={barRef} style={{ display: 'flex', alignItems: 'center', flexWrap: stacked ? 'wrap' : 'nowrap', rowGap: 10, padding: '16px 24px', background: '#FFFFFF' }}>
             {/* GAUCHE (flex:1 pour centrer la recherche) */}
             <div ref={leftRef} style={{ flex: '1 1 auto', display: 'flex', gap: 12, alignItems: 'center', minWidth: 'max-content', order: 1 }}>
-                <button onClick={onNew} style={{ background: '#111827', color: '#fff', border: 'none', borderRadius: 6, padding: '8px 16px', fontWeight: 600, fontSize: 14, cursor: 'pointer', whiteSpace: 'nowrap' }}>Nouveau</button>
+                <button onClick={onNew} style={btn(true)}>Nouveau</button>
                 {canManageTeam && (
-                    <button onClick={onManageTeam} style={{ background: 'white', color: '#374151', border: '1px solid #D1D5DB', borderRadius: 6, padding: '8px 16px', fontWeight: 600, fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap' }}>
+                    <button onClick={onManageTeam} style={BTN}>
                         <User size={16} /> Gérer l'équipe
                     </button>
                 )}
@@ -119,9 +137,9 @@ const PlanningTopBar = ({
                         <input ref={fileInputRef} type="file" accept=".xlsx" style={{ display: 'none' }} onChange={handleFileChange} />
                         <button
                             onClick={() => setShowImportMenu(v => !v)}
-                            style={{ background: 'white', color: '#374151', border: '1px solid #D1D5DB', borderRadius: 6, padding: '8px 16px', fontWeight: 600, fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap' }}
+                            style={BTN}
                         >
-                            <FileSpreadsheet size={16} /> Import <ChevronDown size={13} />
+                            <FileSpreadsheet size={16} /> Import <ChevronDown size={14} color="#6B7280" />
                         </button>
                         {showImportMenu && (
                             <>
@@ -156,7 +174,7 @@ const PlanningTopBar = ({
                     <button
                         onClick={onBulkValidate}
                         title="Valider en masse les créneaux d'un service sur une période"
-                        style={{ background: 'white', color: '#059669', border: '1px solid #A7F3D0', borderRadius: 6, padding: '8px 16px', fontWeight: 600, fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap' }}
+                        style={BTN}
                     >
                         <CheckCircle2 size={16} /> Validation
                     </button>
@@ -184,11 +202,7 @@ const PlanningTopBar = ({
                     title="Historique des créneaux par dossier"
                     style={{
                         flexShrink: 0, marginLeft: stacked ? 10 : -6, marginRight: stacked ? 0 : BAR_GAP, order: stacked ? 4 : 2,
-                        background: historyOpen ? '#2563EB' : 'white',
-                        color: historyOpen ? 'white' : '#374151',
-                        border: '1px solid #E0DED9', borderRadius: 6,
-                        padding: '8px 10px', cursor: 'pointer',
-                        display: 'flex', alignItems: 'center',
+                        ...btn(historyOpen), padding: '0 10px',
                     }}
                 >
                     <History size={16} />
@@ -197,34 +211,21 @@ const PlanningTopBar = ({
 
             {/* DROITE (flex:1) */}
             <div ref={rightRef} style={{ flex: '1 1 auto', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 12, minWidth: 'max-content', order: stacked ? 2 : 3 }}>
-                <div style={{ display: 'flex', background: '#fff', borderRadius: 6, border: '1px solid #E0DED9', padding: 2 }}>
-                    <button onClick={onPrev} style={{ border: 'none', background: 'transparent', padding: '6px 8px', cursor: 'pointer' }}><ChevronLeft size={16} /></button>
-                    <button onClick={onNext} style={{ border: 'none', background: 'transparent', padding: '6px 8px', cursor: 'pointer' }}><ChevronRight size={16} /></button>
+                <div style={{ display: 'flex', alignItems: 'center', height: 36, boxSizing: 'border-box', background: '#fff', borderRadius: 8, border: '1px solid #E0DED9', padding: '0 2px' }}>
+                    <button onClick={onPrev} title="Précédent" style={{ border: 'none', background: 'transparent', padding: '6px 8px', cursor: 'pointer', display: 'flex', color: '#374151' }}><ChevronLeft size={16} /></button>
+                    <button onClick={onNext} title="Suivant" style={{ border: 'none', background: 'transparent', padding: '6px 8px', cursor: 'pointer', display: 'flex', color: '#374151' }}><ChevronRight size={16} /></button>
                 </div>
 
                 <button
                     onClick={onToggleMyView}
                     title="Ma Vue (Agenda Personnel)"
-                    style={{
-                        background: myViewMode ? '#2563EB' : 'white',
-                        color: myViewMode ? 'white' : '#374151',
-                        border: '1px solid #E0DED9',
-                        borderRadius: 6,
-                        padding: '8px 12px',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 8,
-                        fontWeight: 600,
-                        fontSize: 13,
-                        whiteSpace: 'nowrap'
-                    }}
+                    style={btn(myViewMode)}
                 >
                     <User size={16} /> Ma Vue
                 </button>
 
                 <ViewSelector view={view} onViewChange={onViewChange} customRange={customRange} onCustomRangeChange={onCustomRangeChange} showWeekends={showWeekends} onToggleWeekends={onToggleWeekends} />
-                <button onClick={onToday} style={{ background: 'transparent', color: '#111827', border: 'none', padding: '0 8px', fontSize: 13, fontWeight: 700, cursor: 'pointer', textDecoration: 'underline', whiteSpace: 'nowrap' }}>Aujourd'hui</button>
+                <button onClick={onToday} style={BTN}>Aujourd'hui</button>
             </div>
         </div>
     );

@@ -608,7 +608,17 @@ const PlanningGrid = ({
                     <StickyCorner style={{ height: HEADER_HEIGHT_1, borderBottom: 'none' }} />
                     {superHeaders.map((header, i) => (<div key={i} style={{ gridColumn: `span ${header.span}`, position: 'sticky', top: 0, zIndex: 40, background: 'white', borderBottom: '1px solid #E5E7EB', borderRight: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: ROBOTO, fontSize: 13, fontWeight: 500, color: '#6B7280' }}>{header.label}</div>))}
                     <StickyCorner style={{ top: HEADER_HEIGHT_1, height: HEADER_HEIGHT_2 }} />
-                    {gridCols.map(col => (<StickyTopCell key={col.toString()} style={{ top: HEADER_HEIGHT_1, height: HEADER_HEIGHT_2, background: isSameDay(col, new Date()) && view !== 'year' ? '#EFF6FF' : 'white', color: isSameDay(col, new Date()) && view !== 'year' ? '#2563EB' : '#4B5563' }}>{getCellContent(col)}</StickyTopCell>))}
+                    {gridCols.map(col => {
+                        // Jour actuel : pastille bleu nuit de la charte autour du libellé.
+                        const today = view !== 'year' && isSameDay(col, new Date());
+                        return (
+                            <StickyTopCell key={col.toString()} style={{ top: HEADER_HEIGHT_1, height: HEADER_HEIGHT_2, background: 'white', color: '#4B5563' }}>
+                                {today
+                                    ? <span style={{ background: '#1E2447', color: 'white', borderRadius: 99, padding: '4px 12px', fontWeight: 600 }}>{getCellContent(col)}</span>
+                                    : getCellContent(col)}
+                            </StickyTopCell>
+                        );
+                    })}
 
                     {Object.entries(filteredGroups).map(([key, group]) => {
                         const activeMembers = group.members.filter(m => !hiddenResources.includes(m.id));

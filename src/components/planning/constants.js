@@ -2,13 +2,13 @@ export const INITIAL_GROUPS_CONFIG = {
     prepa: {
         id: 'prepa',
         label: 'Préparation',
-        bg: '#FFF7ED',
+        bg: '#EEF4FD',
         members: [] // Sera rempli dynamiquement
     },
     conf: {
         id: 'conf',
         label: 'Confection',
-        bg: '#F8FAFC',
+        bg: '#EEF4FD',
         members: [
             { id: 'backlog_confection', first_name: 'BACKLOG', last_name: 'SEMAINE' } // Ressource Virtuelle
         ]
@@ -16,7 +16,7 @@ export const INITIAL_GROUPS_CONFIG = {
     pose: {
         id: 'pose',
         label: 'Pose',
-        bg: '#F0FDF4',
+        bg: '#EEF4FD',
         members: []
     }
 };
