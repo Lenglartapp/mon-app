@@ -1415,11 +1415,8 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
             <div ref={stickyHeaderRef} style={{ position: 'sticky', top: 0, zIndex: 70, background: '#FFFFFF', flexShrink: 0 }}>
                 {canViewAssistant && (
                     <div style={{ display: 'flex', justifyContent: 'center', padding: '8px 24px 12px' }}>
-                        <div style={{
-                            background: 'white', borderRadius: 9999, padding: 4, display: 'flex', gap: 4,
-                            boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03)',
-                            border: '1px solid rgba(0,0,0,0.05)',
-                        }}>
+                        {/* Mêmes pastilles que les vues du chiffrage, sans cadre autour */}
+                        <div style={{ display: 'flex', gap: 2 }}>
                             {[
                                 { key: null, label: 'Planning' },
                                 { key: 'programmation', label: 'Programmation' },
@@ -1431,10 +1428,11 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                                         key={seg.label}
                                         onClick={() => setAssistantMode(seg.key)}
                                         style={{
-                                            padding: '8px 24px', borderRadius: 9999, fontSize: 14, fontWeight: 500,
-                                            border: 'none', cursor: 'pointer', transition: 'all 0.15s',
+                                            padding: '8px 20px', borderRadius: 99, fontSize: 14, fontWeight: 500,
+                                            border: 'none', cursor: 'pointer', transition: 'all 0.2s cubic-bezier(0.25, 1, 0.5, 1)',
                                             background: active ? '#1E2447' : 'transparent',
                                             color: active ? 'white' : '#4B5563',
+                                            boxShadow: active ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', outline: 'none',
                                         }}
                                     >
                                         {seg.label}

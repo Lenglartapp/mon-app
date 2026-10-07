@@ -1,5 +1,6 @@
 import React from 'react';
 import { Search, X } from 'lucide-react';
+import { BLUE_TONES } from '../../lib/constants/daStyles';
 
 // Contrôles de barre d'outils au style de la DA (listes Chiffrages / Projets) :
 // hauteur 38 px, fond blanc, trait #E0DED9, coins 8 px, texte 13 px, sans cadre autour.
@@ -65,22 +66,15 @@ export function ToolbarButton({ icon, children, onClick, primary = false, active
   );
 }
 
-/** Tableau MUI DataGrid au style des listes Chiffrages / Projets (à mettre dans le `sx` du DataGrid). */
-export const DATAGRID_DA_SX = {
-  border: 'none',
-  fontFamily: 'inherit',
-  '--DataGrid-containerBackground': '#F4F4F4',
-  '--DataGrid-rowBorderColor': '#E8E6E2',
-  '& .MuiDataGrid-columnHeader': { backgroundColor: '#F4F4F4' },
-  '& .MuiDataGrid-columnHeaderTitle': { fontSize: 13, fontWeight: 600, color: '#374151' },
-  '& .MuiDataGrid-columnHeaders': { borderBottom: '1px solid #E0DED9' },
-  '& .MuiDataGrid-columnSeparator': { color: '#E0DED9' },
-  '& .MuiDataGrid-cell': { fontSize: 13, color: '#111827' },
-  '& .MuiDataGrid-row:hover': { backgroundColor: '#F4F4F4' },
-  '& .MuiDataGrid-footerContainer': { borderTop: '1px solid #E0DED9' },
-};
-
-/** Cadre du tableau : même contour que les listes (trait #E0DED9, coins 8 px, sans ombre). */
-export const TABLE_FRAME_STYLE = {
-  width: '100%', background: 'white', border: '1px solid #E0DED9', borderRadius: '8px', overflow: 'hidden',
-};
+/** Pastille arrondie dans le nuancier bleu (`tone` de 0 = foncé à 5 = clair). */
+export function TonePill({ tone = 4, children, title }) {
+  const t = BLUE_TONES[Math.max(0, Math.min(BLUE_TONES.length - 1, tone))];
+  return (
+    <span title={title} style={{
+      display: 'inline-flex', alignItems: 'center', height: 22, padding: '0 10px', borderRadius: 99,
+      background: t.bg, color: t.color, fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap', lineHeight: 1,
+    }}>
+      {children}
+    </span>
+  );
+}

@@ -19,8 +19,28 @@ import { useAuth } from '../../../auth';
 import WarehouseMap from './WarehouseMap';
 import { itemMetaColumns } from './stockColumns';
 import LocationChips from './LocationChips';
-import { ToolbarSearch, ToolbarSelect, ToolbarButton, DATAGRID_DA_SX, TABLE_FRAME_STYLE } from '../../ui/ToolbarControls';
+import { ToolbarSearch, ToolbarSelect, ToolbarButton, TonePill } from '../../ui/ToolbarControls';
+import { DATAGRID_DA_SX, TABLE_FRAME_STYLE } from '../../../lib/constants/daStyles';
 import { LOC_A_COMPLETER, splitLocations } from '../../../lib/inventory/stockFields';
+
+// Statut du stock d'après le dossier affecté : une pastille du nuancier bleu, du plus engagé
+// (réservé, bleu nuit) au plus libre (bleu ciel). Codes anglais ou libellés français acceptés.
+const STOCK_STATUS = {
+    TODO: { label: 'Réservé', tone: 0 },
+    IN_PROGRESS: { label: 'En cours', tone: 1 },
+    DONE: { label: 'Reliquat', tone: 2 },
+    SAV: { label: 'SAV', tone: 3 },
+    ARCHIVED: { label: 'Stock mort', tone: 4 },
+    LIBRE: { label: 'Libre', tone: 5 },
+};
+const STATUS_FROM_LABEL = { 'à commencer': 'TODO', 'réservé': 'TODO', 'en cours': 'IN_PROGRESS', 'terminé': 'DONE', 'reliquat': 'DONE', 'sav': 'SAV', 'archivé': 'ARCHIVED', 'stock mort': 'ARCHIVED' };
+function stockStatusOf(projectName, projects) {
+    if (!projectName) return STOCK_STATUS.LIBRE;
+    const proj = projects.find(p => p.name === projectName);
+    if (!proj) return { label: '?', tone: 4 };
+    const code = STOCK_STATUS[proj.status] ? proj.status : STATUS_FROM_LABEL[String(proj.status || '').toLowerCase()];
+    return STOCK_STATUS[code] || { label: proj.status || '?', tone: 4 };
+}
 
 export default function StockInventoryTab({ inventory, projects = [], movements = [], onBulkMovement, onUpdateItem, zones = [] }) {
     const { currentUser } = useAuth();
@@ -98,11 +118,11 @@ export default function StockInventoryTab({ inventory, projects = [], movements 
 
     const STATUSES = [
         { key: 'ALL', label: 'Tous' },
-        { key: 'TODO', label: 'RÉSERVÉ' },
-        { key: 'IN_PROGRESS', label: 'EN COURS' },
-        { key: 'DONE', label: 'RELIQUAT' },
-        { key: 'ARCHIVED', label: 'STOCK MORT' },
-        { key: 'LIBRE', label: 'STOCK LIBRE' }
+        { key: 'TODO', label: 'Réservé' },
+        { key: 'IN_PROGRESS', label: 'En cours' },
+        { key: 'DONE', label: 'Reliquat' },
+        { key: 'ARCHIVED', label: 'Stock mort' },
+        { key: 'LIBRE', label: 'Stock libre' }
     ];
 
     // Extract unique locations for filter
@@ -116,16 +136,7 @@ export default function StockInventoryTab({ inventory, projects = [], movements 
             field: 'category',
             headerName: 'Type',
             width: 120,
-            renderCell: (params) => {
-                let color = '#E5E7EB';
-                let text = '#374151';
-                const cat = params.value || 'Divers';
-                if (cat === 'Tissu') { color = '#DBEAFE'; text = '#1E40AF'; }
-                if (cat === 'Rail' || cat === 'Tringle') { color = '#F3F4F6'; text = '#1F2937'; }
-                if (cat === 'Mécanisme') { color = '#FEF3C7'; text = '#92400E'; }
-                if (cat === 'Mercerie') { color = '#FCE7F3'; text = '#9D174D'; }
-                return <Chip label={cat} size="small" sx={{ bgcolor: color, color: text, fontWeight: 700, borderRadius: 1 }} />;
-            }
+            renderCell: (params) => <span style={{ color: '#374151' }}>{params.value || 'Divers'}</span>
         },
         {
             field: 'location',
@@ -137,47 +148,17 @@ export default function StockInventoryTab({ inventory, projects = [], movements 
             field: 'project',
             headerName: 'Affectation',
             width: 180,
-            renderCell: (params) => params.value ? (
-                <Chip label={params.value} size="small" variant="outlined" sx={{ borderColor: '#6366F1', color: '#4F46E5', bgcolor: '#EEF2FF' }} />
-            ) : <span style={{ color: '#9CA3AF', fontStyle: 'italic' }}>Stock Libre</span>
+            renderCell: (params) => params.value
+                ? <span title={params.value} style={{ color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis' }}>{params.value}</span>
+                : <span style={{ color: '#9CA3AF' }}>Stock libre</span>
         },
         {
             field: 'stockStatus',
-            headerName: 'Statut Stock',
+            headerName: 'Statut',
             width: 140,
             renderCell: (params) => {
-                const pName = params.row.project;
-                if (!pName) return <Chip label="LIBRE" size="small" sx={{ bgcolor: '#F0FDF4', color: '#15803D', border: '1px solid #BBF7D0' }} />;
-
-                // Find project
-                const proj = projects.find(p => p.name === pName);
-                // Si pas trouvé, on affiche un Chip neutre avec le statut ou '?'
-                if (!proj) return <Chip label="?" size="small" sx={{ bgcolor: '#F3F4F6' }} />;
-
-                // Map Status
-                const map = {
-                    'TODO': { label: 'RÉSERVÉ', color: '#B91C1C', bg: '#FEE2E2', border: '#FECACA' }, // Rouge
-                    'IN_PROGRESS': { label: 'EN COURS', color: '#15803D', bg: '#DCFCE7', border: '#86EFAC' }, // Vert
-                    'DONE': { label: 'RELIQUAT', color: '#7C3AED', bg: '#F3E8FF', border: '#D8B4FE' }, // Violet
-                    'SAV': { label: 'SAV', color: '#B45309', bg: '#FEF3C7', border: '#FDE68A' }, // Orange
-                    'ARCHIVED': { label: 'STOCK MORT', color: '#374151', bg: '#F4F4F4', border: '#E5E7EB' } // Gris
-                };
-
-                const config = map[proj.status] || { label: proj.status || '?', color: '#4B5563', bg: '#F3F4F6' };
-
-                return (
-                    <Chip
-                        label={config.label}
-                        size="small"
-                        sx={{
-                            bgcolor: config.bg,
-                            color: config.color,
-                            fontWeight: 800,
-                            letterSpacing: 0.5,
-                            border: `1px solid ${config.border || 'transparent'}`
-                        }}
-                    />
-                );
+                const s = stockStatusOf(params.row.project, projects);
+                return <TonePill tone={s.tone}>{s.label}</TonePill>;
             }
         },
         {

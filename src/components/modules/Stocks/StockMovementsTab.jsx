@@ -8,7 +8,8 @@ import Chip from '@mui/material/Chip';
 import Avatar from '@mui/material/Avatar';
 import InputBase from '@mui/material/InputBase';
 import { itemMetaColumns } from './stockColumns';
-import { ToolbarSearch, DATAGRID_DA_SX, TABLE_FRAME_STYLE } from '../../ui/ToolbarControls';
+import { ToolbarSearch, TonePill } from '../../ui/ToolbarControls';
+import { DATAGRID_DA_SX, TABLE_FRAME_STYLE } from '../../../lib/constants/daStyles';
 // Helper for avatar color
 function stringToColor(string) {
     if (!string) return '#ccc';
@@ -19,6 +20,13 @@ function stringToColor(string) {
     const c = (hash & 0x00ffffff).toString(16).toUpperCase();
     return '#' + "00000".substring(0, 6 - c.length) + c;
 }
+
+const FLUX = {
+    IN: { label: 'Entrée', tone: 0 },
+    OUT: { label: 'Sortie', tone: 1 },
+    MOVE: { label: 'Déplacement', tone: 3 },
+    ADJUST: { label: 'Édition', tone: 4 },
+};
 
 const COLUMNS = [
     {
@@ -34,37 +42,10 @@ const COLUMNS = [
         field: 'type',
         headerName: 'Flux',
         width: 120,
+        // Flux dans le nuancier bleu : entrée (bleu nuit) → édition (bleu ciel)
         renderCell: (params) => {
-            const type = params.value; // IN, OUT, MOVE
-            let label = 'SORTIE';
-            let bg = '#FEE2E2';
-            let color = '#991B1B';
-
-            if (type === 'IN') {
-                label = 'ENTRÉE';
-                bg = '#D1FAE5';
-                color = '#065F46';
-            } else if (type === 'MOVE') {
-                label = 'DÉPLACEMENT';
-                bg = '#DBEAFE'; // Blue Light
-                color = '#1E40AF'; // Blue Dark
-            } else if (type === 'ADJUST') {
-                label = 'ÉDITION';
-                bg = '#EDE9FE'; // Violet Light
-                color = '#5B21B6'; // Violet Dark
-            }
-
-            return (
-                <Chip
-                    label={label}
-                    size="small"
-                    sx={{
-                        bgcolor: bg,
-                        color: color,
-                        fontWeight: 700
-                    }}
-                />
-            );
+            const f = FLUX[params.value] || FLUX.OUT;
+            return <TonePill tone={f.tone}>{f.label}</TonePill>;
         }
     },
     ...itemMetaColumns(),
@@ -85,9 +66,9 @@ const COLUMNS = [
         field: 'project',
         headerName: 'Affectation',
         width: 180,
-        renderCell: (params) => params.value ? (
-            <Chip label={params.value} size="small" variant="outlined" sx={{ borderColor: '#E5E7EB', color: '#4B5563' }} />
-        ) : <span style={{ color: '#9CA3AF', fontStyle: 'italic' }}>Stock Libre</span>
+        renderCell: (params) => params.value
+            ? <span title={params.value} style={{ color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis' }}>{params.value}</span>
+            : <span style={{ color: '#9CA3AF' }}>Stock libre</span>
     },
     {
         field: 'reason',

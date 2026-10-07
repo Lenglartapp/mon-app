@@ -195,24 +195,27 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
         onClose();
     };
 
-    const headerColor = isIN ? '#047857' : isMOVE ? '#1d4ed8' : '#9A3412';
-    const headerBg = isIN ? '#ECFDF5' : isMOVE ? '#EFF6FF' : '#FFF7ED';
-    const sectionSx = { p: 2, border: '1px solid #E5E7EB', borderRadius: 2 };
-    const captionSx = { fontWeight: 700, color: '#9CA3AF', mb: 1.5, display: 'block' };
+    // DA : pas de bandeau coloré, bleu nuit pour la sélection et la validation, intitulés en Roboto
+    const headerColor = '#1E2447';
+    const sectionSx = { p: 2, border: '1px solid #E0DED9', borderRadius: '8px' };
+    const captionSx = { fontSize: 13, fontWeight: 600, color: '#374151', fontFamily: 'Roboto, system-ui, sans-serif', mb: 1.5, display: 'block' };
 
     return (
-        <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 3, overflow: 'hidden' } }}>
-            <Box sx={{ bgcolor: headerBg, p: 3, borderBottom: `1px solid ${isIN ? '#D1FAE5' : isMOVE ? '#DBEAFE' : '#FFEDD5'}`, textAlign: 'center' }}>
-                <Typography variant="h6" sx={{ fontWeight: 800, color: headerColor, letterSpacing: 0.5 }}>
-                    {isIN ? 'RÉCEPTION DE MARCHANDISE' : isMOVE ? "CHANGEMENT D'EMPLACEMENT" : 'SORTIE DE STOCK'}
+        <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: '12px', overflow: 'hidden' } }}>
+            <Box sx={{ px: 4, pt: 3, pb: 2, borderBottom: '1px solid #E8E6E2' }}>
+                <Typography sx={{ fontSize: 24, fontWeight: 400, color: '#111827', fontFamily: 'Roboto, system-ui, sans-serif' }}>
+                    {isIN ? 'Réception de marchandise' : isMOVE ? "Changement d'emplacement" : 'Sortie de stock'}
+                </Typography>
+                <Typography sx={{ fontSize: 13, color: '#6B7280', mt: 0.5 }}>
+                    {isIN ? 'Entrée en stock d’un article reçu' : isMOVE ? 'Déplacer un article vers un autre emplacement' : 'Retirer une quantité du stock'}
                 </Typography>
             </Box>
 
             <DialogContent sx={{ p: 4 }}>
                 <Stack spacing={3}>
                     {/* 1. CATÉGORIE */}
-                    <Box sx={{ p: 2, border: '1px solid #E5E7EB', borderRadius: 2, bgcolor: '#F4F4F4' }}>
-                        <Typography variant="caption" sx={captionSx}>CATÉGORIE</Typography>
+                    <Box>
+                        <Typography variant="caption" sx={captionSx}>Catégorie</Typography>
                         <Stack direction="row" spacing={1}>
                             {TYPOLOGIES.map(t => (
                                 <Button
@@ -220,10 +223,13 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
                                     size="small"
                                     variant={typology === t ? 'contained' : 'outlined'}
                                     onClick={() => handleTypologyChange(t)}
+                                    disableElevation
                                     sx={{
-                                        borderRadius: 2, fontWeight: 700, textTransform: 'none',
-                                        bgcolor: typology === t ? headerColor : 'transparent',
-                                        '&:hover': { bgcolor: typology === t ? headerColor : '#F3F4F6' }
+                                        borderRadius: 99, fontWeight: 500, textTransform: 'none', px: 2,
+                                        bgcolor: typology === t ? headerColor : 'white',
+                                        color: typology === t ? 'white' : '#374151',
+                                        borderColor: typology === t ? headerColor : '#E0DED9',
+                                        '&:hover': { bgcolor: typology === t ? headerColor : '#F4F4F4', borderColor: typology === t ? headerColor : '#E0DED9' }
                                     }}
                                 >
                                     {t}
@@ -235,7 +241,7 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
                     {/* 2. ARTICLE */}
                     {isIN ? (
                         <Box sx={sectionSx}>
-                            <Typography variant="caption" sx={captionSx}>ARTICLE REÇU</Typography>
+                            <Typography variant="caption" sx={captionSx}>Article reçu</Typography>
                             <Stack spacing={1.5}>
                                 <Autocomplete
                                     freeSolo
@@ -288,9 +294,9 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
                                 noOptionsText="Aucun article en stock dans cette catégorie."
                             />
                             {selectedItem && (
-                                <Box sx={{ mt: 1.5, p: 1.5, bgcolor: '#F4F4F4', borderRadius: 2, border: '1px solid #E5E7EB' }}>
+                                <Box sx={{ mt: 1.5, p: 1.5, bgcolor: '#F4F4F4', borderRadius: '8px' }}>
                                     <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
-                                        <Chip size="small" color="primary" label={`Stock : ${selectedItem.qty} ${selectedItem.unit || ''}`} />
+                                        <Chip size="small" label={`Stock : ${selectedItem.qty} ${selectedItem.unit || ''}`} sx={{ bgcolor: '#1E2447', color: 'white', fontWeight: 600 }} />
                                         {Array.isArray(selectedItem.pieces) && selectedItem.pieces.length > 0 && (
                                             <Chip size="small" variant="outlined" label={`${selectedItem.pieces.length} pièce(s)`} />
                                         )}
@@ -310,9 +316,9 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
 
                     {/* 3. QUANTITÉ */}
                     {usesInPieces && (
-                        <Box sx={{ p: 2, border: '1px dashed #D1D5DB', borderRadius: 2, bgcolor: '#F4F4F4' }}>
+                        <Box sx={sectionSx}>
                             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                                <Typography variant="caption" sx={{ fontWeight: 800, color: '#374151' }}>COMPOSITION PAR PIÈCE</Typography>
+                                <Typography variant="caption" sx={{ ...captionSx, mb: 0 }}>Composition par pièce</Typography>
                                 <Button size="small" startIcon={<Plus size={14} />} onClick={addPiece} sx={{ textTransform: 'none', fontWeight: 700 }}>Ajouter une pièce</Button>
                             </Box>
                             <Stack spacing={1}>
@@ -331,7 +337,7 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
 
                     {((isIN && !usesInPieces) || (isOUT && selectedItem && !usesOutPieces)) && (
                         <Box sx={sectionSx}>
-                            <Typography variant="caption" sx={captionSx}>{isOUT ? 'QUANTITÉ À SORTIR' : 'QUANTITÉ'}</Typography>
+                            <Typography variant="caption" sx={captionSx}>{isOUT ? 'Quantité à sortir' : 'Quantité'}</Typography>
                             <Stack direction="row" spacing={1}>
                                 <TextField
                                     fullWidth label="Quantité" type="number" value={formData.qty}
@@ -352,8 +358,8 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
                     )}
 
                     {usesOutPieces && (
-                        <Box sx={{ p: 2, border: '1px dashed #D1D5DB', borderRadius: 2, bgcolor: '#F4F4F4' }}>
-                            <Typography variant="caption" sx={{ fontWeight: 800, color: '#374151', mb: 1.5, display: 'block' }}>RESTE EN STOCK PAR PIÈCE</Typography>
+                        <Box sx={sectionSx}>
+                            <Typography variant="caption" sx={captionSx}>Reste en stock par pièce</Typography>
                             <Stack spacing={1}>
                                 {pieces.map(p => {
                                     const changed = Number(p.p_qty) !== Number(p.qty);
@@ -368,7 +374,7 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
                                                 size="small" label="Reste" type="number" value={p.p_qty}
                                                 onChange={(e) => setPieceRemaining(p.id, e.target.value)}
                                                 sx={{ width: 110 }}
-                                                InputProps={{ sx: { fontWeight: 700, bgcolor: changed ? '#FFFBEB' : 'white' } }}
+                                                InputProps={{ sx: { fontWeight: 700, bgcolor: changed ? '#EEF4FD' : 'white' } }}
                                             />
                                         </Box>
                                     );
@@ -383,7 +389,7 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
                     {/* 4. EMPLACEMENT + AFFECTATION (entrée) / NOUVEL EMPLACEMENT (déplacement) */}
                     {isIN && (
                         <Box sx={sectionSx}>
-                            <Typography variant="caption" sx={captionSx}>RANGEMENT & AFFECTATION</Typography>
+                            <Typography variant="caption" sx={captionSx}>Rangement et affectation</Typography>
                             <Stack spacing={1.5}>
                                 <LocationInput value={locations} onChange={setLocations} zones={zones} label="Emplacement de la réception" />
                                 <Autocomplete
@@ -398,7 +404,7 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
 
                     {isMOVE && selectedItem && (
                         <Box sx={sectionSx}>
-                            <Typography variant="caption" sx={captionSx}>NOUVEL EMPLACEMENT (toute la réception)</Typography>
+                            <Typography variant="caption" sx={captionSx}>Nouvel emplacement (toute la réception)</Typography>
                             <LocationInput
                                 value={locations}
                                 onChange={setLocations}
@@ -429,21 +435,19 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
                 </Stack>
             </DialogContent>
 
-            <DialogActions sx={{ p: 3, borderTop: '1px solid #F3F4F6', bgcolor: '#F4F4F4', justifyContent: 'space-between' }}>
-                <Button onClick={onClose} sx={{ color: '#6B7280' }}>Annuler</Button>
+            <DialogActions sx={{ px: 4, py: 2.5, borderTop: '1px solid #E8E6E2', bgcolor: 'white', justifyContent: 'flex-end', gap: 1 }}>
+                <Button onClick={onClose} sx={{ color: '#374151', textTransform: 'none', fontWeight: 600, border: '1px solid #E5E7EB', borderRadius: '8px', px: 2 }}>Annuler</Button>
                 <Button
                     variant="contained"
                     onClick={handleSubmit}
-                    size="large"
                     disabled={!canSubmit}
+                    disableElevation
                     sx={{
-                        bgcolor: isIN ? '#10B981' : isMOVE ? '#3b82f6' : '#F97316',
-                        fontWeight: 700, px: 4,
-                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                        '&:hover': { bgcolor: isIN ? '#059669' : isMOVE ? '#2563eb' : '#EA580C' }
+                        bgcolor: '#1E2447', textTransform: 'none', fontWeight: 600, px: 3, borderRadius: '8px',
+                        '&:hover': { bgcolor: '#2A3260' }
                     }}
                 >
-                    {isIN ? 'VALIDER ENTRÉE' : isMOVE ? 'VALIDER TRANSFERT' : 'CONFIRMER SORTIE'}
+                    {isIN ? "Valider l'entrée" : isMOVE ? 'Valider le transfert' : 'Confirmer la sortie'}
                 </Button>
             </DialogActions>
         </Dialog>

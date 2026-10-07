@@ -54,8 +54,8 @@ export default function StocksModule({
     // Define Tabs
     const TABS = [
         { key: 0, label: "Dashboard" },
-        { key: 1, label: "Journal des Mouvements" },
-        { key: 2, label: "État du Stock" },
+        { key: 1, label: "Journal des mouvements" },
+        { key: 2, label: "État du stock" },
         { key: 3, label: "Mise à disposition" }
     ];
 
@@ -84,39 +84,30 @@ export default function StocksModule({
 
                 </div>
 
-                {/* 2. Nav Row (Centered) */}
-                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 24 }}>
-                    <div style={{
-                        background: 'white',
-                        borderRadius: 9999,
-                        padding: 4,
-                        display: 'flex',
-                        gap: 4,
-                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)',
-                        border: '1px solid rgba(0,0,0,0.05)'
-                    }}>
-                        {TABS.map(t => (
-                            <button
-                                key={t.key}
-                                onClick={() => setTabIndex(t.key)}
-                                style={{
-                                    padding: '8px 20px',
-                                    borderRadius: 9999,
-                                    fontSize: 14,
-                                    fontWeight: 500,
-                                    border: 'none',
-                                    cursor: 'pointer',
-                                    background: tabIndex === t.key ? '#1E2447' : 'transparent',
-                                    color: tabIndex === t.key ? 'white' : '#4B5563',
-                                    transition: 'all 0.2s',
-                                    boxShadow: tabIndex === t.key ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-                                    outline: 'none'
-                                }}
-                            >
-                                {t.label}
-                            </button>
-                        ))}
-                    </div>
+                {/* 2. Onglets : mêmes pastilles que les vues du chiffrage (Minutes / Liste Achats / Moulinette),
+                    sans cadre autour ; un peu d'air avant le contenu */}
+                <div style={{ display: 'flex', justifyContent: 'center', gap: 2, marginBottom: 36 }}>
+                    {TABS.map(t => (
+                        <button
+                            key={t.key}
+                            onClick={() => setTabIndex(t.key)}
+                            style={{
+                                padding: '8px 20px',
+                                borderRadius: 99,
+                                fontSize: 14,
+                                fontWeight: 500,
+                                border: 'none',
+                                cursor: 'pointer',
+                                background: tabIndex === t.key ? '#1E2447' : 'transparent',
+                                color: tabIndex === t.key ? '#FFFFFF' : '#4B5563',
+                                transition: 'all 0.2s cubic-bezier(0.25, 1, 0.5, 1)',
+                                boxShadow: tabIndex === t.key ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                                outline: 'none'
+                            }}
+                        >
+                            {t.label}
+                        </button>
+                    ))}
                 </div>
 
                 {/* 3. Content */}
