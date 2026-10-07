@@ -28,6 +28,7 @@ import CapaciteView from '../components/planning/CapaciteView';
 import BacklogCreationModal from '../components/planning/BacklogCreationModal';
 import { findInternalProject, buildInternalProject, configWithChapter } from '../lib/planning/internalProject';
 import { generatePlanningTemplate, processPlanningImport } from '../lib/utils/planningExcelUtils';
+import { useFillViewportHeight } from '../lib/hooks/useFillViewportHeight';
 
 // --- Helpers atelier : durée <-> créneau (pause déjeuner 12h-13h) ---
 
@@ -1378,6 +1379,11 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
         return () => ro.disconnect();
     }, []);
 
+    // Vue Planning : la page ne défile plus, seul le planning défile (comme les listes Chiffrages /
+    // Projets) ; la hauteur suit l'espace réellement disponible sous l'en-tête de l'appli.
+    const pageRef = useRef(null);
+    const pageHeight = useFillViewportHeight(pageRef, { bottomGap: 0, min: 400 });
+
     // --- VUE MOBILE (téléphone / PWA) : agenda Pose vertical, lecture seule ---
     if (isMobile) {
         return (
@@ -1399,9 +1405,11 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
     return (
         // Programmation : la page reste fixe et seul son tableau défile (comme les listes Chiffrages /
         // Projets) ; Planning et Capacité gardent leur zone défilante de 100vh.
-        <div style={assistantMode === 'programmation'
+        <div ref={pageRef} style={assistantMode === 'programmation'
             ? { display: 'flex', flexDirection: 'column', background: '#FFFFFF' }
-            : { height: '100vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', background: '#FFFFFF' }}>
+            : assistantMode === 'capacite'
+                ? { height: '100vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', background: '#FFFFFF' }
+                : { height: pageHeight ?? '100vh', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#FFFFFF' }}>
             {/* Bandeau de titre : défile normalement et disparaît au scroll */}
             <div style={{ padding: '24px 24px 0', flexShrink: 0 }}>
                 {/* Titre aligné comme les autres modules (bloc centré 1600 px max) */}
@@ -1643,7 +1651,9 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                 profite de tout l'écran une fois le bandeau de titre scrollé */}
             <div style={assistantMode === 'programmation'
                 ? { flexShrink: 0, display: 'flex', flexDirection: 'column' }
-                : { height: `calc(100vh - ${stickyHeaderHeight}px)`, flexShrink: 0, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+                : assistantMode === 'capacite'
+                    ? { height: `calc(100vh - ${stickyHeaderHeight}px)`, flexShrink: 0, display: 'flex', flexDirection: 'column', minHeight: 0 }
+                    : { flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
             {assistantMode === 'programmation' ? (
                 <AssistantView stats={stats} onUpdateProject={onUpdateProject} />
             ) : assistantMode === 'capacite' ? (

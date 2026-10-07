@@ -43,11 +43,11 @@ const ViewSelector = ({ view, onViewChange, customRange, onCustomRangeChange, sh
                         {/* Période libre : mêmes champs que le reste de l'appli (Roboto, 34 px, coins 8 px) */}
                         <div style={{ padding: '10px 8px 8px' }}>
                             <div style={{ fontSize: 13, color: '#6B7280', margin: '0 4px 8px' }}>Période personnalisée</div>
-                            <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-                                <label style={{ flex: 1, fontSize: 12, color: '#9B9A97' }}>Du
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 10 }}>
+                                <label style={{ display: 'block', fontSize: 12, color: '#9B9A97', margin: '0 4px' }}>Du
                                     <input type="date" style={{ ...DA_INPUT_STYLE, height: 34, padding: '0 8px', fontSize: 13, marginTop: 4 }} onChange={e => setTempStart(e.target.value)} />
                                 </label>
-                                <label style={{ flex: 1, fontSize: 12, color: '#9B9A97' }}>Au
+                                <label style={{ display: 'block', fontSize: 12, color: '#9B9A97', margin: '0 4px' }}>Au
                                     <input type="date" style={{ ...DA_INPUT_STYLE, height: 34, padding: '0 8px', fontSize: 13, marginTop: 4 }} onChange={e => setTempEnd(e.target.value)} />
                                 </label>
                             </div>

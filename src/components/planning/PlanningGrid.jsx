@@ -361,7 +361,7 @@ const PlanningGrid = ({
                 </div>
 
                 {/* Body */}
-                <div style={{ flex: 1, overflowY: 'auto', display: 'flex', position: 'relative' }}>
+                <div className="df-noscrollbar" style={{ flex: 1, overflowY: 'auto', display: 'flex', position: 'relative' }}>
                     {/* Time Sidebar */}
                     <div style={{ width: 60, flexShrink: 0, borderRight: '1px solid #E5E7EB', background: '#F4F4F4' }}>
                         {Array.from({ length: V_END - V_START + 1 }).map((_, i) => (
@@ -603,7 +603,7 @@ const PlanningGrid = ({
 
     return (
         <div style={{ flex: 1, overflow: 'hidden', padding: '0 24px 24px', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ height: 'fit-content', maxHeight: '100%', overflow: 'auto', background: 'white', border: '1px solid #E0DED9', borderRadius: 12, position: 'relative' }}>
+            <div className="df-noscrollbar" style={{ height: 'fit-content', maxHeight: '100%', overflow: 'auto', background: 'white', border: '1px solid #E0DED9', borderRadius: 12, position: 'relative' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: `260px repeat(${gridCols.length}, minmax(${MIN_WIDTH}px, 1fr))`, gridAutoRows: 'max-content', width: (view === 'year' || view === 'quarter' || view === 'month') ? 'max-content' : '100%', minWidth: '100%' }}>
                     <StickyCorner style={{ height: HEADER_HEIGHT_1, borderBottom: 'none' }} />
                     {superHeaders.map((header, i) => (<div key={i} style={{ gridColumn: `span ${header.span}`, position: 'sticky', top: 0, zIndex: 40, background: 'white', borderBottom: '1px solid #E5E7EB', borderRight: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: ROBOTO, fontSize: 13, fontWeight: 500, color: '#6B7280' }}>{header.label}</div>))}
