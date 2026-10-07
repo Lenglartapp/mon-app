@@ -1438,6 +1438,7 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                                 return (
                                     <button
                                         key={seg.label}
+                                        className="df-pill-tab" data-active={active}
                                         onClick={() => setAssistantMode(seg.key)}
                                         style={{
                                             padding: '8px 20px', borderRadius: 99, fontSize: 14, fontWeight: 500,

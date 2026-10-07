@@ -1116,6 +1116,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
             {visibleStages.map((p) => (
               <button
                 key={p.key}
+                className="df-pill-tab" data-active={stage === p.key}
                 style={{
                   ...getNavStyle(stage === p.key),
                   flex: isMobile ? '1 0 auto' : 'initial' // Allow grow on mobile

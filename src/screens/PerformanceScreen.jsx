@@ -50,7 +50,7 @@ export default function PerformanceScreen({ projects, events, onBack }) {
             border: '1px solid rgba(0,0,0,0.05)',
           }}>
             {TABS.map((t, i) => (
-              <button key={t.key} onClick={() => setTabIndex(i)} style={{
+              <button key={t.key} className="df-pill-tab" data-active={tabIndex === i} onClick={() => setTabIndex(i)} style={{
                 padding: '8px 24px', borderRadius: 9999, fontSize: 14, fontWeight: 500,
                 border: 'none', cursor: 'pointer',
                 background: tabIndex === i ? '#1E2447' : 'transparent',

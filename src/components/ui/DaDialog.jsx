@@ -48,6 +48,7 @@ export function DaTabs({ tabs, value, onChange }) {
           <button
             key={t.key}
             type="button"
+            className="df-pill-tab" data-active={active}
             onClick={() => !t.disabled && onChange(t.key)}
             disabled={t.disabled}
             style={{
