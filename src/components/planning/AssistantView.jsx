@@ -1,7 +1,9 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { ArrowUpDown, ArrowUp, ArrowDown, ChevronRight, ChevronDown, Filter, SlidersHorizontal } from 'lucide-react';
+import { ArrowUpDown, ArrowUp, ArrowDown, ChevronRight, ChevronDown, Filter } from 'lucide-react';
+import ConditionFilterButton from '../ui/ConditionFilterButton';
+import { isConditionActive, matchConditions } from '../FilterPanel';
 
 import { PROJECT_STATUS_OPTIONS } from "../../lib/constants/projectStatus";
 import { PROJECT_STATUS_TONE } from "../../lib/constants/daStyles";
@@ -16,30 +18,18 @@ const SEARCH_FIELDS = [
     { id: 'status', label: 'Statut' },
 ];
 
-// Champs des conditions avancées
-const FILTER_FIELDS = [
-    { id: 'deadline', label: 'Deadline', unit: '', type: 'date' },
-    { id: 'pctCotes', label: 'Avancement Cotes', unit: '%', type: 'number' },
-    { id: 'pctPrepa', label: 'Avancement Préparation', unit: '%', type: 'number' },
-    { id: 'pctConf', label: 'Avancement Confection', unit: '%', type: 'number' },
-    { id: 'pctPose', label: 'Avancement Pose', unit: '%', type: 'number' },
-    { id: 'totalSold', label: 'Budget', unit: 'h', type: 'number' },
-    { id: 'totalConsumed', label: 'Consommé', unit: 'h', type: 'number' },
-    { id: 'remainingBudget', label: 'Restant', unit: 'h', type: 'number' },
-    { id: 'totalFuture', label: 'Planifié', unit: 'h', type: 'number' },
+// Champs du bouton « Filtrer » (même panneau de conditions que les listes Chiffrages / Projets)
+const FILTER_SCHEMA = [
+    { key: 'deadline', label: 'Deadline', type: 'date' },
+    { key: 'pctCotes', label: 'Avancement Cotes (%)', type: 'number' },
+    { key: 'pctPrepa', label: 'Avancement Préparation (%)', type: 'number' },
+    { key: 'pctConf', label: 'Avancement Confection (%)', type: 'number' },
+    { key: 'pctPose', label: 'Avancement Pose (%)', type: 'number' },
+    { key: 'totalSold', label: 'Budget (h)', type: 'number' },
+    { key: 'totalConsumed', label: 'Consommé (h)', type: 'number' },
+    { key: 'remainingBudget', label: 'Restant (h)', type: 'number' },
+    { key: 'totalFuture', label: 'Planifié (h)', type: 'number' },
 ];
-
-const OPERATORS = [
-    { id: 'gt', label: 'supérieur à', dateLabel: 'après le' },
-    { id: 'lt', label: 'inférieur à', dateLabel: 'avant le' },
-    { id: 'gte', label: 'supérieur ou égal à' },
-    { id: 'lte', label: 'inférieur ou égal à' },
-    { id: 'eq', label: 'égal à' },
-    { id: 'between', label: 'compris entre', dateLabel: 'entre' },
-];
-
-let condSeq = 0;
-const newCondition = () => ({ id: `c${condSeq++}`, field: 'pctConf', operator: 'gte', value: '', value2: '' });
 
 const pctColor = (pct) => {
     if (pct === null || pct === undefined) return '#9CA3AF';
@@ -47,13 +37,6 @@ const pctColor = (pct) => {
     if (pct >= 50) return '#3B82F6';
     if (pct > 0) return '#F59E0B';
     return '#9CA3AF';
-};
-
-// Valeur d'un champ pour les conditions avancées
-const fieldValue = (proj, field) => {
-    if (field === 'deadline') return proj.deadline;
-    if (field.startsWith('pct')) return proj.advancement?.[field];
-    return proj[field];
 };
 
 const AssistantView = ({ stats, onUpdateProject }) => {
@@ -68,15 +51,12 @@ const AssistantView = ({ stats, onUpdateProject }) => {
     // --- FILTRES ---
     const [activeFilters, setActiveFilters] = useState([{ id: 'hide_archived', label: 'Hors archivés', field: 'hide_archived' }]);
     const [statusOpen, setStatusOpen] = useState(false);
-    const [advOpen, setAdvOpen] = useState(false);
-    const [conditions, setConditions] = useState([newCondition()]);
+    const [filterConditions, setFilterConditions] = useState([]);
     const statusRef = useRef(null);
-    const advRef = useRef(null);
 
     useEffect(() => {
         const handler = (e) => {
             if (statusRef.current && !statusRef.current.contains(e.target)) setStatusOpen(false);
-            if (advRef.current && !advRef.current.contains(e.target)) setAdvOpen(false);
         };
         document.addEventListener('mousedown', handler);
         return () => document.removeEventListener('mousedown', handler);
@@ -91,36 +71,8 @@ const AssistantView = ({ stats, onUpdateProject }) => {
             : [...prev, { id, field: 'status_exact', value: key, label: `Statut : ${PROJECT_STATUS_OPTIONS[key]?.label || key}` }]);
     };
 
-    const updateCondition = (id, key, val) =>
-        setConditions(prev => prev.map(c => c.id === id ? { ...c, [key]: val, ...(key === 'operator' && val !== 'between' ? { value2: '' } : {}) } : c));
-    const removeCondition = (id) =>
-        setConditions(prev => prev.length > 1 ? prev.filter(c => c.id !== id) : prev);
-
-    const applyConditions = () => {
-        const valid = conditions.filter(c => c.value !== '');
-        valid.forEach(cond => {
-            const fieldDef = FILTER_FIELDS.find(f => f.id === cond.field);
-            const opDef = OPERATORS.find(o => o.id === cond.operator);
-            const isDate = fieldDef.type === 'date';
-            const opLabel = isDate ? (opDef.dateLabel || opDef.label) : opDef.label;
-            const fmtV = (v) => isDate ? v : `${v} ${fieldDef.unit}`;
-            const label = cond.operator === 'between'
-                ? `${fieldDef.label} ${isDate ? 'entre' : 'entre'} ${fmtV(cond.value)} et ${fmtV(cond.value2 || 0)}`
-                : `${fieldDef.label} ${opLabel} ${fmtV(cond.value)}`;
-            addFilter({
-                id: `adv_${cond.id}_${cond.field}`,
-                label, field: 'advanced', matchType: 'advanced',
-                filterField: cond.field, fieldType: fieldDef.type,
-                operator: cond.operator, value: cond.value, value2: cond.value2 || '',
-            });
-        });
-        setConditions([newCondition()]);
-        setAdvOpen(false);
-    };
-
     const statusLabel = (p) => PROJECT_STATUS_OPTIONS[p.projectStatus]?.label || p.projectStatus || '';
 
-    // --- APPLICATION DES FILTRES ---
     const filteredStats = useMemo(() => {
         let res = stats;
 
@@ -146,39 +98,13 @@ const AssistantView = ({ stats, onUpdateProject }) => {
             });
         }
 
-        const adv = activeFilters.filter(f => f.matchType === 'advanced');
-        if (adv.length > 0) {
-            res = res.filter(p => adv.every(f => {
-                const raw = fieldValue(p, f.filterField);
-                if (f.fieldType === 'date') {
-                    if (!raw) return false;
-                    const d = new Date(raw).getTime();
-                    const v1 = new Date(f.value).getTime();
-                    const v2 = new Date(f.value2 || f.value).getTime();
-                    switch (f.operator) {
-                        case 'gt': case 'gte': return d >= v1;
-                        case 'lt': case 'lte': return d <= v1;
-                        case 'between': return d >= Math.min(v1, v2) && d <= Math.max(v1, v2);
-                        default: return true;
-                    }
-                }
-                const n = Number(raw) || 0;
-                const v1 = Number(f.value);
-                const v2 = Number(f.value2 || 0);
-                switch (f.operator) {
-                    case 'gt': return n > v1;
-                    case 'gte': return n >= v1;
-                    case 'lt': return n < v1;
-                    case 'lte': return n <= v1;
-                    case 'eq': return Math.abs(n - v1) < 0.5;
-                    case 'between': return n >= Math.min(v1, v2) && n <= Math.max(v1, v2);
-                    default: return true;
-                }
-            }));
+        // Conditions du bouton « Filtrer » (avancements à plat, deadline au format date)
+        if (filterConditions.some(isConditionActive)) {
+            res = res.filter(p => matchConditions(filterConditions, { ...p, ...(p.advancement || {}) }));
         }
 
         return res;
-    }, [stats, activeFilters]);
+    }, [stats, activeFilters, filterConditions]);
 
     const sortedStats = useMemo(() => {
         const sortable = [...filteredStats];
@@ -241,9 +167,7 @@ const AssistantView = ({ stats, onUpdateProject }) => {
         </tr>
     );
 
-    const advCount = activeFilters.filter(f => f.matchType === 'advanced').length;
     const statusCount = activeFilters.filter(f => f.field === 'status_exact').length;
-    const inputStyle = { width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid #E0DED9', fontSize: 13, outline: 'none', boxSizing: 'border-box' };
 
     return (
         <div style={{ position: 'relative' }}>
@@ -258,80 +182,29 @@ const AssistantView = ({ stats, onUpdateProject }) => {
                     placeholder="Nom, chargé d'affaires, statut..."
                 />
 
-                {/* Filtre Statut */}
-                <div ref={statusRef} style={{ position: 'relative' }}>
-                    <button onClick={() => setStatusOpen(v => !v)} style={iconBtn(statusOpen || statusCount > 0)}>
-                        <Filter size={16} /> Statut{statusCount > 0 ? ` (${statusCount})` : ''}
-                    </button>
-                    {statusOpen && (
-                        <div style={{ position: 'absolute', top: 'calc(100% + 6px)', right: 0, background: 'white', borderRadius: 10, width: 220, boxShadow: '0 10px 25px -5px rgba(0,0,0,0.15)', border: '1px solid #E0DED9', zIndex: 200, padding: 6 }}>
-                            {Object.entries(PROJECT_STATUS_OPTIONS).map(([key, opt]) => {
-                                const checked = activeFilters.some(f => f.id === `status_${key}`);
-                                return (
-                                    <button key={key} onClick={() => toggleStatusFilter(key)} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '8px 10px', border: 'none', background: 'white', cursor: 'pointer', borderRadius: 6 }}>
-                                        <input type="checkbox" checked={checked} readOnly />
-                                        <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 12, background: opt.bg, color: opt.color }}>{opt.label}</span>
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    )}
-                </div>
-
-                {/* Filtres avancés */}
-                <div ref={advRef} style={{ position: 'relative' }}>
-                    <button onClick={() => setAdvOpen(v => !v)} style={iconBtn(advOpen || advCount > 0)}>
-                        <SlidersHorizontal size={16} />{advCount > 0 ? ` (${advCount})` : ''}
-                    </button>
-                    {advOpen && (
-                        <div style={{ position: 'absolute', top: 'calc(100% + 6px)', right: 0, background: 'white', borderRadius: 10, width: 360, boxShadow: '0 10px 25px -5px rgba(0,0,0,0.15)', border: '1px solid #E0DED9', zIndex: 200, padding: 16 }}>
-                            <div style={{ fontSize: 12.5, fontWeight: 500, color: '#8A8F98', fontFamily: 'Roboto, system-ui, sans-serif', marginBottom: 14 }}>Filtres avancés</div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                                {conditions.map((cond, i) => {
-                                    const fieldDef = FILTER_FIELDS.find(f => f.id === cond.field);
-                                    const isDate = fieldDef.type === 'date';
-                                    const ops = isDate ? OPERATORS.filter(o => o.dateLabel) : OPERATORS;
+                {/* Statut puis Filtrer, alignés sur le bord droit du tableau */}
+                <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <div ref={statusRef} style={{ position: 'relative' }}>
+                        <button onClick={() => setStatusOpen(v => !v)} style={iconBtn(statusOpen || statusCount > 0)}>
+                            <Filter size={16} /> Statut{statusCount > 0 ? ` (${statusCount})` : ''}
+                        </button>
+                        {statusOpen && (
+                            <div style={{ position: 'absolute', top: 'calc(100% + 6px)', right: 0, background: 'white', borderRadius: 10, width: 220, boxShadow: '0 10px 25px -5px rgba(0,0,0,0.15)', border: '1px solid #E0DED9', zIndex: 200, padding: 6 }}>
+                                {Object.entries(PROJECT_STATUS_OPTIONS).map(([key, opt]) => {
+                                    const checked = activeFilters.some(f => f.id === `status_${key}`);
                                     return (
-                                        <div key={cond.id}>
-                                            {i > 0 && (
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '4px 0 10px' }}>
-                                                    <div style={{ flex: 1, height: 1, background: '#F3F4F6' }} />
-                                                    <span style={{ fontSize: 11, color: '#9CA3AF', fontWeight: 600 }}>ET</span>
-                                                    <div style={{ flex: 1, height: 1, background: '#F3F4F6' }} />
-                                                </div>
-                                            )}
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                                                    <select value={cond.field} onChange={e => updateCondition(cond.id, 'field', e.target.value)} style={{ ...inputStyle, flex: 1, cursor: 'pointer' }}>
-                                                        {FILTER_FIELDS.map(f => <option key={f.id} value={f.id}>{f.label}</option>)}
-                                                    </select>
-                                                    {conditions.length > 1 && (
-                                                        <button onClick={() => removeCondition(cond.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', padding: 4, fontSize: 16, lineHeight: 1 }}>×</button>
-                                                    )}
-                                                </div>
-                                                <select value={cond.operator} onChange={e => updateCondition(cond.id, 'operator', e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }}>
-                                                    {ops.map(o => <option key={o.id} value={o.id}>{isDate ? (o.dateLabel || o.label) : o.label}</option>)}
-                                                </select>
-                                                {cond.operator === 'between' ? (
-                                                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                                                        <input type={isDate ? 'date' : 'number'} value={cond.value} onChange={e => updateCondition(cond.id, 'value', e.target.value)} style={inputStyle} placeholder="Min" />
-                                                        <span style={{ color: '#9CA3AF', fontSize: 12 }}>et</span>
-                                                        <input type={isDate ? 'date' : 'number'} value={cond.value2} onChange={e => updateCondition(cond.id, 'value2', e.target.value)} style={inputStyle} placeholder="Max" />
-                                                    </div>
-                                                ) : (
-                                                    <input type={isDate ? 'date' : 'number'} value={cond.value} onChange={e => updateCondition(cond.id, 'value', e.target.value)} style={inputStyle} placeholder="Valeur" />
-                                                )}
-                                            </div>
-                                        </div>
+                                        <button key={key} onClick={() => toggleStatusFilter(key)} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '8px 10px', border: 'none', background: 'white', cursor: 'pointer', borderRadius: 6 }}>
+                                            <input type="checkbox" checked={checked} readOnly />
+                                            <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 12, background: opt.bg, color: opt.color }}>{opt.label}</span>
+                                        </button>
                                     );
                                 })}
                             </div>
-                            <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
-                                <button onClick={applyConditions} disabled={conditions.every(c => c.value === '')} style={{ flex: 1, padding: '8px 0', borderRadius: 6, border: 'none', background: conditions.every(c => c.value === '') ? '#E5E7EB' : '#1E2447', color: conditions.every(c => c.value === '') ? '#9CA3AF' : 'white', cursor: conditions.every(c => c.value === '') ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 700 }}>APPLIQUER</button>
-                                <button onClick={() => setConditions(prev => [...prev, newCondition()])} style={{ flex: 1, padding: '8px 0', borderRadius: 6, border: '1px solid #1E2447', background: 'white', color: '#1E2447', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>+ Condition</button>
-                            </div>
-                        </div>
-                    )}
+                        )}
+                    </div>
+
+                    {/* Filtrer : même bouton et même panneau de conditions que les listes Chiffrages / Projets */}
+                    <ConditionFilterButton schema={FILTER_SCHEMA} conditions={filterConditions} onChange={setFilterConditions} />
                 </div>
             </div>
             </div>

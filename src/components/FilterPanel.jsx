@@ -13,6 +13,7 @@ const colOptions = (col) => col?.options ?? col?.valueOptions;
 export function getFieldType(col) {
     if (!col) return 'text';
     if (col.type === 'number' || col.type === 'formula') return 'number';
+    if (col.type === 'date') return 'date';
     if (col.type === 'select' || col.type === 'singleSelect' || col.type === 'catalog_item' || Array.isArray(colOptions(col))) return 'select';
     return 'text';
 }
@@ -32,6 +33,13 @@ function getColOptions(col) {
 
 export function getOperatorsForCol(col) {
     const type = getFieldType(col);
+    if (type === 'date') return [
+        { value: 'after', label: 'après le' },
+        { value: 'before', label: 'avant le' },
+        { value: 'onDate', label: 'est le' },
+        { value: 'blank', label: 'est vide' },
+        { value: 'notBlank', label: "n'est pas vide" },
+    ];
     if (type === 'number') return [
         { value: 'equals', label: '=' },
         { value: 'notEqual', label: '≠' },
@@ -79,8 +87,24 @@ export function evaluateCondition(cond, row) {
         case 'lessThan': return Number(rawVal) < Number(cond.value);
         case 'greaterThanOrEqual': return Number(rawVal) >= Number(cond.value);
         case 'lessThanOrEqual': return Number(rawVal) <= Number(cond.value);
+        // Dates (valeurs AAAA-MM-JJ ou ISO) : comparaison au jour près
+        case 'after': return !!rawVal && String(rawVal).slice(0, 10) > String(cond.value);
+        case 'before': return !!rawVal && String(rawVal).slice(0, 10) < String(cond.value);
+        case 'onDate': return !!rawVal && String(rawVal).slice(0, 10) === String(cond.value);
         default: return true;
     }
+}
+
+/** Applique une liste de conditions (ET / OU, de gauche à droite) à une ligne déjà « aplatie ». */
+export function matchConditions(conditions, row) {
+    const active = conditions.filter(isConditionActive);
+    if (active.length === 0) return true;
+    let ok = evaluateCondition(active[0], row);
+    for (let i = 1; i < active.length; i++) {
+        const v = evaluateCondition(active[i], row);
+        ok = active[i].logic === 'ou' ? ok || v : ok && v;
+    }
+    return ok;
 }
 
 function FieldSelect({ fields, value, onChange }) {
@@ -260,7 +284,7 @@ export default function FilterPanel({ schema, conditions, onChange, filters, set
                                 </select>
                             ) : (
                                 <input
-                                    type={getFieldType(col) === 'number' ? 'number' : 'text'}
+                                    type={getFieldType(col) === 'number' ? 'number' : getFieldType(col) === 'date' ? 'date' : 'text'}
                                     placeholder="Saisir une valeur"
                                     value={cond.value}
                                     onChange={e => update(cond.id, { value: e.target.value })}
