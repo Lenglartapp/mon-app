@@ -103,6 +103,13 @@ button{ background:none; border:0; padding:0; margin:0; font:inherit; color:inhe
    sont définies directement dans les composants et dans le CSS AG Grid de MinuteGrid. ---- */
 /* Listes (Chiffrages, Projets) : même cadre que les tableaux AG Grid, sans double trait sous la dernière ligne */
 .df-list-table tbody tr:last-child { border-bottom: none !important; }
+/* Titres de tableaux repliables (chiffrage, projet) sur écran tactile : flèche et zone de toucher
+   plus grandes, pour replier / déplier facilement au doigt */
+@media (hover: none) {
+  .df-section-head .MuiIconButton-root { width: 44px; height: 44px; margin-left: -10px; }
+  .df-section-head .MuiIconButton-root svg { font-size: 26px !important; }
+  .df-section-head h3 { padding: 10px 8px 10px 0; }
+}
 /* Tous les boutons de l'application en Roboto (cohérence avec titres, chiffres et libellés) */
 button,
 .MuiButton-root,
