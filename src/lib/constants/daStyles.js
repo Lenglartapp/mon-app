@@ -49,3 +49,23 @@ export const PROJECT_STATUS_TONE = { TODO: 4, IN_PROGRESS: 2, SAV: 1, DONE: 0, A
 
 /** Couleurs { bg, color } d'une teinte (0 à 5) ou du neutre (null). */
 export const toneColors = (tone) => (tone == null ? NEUTRAL_TONE : BLUE_TONES[Math.max(0, Math.min(BLUE_TONES.length - 1, tone))]);
+
+/** Champs de formulaire MUI (TextField outlined, size small) à la DA : trait #E0DED9, coins 8 px,
+    bleu nuit au focus, gris si non modifiable. */
+export const DA_FIELD_SX = {
+  '& .MuiOutlinedInput-root': {
+    borderRadius: '8px', fontSize: 14, bgcolor: 'white',
+    '& fieldset': { borderColor: '#E0DED9' },
+    '&:hover fieldset': { borderColor: '#C9C7C2' },
+    '&.Mui-focused fieldset': { borderColor: '#1E2447', borderWidth: '1px' },
+    '&.Mui-disabled': { bgcolor: '#F4F4F4' },
+  },
+  '& .MuiInputBase-input.Mui-disabled': { WebkitTextFillColor: '#6B7280' },
+  '& .MuiFormHelperText-root': { mx: 0, fontSize: 12 },
+};
+
+/** Champ natif (<input>, <select>, <textarea>) à la DA : 38 px, trait #E0DED9, coins 8 px. */
+export const DA_INPUT_STYLE = {
+  width: '100%', height: 38, padding: '0 12px', borderRadius: 8, border: '1px solid #E0DED9',
+  fontSize: 14, fontFamily: 'inherit', color: '#111827', background: 'white', outline: 'none', boxSizing: 'border-box',
+};
