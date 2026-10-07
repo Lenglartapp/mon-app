@@ -23,6 +23,7 @@ import { fetchRequests, createRequest, confirmLine, cancelLine, requestLabel, LO
 import { splitLocations } from '../../../lib/inventory/stockFields';
 import OperatorInput from './OperatorInput';
 import LocationChips from './LocationChips';
+import { ToolbarSearch, ToolbarButton, ToolbarMenu } from '../../ui/ToolbarControls';
 
 // « Mise à disposition » : l'atelier demande des pièces du stock, la logistique les
 // dépose à l'atelier et confirme ligne par ligne (les pièces passent en ATELIER).
@@ -39,21 +40,36 @@ const round2 = (n) => Math.round(Number(n) * 100) / 100;
 
 const STATUS = {
     open: { label: 'À faire', bg: '#FEF3C7', color: '#92400E' },
+    in_progress: { label: 'En cours', bg: '#DBEAFE', color: '#1E40AF' },
     done: { label: 'Mise à disposition', bg: '#D1FAE5', color: '#065F46' },
     cancelled: { label: 'Annulée', bg: '#F3F4F6', color: '#6B7280' },
 };
+// Délai après lequel une demande faite passe dans les archives.
+const ARCHIVE_AFTER_DAYS = 14;
+// Date de réalisation d'une demande : dernière ligne mise à disposition (à défaut, dernière mise à jour).
+const doneAtOf = (r) => r.lines.map(l => l.done_at).filter(Boolean).sort().pop() || r.updated_at || r.created_at;
+// Catégorie d'affichage : « à faire / en cours » (ouverte, même partiellement servie), faite
+// récemment, annulée, ou archivée (faite il y a plus de 2 semaines).
+const bucketOf = (r) => {
+    if (r.status === 'open') return 'active';
+    if (r.status === 'cancelled') return 'cancelled';
+    const ageDays = (Date.now() - new Date(doneAtOf(r)).getTime()) / 86400000;
+    return ageDays > ARCHIVE_AFTER_DAYS ? 'archived' : 'done';
+};
+// Statut affiché sur la carte : une demande ouverte dont une partie est déjà servie est « en cours ».
+const displayStatusOf = (r) => (r.status === 'open' && r.lines.some(l => l.status === 'done') ? 'in_progress' : r.status);
 const FILTERS = [
-    { key: 'open', label: 'À faire' },
+    { key: 'active', label: 'À faire / en cours', showCount: true },
     { key: 'done', label: 'Faites' },
     { key: 'cancelled', label: 'Annulées' },
-    { key: 'all', label: 'Toutes' },
+    { key: 'archived', label: 'Archivées' },
 ];
 
 export default function StockRequestsPanel({ inventory = [], project = null, onStockChanged }) {
     const [requests, setRequests] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [filter, setFilter] = useState('open');
+    const [filter, setFilter] = useState('active');
     const [search, setSearch] = useState('');
     const [newOpen, setNewOpen] = useState(false);
     const [confirming, setConfirming] = useState(null); // { request, line }
@@ -86,21 +102,16 @@ export default function StockRequestsPanel({ inventory = [], project = null, onS
         return map;
     }, [requests]);
 
-    const counts = useMemo(() => ({
-        open: requests.filter(r => r.status === 'open').length,
-        done: requests.filter(r => r.status === 'done').length,
-        cancelled: requests.filter(r => r.status === 'cancelled').length,
-        all: requests.length,
-    }), [requests]);
+    const activeCount = useMemo(() => requests.filter(r => bucketOf(r) === 'active').length, [requests]);
 
     const visible = useMemo(() => {
         const q = search.trim().toLowerCase();
         return requests
-            .filter(r => filter === 'all' || r.status === filter)
+            .filter(r => bucketOf(r) === filter)
             .filter(r => !q || [requestLabel(r), r.project, r.requested_by, r.comment, ...r.lines.flatMap(l => [l.product, l.ref, l.coloris, l.fournisseur, l.project])]
                 .some(v => (v || '').toLowerCase().includes(q)))
             // À faire : la date souhaitée la plus proche d'abord
-            .sort((a, b) => (filter === 'open'
+            .sort((a, b) => (filter === 'active'
                 ? String(a.requested_for || '9999').localeCompare(String(b.requested_for || '9999'))
                 : String(b.created_at).localeCompare(String(a.created_at))));
     }, [requests, filter, search]);
@@ -117,35 +128,23 @@ export default function StockRequestsPanel({ inventory = [], project = null, onS
 
     return (
         <Box>
-            <Card sx={{ mb: 3, p: 2, display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
-                <Stack direction="row" spacing={1}>
-                    {FILTERS.map(f => (
-                        <Chip
-                            key={f.key}
-                            label={`${f.label} (${counts[f.key]})`}
-                            onClick={() => setFilter(f.key)}
-                            sx={{ fontWeight: 700, bgcolor: filter === f.key ? '#1E2447' : '#F3F4F6', color: filter === f.key ? 'white' : '#374151', '&:hover': { bgcolor: filter === f.key ? '#1E2447' : '#E5E7EB' } }}
-                        />
-                    ))}
-                </Stack>
-                <TextField
-                    placeholder="Rechercher (MAD-, dossier, tissu, demandeur…)"
-                    size="small"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    sx={{ width: 300 }}
-                    InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon color="action" /></InputAdornment> }}
+            {/* Barre d'outils sans cadre : choix de la liste (menu), recherche, nouvelle demande à droite */}
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 16 }}>
+                <ToolbarMenu
+                    value={filter}
+                    onChange={setFilter}
+                    options={FILTERS.map(f => ({ value: f.key, label: f.label, count: f.showCount ? activeCount : undefined }))}
                 />
-                <Box sx={{ flexGrow: 1 }} />
-                <Button
-                    variant="contained"
-                    startIcon={<Plus size={18} />}
-                    onClick={() => setNewOpen(true)}
-                    sx={{ fontWeight: 700, textTransform: 'none', borderRadius: 2, bgcolor: '#1E2447', '&:hover': { bgcolor: '#2D3561' } }}
-                >
-                    Nouvelle demande
-                </Button>
-            </Card>
+                <ToolbarSearch
+                    value={search}
+                    onChange={setSearch}
+                    placeholder="MAD-, dossier, tissu, demandeur…"
+                    width={320}
+                />
+                <div style={{ marginLeft: 'auto' }}>
+                    <ToolbarButton primary icon={<Plus size={16} />} onClick={() => setNewOpen(true)}>Nouvelle demande</ToolbarButton>
+                </div>
+            </div>
 
             {error && (
                 <Alert severity="error" sx={{ mb: 2 }}>
@@ -157,7 +156,7 @@ export default function StockRequestsPanel({ inventory = [], project = null, onS
             {!loading && !error && visible.length === 0 && (
                 <Box sx={{ textAlign: 'center', py: 8, color: '#9CA3AF' }}>
                     <Truck size={32} />
-                    <Typography sx={{ mt: 1 }}>{filter === 'open' ? 'Aucune demande en attente.' : 'Aucune demande.'}</Typography>
+                    <Typography sx={{ mt: 1 }}>{filter === 'active' ? 'Aucune demande en attente.' : 'Aucune demande.'}</Typography>
                 </Box>
             )}
 
@@ -179,7 +178,7 @@ export default function StockRequestsPanel({ inventory = [], project = null, onS
                     project={project}
                     reserved={reserved}
                     onClose={() => setNewOpen(false)}
-                    onCreated={async () => { setNewOpen(false); setFilter('open'); await load(); }}
+                    onCreated={async () => { setNewOpen(false); setFilter('active'); await load(); }}
                 />
             )}
             {confirming && (
@@ -195,7 +194,7 @@ export default function StockRequestsPanel({ inventory = [], project = null, onS
 
 function RequestCard({ request: r, showProject, onConfirm, onCancel }) {
     const late = r.status === 'open' && r.requested_for && r.requested_for < todayISO();
-    const st = STATUS[r.status] || STATUS.open;
+    const st = STATUS[displayStatusOf(r)] || STATUS.open;
     const pendingCount = r.lines.filter(l => l.status === 'pending').length;
     return (
         <Card sx={{ p: 2, borderRadius: 3, boxShadow: '0 1px 3px rgba(0,0,0,0.08)', borderLeft: `4px solid ${late ? '#DC2626' : r.status === 'open' ? '#F59E0B' : r.status === 'done' ? '#10B981' : '#D1D5DB'}` }}>

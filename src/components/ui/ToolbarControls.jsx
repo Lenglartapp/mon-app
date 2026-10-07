@@ -1,5 +1,6 @@
 import React from 'react';
-import { Search, X } from 'lucide-react';
+import { useState } from 'react';
+import { Search, X, ChevronDown, Check } from 'lucide-react';
 import { BLUE_TONES } from '../../lib/constants/daStyles';
 
 // Contrôles de barre d'outils au style de la DA (listes Chiffrages / Projets) :
@@ -79,5 +80,40 @@ export function TonePill({ tone = 4, children, title }) {
     }}>
       {children}
     </span>
+  );
+}
+
+/** Menu déroulant à choix unique (même principe que le sélecteur de vue du Planning).
+    options : [{ value, label, count? }] — le nombre s'affiche s'il est fourni. */
+export function ToolbarMenu({ value, onChange, options, width = 240 }) {
+  const [open, setOpen] = useState(false);
+  const current = options.find(o => o.value === value) || options[0];
+  const text = (o) => (o.count != null ? `${o.label} (${o.count})` : o.label);
+  return (
+    <div style={{ position: 'relative' }}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{ ...BOX, cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit', whiteSpace: 'nowrap' }}
+      >
+        {text(current)} <ChevronDown size={14} color="#6B7280" />
+      </button>
+      {open && (
+        <>
+          <div style={{ position: 'fixed', inset: 0, zIndex: 80 }} onClick={() => setOpen(false)} />
+          <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, width, background: 'white', borderRadius: 8, boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', border: '1px solid #E0DED9', zIndex: 90, padding: 4 }}>
+            {options.map(o => (
+              <div
+                key={o.value}
+                onClick={() => { onChange(o.value); setOpen(false); }}
+                style={{ padding: '8px 12px', fontSize: 13, cursor: 'pointer', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: o.value === value ? '#EEF4FD' : 'transparent', color: '#111827', fontWeight: o.value === value ? 600 : 400 }}
+              >
+                {text(o)}
+                {o.value === value && <Check size={14} color="#1E2447" />}
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
   );
 }
