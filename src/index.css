@@ -121,6 +121,17 @@ button{ background:none; border:0; padding:0; margin:0; font:inherit; color:inhe
    prend une pastille gris clair (façon Notion) pour montrer qu'il est cliquable. */
 .df-pill-tab { transition: background-color .15s ease, color .15s ease; }
 .df-pill-tab[data-active="false"]:not(:disabled):hover { background-color: #EFEFED !important; color: #111827 !important; }
+/* Téléphone : en-tête de l'appli resserré (l'avatar ne sort plus de l'écran) */
+@media (max-width: 768px) {
+  .df-app-header { padding: 10px 16px !important; gap: 8px !important; }
+  .df-hide-mobile { display: none !important; }
+  /* Fiche projet : la rangée d'onglets défile depuis la gauche, sans barre visible */
+  .df-prj-views { justify-content: flex-start !important; justify-self: stretch !important; overflow-x: auto; scrollbar-width: none; }
+  .df-prj-views::-webkit-scrollbar { display: none; }
+  /* Détail d'une ligne : libellé au-dessus du champ, champ sur toute la largeur */
+  .df-prop-row { grid-template-columns: minmax(0, 1fr) !important; gap: 4px !important; padding: 6px 0 !important; }
+  .df-prop-label { padding-top: 0 !important; }
+}
 /* Planning : il défile seul (molette, pavé, doigt), sans barre visible */
 .df-noscrollbar { scrollbar-width: none; -ms-overflow-style: none; }
 .df-noscrollbar::-webkit-scrollbar { display: none; }

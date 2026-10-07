@@ -27,10 +27,11 @@ const ROBOTO = 'Roboto, system-ui, sans-serif';
 const FIELD_SX = DA_FIELD_SX;
 
 // Ligne de propriété : libellé gris à gauche (largeur fixe), valeur à droite.
+// Sur téléphone (df-prop-row, cf. index.css) : libellé au-dessus, champ sur toute la largeur.
 function PropRow({ label, children, top = false }) {
     return (
-        <div style={{ display: 'grid', gridTemplateColumns: '200px minmax(0, 1fr)', gap: 16, alignItems: top ? 'start' : 'center', padding: '7px 0' }}>
-            <div style={{ fontFamily: ROBOTO, fontSize: 13, color: '#6B7280', paddingTop: top ? 10 : 0, overflow: 'hidden', textOverflow: 'ellipsis' }} title={label}>{label}</div>
+        <div className="df-prop-row" style={{ display: 'grid', gridTemplateColumns: '200px minmax(0, 1fr)', gap: 16, alignItems: top ? 'start' : 'center', padding: '7px 0' }}>
+            <div className="df-prop-label" style={{ fontFamily: ROBOTO, fontSize: 13, color: '#6B7280', paddingTop: top ? 10 : 0, overflow: 'hidden', textOverflow: 'ellipsis' }} title={label}>{label}</div>
             <div style={{ minWidth: 0 }}>{children}</div>
         </div>
     );
@@ -213,22 +214,17 @@ export default function LineDetailPanel({ open, onClose, row, schema, onRowChang
             onClose={onClose}
             maxWidth="xl" // Wider to accommodate sidebar
             fullWidth
-            fullScreen={false} // Always modal, never full screen
+            fullScreen={fullScreen} // téléphone : plein écran (formulaire lisible, champs pleine largeur)
             PaperProps={{
                 sx: fullScreen
-                    ? {
-                        // Mobile: "Almost" fullscreen but with margins and rounded corners
-                        height: 'calc(100% - 32px)',
-                        margin: 2, // 16px margin around
-                        display: 'flex', flexDirection: 'column', overflow: 'hidden', borderRadius: '12px'
-                    }
+                    ? { display: 'flex', flexDirection: 'column', overflow: 'hidden', borderRadius: 0 }
                     : { height: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', borderRadius: '12px', boxShadow: '0 20px 40px rgba(17,24,39,0.18)' },
             }}
         >
             {/* En-tête à la DA : titre Roboto + référence de ligne, bouton Activité, croix */}
-            <Box sx={{ p: '20px 28px 16px', borderBottom: '1px solid #E8E6E2', display: 'flex', alignItems: 'flex-start', gap: 1.5, bgcolor: 'white' }}>
+            <Box sx={{ p: fullScreen ? '14px 16px 12px' : '20px 28px 16px', borderBottom: '1px solid #E8E6E2', display: 'flex', alignItems: 'flex-start', gap: 1.5, bgcolor: 'white' }}>
                 <Box sx={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontFamily: ROBOTO, fontSize: 24, fontWeight: 400, color: '#111827', lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <div style={{ fontFamily: ROBOTO, fontSize: fullScreen ? 19 : 24, fontWeight: 400, color: '#111827', lineHeight: 1.25, overflow: 'hidden', ...(fullScreen ? { display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' } : { textOverflow: 'ellipsis', whiteSpace: 'nowrap' }) }}>
                         {[row.zone, row.piece, row.produit].filter(Boolean).join(' · ') || 'Détail de la ligne'}
                     </div>
                     <div style={{ fontSize: 13, color: '#6B7280', marginTop: 4 }}>Détail de la ligne · #{String(row.id).slice(-4)}</div>
@@ -239,7 +235,7 @@ export default function LineDetailPanel({ open, onClose, row, schema, onRowChang
                     onClick={() => setIsSidebarOpen(!isSidebarOpen)}
                     title={isSidebarOpen ? "Masquer l'activité" : "Afficher l'activité"}
                 >
-                    Activité{activityCount > 0 ? ` (${activityCount})` : ''}
+                    {fullScreen ? (activityCount > 0 ? activityCount : null) : `Activité${activityCount > 0 ? ` (${activityCount})` : ''}`}
                 </ToolbarButton>
                 <button onClick={onClose} title="Fermer" style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#9B9A97', display: 'flex', padding: 4, marginTop: 6 }}>
                     <X size={20} />
@@ -250,11 +246,13 @@ export default function LineDetailPanel({ open, onClose, row, schema, onRowChang
             <Box sx={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
 
                 {/* LEFT: FORM */}
+                {/* Téléphone : l'activité, quand elle est ouverte, remplace le formulaire */}
                 <Box sx={{
                     flex: 1,
-                    p: '20px 28px',
+                    p: fullScreen ? '8px 16px 24px' : '20px 28px',
                     overflowY: 'auto',
-                    bgcolor: 'white'
+                    bgcolor: 'white',
+                    display: fullScreen && isSidebarOpen ? 'none' : 'block',
                 }}>
                     {/* Fiche façon Notion : libellé gris à gauche, valeur à droite */}
                     <Box sx={{ display: 'flex', flexDirection: 'column', maxWidth: 820, margin: '0 auto' }}>
@@ -375,6 +373,7 @@ export default function LineDetailPanel({ open, onClose, row, schema, onRowChang
 
                 {/* RIGHT: SIDEBAR (Collapsible) */}
                 {isSidebarOpen && (
+                    <Box sx={fullScreen ? { flex: 1, minWidth: 0, display: 'flex', '& > .MuiBox-root': { width: '100% !important', borderLeft: 'none !important' } } : { display: 'contents' }}>
                     <ActivitySidebar
                         isOpen={isSidebarOpen}
                         activities={activities}
@@ -386,6 +385,7 @@ export default function LineDetailPanel({ open, onClose, row, schema, onRowChang
                         rowId={row.id}
                         row={row} // <--- Pass row for context
                     />
+                    </Box>
                 )}
 
             </Box>

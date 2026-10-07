@@ -5,14 +5,13 @@ import Chip from '@mui/material/Chip';
 import Avatar from '@mui/material/Avatar';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
-import { Edit2, Plus, FileText, Trash2, ArrowUpDown, ArrowUp, ArrowDown, Archive, Upload, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Edit2, Plus, FileText, Trash2, ArrowUpDown, ArrowUp, ArrowDown, Archive, Upload, Filter, ChevronLeft, ChevronRight, Calendar, MapPin } from 'lucide-react';
 
 import { SmartFilterBar } from "../components/ui/SmartFilterBar.jsx";
 import { isConditionActive, evaluateCondition } from "../components/FilterPanel.jsx";
 import ConditionFilterButton from "../components/ui/ConditionFilterButton";
 import { useViewportWidth } from "../lib/hooks/useViewportWidth";
 import { formatDateFR } from "../lib/utils/format";
-import { truncate } from "../lib/utils/truncate";
 
 import CreateProjectDialog from "../components/CreateProjectDialog.jsx";
 import ImportProjectsDialog from "../components/ImportProjectsDialog.jsx";
@@ -232,7 +231,8 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
               >
                 <Plus size={16} /> Nouveau Projet
               </button>
-              <button
+              {/* Import Excel : utile au bureau, pas sur téléphone */}
+              {!isMobile && <button
                 onClick={() => setShowImport(true)}
                 title="Importer des projets depuis Excel"
                 style={{
@@ -242,7 +242,7 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
                 }}
               >
                 <Upload size={16} /> Import Excel
-              </button>
+              </button>}
             </div>
           )}
         </div>
@@ -291,81 +291,43 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
           const budget = p.budget || { prepa: 0, conf: 0, pose: 0 };
           const dateStr = p.deadline ? formatDateFR(p.deadline) : "—";
 
+          // Carte mobile : toute la carte ouvre la fiche (pas de crayon ni de poubelle au doigt).
           return (
-            <div key={p.id} style={{
-              background: 'white', borderRadius: 12, padding: 16,
-              boxShadow: '0 1px 3px rgba(0,0,0,0.05)', border: '1px solid #E0DED9', display: 'flex', flexDirection: 'column', gap: 12
+            <button key={p.id} onClick={() => onOpenProject?.(p)} style={{
+              width: '100%', textAlign: 'left', fontFamily: 'Roboto, system-ui, sans-serif', cursor: 'pointer',
+              background: 'white', borderRadius: 12, padding: '14px 16px', border: '1px solid #E0DED9',
+              display: 'flex', alignItems: 'center', gap: 10,
             }}>
-              {/* HEADER: Name + Status */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: 16, color: '#111827', marginBottom: 2 }}>
-                    {truncate(p.name || "Sans nom", 25)}
+              <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                  <div style={{ fontWeight: 600, fontSize: 15, color: '#111827', lineHeight: 1.25, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                    {p.name || "Sans nom"}
                   </div>
-                  <div style={{ fontSize: 11, color: '#9CA3AF' }}>#{String(p.id).slice(-4)}</div>
+                  <span style={{ flexShrink: 0 }}><TonePill tone={PROJECT_STATUS_TONE[p?.status || 'TODO']}>{statusOpt.label}</TonePill></span>
                 </div>
-                {/* STATUS BADGE SIMPLIFIED */}
-                <TonePill tone={PROJECT_STATUS_TONE[p?.status || 'TODO']}>{statusOpt.label}</TonePill>
-              </div>
-
-              {/* BODY: Manager + Date */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <Avatar sx={{ width: 24, height: 24, fontSize: 10, bgcolor: stringToColor(p?.manager || "?") }}>
-                    {(p?.manager?.[0] || "?").toUpperCase()}
-                  </Avatar>
-                  <span style={{ fontSize: 13, color: '#374151', fontWeight: 500 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', fontSize: 13, color: '#6B7280' }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <Avatar sx={{ width: 20, height: 20, fontSize: 10, bgcolor: stringToColor(p?.manager || "?") }}>
+                      {(p?.manager?.[0] || "?").toUpperCase()}
+                    </Avatar>
                     {p.manager || "Non assigné"}
                   </span>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                    <Calendar size={13} color="#9B9A97" /> {dateStr}
+                  </span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#4B5563' }}>
-                  <span role="img" aria-label="date">📅</span> {dateStr}
-                </div>
-                {!isInternalProject(p) && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }} onClick={(e) => e.stopPropagation()}>
-                    <OdooLinkCell
-                      idProjetOdoo={p?.id_projet_odoo || null}
-                      onLink={(odooId) => handleUpdate(p.id, { id_projet_odoo: odooId })}
-                    />
+                {p.location && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#6B7280', minWidth: 0 }}>
+                    <MapPin size={13} color="#9B9A97" style={{ flexShrink: 0 }} />
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.location}</span>
                   </div>
                 )}
-              </div>
-
-              {/* FOOTER: Budgets + Actions */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #F3F4F6', paddingTop: 12, marginTop: 4 }}>
-                <div style={{ fontSize: 12, color: '#6B7280', display: 'flex', gap: 8 }}>
-                  <span><strong style={{ color: '#374151' }}>P:</strong> {budget.prepa}h</span>
-                  <span><strong style={{ color: '#374151' }}>C:</strong> {budget.conf}h</span>
-                  <span><strong style={{ color: '#374151' }}>I:</strong> {budget.pose}h</span>
-                </div>
-
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button
-                    onClick={() => onOpenProject?.(p)}
-                    style={{
-                      background: '#F3F4F6', border: 'none', borderRadius: 6, padding: 8,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4B5563'
-                    }}
-                  >
-                    <Edit2 size={16} />
-                  </button>
-                  {currentUser?.role !== 'pose' && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (window.confirm(`Supprimer ${p.name} ?`)) onDelete?.(p.id);
-                    }}
-                    style={{
-                      background: '#FEF2F2', border: 'none', borderRadius: 6, padding: 8,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#DC2626'
-                    }}
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                  )}
+                <div style={{ fontSize: 12, color: '#9B9A97' }}>
+                  Prépa {budget.prepa || 0}h · Conf {budget.conf || 0}h · Pose {budget.pose || 0}h
                 </div>
               </div>
-            </div>
+              <ChevronRight size={18} color="#C9C7C2" style={{ flexShrink: 0 }} />
+            </button>
           );
         })}
         {filteredProjects.length === 0 && (

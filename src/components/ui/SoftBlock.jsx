@@ -10,8 +10,9 @@ export function SoftBlock({ title, subtitle, actions, children, style }) {
   return (
     <section style={{ background: SOFT_BG, borderRadius: 16, padding: "20px 24px 24px", fontFamily: FONT, ...style }}>
       {(title || actions) && (
-        <header style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 20 }}>
-          <div style={{ minWidth: 0 }}>
+        // Sur téléphone, les actions passent sous le titre au lieu de l'écraser.
+        <header style={{ display: "flex", alignItems: "flex-start", flexWrap: "wrap", gap: 8, marginBottom: 20 }}>
+          <div style={{ minWidth: 0, flex: "1 1 170px" }}>
             {title && <h3 style={{ margin: 0, fontSize: 17, fontWeight: 500, color: "#1F2A37" }}>{title}</h3>}
             {subtitle && <div style={{ fontSize: 13, color: "#8A8F98", marginTop: 2 }}>{subtitle}</div>}
           </div>
