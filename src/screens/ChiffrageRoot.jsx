@@ -1,7 +1,10 @@
 // src/screens/ChiffrageRoot.jsx
 import React, { useState, useMemo, useEffect, useRef } from "react";
+import { TonePill } from "../components/ui/ToolbarControls";
+import { CHIFFRAGE_STATUS_TONE } from "../lib/constants/daStyles";
 import { Plus, Copy, Trash2, FileText, ArrowUpDown, ArrowUp, ArrowDown, Archive, Filter, ChevronDown, ChevronRight, ChevronLeft, GitBranch, SlidersHorizontal } from "lucide-react";
 import Chip from '@mui/material/Chip';
+import { useFillViewportHeight } from "../lib/hooks/useFillViewportHeight";
 import Avatar from '@mui/material/Avatar';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
@@ -226,6 +229,8 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
   const [expandedGroups, setExpandedGroups] = useState(new Set());
   // Pagination client-side (les données sont déjà en mémoire → instantané)
   const [visibleCount, setVisibleCount] = useState(50);
+  const listScrollRef = useRef(null);
+  const listHeight = useFillViewportHeight(listScrollRef);
 
   const toggleGroup = (parentId) => {
     setExpandedGroups(prev => {
@@ -490,7 +495,7 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: '#FFFFFF', padding: '24px', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ background: '#FFFFFF', padding: '24px', display: 'flex', flexDirection: 'column' }}>
       <div style={{ maxWidth: 1440, width: '100%', margin: '0 auto 24px auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
           <div>
@@ -670,8 +675,11 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
         </div>
       </div>
 
+      {/* Seul le tableau défile (la page reste fixe) : hauteur MAX = place restante à l'écran
+          (avec peu de lignes, le cadre se referme juste sous la dernière),
+          en-têtes de colonnes collés en haut, « Charger plus » au bas de la liste. */}
       <div style={{ maxWidth: 1440, width: '100%', margin: '0 auto', background: 'white', border: '1px solid #E0DED9', borderRadius: 8, overflow: 'hidden' }}>
-        <div style={{ overflowX: 'auto' }}>
+        <div ref={listScrollRef} className="df-list-scroll" style={{ overflow: 'auto', maxHeight: listHeight ?? undefined }}>
           <table className="df-list-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
             <thead style={{ background: '#F4F4F4', borderBottom: '1px solid #E0DED9' }}>
               <tr>
@@ -801,12 +809,12 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
                           {m.client || "Client inconnu"}
                         </td>
                         <td style={{ padding: '12px 8px' }}>
-                          <Chip
-                            label={statusInfo.label}
-                            size="small"
+                          <button
                             onClick={(e) => handleStatusClick(e, m.id)}
-                            sx={{ bgcolor: statusInfo.bg, color: statusInfo.text, fontWeight: 700, fontSize: 11, height: 24, cursor: 'pointer', '&:hover': { opacity: 0.8 } }}
-                          />
+                            style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer' }}
+                          >
+                            <TonePill tone={CHIFFRAGE_STATUS_TONE[m.status] ?? CHIFFRAGE_STATUS_TONE.DRAFT}>{statusInfo.label}</TonePill>
+                          </button>
                         </td>
                         <td style={{ padding: '12px 8px', textAlign: 'right', whiteSpace: 'nowrap' }}>
                           <div style={{ fontWeight: 700, color: '#111827', fontSize: 14 }}>
@@ -874,31 +882,31 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
               })()}
             </tbody>
           </table>
+          {/* Charger plus — tranche client-side, instantané (données déjà en mémoire) */}
+          {hasMore && (
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '24px 0' }}>
+              <button
+                onClick={() => setVisibleCount(c => c + 50)}
+                style={{
+                  background: 'white',
+                  border: '1px solid #E0DED9',
+                  borderRadius: 8,
+                  padding: '10px 24px',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  fontSize: 14,
+                  color: '#374151',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                }}
+              >
+                Charger plus ({filteredList.length - visibleCount} restants)
+              </button>
+            </div>
+          )}
         </div>
 
-        {/* Charger plus — tranche client-side, instantané (données déjà en mémoire) */}
-        {hasMore && (
-          <div style={{ display: 'flex', justifyContent: 'center', padding: '24px 0' }}>
-            <button
-              onClick={() => setVisibleCount(c => c + 50)}
-              style={{
-                background: 'white',
-                border: '1px solid #E0DED9',
-                borderRadius: 8,
-                padding: '10px 24px',
-                cursor: 'pointer',
-                fontWeight: 600,
-                fontSize: 14,
-                color: '#374151',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-              }}
-            >
-              Charger plus ({filteredList.length - visibleCount} restants)
-            </button>
-          </div>
-        )}
       </div>
       {
         newMinOpen && (
@@ -986,7 +994,7 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
       >
         {Object.entries(STATUS_OPTIONS).map(([key, opt]) => (
           <MenuItem key={key} onClick={() => handleStatusSelect(key)}>
-            <Chip label={opt.label} size="small" sx={{ bgcolor: opt.bg, color: opt.text, fontWeight: 700, fontSize: 11, height: 24 }} />
+            <TonePill tone={CHIFFRAGE_STATUS_TONE[key]}>{opt.label}</TonePill>
           </MenuItem>
         ))}
       </Menu>
@@ -1021,7 +1029,7 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
           <MenuItem key={key} onClick={() => toggleFilter('status', key, `Statut: ${opt.label}`)}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%' }}>
               <input type="checkbox" checked={activeFilters.some(f => f.id === `status_${key}`)} readOnly />
-              <Chip label={opt.label} size="small" sx={{ bgcolor: opt.bg, color: opt.text, fontWeight: 700, fontSize: 11, height: 24 }} />
+              <TonePill tone={CHIFFRAGE_STATUS_TONE[key]}>{opt.label}</TonePill>
             </div>
           </MenuItem>
         ))}

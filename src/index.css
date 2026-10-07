@@ -110,6 +110,15 @@ button{ background:none; border:0; padding:0; margin:0; font:inherit; color:inhe
   .df-section-head .MuiIconButton-root svg { font-size: 26px !important; }
   .df-section-head h3 { padding: 10px 8px 10px 0; }
 }
+/* Listes qui défilent seules (df-list-scroll) : ligne d'en-têtes collée en haut du tableau.
+   Le trait sous les en-têtes est porté par une ombre (un border disparaît sur une cellule collante). */
+.df-list-scroll thead th { position: sticky; top: 0; z-index: 2; background: #F4F4F4; box-shadow: inset 0 -1px 0 #E0DED9; }
+.df-list-scroll thead th[style*="right: 0"] { z-index: 3; }
+/* Pas de barre de défilement visible : la molette / le pavé / le doigt suffisent */
+.df-list-scroll { scrollbar-width: none; -ms-overflow-style: none; }
+.df-list-scroll::-webkit-scrollbar { display: none; }
+/* Tableaux MUI DataGrid dans un FitGridFrame : barre verticale masquée (la molette suffit) */
+.df-grid-fit .MuiDataGrid-scrollbar--vertical { display: none; }
 /* Tous les boutons de l'application en Roboto (cohérence avec titres, chiffres et libellés) */
 button,
 .MuiButton-root,
