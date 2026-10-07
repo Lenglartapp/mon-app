@@ -57,11 +57,8 @@ export default function ShoppingListScreen({ minutes = [] }) {
 
     return (
         <div>
-            {/* Barre du haut : titre de section + export (même style que les autres barres) */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                <div style={{ fontSize: 13, color: '#6B7280' }}>
-                    Achats consolidés de la minute, ventilés par chapitre (même chapitrage que la moulinette).
-                </div>
+            {/* Barre du haut : export (même style que les autres barres) */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: 8 }}>
                 <ToolbarButton icon={<Download size={16} />} onClick={exportCSV} title="Exporter le détail en CSV">
                     Exporter CSV
                 </ToolbarButton>
