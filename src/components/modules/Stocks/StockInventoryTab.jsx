@@ -13,13 +13,14 @@ import ListItemText from '@mui/material/ListItemText';
 import ProductHistoryModal from './ProductHistoryModal';
 import EditStockItemModal from './EditStockItemModal';
 import { useMemo, useRef } from 'react';
-import { Download, Upload, Map as MapIcon } from 'lucide-react';
+import { Download, Upload, Map as MapIcon, Filter as FilterIcon, ChevronDown } from 'lucide-react';
 import { exportInventoryToExcel, processInventoryClearanceImport } from '../../../lib/utils/inventoryExcelUtils';
 import { useAuth } from '../../../auth';
 import WarehouseMap from './WarehouseMap';
 import { itemMetaColumns } from './stockColumns';
 import LocationChips from './LocationChips';
-import { ToolbarSearch, ToolbarSelect, ToolbarButton, TonePill } from '../../ui/ToolbarControls';
+import { ToolbarSearch, ToolbarButton, TonePill } from '../../ui/ToolbarControls';
+import FilterPanel, { isConditionActive, evaluateCondition } from '../../FilterPanel';
 import { DATAGRID_DA_SX, TABLE_FRAME_STYLE } from '../../../lib/constants/daStyles';
 import { LOC_A_COMPLETER, splitLocations } from '../../../lib/inventory/stockFields';
 
@@ -34,6 +35,12 @@ const STOCK_STATUS = {
     LIBRE: { label: 'Libre', tone: 5 },
 };
 const STATUS_FROM_LABEL = { 'à commencer': 'TODO', 'réservé': 'TODO', 'en cours': 'IN_PROGRESS', 'terminé': 'DONE', 'reliquat': 'DONE', 'sav': 'SAV', 'archivé': 'ARCHIVED', 'stock mort': 'ARCHIVED' };
+function stockStatusCodeOf(projectName, projects) {
+    if (!projectName) return 'LIBRE';
+    const proj = projects.find(p => p.name === projectName);
+    if (!proj) return '';
+    return STOCK_STATUS[proj.status] ? proj.status : (STATUS_FROM_LABEL[String(proj.status || '').toLowerCase()] || '');
+}
 function stockStatusOf(projectName, projects) {
     if (!projectName) return STOCK_STATUS.LIBRE;
     const proj = projects.find(p => p.name === projectName);
@@ -88,10 +95,12 @@ export default function StockInventoryTab({ inventory, projects = [], movements 
             e.target.value = ''; // Reset input
         }
     };
-    const [filterLoc, setFilterLoc] = useState('ALL');
-    const [filterProj, setFilterProj] = useState(null); // Project Name or null
-    const [filterCat, setFilterCat] = useState('ALL');
-    const [filterStatus, setFilterStatus] = useState('ALL');
+    // Filtres : conditions du panneau « Filtrer » (même module que les tableaux du chiffrage)
+    const [filterConditions, setFilterConditions] = useState([]);
+    const [filterPanelOpen, setFilterPanelOpen] = useState(false);
+    // Note flottante « réceptions à compléter » : repliée par défaut, filtre à la demande
+    const [onlyToComplete, setOnlyToComplete] = useState(false);
+    const [toCompleteOpen, setToCompleteOpen] = useState(false);
 
     // History Modal State
     const [historyOpen, setHistoryOpen] = useState(false);
@@ -128,6 +137,19 @@ export default function StockInventoryTab({ inventory, projects = [], movements 
     // Extract unique locations for filter
     const allLocs = new Set(inventory.flatMap(i => splitLocations(i.location)));
     const locations = ['ALL', ...(allLocs.has(LOC_A_COMPLETER) ? [LOC_A_COMPLETER] : []), ...[...allLocs].filter(l => l !== LOC_A_COMPLETER).sort()];
+
+    // Champs proposés dans le panneau « Filtrer »
+    const filterSchema = [
+        { key: 'fournisseur', label: 'Fournisseur', type: 'text' },
+        { key: 'ref', label: 'Référence', type: 'text' },
+        { key: 'coloris', label: 'Coloris', type: 'text' },
+        { key: 'laize', label: 'Laize', type: 'number' },
+        { key: 'category', label: 'Type', type: 'select', options: CATEGORIES.filter(c => c !== 'ALL') },
+        { key: 'location', label: 'Emplacement', type: 'select', options: locations.filter(l => l !== 'ALL') },
+        { key: 'project', label: 'Affectation', type: 'select', options: [...new Set(inventory.map(i => i.project).filter(Boolean))].sort() },
+        { key: 'status', label: 'Statut', type: 'select', options: STATUSES.filter(st => st.key !== 'ALL').map(st => ({ value: st.key, label: st.label })) },
+        { key: 'qty', label: 'Stock dispo', type: 'number' },
+    ];
     const toCompleteCount = inventory.filter(i => i.qty !== 0 && splitLocations(i.location).includes(LOC_A_COMPLETER)).length;
 
     const columns = useMemo(() => [
@@ -201,34 +223,28 @@ export default function StockInventoryTab({ inventory, projects = [], movements 
         },
     ], [projects]);
 
+    const activeConditions = filterConditions.filter(isConditionActive);
     const filteredRows = inventory.filter(item => {
-        // 1. Text Search
+        if (item.qty === 0) return false; // quantités nulles masquées
         const q = search.toLowerCase();
-        const matchSearch = !search ||
-            [item.product, item.ref, item.fournisseur, item.coloris].some(v => (v || '').toLowerCase().includes(q));
-
-        // 2. Exact Filters
-        const matchLoc = filterLoc === 'ALL' || splitLocations(item.location).includes(filterLoc);
-        const matchCat = filterCat === 'ALL' || item.category === filterCat;
-
-        // 3. Project Filter (Partial Match allowed if free text, or exact if selected)
-        const matchProj = !filterProj || (item.project && item.project.includes(filterProj));
-
-        // 4. Status Filter
-        let matchStatus = true;
-        if (filterStatus !== 'ALL') {
-            if (filterStatus === 'LIBRE') {
-                matchStatus = !item.project;
-            } else {
-                const proj = projects.find(p => p.name === item.project);
-                matchStatus = proj?.status === filterStatus;
+        if (search && ![item.product, item.ref, item.fournisseur, item.coloris].some(v => (v || '').toLowerCase().includes(q))) return false;
+        if (onlyToComplete && !splitLocations(item.location).includes(LOC_A_COMPLETER)) return false;
+        if (activeConditions.length === 0) return true;
+        const flat = { ...item, project: item.project || '', status: stockStatusCodeOf(item.project, projects) };
+        const test = (cond) => {
+            // Emplacement : un article peut être à plusieurs endroits (« ATELIER, B3 ») → « est » = l'un d'eux
+            if (cond.field === 'location' && (cond.operator === 'equals' || cond.operator === 'notEqual')) {
+                const has = splitLocations(item.location).some(l => l.toLowerCase() === String(cond.value).toLowerCase());
+                return cond.operator === 'equals' ? has : !has;
             }
+            return evaluateCondition(cond, flat);
+        };
+        let ok = test(activeConditions[0]);
+        for (let i = 1; i < activeConditions.length; i++) {
+            const v = test(activeConditions[i]);
+            ok = activeConditions[i].logic === 'ou' ? ok || v : ok && v;
         }
-
-        // 5. Hide 0 quantity
-        const isNonZero = item.qty !== 0;
-
-        return matchSearch && matchLoc && matchCat && matchProj && matchStatus && isNonZero;
+        return ok;
     });
 
     const groupedRows = useMemo(() => {
@@ -281,60 +297,27 @@ export default function StockInventoryTab({ inventory, projects = [], movements 
                     placeholder="Fournisseur, référence, coloris…"
                     width={220}
                 />
-                <ToolbarSearch
-                    value={filterProj || ''}
-                    onChange={(v) => setFilterProj(v || null)}
-                    placeholder="Projet"
-                    width={150}
-                    list="df-stock-projects"
-                    icon={false}
-                />
-                <datalist id="df-stock-projects">
-                    {projects.map(p => <option key={p.id || p.name} value={p.name} />)}
-                </datalist>
-                <ToolbarSelect
-                    label="Catégorie"
-                    value={filterCat}
-                    onChange={setFilterCat}
-                    options={CATEGORIES.map(c => ({ value: c, label: c === 'ALL' ? 'Toutes' : c }))}
-                />
-                <ToolbarSelect
-                    label="Emplacement"
-                    value={filterLoc}
-                    onChange={setFilterLoc}
-                    options={locations.map(loc => ({ value: loc, label: loc === 'ALL' ? 'Tous' : loc }))}
-                />
-                <ToolbarSelect
-                    label="Statut"
-                    value={filterStatus}
-                    onChange={setFilterStatus}
-                    options={STATUSES.map(st => ({ value: st.key, label: st.label }))}
-                />
+                <div style={{ position: 'relative' }}>
+                    <ToolbarButton
+                        icon={<FilterIcon size={16} />}
+                        active={activeConditions.length > 0}
+                        onClick={() => setFilterPanelOpen(o => !o)}
+                    >
+                        {activeConditions.length > 0 ? `Filtré (${activeConditions.length})` : 'Filtrer'}
+                    </ToolbarButton>
+                    {filterPanelOpen && (
+                        <>
+                            <div style={{ position: 'fixed', inset: 0, zIndex: 1000 }} onClick={() => setFilterPanelOpen(false)} />
+                            <div style={{ position: 'absolute', left: 0, top: 'calc(100% + 4px)', zIndex: 1001 }}>
+                                <FilterPanel schema={filterSchema} conditions={filterConditions} onChange={setFilterConditions} />
+                            </div>
+                        </>
+                    )}
+                </div>
 
-                {toCompleteCount > 0 && (
-                    <Chip
-                        label={`📍 ${toCompleteCount} réception${toCompleteCount > 1 ? 's' : ''} à compléter`}
-                        onClick={() => setFilterLoc(filterLoc === LOC_A_COMPLETER ? 'ALL' : LOC_A_COMPLETER)}
-                        size="small"
-                        sx={{
-                            fontWeight: 700, cursor: 'pointer',
-                            bgcolor: filterLoc === LOC_A_COMPLETER ? '#9A3412' : '#FFEDD5',
-                            color: filterLoc === LOC_A_COMPLETER ? 'white' : '#9A3412',
-                            border: '1px solid #FDBA74',
-                            '&:hover': { bgcolor: filterLoc === LOC_A_COMPLETER ? '#7C2D12' : '#FED7AA' },
-                        }}
-                    />
-                )}
-
-                {(search || filterLoc !== 'ALL' || filterProj || filterCat !== 'ALL' || filterStatus !== 'ALL') && (
+                {(search || activeConditions.length > 0 || onlyToComplete) && (
                     <button
-                        onClick={() => {
-                            setSearch('');
-                            setFilterLoc('ALL');
-                            setFilterProj(null);
-                            setFilterCat('ALL');
-                            setFilterStatus('ALL');
-                        }}
+                        onClick={() => { setSearch(''); setFilterConditions([]); setOnlyToComplete(false); }}
                         style={{ border: 'none', background: 'none', color: '#6B7280', fontSize: 13, fontWeight: 600, cursor: 'pointer', textDecoration: 'underline', padding: '0 4px', fontFamily: 'inherit' }}
                     >
                         Réinitialiser
@@ -361,6 +344,41 @@ export default function StockInventoryTab({ inventory, projects = [], movements 
                     onChange={handleImportFile}
                 />
             </div>
+
+            {/* Note flottante bas-droite (comme « pièces en double » du chiffrage) : réceptions dont
+                l'emplacement reste à compléter. Repliée par défaut ; filtre le tableau à la demande. */}
+            {toCompleteCount > 0 && (
+                <div style={{
+                    position: 'fixed', bottom: 24, right: 24, zIndex: 1200,
+                    background: '#FEF3C7', border: '1px solid #F59E0B', borderRadius: 10,
+                    fontSize: 13, color: '#92400E', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', maxWidth: 360,
+                }}>
+                    <button
+                        onClick={() => setToCompleteOpen(o => !o)}
+                        aria-expanded={toCompleteOpen}
+                        style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', background: 'none', border: 'none', cursor: 'pointer', padding: '10px 14px', font: 'inherit', color: 'inherit', textAlign: 'left' }}
+                    >
+                        <span style={{ fontSize: 16, lineHeight: 1 }}>📍</span>
+                        <span style={{ fontWeight: 700, flex: 1 }}>
+                            {toCompleteCount} réception{toCompleteCount > 1 ? 's' : ''} à compléter
+                        </span>
+                        <ChevronDown size={16} style={{ transform: toCompleteOpen ? 'rotate(180deg)' : 'none', transition: 'transform .15s ease', flexShrink: 0, opacity: .8 }} />
+                    </button>
+                    {toCompleteOpen && (
+                        <div style={{ borderTop: '1px solid #FCD34D', padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                            <div style={{ fontSize: 12, opacity: 0.9 }}>
+                                Articles reçus via Odoo dont l'emplacement de rangement n'est pas encore renseigné.
+                            </div>
+                            <button
+                                onClick={() => setOnlyToComplete(v => !v)}
+                                style={{ alignSelf: 'flex-start', border: '1px solid #F59E0B', background: onlyToComplete ? '#92400E' : 'white', color: onlyToComplete ? 'white' : '#92400E', borderRadius: 8, padding: '6px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+                            >
+                                {onlyToComplete ? 'Afficher tout le stock' : 'Afficher uniquement ces réceptions'}
+                            </button>
+                        </div>
+                    )}
+                </div>
+            )}
 
             {/* VUE ENTREPÔT */}
             {showMap && (
