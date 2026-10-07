@@ -130,7 +130,7 @@ function ExpandableCard({ title, amount, amountSuffix = "", children, defaultOpe
                     {nfEur0.format(amount).replace('€', amountSuffix || '€')}
                 </span>
             </div>
-            {isOpen && <div style={{ border: '1px solid #E0DED9', borderRadius: 8, background: 'white', padding: '4px 16px' }}>{children}</div>}
+            {isOpen && <div style={{ border: '1px solid #E0DED9', borderRadius: 8, background: 'white', padding: '0 16px', overflow: 'hidden' }}>{children}</div>}
         </div>
     );
 }
@@ -190,10 +190,12 @@ function DrillDownRow({ label, mainValue, subValue, sources, type = 'price' }) {
 // d'un chiffrage à l'autre.
 function DetailGroup({ title, items = [] }) {
     return (
-        <div style={{ marginBottom: 12 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '12px 0 4px', borderBottom: '1px solid #E0DED9' }}>
-                <div style={{ fontSize: 14, fontWeight: 600, color: '#374151', fontFamily: ROBOTO }}>{title}</div>
-                <div style={{ fontSize: 14, fontWeight: 600, color: '#374151', fontFamily: ROBOTO }}>{nfEur0.format(sumPA(items))}</div>
+        <div>
+            {/* Bandeau gris pleine largeur (comme l'en-tête des tableaux de la Liste Achats) :
+                chapitre à gauche, total tout à droite ; le détail reste en blanc dessous. */}
+            <div className="df-moul-chapter" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '0 -16px', padding: '10px 16px', background: '#F4F4F4', borderBottom: '1px solid #E0DED9' }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#374151', fontFamily: ROBOTO }}>{title}</div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#374151', fontFamily: ROBOTO }}>{nfEur0.format(sumPA(items))}</div>
             </div>
             {items.length === 0 ? (
                 <div style={{ fontSize: 13, color: '#9CA3AF', padding: '8px 0' }}>Aucun achat dans ce chapitre.</div>
