@@ -4,7 +4,7 @@ import { db } from '../lib/offlineDb';
 import { getQueuedPayloads } from '../lib/syncQueue';
 import { replaceInlineImages, hasInlineImages } from '../lib/inlineImages';
 import { archiveRowLogs } from '../lib/lineLogs';
-import { calculateProfitability } from '../lib/financial/profitabilityCalculator';
+import { calculateProfitability, commissionRateForOwner } from '../lib/financial/profitabilityCalculator';
 import { isSchemaDriftError, insertStrippingPhantomColumns, updateStrippingPhantomColumns } from '../lib/schemaDrift';
 import { pickItemMeta } from '../lib/inventory/stockFields';
 import { createCoalescedWriter } from '../lib/coalescedWriter';
@@ -475,7 +475,10 @@ export const useMinutes = () => {
             const lines  = dbUpdates.lines !== undefined ? dbUpdates.lines : (cur.lines || []);
             const deps   = 'deplacements'  in updates ? (updates.deplacements  || []) : (cur.deplacements  || []);
             const extras = 'extraDepenses' in updates ? (updates.extraDepenses || []) : (cur.extraDepenses || []);
-            const { kpis } = calculateProfitability(lines, deps, extras);
+            // Commission selon le chargé d'affaires (1 % direction / ADV, 3,5 % sinon) ; le changement
+            // de chargé d'affaires est recalculé dans ChiffrageScreen (lignes chargées), pas ici :
+            // la liste allégée n'a pas les lignes et écraserait les KPIs à 0.
+            const { kpis } = calculateProfitability(lines, deps, extras, commissionRateForOwner(updates.owner ?? cur.owner));
             const computed = {
                 ca_total:  kpis.ca_total            || 0,
                 marge_eur: kpis.contribution        || 0,

@@ -197,7 +197,7 @@ function StepOpportunity({ minute, catalog, dest, setDest, commercials }) {
             <div><Label>Nom de l'opportunité</Label>
               <input style={inputStyle} value={dest.newName ?? baseName} onChange={(e) => set({ newName: e.target.value })} /></div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <div><Label>Commercial{dest.autoUser ? ' (toi)' : ''}</Label>
+              <div><Label>Commercial{dest.autoUser === 'owner' ? ' (chargé d\'affaires de la minute)' : dest.autoUser === 'me' ? ' (toi)' : ''}</Label>
                 <select style={inputStyle} value={dest.dfUserId || ''} onChange={(e) => {
                   const c = commercials.find((x) => x.id === e.target.value);
                   set({ dfUserId: c?.id || null, userId: c?.odoo.id || null, teamId: c?.odoo.teamId || dest.teamId, autoUser: false });
@@ -749,12 +749,16 @@ export default function OdooQuoteWizard({ open, onClose, minute, rows = [], depR
   }, [open, catalog]);
   React.useEffect(() => { saveProfile(config); }, [config]);
 
-  // Pré-remplit commercial + équipe d'après la personne connectée (une seule fois).
+  // Pré-remplit commercial + équipe : le CHARGÉ D'AFFAIRES de la minute (il fixe aussi le taux de
+  // commission, 1 % direction / ADV ou 3,5 %, dans Droitfil comme dans Odoo), sinon la personne
+  // connectée. Une seule fois.
   React.useEffect(() => {
     if (!catalog || dest.userId !== undefined) return;
-    const u = odooUserForDroitfil(currentUser, catalog.users);
-    setDest((d) => ({ ...d, dfUserId: u ? currentUser?.id : null, userId: u?.id || null, teamId: u?.teamId || null, autoUser: !!u }));
-  }, [catalog, currentUser, dest.userId]);
+    const owner = dfUsers.find((u) => norm(u.name) === norm(minute?.owner));
+    const person = (owner && odooUserForDroitfil(owner, catalog.users)) ? owner : currentUser;
+    const u = odooUserForDroitfil(person, catalog.users);
+    setDest((d) => ({ ...d, dfUserId: u ? person?.id : null, userId: u?.id || null, teamId: u?.teamId || null, autoUser: u ? (person === owner ? 'owner' : 'me') : false }));
+  }, [catalog, currentUser, dfUsers, minute?.owner, dest.userId]);
 
   const [textEdits, setTextEdits] = React.useState(() => loadEdits(minute?.id));
   const builtQuote = React.useMemo(

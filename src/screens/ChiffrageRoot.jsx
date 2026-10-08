@@ -22,7 +22,7 @@ import { uid } from "../lib/utils/uid";
 import { SmartFilterBar } from "../components/ui/SmartFilterBar.jsx";
 import { DataGrid } from '@mui/x-data-grid';
 import { frFR } from '@mui/x-data-grid/locales';
-import { calculateProfitability } from '../lib/financial/profitabilityCalculator';
+import { calculateProfitability, commissionRateForOwner } from '../lib/financial/profitabilityCalculator';
 import { useAppSettings, useCatalog } from "../hooks/useSupabase";
 import { supabase } from "../lib/supabaseClient";
 import { buildStatusLog, appendHistory } from "../lib/minuteHistory";
@@ -211,7 +211,7 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
     // Fallback sur calculateProfitability pour les anciennes minutes non encore migrées.
     const needsCalc = !m.marge_pct && !m.marge_eur && !m.renta_hh;
     const kpis = needsCalc
-      ? calculateProfitability(m.lines || [], m.deplacements || [], m.extraDepenses || []).kpis
+      ? calculateProfitability(m.lines || [], m.deplacements || [], m.extraDepenses || [], commissionRateForOwner(m.owner)).kpis
       : {};
 
     return {

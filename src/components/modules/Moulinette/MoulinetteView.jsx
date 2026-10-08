@@ -12,7 +12,7 @@ const nfEur0 = new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EU
 const nf0 = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 });
 const pct = (val) => `${Math.round(val || 0)} %`;
 
-export default function MoulinetteView({ rows, depRows, extraRows, commissionRate = 3.5, onUpdateCommission }) {
+export default function MoulinetteView({ rows, depRows, extraRows, commissionRate = 3.5, commissionOwner, onUpdateCommission }) {
     const data = useMemo(() => calculateProfitability(rows, depRows, extraRows, commissionRate), [rows, depRows, extraRows, commissionRate]);
     const [showSimulator, setShowSimulator] = useState(false);
 
@@ -48,7 +48,7 @@ export default function MoulinetteView({ rows, depRows, extraRows, commissionRat
                     amount={data.charges_details.total}
                     defaultOpen={true}
                 >
-                    <ChargesTable details={data.charges_details} commissionRate={commissionRate} onUpdateCommission={onUpdateCommission} />
+                    <ChargesTable details={data.charges_details} commissionRate={commissionRate} commissionOwner={commissionOwner} onUpdateCommission={onUpdateCommission} />
                 </ExpandableCard>
 
                 {/* SECTION 3: HEURES DE PRODUCTION */}
@@ -212,7 +212,7 @@ function DetailGroup({ title, items = [] }) {
     );
 }
 
-function ChargesTable({ details, commissionRate, onUpdateCommission }) {
+function ChargesTable({ details, commissionRate, commissionOwner, onUpdateCommission }) {
     const raw = details._details; // Access the detailed object with sources
     // Tous les chapitres restent affichés, même à 0 : la structure ne bouge pas
     // d'un chiffrage à l'autre.
@@ -234,6 +234,7 @@ function ChargesTable({ details, commissionRate, onUpdateCommission }) {
                             label={item.label}
                             mainValue={nfEur0.format(item.total)}
                             rate={commissionRate}
+                            owner={commissionOwner}
                             onUpdate={onUpdateCommission}
                         />
                     );
@@ -255,7 +256,7 @@ function ChargesTable({ details, commissionRate, onUpdateCommission }) {
     );
 }
 
-function CommissionDrillDownRow({ label, mainValue, rate, onUpdate }) {
+function CommissionDrillDownRow({ label, mainValue, rate, owner, onUpdate }) {
     const [open, setOpen] = useState(false);
     const [localRate, setLocalRate] = useState(rate);
 
@@ -294,7 +295,14 @@ function CommissionDrillDownRow({ label, mainValue, rate, onUpdate }) {
                 </div>
             </div>
 
-            {open && (
+            {open && !onUpdate && (
+                <div style={{ background: '#F7F7F5', padding: '10px 14px', borderRadius: 8, marginBottom: 10, fontSize: 13, color: '#374151', lineHeight: 1.5 }}>
+                    Taux fixé par le chargé d'affaires{owner ? <> (<b>{owner}</b>)</> : ''} : <b>{String(rate).replace('.', ',')} %</b> du CA,
+                    majoré de {COMMISSION_EMPLOYER_CHARGES * 100} % de charges patronales.
+                    <div style={{ fontSize: 12, color: '#6B7280', marginTop: 2 }}>1 % pour la direction et l'ADV (Adrien, Aristide, Muriel, Emmanuel), 3,5 % pour les chargés d'affaires — comme dans Odoo.</div>
+                </div>
+            )}
+            {open && onUpdate && (
                 <div style={{ background: '#F7F7F5', padding: '10px 14px', borderRadius: 8, marginBottom: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <div style={{ fontSize: 13, color: '#374151', fontWeight: 500 }}>
                         Taux de commission
