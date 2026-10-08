@@ -424,6 +424,16 @@ const odooLine = (l) => ({
 // Blocs (section, sous-section) → sections Odoo avec sous-sections natives (line_subsection,
 // format droitfil_upsert_devis du 2026-10-08) : d'abord les lignes directes de la section, puis
 // chaque sous-section et ses lignes (dans Odoo, une ligne après une sous-section lui appartient).
+// Note de portée « Concerne : … » (dernière ligne de la description, retouchée ou non) : envoyée
+// en ligne de note séparée, en très petit (x_edition_format « n », format ERP ac81ea1), juste
+// après sa ligne de tissu.
+function withScopeNote(l) {
+  const parts = String(l.description || '').split('\n');
+  const last = parts[parts.length - 1] || '';
+  if (!/^Concerne :/.test(last.trim())) return [odooLine(l)];
+  return [odooLine({ ...l, description: parts.slice(0, -1).join('\n') }), { note: last.trim(), format: 'n' }];
+}
+
 function groupForOdoo(blocks, fallbackName) {
   const out = [];
   const byName = new Map();
@@ -432,8 +442,8 @@ function groupForOdoo(blocks, fallbackName) {
     const name = b.title || fallbackName;
     let sec = byName.get(name);
     if (!sec) { sec = { name, lines: [], subsections: [] }; byName.set(name, sec); out.push(sec); }
-    if (b.sub) sec.subsections.push({ name: b.sub, lines: b.lines.map(odooLine) });
-    else sec.lines.push(...b.lines.map(odooLine));
+    if (b.sub) sec.subsections.push({ name: b.sub, lines: b.lines.flatMap(withScopeNote) });
+    else sec.lines.push(...b.lines.flatMap(withScopeNote));
   }
   return out.map((sec) => ({
     name: sec.name,
