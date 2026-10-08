@@ -120,54 +120,33 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
         resetSelection(t);
     };
 
-    // --- ENTRÉE RÉPERTORIÉE : articles rattachés aux dossiers actifs ---
-    //  1. liste de courses Odoo : fournisseur, référence, coloris, laize déjà renseignés ;
-    //  2. (tissus) matériauthèque et BPF des dossiers : nom complet + laize ;
-    //  3. (autres catégories) articles déjà connus du stock.
+    // --- ENTRÉE RÉPERTORIÉE : SOURCE UNIQUE = liste de courses Odoo des dossiers actifs ---
+    // Une seule source, pour que toutes les réceptions d'un même article portent exactement
+    // les mêmes fournisseur / référence / coloris / laize (pas de variantes de nom venues
+    // de la matériauthèque ou du BPF).
     const sourceOptionsIN = useMemo(() => {
         if (!isIN) return [];
         const projById = new Map(projects.map(p => [p.id, p]));
-        const active = projects.filter(p => p.status !== 'ARCHIVED');
-        const opts = [];
-        const seen = new Set();
-        const push = (o) => {
-            const k = `${(o.title || '').toLowerCase()}|${o.project}`;
-            if (seen.has(k)) return;
-            seen.add(k);
-            o.search = [o.fournisseur, o.ref, o.coloris, o.product, o.project, o.laize && `laize ${o.laize}`].filter(Boolean).join(' ').toLowerCase();
-            opts.push(o);
-        };
-        courseLines.forEach(l => {
-            if ((ODOO_TYPE_TO_CATEGORY[l.type_produit] || 'Divers') !== typology) return;
-            const proj = projById.get(l.droitfil_project_id);
-            if (!proj || proj.status === 'ARCHIVED') return;
-            const name = [l.reference, l.coloris].filter(Boolean).join(' — ');
-            push({
-                source: 'Liste de courses', title: [l.fournisseur, name].filter(Boolean).join(' · ') || 'Article',
-                fournisseur: l.fournisseur || '', ref: l.reference || '', coloris: l.coloris || '', laize: l.laize || '',
-                product: name, project: proj.name || '', unit: typology === 'Tissu' ? 'ml' : (l.unite || 'u'),
-                ordered: l.quantite != null ? `${l.quantite} ${l.unite || ''}`.trim() : null,
-                received: !!l.date_reception,
-            });
-        });
-        if (typology === 'Tissu') {
-            active.forEach(proj => {
-                (proj.materials || []).filter(m => /tissu|doublure|inter/i.test(m.category || 'Tissu')).forEach(m => {
-                    if (m.name) push({ source: 'Matériauthèque', title: m.name, product: m.name, laize: m.width || '', project: proj.name || '', unit: 'ml' });
-                });
-                (proj.rows || []).forEach(row => {
-                    [[row.tissu_deco1, row.laize_tissu1 || row.laize_tissu_deco1], [row.tissu_deco2, row.laize_tissu2], [row.doublure, row.laize_doublure]]
-                        .forEach(([name, laize]) => { if (name) push({ source: 'BPF', title: name, product: name, laize: laize || '', project: proj.name || '', unit: 'ml' }); });
-                });
-            });
-        } else {
-            inventory.filter(it => it.category === typology).forEach(it => {
-                push({ source: 'Stock', title: itemTitle(it), fournisseur: it.fournisseur || '', ref: it.ref || '', coloris: it.coloris || '', laize: it.laize || '', product: it.product, project: '', unit: it.unit || 'u' });
-            });
-        }
-        const order = { 'Liste de courses': 0, 'Matériauthèque': 1, BPF: 2, Stock: 3 };
-        return opts.sort((a, b) => (order[a.source] - order[b.source]) || a.title.localeCompare(b.title));
-    }, [projects, inventory, isIN, typology, courseLines]);
+        return courseLines
+            .filter(l => (ODOO_TYPE_TO_CATEGORY[l.type_produit] || 'Divers') === typology)
+            .map(l => {
+                const proj = projById.get(l.droitfil_project_id);
+                if (!proj || proj.status === 'ARCHIVED') return null;
+                const name = [l.reference, l.coloris].filter(Boolean).join(' — ');
+                const o = {
+                    key: l.odoo_id,
+                    title: [l.fournisseur, name].filter(Boolean).join(' · ') || 'Article',
+                    fournisseur: l.fournisseur || '', ref: l.reference || '', coloris: l.coloris || '', laize: l.laize || '',
+                    product: name, project: proj.name || '', unit: typology === 'Tissu' ? 'ml' : (l.unite || 'u'),
+                    ordered: l.quantite != null ? `${l.quantite} ${l.unite || ''}`.trim() : null,
+                    received: !!l.date_reception,
+                };
+                o.search = [o.fournisseur, o.ref, o.coloris, o.project, o.laize && `laize ${o.laize}`].filter(Boolean).join(' ').toLowerCase();
+                return o;
+            })
+            .filter(Boolean)
+            .sort((a, b) => a.title.localeCompare(b.title) || a.project.localeCompare(b.project));
+    }, [projects, isIN, typology, courseLines]);
 
     // --- SORTIE / DÉPLACEMENT : articles réellement en stock ---
     const stockOptions = useMemo(() => {
@@ -305,7 +284,7 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
                                 </Stack>
                                 <Typography sx={{ fontSize: 12, color: '#9B9A97', mt: 1 }}>
                                     {catalogued
-                                        ? 'Lié à un dossier : liste de courses, matériauthèque ou BPF. Les informations se remplissent toutes seules.'
+                                        ? 'Article de la liste de courses Odoo d’un dossier : fournisseur, référence, coloris, laize et dossier se remplissent tout seuls.'
                                         : 'Pièce ajoutée au stock sans lien avec une commande ni un dossier.'}
                                 </Typography>
                                 </Box>
@@ -317,22 +296,21 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
                                             onChange={handleSourceIN}
                                             filterOptions={filterCatalogued}
                                             getOptionLabel={(o) => o.title || ''}
-                                            isOptionEqualToValue={(a, b) => a.title === b.title && a.project === b.project}
+                                            isOptionEqualToValue={(a, b) => a.key === b.key}
                                             slotProps={{ paper: { sx: MENU_PAPER_SX }, listbox: { sx: { maxHeight: 360, p: 0.5 } } }}
                                             renderOption={(props, o) => {
                                                 const { key, ...rest } = props;
                                                 return (
-                                                    <li key={key} {...rest} style={{ ...rest.style, borderRadius: 6, padding: '8px 10px', alignItems: 'center', gap: 12 }}>
+                                                    <li key={o.key ?? key} {...rest} style={{ ...rest.style, borderRadius: 6, padding: '8px 10px', alignItems: 'center', gap: 12 }}>
                                                         <Box sx={{ flex: 1, minWidth: 0 }}>
                                                             <div style={{ fontSize: 14, fontWeight: 500, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.title}</div>
                                                             <div style={{ fontSize: 12, color: '#6B7280', marginTop: 2 }}>
                                                                 {o.project || 'Stock libre'}
                                                                 {o.laize && <> · laize {o.laize}</>}
-                                                                {o.ordered && <> · commandé {o.ordered}</>}
                                                                 {o.received && <> · déjà réceptionné (Odoo)</>}
                                                             </div>
                                                         </Box>
-                                                        <TonePill tone={o.source === 'Liste de courses' ? 4 : null}>{o.source}</TonePill>
+                                                        {o.ordered && <TonePill tone={5}>{o.ordered}</TonePill>}
                                                     </li>
                                                 );
                                             }}
@@ -340,7 +318,7 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
                                                 <TextField {...params} size="small" placeholder="Fournisseur, référence, coloris, dossier…" sx={DA_FIELD_SX}
                                                     InputProps={{ ...params.InputProps, startAdornment: <InputAdornment position="start"><Search size={16} color="#9CA3AF" /></InputAdornment> }} />
                                             )}
-                                            noOptionsText="Aucun article répertorié ne correspond — passe en « Non répertorié »."
+                                            noOptionsText="Aucun article de liste de courses ne correspond — passe en « Non répertorié »."
                                         />
                                     </DaField>
                                 )}
