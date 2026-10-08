@@ -419,19 +419,25 @@ const odooLine = (l) => ({
   cost: l.costUnit, // coût UNITAIRE → purchase_price
   ...(l.hours ? { heures_vendues: l.hours } : {}),
 });
-// Blocs (section, sous-section) → sections Odoo. Les sous-sections partent pour l'instant en
-// ligne de note (« ▸ R+2 ») : support natif line_subsection demandé à l'agent ERP (2026-10-08).
+// Blocs (section, sous-section) → sections Odoo avec sous-sections natives (line_subsection,
+// format droitfil_upsert_devis du 2026-10-08) : d'abord les lignes directes de la section, puis
+// chaque sous-section et ses lignes (dans Odoo, une ligne après une sous-section lui appartient).
 function groupForOdoo(blocks, fallbackName) {
   const out = [];
+  const byName = new Map();
   for (const b of blocks) {
     if (!b.lines.length) continue;
     const name = b.title || fallbackName;
-    let sec = out[out.length - 1];
-    if (!sec || sec.name !== name) { sec = { name, lines: [] }; out.push(sec); }
-    if (b.sub) sec.lines.push({ note: `▸ ${b.sub}` });
-    sec.lines.push(...b.lines.map(odooLine));
+    let sec = byName.get(name);
+    if (!sec) { sec = { name, lines: [], subsections: [] }; byName.set(name, sec); out.push(sec); }
+    if (b.sub) sec.subsections.push({ name: b.sub, lines: b.lines.map(odooLine) });
+    else sec.lines.push(...b.lines.map(odooLine));
   }
-  return out;
+  return out.map((sec) => ({
+    name: sec.name,
+    ...(sec.lines.length ? { lines: sec.lines } : {}),
+    ...(sec.subsections.length ? { subsections: sec.subsections } : {}),
+  }));
 }
 
 /**
