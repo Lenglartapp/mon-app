@@ -1,25 +1,20 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Box from '@mui/material/Box';
-import Card from '@mui/material/Card';
 import Button from '@mui/material/Button';
-import Chip from '@mui/material/Chip';
 import TextField from '@mui/material/TextField';
 import InputAdornment from '@mui/material/InputAdornment';
 import Typography from '@mui/material/Typography';
 import Stack from '@mui/material/Stack';
-import Dialog from '@mui/material/Dialog';
-import DialogTitle from '@mui/material/DialogTitle';
-import DialogContent from '@mui/material/DialogContent';
-import DialogActions from '@mui/material/DialogActions';
 import Autocomplete from '@mui/material/Autocomplete';
 import IconButton from '@mui/material/IconButton';
 import Alert from '@mui/material/Alert';
 import CircularProgress from '@mui/material/CircularProgress';
-import SearchIcon from '@mui/icons-material/Search';
-import CloseIcon from '@mui/icons-material/Close';
-import { Plus, Truck } from 'lucide-react';
+import { Plus, Truck, X, Search, Pencil } from 'lucide-react';
 import { supabase } from '../../../lib/supabaseClient';
-import { fetchRequests, createRequest, confirmLine, cancelLine, requestLabel, LOC_ATELIER } from '../../../lib/inventory/stockRequests';
+import { fetchRequests, createRequest, updateRequest, confirmLine, cancelLine, requestLabel, LOC_ATELIER } from '../../../lib/inventory/stockRequests';
+import DaDialog from '../../ui/DaDialog';
+import { DaField, ChoicePill } from '../../ui/DaForm';
+import { DA_FIELD_SX } from '../../../lib/constants/daStyles';
 import { splitLocations } from '../../../lib/inventory/stockFields';
 import OperatorInput from './OperatorInput';
 import LocationChips from './LocationChips';
@@ -73,6 +68,7 @@ export default function StockRequestsPanel({ inventory = [], project = null, onS
     const [filter, setFilter] = useState(['todo']); // plusieurs listes cochables ; « À faire » par défaut
     const [search, setSearch] = useState('');
     const [newOpen, setNewOpen] = useState(false);
+    const [editing, setEditing] = useState(null); // demande en cours de modification
     const [confirming, setConfirming] = useState(null); // { request, line }
 
     const load = useCallback(async () => {
@@ -170,17 +166,28 @@ export default function StockRequestsPanel({ inventory = [], project = null, onS
                         showProject={!project}
                         onConfirm={(line) => setConfirming({ request: r, line })}
                         onCancel={handleCancel}
+                        onEdit={() => setEditing(r)}
                     />
                 ))}
             </Stack>
 
             {newOpen && (
-                <NewRequestDialog
+                <RequestDialog
                     inventory={inventory}
                     project={project}
                     reserved={reserved}
                     onClose={() => setNewOpen(false)}
-                    onCreated={async () => { setNewOpen(false); setFilter(['todo']); await load(); }}
+                    onSaved={async () => { setNewOpen(false); setFilter(['todo']); await load(); }}
+                />
+            )}
+            {editing && (
+                <RequestDialog
+                    request={editing}
+                    inventory={inventory}
+                    project={editing.project || project}
+                    reserved={reserved}
+                    onClose={() => setEditing(null)}
+                    onSaved={async () => { setEditing(null); await load(); }}
                 />
             )}
             {confirming && (
@@ -200,7 +207,7 @@ export default function StockRequestsPanel({ inventory = [], project = null, onS
 const STATUS_TONE = { open: 4, in_progress: 3, done: 5 };
 const ROBOTO = 'Roboto, system-ui, sans-serif';
 
-function RequestCard({ request: r, showProject, onConfirm, onCancel }) {
+function RequestCard({ request: r, showProject, onConfirm, onCancel, onEdit }) {
     const late = r.status === 'open' && r.requested_for && r.requested_for < todayISO();
     const statusKey = displayStatusOf(r);
     const st = STATUS[statusKey] || STATUS.open;
@@ -216,6 +223,12 @@ function RequestCard({ request: r, showProject, onConfirm, onCancel }) {
                 <Box sx={{ flexGrow: 1 }} />
                 {r.status === 'open' && r.lines.length > 1 && (
                     <Typography sx={{ fontSize: 12, color: '#6B7280' }}>{r.lines.length - pendingCount}/{r.lines.length} livrée(s)</Typography>
+                )}
+                {r.status === 'open' && (
+                    <Button size="small" onClick={onEdit} startIcon={<Pencil size={14} />}
+                        sx={{ color: '#374151', textTransform: 'none', fontWeight: 600, border: '1px solid #E0DED9', borderRadius: '8px', px: 1.5, height: 30, bgcolor: 'white' }}>
+                        Modifier
+                    </Button>
                 )}
                 {STATUS_TONE[statusKey] != null
                     ? <TonePill tone={STATUS_TONE[statusKey]}>{st.label}</TonePill>
@@ -261,12 +274,37 @@ function RequestCard({ request: r, showProject, onConfirm, onCancel }) {
     );
 }
 
-function NewRequestDialog({ inventory, project, reserved, onClose, onCreated }) {
-    const [requestedBy, setRequestedBy] = useState('');
-    const [requestedFor, setRequestedFor] = useState(todayISO());
-    const [comment, setComment] = useState('');
-    const [lines, setLines] = useState([]); // [{ item, pieceIds:Set, qty }]
+// Boutons du pied de fenêtre (DA).
+const BTN_GHOST = { color: '#374151', textTransform: 'none', fontWeight: 600, border: '1px solid #E0DED9', borderRadius: '8px', px: 2, height: 38 };
+const BTN_PRIMARY = { bgcolor: '#1E2447', textTransform: 'none', fontWeight: 600, px: 3, borderRadius: '8px', height: 38, '&:hover': { bgcolor: '#2A3260' } };
+const MENU_PAPER_SX = { mt: 0.5, borderRadius: '8px', border: '1px solid #E0DED9', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' };
+const hasPieces = (it) => Array.isArray(it?.pieces) && it.pieces.length > 0;
+
+// Création OU modification d'une demande (`request` fourni = modification, sans historique :
+// en-tête + lignes encore en attente ; les lignes déjà mises à disposition restent telles quelles).
+function RequestDialog({ request = null, inventory, project, reserved, onClose, onSaved }) {
+    const isEdit = !!request;
+    const label = isEdit ? requestLabel(request) : null;
+    const [requestedBy, setRequestedBy] = useState(request?.requested_by || '');
+    const [requestedFor, setRequestedFor] = useState(request?.requested_for || todayISO());
+    const [comment, setComment] = useState(request?.comment || '');
+    // [{ lineId?, item, pieceIds:Set, qty }] — en modification : les lignes en attente de la demande
+    const [lines, setLines] = useState(() => (request?.lines || [])
+        .filter(l => l.status === 'pending')
+        .map(l => {
+            const stockItem = inventory.find(it => it.id === l.item_id);
+            // Article disparu du stock : on garde la ligne telle qu'enregistrée (on peut la retirer).
+            const item = stockItem || { id: l.item_id, product: l.product, ref: l.ref, coloris: l.coloris, fournisseur: l.fournisseur, laize: l.laize, unit: l.unit, project: l.project, location: l.from_location, qty: l.qty, pieces: l.pieces || [] };
+            return { lineId: l.id, item, pieceIds: new Set((l.pieces || []).map(p => p.id)), qty: hasPieces(item) ? '' : String(l.qty ?? '') };
+        }));
+    const doneLines = (request?.lines || []).filter(l => l.status === 'done');
     const [saving, setSaving] = useState(false);
+
+    // Pièce déjà réservée par une AUTRE demande (celles de la demande modifiée restent libres).
+    const takenBy = (itemId, pieceId) => {
+        const by = reserved.get(`${itemId}:${pieceId}`);
+        return by && by !== label ? by : null;
+    };
 
     // Seulement ce qui est réellement en stock, hors atelier ; limité au dossier si on est dans un dossier.
     const eligible = useMemo(() => inventory
@@ -276,35 +314,42 @@ function NewRequestDialog({ inventory, project, reserved, onClose, onCreated }) 
         .filter(it => !lines.some(l => l.item.id === it.id))
         .sort((a, b) => itemTitle(a).localeCompare(itemTitle(b))), [inventory, project, lines]);
 
+    // Ajout d'un tissu : s'il n'a qu'UNE pièce (libre), elle est cochée d'office.
     const addItem = (it) => {
         if (!it) return;
-        setLines(prev => [...prev, { item: it, pieceIds: new Set(), qty: '' }]);
+        const free = hasPieces(it) ? it.pieces.filter(p => !takenBy(it.id, p.id)) : [];
+        const pieceIds = new Set(hasPieces(it) && it.pieces.length === 1 && free.length === 1 ? [free[0].id] : []);
+        setLines(prev => [...prev, { item: it, pieceIds, qty: '' }]);
     };
     const removeLine = (id) => setLines(prev => prev.filter(l => l.item.id !== id));
     const togglePiece = (itemId, pieceId) => setLines(prev => prev.map(l => {
         if (l.item.id !== itemId) return l;
-        const s = new Set(l.pieceIds);
-        if (s.has(pieceId)) s.delete(pieceId); else s.add(pieceId);
-        return { ...l, pieceIds: s };
+        const next = new Set(l.pieceIds);
+        if (next.has(pieceId)) next.delete(pieceId); else next.add(pieceId);
+        return { ...l, pieceIds: next };
     }));
     const setQty = (itemId, v) => setLines(prev => prev.map(l => (l.item.id === itemId ? { ...l, qty: v } : l)));
 
-    const hasPieces = (it) => Array.isArray(it.pieces) && it.pieces.length > 0;
     const lineQty = (l) => (hasPieces(l.item)
-        ? round2(l.item.pieces.filter(p => l.pieceIds.has(p.id)).reduce((s, p) => s + Number(p.qty || 0), 0))
+        ? round2(l.item.pieces.filter(p => l.pieceIds.has(p.id)).reduce((sum, p) => sum + Number(p.qty || 0), 0))
         : Number(l.qty) || 0);
     const lineValid = (l) => lineQty(l) > 0 && (hasPieces(l.item) || lineQty(l) <= Number(l.item.qty));
-    const canSave = requestedBy.trim() && requestedFor && lines.length > 0 && lines.every(lineValid);
+    // En modification, une demande peut ne garder que ses lignes déjà livrées.
+    const canSave = requestedBy.trim() && requestedFor && (lines.length > 0 || doneLines.length > 0) && lines.every(lineValid);
 
     const save = async () => {
         setSaving(true);
+        const header = { requested_by: requestedBy.trim(), requested_for: requestedFor, comment: comment.trim() };
+        const payload = lines.map(l => ({
+            lineId: l.lineId,
+            item: l.item,
+            pieces: hasPieces(l.item) ? l.item.pieces.filter(p => l.pieceIds.has(p.id)) : [],
+            qty: lineQty(l),
+        }));
         try {
-            await createRequest(supabase, { project, requested_by: requestedBy.trim(), requested_for: requestedFor, comment: comment.trim() }, lines.map(l => ({
-                item: l.item,
-                pieces: hasPieces(l.item) ? l.item.pieces.filter(p => l.pieceIds.has(p.id)) : [],
-                qty: lineQty(l),
-            })));
-            await onCreated();
+            if (isEdit) await updateRequest(supabase, request, header, payload);
+            else await createRequest(supabase, { project, ...header }, payload);
+            await onSaved();
         } catch (e) {
             alert(`Erreur : ${e.message}`);
             setSaving(false);
@@ -312,22 +357,49 @@ function NewRequestDialog({ inventory, project, reserved, onClose, onCreated }) 
     };
 
     return (
-        <Dialog open onClose={onClose} maxWidth="md" fullWidth>
-            <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                Nouvelle demande de mise à disposition{project ? ` — ${project}` : ''}
-                <IconButton onClick={onClose}><CloseIcon /></IconButton>
-            </DialogTitle>
-            <DialogContent dividers>
-                <Stack spacing={2}>
-                    <Stack direction="row" spacing={2}>
-                        <OperatorInput value={requestedBy} onChange={setRequestedBy} label="Demandé par" sx={{ flex: 1 }} />
-                        <TextField
-                            type="date" size="small" label="À mettre à dispo pour le" required
-                            value={requestedFor} onChange={(e) => setRequestedFor(e.target.value)}
-                            InputLabelProps={{ shrink: true }} sx={{ width: 220 }} error={!requestedFor}
-                        />
-                    </Stack>
+        <DaDialog
+            open
+            onClose={onClose}
+            title={isEdit ? `Modifier la demande ${label}` : 'Nouvelle demande de mise à disposition'}
+            subtitle={project || 'Tous les dossiers'}
+            maxWidth="md"
+            footer={(
+                <>
+                    <Button onClick={onClose} sx={{ ...BTN_GHOST, marginLeft: 'auto' }}>Annuler</Button>
+                    <Button variant="contained" disableElevation onClick={save} disabled={!canSave || saving} sx={BTN_PRIMARY}>
+                        {isEdit ? 'Enregistrer les modifications' : 'Envoyer la demande'}
+                    </Button>
+                </>
+            )}
+        >
+            <Stack spacing={2.5}>
+                <Stack direction="row" spacing={1.5}>
+                    <Box sx={{ flex: 1 }}>
+                        <DaField label="Demandé par">
+                            <OperatorInput value={requestedBy} onChange={setRequestedBy} label={null} fieldSx={DA_FIELD_SX} />
+                        </DaField>
+                    </Box>
+                    <Box sx={{ width: 220 }}>
+                        <DaField label="À mettre à dispo pour le">
+                            <TextField type="date" size="small" fullWidth value={requestedFor} onChange={(e) => setRequestedFor(e.target.value)} error={!requestedFor} sx={DA_FIELD_SX} />
+                        </DaField>
+                    </Box>
+                </Stack>
 
+                {doneLines.length > 0 && (
+                    <DaField label="Déjà mis à disposition (non modifiable)">
+                        <Stack spacing={0.75}>
+                            {doneLines.map(l => (
+                                <Box key={l.id} sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', fontSize: 13, color: '#6B7280', bgcolor: '#F4F4F4', borderRadius: '8px', px: 1.5, py: 1 }}>
+                                    <span style={{ color: '#111827', fontWeight: 500 }}>{itemTitle(l)}</span>
+                                    <span>· {(l.pieces || []).length ? l.pieces.map(p => p.name).join(', ') : `${l.qty} ${l.unit || 'ml'}`} · en atelier</span>
+                                </Box>
+                            ))}
+                        </Stack>
+                    </DaField>
+                )}
+
+                <DaField label={`Ajouter un tissu en stock${project ? ' (affecté au dossier)' : ''}`}>
                     <Autocomplete
                         options={eligible}
                         value={null}
@@ -335,86 +407,85 @@ function NewRequestDialog({ inventory, project, reserved, onClose, onCreated }) 
                         getOptionLabel={(it) => itemTitle(it)}
                         isOptionEqualToValue={(a, b) => a.id === b.id}
                         blurOnSelect
-                        renderOption={(props, it) => (
-                            <li {...props} key={it.id}>
-                                <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                                    <span style={{ fontWeight: 600 }}>{itemTitle(it)}</span>
-                                    <span style={{ fontSize: 12, color: '#6B7280' }}>
-                                        {it.qty} {it.unit} · {hasPieces(it) ? `${it.pieces.length} pièce(s) · ` : ''}{it.project || 'Stock libre'} · {splitLocations(it.location).join(', ') || 'sans emplacement'}
-                                    </span>
-                                </Box>
-                            </li>
+                        slotProps={{ paper: { sx: MENU_PAPER_SX }, listbox: { sx: { maxHeight: 340, p: 0.5 } } }}
+                        renderOption={(props, it) => {
+                            const { key, ...rest } = props;
+                            return (
+                                <li key={it.id ?? key} {...rest} style={{ ...rest.style, borderRadius: 6, padding: '8px 10px', alignItems: 'center', gap: 12 }}>
+                                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                                        <div style={{ fontSize: 14, fontWeight: 500, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{itemTitle(it)}</div>
+                                        <div style={{ fontSize: 12, color: '#6B7280', marginTop: 2 }}>
+                                            {it.project || 'Stock libre'} · {splitLocations(it.location).join(', ') || 'sans emplacement'}{hasPieces(it) ? ` · ${it.pieces.length} pièce${it.pieces.length > 1 ? 's' : ''}` : ''}
+                                        </div>
+                                    </Box>
+                                    <TonePill tone={5}>{it.qty} {it.unit || ''}</TonePill>
+                                </li>
+                            );
+                        }}
+                        renderInput={(params) => (
+                            <TextField {...params} size="small" placeholder="Fournisseur, référence, coloris…" sx={DA_FIELD_SX}
+                                InputProps={{ ...params.InputProps, startAdornment: <InputAdornment position="start"><Search size={16} color="#9CA3AF" /></InputAdornment> }} />
                         )}
-                        renderInput={(params) => <TextField {...params} size="small" label={`+ Ajouter un tissu en stock${project ? ' (affecté au dossier)' : ''}`} />}
                         noOptionsText={project ? 'Aucun article de ce dossier disponible en stock.' : 'Aucun article disponible en stock.'}
                     />
+                </DaField>
 
-                    {lines.length === 0 && (
-                        <Typography variant="body2" sx={{ color: '#9CA3AF', textAlign: 'center', py: 2 }}>
-                            Ajoute les tissus voulus, puis coche les pièces qu’il te faut.
-                        </Typography>
-                    )}
+                {lines.length === 0 && doneLines.length === 0 && (
+                    <Typography sx={{ fontSize: 13, color: '#9B9A97', textAlign: 'center', py: 1 }}>
+                        Ajoute les tissus voulus, puis choisis les pièces qu’il te faut.
+                    </Typography>
+                )}
 
-                    {lines.map(l => {
-                        const it = l.item;
-                        return (
-                            <Box key={it.id} sx={{ p: 1.5, border: '1px solid #E5E7EB', borderRadius: 2 }}>
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                    <Box sx={{ flex: 1, minWidth: 0 }}>
-                                        <Typography sx={{ fontWeight: 700 }}>{itemTitle(it)}</Typography>
-                                        <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 0.5 }}>
-                                            <Typography variant="caption" sx={{ color: '#6B7280' }}>{it.project || 'Stock libre'}{it.laize ? ` · Laize ${it.laize}` : ''} · stock {it.qty} {it.unit}</Typography>
-                                            <LocationChips value={it.location} />
-                                        </Stack>
-                                    </Box>
-                                    <IconButton size="small" onClick={() => removeLine(it.id)}><CloseIcon fontSize="small" /></IconButton>
+                {lines.map(l => {
+                    const it = l.item;
+                    return (
+                        <Box key={it.id} sx={{ p: 2, border: '1px solid #E0DED9', borderRadius: '8px' }}>
+                            <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+                                <Box sx={{ flex: 1, minWidth: 0 }}>
+                                    <Typography sx={{ fontFamily: ROBOTO, fontWeight: 500, fontSize: 15, color: '#111827' }}>{itemTitle(it)}</Typography>
+                                    <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 0.5 }} useFlexGap flexWrap="wrap">
+                                        <Typography sx={{ fontSize: 12, color: '#6B7280' }}>{it.project || 'Stock libre'}{it.laize ? ` · Laize ${it.laize}` : ''} · stock {it.qty} {it.unit}</Typography>
+                                        <LocationChips value={it.location} />
+                                    </Stack>
                                 </Box>
-                                {hasPieces(it) ? (
-                                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 1 }}>
-                                        {it.pieces.map((p, idx) => {
-                                            const takenBy = reserved.get(`${it.id}:${p.id}`);
-                                            const on = l.pieceIds.has(p.id);
-                                            return (
-                                                <Chip
-                                                    key={p.id ?? idx}
-                                                    label={`${p.name || `Pièce ${idx + 1}`} · ${p.qty} ${it.unit || 'ml'}${takenBy ? ` (déjà demandée ${takenBy})` : ''}`}
-                                                    onClick={takenBy ? undefined : () => togglePiece(it.id, p.id)}
-                                                    disabled={!!takenBy}
-                                                    variant={on ? 'filled' : 'outlined'}
-                                                    sx={{ fontWeight: 600, ...(on ? { bgcolor: '#1E2447', color: 'white', '&:hover': { bgcolor: '#2D3561' } } : {}) }}
-                                                />
-                                            );
-                                        })}
-                                    </Box>
-                                ) : (
-                                    <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1 }}>
+                                <IconButton size="small" onClick={() => removeLine(it.id)} title="Retirer ce tissu de la demande" sx={{ color: '#9B9A97' }}><X size={16} /></IconButton>
+                            </Box>
+                            {hasPieces(it) ? (
+                                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 1.5 }}>
+                                    {it.pieces.map((p, idx) => {
+                                        const by = takenBy(it.id, p.id);
+                                        const on = l.pieceIds.has(p.id);
+                                        const text = `${p.name || `Pièce ${idx + 1}`} · ${p.qty} ${it.unit || 'ml'}${by ? ` (déjà demandée ${by})` : ''}`;
+                                        return by
+                                            ? <TonePill key={p.id ?? idx} tone={null}>{text}</TonePill>
+                                            : <ChoicePill key={p.id ?? idx} active={on} onClick={() => togglePiece(it.id, p.id)}>{text}</ChoicePill>;
+                                    })}
+                                </Box>
+                            ) : (
+                                <Box sx={{ width: 220, mt: 1.5 }}>
+                                    <DaField label="Métrage voulu" hint={Number(l.qty) > Number(it.qty) ? `Maximum ${it.qty} ${it.unit || ''}` : 'Article sans détail des pièces'}>
                                         <TextField
-                                            type="number" size="small" label="Métrage voulu" value={l.qty}
+                                            type="number" size="small" fullWidth value={l.qty}
                                             onChange={(e) => setQty(it.id, e.target.value)}
                                             error={Number(l.qty) > Number(it.qty)}
-                                            helperText={Number(l.qty) > Number(it.qty) ? `Max ${it.qty} ${it.unit || ''}` : 'Article sans détail des pièces'}
-                                            sx={{ width: 200 }}
-                                            InputProps={{ endAdornment: <InputAdornment position="end">{it.unit || 'ml'}</InputAdornment> }}
+                                            sx={DA_FIELD_SX}
+                                            InputProps={{ endAdornment: <InputAdornment position="end"><span style={{ color: '#6B7280', fontSize: 13 }}>{it.unit || 'ml'}</span></InputAdornment> }}
                                         />
-                                    </Stack>
-                                )}
-                                {hasPieces(it) && lineQty(l) > 0 && (
-                                    <Typography variant="body2" sx={{ mt: 1, color: '#374151' }}>Demandé : <b>{lineQty(l)} {it.unit || 'ml'}</b></Typography>
-                                )}
-                            </Box>
-                        );
-                    })}
+                                    </DaField>
+                                </Box>
+                            )}
+                            {hasPieces(it) && lineQty(l) > 0 && (
+                                <Typography sx={{ mt: 1.25, fontSize: 13, color: '#6B7280' }}>Demandé : <b style={{ color: '#111827' }}>{lineQty(l)} {it.unit || 'ml'}</b></Typography>
+                            )}
+                        </Box>
+                    );
+                })}
 
-                    <TextField label="Commentaire (optionnel)" size="small" multiline minRows={2} value={comment} onChange={(e) => setComment(e.target.value)} />
-                </Stack>
-            </DialogContent>
-            <DialogActions>
-                <Button onClick={onClose}>Annuler</Button>
-                <Button variant="contained" onClick={save} disabled={!canSave || saving} sx={{ fontWeight: 700 }}>
-                    Envoyer la demande
-                </Button>
-            </DialogActions>
-        </Dialog>
+                <DaField label="Commentaire (optionnel)">
+                    <TextField size="small" fullWidth multiline minRows={2} value={comment} onChange={(e) => setComment(e.target.value)} sx={DA_FIELD_SX} />
+                </DaField>
+            </Stack>
+        </DaDialog>
     );
 }
 
@@ -432,28 +503,33 @@ function ConfirmDialog({ request, line, onClose, onDone }) {
         }
     };
     return (
-        <Dialog open onClose={onClose} maxWidth="xs" fullWidth>
-            <DialogTitle>Confirmer la mise à disposition</DialogTitle>
-            <DialogContent dividers>
-                <Stack spacing={2}>
-                    <Box>
-                        <Typography sx={{ fontWeight: 700 }}>{itemTitle(line)}</Typography>
-                        <Typography variant="body2" sx={{ color: '#6B7280' }}>
-                            {(line.pieces || []).length ? line.pieces.map(p => `${p.name} (${p.qty} ${line.unit || 'ml'})`).join(', ') : `${line.qty} ${line.unit || 'ml'}`}
-                        </Typography>
-                    </Box>
-                    <Alert severity="info" icon={false} sx={{ py: 0.5 }}>
-                        Emplacement : <b>{splitLocations(line.from_location).join(', ') || '—'}</b> → <b>{LOC_ATELIER}</b>
-                    </Alert>
-                    <OperatorInput value={operator} onChange={setOperator} label="Déposé par" />
-                </Stack>
-            </DialogContent>
-            <DialogActions>
-                <Button onClick={onClose}>Annuler</Button>
-                <Button variant="contained" onClick={confirm} disabled={!operator.trim() || saving} sx={{ fontWeight: 700, bgcolor: '#059669', '&:hover': { bgcolor: '#047857' } }}>
-                    Confirmer
-                </Button>
-            </DialogActions>
-        </Dialog>
+        <DaDialog
+            open
+            onClose={onClose}
+            title="Confirmer la mise à disposition"
+            subtitle={requestLabel(request)}
+            maxWidth="xs"
+            footer={(
+                <>
+                    <Button onClick={onClose} sx={{ ...BTN_GHOST, marginLeft: 'auto' }}>Annuler</Button>
+                    <Button variant="contained" disableElevation onClick={confirm} disabled={!operator.trim() || saving} sx={BTN_PRIMARY}>Confirmer</Button>
+                </>
+            )}
+        >
+            <Stack spacing={2}>
+                <Box>
+                    <Typography sx={{ fontFamily: ROBOTO, fontWeight: 500, fontSize: 15, color: '#111827' }}>{itemTitle(line)}</Typography>
+                    <Typography sx={{ fontSize: 13, color: '#6B7280', mt: 0.5 }}>
+                        {(line.pieces || []).length ? line.pieces.map(p => `${p.name} (${p.qty} ${line.unit || 'ml'})`).join(', ') : `${line.qty} ${line.unit || 'ml'}`}
+                    </Typography>
+                </Box>
+                <Typography sx={{ fontSize: 13, color: '#374151', bgcolor: '#EEF4FD', borderRadius: '8px', px: 1.5, py: 1 }}>
+                    Emplacement : <b>{splitLocations(line.from_location).join(', ') || '—'}</b> → <b>{LOC_ATELIER}</b>
+                </Typography>
+                <DaField label="Déposé par">
+                    <OperatorInput value={operator} onChange={setOperator} label={null} fieldSx={DA_FIELD_SX} />
+                </DaField>
+            </Stack>
+        </DaDialog>
     );
 }
