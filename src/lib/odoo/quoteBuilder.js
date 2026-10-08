@@ -95,7 +95,9 @@ const S = {
   pass1: () => L('pass1', 'Passementerie 1', ['pv_pass1', 'pv_pass_1'], 'Tissu', { unit: 'ml' }),
   pass2: () => L('pass2', 'Passementerie 2', ['pv_pass2', 'pv_pass_2'], 'Tissu', { unit: 'ml' }),
   embrasse: () => L('embrasse', 'Embrasse', ['pv_embrasse'], 'Tissu'),
-  interieur: () => L('interieur', 'Intérieurs', ['pv_interieur'], 'Tissu'),
+  // Intérieurs : ligne à part seulement pour un coussin confectionné chez nous ; s'il est
+  // sous-traité, ils rejoignent la ligne Manufacture (cf. buildQuote).
+  interieur: () => L('interieur', 'Intérieurs (confection Lenglart)', ['pv_interieur'], 'Tissu'),
   livraison: () => L('livraison', 'Livraison', ['livraison'], 'Livraison'),
 };
 const recipe = (...ids) => ids.map((id) => S[id]());
@@ -496,7 +498,13 @@ export function buildQuote({ rows = [], depRows = [], extraRows = [], config, pr
     for (const { c, raw, cost } of parts) {
       minuteCost += cost;
       // Ligne de recette qui reçoit cette colonne (sinon ligne de secours en fin de recette).
-      let slotIdx = slots.findIndex((sl) => sl.cols.includes(c.key));
+      // Intérieurs d'un produit SOUS-TRAITÉ (ST conf, pas d'heures de confection chez nous) :
+      // ils suivent la ligne Manufacture (le sous-traitant les fournit) au lieu d'une ligne à part.
+      const subcontracted = toNum(row.st_conf_pv) !== 0 && !toNum(row.heures_confection);
+      const followsManuf = c.key === 'pv_interieur' && subcontracted;
+      let slotIdx = followsManuf
+        ? slots.findIndex((sl) => sl.cols.includes('st_conf_pv'))
+        : slots.findIndex((sl) => sl.cols.includes(c.key));
       let slot = slots[slotIdx];
       if (!slot) {
         slot = { id: `extra_${c.key}`, label: c.label, cols: [c.key], product: null };
@@ -508,7 +516,9 @@ export function buildQuote({ rows = [], depRows = [], extraRows = [], config, pr
       if (c.key === 'livraison' && isolate) sec = sectionFor(LOGI_TITLE, ORDER_LOGI);
       else if (config.placement?.[c.key] === 'apart') sec = sectionFor(slot.label.toUpperCase(), ORDER_APART + slotIdx);
       const ov = config.overrides?.[overrideKey(config.groupBy, sec.title)]?.[`${type.key}:${slot.id}`];
-      const product = resolve(ov || slot.product || '@col', row, c);
+      const product = followsManuf && slot
+        ? resolve(ov || '@manufacture', row, c)
+        : resolve(ov || slot.product || '@col', row, c);
       if (!product) warnings.push(`Aucun article Odoo pour « ${slot.label} » (${type.label}).`);
       const byMl = (slot.unit || 'forfait') === 'ml' && !!c.mlKey;
       push({
