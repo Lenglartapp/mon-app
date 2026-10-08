@@ -4,12 +4,13 @@ import { AgGridReact } from 'ag-grid-react';
 import 'ag-grid-community/styles/ag-grid.css';
 import 'ag-grid-community/styles/ag-theme-alpine.css';
 
-import { schemaToGridCols } from '../lib/utils/schemaToGridCols.jsx';
+import { schemaToGridCols, GridSelectChip } from '../lib/utils/schemaToGridCols.jsx';
 import { recomputeRow } from '../lib/formulas/recomputeRow';
 import { generateRowLogs } from '../lib/utils/logUtils';
 import { uid } from '../lib/utils/uid';
 import { createDecentreePair, PAIRE_DECENTREE, DECENTREE_PARENT_ONLY_TECH, orderDecentreeRows } from '../lib/utils/pairDecentree';
-import { Plus, Trash2, Columns, Layers, Edit2, Filter, FileSpreadsheet, PinOff, ChevronDown } from 'lucide-react';
+import { Plus, Trash2, Columns, Layers, Edit2, Filter, FileSpreadsheet, PinOff, ChevronDown, ChevronRight, Truck } from 'lucide-react';
+import { TonePill } from './ui/ToolbarControls';
 import FilterPanel, { isConditionActive, evaluateCondition } from './FilterPanel';
 import { getDefaultMatieres } from '../lib/constants/matiereGroups';
 import { useAuth } from '../auth';
@@ -229,6 +230,10 @@ const AG_CUSTOM_CSS = `
      superposé exactement au cadre quand elle n'est pas collée. */
   box-shadow: 0 -1px 0 0 #E0DED9, -1px 0 0 0 #E0DED9, 1px 0 0 0 #E0DED9, -1px -1px 0 0 #E0DED9, 1px -1px 0 0 #E0DED9;
 }
+/* Listes déroulantes, menus et filtres d'AG Grid (z-index 5 par défaut) : au-dessus de la barre
+   de regroupement collante (z 7) et du titre de section collant (z 6), sinon le haut de la liste
+   (ex. « Rail » dans Type Méca) passe dessous et devient invisible / non cliquable. */
+.df-sticky .ag-theme-alpine .ag-popup-child { z-index: 20; }
 .df-sticky .ag-theme-alpine .ag-root > .ag-header {
   position: sticky; top: calc(var(--df-sticky-top, 0px) + ${GROUP_PANEL_HEIGHT}px); z-index: 3;
 }
@@ -1334,15 +1339,7 @@ function MinuteGrid({
         });
 
         // Colonne expédition toujours présente (pinned right)
-        const EXPEDITION_STYLES = {
-            'Non expédié':           { bg: '#F3F4F6', color: '#6B7280' },
-            'En préparation':        { bg: '#FEF3C7', color: '#92400E' },
-            'Expédié':               { bg: '#D1FAE5', color: '#065F46' },
-            'Rail expédié':          { bg: '#DBEAFE', color: '#1E40AF' },
-            'Rideau expédié':        { bg: '#EDE9FE', color: '#5B21B6' },
-            'Rail + Rideau expédié': { bg: '#D1FAE5', color: '#065F46' },
-        };
-        const ALL_EXPEDITION_STATUTS = Object.keys(EXPEDITION_STYLES);
+        const ALL_EXPEDITION_STATUTS = ['Non expédié', 'En préparation', 'Expédié', 'Rail expédié', 'Rideau expédié', 'Rail + Rideau expédié'];
 
         const expeditionCol = {
             field: 'statut_expedition',
@@ -1352,12 +1349,10 @@ function MinuteGrid({
             cellEditor: 'agSelectCellEditor',
             cellEditorParams: { values: ALL_EXPEDITION_STATUTS },
             pinned: 'right',
+            // Même pastille que les autres colonnes à liste (Produit, statuts…)
             cellRenderer: (params) => {
-                const val = params.value || 'Non expédié';
-                const s = EXPEDITION_STYLES[val] || EXPEDITION_STYLES['Non expédié'];
-                return React.createElement('span', {
-                    style: { display: 'inline-block', padding: '2px 8px', borderRadius: 99, fontSize: 11, fontWeight: 700, background: s.bg, color: s.color }
-                }, val);
+                if (params.node?.rowPinned) return null;
+                return React.createElement(GridSelectChip, { value: params.value || 'Non expédié', colKey: 'statut_expedition', gridTitle: title });
             },
         };
 
@@ -1741,53 +1736,58 @@ function MinuteGrid({
 
     // Vue mobile (cards)
     if (isMobile) {
+        // Carte mobile à la DA : statut d'avancement dans le nuancier bleu (du plus en amont, bleu ciel,
+        // au posé, bleu nuit), expédition en pastille grise, cotes en clair. Toucher = détail de la ligne.
         const MobileCard = ({ row }) => {
-            let mainStatus = { label: '—', bg: '#F3F4F6', color: '#6B7280' };
-            if (row.statut_pose === 'Terminé') mainStatus = { label: 'Posé', bg: '#ECFDF5', color: '#065F46' };
-            else if (row.statut_conf === 'Terminé') mainStatus = { label: 'Confectionné', bg: '#FDF2F8', color: '#9D174D' };
-            else if (row.statut_prepa === 'Terminé') mainStatus = { label: 'Prêt', bg: '#F5F3FF', color: '#5B21B6' };
-            else if (row.statut_cotes === 'Validé par chef de projet') mainStatus = { label: 'Côte validée', bg: '#EFF6FF', color: '#1E40AF' };
-            else if (row.statut_cotes === 'Définitive') mainStatus = { label: 'Coté', bg: '#DBEAFE', color: '#1D4ED8' };
-            else if (row.statut_cotes === 'Déduction restante à faire') mainStatus = { label: 'Déduction', bg: '#FEF3C7', color: '#92400E' };
+            let status = null; // { label, tone }
+            if (row.statut_pose === 'Terminé') status = { label: 'Posé', tone: 0 };
+            else if (row.statut_conf === 'Terminé') status = { label: 'Confectionné', tone: 1 };
+            else if (row.statut_prepa === 'Terminé') status = { label: 'Prêt', tone: 2 };
+            else if (row.statut_cotes === 'Validé par chef de projet') status = { label: 'Cote validée', tone: 3 };
+            else if (row.statut_cotes === 'Définitive') status = { label: 'Coté', tone: 4 };
+            else if (row.statut_cotes === 'Déduction restante à faire') status = { label: 'Déduction à faire', tone: 5 };
+            const EXP_LABEL = {
+                'En préparation': 'Expé. en prépa', 'Expédié': 'Expédié', 'Rail expédié': 'Rail expédié',
+                'Rideau expédié': 'Rideau expédié', 'Rail + Rideau expédié': 'Tout expédié',
+            };
+            const exp = EXP_LABEL[row.statut_expedition];
+            const dim = (v) => (v === undefined || v === null || v === '' ? '—' : v);
             return (
-                <div onClick={() => handleOpenDetail(row)} style={{ background: 'white', borderRadius: 12, padding: 16, marginBottom: 12, boxShadow: '0 1px 3px rgba(0,0,0,0.05)', border: '1px solid #E0DED9', display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                        <div>
-                            <div style={{ fontSize: 16, fontWeight: 700, color: '#111827' }}>{row.piece || 'Sans pièce'}</div>
-                            <div style={{ fontSize: 13, color: '#4B5563', marginTop: 2 }}>{row.produit || '—'}</div>
+                <div onClick={() => handleOpenDetail(row)} style={{ background: 'white', borderRadius: 12, padding: '12px 14px', marginBottom: 8, border: '1px solid #E0DED9', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontFamily: 'Roboto, system-ui, sans-serif' }}>
+                    <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                            <div style={{ minWidth: 0 }}>
+                                <div style={{ fontSize: 15, fontWeight: 600, color: '#111827', lineHeight: 1.25 }}>{row.piece || 'Sans pièce'}</div>
+                                <div style={{ fontSize: 13, color: '#6B7280', marginTop: 2 }}>{row.produit || '—'}</div>
+                            </div>
+                            {status && <span style={{ flexShrink: 0 }}><TonePill tone={status.tone}>{status.label}</TonePill></span>}
                         </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-                            <div style={{ padding: '4px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700, background: mainStatus.bg, color: mainStatus.color, textTransform: 'uppercase' }}>{mainStatus.label}</div>
-                            {row.statut_expedition && row.statut_expedition !== 'Non expédié' && (() => {
-                                const EXP_MOBILE = {
-                                    'En préparation':        { bg: '#FEF3C7', color: '#92400E', label: '📦 En prépa' },
-                                    'Expédié':               { bg: '#D1FAE5', color: '#065F46', label: '🚚 Expédié' },
-                                    'Rail expédié':          { bg: '#DBEAFE', color: '#1E40AF', label: '🚚 Rail exp.' },
-                                    'Rideau expédié':        { bg: '#EDE9FE', color: '#5B21B6', label: '🚚 Rideau exp.' },
-                                    'Rail + Rideau expédié': { bg: '#D1FAE5', color: '#065F46', label: '🚚 Tout exp.' },
-                                };
-                                const s = EXP_MOBILE[row.statut_expedition];
-                                if (!s) return null;
-                                return <div style={{ padding: '2px 6px', borderRadius: 6, fontSize: 10, fontWeight: 700, background: s.bg, color: s.color }}>{s.label}</div>;
-                            })()}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', fontSize: 13, color: '#6B7280' }}>
+                            <span>Largeur <strong style={{ color: '#111827', fontWeight: 600 }}>{dim(row.largeur)}</strong></span>
+                            <span>Hauteur <strong style={{ color: '#111827', fontWeight: 600 }}>{dim(row.hauteur)}</strong></span>
+                            {exp && (
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, height: 22, padding: '0 8px', borderRadius: 99, background: '#F4F4F4', color: '#374151', fontSize: 12, fontWeight: 600 }}>
+                                    <Truck size={12} /> {exp}
+                                </span>
+                            )}
                         </div>
                     </div>
-                    <div style={{ display: 'flex', gap: 16, fontSize: 13, color: '#6B7280', borderTop: '1px solid #F9FAFB', paddingTop: 8 }}>
-                        <div>L: <span style={{ color: '#111827', fontWeight: 600 }}>{row.largeur || '—'}</span></div>
-                        <div>H: <span style={{ color: '#111827', fontWeight: 600 }}>{row.hauteur || '—'}</span></div>
-                    </div>
+                    <ChevronRight size={18} color="#C9C7C2" style={{ flexShrink: 0 }} />
                 </div>
             );
         };
         return (
             <div style={{ width: '100%' }}>
                 <div className="mobile-grid-cards">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                        <span style={{ fontSize: 13, fontWeight: 600, color: '#6B7280' }}>{rows.length} Lignes</span>
-                        {!readOnly && <button onClick={() => handleAddRow(1)} style={{ background: '#2563EB', color: 'white', border: 'none', padding: '6px 12px', borderRadius: 20, fontSize: 12, fontWeight: 600 }}>+ Ajouter</button>}
-                    </div>
+                    {!readOnly && (
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
+                            <button onClick={() => handleAddRow(1)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 34, padding: '0 14px', borderRadius: 8, border: '1px solid #E0DED9', background: 'white', color: '#374151', fontSize: 13, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>
+                                <Plus size={14} /> Ajouter une ligne
+                            </button>
+                        </div>
+                    )}
                     {rows.length === 0 ? (
-                        <div style={{ padding: 30, textAlign: 'center', color: '#9CA3AF', background: 'transparent', borderRadius: 8, border: '1px dashed #D1D5DB' }}>Aucune ligne</div>
+                        <div style={{ padding: 30, textAlign: 'center', color: '#9B9A97', borderRadius: 12, border: '1px dashed #E0DED9' }}>Aucune ligne</div>
                     ) : (
                         rows.map(row => <MobileCard key={row.id} row={row} />)
                     )}

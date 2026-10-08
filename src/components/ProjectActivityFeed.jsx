@@ -8,6 +8,18 @@ import { fr } from 'date-fns/locale';
 import { COLORS } from '../lib/constants/ui';
 import ImageLightbox from './ui/ImageLightbox'; // <--- IMPORT LIGHTBOX
 import { renderRichText } from '../lib/utils/richText.jsx';
+import { useAuth } from '../auth';
+
+// Pastille d'épingle : petit rond bleu nuit, épingle blanche inclinée (message épinglé) ;
+// épingle grise discrète sinon.
+function PinBadge({ pinned, size = 22 }) {
+    if (!pinned) return <Pin size={14} color="#9B9A97" style={{ transform: 'rotate(35deg)' }} />;
+    return (
+        <span style={{ width: size, height: size, borderRadius: '50%', background: '#1E2447', display: 'inline-grid', placeItems: 'center', boxShadow: '0 1px 3px rgba(30,36,71,0.3)' }}>
+            <Pin size={Math.round(size * 0.55)} color="white" fill="white" style={{ transform: 'rotate(35deg)' }} />
+        </span>
+    );
+}
 
 // Avatar : initiales + couleur stable dérivée du nom (même principe que le sélecteur de chargé d'affaires).
 const initialsOf = (name) => String(name || "?").trim().split(/\s+/).map(w => w[0]).join("").slice(0, 2).toUpperCase() || "?";
@@ -115,6 +127,10 @@ const extractActivity = (rows, wall, pinnedIds = []) => {
 };
 
 export default function ProjectActivityFeed({ rows, wall, pinnedIds, onTogglePin, isMobile = false, projectId, composer = null }) {
+    const { currentUser } = useAuth();
+    // Mes propres messages : à droite, sur bulle bleu ciel (comme une conversation)
+    const myNames = new Set([currentUser?.name, currentUser?.displayName, currentUser?.email].filter(Boolean).map(n => String(n).trim().toLowerCase()));
+    const isMineName = (name) => myNames.has(String(name || '').trim().toLowerCase());
     const [filter, setFilter] = useState('messages'); // par défaut : les messages (l'activité reste à un clic)
     const [activeFilters, setActiveFilters] = useState([]);
 
@@ -214,26 +230,36 @@ export default function ProjectActivityFeed({ rows, wall, pinnedIds, onTogglePin
             );
         }
 
+        const mine = isMineName(evt.user);
+        const pinButton = canPin && (
+            <button onClick={() => onTogglePin && onTogglePin(evt.id)} title={evt.pinned ? "Détacher" : "Épingler"}
+                style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: 2, display: 'flex', opacity: evt.pinned ? 1 : 0.6 }}>
+                <PinBadge pinned={evt.pinned} size={20} />
+            </button>
+        );
         return (
-            <div key={`${evt.id}-${isPinnedView ? 'pin' : 'feed'}`} style={{ display: 'flex', gap: 12, padding: '12px 0' }}>
-                <span style={{ width: 30, height: 30, borderRadius: '50%', background: avatarColor(evt.user), color: 'white', fontSize: 11, fontWeight: 600, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
-                    {initialsOf(evt.user)}
-                </span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-                        <span style={{ fontWeight: 500, color: '#1F2A37', fontSize: 14 }}>{evt.user}</span>
+            <div key={`${evt.id}-${isPinnedView ? 'pin' : 'feed'}`} style={{ display: 'flex', gap: 12, padding: '12px 0', flexDirection: mine ? 'row-reverse' : 'row' }}>
+                {!mine && (
+                    <span style={{ width: 30, height: 30, borderRadius: '50%', background: avatarColor(evt.user), color: 'white', fontSize: 11, fontWeight: 600, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+                        {initialsOf(evt.user)}
+                    </span>
+                )}
+                <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: mine ? 'flex-end' : 'flex-start' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', width: '100%', justifyContent: mine ? 'flex-end' : 'flex-start' }}>
+                        {mine && pinButton && <span style={{ marginRight: 'auto' }}>{pinButton}</span>}
+                        <span style={{ fontWeight: 500, color: '#1F2A37', fontSize: 14 }}>{mine ? 'Vous' : evt.user}</span>
                         {evt.target && <span style={{ fontSize: 12, color: '#8A8F98' }}>sur {target}</span>}
                         {when}
-                        {canPin && (
-                            <button onClick={() => onTogglePin && onTogglePin(evt.id)} title={evt.pinned ? "Détacher" : "Épingler"} style={{ marginLeft: 'auto', border: 'none', background: 'transparent', cursor: 'pointer', padding: 2, opacity: evt.pinned ? 1 : 0.35 }}>
-                                <Pin size={14} color={evt.pinned ? "#1E2447" : "#8A8F98"} fill={evt.pinned ? "#1E2447" : "none"} />
-                            </button>
-                        )}
+                        {!mine && pinButton && <span style={{ marginLeft: 'auto' }}>{pinButton}</span>}
                     </div>
                     {(evt.text || evt.image) && (
-                        <div style={{ marginTop: 6, background: '#F4F4F4', borderRadius: '4px 14px 14px 14px', padding: '10px 14px', display: 'inline-block', maxWidth: '100%', boxSizing: 'border-box' }}>
+                        <div style={{
+                            marginTop: 6, padding: '10px 14px', display: 'inline-block', maxWidth: '85%', boxSizing: 'border-box',
+                            background: mine ? '#D6E4F8' : '#F4F4F4',
+                            borderRadius: mine ? '14px 4px 14px 14px' : '4px 14px 14px 14px',
+                        }}>
                             {/* Même rendu que le fil du détail de ligne : mentions + mise en forme légère */}
-                            {evt.text && <div style={{ fontSize: 14, color: '#2B2F36', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{renderRichText(evt.text)}</div>}
+                            {evt.text && <div style={{ fontSize: 14, color: '#111827', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{renderRichText(evt.text)}</div>}
                             {evt.image && (
                                 <img
                                     src={evt.image}
@@ -281,7 +307,7 @@ export default function ProjectActivityFeed({ rows, wall, pinnedIds, onTogglePin
                 </div>
                 {composer}
             </div>
-            {pinnedPosts.length > 0 && <div style={{ marginBottom: 8, paddingBottom: 8, borderBottom: '1px solid #EDEEF0' }}><div style={{ padding: '8px 0 0', fontSize: 12, color: '#8A8F98', display: 'flex', alignItems: 'center', gap: 6 }}><Pin size={12} /> Épinglés ({pinnedPosts.length})</div>{pinnedPosts.map(post => renderEvent(post, true))}</div>}
+            {pinnedPosts.length > 0 && <div style={{ marginBottom: 8, paddingBottom: 8, borderBottom: '1px solid #EDEEF0' }}><div style={{ padding: '8px 0 0', fontSize: 13, color: '#374151', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 8 }}><PinBadge pinned size={18} /> Épinglés <span style={{ color: '#9B9A97', fontWeight: 400 }}>{pinnedPosts.length}</span></div>{pinnedPosts.map(post => renderEvent(post, true))}</div>}
             <div style={{ maxHeight: 600, overflowY: 'auto' }}>{feedEvents.length === 0
                 ? (pinnedPosts.length > 0
                     ? null

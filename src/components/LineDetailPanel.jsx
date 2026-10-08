@@ -1,18 +1,14 @@
 import React, { useState } from 'react';
 import Dialog from '@mui/material/Dialog';
 import Box from '@mui/material/Box';
-import Typography from '@mui/material/Typography';
 import TextField from '@mui/material/TextField';
-import IconButton from '@mui/material/IconButton';
-import CloseIcon from '@mui/icons-material/Close';
 import MenuItem from '@mui/material/MenuItem';
 import Switch from '@mui/material/Switch';
-import FormControlLabel from '@mui/material/FormControlLabel';
-import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
-import Badge from '@mui/material/Badge';
-import Tooltip from '@mui/material/Tooltip';
 
 import ActivitySidebar from './ui/ActivitySidebar';
+import { ToolbarButton } from './ui/ToolbarControls';
+import { DA_FIELD_SX } from '../lib/constants/daStyles';
+import { MessageSquare, X } from 'lucide-react';
 import GridPhotoCell from './ui/GridPhotoCell';
 import GridSketchCell from './ui/GridSketchCell';
 import { generateRowLogs } from '../lib/utils/logUtils';
@@ -24,6 +20,22 @@ import { useAuth } from '../auth'; // <--- NEW IMPORT
 import { supabase } from '../lib/supabaseClient'; // <--- NEW IMPORT
 import { blobToBase64, queuePhoto } from '../lib/syncQueue';
 import { compressImageToBlob, uploadBlobToStorage } from '../lib/utils/imageUpload';
+
+const ROBOTO = 'Roboto, system-ui, sans-serif';
+
+// Champs fins à la DA (cf. DA_FIELD_SX).
+const FIELD_SX = DA_FIELD_SX;
+
+// Ligne de propriété : libellé gris à gauche (largeur fixe), valeur à droite.
+// Sur téléphone (df-prop-row, cf. index.css) : libellé au-dessus, champ sur toute la largeur.
+function PropRow({ label, children, top = false }) {
+    return (
+        <div className="df-prop-row" style={{ display: 'grid', gridTemplateColumns: '200px minmax(0, 1fr)', gap: 16, alignItems: top ? 'start' : 'center', padding: '7px 0' }}>
+            <div className="df-prop-label" style={{ fontFamily: ROBOTO, fontSize: 13, color: '#6B7280', paddingTop: top ? 10 : 0, overflow: 'hidden', textOverflow: 'ellipsis' }} title={label}>{label}</div>
+            <div style={{ minWidth: 0 }}>{children}</div>
+        </div>
+    );
+}
 
 export default function LineDetailPanel({ open, onClose, row, schema, onRowChange, columnVisibilityModel, minuteId, projectId, currentUser: propUser, authorName: propAuthorName, fullScreen = false, allRows }) {
     // New Sidebar Toggle State
@@ -202,69 +214,48 @@ export default function LineDetailPanel({ open, onClose, row, schema, onRowChang
             onClose={onClose}
             maxWidth="xl" // Wider to accommodate sidebar
             fullWidth
-            fullScreen={false} // Always modal, never full screen
+            fullScreen={fullScreen} // téléphone : plein écran (formulaire lisible, champs pleine largeur)
             PaperProps={{
                 sx: fullScreen
-                    ? {
-                        // Mobile: "Almost" fullscreen but with margins and rounded corners
-                        height: 'calc(100% - 32px)',
-                        margin: 2, // 16px margin around
-                        display: 'flex', flexDirection: 'column', overflow: 'hidden', borderRadius: 3
-                    }
-                    : { height: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', borderRadius: 3 },
+                    ? { display: 'flex', flexDirection: 'column', overflow: 'hidden', borderRadius: 0 }
+                    : { height: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', borderRadius: '12px', boxShadow: '0 20px 40px rgba(17,24,39,0.18)' },
             }}
         >
-            {/* Header */}
-            <Box sx={{
-                p: '12px 24px',
-                borderBottom: '1px solid #E5E7EB',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                bgcolor: 'white'
-            }}>
-                <Typography variant="h6" sx={{ fontWeight: 600, color: '#111827' }}>
-                    {fullScreen
-                        ? [row.zone, row.piece, row.produit].filter(Boolean).join(' ') || "Détails"
-                        : "Détails de la ligne"
-                    }
-                    <Typography component="span" sx={{ ml: 1.5, fontSize: 13, color: '#6B7280', bgcolor: '#F3F4F6', px: 1, py: 0.5, borderRadius: 1 }}>
-                        #{String(row.id).slice(-4)}
-                    </Typography>
-                </Typography>
-
-                <Box sx={{ display: 'flex', gap: 1 }}>
-                    <Tooltip title={isSidebarOpen ? "Masquer l'activité" : "Afficher l'activité"}>
-                        <IconButton
-                            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                            sx={{
-                                color: isSidebarOpen ? '#2563EB' : '#6B7280',
-                                bgcolor: isSidebarOpen ? '#EFF6FF' : 'transparent',
-                                '&:hover': { bgcolor: isSidebarOpen ? '#DBEAFE' : '#F3F4F6' }
-                            }}
-                        >
-                            <Badge badgeContent={activityCount} color="primary">
-                            <ChatBubbleOutlineIcon />
-                        </Badge>
-                        </IconButton>
-                    </Tooltip>
-                    <IconButton onClick={onClose} sx={{ color: '#9CA3AF', '&:hover': { color: '#111827', bgcolor: '#F3F4F6' } }}>
-                        <CloseIcon />
-                    </IconButton>
+            {/* En-tête à la DA : titre Roboto + référence de ligne, bouton Activité, croix */}
+            <Box sx={{ p: fullScreen ? '14px 16px 12px' : '20px 28px 16px', borderBottom: '1px solid #E8E6E2', display: 'flex', alignItems: 'flex-start', gap: 1.5, bgcolor: 'white' }}>
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontFamily: ROBOTO, fontSize: fullScreen ? 19 : 24, fontWeight: 400, color: '#111827', lineHeight: 1.25, overflow: 'hidden', ...(fullScreen ? { display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' } : { textOverflow: 'ellipsis', whiteSpace: 'nowrap' }) }}>
+                        {[row.zone, row.piece, row.produit].filter(Boolean).join(' · ') || 'Détail de la ligne'}
+                    </div>
+                    <div style={{ fontSize: 13, color: '#6B7280', marginTop: 4 }}>Détail de la ligne · #{String(row.id).slice(-4)}</div>
                 </Box>
+                <ToolbarButton
+                    icon={<MessageSquare size={16} />}
+                    active={isSidebarOpen}
+                    onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                    title={isSidebarOpen ? "Masquer l'activité" : "Afficher l'activité"}
+                >
+                    {fullScreen ? (activityCount > 0 ? activityCount : null) : `Activité${activityCount > 0 ? ` (${activityCount})` : ''}`}
+                </ToolbarButton>
+                <button onClick={onClose} title="Fermer" style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#9B9A97', display: 'flex', padding: 4, marginTop: 6 }}>
+                    <X size={20} />
+                </button>
             </Box>
 
             {/* Main Content Area (Flex Row) */}
             <Box sx={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
 
                 {/* LEFT: FORM */}
+                {/* Téléphone : l'activité, quand elle est ouverte, remplace le formulaire */}
                 <Box sx={{
                     flex: 1,
-                    p: 4,
+                    p: fullScreen ? '8px 16px 24px' : '20px 28px',
                     overflowY: 'auto',
-                    bgcolor: 'white'
+                    bgcolor: 'white',
+                    display: fullScreen && isSidebarOpen ? 'none' : 'block',
                 }}>
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, maxWidth: 800, margin: '0 auto' }}>
+                    {/* Fiche façon Notion : libellé gris à gauche, valeur à droite */}
+                    <Box sx={{ display: 'flex', flexDirection: 'column', maxWidth: 820, margin: '0 auto' }}>
 
                         {schema.map((col) => {
                             if (col.key === 'sel' || col.key === 'detail') return null;
@@ -279,10 +270,7 @@ export default function LineDetailPanel({ open, onClose, row, schema, onRowChang
                             // PHOTO FIELD
                             if (isPhoto) {
                                 return (
-                                    <Box key={col.key}>
-                                        <Typography variant="subtitle2" sx={{ mb: 1, color: '#374151', fontWeight: 500 }}>
-                                            {col.label || col.key}
-                                        </Typography>
+                                    <PropRow key={col.key} label={col.label || col.key} top>
                                         <div style={{
                                             border: '1px solid #E0DED9',
                                             borderRadius: 8,
@@ -297,17 +285,14 @@ export default function LineDetailPanel({ open, onClose, row, schema, onRowChang
                                                 offlineContext={projectId ? { projectId, rowId: row?.id, fieldKey: col.key } : undefined}
                                             />
                                         </div>
-                                    </Box>
+                                    </PropRow>
                                 );
                             }
 
                             // SKETCH FIELD
                             if (isSketch) {
                                 return (
-                                    <Box key={col.key}>
-                                        <Typography variant="subtitle2" sx={{ mb: 1, color: '#374151', fontWeight: 500 }}>
-                                            {col.label || col.key}
-                                        </Typography>
+                                    <PropRow key={col.key} label={col.label || col.key} top>
                                         <div style={{
                                             border: '1px solid #E0DED9',
                                             borderRadius: 8,
@@ -323,46 +308,43 @@ export default function LineDetailPanel({ open, onClose, row, schema, onRowChang
                                                 onSketchUpdate={(newVal) => handleFieldChange(col.key, newVal)}
                                             />
                                         </div>
-                                    </Box>
+                                    </PropRow>
                                 );
                             }
 
                             if (isBoolean) {
                                 return (
-                                    <FormControlLabel
-                                        key={col.key}
-                                        control={
-                                            <Switch
-                                                checked={!!row[col.key]}
-                                                onChange={(e) => handleFieldChange(col.key, e.target.checked)}
-                                                disabled={isReadOnly}
-                                            />
-                                        }
-                                        label={col.label || col.key}
-                                        sx={{ ml: 0 }}
-                                    />
+                                    <PropRow key={col.key} label={col.label || col.key}>
+                                        <Switch
+                                            checked={!!row[col.key]}
+                                            onChange={(e) => handleFieldChange(col.key, e.target.checked)}
+                                            disabled={isReadOnly}
+                                            size="small"
+                                        />
+                                    </PropRow>
                                 );
                             }
 
                             if (isSelect) {
                                 return (
-                                    <TextField
-                                        key={col.key}
-                                        select
-                                        fullWidth
-                                        label={col.label || col.key}
-                                        value={row[col.key] ?? ''}
-                                        onChange={(e) => handleFieldChange(col.key, e.target.value)}
-                                        disabled={isReadOnly}
-                                        variant="outlined"
-                                        size="medium"
-                                    >
-                                        {col.options?.map((option) => (
-                                            <MenuItem key={option} value={option}>
-                                                {option}
-                                            </MenuItem>
-                                        ))}
-                                    </TextField>
+                                    <PropRow key={col.key} label={col.label || col.key}>
+                                        <TextField
+                                            select
+                                            fullWidth
+                                            value={row[col.key] ?? ''}
+                                            onChange={(e) => handleFieldChange(col.key, e.target.value)}
+                                            disabled={isReadOnly}
+                                            variant="outlined"
+                                            size="small"
+                                            sx={FIELD_SX}
+                                        >
+                                            {col.options?.map((option) => (
+                                                <MenuItem key={option} value={option} sx={{ fontSize: 14 }}>
+                                                    {option}
+                                                </MenuItem>
+                                            ))}
+                                        </TextField>
+                                    </PropRow>
                                 );
                             }
 
@@ -370,19 +352,20 @@ export default function LineDetailPanel({ open, onClose, row, schema, onRowChang
                             const isPieceField = col.key === 'piece';
                             const hasConflict = isPieceField && pieceConflict;
                             return (
-                                <BlurTextField
-                                    key={col.key}
-                                    fullWidth
-                                    label={col.label || col.key}
-                                    value={row[col.key]}
-                                    onChange={(newValue) => handleFieldChange(col.key, newValue)}
-                                    disabled={isReadOnly}
-                                    type={col.type === 'number' || col.type === 'formula' ? 'number' : 'text'}
-                                    variant="outlined"
-                                    size="medium"
-                                    error={hasConflict}
-                                    helperText={hasConflict ? 'Ce nom de pièce existe déjà dans cette zone' : (col.formula ? `Formule: ${col.formula}` : '')}
-                                />
+                                <PropRow key={col.key} label={col.label || col.key}>
+                                    <BlurTextField
+                                        fullWidth
+                                        value={row[col.key]}
+                                        onChange={(newValue) => handleFieldChange(col.key, newValue)}
+                                        disabled={isReadOnly}
+                                        type={col.type === 'number' || col.type === 'formula' ? 'number' : 'text'}
+                                        variant="outlined"
+                                        size="small"
+                                        sx={FIELD_SX}
+                                        error={hasConflict}
+                                        helperText={hasConflict ? 'Ce nom de pièce existe déjà dans cette zone' : (col.formula ? `Formule : ${col.formula}` : '')}
+                                    />
+                                </PropRow>
                             );
                         })}
                     </Box>
@@ -390,6 +373,7 @@ export default function LineDetailPanel({ open, onClose, row, schema, onRowChang
 
                 {/* RIGHT: SIDEBAR (Collapsible) */}
                 {isSidebarOpen && (
+                    <Box sx={fullScreen ? { flex: 1, minWidth: 0, display: 'flex', '& > .MuiBox-root': { width: '100% !important', borderLeft: 'none !important' } } : { display: 'contents' }}>
                     <ActivitySidebar
                         isOpen={isSidebarOpen}
                         activities={activities}
@@ -401,6 +385,7 @@ export default function LineDetailPanel({ open, onClose, row, schema, onRowChang
                         rowId={row.id}
                         row={row} // <--- Pass row for context
                     />
+                    </Box>
                 )}
 
             </Box>

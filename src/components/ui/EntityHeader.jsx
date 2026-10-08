@@ -1,4 +1,5 @@
 import React from "react";
+import { StatusSelectPill } from "./ToolbarControls";
 
 // En-tête « fiche d'identité » partagé par l'écran chiffrage et l'écran projet :
 // carte deux colonnes (identité à gauche, encadré à droite), titre renommable au
@@ -122,27 +123,9 @@ export function EditableTitle({ value, onSave, canEdit, placeholder = "Sans nom"
 }
 
 // options: { KEY: { label, color } }
-export function StatusPill({ value, options, onChange, disabled }) {
-  const color = options[value]?.color || '#9CA3AF';
-  return (
-    <div style={{ position: 'relative', display: 'inline-block' }}>
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        disabled={disabled}
-        style={{
-          appearance: 'none', padding: '7px 14px 7px 26px', borderRadius: 20, border: '1px solid #E0DED9', background: 'white',
-          fontWeight: 600, color: '#374151', cursor: disabled ? 'not-allowed' : 'pointer', outline: 'none', fontSize: 13,
-          minWidth: 120, textAlign: 'center', fontFamily: 'inherit',
-        }}
-      >
-        {Object.entries(options).map(([key, opt]) => (
-          <option key={key} value={key}>{opt.label}</option>
-        ))}
-      </select>
-      <div style={{ position: 'absolute', top: '50%', left: 11, transform: 'translateY(-50%)', width: 8, height: 8, borderRadius: '50%', pointerEvents: 'none', background: color }} />
-    </div>
-  );
+// Statut d'entête (projet, chiffrage) : même pastille et même liste déroulante que dans les listes.
+export function StatusPill({ value, options, tones, onChange, disabled }) {
+  return <StatusSelectPill value={value} options={options} tones={tones} onChange={onChange} disabled={disabled} />;
 }
 
 export function HeaderButton({ onClick, title, children }) {

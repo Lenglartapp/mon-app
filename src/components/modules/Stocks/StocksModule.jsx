@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
-import Button from '@mui/material/Button';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 
 import { S } from '../../../lib/constants/ui';
@@ -15,6 +14,8 @@ import { can } from '../../../lib/authz';
 import MovementModal from './MovementModal'; // Imported Modal
 import { useWarehouseZones } from '../../../hooks/useSupabase';
 import { PackagePlus, PackageMinus, ArrowLeftRight } from 'lucide-react'; // Icons
+import { ToolbarButton } from '../../ui/ToolbarControls';
+import { FLUX_TONES } from '../../../lib/constants/daStyles';
 
 // Mock Data for initial state
 export default function StocksModule({
@@ -54,13 +55,13 @@ export default function StocksModule({
     // Define Tabs
     const TABS = [
         { key: 0, label: "Dashboard" },
-        { key: 1, label: "Journal des Mouvements" },
-        { key: 2, label: "État du Stock" },
+        { key: 1, label: "Journal des mouvements" },
+        { key: 2, label: "État du stock" },
         { key: 3, label: "Mise à disposition" }
     ];
 
     return (
-        <Box sx={{ minHeight: '100vh', bgcolor: '#FFFFFF', p: 3, display: 'flex', flexDirection: 'column', width: '100%' }}>
+        <Box sx={{ bgcolor: '#FFFFFF', p: 3, display: 'flex', flexDirection: 'column', width: '100%' }}>
             {/* Contenu centré (1600 px max), comme Logistique / Performance */}
             <div style={{ width: '100%', maxWidth: 1600, margin: '0 auto', display: 'flex', flexDirection: 'column', flex: 1 }}>
 
@@ -82,75 +83,33 @@ export default function StocksModule({
                         <h1 style={{ fontSize: 32, fontWeight: 400, fontFamily: 'Roboto, system-ui, sans-serif', color: '#111827', margin: 0, letterSpacing: '-0.01em' }}>Inventaire</h1>
                     </div>
 
-                    {/* Actions (Aligned with Title) */}
-                    <div style={{ display: 'flex', gap: 12, paddingTop: 32 }}>
-                        {canEdit && tabIndex === 1 && (
-                            <>
-                                <Button
-                                    variant="contained"
-                                    color="success"
-                                    startIcon={<PackagePlus size={18} />}
-                                    onClick={() => handleOpenModal('IN')}
-                                    sx={{ fontWeight: 700, textTransform: 'none', borderRadius: 2 }}
-                                >
-                                    Entrée
-                                </Button>
-                                <Button
-                                    variant="contained"
-                                    color="warning"
-                                    startIcon={<PackageMinus size={18} />}
-                                    onClick={() => handleOpenModal('OUT')}
-                                    sx={{ fontWeight: 700, px: 3, color: 'white', textTransform: 'none', borderRadius: 2 }}
-                                >
-                                    Sortie
-                                </Button>
-                                <Button
-                                    variant="contained"
-                                    color="primary"
-                                    startIcon={<ArrowLeftRight size={18} />}
-                                    onClick={() => handleOpenModal('MOVE')}
-                                    sx={{ fontWeight: 700, px: 3, textTransform: 'none', borderRadius: 2 }}
-                                >
-                                    Changer Emplacement
-                                </Button>
-                            </>
-                        )}
-                    </div>
                 </div>
 
-                {/* 2. Nav Row (Centered) */}
-                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 24 }}>
-                    <div style={{
-                        background: 'white',
-                        borderRadius: 9999,
-                        padding: 4,
-                        display: 'flex',
-                        gap: 4,
-                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)',
-                        border: '1px solid rgba(0,0,0,0.05)'
-                    }}>
-                        {TABS.map(t => (
-                            <button
-                                key={t.key}
-                                onClick={() => setTabIndex(t.key)}
-                                style={{
-                                    padding: '8px 20px',
-                                    borderRadius: 9999,
-                                    fontSize: 14,
-                                    fontWeight: 500,
-                                    border: 'none',
-                                    cursor: 'pointer',
-                                    background: tabIndex === t.key ? '#1E2447' : 'transparent',
-                                    color: tabIndex === t.key ? 'white' : '#4B5563',
-                                    transition: 'all 0.2s',
-                                    boxShadow: tabIndex === t.key ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-                                    outline: 'none'
-                                }}
-                            >
-                                {t.label}
-                            </button>
-                        ))}
-                    </div>
+                {/* 2. Onglets : mêmes pastilles que les vues du chiffrage (Minutes / Liste Achats / Moulinette),
+                    sans cadre autour ; un peu d'air avant le contenu */}
+                <div style={{ display: 'flex', justifyContent: 'center', gap: 2, marginBottom: 36 }}>
+                    {TABS.map(t => (
+                        <button
+                            key={t.key}
+                            className="df-pill-tab" data-active={tabIndex === t.key}
+                            onClick={() => setTabIndex(t.key)}
+                            style={{
+                                padding: '8px 20px',
+                                borderRadius: 99,
+                                fontSize: 14,
+                                fontWeight: 500,
+                                border: 'none',
+                                cursor: 'pointer',
+                                background: tabIndex === t.key ? '#1E2447' : 'transparent',
+                                color: tabIndex === t.key ? '#FFFFFF' : '#4B5563',
+                                transition: 'all 0.2s cubic-bezier(0.25, 1, 0.5, 1)',
+                                boxShadow: tabIndex === t.key ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                                outline: 'none'
+                            }}
+                        >
+                            {t.label}
+                        </button>
+                    ))}
                 </div>
 
                 {/* 3. Content */}
@@ -171,6 +130,13 @@ export default function StocksModule({
                             projects={projects}
                             inventory={inventory}
                             canEdit={canEdit}
+                            actions={canEdit ? (
+                                <>
+                                    <ToolbarButton tone={FLUX_TONES.IN} icon={<PackagePlus size={16} />} onClick={() => handleOpenModal('IN')}>Entrée</ToolbarButton>
+                                    <ToolbarButton tone={FLUX_TONES.OUT} icon={<PackageMinus size={16} />} onClick={() => handleOpenModal('OUT')}>Sortie</ToolbarButton>
+                                    <ToolbarButton tone={FLUX_TONES.MOVE} icon={<ArrowLeftRight size={16} />} onClick={() => handleOpenModal('MOVE')}>Changer d'emplacement</ToolbarButton>
+                                </>
+                            ) : null}
                         />
                     )}
                     {tabIndex === 2 && (

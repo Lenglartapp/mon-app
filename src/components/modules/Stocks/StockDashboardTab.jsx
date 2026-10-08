@@ -138,9 +138,10 @@ export default function StockDashboardTab({ inventory = [], projects = [], movem
         display: 'flex', flexDirection: 'column', boxSizing: 'border-box',
     };
 
+    // Titres des tuiles : Roboto, sans majuscules, comme les titres de sections du chiffrage / projet
     const title = {
-        fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase',
-        letterSpacing: '0.07em', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 6,
+        fontSize: 16, fontWeight: 500, color: '#111827', fontFamily: 'Roboto, system-ui, sans-serif',
+        marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8,
     };
 
     const occupancyColor = stats.occupancyPct >= 85 ? '#EF4444'
@@ -150,11 +151,11 @@ export default function StockDashboardTab({ inventory = [], projects = [], movem
         <div style={{ width: '100%', boxSizing: 'border-box' }}>
 
             {/* ── LIGNE 1 : 4 blocs égaux ── */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 20, marginBottom: 20 }}>
+            <div className="df-inv-kpis" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 20, marginBottom: 20 }}>
 
                 {/* Occupation générale */}
                 <div style={card}>
-                    <div style={title}><Activity size={14} color="#2563EB" /> Occupation Générale</div>
+                    <div style={title}><Activity size={14} color="#2563EB" /> Occupation générale</div>
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
                         <div style={{ position: 'relative', display: 'inline-flex' }}>
                             <svg width="130" height="130" viewBox="0 0 130 130">
@@ -185,7 +186,7 @@ export default function StockDashboardTab({ inventory = [], projects = [], movem
 
                 {/* Ventilation du stock */}
                 <div style={card}>
-                    <div style={title}><Layers size={14} color="#9333EA" /> Ventilation du Stock</div>
+                    <div style={title}><Layers size={14} color="#9333EA" /> Ventilation du stock</div>
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 20 }}>
                         {[
                             { label: 'Réservé (projets)', val: stats.reserved, color: '#1E2447', icon: <CheckCircle2 size={13} /> },
@@ -217,7 +218,7 @@ export default function StockDashboardTab({ inventory = [], projects = [], movem
                 <div style={card}>
                     <div style={title}>
                         <AlertTriangle size={14} color={stats.tensionLevel === 'critique' ? '#EF4444' : '#F59E0B'} />
-                        Alertes de Tension
+                        Alertes de tension
                     </div>
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 12 }}>
                         <div style={{
@@ -263,7 +264,7 @@ export default function StockDashboardTab({ inventory = [], projects = [], movem
 
                 {/* Top 10 compact */}
                 <div style={card}>
-                    <div style={title}><Package size={14} color="#111827" /> Top 10 par Occupation</div>
+                    <div style={title}><Package size={14} color="#111827" /> Top 10 par occupation</div>
                     <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2 }}>
                         {stats.top10.map((item, i) => {
                             const pct = stats.rouleauxEnStock > 0 ? Math.round((Number(item.qty) / stats.rouleauxEnStock) * 100) : 0;
@@ -298,7 +299,7 @@ export default function StockDashboardTab({ inventory = [], projects = [], movem
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
                     <div style={title}>
                         <TrendingUp size={14} color="#7C3AED" />
-                        Taux d'Occupation Hebdomadaire
+                        Taux d'occupation hebdomadaire
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
                         <TextField

@@ -338,6 +338,7 @@ export default function CatalogManager({ open, onClose, catalog, onCatalogChange
                             {['tissus', 'rails', 'stores', 'passementerie'].map((tab) => (
                                 <button
                                     key={tab}
+                                    className="df-pill-tab" data-active={activeCategoryTab === tab}
                                     style={getNavStyle(activeCategoryTab === tab)}
                                     onClick={() => setActiveCategoryTab(tab)}
                                 >

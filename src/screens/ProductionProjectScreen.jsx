@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { PROJECT_STATUS_TONE } from "../lib/constants/daStyles";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { COLORS, S } from "../lib/constants/ui.js";
 
@@ -56,7 +57,7 @@ function SectionPanel({ title, count, expanded, onToggle, children }) {
   return (
     <div style={{ marginBottom: 28 }}>
       {/* Titre collant : reste en haut de l'écran tant qu'on défile dans ce tableau */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 4px', height: STICKY_TITLE_HEIGHT, position: 'sticky', top: 0, zIndex: 6, background: '#ffffff' }}>
+      <div className="df-section-head" style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 4px', height: STICKY_TITLE_HEIGHT, position: 'sticky', top: 0, zIndex: 6, background: '#ffffff' }}>
         <IconButton size="small" onClick={onToggle} title={expanded ? 'Replier' : 'Déplier'} sx={{ color: '#9B9A97', ml: -0.5 }}>
           <ExpandMoreIcon sx={{ fontSize: 20, transform: expanded ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.2s ease' }} />
         </IconButton>
@@ -195,6 +196,16 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
   }, [propProject, projects, urlProjectId]);
 
   const [stage, setStage] = useState(initialStage || "dashboard");
+  // Téléphone : la rangée d'onglets défile ; on garde l'onglet actif visible (ex. arrivée sur « Prise de cotes »).
+  const stageNavRef = useRef(null);
+  useEffect(() => {
+    const nav = stageNavRef.current;
+    const active = nav?.querySelector('[data-active="true"]');
+    if (active && nav.scrollWidth > nav.clientWidth) {
+      const left = active.getBoundingClientRect().left - nav.getBoundingClientRect().left + nav.scrollLeft - 16;
+      nav.scrollTo({ left: Math.max(0, left), behavior: 'smooth' });
+    }
+  }, [stage]);
   // Ouverture ciblée sur un onglet (ex. depuis l'agenda mobile → prise de cotes)
   useEffect(() => { if (initialStage) setStage(initialStage); }, [initialStage]);
   const [panelsExpanded, setPanelsExpanded] = useState({});
@@ -925,6 +936,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                   <StatusPill
                     value={project?.status || "TODO"}
                     options={PROJECT_STATUS_OPTIONS}
+                    tones={PROJECT_STATUS_TONE}
                     onChange={(v) => onUpdateProject(project.id, { status: v })}
                   />
                 </MetaItem>
@@ -1064,9 +1076,9 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
         />
 
         {/* Ligne des vues : actions du dossier à gauche, vues au centre, docs + impression à droite */}
-        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'minmax(0,1fr)' : 'minmax(0,1fr) auto minmax(0,1fr)', alignItems: 'center', gap: 16, marginTop: 104, paddingBottom: 8 }}>
+        <div className="df-prj-nav" style={{ display: 'grid', gridTemplateColumns: isMobile ? 'minmax(0,1fr)' : 'minmax(0,1fr) auto minmax(0,1fr)', alignItems: 'center', gap: 16, marginTop: 104, paddingBottom: 8 }}>
           {/* Actions du dossier (à gauche) */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-start' }}>
+          <div className="df-prj-left" style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-start' }}>
             {/* Matériauthèque Button */}
             <button
               onClick={() => setShowMaterials(true)}
@@ -1110,10 +1122,11 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
               </button>
             )}
           </div>
-          <div className="island-nav-container" style={{ display: 'inline-flex', gap: 2, maxWidth: '100%', overflowX: isMobile ? 'auto' : 'visible', justifySelf: 'center' }}>
+          <div ref={stageNavRef} className="island-nav-container df-prj-views" style={{ display: 'inline-flex', gap: 2, maxWidth: '100%', overflowX: isMobile ? 'auto' : 'visible', justifySelf: 'center' }}>
             {visibleStages.map((p) => (
               <button
                 key={p.key}
+                className="df-pill-tab" data-active={stage === p.key}
                 style={{
                   ...getNavStyle(stage === p.key),
                   flex: isMobile ? '1 0 auto' : 'initial' // Allow grow on mobile
@@ -1125,7 +1138,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
             ))}
           </div>
           {/* Documents + impression (à droite) */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: isMobile ? 'flex-start' : 'flex-end', gap: 10, flexWrap: 'wrap' }}>
+          <div className="df-prj-right" style={{ display: 'flex', alignItems: 'center', justifyContent: isMobile ? 'flex-start' : 'flex-end', gap: 10, flexWrap: 'wrap' }}>
             {/* Documents Button - Visible Mobile & Desktop */}
             <button
               onClick={() => setShowDocs(true)}
@@ -1173,7 +1186,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
       </div>
 
       {stage === "dashboard" && (
-        <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 24, alignItems: 'flex-start' }}>
+        <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 24, alignItems: isMobile ? 'stretch' : 'flex-start' }}>
 
           {/* ── COLONNE GAUCHE : stats ── */}
           <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 16, paddingTop: 4 }}>
@@ -1336,8 +1349,12 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
           </div>
 
           {(showAllPrise || rowsRideaux.length > 0) && (
-            <div style={cardStyle}>
-              <div style={cardHeaderStyle}>Prise de Cote Rideaux / Voilages</div>
+            <SectionPanel
+              title="Prise de Cote Rideaux / Voilages"
+              count={rowsRideaux.length}
+              expanded={isPanelExpanded('prise_rideaux')}
+              onToggle={() => togglePanel('prise_rideaux')}
+            >
               <MinuteGrid
                 stickyTop={STICKY_TITLE_HEIGHT}
                 rows={rowsRideaux}
@@ -1356,12 +1373,16 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                 onRowClick={(id) => setOpenedRowId(id)}
                 isMobile={isMobile}
               />
-            </div>
+            </SectionPanel>
           )}
 
           {(showAllPrise || rowsStores.length > 0) && (
-            <div style={cardStyle}>
-              <div style={cardHeaderStyle}>Prise de Cote Stores Négoce</div>
+            <SectionPanel
+              title="Prise de Cote Stores Négoce"
+              count={rowsStores.length}
+              expanded={isPanelExpanded('prise_stores')}
+              onToggle={() => togglePanel('prise_stores')}
+            >
               <MinuteGrid
                 stickyTop={STICKY_TITLE_HEIGHT}
                 rows={rowsStores}
@@ -1377,12 +1398,16 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                 onRowClick={(id) => setOpenedRowId(id)}
                 isMobile={isMobile}
               />
-            </div>
+            </SectionPanel>
           )}
 
           {(showAllPrise || rowsStoresBateaux.length > 0) && (
-            <div style={cardStyle}>
-              <div style={cardHeaderStyle}>Prise de Cote Stores Bateaux / Velum</div>
+            <SectionPanel
+              title="Prise de Cote Stores Bateaux / Velum"
+              count={rowsStoresBateaux.length}
+              expanded={isPanelExpanded('prise_storesbateaux')}
+              onToggle={() => togglePanel('prise_storesbateaux')}
+            >
               <MinuteGrid
                 stickyTop={STICKY_TITLE_HEIGHT}
                 rows={rowsStoresBateaux}
@@ -1398,12 +1423,16 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                 onRowClick={(id) => setOpenedRowId(id)}
                 isMobile={isMobile}
               />
-            </div>
+            </SectionPanel>
           )}
 
           {(showAllPrise || rowsTentureMurale.length > 0) && (
-            <div style={cardStyle}>
-              <div style={cardHeaderStyle}>Prise de Cote Tenture Murale</div>
+            <SectionPanel
+              title="Prise de Cote Tenture Murale"
+              count={rowsTentureMurale.length}
+              expanded={isPanelExpanded('prise_tenturemurale')}
+              onToggle={() => togglePanel('prise_tenturemurale')}
+            >
               <MinuteGrid
                 stickyTop={STICKY_TITLE_HEIGHT}
                 rows={rowsTentureMurale}
@@ -1419,12 +1448,16 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                 onRowClick={(id) => setOpenedRowId(id)}
                 isMobile={isMobile}
               />
-            </div>
+            </SectionPanel>
           )}
 
           {showAllPrise && (
-            <div style={cardStyle}>
-              <div style={cardHeaderStyle}>Prise de Cote Coussins</div>
+            <SectionPanel
+              title="Prise de Cote Coussins"
+              count={rowsCoussins.length}
+              expanded={isPanelExpanded('prise_coussins')}
+              onToggle={() => togglePanel('prise_coussins')}
+            >
               <MinuteGrid
                 stickyTop={STICKY_TITLE_HEIGHT}
                 rows={rowsCoussins}
@@ -1440,12 +1473,16 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                 onRowClick={(id) => setOpenedRowId(id)}
                 isMobile={isMobile}
               />
-            </div>
+            </SectionPanel>
           )}
 
           {showAllPrise && (
-            <div style={cardStyle}>
-              <div style={cardHeaderStyle}>Prise de Cote Plaids / Chemins de Lit</div>
+            <SectionPanel
+              title="Prise de Cote Plaids / Chemins de Lit"
+              count={rowsPlaid.length}
+              expanded={isPanelExpanded('prise_plaid')}
+              onToggle={() => togglePanel('prise_plaid')}
+            >
               <MinuteGrid
                 stickyTop={STICKY_TITLE_HEIGHT}
                 rows={rowsPlaid}
@@ -1461,12 +1498,16 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                 onRowClick={(id) => setOpenedRowId(id)}
                 isMobile={isMobile}
               />
-            </div>
+            </SectionPanel>
           )}
 
           {showAllPrise && (
-            <div style={cardStyle}>
-              <div style={cardHeaderStyle}>Prise de Cote Mobilier / Tête de Lit</div>
+            <SectionPanel
+              title="Prise de Cote Mobilier / Tête de Lit"
+              count={rowsMobilier.length}
+              expanded={isPanelExpanded('prise_mobilier')}
+              onToggle={() => togglePanel('prise_mobilier')}
+            >
               <MinuteGrid
                 stickyTop={STICKY_TITLE_HEIGHT}
                 rows={rowsMobilier}
@@ -1482,12 +1523,16 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                 onRowClick={(id) => setOpenedRowId(id)}
                 isMobile={isMobile}
               />
-            </div>
+            </SectionPanel>
           )}
 
           {showAllPrise && (
-            <div style={cardStyle}>
-              <div style={cardHeaderStyle}>Prise de Cote Cache-Sommier</div>
+            <SectionPanel
+              title="Prise de Cote Cache-Sommier"
+              count={rowsCacheSommier.length}
+              expanded={isPanelExpanded('prise_cachesommier')}
+              onToggle={() => togglePanel('prise_cachesommier')}
+            >
               <MinuteGrid
                 stickyTop={STICKY_TITLE_HEIGHT}
                 rows={rowsCacheSommier}
@@ -1503,7 +1548,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                 onRowClick={(id) => setOpenedRowId(id)}
                 isMobile={isMobile}
               />
-            </div>
+            </SectionPanel>
           )}
 
         </>

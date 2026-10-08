@@ -12,11 +12,12 @@ const productSubtitle = (row) => {
     return row.product === row.ref || row.product === derived ? null : row.product;
 };
 
-export const itemMetaColumns = () => [
+// `compact` : largeurs resserrées pour le Journal, qui doit tenir sans défilement horizontal.
+export const itemMetaColumns = ({ compact = false } = {}) => [
     {
         field: 'fournisseur',
         headerName: 'Fournisseur',
-        width: 150,
+        width: compact ? 120 : 150,
         renderCell: (params) => params.value
             ? <span style={{ fontWeight: 600, color: '#374151' }}>{params.value}</span>
             : dash,
@@ -25,7 +26,7 @@ export const itemMetaColumns = () => [
         field: 'ref',
         headerName: 'Référence',
         flex: 1,
-        minWidth: 200,
+        minWidth: compact ? 160 : 200,
         valueGetter: (value, row) => value || row.product,
         renderCell: (params) => {
             const sub = productSubtitle(params.row);
@@ -37,6 +38,6 @@ export const itemMetaColumns = () => [
             );
         },
     },
-    { field: 'coloris', headerName: 'Coloris', width: 140, renderCell: (params) => params.value || dash },
-    { field: 'laize', headerName: 'Laize', width: 80, renderCell: (params) => params.value || dash },
+    { field: 'coloris', headerName: 'Coloris', width: compact ? 110 : 140, renderCell: (params) => params.value || dash },
+    { field: 'laize', headerName: 'Laize', width: compact ? 65 : 80, renderCell: (params) => params.value || dash },
 ];

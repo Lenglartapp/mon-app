@@ -1,7 +1,14 @@
 // src/screens/ChiffrageRoot.jsx
 import React, { useState, useMemo, useEffect, useRef } from "react";
-import { Plus, Copy, Trash2, FileText, ArrowUpDown, ArrowUp, ArrowDown, Archive, Filter, ChevronDown, ChevronRight, ChevronLeft, GitBranch, SlidersHorizontal } from "lucide-react";
+import { TonePill, StatusSelectPill, ToolbarButton } from "../components/ui/ToolbarControls";
+import DaDialog from "../components/ui/DaDialog";
+import { DaField, ChoicePill } from "../components/ui/DaForm";
+import ConditionFilterButton from "../components/ui/ConditionFilterButton";
+import { isConditionActive, matchConditions } from "../components/FilterPanel";
+import { CHIFFRAGE_STATUS_TONE, DA_INPUT_STYLE } from "../lib/constants/daStyles";
+import { Plus, Copy, Trash2, FileText, ArrowUpDown, ArrowUp, ArrowDown, Archive, Filter, ChevronDown, ChevronRight, ChevronLeft, GitBranch } from "lucide-react";
 import Chip from '@mui/material/Chip';
+import { useFillViewportHeight } from "../lib/hooks/useFillViewportHeight";
 import Avatar from '@mui/material/Avatar';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
@@ -28,22 +35,6 @@ const SEARCH_FIELDS = [
   { id: 'status', label: 'Statut' },
 ];
 
-const FILTER_FIELDS = [
-  { id: 'ca_ht',    label: 'Montant HT',           unit: '€',   adminOnly: false },
-  { id: 'marge_pct', label: 'Contribution %',       unit: '%',   adminOnly: true },
-  { id: 'renta_hh',  label: 'Contribution Horaire', unit: '€/h', adminOnly: true },
-];
-
-const OPERATORS = [
-  { id: 'gt',      label: 'est supérieur à' },
-  { id: 'gte',     label: 'est supérieur ou égal à' },
-  { id: 'lt',      label: 'est inférieur à' },
-  { id: 'lte',     label: 'est inférieur ou égal à' },
-  { id: 'eq',      label: 'est égal à' },
-  { id: 'between', label: 'est compris entre' },
-];
-
-const newCondition = () => ({ id: `c${Date.now()}${Math.random()}`, field: 'ca_ht', operator: 'gt', value: '', value2: '' });
 
 const STATUS_OPTIONS = {
   DRAFT: { label: "À faire", color: "#9CA3AF", bg: "#F3F4F6", text: "#374151" }, // Gray
@@ -96,7 +87,6 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
   const [newMinOpen, setNewMinOpen] = useState(false);
 
   // Status Menu State
-  const [statusMenu, setStatusMenu] = useState({ anchor: null, minuteId: null });
   // Owner Menu State
   const [ownerMenu, setOwnerMenu] = useState({ anchor: null, minuteId: null });
 
@@ -106,16 +96,7 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
 
   const showKPIs = currentUser?.role === ROLES.ADMIN;
 
-  const handleStatusClick = (event, id) => {
-    event.stopPropagation();
-    setStatusMenu({ anchor: event.currentTarget, minuteId: id });
-  };
-
-  const handleStatusClose = () => setStatusMenu({ anchor: null, minuteId: null });
-
-  const handleStatusSelect = async (status) => {
-    const id = statusMenu.minuteId;
-    handleStatusClose();
+  const handleStatusSelect = async (id, status) => {
     if (!id || !onUpdate) return;
 
     const from = (minutes || []).find(m => m.id === id)?.status || 'DRAFT';
@@ -204,20 +185,8 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
   const [isCreating, setIsCreating] = useState(false);
 
   const [activeFilters, setActiveFilters] = useState([]);
-  const [conditions, setConditions] = useState([newCondition()]);
-  const [showAdvancedPanel, setShowAdvancedPanel] = useState(false);
-  const advancedPanelRef = useRef(null);
-
-  useEffect(() => {
-    const handler = (e) => {
-      if (advancedPanelRef.current && !advancedPanelRef.current.contains(e.target)) {
-        setShowAdvancedPanel(false);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
-
+  // Conditions du bouton « Filtrer » (panneau partagé avec la liste Projets)
+  const [filterConditions, setFilterConditions] = useState([]);
   useEffect(() => {
     setActiveFilters([{ id: 'my_minutes', label: '👤 Mes chiffrages', field: 'owner' }]);
   }, []);
@@ -226,6 +195,8 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
   const [expandedGroups, setExpandedGroups] = useState(new Set());
   // Pagination client-side (les données sont déjà en mémoire → instantané)
   const [visibleCount, setVisibleCount] = useState(50);
+  const listScrollRef = useRef(null);
+  const listHeight = useFillViewportHeight(listScrollRef);
 
   const toggleGroup = (parentId) => {
     setExpandedGroups(prev => {
@@ -275,37 +246,19 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
     return [...prev, filter];
   });
 
-  const updateCondition = (id, key, val) =>
-    setConditions(prev => prev.map(c =>
-      c.id === id ? { ...c, [key]: val, ...(key === 'operator' && val !== 'between' ? { value2: '' } : {}) } : c
-    ));
-  const removeCondition = (id) =>
-    setConditions(prev => prev.length > 1 ? prev.filter(c => c.id !== id) : prev);
-
-  const applyConditions = () => {
-    const valid = conditions.filter(c => c.value !== '' && !isNaN(Number(c.value)));
-    if (valid.length === 0) return;
-    valid.forEach(cond => {
-      const fieldDef = FILTER_FIELDS.find(f => f.id === cond.field);
-      const opDef = OPERATORS.find(o => o.id === cond.operator);
-      const v1 = Number(cond.value).toLocaleString('fr-FR');
-      const label = cond.operator === 'between'
-        ? `${fieldDef.label} entre ${v1} et ${Number(cond.value2 || 0).toLocaleString('fr-FR')} ${fieldDef.unit}`
-        : `${fieldDef.label} ${opDef.label} ${v1} ${fieldDef.unit}`;
-      addFilter({
-        id: `adv_${cond.id}`,
-        label,
-        field: 'advanced',
-        matchType: 'advanced',
-        filterField: cond.field,
-        operator: cond.operator,
-        value: cond.value,
-        value2: cond.value2 || '',
-      });
-    });
-    setConditions([newCondition()]);
-    setShowAdvancedPanel(false);
-  };
+  // Champs proposés dans le panneau « Filtrer » (contributions réservées aux admins, comme les colonnes)
+  const filterSchema = [
+    { key: 'name', label: 'Nom du chiffrage', type: 'text' },
+    { key: 'client', label: 'Client', type: 'text' },
+    { key: 'owner', label: "Chargé d'affaires", type: 'text' },
+    { key: 'status', label: 'Statut', type: 'select', options: Object.entries(STATUS_OPTIONS).map(([k, v]) => ({ value: k, label: v.label })) },
+    { key: 'ca_ht', label: 'Montant HT', type: 'number' },
+    ...(showKPIs ? [
+      { key: 'marge_pct', label: 'Contribution %', type: 'number' },
+      { key: 'marge_eur', label: 'Contribution €', type: 'number' },
+      { key: 'renta_hh', label: 'Contribution €/h', type: 'number' },
+    ] : []),
+  ];
 
   // Filtrage + tri 100% côté client (données déjà en mémoire → instantané).
   const filteredList = useMemo(() => {
@@ -346,23 +299,9 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
       });
     }
 
-    // Conditions avancées (toutes AND)
-    const advancedConds = activeFilters.filter(f => f.matchType === 'advanced');
-    if (advancedConds.length > 0) {
-      res = res.filter(m => advancedConds.every(f => {
-        const mVal = m[f.filterField];
-        const v1 = Number(f.value);
-        const v2 = Number(f.value2 || 0);
-        switch (f.operator) {
-          case 'gt':      return mVal > v1;
-          case 'gte':     return mVal >= v1;
-          case 'lt':      return mVal < v1;
-          case 'lte':     return mVal <= v1;
-          case 'eq':      return Math.abs(mVal - v1) < 0.5;
-          case 'between': return mVal >= Math.min(v1, v2) && mVal <= Math.max(v1, v2);
-          default:        return true;
-        }
-      }));
+    // Conditions du bouton « Filtrer » (même panneau que la liste Projets)
+    if (filterConditions.some(isConditionActive)) {
+      res = res.filter(m => matchConditions(filterConditions, m));
     }
 
     // Archives vs actifs
@@ -384,7 +323,7 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
     }
 
     return res;
-  }, [list, activeFilters, currentUser, sortConfig, showArchived]);
+  }, [list, activeFilters, filterConditions, currentUser, sortConfig, showArchived]);
 
   // Tranche visible (pagination client-side)
   const displayList = useMemo(() => filteredList.slice(0, visibleCount), [filteredList, visibleCount]);
@@ -490,7 +429,7 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: '#FFFFFF', padding: '24px', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ background: '#FFFFFF', padding: '24px', display: 'flex', flexDirection: 'column' }}>
       <div style={{ maxWidth: 1440, width: '100%', margin: '0 auto 24px auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
           <div>
@@ -523,136 +462,9 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
             onRemoveFilter={removeFilter}
           />
 
-          {/* Constructeur de conditions */}
-          <div ref={advancedPanelRef} style={{ position: 'relative' }}>
-            {(() => {
-              const activeCount = activeFilters.filter(f => f.matchType === 'advanced').length;
-              return (
-                <Tooltip title="Filtres avancés">
-                  <IconButton
-                    onClick={() => setShowAdvancedPanel(p => !p)}
-                    sx={{
-                      position: 'relative',
-                      bgcolor: showAdvancedPanel || activeCount > 0 ? '#EEF2FF' : 'white',
-                      color: showAdvancedPanel || activeCount > 0 ? '#4338CA' : '#6B7280',
-                      border: `1px solid ${showAdvancedPanel || activeCount > 0 ? '#C7D2FE' : '#E5E7EB'}`,
-                      borderRadius: 2, height: 38, width: 38,
-                      '&:hover': { bgcolor: '#EEF2FF' },
-                    }}
-                  >
-                    <SlidersHorizontal size={18} />
-                    {activeCount > 0 && (
-                      <span style={{
-                        position: 'absolute', top: 4, right: 4,
-                        width: 8, height: 8, borderRadius: '50%',
-                        background: '#6366F1', border: '1px solid white',
-                      }} />
-                    )}
-                  </IconButton>
-                </Tooltip>
-              );
-            })()}
-
-            {showAdvancedPanel && (
-              <div style={{
-                position: 'absolute', top: 'calc(100% + 6px)', right: 0,
-                background: 'white', borderRadius: 10, width: 340,
-                boxShadow: '0 10px 25px -5px rgba(0,0,0,0.15)', border: '1px solid #E0DED9', zIndex: 200,
-                padding: 16,
-              }}>
-                <div style={{ fontSize: 12.5, fontWeight: 500, color: '#8A8F98', fontFamily: 'Roboto, system-ui, sans-serif', marginBottom: 14 }}>
-                  Filtres avancés
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {conditions.map((cond, i) => {
-                    const availableFields = FILTER_FIELDS.filter(f => !f.adminOnly || showKPIs);
-                    const selStyle = {
-                      width: '100%', padding: '7px 10px', borderRadius: 6,
-                      border: '1px solid #E0DED9', fontSize: 13, background: 'white',
-                      outline: 'none', cursor: 'pointer', color: '#111827',
-                    };
-                    return (
-                      <div key={cond.id}>
-                        {i > 0 && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                            <div style={{ flex: 1, height: 1, background: '#F3F4F6' }} />
-                            <span style={{ fontSize: 11, color: '#9CA3AF', fontWeight: 600 }}>ET</span>
-                            <div style={{ flex: 1, height: 1, background: '#F3F4F6' }} />
-                          </div>
-                        )}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                            <select value={cond.field} onChange={e => updateCondition(cond.id, 'field', e.target.value)} style={{ ...selStyle, flex: 1 }}>
-                              {availableFields.map(f => <option key={f.id} value={f.id}>{f.label}</option>)}
-                            </select>
-                            {conditions.length > 1 && (
-                              <button
-                                onClick={() => removeCondition(cond.id)}
-                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', padding: 4, fontSize: 16, lineHeight: 1, flexShrink: 0 }}
-                              >×</button>
-                            )}
-                          </div>
-                          <select value={cond.operator} onChange={e => updateCondition(cond.id, 'operator', e.target.value)} style={selStyle}>
-                            {OPERATORS.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
-                          </select>
-                          {cond.operator === 'between' ? (
-                            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                              <input
-                                type="number" placeholder="Min" value={cond.value}
-                                onChange={e => updateCondition(cond.id, 'value', e.target.value)}
-                                style={{ flex: 1, padding: '7px 10px', borderRadius: 6, border: '1px solid #E0DED9', fontSize: 13, outline: 'none' }}
-                              />
-                              <span style={{ color: '#9CA3AF', fontSize: 12, flexShrink: 0 }}>et</span>
-                              <input
-                                type="number" placeholder="Max" value={cond.value2}
-                                onChange={e => updateCondition(cond.id, 'value2', e.target.value)}
-                                style={{ flex: 1, padding: '7px 10px', borderRadius: 6, border: '1px solid #E0DED9', fontSize: 13, outline: 'none' }}
-                              />
-                            </div>
-                          ) : (
-                            <input
-                              type="number" placeholder="Valeur" value={cond.value}
-                              onChange={e => updateCondition(cond.id, 'value', e.target.value)}
-                              style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid #E0DED9', fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
-                            />
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
-                  <button
-                    onClick={applyConditions}
-                    disabled={conditions.every(c => c.value === '')}
-                    style={{
-                      flex: 1, padding: '8px 0', borderRadius: 6, border: 'none',
-                      background: conditions.every(c => c.value === '') ? '#E5E7EB' : '#1E2447',
-                      color: conditions.every(c => c.value === '') ? '#9CA3AF' : 'white',
-                      cursor: conditions.every(c => c.value === '') ? 'not-allowed' : 'pointer',
-                      fontSize: 13, fontWeight: 700, letterSpacing: '0.03em',
-                    }}
-                  >
-                    APPLIQUER
-                  </button>
-                  <button
-                    onClick={() => setConditions(prev => [...prev, newCondition()])}
-                    style={{
-                      flex: 1, padding: '8px 0', borderRadius: 6,
-                      border: '1px solid #1E2447', background: 'white',
-                      color: '#1E2447', cursor: 'pointer',
-                      fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
-                    }}
-                  >
-                    <span style={{ fontSize: 16, lineHeight: 1 }}>+</span> Ajouter une condition
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-
+          {/* Filtrer + Archives alignés sur le bord droit du tableau (comme la liste Projets) */}
+          <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
+          <ConditionFilterButton schema={filterSchema} conditions={filterConditions} onChange={setFilterConditions} />
           <Tooltip title={showArchived ? "Retour aux dossiers actifs" : "Voir archives (Terminés/Perdus)"}>
             <IconButton
               onClick={() => setShowArchived(!showArchived)}
@@ -667,11 +479,15 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
               <Archive size={20} />
             </IconButton>
           </Tooltip>
+          </div>
         </div>
       </div>
 
+      {/* Seul le tableau défile (la page reste fixe) : hauteur MAX = place restante à l'écran
+          (avec peu de lignes, le cadre se referme juste sous la dernière),
+          en-têtes de colonnes collés en haut, « Charger plus » au bas de la liste. */}
       <div style={{ maxWidth: 1440, width: '100%', margin: '0 auto', background: 'white', border: '1px solid #E0DED9', borderRadius: 8, overflow: 'hidden' }}>
-        <div style={{ overflowX: 'auto' }}>
+        <div ref={listScrollRef} className="df-list-scroll" style={{ overflow: 'auto', maxHeight: listHeight ?? undefined }}>
           <table className="df-list-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
             <thead style={{ background: '#F4F4F4', borderBottom: '1px solid #E0DED9' }}>
               <tr>
@@ -698,6 +514,7 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
                   <th
                     key={key}
                     title={title}
+                    className={key === 'marge_eur' || key === 'renta_hh' ? 'df-col-tab-hide' : undefined}
                     onClick={() => handleSort(key)}
                     style={{ padding: '12px 8px', fontSize: 13, fontWeight: 600, color: '#374151', textAlign: 'right', cursor: 'pointer', userSelect: 'none' }}
                   >
@@ -710,7 +527,7 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
                   </th>
                 ))}
 
-                <th style={{ padding: '12px 8px', fontSize: 13, fontWeight: 600, color: '#374151' }}>Mise à jour</th>
+                <th className="df-col-tab-hide" style={{ padding: '12px 8px', fontSize: 13, fontWeight: 600, color: '#374151' }}>Mise à jour</th>
                 <th style={{ padding: '12px 8px', fontSize: 13, fontWeight: 600, color: '#374151' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <span title="Chargé d'affaires">Chargé d'aff.</span>
@@ -739,7 +556,6 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
                 const orphans = displayList.filter(m => m.parentId && !visibleParentIds.has(m.parentId));
 
                 const renderRow = (m, isChild = false) => {
-                  const statusInfo = STATUS_OPTIONS[m.status] || STATUS_OPTIONS.DRAFT;
                   const mpct = m.marge_pct || 0;
                   let mColor = '#F59E0B';
                   if (mpct > 60) mColor = '#10B981';
@@ -800,11 +616,11 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
                           {m.client || "Client inconnu"}
                         </td>
                         <td style={{ padding: '12px 8px' }}>
-                          <Chip
-                            label={statusInfo.label}
-                            size="small"
-                            onClick={(e) => handleStatusClick(e, m.id)}
-                            sx={{ bgcolor: statusInfo.bg, color: statusInfo.text, fontWeight: 700, fontSize: 11, height: 24, cursor: 'pointer', '&:hover': { opacity: 0.8 } }}
+                          <StatusSelectPill
+                            value={m.status || 'DRAFT'}
+                            options={STATUS_OPTIONS}
+                            tones={CHIFFRAGE_STATUS_TONE}
+                            onChange={(v) => handleStatusSelect(m.id, v)}
                           />
                         </td>
                         <td style={{ padding: '12px 8px', textAlign: 'right', whiteSpace: 'nowrap' }}>
@@ -817,23 +633,23 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
                             <td style={{ padding: '12px 8px', textAlign: 'right', whiteSpace: 'nowrap' }}>
                               <div style={{ fontWeight: 700, color: mColor, fontSize: 14 }}>{Math.round(m.marge_pct)} %</div>
                             </td>
-                            <td style={{ padding: '12px 8px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                            <td className="df-col-tab-hide" style={{ padding: '12px 8px', textAlign: 'right', whiteSpace: 'nowrap' }}>
                               <div style={{ fontSize: 14, color: '#4B5563' }}>{Math.round(m.marge_eur).toLocaleString("fr-FR")} €</div>
                             </td>
-                            <td style={{ padding: '12px 8px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                            <td className="df-col-tab-hide" style={{ padding: '12px 8px', textAlign: 'right', whiteSpace: 'nowrap' }}>
                               <div style={{ fontWeight: 700, color: '#1E3A8A', fontSize: 14 }}>
                                 {Math.round(m.renta_hh).toLocaleString("fr-FR")} <small style={{ fontSize: 10, color: '#9CA3AF' }}>€/h</small>
                               </div>
                             </td>
                           </>
                         )}
-                        <td style={{ padding: '12px 8px', color: '#6B7280', fontSize: 13 }}>
+                        <td className="df-col-tab-hide" style={{ padding: '12px 8px', color: '#6B7280', fontSize: 13 }}>
                           {new Date(m.updatedAt || m.createdAt).toLocaleDateString("fr-FR")} <small>{new Date(m.updatedAt || m.createdAt).toLocaleTimeString("fr-FR", { hour: '2-digit', minute: '2-digit' })}</small>
                         </td>
                         <td style={{ padding: '12px 8px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }} onClick={(e) => handleOwnerClick(e, m.id)}>
                             <Avatar sx={{ width: 26, height: 26, fontSize: 11, bgcolor: stringToColor(m.owner || "?") }}>{(m.owner?.[0] || "?").toUpperCase()}</Avatar>
-                            <span style={{ fontSize: 13, color: '#374151', fontWeight: 500 }}>{m.owner || "—"}</span>
+                            <span className="df-col-tab-hide" style={{ fontSize: 13, color: '#374151', fontWeight: 500 }}>{m.owner || "—"}</span>
                           </div>
                         </td>
                         <td style={{ padding: '12px 8px', textAlign: 'right', whiteSpace: 'nowrap', position: 'sticky', right: 0, background: 'inherit' }} onClick={(e) => e.stopPropagation()}>
@@ -873,122 +689,94 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
               })()}
             </tbody>
           </table>
+          {/* Charger plus — tranche client-side, instantané (données déjà en mémoire) */}
+          {hasMore && (
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '24px 0' }}>
+              <button
+                onClick={() => setVisibleCount(c => c + 50)}
+                style={{
+                  background: 'white',
+                  border: '1px solid #E0DED9',
+                  borderRadius: 8,
+                  padding: '10px 24px',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  fontSize: 14,
+                  color: '#374151',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                }}
+              >
+                Charger plus ({filteredList.length - visibleCount} restants)
+              </button>
+            </div>
+          )}
         </div>
 
-        {/* Charger plus — tranche client-side, instantané (données déjà en mémoire) */}
-        {hasMore && (
-          <div style={{ display: 'flex', justifyContent: 'center', padding: '24px 0' }}>
-            <button
-              onClick={() => setVisibleCount(c => c + 50)}
-              style={{
-                background: 'white',
-                border: '1px solid #E0DED9',
-                borderRadius: 8,
-                padding: '10px 24px',
-                cursor: 'pointer',
-                fontWeight: 600,
-                fontSize: 14,
-                color: '#374151',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-              }}
-            >
-              Charger plus ({filteredList.length - visibleCount} restants)
-            </button>
-          </div>
-        )}
       </div>
       {
         newMinOpen && (
-          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={() => setNewMinOpen(false)}>
-            <div onClick={(e) => e.stopPropagation()} style={{ width: 480, background: "#fff", borderRadius: 12, padding: 24, boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1)" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Nouvelle minute</h3>
-                <IconButton onClick={() => setNewMinOpen(false)} size="small"><Trash2 size={18} style={{ transform: 'rotate(45deg)' }} /></IconButton>
+          <DaDialog
+            open={newMinOpen}
+            onClose={() => setNewMinOpen(false)}
+            title="Nouvelle minute"
+            subtitle="Un nouveau chiffrage, avec les modules dont vous avez besoin."
+            maxWidth="sm"
+            footer={<>
+              <div style={{ flex: 1 }} />
+              <ToolbarButton onClick={() => setNewMinOpen(false)}>Annuler</ToolbarButton>
+              <ToolbarButton
+                primary
+                onClick={handleCreateMinute}
+                disabled={isCreating || !newMin.charge.trim() || !newMin.projet.trim() || !newMin.client.trim() || !newMin.deliveryDate || !Object.values(newMin.modules).some(v => v === true)}
+              >
+                {isCreating ? "Création…" : "Créer la minute"}
+              </ToolbarButton>
+            </>}
+          >
+            <div style={{ display: "grid", gap: 16 }}>
+              <DaField label="Nom du chiffrage *">
+                <input autoFocus style={DA_INPUT_STYLE} value={newMin.projet} onChange={(e) => setNewMin(m => ({ ...m, projet: e.target.value }))} placeholder="Ex : Villa Saint-Tropez" />
+              </DaField>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <DaField label="Client *">
+                  <input style={DA_INPUT_STYLE} value={newMin.client} onChange={(e) => setNewMin(m => ({ ...m, client: e.target.value }))} placeholder="Ex : M. Dupont" />
+                </DaField>
+                <DaField label="Chargé·e d’affaires *">
+                  <input style={DA_INPUT_STYLE} value={newMin.charge} onChange={(e) => setNewMin(m => ({ ...m, charge: e.target.value }))} />
+                </DaField>
               </div>
-              <div style={{ display: "grid", gap: 16 }}>
-                {/* Charge d'affaire */}
-                <label>
-                  <div style={{ fontSize: 13, fontWeight: 500, color: "#374151", marginBottom: 4 }}>Chargé·e d’affaires</div>
-                  <input style={{ width: "100%", padding: "8px 12px", borderRadius: 6, border: "1px solid #D1D5DB" }} value={newMin.charge} onChange={(e) => setNewMin(m => ({ ...m, charge: e.target.value }))} />
-                </label>
-
-                {/* Nom Projet */}
-                <label>
-                  <div style={{ fontSize: 13, fontWeight: 500, color: "#374151", marginBottom: 4 }}>Nom du chiffrage *</div>
-                  <input autoFocus style={{ width: "100%", padding: "8px 12px", borderRadius: 6, border: "1px solid #D1D5DB" }} value={newMin.projet} onChange={(e) => setNewMin(m => ({ ...m, projet: e.target.value }))} placeholder={`Ex: Villa Saint-Tropez`} />
-                </label>
-
-                {/* Client (New) */}
-                <label>
-                  <div style={{ fontSize: 13, fontWeight: 500, color: "#374151", marginBottom: 4 }}>Client *</div>
-                  <input style={{ width: "100%", padding: "8px 12px", borderRadius: 6, border: "1px solid #D1D5DB" }} value={newMin.client} onChange={(e) => setNewMin(m => ({ ...m, client: e.target.value }))} placeholder="Ex: M. Dupont" />
-                </label>
-
-                {/* Date de livraison estimée */}
-                <label>
-                  <div style={{ fontSize: 13, fontWeight: 500, color: "#374151", marginBottom: 4 }}>Date de livraison estimée *</div>
-                  <input type="date" style={{ width: "100%", padding: "8px 12px", borderRadius: 6, border: "1px solid #D1D5DB" }} value={newMin.deliveryDate} onChange={(e) => setNewMin(m => ({ ...m, deliveryDate: e.target.value }))} />
-                </label>
-
-                {/* Status */}
-                <label>
-                  <div style={{ fontSize: 13, fontWeight: 500, color: "#374151", marginBottom: 4 }}>Statut</div>
-                  <select
-                    style={{ width: "100%", padding: "8px 12px", borderRadius: 6, border: "1px solid #D1D5DB" }}
-                    value={newMin.status}
-                    onChange={(e) => setNewMin(m => ({ ...m, status: e.target.value }))}
-                  >
-                    {Object.entries(STATUS_OPTIONS).map(([k, v]) => (
-                      <option key={k} value={k}>{v.label}</option>
-                    ))}
-                  </select>
-                </label>
-
-                {/* Modules */}
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 500, color: "#374151", marginBottom: 8 }}>Modules à inclure</div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px 16px' }}>
-                    <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}><input type="checkbox" checked={newMin.modules.rideau} onChange={(e) => setNewMin(m => ({ ...m, modules: { ...m.modules, rideau: e.target.checked } }))} /> Rideaux</label>
-                    <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}><input type="checkbox" checked={newMin.modules.store} onChange={(e) => setNewMin(m => ({ ...m, modules: { ...m.modules, store: e.target.checked } }))} /> Stores</label>
-                    <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}><input type="checkbox" checked={newMin.modules.store_bateau} onChange={(e) => setNewMin(m => ({ ...m, modules: { ...m.modules, store_bateau: e.target.checked } }))} /> Stores Bateaux/Velum</label>
-                    <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}><input type="checkbox" checked={newMin.modules.coussins} onChange={(e) => setNewMin(m => ({ ...m, modules: { ...m.modules, coussins: e.target.checked } }))} /> Coussins</label>
-                    <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}><input type="checkbox" checked={newMin.modules.cache_sommier} onChange={(e) => setNewMin(m => ({ ...m, modules: { ...m.modules, cache_sommier: e.target.checked } }))} /> Cache Sommier</label>
-                    <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}><input type="checkbox" checked={newMin.modules.mobilier} onChange={(e) => setNewMin(m => ({ ...m, modules: { ...m.modules, mobilier: e.target.checked } }))} /> Mobilier</label>
-                    <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}><input type="checkbox" checked={newMin.modules.tenture_murale} onChange={(e) => setNewMin(m => ({ ...m, modules: { ...m.modules, tenture_murale: e.target.checked } }))} /> Tenture Murale</label>
-                    <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}><input type="checkbox" checked={newMin.modules.plaid} onChange={(e) => setNewMin(m => ({ ...m, modules: { ...m.modules, plaid: e.target.checked } }))} /> Plaids Chemin de lit</label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <DaField label="Date de livraison estimée *">
+                  <input type="date" style={DA_INPUT_STYLE} value={newMin.deliveryDate} onChange={(e) => setNewMin(m => ({ ...m, deliveryDate: e.target.value }))} />
+                </DaField>
+                <DaField label="Statut">
+                  <div style={{ height: 38, display: 'flex', alignItems: 'center' }}>
+                    <StatusSelectPill
+                      value={newMin.status}
+                      options={STATUS_OPTIONS}
+                      tones={CHIFFRAGE_STATUS_TONE}
+                      onChange={(v) => setNewMin(m => ({ ...m, status: v }))}
+                    />
                   </div>
-                </div>
-
-                {/* Note */}
-                <label>
-                  <div style={{ fontSize: 13, fontWeight: 500, color: "#374151", marginBottom: 4 }}>Note</div>
-                  <textarea rows={3} style={{ width: "100%", padding: "8px 12px", borderRadius: 6, border: "1px solid #D1D5DB" }} value={newMin.note} onChange={(e) => setNewMin(m => ({ ...m, note: e.target.value }))} placeholder="Commentaire interne…" />
-                </label>
-
-                {/* Actions */}
-                <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, marginTop: 8 }}>
-                  <button onClick={() => setNewMinOpen(false)} style={{ background: 'white', border: '1px solid #D1D5DB', padding: '8px 16px', borderRadius: 6, cursor: 'pointer' }}>Annuler</button>
-                  <button onClick={handleCreateMinute} disabled={isCreating || !newMin.charge.trim() || !newMin.projet.trim() || !newMin.client.trim() || !newMin.deliveryDate || !Object.values(newMin.modules).some(v => v === true)} style={{ background: '#1F2937', color: 'white', border: 'none', padding: '8px 16px', borderRadius: 6, cursor: 'pointer', opacity: (isCreating || !newMin.projet.trim() || !newMin.client.trim() || !newMin.deliveryDate) ? 0.5 : 1 }}>{isCreating ? "Création..." : "Créer"}</button>
-                </div>
+                </DaField>
               </div>
+              <DaField label="Modules à inclure *">
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  {[['rideau', 'Rideaux'], ['store', 'Stores'], ['store_bateau', 'Stores bateaux / velum'], ['coussins', 'Coussins'], ['cache_sommier', 'Cache-sommier'], ['mobilier', 'Mobilier'], ['tenture_murale', 'Tenture murale'], ['plaid', 'Plaids / chemins de lit']].map(([k, label]) => (
+                    <ChoicePill key={k} active={!!newMin.modules[k]} onClick={() => setNewMin(m => ({ ...m, modules: { ...m.modules, [k]: !m.modules[k] } }))}>{label}</ChoicePill>
+                  ))}
+                </div>
+              </DaField>
+              <DaField label="Note">
+                <textarea rows={3} style={{ ...DA_INPUT_STYLE, height: 'auto', padding: '10px 12px', resize: 'vertical' }} value={newMin.note} onChange={(e) => setNewMin(m => ({ ...m, note: e.target.value }))} placeholder="Commentaire interne…" />
+              </DaField>
             </div>
-          </div>
+          </DaDialog>
         )
       }
 
-      <Menu
-        anchorEl={statusMenu.anchor}
-        open={Boolean(statusMenu.anchor)}
-        onClose={handleStatusClose}
-      >
-        {Object.entries(STATUS_OPTIONS).map(([key, opt]) => (
-          <MenuItem key={key} onClick={() => handleStatusSelect(key)}>
-            <Chip label={opt.label} size="small" sx={{ bgcolor: opt.bg, color: opt.text, fontWeight: 700, fontSize: 11, height: 24 }} />
-          </MenuItem>
-        ))}
-      </Menu>
 
       {/* OWNER MENU */}
       <Menu
@@ -1020,7 +808,7 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
           <MenuItem key={key} onClick={() => toggleFilter('status', key, `Statut: ${opt.label}`)}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%' }}>
               <input type="checkbox" checked={activeFilters.some(f => f.id === `status_${key}`)} readOnly />
-              <Chip label={opt.label} size="small" sx={{ bgcolor: opt.bg, color: opt.text, fontWeight: 700, fontSize: 11, height: 24 }} />
+              <TonePill tone={CHIFFRAGE_STATUS_TONE[key]}>{opt.label}</TonePill>
             </div>
           </MenuItem>
         ))}

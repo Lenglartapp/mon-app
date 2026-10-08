@@ -225,7 +225,7 @@ const CommentInputForm = React.memo(({ onSend, onSendWithImage, users = [] }) =>
     const canSend = hasText || !!pendingFile;
 
     return (
-        <Box sx={{ p: 2, bgcolor: 'white', borderTop: '1px solid #E5E7EB' }}>
+        <Box sx={{ p: 2, bgcolor: 'white', borderTop: '1px solid #E8E6E2' }}>
             {/* Photo preview */}
             {pendingPreviewUrl && (
                 <Box sx={{ mb: 1, position: 'relative', display: 'inline-block' }}>
@@ -364,15 +364,14 @@ const LogItem = React.memo(({ act }) => {
                 </Box>
 
                 <Box sx={{
-                    bgcolor: '#F4F4F4',
-                    border: '1px solid #E5E7EB',
-                    borderRadius: 1,
-                    p: 1.5,
+                    bgcolor: '#F7F7F5',
+                    borderRadius: '8px',
+                    p: 1.25,
                     display: 'flex',
                     flexDirection: 'column',
                     gap: 0.5
                 }}>
-                    <Typography variant="caption" sx={{ textTransform: 'uppercase', color: '#6B7280', fontSize: 10, fontWeight: 700, letterSpacing: 0.5 }}>
+                    <Typography variant="caption" sx={{ color: '#374151', fontSize: 12, fontWeight: 600 }}>
                         {field}
                     </Typography>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, fontSize: 13 }}>
@@ -414,30 +413,28 @@ const MessageItem = React.memo(({ act, isMe }) => {
         <>
             <Box sx={{ display: 'flex', gap: 1.5, mb: 2, px: 1, flexDirection: isMe ? 'row-reverse' : 'row' }}>
                 {/* Always show Avatar */}
-                <Avatar sx={{ width: 28, height: 28, bgcolor: stringToColor(authorName), fontSize: 12 }}>
-                    {authorName?.charAt(0)}
-                </Avatar>
+                {/* Comme le journal du dashboard : mes messages à droite sans avatar */}
+                {!isMe && (
+                    <Avatar sx={{ width: 28, height: 28, bgcolor: stringToColor(authorName), fontSize: 12 }}>
+                        {authorName?.charAt(0)}
+                    </Avatar>
+                )}
 
                 <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: isMe ? 'flex-end' : 'flex-start', maxWidth: '85%' }}>
                     <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, mb: 0.5, flexDirection: isMe ? 'row-reverse' : 'row' }}>
                         {/* Always show Name */}
-                        <Typography variant="caption" sx={{ fontWeight: 700, color: '#374151' }}>
-                            {authorName}
+                        <Typography variant="caption" sx={{ fontWeight: 500, fontSize: 13, color: '#1F2A37' }}>
+                            {isMe ? 'Vous' : authorName}
                         </Typography>
-                        <Typography variant="caption" sx={{ color: '#9CA3AF', fontSize: 10 }}>
+                        <Typography variant="caption" sx={{ color: '#A0A5AD', fontSize: 11 }}>
                             {formatRelativeTime(act.createdAt || act.ts)}
                         </Typography>
                     </Box>
 
                     <Box sx={{
-                        bgcolor: isMe ? '#EFF6FF' : 'white',
-                        border: '1px solid',
-                        borderColor: isMe ? '#BFDBFE' : '#E5E7EB',
-                        borderRadius: 2,
-                        borderTopLeftRadius: !isMe ? 0 : 2,
-                        borderTopRightRadius: isMe ? 0 : 2,
-                        p: '8px 12px',
-                        boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
+                        bgcolor: isMe ? '#D6E4F8' : '#F4F4F4',
+                        borderRadius: isMe ? '14px 4px 14px 14px' : '4px 14px 14px 14px',
+                        p: '10px 14px',
                         // If image (without caption), transparent bg
                         ...(isImage && !act.caption && { bgcolor: 'transparent', border: 'none', boxShadow: 'none', p: 0 })
                     }}>
@@ -609,22 +606,22 @@ const ActivitySidebar = React.memo(({ activities = [], onAddComment, onAddImage,
     if (!isOpen) return null;
 
     return (
-        <Box sx={{ width: 380, display: 'flex', flexDirection: 'column', bgcolor: '#F4F4F4', borderLeft: '1px solid #E5E7EB', height: '100%' }}>
+        <Box sx={{ width: 380, display: 'flex', flexDirection: 'column', bgcolor: 'white', borderLeft: '1px solid #E8E6E2', height: '100%' }}>
 
             {/* Header */}
             <Box sx={{
                 p: '16px 20px',
-                borderBottom: '1px solid #E5E7EB',
+                borderBottom: '1px solid #E8E6E2',
                 bgcolor: 'white',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between'
             }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#111827' }}>
+                    <Typography sx={{ fontFamily: 'Roboto, system-ui, sans-serif', fontWeight: 500, fontSize: 18, color: '#111827' }}>
                         Activité
                     </Typography>
-                    <Chip label={filteredActivities.length} size="small" sx={{ height: 18, fontSize: 10, fontWeight: 600, bgcolor: '#F3F4F6' }} />
+                    <Typography sx={{ fontSize: 13, color: '#9B9A97' }}>{filteredActivities.length}</Typography>
                 </Box>
 
                 <IconButton size="small" onClick={(e) => setHeaderAnchor(e.currentTarget)}>
@@ -642,7 +639,7 @@ const ActivitySidebar = React.memo(({ activities = [], onAddComment, onAddImage,
             </Box>
 
             {/* Filter tabs */}
-            <Box sx={{ display: 'flex', gap: '4px', px: 2, py: 1, borderBottom: '1px solid #E5E7EB', bgcolor: 'white' }}>
+            <Box sx={{ display: 'flex', gap: '4px', px: 2, py: 1, borderBottom: '1px solid #E8E6E2', bgcolor: 'white' }}>
                 {ACTIVITY_FILTERS.map(f => (
                     <button
                         key={f.key}

@@ -41,7 +41,22 @@ if (isLocalhost) {
   }
 } else {
   // En production uniquement : enregistrement normal du SW (mode hors-ligne).
-  registerSW({ immediate: true });
+  // Appli installée sur l'écran d'accueil (iPad / iPhone) : iOS ne relance presque jamais
+  // la page, donc le navigateur ne vérifie pas tout seul s'il existe une nouvelle version
+  // et l'appli restait bloquée sur un ancien build (ex. chiffrages vides sur iPad alors que
+  // Safari était à jour). On vérifie au retour sur l'appli et toutes les 30 min ;
+  // `autoUpdate` recharge alors la page sur la nouvelle version.
+  registerSW({
+    immediate: true,
+    onRegisteredSW(_url, registration) {
+      if (!registration) return;
+      const check = () => { if (navigator.onLine) registration.update().catch(() => {}); };
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') check();
+      });
+      setInterval(check, 30 * 60 * 1000);
+    },
+  });
 }
 
 // ====== Montage ======

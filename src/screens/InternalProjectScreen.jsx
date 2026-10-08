@@ -15,20 +15,26 @@ import {
     computeChapterStats, eventsOfChapter, setChapterStatus, configWithTransfer,
     isInternalProject, totalsOfEvents,
 } from '../lib/planning/internalProject';
+import { useViewportWidth } from '../lib/hooks/useViewportWidth';
+import { StatusSelectPill } from '../components/ui/ToolbarControls';
 
 const fmtH = (n) => `${Math.round((n || 0) * 10) / 10}`.replace('.', ',');
 
 const S = {
-    page: { padding: '24px 32px', maxWidth: 1100, margin: '0 auto' },
-    card: { background: 'white', border: '1px solid #E0DED9', borderRadius: 12, boxShadow: '0 1px 2px rgba(0,0,0,0.04)' },
-    th: { textAlign: 'left', fontSize: 12, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: 0.4, padding: '10px 16px', borderBottom: '1px solid #E5E7EB' },
-    td: { padding: '12px 16px', fontSize: 14, color: '#111827', borderBottom: '1px solid #F3F4F6' },
+    // DA : Roboto, en-têtes sans majuscules, traits #E0DED9 / #E8E6E2, marges resserrées sur téléphone.
+    page: { padding: 'clamp(16px, 3vw, 24px) clamp(16px, 4vw, 32px)', maxWidth: 1100, margin: '0 auto', fontFamily: 'Roboto, system-ui, sans-serif',
+        // Élément flex : sans minWidth 0, la page s'élargirait au tableau et déborderait sur téléphone.
+        width: '100%', minWidth: 0, boxSizing: 'border-box' },
+    card: { background: 'white', border: '1px solid #E0DED9', borderRadius: 12 },
+    th: { textAlign: 'left', fontSize: 13, fontWeight: 600, color: '#374151', padding: '10px 16px', borderBottom: '1px solid #E0DED9' },
+    td: { padding: '12px 16px', fontSize: 14, color: '#111827', borderBottom: '1px solid #E8E6E2' },
     btn: { padding: '7px 14px', borderRadius: 8, border: '1px solid #D1D5DB', background: 'white', fontSize: 13, cursor: 'pointer', fontWeight: 500, color: '#374151' },
     input: { padding: '8px 10px', border: '1px solid #D1D5DB', borderRadius: 8, fontSize: 13, outline: 'none', fontFamily: 'inherit' },
     select: { border: '1px solid #E0DED9', borderRadius: 8, padding: '6px 10px', fontSize: 13, outline: 'none', background: 'white', color: '#374151', fontFamily: 'inherit', cursor: 'pointer' },
-    filterLabel: { fontSize: 11, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 4, display: 'block' },
-    statLabel: { fontSize: 12, color: '#6B7280', fontWeight: 600 },
-    subTh: { textAlign: 'left', fontSize: 10, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: 0.4, padding: '4px 8px' },
+    filterLabel: { fontSize: 12, color: '#6B7280', marginBottom: 6, display: 'block' },
+    statLabel: { fontSize: 15, color: '#374151', fontWeight: 500 },
+    statValue: { fontSize: 30, fontWeight: 400, color: '#111827', marginTop: 8, lineHeight: 1 },
+    subTh: { textAlign: 'left', fontSize: 12, fontWeight: 500, color: '#6B7280', padding: '4px 8px' },
     subTd: { padding: '4px 8px', fontSize: 13, color: '#4B5563' },
 };
 
@@ -75,7 +81,7 @@ function PeriodeDropdown({ preset, custom, onPreset, onCustom }) {
                 background: 'white', border: '1px solid #E0DED9', borderRadius: 8,
                 padding: '6px 12px', fontSize: 13, fontWeight: 500, cursor: 'pointer',
                 display: 'flex', alignItems: 'center', gap: 8, color: '#374151',
-                boxShadow: open ? '0 0 0 2px #E0E7FF' : 'none',
+                borderColor: open ? '#1E2447' : '#E0DED9',
             }}>
                 {currentLabel} <ChevronDown size={14} color="#9CA3AF" />
             </button>
@@ -85,14 +91,14 @@ function PeriodeDropdown({ preset, custom, onPreset, onCustom }) {
                         {PERIODE_PRESETS.map(o => (
                             <div key={o.key} onClick={() => { onPreset(o.key); setOpen(false); }} style={{
                                 padding: '8px 12px', fontSize: 13, cursor: 'pointer', borderRadius: 4,
-                                background: preset === o.key ? '#EFF6FF' : 'transparent',
-                                color: preset === o.key ? '#2563EB' : '#374151',
+                                background: preset === o.key ? '#EEF4FD' : 'transparent',
+                                color: '#111827',
                                 fontWeight: preset === o.key ? 600 : 400,
                             }}>{o.label}</div>
                         ))}
                     </div>
                     <div style={{ padding: 12 }}>
-                        <div style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 8 }}>Période personnalisée</div>
+                        <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 8 }}>Période personnalisée</div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 8 }}>
                             <input type="date" value={tempFrom} onChange={e => setTempFrom(e.target.value)}
                                 style={{ width: '100%', boxSizing: 'border-box', border: '1px solid #E0DED9', borderRadius: 6, padding: '5px 8px', fontSize: 12, outline: 'none' }} />
@@ -151,6 +157,7 @@ export default function InternalProjectScreen({ project, projects = [], events =
     const [service, setService] = useState('');
     const [expanded, setExpanded] = useState({});
     const [transferChapter, setTransferChapter] = useState(null);
+    const isMobile = useViewportWidth() <= 768; // téléphone : colonnes Créneaux et Transfert masquées
 
     const range = useMemo(() => rangeOfPreset(preset, custom), [preset, custom]);
 
@@ -195,14 +202,14 @@ export default function InternalProjectScreen({ project, projects = [], events =
                 <ArrowLeft size={16} /> Retour
             </button>
 
-            <h1 style={{ fontSize: 28, fontWeight: 800, color: '#111827', margin: 0 }}>{project.name}</h1>
+            <h1 style={{ fontSize: 32, fontWeight: 400, color: '#111827', margin: 0 }}>{project.name}</h1>
             <p style={{ color: '#6B7280', fontSize: 14, marginTop: 6, marginBottom: 24, maxWidth: 720 }}>
                 Recueil du temps passé hors dossier client — prototypes, études, ouvrages caritatifs,
                 cotes anticipées. Pas d'heures vendues : ce dossier ne se compare à aucun budget.
             </p>
 
             {/* FILTRES — même présentation que le module Performance */}
-            <div style={{ background: 'white', border: '1px solid #E0DED9', borderRadius: 10, padding: '14px 18px', marginBottom: 16, display: 'flex', flexWrap: 'wrap', gap: 20, alignItems: 'flex-end' }}>
+            <div style={{ marginBottom: 16, display: 'flex', flexWrap: 'wrap', gap: 20, alignItems: 'flex-end' }}>
                 <div>
                     <label style={S.filterLabel}>Période</label>
                     <PeriodeDropdown preset={preset} custom={custom} onPreset={setPreset} onCustom={setCustom} />
@@ -219,24 +226,24 @@ export default function InternalProjectScreen({ project, projects = [], events =
             {/* TOTAUX — avec la ventilation par service, sinon « 7,8h » ne dit pas d'où
                 elles viennent (atelier ? préparation ? pose ?) */}
             <div style={{ display: 'flex', gap: 16, marginBottom: 20, flexWrap: 'wrap' }}>
-                <div style={{ ...S.card, padding: 16, flex: '1 1 260px' }}>
+                <div style={{ ...S.card, padding: '16px 18px', flex: '1 1 220px' }}>
                     <div style={S.statLabel}>Heures réalisées</div>
-                    <div style={{ fontSize: 26, fontWeight: 800, color: '#111827' }}>{fmtH(totals.done.total)}h</div>
+                    <div style={S.statValue}>{fmtH(totals.done.total)}h</div>
                     <ServiceBreakdown value={totals.done} />
                 </div>
-                <div style={{ ...S.card, padding: 16, flex: '1 1 260px' }}>
+                <div style={{ ...S.card, padding: '16px 18px', flex: '1 1 220px' }}>
                     <div style={S.statLabel}>Encore programmées</div>
-                    <div style={{ fontSize: 26, fontWeight: 800, color: '#EA580C' }}>{fmtH(totals.planned.total)}h</div>
+                    <div style={S.statValue}>{fmtH(totals.planned.total)}h</div>
                     <ServiceBreakdown value={totals.planned} />
                 </div>
-                <div style={{ ...S.card, padding: 16, flex: '0 0 160px' }}>
+                <div style={{ ...S.card, padding: '16px 18px', flex: '1 0 140px' }}>
                     <div style={S.statLabel}>Chapitres</div>
-                    <div style={{ fontSize: 26, fontWeight: 800, color: '#111827' }}>{chapters.length}</div>
+                    <div style={S.statValue}>{chapters.length}</div>
                 </div>
             </div>
 
             {/* CHAPITRES — une ligne par chapitre, dépliable sur la ventilation par service */}
-            <div style={{ ...S.card, overflow: 'hidden' }}>
+            <div className="df-noscrollbar" style={{ ...S.card, overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
                         <tr style={{ background: '#F4F4F4' }}>
@@ -245,8 +252,8 @@ export default function InternalProjectScreen({ project, projects = [], events =
                             <th style={S.th}>Statut</th>
                             <th style={{ ...S.th, textAlign: 'right' }}>Réalisé</th>
                             <th style={{ ...S.th, textAlign: 'right' }}>Programmé</th>
-                            <th style={{ ...S.th, textAlign: 'right' }}>Créneaux</th>
-                            <th style={S.th} />
+                            {!isMobile && <th style={{ ...S.th, textAlign: 'right' }}>Créneaux</th>}
+                            {!isMobile && <th style={S.th} />}
                         </tr>
                     </thead>
                     <tbody>
@@ -267,37 +274,31 @@ export default function InternalProjectScreen({ project, projects = [], events =
                                         <td style={{ ...S.td, paddingRight: 0, color: '#9CA3AF' }}>
                                             {isOpen ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
                                         </td>
-                                        <td style={{ ...S.td, fontWeight: 600 }}>{row.name}</td>
+                                        <td style={{ ...S.td, fontWeight: 500 }}>{row.name}</td>
                                         <td style={S.td} onClick={e => e.stopPropagation()}>
-                                            <select
-                                                value={row.status}
-                                                onChange={e => setStatus(row, e.target.value)}
+                                            {/* Même pastille de statut que les listes Projets / Chiffrages */}
+                                            <StatusSelectPill
+                                                value={isDone ? 'done' : 'active'}
+                                                options={{ active: { label: 'En cours' }, done: { label: 'Terminé' } }}
+                                                tones={{ active: 4, done: null }}
+                                                onChange={(v) => setStatus(row, v)}
                                                 title="Un chapitre terminé n'est plus proposé à la saisie"
-                                                style={{
-                                                    ...S.select, padding: '4px 8px', fontSize: 12, fontWeight: 600,
-                                                    background: isDone ? '#F3F4F6' : '#ECFDF5',
-                                                    color: isDone ? '#6B7280' : '#065F46',
-                                                    borderColor: isDone ? '#E5E7EB' : '#A7F3D0',
-                                                }}
-                                            >
-                                                <option value="active">En cours</option>
-                                                <option value="done">Terminé</option>
-                                            </select>
+                                            />
                                         </td>
                                         <td style={{ ...S.td, textAlign: 'right', fontWeight: 600 }}>{fmtH(row.done.total)}h</td>
-                                        <td style={{ ...S.td, textAlign: 'right', color: '#EA580C' }}>{fmtH(row.planned.total)}h</td>
-                                        <td style={{ ...S.td, textAlign: 'right', color: '#6B7280' }}>{row.count}</td>
-                                        <td style={{ ...S.td, textAlign: 'right' }} onClick={e => e.stopPropagation()}>
+                                        <td style={{ ...S.td, textAlign: 'right', color: '#374151' }}>{fmtH(row.planned.total)}h</td>
+                                        {!isMobile && <td style={{ ...S.td, textAlign: 'right', color: '#6B7280' }}>{row.count}</td>}
+                                        {!isMobile && <td style={{ ...S.td, textAlign: 'right' }} onClick={e => e.stopPropagation()}>
                                             {canTransfer && row.count > 0 && (
                                                 <button onClick={() => setTransferChapter({ ...row, moved: totalsOfEvents(eventsOfChapter(project, events, row.name)) })} style={{ ...S.btn, fontSize: 12 }}>
                                                     Transférer…
                                                 </button>
                                             )}
-                                        </td>
+                                        </td>}
                                     </tr>
                                     {isOpen && (
                                         <tr>
-                                            <td colSpan={7} style={{ background: '#F4F4F4', borderBottom: '1px solid #F3F4F6', padding: '4px 16px 14px 52px' }}>
+                                            <td colSpan={isMobile ? 5 : 7} style={{ background: '#F4F4F4', borderBottom: '1px solid #E8E6E2', padding: isMobile ? '4px 12px 12px 28px' : '4px 16px 14px 52px' }}>
                                                 <table style={{ width: '100%', maxWidth: 520, borderCollapse: 'collapse' }}>
                                                     <thead>
                                                         <tr>
@@ -311,7 +312,7 @@ export default function InternalProjectScreen({ project, projects = [], events =
                                                             <tr key={sv.key}>
                                                                 <td style={S.subTd}>{sv.label}</td>
                                                                 <td style={{ ...S.subTd, textAlign: 'right', fontWeight: 600 }}>{fmtH(row.done[sv.key])}h</td>
-                                                                <td style={{ ...S.subTd, textAlign: 'right', color: '#EA580C' }}>{fmtH(row.planned[sv.key])}h</td>
+                                                                <td style={{ ...S.subTd, textAlign: 'right' }}>{fmtH(row.planned[sv.key])}h</td>
                                                             </tr>
                                                         ))}
                                                     </tbody>
@@ -387,7 +388,7 @@ function TransferDialog({ chapter, projects, onCancel, onConfirm }) {
                         placeholder="Rechercher un dossier..."
                         style={{ border: 'none', outline: 'none', width: '100%', fontSize: 14, fontFamily: 'inherit' }}
                     />
-                    {target && <Check size={16} color="#10B981" />}
+                    {target && <Check size={16} color="#1E2447" />}
                 </div>
                 {!target && results.length > 0 && (
                     <div style={{ border: '1px solid #E0DED9', borderRadius: 8, marginTop: 4, maxHeight: 180, overflowY: 'auto' }}>

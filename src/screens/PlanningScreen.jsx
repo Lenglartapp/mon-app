@@ -28,6 +28,7 @@ import CapaciteView from '../components/planning/CapaciteView';
 import BacklogCreationModal from '../components/planning/BacklogCreationModal';
 import { findInternalProject, buildInternalProject, configWithChapter } from '../lib/planning/internalProject';
 import { generatePlanningTemplate, processPlanningImport } from '../lib/utils/planningExcelUtils';
+import { useFillViewportHeight } from '../lib/hooks/useFillViewportHeight';
 
 // --- Helpers atelier : durée <-> créneau (pause déjeuner 12h-13h) ---
 
@@ -107,6 +108,10 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
     const handleOpenPrise = (project) => {
         if (!project?.id) return;
         navigate(`/production/${project.id.slice(0, 8)}-${slugify(project.name)}?stage=prise`);
+    };
+    const handleOpenProject = (project) => {
+        if (!project?.id) return;
+        navigate(`/production/${project.id.slice(0, 8)}-${slugify(project.name)}`);
     };
     const canEdit = can(currentUser, 'planning.edit');
     const canDelete = can(currentUser, 'planning.delete'); // suppression réservée ordo/admin
@@ -1378,6 +1383,11 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
         return () => ro.disconnect();
     }, []);
 
+    // Vue Planning : la page ne défile plus, seul le planning défile (comme les listes Chiffrages /
+    // Projets) ; la hauteur suit l'espace réellement disponible sous l'en-tête de l'appli.
+    const pageRef = useRef(null);
+    const pageHeight = useFillViewportHeight(pageRef, { bottomGap: 0, min: 400 });
+
     // --- VUE MOBILE (téléphone / PWA) : agenda Pose vertical, lecture seule ---
     if (isMobile) {
         return (
@@ -1392,12 +1402,19 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                 onChangeDate={setCurrentDate}
                 onBack={onBack}
                 onOpenPrise={handleOpenPrise}
+                onOpenProject={handleOpenProject}
             />
         );
     }
 
     return (
-        <div style={{ height: '100vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', background: '#FFFFFF' }}>
+        // Programmation : la page reste fixe et seul son tableau défile (comme les listes Chiffrages /
+        // Projets) ; Planning et Capacité gardent leur zone défilante de 100vh.
+        <div ref={pageRef} style={assistantMode === 'programmation'
+            ? { display: 'flex', flexDirection: 'column', background: '#FFFFFF' }
+            : assistantMode === 'capacite'
+                ? { height: '100vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', background: '#FFFFFF' }
+                : { height: pageHeight ?? '100vh', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#FFFFFF' }}>
             {/* Bandeau de titre : défile normalement et disparaît au scroll */}
             <div style={{ padding: '24px 24px 0', flexShrink: 0 }}>
                 {/* Titre aligné comme les autres modules (bloc centré 1600 px max) */}
@@ -1415,11 +1432,8 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
             <div ref={stickyHeaderRef} style={{ position: 'sticky', top: 0, zIndex: 70, background: '#FFFFFF', flexShrink: 0 }}>
                 {canViewAssistant && (
                     <div style={{ display: 'flex', justifyContent: 'center', padding: '8px 24px 12px' }}>
-                        <div style={{
-                            background: 'white', borderRadius: 9999, padding: 4, display: 'flex', gap: 4,
-                            boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03)',
-                            border: '1px solid rgba(0,0,0,0.05)',
-                        }}>
+                        {/* Mêmes pastilles que les vues du chiffrage, sans cadre autour */}
+                        <div style={{ display: 'flex', gap: 2 }}>
                             {[
                                 { key: null, label: 'Planning' },
                                 { key: 'programmation', label: 'Programmation' },
@@ -1429,12 +1443,14 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                                 return (
                                     <button
                                         key={seg.label}
+                                        className="df-pill-tab" data-active={active}
                                         onClick={() => setAssistantMode(seg.key)}
                                         style={{
-                                            padding: '8px 24px', borderRadius: 9999, fontSize: 14, fontWeight: 500,
-                                            border: 'none', cursor: 'pointer', transition: 'all 0.15s',
+                                            padding: '8px 20px', borderRadius: 99, fontSize: 14, fontWeight: 500,
+                                            border: 'none', cursor: 'pointer', transition: 'all 0.2s cubic-bezier(0.25, 1, 0.5, 1)',
                                             background: active ? '#1E2447' : 'transparent',
                                             color: active ? 'white' : '#4B5563',
+                                            boxShadow: active ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', outline: 'none',
                                         }}
                                     >
                                         {seg.label}
@@ -1639,7 +1655,11 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
 
             {/* Zone de contenu : 100vh moins le bloc sticky, pour que le tableau
                 profite de tout l'écran une fois le bandeau de titre scrollé */}
-            <div style={{ height: `calc(100vh - ${stickyHeaderHeight}px)`, flexShrink: 0, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+            <div style={assistantMode === 'programmation'
+                ? { flexShrink: 0, display: 'flex', flexDirection: 'column' }
+                : assistantMode === 'capacite'
+                    ? { height: `calc(100vh - ${stickyHeaderHeight}px)`, flexShrink: 0, display: 'flex', flexDirection: 'column', minHeight: 0 }
+                    : { flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
             {assistantMode === 'programmation' ? (
                 <AssistantView stats={stats} onUpdateProject={onUpdateProject} />
             ) : assistantMode === 'capacite' ? (

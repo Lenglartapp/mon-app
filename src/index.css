@@ -103,9 +103,82 @@ button{ background:none; border:0; padding:0; margin:0; font:inherit; color:inhe
    sont définies directement dans les composants et dans le CSS AG Grid de MinuteGrid. ---- */
 /* Listes (Chiffrages, Projets) : même cadre que les tableaux AG Grid, sans double trait sous la dernière ligne */
 .df-list-table tbody tr:last-child { border-bottom: none !important; }
+/* Titres de tableaux repliables (chiffrage, projet) sur écran tactile : flèche et zone de toucher
+   plus grandes, pour replier / déplier facilement au doigt */
+@media (hover: none) {
+  .df-section-head .MuiIconButton-root { width: 44px; height: 44px; margin-left: -10px; }
+  .df-section-head .MuiIconButton-root svg { font-size: 26px !important; }
+  .df-section-head h3 { padding: 10px 8px 10px 0; }
+}
+/* Listes qui défilent seules (df-list-scroll) : ligne d'en-têtes collée en haut du tableau.
+   Le trait sous les en-têtes est porté par une ombre (un border disparaît sur une cellule collante). */
+.df-list-scroll thead th { position: sticky; top: 0; z-index: 2; background: #F4F4F4; box-shadow: inset 0 -1px 0 #E0DED9; }
+.df-list-scroll thead th[style*="right: 0"] { z-index: 3; }
+/* Pas de barre de défilement visible : la molette / le pavé / le doigt suffisent */
+.df-list-scroll { scrollbar-width: none; -ms-overflow-style: none; }
+.df-list-scroll::-webkit-scrollbar { display: none; }
+/* Onglets en pastille (vues des modules, onglets des fenêtres) : au survol, l'onglet inactif
+   prend une pastille gris clair (façon Notion) pour montrer qu'il est cliquable. */
+.df-pill-tab { transition: background-color .15s ease, color .15s ease; }
+.df-pill-tab[data-active="false"]:not(:disabled):hover { background-color: #EFEFED !important; color: #111827 !important; }
+/* Téléphone : en-tête de l'appli resserré (l'avatar ne sort plus de l'écran) */
+@media (max-width: 768px) {
+  .df-app-header { padding: 10px 16px !important; gap: 8px !important; }
+  .df-hide-mobile { display: none !important; }
+  /* Fiche projet : la rangée d'onglets défile depuis la gauche, sans barre visible */
+  .df-prj-views { justify-content: flex-start !important; justify-self: stretch !important; overflow-x: auto; scrollbar-width: none; }
+  .df-prj-views::-webkit-scrollbar { display: none; }
+  /* Détail d'une ligne : libellé au-dessus du champ, champ sur toute la largeur */
+  .df-prop-row { grid-template-columns: minmax(0, 1fr) !important; gap: 4px !important; padding: 6px 0 !important; }
+  .df-prop-label { padding-top: 0 !important; }
+}
+/* Planning : il défile seul (molette, pavé, doigt), sans barre visible */
+.df-noscrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+.df-noscrollbar::-webkit-scrollbar { display: none; }
+/* Tableaux MUI DataGrid dans un FitGridFrame : barre verticale masquée (la molette suffit) */
+.df-grid-fit .MuiDataGrid-scrollbar--vertical { display: none; }
+/* Moulinette : chaque bandeau de chapitre (sauf le premier, collé au cadre) a un trait au-dessus ;
+   la dernière ligne d'un chapitre n'a pas de trait (pas de double trait avec le bandeau / le cadre) */
+div:not(:first-child) > .df-moul-chapter { border-top: 1px solid #E0DED9; }
+.df-moul-row:last-child { border-bottom: none !important; }
 /* Tous les boutons de l'application en Roboto (cohérence avec titres, chiffres et libellés) */
 button,
 .MuiButton-root,
 [role="button"] {
   font-family: Roboto, system-ui, -apple-system, "Segoe UI", sans-serif !important;
+}
+
+/* ---- Tablette (iPad mini 744 px portrait / 1133 px paysage, iPad, tablettes) ---- */
+@media (max-width: 1180px) {
+  /* Chiffrage : vues + actions sur une ligne, intercalaires de variantes en dessous (sur le trait) */
+  .df-chf-nav { display: flex !important; flex-wrap: wrap; align-items: center !important; gap: 12px 16px !important; }
+  .df-chf-views { order: 1; margin-bottom: 0 !important; }
+  .df-chf-actions { order: 2; margin-left: auto; margin-bottom: 0 !important; }
+  .df-chf-tabs { order: 3; flex: 1 1 100%; }
+  /* Projet : actions du dossier à gauche, docs à droite, vues en dessous ; pas de grand vide */
+  .df-prj-nav { display: flex !important; flex-wrap: wrap; align-items: center !important; gap: 12px 16px !important; margin-top: 28px !important; }
+  .df-prj-left { order: 1; }
+  .df-prj-right { order: 2; margin-left: auto; }
+  .df-prj-views { order: 3; flex: 1 1 100%; justify-content: center; }
+  /* Inventaire : indicateurs du tableau de bord sur 2 colonnes */
+  .df-inv-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+}
+@media (max-width: 900px) {
+  /* Chiffrage : notes sous les infos au lieu d'une colonne étroite */
+  .df-chf-head { grid-template-columns: minmax(0, 1fr) !important; }
+  /* Liste Chiffrages : colonnes secondaires masquées (pas de défilement horizontal) */
+  .df-col-tab-hide { display: none; }
+}
+@media (min-width: 640px) {
+  /* Agenda planning (portrait) : créneaux sur 2 colonnes quand la place le permet */
+  .df-agenda-list { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+}
+@media (max-width: 600px) {
+  .df-inv-kpis { grid-template-columns: minmax(0, 1fr) !important; }
+}
+/* Écrans tactiles : pas de survol → icônes menu / filtre des en-têtes de tableau toujours visibles */
+@media (hover: none) {
+  .ag-theme-alpine .df-hdr-icon { opacity: 1; }
+  /* Boutons d'action des listes (éditer, supprimer…) : zone de toucher d'au moins 36 px */
+  .df-list-table td button, .df-list-table td .MuiIconButton-root { min-width: 36px; min-height: 36px; }
 }
