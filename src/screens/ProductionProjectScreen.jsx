@@ -8,7 +8,6 @@ import MinuteGrid from "../components/MinuteGrid.jsx"; // Replaces DataTable
 import DashboardTiles from "../components/DashboardTiles.jsx";
 import { SoftBlock, Kpi, KpiGrid } from "../components/ui/SoftBlock";
 import ProjectActivityFeed from "../components/ProjectActivityFeed.jsx";
-import ProjectHistoryDialog from "../components/ProjectHistoryDialog.jsx";
 import EtiquettesSection from "../components/EtiquettesSection.jsx";
 import BPPPrintPortal from "../components/print/BPPPrintPortal.jsx";
 import MinutesScreen from "./MinutesScreen.jsx";
@@ -35,7 +34,7 @@ import { MOBILIER_PROD_SCHEMA } from "../lib/schemas/production/mobilier";
 import { uid } from "../lib/utils/uid"; // Import uid
 import { compressAndUpload } from "../lib/utils/imageUpload";
 
-import { Search, Filter, Layers3, Star, FlaskConical, Image as ImageIcon, Edit2, FileText, BookOpen, Printer, Package, History } from "lucide-react";
+import { Search, Filter, Layers3, Star, FlaskConical, Image as ImageIcon, Edit2, FileText, BookOpen, Printer, Package } from "lucide-react";
 import ProjectMaterialsPanel from "../components/ProjectMaterialsPanel";
 import { applyCatalogRenames } from "../lib/utils/catalogRename";
 import AddressAutocomplete from "../components/AddressAutocomplete"; // Added FileText
@@ -217,7 +216,6 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
   const [openedRowId, setOpenedRowId] = useState(null);
   const [stockOpen, setStockOpen] = useState(false);
   const [showDocs, setShowDocs] = useState(false);
-  const [showHistory, setShowHistory] = useState(false);
   const [deliveryOpen, setDeliveryOpen] = useState(false);
   const [showMaterials, setShowMaterials] = useState(false);
 
@@ -1141,19 +1139,6 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
           </div>
           {/* Documents + impression (à droite) */}
           <div className="df-prj-right" style={{ display: 'flex', alignItems: 'center', justifyContent: isMobile ? 'flex-start' : 'flex-end', gap: 10, flexWrap: 'wrap' }}>
-            {/* Historique du dossier : origine du projet + événements Odoo */}
-            <button
-              onClick={() => setShowHistory(true)}
-              title="Historique du dossier"
-              style={{
-                display: 'flex', alignItems: 'center', gap: 8, background: 'white', border: '1px solid #E0DED9',
-                borderRadius: 8, padding: '8px 14px', cursor: 'pointer', fontSize: 13, color: '#374151',
-                fontWeight: 600, outline: 'none', flex: 'initial', justifyContent: 'center'
-              }}
-            >
-              <History size={16} />
-              Historique
-            </button>
             {/* Documents Button - Visible Mobile & Desktop */}
             <button
               onClick={() => setShowDocs(true)}
@@ -1253,6 +1238,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
           <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 16, paddingTop: 4 }}>
 
             <ProjectActivityFeed
+              project={project}
               rows={rows}
               wall={project?.wall}
               pinnedIds={project?.pinnedIds || []}
@@ -2037,8 +2023,6 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
       />
 
       {/* MODALE DOCUMENTS */}
-      <ProjectHistoryDialog open={showHistory} onClose={() => setShowHistory(false)} project={project} />
-
       {showDocs && (
         <DocumentListModal
           open={showDocs}
