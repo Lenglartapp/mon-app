@@ -83,6 +83,20 @@ export default function ProfitabilitySimulatorModal({ currentData, onClose }) {
         setTargetCA(newCA);
     };
 
+    // Case D: Remise (négatif) ou majoration (positif) en % du prix actuel.
+    // Le CA devient CA × (1 + p) ; la contribution suit : CA × (1 − commissions) − coûts fixes.
+    const handleChangeRemise = (val) => {
+        const p = (parseFloat(val) || 0) / 100;
+        const newCA = Math.max(0, currentCA * (1 + p));
+        const value = newCA * (1 - Com_Rate) - Fixed_Costs;
+        const hourly = value / H;
+        const percent = newCA > 0 ? (value / newCA) * 100 : 0;
+        setValues({ hourly, value, percent });
+        setTargetCA(newCA);
+    };
+    // Remise / majoration correspondant au CA cible, quel que soit le levier utilisé.
+    const remisePct = currentCA > 0 && Number.isFinite(targetCA) ? (targetCA / currentCA - 1) * 100 : 0;
+
     const delta = targetCA - currentData.kpis.ca_total;
 
     return (
@@ -92,7 +106,7 @@ export default function ProfitabilitySimulatorModal({ currentData, onClose }) {
             display: 'flex', alignItems: 'center', justifyContent: 'center'
         }}>
             <div onClick={(e) => e.stopPropagation()} style={{
-                background: 'white', borderRadius: 12, width: 540, overflow: 'hidden',
+                background: 'white', borderRadius: 12, width: 'min(600px, calc(100vw - 32px))', overflow: 'hidden',
                 boxShadow: '0 20px 40px rgba(17,24,39,0.18)', fontFamily: ROBOTO,
             }}>
                 {/* En-tête : titre Roboto + sous-titre, croix de fermeture */}
@@ -100,7 +114,7 @@ export default function ProfitabilitySimulatorModal({ currentData, onClose }) {
                     <div>
                         <div style={{ fontSize: 24, fontWeight: 400, color: '#111827' }}>Simulateur de rentabilité</div>
                         <div style={{ fontSize: 13, color: '#6B7280', marginTop: 4 }}>
-                            Modifiez un paramètre, les autres s'ajustent.
+                            Modifiez un paramètre (ou appliquez une remise / majoration), les autres s'ajustent.
                         </div>
                     </div>
                     <button onClick={onClose} title="Fermer" style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#9B9A97', display: 'flex', padding: 4 }}>
@@ -120,6 +134,16 @@ export default function ProfitabilitySimulatorModal({ currentData, onClose }) {
                             onChange={handleChangePercent}
                             max={100 - (Com_Rate * 100) - 1} // max safety
                         />
+                    </div>
+
+                    {/* 4e levier : remise (négatif) ou majoration (positif) en % du prix actuel, saisie libre */}
+                    <div style={{ display: 'flex', alignItems: 'flex-end', gap: 14, flexWrap: 'wrap', marginBottom: 24, paddingTop: 18, borderTop: '1px solid #E8E6E2' }}>
+                        <div style={{ width: 180 }}>
+                            <InputBlock label="Remise / majoration" suffix="%" value={remisePct} onChange={handleChangeRemise} />
+                        </div>
+                        <div style={{ fontSize: 12, color: '#9B9A97', paddingBottom: 12 }}>
+                            Négatif = remise (ex. −5), positif = majoration (ex. 10), sur le prix actuel.
+                        </div>
                     </div>
 
                     {/* Résultat : grand chiffre, sans encadré coloré */}
