@@ -634,7 +634,11 @@ function StepPreview({ quote, dest, odoo }) {
                     {l.productName}
                     {l.costOnly && <div style={{ fontSize: 11, fontWeight: 500, color: C.accent }}>coût seul</div>}
                   </div>
-                  <div style={{ whiteSpace: 'pre-line', color: '#374151', lineHeight: 1.45 }}>{l.description.split('\n').slice(1).join('\n') || '—'}</div>
+                  <div style={{ whiteSpace: 'pre-line', color: '#374151', lineHeight: 1.45 }}>
+                    {l.description.split('\n').slice(1).map((t, k) => (
+                      <div key={k} style={/\bXX\b|\sOU\s/.test(t) ? { background: '#FEF3C7', borderRadius: 3, padding: '0 3px' } : undefined}>{t || '\u00A0'}</div>
+                    ))}
+                  </div>
                   <div style={{ textAlign: 'right' }}>{num(l.qty)} {l.uom}</div>
                   <div style={{ textAlign: 'right' }}>{eur(l.priceUnit)}</div>
                   <div style={{ textAlign: 'right', fontWeight: 600 }}>{eur(l.subtotal)}</div>
@@ -657,7 +661,7 @@ function StepPreview({ quote, dest, odoo }) {
 }
 
 // ─── Module ────────────────────────────────────────────────────────────────────
-export default function OdooQuoteWizard({ open, onClose, minute, rows = [], depRows = [], extraRows = [] }) {
+export default function OdooQuoteWizard({ open, onClose, minute, rows = [], depRows = [], extraRows = [], library = [] }) {
   const { currentUser, users: dfUsers = [] } = useAuth();
   const [step, setStep] = React.useState(0);
   const [catalog, setCatalog] = React.useState(null);
@@ -691,8 +695,8 @@ export default function OdooQuoteWizard({ open, onClose, minute, rows = [], depR
   }, [catalog, currentUser, dest.userId]);
 
   const quote = React.useMemo(
-    () => buildQuote({ rows, depRows, extraRows, config, products: catalog?.products || [] }),
-    [rows, depRows, extraRows, config, catalog]
+    () => buildQuote({ rows, depRows, extraRows, config, products: catalog?.products || [], library }),
+    [rows, depRows, extraRows, config, catalog, library]
   );
 
   // « Vérifier » = dry_run (Odoo calcule tout puis annule) ; « Créer » = devis brouillon réel.

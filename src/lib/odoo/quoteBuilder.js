@@ -10,6 +10,7 @@
 // sans montant n'apparaît pas.
 
 import { DECOR_PRODUIT_RE } from '../constants/productRouting';
+import { fillTemplate } from './quoteText';
 
 const toNum = (v) => {
   const n = Number(String(v ?? '').replace(',', '.'));
@@ -332,10 +333,11 @@ function sectionKeyOf(row, groupBy) {
 }
 
 // ─── Textes des lignes (style des devis Lenglart actuels) ──────────────────────
+// Pluriel mot par mot (« store bateau » → « stores bateaux »), sauf petits mots de liaison.
 const plural = (n, word) => {
   const w = String(word || 'élément').toLowerCase();
-  if (n <= 1 || /[sxz]$/.test(w)) return w;
-  return /(eau|au|eu)$/.test(w) ? `${w}x` : `${w}s`;
+  if (n <= 1) return w;
+  return w.split(' ').map((x) => (/^(de|du|des|la|le|les|à|a|en|et)$/.test(x) || /[sxz]$/.test(x) || !x ? x : /(eau|au|eu)$/.test(x) ? `${x}x` : `${x}s`)).join(' ');
 };
 const fmtNum = (n) => String(round2(n)).replace('.', ',');
 
@@ -357,10 +359,19 @@ function dimsList(sources, { withMeca = false } = {}) {
 }
 const distinct = (sources, key) => [...new Set(sources.map((s) => (s.row?.[key] ?? '').toString().trim()).filter(Boolean))];
 
-function describe(line) {
+function describe(line, library) {
   const { product, comp, sources, type } = line;
   const out = [product?.name || comp.label];
   if (line.costOnly) return out.join('\n');
+  // Texte type de l'article Odoo disponible : on le remplit avec la minute.
+  if (product?.description && comp.key !== '__deplacement') {
+    const { text, todo } = fillTemplate({
+      template: product.description, productName: product.name, typeKey: type, comp,
+      rows: sources.map((s) => s.row).filter(Boolean), library,
+    });
+    line.textTodo = todo;
+    return text;
+  }
   const fam = comp.family;
   const isStore = type && /store/.test(type);
   if (comp.key === '__deplacement') {
@@ -461,9 +472,10 @@ const ORDER_LOGI = 3e6;
  * @param {Array} p.depRows   déplacements
  * @param {Array} p.extraRows « Autres dépenses » (charges sans prix de vente)
  * @param {object} p.config   cf. defaultConfig()
- * @param {Array} p.products  articles Odoo [{ id, name, uom, tag }]
+ * @param {Array} p.products  articles Odoo [{ id, name, uom, tag, description }]
+ * @param {Array} p.library   bibliothèque tissus/rails de la minute (référence, fournisseur, coloris, laize)
  */
-export function buildQuote({ rows = [], depRows = [], extraRows = [], config, products = [] }) {
+export function buildQuote({ rows = [], depRows = [], extraRows = [], config, products = [], library = [] }) {
   const missingXml = new Set();
   const resolve = makeResolver(products, missingXml);
   const isolate = config.logistique === 'isole';
@@ -714,7 +726,8 @@ export function buildQuote({ rows = [], depRows = [], extraRows = [], config, pr
             productName: l.product?.name ?? '— article manquant —',
             productTag: l.product?.tag ?? null,
             cgTags: l.product?.cgTags || [],
-            description: describe(l),
+            description: describe(l, library),
+            textTodo: l.textTodo || 0,
             qty, uom, priceUnit,
             subtotal: odooSubtotal,
             costUnit, cost,
@@ -749,6 +762,8 @@ export function buildQuote({ rows = [], depRows = [], extraRows = [], config, pr
       };
     });
 
+  const todoLines = outSections.flatMap((b) => b.lines).filter((l) => l.textTodo);
+  if (todoLines.length) warnings.push(`${todoLines.length} description(s) contiennent encore des « XX » ou des choix « A OU B » à compléter (surlignés dans l'aperçu).`);
   for (const x of missingXml) {
     warnings.push(`Article « ${XML_PRODUCTS[`xml:${x}`] || x} » absent de cette base Odoo : envoyé sur « Tissu » (même étiquette CG).`);
   }

@@ -807,6 +807,7 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
           rows={rows}
           depRows={depRows}
           extraRows={extraRows}
+          library={formulaCtx.catalog}
         />
       )}
 

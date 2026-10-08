@@ -11,7 +11,7 @@ const PARASITES = /^(tva|acompte|loyer|facture oxyg|prise$|\[fact\]|ajustement c
 
 async function catalog() {
   const [products, teams, tags, users, analytic, distrib, xmlIds] = await Promise.all([
-    searchRead('product.product', [['sale_ok', '=', true]], ['id', 'name', 'uom_id', 'categ_id', 'all_product_tag_ids']),
+    searchRead('product.product', [['sale_ok', '=', true]], ['id', 'name', 'uom_id', 'categ_id', 'all_product_tag_ids', 'description_sale']),
     searchRead('crm.team', [], ['id', 'name']),
     searchRead('crm.tag', [], ['id', 'name']),
     searchRead('res.users', [['share', '=', false]], ['id', 'name', 'login', 'sale_team_id']),
@@ -49,6 +49,8 @@ async function catalog() {
         tag: tagOf.get(p.id) || null,
         cgTags: (p.all_product_tag_ids || []).map((id) => productTagName.get(id)).filter(Boolean),
         xmlId: xmlIdOf.get(p.id) || null,
+        // Texte type de vente (avec des « XX » à compléter) : base des descriptions du devis.
+        description: (p.description_sale || '').trim() || null,
       }))
       .sort((a, b) => a.name.localeCompare(b.name, 'fr')),
     teams,
