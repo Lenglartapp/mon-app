@@ -15,15 +15,24 @@ export const HAUTEUR_RENFORT_TETE_OPTIONS = [
   "14 cm thermocollant",
 ];
 
-/** Finitions d'ourlet — partagées par « Finition OB » (piquage_ourlet) et « Finition OC » (finition_oc). */
+/** Finitions d'ourlet, communes rideaux et stores bateaux.
+ *  « Apparent » est devenu « Double + apparente » et « Invisible » est retiré : les lignes
+ *  qui portent déjà ces valeurs les gardent (elles ne sont simplement plus proposées).
+ *  Le coefficient de l'ourlet de côté des stores en dépend : « Double… » → × 4,
+ *  « Surfil… » / « Point Bourdon… » → × 2 (cf. storesBateauxMetrage.js). */
 export const FINITION_OURLET_OPTIONS = [
-  "Apparent",
-  "Invisible",
+  "Double + apparente",
   "Surfil + Invisible",
   "Double + Invisible",
   "Point Bourdon + Invisible",
   "Point Bourdon + Plate apparente",
 ];
+
+/** Finition de l'ourlet de côté (OC). */
+export const FINITION_OC_OPTIONS = FINITION_OURLET_OPTIONS;
+
+/** Finition de l'ourlet du bas (OB) : la pastille Velcro n'existe que pour le bas. */
+export const FINITION_OB_OPTIONS = [...FINITION_OURLET_OPTIONS, "Pastille Velcro"];
 
 // -----------------------------------------------------------------------------
 // ANCIENS LIBELLÉS D'EN-TÊTE

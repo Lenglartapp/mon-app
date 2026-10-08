@@ -1,3 +1,4 @@
+import { FINITION_OB_OPTIONS, FINITION_OC_OPTIONS } from '../../constants/rideauxFields';
 // src/lib/schemas/production/stores_bateaux.js
 // Schéma atelier pour le module "Stores" (Bateaux/Velum)
 
@@ -50,6 +51,11 @@ const BASE_STORES_BATEAUX_SCHEMA = [
 
     // ourlet_de_cote (number) : Ourlet de côté
     { key: "ourlet_de_cote", label: "Ourlet Côté", type: "number", width: 120 },
+
+    // Finition de l'ourlet de côté : fixe le coefficient de l'à plat (Double… / vide → × 4,
+    // Surfil / Point Bourdon → × 2) sur les lignes au nouveau métrage.
+    { key: "finition_oc", label: "Finition OC", type: "select", options: FINITION_OC_OPTIONS, width: 175,
+      tooltip: "Coefficient de l'ourlet de côté dans l'à plat : « Double… » ou vide → × 4 ; « Surfil… » ou « Point Bourdon… » → × 2." },
 
     // a_plat (number, readOnly) : À Plat -> Largeur Finie + (Ourlet * 2)
     {
@@ -182,8 +188,18 @@ const BASE_STORES_BATEAUX_SCHEMA = [
         }
     },
 
-    // picage_bas (text)
+    // picage_bas (text) — ancien champ libre de l'ourlet du bas, conservé tel quel
     { key: "picage_bas", label: "Picage bas", type: "text", width: 130 },
+
+    // Finition de l'ourlet du bas (liste). Les anciennes lignes dont « Picage bas » indique
+    // « … double apparent » l'affichent en « Double + apparente » sans que rien ne soit réécrit.
+    { key: "piquage_ourlet", label: "Finition OB", type: "select", options: FINITION_OB_OPTIONS, width: 175,
+      valueGetter: (value, row) => {
+        const r = row || value?.row || {};
+        if (r.piquage_ourlet) return r.piquage_ourlet;
+        return /double\s*apparent/i.test(String(r.picage_bas || '')) ? 'Double + apparente' : '';
+      } },
+
 
     // finition_chant_et_retour (text)
     { key: "finition_chant_et_retour", label: "Finition Chant et Retour", type: "text", width: 200 },
@@ -232,10 +248,10 @@ export const STORES_BATEAUX_PROD_SCHEMA = [
     ...mapSchema([
         'detail',
         'zone', 'piece', 'fenetre', 'produit',
-        'largeur', 'largeur_finie', 'ourlet_de_cote',
+        'largeur', 'largeur_finie', 'ourlet_de_cote', 'finition_oc',
         'a_plat',
         'hauteur_finie', 'statut_cotes', 'hauteur_coupe', 'hauteur_coupe_motif', 'hauteur_coupe_doublure',
-        'picage_bas', 'finition_chant_et_retour',
+        'picage_bas', 'piquage_ourlet', 'finition_chant_et_retour',
 
         // TOILE 1
         { key: 'toile_finition_1', label: 'Tissu 1' },
@@ -298,11 +314,17 @@ export const STORES_BATEAUX_PROD_SCHEMA = [
             return Math.max(0, Math.round(hFinie / vIntervalle));
         }
     },
-    { key: "valeur_intervalle", label: "Val. Intervalle", type: "number", width: 130 },
+    { key: "valeur_intervalle", label: "Val. Intervalle", type: "number", width: 130, defaultValue: 25 },
+    // Surplus de tissu par fourreau (cm). Vide → 4 (bateau) / 5 (velum).
+    { key: "surplus_fourreau", label: "Surplus fourreau", type: "number", width: 150,
+      tooltip: "Tissu ajouté par fourreau (cm). Vide : 4 cm pour un store bateau, 5 cm pour un velum." },
     { key: "croquis_intervalle", label: "Croquis Int.", type: "photo", width: 130 },
     { key: "barre_de_charge", label: "Barre Charge", type: "text", width: 130 },
     { key: "longueur_barre_de_charge", label: "Long. Barre Ch.", type: "number", width: 150 },
     { key: "longueur_tigette", label: "Long. Tigette", type: "number", width: 135 },
+    // Velum : diamètres (informatifs, sans effet sur le calcul)
+    { key: "diametre_barre_de_charge", label: "Ø Barre Ch.", type: "text", width: 120 },
+    { key: "diametre_tigettes", label: "Ø Tigettes", type: "text", width: 115 },
     {
         tooltip: "Nb Intervalles − 1 (minimum 0).",
         key: "nombre_de_tigettes",

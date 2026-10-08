@@ -1,6 +1,6 @@
 // src/lib/import/importProjectsFromExcel.js
 
-import { HAUTEUR_RENFORT_TETE_OPTIONS, FINITION_OURLET_OPTIONS, LEGACY_HEADER_ALIASES } from '../constants/rideauxFields';
+import { HAUTEUR_RENFORT_TETE_OPTIONS, FINITION_OB_OPTIONS, FINITION_OC_OPTIONS, LEGACY_HEADER_ALIASES } from '../constants/rideauxFields';
 import { applySchemaDefaults } from '../utils/schemaDefaults';
 import { STORES_CLASSIQUES_PRODUITS, STORE_CLASSIQUE_DEFAUT } from '../constants/productRouting';
 import readXlsxFile from 'read-excel-file';
@@ -97,8 +97,8 @@ const PRODUCT_SHEETS = [
       c('largeur',                     'Largeur (cm)',            'number',   14),
       calc('largeur_finie',            'L. Finie',                12),
       c('v_ourlets_de_cotes',          'OC',           'number',   14),
-      c('piquage_ourlet',              'Finition OB',             'select',   26, { options: FINITION_OURLET_OPTIONS }),
-      c('finition_oc',                 'Finition OC',             'select',   26, { options: FINITION_OURLET_OPTIONS }),
+      c('piquage_ourlet',              'Finition OB',             'select',   26, { options: FINITION_OB_OPTIONS }),
+      c('finition_oc',                 'Finition OC',             'select',   26, { options: FINITION_OC_OPTIONS }),
       calc('a_plat',                   'À Plat',                  12),
       c('hspf_droite',                 'HSPF Droit',              'number',   13),
       c('hspf_milieu',                 'HSPF Milieu',             'number',   14),
