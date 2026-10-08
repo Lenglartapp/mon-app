@@ -488,6 +488,46 @@ export function toOdooPayload({ quote, dest, minute }) {
   };
 }
 
+// ─── Note de portée « Concerne : … » ───────────────────────────────────────────
+// « Salon 1, Salon 2, Salon 3 » → « Salon 1, 2, 3 » (même nom, numéros différents).
+function compactNames(names) {
+  const out = [];
+  for (const n of names) {
+    const m = /^(.*\D)\s*(\d+)$/.exec(n);
+    const prev = out[out.length - 1];
+    if (m && prev && prev.base === m[1].trim()) prev.nums.push(m[2]);
+    else out.push(m ? { base: m[1].trim(), nums: [m[2]] } : { base: n, nums: [] });
+  }
+  return out.map((g) => (g.nums.length ? `${g.base} ${g.nums.join(', ')}` : g.base)).join(', ');
+}
+// rowsOfLine : lignes de minute portées par la référence ; allRows : toutes celles du même produit
+// dans le bloc. Produit (« Rideaux ») + zone, et les pièces si la zone n'est couverte qu'en partie.
+function scopeNoteFor(rowsOfLine, allRows) {
+  const zoneOf = (r) => String(r?.zone || '').trim();
+  const placeOf = (r) => String(r?.piece || r?.fenetre || '').trim();
+  const first = [...rowsOfLine][0];
+  const produit = String(first?.produit || '').trim();
+  const label = produit ? pluralLabel(produit) : '';
+  const byZone = new Map();
+  for (const r of rowsOfLine) {
+    const z = zoneOf(r);
+    if (!byZone.has(z)) byZone.set(z, new Set());
+    byZone.get(z).add(r);
+  }
+  const parts = [];
+  for (const [z, rs] of byZone) {
+    const zoneRows = [...allRows].filter((r) => zoneOf(r) === z);
+    const whole = rs.size >= zoneRows.length;
+    const places = [...new Set([...rs].map(placeOf).filter(Boolean))];
+    if (whole || !places.length) parts.push(z || '');
+    else parts.push(`${z ? `${z} — ` : ''}${compactNames(places)}`);
+  }
+  const where = parts.filter(Boolean).join(' ; ');
+  return [label, where].filter(Boolean).join(' ') || null;
+}
+const pluralLabel = (produit) => produit.split(' ').map((w, i) => (i === 0 || !/^(de|du|des|la|le|les|à|en)$/i.test(w)
+  ? (/[sxz]$/i.test(w) ? w : /(eau|au|eu)$/i.test(w) ? `${w}x` : `${w}s`) : w)).join(' ');
+
 // ─── Construction ──────────────────────────────────────────────────────────────
 const LOGI_TITLE = 'DÉPLACEMENT, TRANSPORT & LOCATION';
 const ORDER_LOGI = 3e6;
@@ -726,11 +766,11 @@ export function buildQuote({ rows = [], depRows = [], extraRows = [], config, pr
     return { ...ch, host, place, applied: true };
   });
 
-  // 3 bis. Petite note de portée : dans un bloc où un même article au mètre (Tissu, Doublure…) a
-  //   plusieurs références, chaque référence qui ne couvre qu'une PARTIE des produits du bloc
-  //   reçoit « Concerne : <pièces> » (sinon pièce → zone → fenêtre). La référence présente
-  //   partout n'a pas de note. Une seule référence : aucune note.
-  const placeOf = (r) => String(r?.piece || r?.zone || r?.fenetre || '').trim();
+  // 3 bis. Petite note de portée (règle validée le 2026-10-08) : dans un bloc où un même article au
+  //   mètre (Tissu, Doublure…) a PLUSIEURS références, CHAQUE ligne de cet article reçoit
+  //   « Concerne : <produit> <zone>[ — <pièces>] » : la zone seule si la référence couvre toutes les
+  //   pièces de la zone dans ce bloc, sinon la zone suivie des pièces concernées (« Salon 1, 2, 3 »).
+  //   Une seule référence dans le bloc : aucune note.
   for (const sec of sections.values()) {
     const lines = [...sec.lines.values()];
     const typeRows = new Map();
@@ -747,13 +787,15 @@ export function buildQuote({ rows = [], depRows = [], extraRows = [], config, pr
       groups.get(g).push(l);
     }
     for (const group of groups.values()) {
-      if (group.length < 2) continue;
+      if (group.length < 2) continue; // bloc uniforme : rien à différencier
+      // Toutes les références couvrent tout le bloc (tissus combinés sur les mêmes produits,
+      // ex. Tissu 1 + Tissu 2 d'un même rideau) : une note ne différencierait rien.
+      const total = typeRows.get(group[0].typeKey)?.size || 0;
+      const covers = (l) => new Set(l.sources.map((x) => x.row).filter(Boolean)).size >= total;
+      if (group.every(covers)) continue;
       for (const l of group) {
-        const rowsOfLine = new Set(l.sources.map((x) => x.row).filter(Boolean));
-        if (rowsOfLine.size >= (typeRows.get(l.typeKey)?.size || 0)) continue; // présente partout
-        const places = [...new Set([...rowsOfLine].map(placeOf).filter(Boolean))];
-        if (!places.length) continue;
-        l.scopeNote = `Concerne : ${places.length > 6 ? `${places.slice(0, 6).join(', ')}…` : places.join(', ')}`;
+        const note = scopeNoteFor(new Set(l.sources.map((x) => x.row).filter(Boolean)), typeRows.get(l.typeKey) || new Set());
+        if (note) l.scopeNote = `Concerne : ${note}`;
       }
     }
   }
