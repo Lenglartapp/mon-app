@@ -522,6 +522,7 @@ function AppShell() {
         {screen === "project" && currentProject && !isInternalProject(cleanProjects.find(p => String(p.id) === String(currentProject.id)) || currentProject) && (
           <ProductionProjectScreen
             inventory={inventory}
+            movements={movements}
             onUpdateItem={updateInventoryItem}
             onStockChanged={refreshStocks}
             project={cleanProjects.find(p => String(p.id) === String(currentProject.id)) || currentProject}
