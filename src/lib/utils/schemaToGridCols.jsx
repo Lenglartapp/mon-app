@@ -208,7 +208,7 @@ function AgColumnHeader(props) {
         </div>
       )}
       {tooltip ? (
-        <Tooltip title={tooltip} placement="top" arrow enterDelay={300}>
+        <Tooltip title={tooltip} placement="top" arrow enterDelay={300} slotProps={{ tooltip: { sx: { whiteSpace: 'pre-line', maxWidth: 360 } } }}>
           {label}
         </Tooltip>
       ) : label}

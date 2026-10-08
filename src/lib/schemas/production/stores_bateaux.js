@@ -35,6 +35,7 @@ const BASE_STORES_BATEAUX_SCHEMA = [
 
     // largeur_finie (number) : Largeur Finie -> For Stores Bateaux, it's (Largeur + 1)
     {
+        tooltip: "L. Finie = Largeur + 1 cm.",
         key: "largeur_finie",
         label: "L. Finie",
         type: "number",
@@ -52,6 +53,7 @@ const BASE_STORES_BATEAUX_SCHEMA = [
 
     // a_plat (number, readOnly) : À Plat -> Largeur Finie + (Ourlet * 2)
     {
+        tooltip: "À Plat = L. Finie + 2 × Ourlet côté.",
         key: "a_plat",
         label: "À Plat",
         type: "number",
@@ -80,6 +82,7 @@ const BASE_STORES_BATEAUX_SCHEMA = [
 
     // hauteur_coupe (number, readOnly) : H. Coupe
     {
+        tooltip: "H. Finie + 50 (+ 80 si H. Finie ≥ 400). Si Laize TF1 dépasse cette valeur : = À Plat (toile couchée).",
         key: "hauteur_coupe",
         label: "H. Coupe",
         type: "number",
@@ -114,6 +117,7 @@ const BASE_STORES_BATEAUX_SCHEMA = [
 
     // hauteur_coupe_motif (number, readOnly) : H. Coupe Motif
     {
+        tooltip: "H. Coupe arrondie au raccord vertical TF1 supérieur, + 1 raccord. 0 s'il n'y a pas de raccord.",
         key: "hauteur_coupe_motif",
         label: "H. Coupe Motif",
         type: "number",
@@ -145,6 +149,7 @@ const BASE_STORES_BATEAUX_SCHEMA = [
 
     // hauteur_coupe_doublure (number, readOnly) : H. Coupe Doublure
     {
+        tooltip: "Comme H. Coupe, sur la laize de doublure : H. Finie + 50 (+ 80 si H. Finie ≥ 400), = À Plat si la laize dépasse.",
         key: "hauteur_coupe_doublure",
         label: "H. Coupe Doublure",
         type: "number",
@@ -263,6 +268,7 @@ export const STORES_BATEAUX_PROD_SCHEMA = [
     { key: "methode_manoeuvre", label: "Méthode Manœuvre", type: "select", options: ["Freel", "Cordon", "Chaînette"], width: 160 },
     { key: "equerre_support", label: "Équerre Support", type: "text", width: 140 },
     {
+        tooltip: "Arrondi(L. Finie ÷ 50) + 1.",
         key: "nombre_anneaux_largeur",
         label: "Nb Anneaux Larg.",
         type: "number",
@@ -278,6 +284,7 @@ export const STORES_BATEAUX_PROD_SCHEMA = [
     { key: "deportation_premier_anneau", label: "Déport 1er Anneau", type: "text", width: 175 },
     { key: "valeur_velcro", label: "Valeur Velcro", type: "select", options: ["2", "2.5", "5"], width: 130 },
     {
+        tooltip: "Arrondi(H. Finie ÷ Val. Intervalle). 0 sans intervalle.",
         key: "nombre_intervalles",
         label: "Nb Intervalles",
         type: "number",
@@ -297,6 +304,7 @@ export const STORES_BATEAUX_PROD_SCHEMA = [
     { key: "longueur_barre_de_charge", label: "Long. Barre Ch.", type: "number", width: 150 },
     { key: "longueur_tigette", label: "Long. Tigette", type: "number", width: 135 },
     {
+        tooltip: "Nb Intervalles − 1 (minimum 0).",
         key: "nombre_de_tigettes",
         label: "Nb Tigettes",
         type: "number",

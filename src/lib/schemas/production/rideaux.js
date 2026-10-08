@@ -519,7 +519,7 @@ export const RIDEAUX_PROD_SCHEMA = [
         type: "number",
         width: 110,
         readOnly: true,
-        tooltip: "Si L < 200 cm → coeff 1,10 ; si L ≥ 200 cm → coeff 1,06. Paire : (L/2 × coeff) + croisement. Pan unique : L × coeff",
+        tooltip: "Nouveaux projets : Un seul pan / Pan libre : L + 10 + 2,5 % × L. Paire : L/2 + 10 + 2,5 % × L/2 + Croisement/2 (Wave 60/80 : arrondie au nombre pair de vagues avant le croisement). Anciens projets : L × coeff (pan) ou L/2 × coeff + Croisement (paire), coeff 1,10 si L < 200, sinon 1,06, arrondi au cm supérieur.",
         valueGetter: (v, r) => getters.largeur_finie(getRow(v, r))
     },
     {
@@ -537,7 +537,7 @@ export const RIDEAUX_PROD_SCHEMA = [
         type: "number",
         width: 100,
         readOnly: true,
-        tooltip: "Nombre de lés entiers : À Plat ÷ laize tissu 1, arrondi à l'inférieur (minimum 1), par pan — doublé sur une paire.",
+        tooltip: "Lés entiers PAR PAN (pour l'étiquette) : À Plat ÷ Laize T1, arrondi à l'inférieur (minimum 1).",
         valueGetter: (v, r) => {
             const row = getRow(v, r);
             const aPlat = getters.a_plat(row);
@@ -552,7 +552,7 @@ export const RIDEAUX_PROD_SCHEMA = [
         type: "number",
         width: 130,
         readOnly: true,
-        tooltip: "Partie fractionnaire × laize T1 : reste de tissu après les lés entiers, pour UN pan (non doublé sur une paire). Vide si le rideau rentre dans la laize (hauteur finie max + 50 cm < laize T1) : coupe dans le sens de la laize, pas d'appiècement.",
+        tooltip: "Reste après les lés entiers, pour UN pan : (À Plat ÷ Laize T1 − partie entière) × Laize T1. Vide si le tissu rentre dans la laize (Laize T1 ≥ H. Coupe T1 ; nouveaux projets : ≥ H. Coupe Motif).",
         valueGetter: (v, r) => getters.reste_les(getRow(v, r))
     },
     {
@@ -561,7 +561,7 @@ export const RIDEAUX_PROD_SCHEMA = [
         type: "number",
         width: 155,
         readOnly: true,
-        tooltip: "Nombre de hauteurs à couper (T1). Pan = Nb Lés + 1. Paire = Nb Lés + 1 si appiècement ≤ laize/2, sinon + 2. Si le rideau rentre dans la laize : = Nb Lés (1/pan).",
+        tooltip: "Pan : lés entiers + 1. Paire : lés entiers des 2 pans + 1 si appiècement ≤ laize/2, sinon + 2. Si le tissu rentre dans la laize : 1 par pan.",
         valueGetter: (v, r) => getters.nb_hauteur_a_couper(getRow(v, r))
     },
     { key: "v_ourlets_de_cotes", label: "OC", type: "number", width: 130, editable: true },
@@ -618,7 +618,7 @@ export const RIDEAUX_PROD_SCHEMA = [
         type: "number",
         width: 120,
         readOnly: true,
-        tooltip: "Si laize T1 > H_finie + 50 cm : utilise la valeur À Plat (tissu couché). Sinon : H_finie + 50 cm de marge de coupe",
+        tooltip: "Nouveaux projets : hauteur finie max (D, M, G) + 2 × Renfort tête + 2 × OB si non doublé (1 × Renfort tête si doublé). Anciens projets : hauteur finie max + 50 + OB.",
         valueGetter: (v, r) => getters.hauteur_coupe(getRow(v, r))
     },
     {
@@ -636,7 +636,7 @@ export const RIDEAUX_PROD_SCHEMA = [
         type: "number",
         width: 165,
         readOnly: true,
-        tooltip: "Nombre de raccords motif T2 : ceil(H. Coupe T2 ÷ Raccord V T2) + 1. Zéro si pas de raccord, vide si pas de tissu 2.",
+        tooltip: "Arrondi sup.(H. Coupe T2 ÷ Raccord V T2) + 1. Zéro si pas de raccord. Vide s'il n'y a pas de tissu 2, et sur les nouveaux projets (tissu 2 en saisie libre).",
         valueGetter: (v, r) => getters.nb_raccords_motifs_t2(getRow(v, r))
     },
     {
@@ -660,7 +660,7 @@ export const RIDEAUX_PROD_SCHEMA = [
         type: "number",
         width: 120,
         readOnly: true,
-        tooltip: "Même logique que H. Coupe T1, basée sur la laize du tissu 2. Vide s'il n'y a pas de tissu 2.",
+        tooltip: "Anciens projets : hauteur finie max + 50 + OB. Vide s'il n'y a pas de tissu 2, et sur les nouveaux projets (tissu 2 en saisie libre).",
         valueGetter: (v, r) => getters.hauteur_coupe_t2(getRow(v, r))
     },
     {
@@ -678,7 +678,7 @@ export const RIDEAUX_PROD_SCHEMA = [
         type: "number",
         width: 150,
         readOnly: true,
-        tooltip: "Même logique que H. Coupe mais basée sur la laize de doublure",
+        tooltip: "Nouveaux projets : = H. Coupe T1. Anciens projets : hauteur finie max + 30 + OB Doublure.",
         // Délègue au getter : la logique était dupliquée ici, et sa copie avait
         // divergé (hauteur milieu oubliée).
         valueGetter: (v, r) => getters.hauteur_coupe_doublure(getRow(v, r))
@@ -689,7 +689,7 @@ export const RIDEAUX_PROD_SCHEMA = [
         type: "number",
         width: 150,
         readOnly: true,
-        tooltip: "Même logique que H. Coupe Doubl., basée sur la laize de l'interdoublure. Vide s'il n'y a pas d'interdoublure.",
+        tooltip: "Nouveaux projets : hauteur finie max + Renfort tête. Anciens projets : hauteur finie max + 30. Vide s'il n'y a pas d'interdoublure.",
         valueGetter: (v, r) => getters.hauteur_coupe_inter(getRow(v, r))
     },
 
@@ -700,7 +700,7 @@ export const RIDEAUX_PROD_SCHEMA = [
     { key: "piquage_ourlets_bas_doublure", label: "OB Doublure", type: "number", width: 145, editable: true },
     { key: "doublure_finition_bas", label: "Fin. OB Doublure", type: "number", width: 145, editable: true },
     { key: "finition_champs", label: "Fin. Chant", type: "number", width: 120, editable: true },
-    { key: "finition_retour", label: "Fin. Retour", type: "number", width: 120, editable: true, tooltip: "Rideau doublé : l'À Plat utilise 2 × Fin. Chant + 2 × Fin. Retour (au lieu de 4 × ourlet côté)." },
+    { key: "finition_retour", label: "Fin. Retour", type: "number", width: 120, editable: true, tooltip: "Si renseignée (> 0), remplace l'ourlet de côté côté retour dans l'À Plat : 2 × Fin. Retour au lieu de 2 × OC (doublé ou non)." },
     { key: "poids", label: "Poids", type: "select", options: ["Oui", "Non"], width: 90, editable: true },
 
     // Onglets: Non / Régulier / Irrégulier
@@ -731,7 +731,7 @@ export const RIDEAUX_PROD_SCHEMA = [
         type: "number",
         width: 100,
         readOnly: true,
-        tooltip: "ML Tissu 1 calculé depuis les cotes BPF. Horizontal si laize ≥ H.Coupe : À Plat ÷ 100. Vertical : Nb lés × H.Coupe Motif ÷ 100. Une paire compte deux pans : le résultat est doublé (l'À Plat, lui, décrit un seul pan).",
+        tooltip: "Couché si Laize T1 ≥ H. Coupe T1 (nouveaux projets : ≥ H. Coupe Motif) : À Plat ÷ 100. Sinon : arrondi sup.(À Plat ÷ Laize T1) × H. Coupe Motif ÷ 100 (nouveaux projets : demi-lé sur une paire en tissu uni, motif + 1 raccord). × 2 pour une paire.",
         valueGetter: (v, r) => {
             const row = getRow(v, r);
             if (isMetrageV2Row(row)) {
@@ -771,7 +771,7 @@ export const RIDEAUX_PROD_SCHEMA = [
         type: "number",
         width: 140,
         readOnly: true,
-        tooltip: "Reste de tissu après les lés entiers, sur la laize du tissu 2. Vide s'il n'y a pas de tissu 2, ou si le rideau rentre dans la laize (hauteur finie max + 50 cm < laize T2).",
+        tooltip: "Reste après les lés entiers, pour UN pan, sur la laize du tissu 2. Vide s'il n'y a pas de tissu 2, sur les nouveaux projets, ou si le tissu rentre dans la laize (Laize T2 ≥ H. Coupe T2).",
         valueGetter: (v, r) => getters.reste_les_t2(getRow(v, r))
     },
     {
@@ -789,7 +789,7 @@ export const RIDEAUX_PROD_SCHEMA = [
         type: "number",
         width: 155,
         readOnly: true,
-        tooltip: "Nombre de hauteurs à couper (T2). Pan = Nb Lés + 1. Paire = Nb Lés + 1 si appiècement ≤ laize/2, sinon + 2. Vide s'il n'y a pas de tissu 2.",
+        tooltip: "Comme Nb Haut. à Couper T1, sur la laize du tissu 2. Vide s'il n'y a pas de tissu 2, et sur les nouveaux projets.",
         valueGetter: (v, r) => getters.nb_hauteur_a_couper_t2(getRow(v, r))
     },
     { key: "doublure", label: "Doublure", type: "text", width: 160, editable: true },
@@ -815,7 +815,7 @@ export const RIDEAUX_PROD_SCHEMA = [
         type: "number",
         width: 160,
         readOnly: true,
-        tooltip: "Reste de tissu après les lés entiers, sur la laize de doublure. Vide s'il n'y a pas de doublure, ou si le rideau rentre dans la laize (hauteur finie max + 50 cm < laize doublure).",
+        tooltip: "Reste après les lés entiers, pour UN pan, sur la laize de doublure. Vide s'il n'y a pas de doublure, ou si la doublure rentre dans la laize (Laize D. ≥ H. Coupe Doubl.).",
         valueGetter: (v, r) => getters.reste_les_doublure(getRow(v, r))
     },
     {
@@ -844,7 +844,7 @@ export const RIDEAUX_PROD_SCHEMA = [
         type: "number",
         width: 120,
         readOnly: true,
-        tooltip: "ML Interdoublure calculé depuis les cotes BPF. Une paire compte deux pans : le résultat est doublé (l'À Plat, lui, décrit un seul pan).",
+        tooltip: "Couché si Laize ≥ H : À Plat ÷ 100 ; sinon arrondi sup.(À Plat ÷ Laize Inter) × H ÷ 100 ; × 2 pour une paire. H = H. Coupe Inter. (nouveaux projets, demi-lé sur une paire) ou H. Coupe T1 (anciens projets).",
         valueGetter: (v, r) => {
             const row = getRow(v, r);
             // v2 : H. Coupe propre à l'interdoublure (hauteur finie + tête), demi-lé possible.
@@ -862,7 +862,7 @@ export const RIDEAUX_PROD_SCHEMA = [
         type: "number",
         width: 150,
         readOnly: true,
-        tooltip: "Reste de tissu après les lés entiers, sur la laize d'interdoublure. Vide s'il n'y a pas d'interdoublure, ou si le rideau rentre dans la laize (hauteur finie max + 50 cm < laize inter).",
+        tooltip: "Reste après les lés entiers, pour UN pan, sur la laize de l'interdoublure. Vide s'il n'y a pas d'interdoublure, ou si elle rentre dans la laize (Laize Inter ≥ H. Coupe Inter.).",
         valueGetter: (v, r) => getters.reste_les_inter(getRow(v, r))
     },
     {
