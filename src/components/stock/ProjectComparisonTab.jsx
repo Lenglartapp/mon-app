@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { ChevronRight, ChevronDown, Scale } from 'lucide-react';
 import { buildComparison, IGNORE_MATCH, JUSTE_MARGIN } from '../../lib/stock/projectStock';
-import { Stat } from './ProjectNeedsTab';
+import { Stat, NeedsBasisNote } from './ProjectNeedsTab';
 import { TonePill } from '../ui/ToolbarControls';
 
 // Onglet « Comparatif » : besoin BPF / commandé (liste de courses Odoo) / reçu, par tissu.
@@ -84,7 +84,7 @@ function CourseLinesTable({ lines, matches, needs, onSetMatch, savingId }) {
     );
 }
 
-export default function ProjectComparisonTab({ needs, courseLines, loading, error, onSetMatch, savingId }) {
+export default function ProjectComparisonTab({ needs, basis, courseLines, loading, error, onSetMatch, savingId }) {
     const [open, setOpen] = useState(() => new Set());
     const toggle = (key) => setOpen((prev) => {
         const s = new Set(prev);
@@ -110,6 +110,7 @@ export default function ProjectComparisonTab({ needs, courseLines, loading, erro
     return (
         <div>
             {error && <div style={{ marginBottom: 12, padding: '8px 12px', borderRadius: 8, background: '#FEF2F2', color: '#B91C1C', fontSize: 13 }}>{error}</div>}
+            <NeedsBasisNote basis={basis} />
             <div style={{ display: 'flex', gap: 40, marginBottom: 16, flexWrap: 'wrap' }}>
                 <Stat label="OK" value={count('ok')} />
                 <Stat label="Juste" value={count('juste')} />

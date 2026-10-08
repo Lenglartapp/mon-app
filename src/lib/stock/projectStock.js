@@ -1,10 +1,13 @@
 // Modale « Stock » du dossier — logique pure (aucun appel réseau) :
-//  1. besoins du projet : total ML par tissu calculé depuis les lignes du BPF ;
+//  1. besoins du projet : total ML par tissu calculé avec les formules du BPF (rideaux,
+//     cf. bpfMetrage.js : cotes de pose, ou cotes du plan tant qu'elles ne sont pas prises) ;
 //  2. rapprochement besoins ↔ liste de courses Odoo (noms tapés différemment) ;
 //  3. comparatif besoin / commandé / reçu avec un statut par tissu.
 
 // Champs textiles des lignes de production : [champ nom, champ(s) ML, rôle affiché].
 // Les rideaux ont leurs propres noms de champs, les autres produits la forme `tissu_1`.
+import { bpfMl, isRideauRow, hasPoseCotes } from './bpfMetrage.js';
+
 export const TEXTILE_FIELDS = [
     ['tissu_deco1', ['ml_tissu1'], 'Tissu 1'],
     ['tissu_deco2', ['ml_tissu2'], 'Tissu 2'],
@@ -50,7 +53,10 @@ export function computeNeeds(rows = [], materials = []) {
             const name = row[nameField];
             if (!name || typeof name !== 'string' || !name.trim()) return;
             if (seen.has(role)) return;
-            const ml = num(mlFields.map((f) => row[f]).find((v) => v != null && v !== ''));
+            // Rideaux : formules du BPF ; sinon (passementerie, autres produits) : métrage saisi.
+            const fromBpf = bpfMl(row, mlFields[0]);
+            const ml = fromBpf != null ? fromBpf : num(mlFields.map((f) => row[f]).find((v) => v != null && v !== ''));
+            const basis = fromBpf == null ? 'saisie' : hasPoseCotes(row) ? 'cotes' : 'plan';
             if (!(ml > 0)) return;
             seen.add(role);
             const key = needKey(name);
@@ -60,7 +66,7 @@ export function computeNeeds(rows = [], materials = []) {
             }
             const n = needs.get(key);
             n.total = round2(n.total + ml);
-            n.sources.push({ rowId: row.id, label: rowLabel(row, index), zone: row.zone || '', role, ml: round2(ml) });
+            n.sources.push({ rowId: row.id, label: rowLabel(row, index), zone: row.zone || '', role, ml: round2(ml), basis, rideau: isRideauRow(row) });
         });
     });
     return [...needs.values()].sort((a, b) => b.total - a.total);

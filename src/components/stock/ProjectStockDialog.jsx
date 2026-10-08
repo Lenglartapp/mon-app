@@ -3,6 +3,7 @@ import DaDialog, { DaTabs } from '../ui/DaDialog';
 import { supabase } from '../../lib/supabaseClient';
 import { readCourseLines } from '../../lib/odoo/courseLinesClient';
 import { computeNeeds } from '../../lib/stock/projectStock';
+import { cotesBasis } from '../../lib/stock/bpfMetrage';
 import ProjectCourseListPanel from '../odoo/ProjectCourseListPanel';
 import StockInventoryTab from '../modules/Stocks/StockInventoryTab';
 import StockRequestsPanel from '../modules/Stocks/StockRequestsPanel';
@@ -30,6 +31,8 @@ export default function ProjectStockDialog({ open, onClose, project, projects, i
     const [savingId, setSavingId] = useState(null);
 
     const needs = useMemo(() => computeNeeds(project?.rows || [], project?.materials || []), [project?.rows, project?.materials]);
+    // État des cotes des rideaux → note de fiabilité des besoins (toutes validées / prises / partielles / plan).
+    const basis = useMemo(() => cotesBasis(project?.rows || []), [project?.rows]);
     const projectInventory = useMemo(
         () => (inventory || []).filter((item) => item.project && item.project === project?.name),
         [inventory, project?.name]
@@ -89,10 +92,11 @@ export default function ProjectStockDialog({ open, onClose, project, projects, i
                         <StockInventoryTab embedded inventory={projectInventory} projects={projects} movements={movements} onUpdateItem={onUpdateItem} />
                     </>
                 )}
-                {tab === 'needs' && <ProjectNeedsTab needs={needs} />}
+                {tab === 'needs' && <ProjectNeedsTab needs={needs} basis={basis} />}
                 {tab === 'compare' && (
                     <ProjectComparisonTab
                         needs={needs}
+                        basis={basis}
                         courseLines={courseLines}
                         loading={linesLoading && !courseLines.length}
                         error={linesError}
