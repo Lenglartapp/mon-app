@@ -1,6 +1,11 @@
 import React, { useState } from 'react';
-import { Dialog, DialogTitle, DialogContent, DialogActions, TextField, MenuItem, Button, Stack, IconButton, Box, Typography, Divider, Alert } from '@mui/material';
-import { Add as AddIcon, Delete as DeleteIcon, Close as CloseIcon } from '@mui/icons-material';
+import { TextField, Button, Stack, IconButton, Box, Typography } from '@mui/material';
+import InputAdornment from '@mui/material/InputAdornment';
+import { Plus, Minus } from 'lucide-react';
+import DaDialog from '../../ui/DaDialog';
+import { DaField, ChoicePill } from '../../ui/DaForm';
+import { TonePill } from '../../ui/ToolbarControls';
+import { DA_FIELD_SX } from '../../../lib/constants/daStyles';
 import { LOC_A_COMPLETER, splitLocations } from '../../../lib/inventory/stockFields';
 import LocationInput from './LocationInput';
 import OperatorInput from './OperatorInput';
@@ -68,84 +73,117 @@ export default function EditStockItemModal({ item, zones = [], onClose, onSave }
     setSaving(false);
   };
 
+  // DA : coque DaDialog, libellés gris au-dessus des champs, sections encadrées, bleu nuit.
+  const sectionSx = { p: 2, border: '1px solid #E0DED9', borderRadius: '8px' };
+  const sectionTitle = (t, extra) => (
+    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
+      <Typography sx={{ fontSize: 15, fontWeight: 500, color: '#111827', fontFamily: 'Roboto, system-ui, sans-serif' }}>{t}</Typography>
+      {extra}
+    </Box>
+  );
+  const field = (label, value, setValue, props = {}) => (
+    <DaField label={label}>
+      <TextField fullWidth size="small" value={value} onChange={(e) => setValue(e.target.value)} sx={DA_FIELD_SX} {...props} />
+    </DaField>
+  );
+  const unitLabel = unit || item.unit || 'ml';
+  const canSave = !saving && !!product.trim() && !!operator.trim();
+
   return (
-    <Dialog open onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        {isToComplete ? 'Compléter la réception' : "Éditer l'article"}
-        <IconButton onClick={onClose}><CloseIcon /></IconButton>
-      </DialogTitle>
-      <DialogContent dividers>
-        <Stack spacing={2} sx={{ mt: 1 }}>
-          {isToComplete && (
-            <Alert severity="warning" icon={false} sx={{ fontWeight: 600 }}>
-              📍 Réception Odoo : <b>{received} {item.unit || ''}</b> reçus. Détaille les pièces puis indique l'emplacement.
-            </Alert>
-          )}
+    <DaDialog
+      open
+      onClose={onClose}
+      title={isToComplete ? 'Compléter la réception' : "Modifier l'article"}
+      subtitle={[fournisseur, [ref, coloris].filter(Boolean).join(' — ')].filter(Boolean).join(' · ') || product || undefined}
+      maxWidth="sm"
+      footer={(
+        <>
+          <Button onClick={onClose} sx={{ marginLeft: 'auto', color: '#374151', textTransform: 'none', fontWeight: 600, border: '1px solid #E0DED9', borderRadius: '8px', px: 2, height: 38 }}>Annuler</Button>
+          <Button
+            variant="contained" disableElevation onClick={save} disabled={!canSave}
+            sx={{ bgcolor: '#1E2447', textTransform: 'none', fontWeight: 600, px: 3, borderRadius: '8px', height: 38, '&:hover': { bgcolor: '#2A3260' } }}
+          >
+            Enregistrer
+          </Button>
+        </>
+      )}
+    >
+      <Stack spacing={3}>
+        {isToComplete && (
+          <Typography sx={{ fontSize: 13, color: '#374151', bgcolor: '#EEF4FD', borderRadius: '8px', px: 1.5, py: 1 }}>
+            Réception Odoo : <b>{received} {item.unit || ''}</b> reçus. Détaille les pièces puis indique l'emplacement.
+          </Typography>
+        )}
 
-          <Stack direction="row" spacing={2}>
-            <TextField label="Fournisseur" value={fournisseur} onChange={(e) => setFournisseur(e.target.value)} size="small" sx={{ width: '35%' }} />
-            <TextField label="Référence" value={ref} onChange={(e) => setRef(e.target.value)} size="small" sx={{ flex: 1 }} />
-          </Stack>
-          <Stack direction="row" spacing={2}>
-            <TextField label="Coloris" value={coloris} onChange={(e) => setColoris(e.target.value)} size="small" sx={{ flex: 1 }} />
-            <TextField label="Laize" value={laize} onChange={(e) => setLaize(e.target.value)} size="small" sx={{ width: '22%' }} placeholder="ex. 140" />
-            <TextField label="Unité" value={unit} onChange={(e) => setUnit(e.target.value)} size="small" sx={{ width: '18%' }} placeholder="ml, u…" />
-          </Stack>
-          <Stack direction="row" spacing={2}>
-            <TextField label="Produit (libellé)" value={product} onChange={(e) => setProduct(e.target.value)} size="small" sx={{ flex: 1 }} />
-            <TextField select label="Catégorie" value={category} onChange={(e) => setCategory(e.target.value)} size="small" sx={{ width: '30%' }}>
-              {CATEGORIES.map((c) => <MenuItem key={c} value={c}>{c}</MenuItem>)}
-            </TextField>
-          </Stack>
-          <Stack direction="row" spacing={2}>
-            <TextField label="Affectation (dossier)" value={project} onChange={(e) => setProject(e.target.value)} size="small" sx={{ flex: 1 }} />
-            <OperatorInput value={operator} onChange={setOperator} sx={{ width: '40%' }} />
-          </Stack>
-
-          <Divider />
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Typography variant="subtitle2">Pièces / rouleaux</Typography>
-            <Button size="small" startIcon={<AddIcon />} onClick={addPiece}>Ajouter une pièce</Button>
-          </Box>
-          {!hasPieces && (
-            <TextField label="Quantité totale" type="number" value={manualQty} onChange={(e) => setManualQty(e.target.value)} size="small" sx={{ width: 200 }} />
-          )}
-          {pieces.map((p, idx) => (
-            <Stack key={p.id} direction="row" spacing={1} alignItems="center">
-              <Typography variant="body2" sx={{ width: 70, fontWeight: 600 }}>Pièce {idx + 1}</Typography>
-              <TextField
-                type="number" value={p.qty} onChange={(e) => setPieceQty(p.id, e.target.value)} size="small" sx={{ width: 130 }}
-                autoFocus={isToComplete && idx === pieces.length - 1 && p.qty === ''}
-                InputProps={{ endAdornment: <Typography variant="caption" sx={{ color: 'text.secondary' }}>{item.unit || 'ml'}</Typography> }}
-              />
-              <IconButton size="small" onClick={() => removePiece(p.id)}><DeleteIcon fontSize="small" /></IconButton>
+        {/* ARTICLE */}
+        <Box sx={sectionSx}>
+          {sectionTitle('Article')}
+          <Stack spacing={2}>
+            <DaField label="Catégorie">
+              <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+                {CATEGORIES.map((c) => <ChoicePill key={c} active={category === c} onClick={() => setCategory(c)}>{c}</ChoicePill>)}
+              </Stack>
+            </DaField>
+            <Stack direction="row" spacing={1.5}>
+              <Box sx={{ flex: 1 }}>{field('Fournisseur', fournisseur, setFournisseur)}</Box>
+              <Box sx={{ flex: 1 }}>{field('Référence', ref, setRef)}</Box>
             </Stack>
-          ))}
-          {hasPieces && (
-            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-              {filledPieces.length ? 'Total' : 'Stock actuel'} : <b>{totalQty}</b> {item.unit || ''}
-              {ecart != null && (
-                ecart === 0
-                  ? <span style={{ color: '#15803D', fontWeight: 700 }}> ✓ conforme à la réception ({received})</span>
-                  : <span style={{ color: '#B45309', fontWeight: 700 }}> ⚠ écart de {ecart > 0 ? '+' : ''}{ecart} avec la réception ({received}) — le total des pièces fera foi</span>
-              )}
-            </Typography>
-          )}
+            <Stack direction="row" spacing={1.5}>
+              <Box sx={{ flex: 1 }}>{field('Coloris', coloris, setColoris)}</Box>
+              <Box sx={{ width: 110 }}>{field('Laize', laize, setLaize, { placeholder: 'ex. 140' })}</Box>
+              <Box sx={{ width: 100 }}>{field('Unité', unit, setUnit, { placeholder: 'ml, u…' })}</Box>
+            </Stack>
+            {field('Libellé produit', product, setProduct)}
+            {field('Affectation (dossier)', project, setProject, { placeholder: 'Stock libre' })}
+          </Stack>
+        </Box>
 
-          <Divider />
-          <LocationInput
-            value={locations}
-            onChange={setLocations}
-            zones={zones}
-            label="Emplacement de la réception"
-            helperText={isToComplete && !locations.length ? 'Reste « À COMPLÉTER » tant qu\'aucun emplacement n\'est saisi.' : ' '}
-          />
-        </Stack>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>Annuler</Button>
-        <Button variant="contained" onClick={save} disabled={saving || !product.trim() || !operator.trim()}>Enregistrer</Button>
-      </DialogActions>
-    </Dialog>
+        {/* PIÈCES / QUANTITÉ */}
+        <Box sx={sectionSx}>
+          {sectionTitle('Pièces / rouleaux', (
+            <Button size="small" startIcon={<Plus size={14} />} onClick={addPiece} sx={{ textTransform: 'none', fontWeight: 600, color: '#1E2447' }}>Ajouter une pièce</Button>
+          ))}
+          {!hasPieces && (
+            <Box sx={{ width: 200 }}>
+              <DaField label="Quantité totale">
+                <TextField fullWidth size="small" type="number" value={manualQty} onChange={(e) => setManualQty(e.target.value)} sx={DA_FIELD_SX}
+                  InputProps={{ endAdornment: <InputAdornment position="end"><span style={{ color: '#6B7280', fontSize: 13 }}>{unitLabel}</span></InputAdornment> }} />
+              </DaField>
+            </Box>
+          )}
+          <Stack spacing={1}>
+            {pieces.map((p, idx) => (
+              <Box key={p.id} sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
+                <Typography sx={{ color: '#374151', fontSize: 13, fontWeight: 500, minWidth: 70 }}>Pièce {idx + 1}</Typography>
+                <TextField
+                  type="number" value={p.qty} onChange={(e) => setPieceQty(p.id, e.target.value)} size="small" sx={{ ...DA_FIELD_SX, width: 140 }}
+                  autoFocus={isToComplete && idx === pieces.length - 1 && p.qty === ''}
+                  InputProps={{ endAdornment: <InputAdornment position="end"><span style={{ color: '#6B7280', fontSize: 13 }}>{item.unit || 'ml'}</span></InputAdornment> }}
+                />
+                <Box sx={{ flex: 1 }} />
+                <IconButton size="small" onClick={() => removePiece(p.id)} title="Retirer la pièce" sx={{ color: '#6B7280' }}><Minus size={16} /></IconButton>
+              </Box>
+            ))}
+          </Stack>
+          {hasPieces && (
+            <Box sx={{ mt: 1.5, display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', fontSize: 13, color: '#6B7280' }}>
+              <span>{filledPieces.length ? 'Total' : 'Stock actuel'} : <b style={{ color: '#111827' }}>{totalQty}</b> {item.unit || ''}</span>
+              {ecart != null && (ecart === 0
+                ? <TonePill tone={4}>Conforme à la réception ({received})</TonePill>
+                : <TonePill tone={null}>Écart de {ecart > 0 ? '+' : ''}{ecart} avec la réception ({received}) — le total des pièces fera foi</TonePill>)}
+            </Box>
+          )}
+        </Box>
+
+        {/* EMPLACEMENT + OPÉRATEUR */}
+        <DaField label="Emplacement de la réception"
+          hint={isToComplete && !locations.length ? 'Reste « À COMPLÉTER » tant qu’aucun emplacement n’est saisi.' : 'Plusieurs codes possibles si le rangement est réparti.'}>
+          <LocationInput value={locations} onChange={setLocations} zones={zones} label={null} fieldSx={DA_FIELD_SX} />
+        </DaField>
+        <DaField label="Opérateur">
+          <OperatorInput value={operator} onChange={setOperator} label={null} fieldSx={DA_FIELD_SX} />
+        </DaField>
+      </Stack>
+    </DaDialog>
   );
 }
