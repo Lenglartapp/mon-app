@@ -716,6 +716,38 @@ export function buildQuote({ rows = [], depRows = [], extraRows = [], config, pr
     return { ...ch, host, place, applied: true };
   });
 
+  // 3 bis. Petite note de portée : dans un bloc où un même article au mètre (Tissu, Doublure…) a
+  //   plusieurs références, chaque référence qui ne couvre qu'une PARTIE des produits du bloc
+  //   reçoit « Concerne : <pièces> » (sinon pièce → zone → fenêtre). La référence présente
+  //   partout n'a pas de note. Une seule référence : aucune note.
+  const placeOf = (r) => String(r?.piece || r?.zone || r?.fenetre || '').trim();
+  for (const sec of sections.values()) {
+    const lines = [...sec.lines.values()];
+    const typeRows = new Map();
+    for (const l of lines) for (const { row } of l.sources) {
+      if (!row) continue;
+      if (!typeRows.has(l.typeKey)) typeRows.set(l.typeKey, new Set());
+      typeRows.get(l.typeKey).add(row);
+    }
+    const groups = new Map();
+    for (const l of lines) {
+      if (!l.byMl || !l.refValues?.size) continue;
+      const g = `${l.typeKey}|${l.product?.id}`;
+      if (!groups.has(g)) groups.set(g, []);
+      groups.get(g).push(l);
+    }
+    for (const group of groups.values()) {
+      if (group.length < 2) continue;
+      for (const l of group) {
+        const rowsOfLine = new Set(l.sources.map((x) => x.row).filter(Boolean));
+        if (rowsOfLine.size >= (typeRows.get(l.typeKey)?.size || 0)) continue; // présente partout
+        const places = [...new Set([...rowsOfLine].map(placeOf).filter(Boolean))];
+        if (!places.length) continue;
+        l.scopeNote = `Concerne : ${places.length > 6 ? `${places.slice(0, 6).join(', ')}…` : places.join(', ')}`;
+      }
+    }
+  }
+
   // 4. Mise en forme : PU / quantités, textes, heures par catégorie.
   // pose = lignes Pose (trajet compris) ; depl = Prise de cotes ; trajet = part du trajet dans pose.
   const hours = { conf: 0, prepa: 0, pose: 0, depl: 0, trajet: round2(travelHours) };
@@ -751,7 +783,8 @@ export function buildQuote({ rows = [], depRows = [], extraRows = [], config, pr
             productName: l.product?.name ?? '— article manquant —',
             productTag: l.product?.tag ?? null,
             cgTags: l.product?.cgTags || [],
-            description: describe(l, library),
+            description: describe(l, library) + (l.scopeNote ? `\n${l.scopeNote}` : ''),
+            scopeNote: l.scopeNote || null,
             textTodo: l.textTodo || 0,
             qty, uom, priceUnit,
             subtotal: odooSubtotal,

@@ -670,7 +670,8 @@ function DescriptionCell({ line, onSave }) {
     <div style={{ position: 'relative', paddingRight: 22 }}>
       <div style={{ whiteSpace: 'pre-line', color: '#374151', lineHeight: 1.45 }}>
         {body ? body.split('\n').map((t, k) => (
-          <div key={k} style={TODO_RE.test(t) ? { background: '#FEF3C7', borderRadius: 3, padding: '0 3px' } : undefined}>{t || '\u00A0'}</div>
+          <div key={k} style={TODO_RE.test(t) ? { background: '#FEF3C7', borderRadius: 3, padding: '0 3px' }
+            : /^Concerne :/.test(t) ? { fontSize: 11, fontStyle: 'italic', color: C.muted } : undefined}>{t || '\u00A0'}</div>
         )) : <span style={{ color: C.soft }}>—</span>}
       </div>
       <button onClick={() => { setDraft(body); setEditing(true); }} title="Modifier la description"
