@@ -1,5 +1,18 @@
 import { aggregatePurchaseChapters, ST_LABELS } from '../purchases/chapters';
 
+// Commission commerciale interne (identique au contrôle de gestion Odoo, règle du 2026-10-08) :
+// taux selon le chargé d'affaires de la minute, puis majoré des charges patronales.
+//   • 3,5 % du CA : chargés d'affaires (Angelina, Thomas… et par défaut)
+//   • 1 % du CA   : direction et ADV (Adrien, Aristide, Muriel, Emmanuel)
+export const COMMISSION_EMPLOYER_CHARGES = 0.43;
+export const COMMISSION_RATE_DEFAULT = 3.5;
+export const COMMISSION_RATE_DIRECTION = 1;
+const DIRECTION_FIRST_NAMES = ['adrien', 'aristide', 'muriel', 'emmanuel'];
+export function commissionRateForOwner(owner) {
+    const first = String(owner || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim().split(/\s+/)[0];
+    return DIRECTION_FIRST_NAMES.includes(first) ? COMMISSION_RATE_DIRECTION : COMMISSION_RATE_DEFAULT;
+}
+
 export const calculateProfitability = (rows = [], depRows = [], extraRows = [], commissionRate = 3.5) => {
     // Helper to safely convert to number
     const toNum = (v) => {
@@ -109,11 +122,12 @@ export const calculateProfitability = (rows = [], depRows = [], extraRows = [], 
         chargesAgg.autres.sources.push({ minute: displayLabel, price: val });
     });
 
-    // 3.4 Commission Dynamique
-    const commissionValue = CA_Total * (commissionRate / 100);
+    // 3.4 Commission commerciale interne : taux × CA, chargée des charges patronales (+43 %),
+    // comme le contrôle de gestion Odoo (règle validée le 2026-10-08 : 3,5 % × 1,43).
+    const commissionValue = CA_Total * (commissionRate / 100) * (1 + COMMISSION_EMPLOYER_CHARGES);
     if (commissionValue > 0) {
         chargesAgg.commissions.total += commissionValue;
-        chargesAgg.commissions.sources.push({ minute: `Commission (${commissionRate}%)`, price: commissionValue });
+        chargesAgg.commissions.sources.push({ minute: `Commission (${commissionRate} % + ${COMMISSION_EMPLOYER_CHARGES * 100} % de charges patronales)`, price: commissionValue });
     }
 
     const Charges_Variables_Total =
