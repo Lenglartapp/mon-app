@@ -874,8 +874,11 @@ export default function OdooQuoteWizard({ open, onClose, minute, rows = [], depR
 
   // « Vérifier » = dry_run (Odoo calcule tout puis annule) ; « Créer » = devis brouillon réel.
   const write = catalog?.write;
+  // Confirmation dans le module (pas window.confirm : bloqué par certains navigateurs intégrés).
+  const [confirmCreate, setConfirmCreate] = React.useState(false);
+  const contentRef = React.useRef(null);
   const sendToOdoo = async (dryRun) => {
-    if (!dryRun && !window.confirm(`Créer (ou mettre à jour) le devis BROUILLON dans Odoo ?\n\nInstance : ${write?.target}\nLe devis n'est ni confirmé ni envoyé.`)) return;
+    setConfirmCreate(false);
     setSending(true);
     try {
       const payload = toOdooPayload({ quote, dest, minute });
@@ -899,6 +902,8 @@ export default function OdooQuoteWizard({ open, onClose, minute, rows = [], depR
       setOdooResult({ error: e.message });
     } finally {
       setSending(false);
+      // Le résultat s'affiche en haut de l'aperçu : on y remonte.
+      contentRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
   // Un nouveau calcul invalide le dernier retour Odoo.
@@ -948,7 +953,7 @@ export default function OdooQuoteWizard({ open, onClose, minute, rows = [], depR
         </div>
 
         {/* Contenu */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: 24 }}>
+        <div ref={contentRef} style={{ flex: 1, overflowY: 'auto', padding: 24 }}>
           {catalogError && (
             <div style={{ border: '1px solid #FCA5A5', background: '#FEF2F2', borderRadius: 8, padding: '10px 12px', marginBottom: 16, fontSize: 13, color: '#991B1B' }}>
               Odoo injoignable : {catalogError}
@@ -961,6 +966,17 @@ export default function OdooQuoteWizard({ open, onClose, minute, rows = [], depR
             : <div style={{ fontSize: 13, color: C.muted }}>Chargement des articles Odoo…</div>)}
           {step === 3 && <StepPreview quote={quote} dest={dest} odoo={odooResult} onEditText={editText} />}
         </div>
+
+        {confirmCreate && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 24px', borderTop: `1px solid ${C.border}`, background: '#FFFBEB' }}>
+            <div style={{ flex: 1, fontSize: 13, color: '#92400E' }}>
+              {link && link.target === write?.target ? <>Mettre à jour le devis <b>{link.name}</b></> : <>Créer le devis <b>brouillon</b></>} dans Odoo
+              ({write?.target}) ? Il n'est ni confirmé ni envoyé au client.
+            </div>
+            <Btn onClick={() => setConfirmCreate(false)}>Annuler</Btn>
+            <Btn primary disabled={sending} onClick={() => sendToOdoo(false)}>{sending ? 'Envoi…' : 'Confirmer'}</Btn>
+          </div>
+        )}
 
         {/* Pied */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 24px', borderTop: `1px solid ${C.border}` }}>
@@ -983,7 +999,7 @@ export default function OdooQuoteWizard({ open, onClose, minute, rows = [], depR
                   title={sendBlocked || 'Odoo recalcule tout le devis et compare avec Droitfil, puis annule : rien n\'est créé dans Odoo.'}>
                   {sending ? 'Envoi…' : 'Vérifier avec Odoo (sans créer)'}
                 </Btn>
-                <Btn primary disabled={!!sendBlocked || sending} title={sendBlocked || `Instance : ${write?.target}`} onClick={() => sendToOdoo(false)}>
+                <Btn primary disabled={!!sendBlocked || sending} title={sendBlocked || `Instance : ${write?.target}`} onClick={() => setConfirmCreate(true)}>
                   {link && link.target === write?.target ? `Mettre à jour le devis ${link.name}` : 'Créer le devis brouillon'}{write?.target && !write?.isProd ? ' (préprod)' : ''}
                 </Btn>
               </>
