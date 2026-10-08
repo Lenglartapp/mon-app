@@ -22,7 +22,7 @@ import { useAuth, ROLES } from "../auth";
 import { can } from "../lib/authz";
 import { useNotifications } from "../contexts/NotificationContext";
 import { useAppSettings, useCatalog, useCatalogRail } from "../hooks/useSupabase";
-import { calculateProfitability } from '../lib/financial/profitabilityCalculator';
+import { calculateProfitability, commissionRateForOwner } from '../lib/financial/profitabilityCalculator';
 
 import MinuteHistoryDialog from "../components/MinuteHistoryDialog";
 import VariantTabs from "../components/VariantTabs";
@@ -379,7 +379,7 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
 
   // --- HEAL-ON-OPEN (Étape 1b) ---
   // Le détail recalcule les prix en direct à l'ouverture (catalogue/taux actuels).
-  // Si le ca_total stocké en BDD diverge de ce recalcul (minute non rééditée depuis
+  // Si le ca_total (ou la contribution) stocké en BDD diverge de ce recalcul (minute non rééditée depuis
   // une dérive de prix), on resynchronise le cache pour que la liste des chiffrages
   // affiche EXACTEMENT le même montant que le CA TOTAL du détail.
   // Le timer se ré-arme à chaque changement de `rows` → il ne se déclenche qu'une
@@ -392,10 +392,14 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
     if (!detailReady) return undefined;
     if (healTimerRef.current) clearTimeout(healTimerRef.current);
     healTimerRef.current = setTimeout(() => {
-      const { kpis } = calculateProfitability(rows || [], depRows || [], extraRows || []);
+      const { kpis } = calculateProfitability(rows || [], depRows || [], extraRows || [], commissionRateForOwner(minute?.owner));
       const storedCa = Math.round(Number(minute.ca_total || 0));
       const freshCa = Math.round(Number(kpis.ca_total || 0));
-      if (Math.abs(storedCa - freshCa) >= 1) {
+      // La contribution dépend aussi du chargé d'affaires (taux de commission) : on la
+      // resynchronise également, y compris juste après un changement de chargé d'affaires.
+      const storedMarge = Math.round(Number(minute.marge_eur || 0));
+      const freshMarge = Math.round(Number(kpis.contribution || 0));
+      if (Math.abs(storedCa - freshCa) >= 1 || Math.abs(storedMarge - freshMarge) >= 1) {
         updateMinute({
           ca_total:  freshCa,
           marge_eur: kpis.contribution        || 0,
@@ -405,7 +409,7 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
       }
     }, 1500);
     return () => { if (healTimerRef.current) clearTimeout(healTimerRef.current); };
-  }, [minute?.id, minute?.ca_total, rows, depRows, extraRows, canEdit, updateMinute, detailReady]);
+  }, [minute?.id, minute?.ca_total, minute?.marge_eur, minute?.owner, rows, depRows, extraRows, canEdit, updateMinute, detailReady]);
 
   // Local status for optimistic UI
   const [localStatus, setLocalStatus] = React.useState(minute?.status || "DRAFT");
@@ -863,20 +867,10 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
           rows={rows}
           extraRows={extraRows}
           depRows={depRows}
-          commissionRate={formulaCtx.settings.commission_rate ?? 3.5}
-          onUpdateCommission={(rate) => {
-            const newSettings = { ...formulaCtx.settings, commission_rate: rate };
-            setLocalSettings(newSettings); // Optimistic UI
-
-            const historyModules = pushHistory(buildSettingsLogs(formulaCtx.settings, newSettings, historyAuthor));
-            if (historyModules) updateMinute({ modules: historyModules });
-            // Persiste dans params (colonne fiable) comme les autres réglages
-            const updatedParams = [...(minute?.params || [])];
-            const idx = updatedParams.findIndex(p => p.name === 'commission_rate');
-            if (idx >= 0) updatedParams[idx] = { ...updatedParams[idx], value: Number(rate) };
-            else updatedParams.push({ name: 'commission_rate', value: Number(rate) });
-            updateMinute({ params: updatedParams });
-          }}
+          // Taux fixé par le chargé d'affaires de la minute (1 % direction / ADV, 3,5 % sinon),
+          // majoré des charges patronales : plus de taux saisi à la main (aligné sur Odoo).
+          commissionRate={commissionRateForOwner(minute?.owner)}
+          commissionOwner={minute?.owner}
         />
       )}
 
