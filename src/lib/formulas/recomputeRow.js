@@ -3,6 +3,7 @@
 import { DECOR_PRODUIT_RE } from '../constants/productRouting';
 import { evalFormula } from "./eval.js";
 import { FORMULES_METRAGE_V2, isMetrageV2Row, largeurFinieV2, parseCm } from "./metrageVersion.js";
+import { metrageStore, FORMULES_STORES_V1, isStoresMetrageRow } from './storesBateauxMetrage.js';
 
 const NVL = (value, fallback = 0) => {
   const n = Number(value);
@@ -449,6 +450,24 @@ export function recomputeRow(row, schema, ctx = {}) {
           next.pv_mecanisme_store = itemMecaStore.sellPrice || itemMecaStore.pv || 0;
         }
       }
+    }
+
+    // Stores bateaux / velums des NOUVEAUX chiffrages (marqueur formules_stores) : ML toile et
+    // doublure calculés (valeurs maximales fixes du chiffrage). La ligne garde le marqueur
+    // pour la production. Anciens chiffrages : ML saisi à la main, inchangé.
+    const isBateauVelum = /bateau|velum|vélum/i.test(next.produit || "");
+    const storesCalc = isBateauVelum && !isProduction(schema, ctx)
+      && (Number(ctx.paramsMap?.formules_stores) >= FORMULES_STORES_V1 || isStoresMetrageRow(next));
+    if (storesCalc) {
+      next.formules_stores = FORMULES_STORES_V1;
+      fillFromCatalog('doublure', { laize_doublure: 'laize' });
+      const isDouble = String(next.doublure || "").trim() !== "";
+      const tf1Item = catalog.find(i => i.name === next.toile_finition_1);
+      const common = { chiffrage: true, produit: next.produit, largeur: next.largeur, hauteurFinie: next.hauteur, double: isDouble };
+      next.ml_toile_finition_1 = next.toile_finition_1
+        ? metrageStore({ ...common, laize: next.laize_toile_finition_1, raccordV: next.raccord_v_toile_finition_1, motif: !!tf1Item?.motif }).ml
+        : 0;
+      next.ml_doublure = isDouble ? metrageStore({ ...common, laize: next.laize_doublure }).ml : 0;
     }
 
     // Toile Finition 1 (ML is manual, but prices are calculated)
