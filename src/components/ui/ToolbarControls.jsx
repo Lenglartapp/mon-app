@@ -2,6 +2,7 @@ import React from 'react';
 import { useState } from 'react';
 import { Search, X, ChevronDown, Check } from 'lucide-react';
 import { BLUE_TONES, toneColors } from '../../lib/constants/daStyles';
+import FitPanel from './FitPanel';
 
 // Contrôles de barre d'outils au style de la DA (listes Chiffrages / Projets) :
 // hauteur 38 px, fond blanc, trait #E0DED9, coins 8 px, texte 13 px, sans cadre autour.
@@ -112,7 +113,7 @@ export function ToolbarMenu({ value, onChange, options, width = 240, multiple = 
       {open && (
         <>
           <div style={{ position: 'fixed', inset: 0, zIndex: 80 }} onClick={() => setOpen(false)} />
-          <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, width, background: 'white', borderRadius: 8, boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', border: '1px solid #E0DED9', zIndex: 90, padding: 4 }}>
+          <FitPanel style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, width, background: 'white', borderRadius: 8, boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', border: '1px solid #E0DED9', zIndex: 90, padding: 4 }}>
             {options.map(o => (
               <div
                 key={o.value}
@@ -128,7 +129,7 @@ export function ToolbarMenu({ value, onChange, options, width = 240, multiple = 
                 {!multiple && isOn(o.value) && <Check size={14} color="#1E2447" />}
               </div>
             ))}
-          </div>
+          </FitPanel>
         </>
       )}
     </div>

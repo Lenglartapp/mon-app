@@ -102,6 +102,7 @@ export const CACHE_SOMMIER_PROD_SCHEMA = [
     'type_confection',
     'largeur', 'longueur',
     createCol('longueur_coupe', 'Long. Coupe', 130, 'number', {
+        tooltip: "Pour une laize de 125 à 155 cm. Boîte : 2 × Long. + Larg. + 14. Plis Dior : 2 × Long. + Larg. + nb plis × 40 + 14. Sinon : saisie conservée.",
         editable: false,
         readOnly: true,
         valueGetter: (value, row) => {
@@ -125,6 +126,7 @@ export const CACHE_SOMMIER_PROD_SCHEMA = [
     'hauteur',
     createCol('ourlet_bas', 'Ourlet bas', 120, 'number'),
     createCol('a_plat', 'À plat', 110, 'number', {
+        tooltip: "Hauteur à plat = Hauteur + ourlet bas + 6,5 cm.",
         editable: false,
         readOnly: true,
         valueGetter: (value, row) => {
@@ -138,6 +140,7 @@ export const CACHE_SOMMIER_PROD_SCHEMA = [
     'tissu_2', 'laize_tissu_2', 'ml_tissu_2',
     'passementerie_1', 'app_passementerie_1', 'ml_pass_1',
     createCol('largeur_satinette', 'Larg. Satinette', 140, 'number', {
+        tooltip: "Largeur satinette = Largeur − 7 cm.",
         editable: false,
         readOnly: true,
         valueGetter: (value, row) => {
@@ -147,6 +150,7 @@ export const CACHE_SOMMIER_PROD_SCHEMA = [
         }
     }),
     createCol('longueur_satinette', 'Long. Satinette', 150, 'number', {
+        tooltip: "Longueur satinette = Longueur + 16,5 cm.",
         editable: false,
         readOnly: true,
         valueGetter: (value, row) => {
