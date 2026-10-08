@@ -1,6 +1,6 @@
 // src/lib/schemas/production/rideaux.js
 
-import { HAUTEUR_RENFORT_TETE_OPTIONS, FINITION_OURLET_OPTIONS } from '../../constants/rideauxFields';
+import { HAUTEUR_RENFORT_TETE_OPTIONS, FINITION_OB_OPTIONS, FINITION_OC_OPTIONS } from '../../constants/rideauxFields';
 import React from 'react';
 import { PAIRE_OPTIONS_BASE, paireOptionsForRow, PAIRE_DECENTREE } from '../../utils/pairDecentree';
 import { isMetrageV2Row, largeurFinieV2, parseCm } from '../../formulas/metrageVersion';
@@ -565,8 +565,8 @@ export const RIDEAUX_PROD_SCHEMA = [
         valueGetter: (v, r) => getters.nb_hauteur_a_couper(getRow(v, r))
     },
     { key: "v_ourlets_de_cotes", label: "OC", type: "number", width: 130, editable: true },
-    { key: "piquage_ourlet", label: "Finition OB", type: "select", options: FINITION_OURLET_OPTIONS, width: 145, editable: true },
-    { key: "finition_oc", label: "Finition OC", type: "select", options: FINITION_OURLET_OPTIONS, width: 145, editable: true },
+    { key: "piquage_ourlet", label: "Finition OB", type: "select", options: FINITION_OB_OPTIONS, width: 145, editable: true },
+    { key: "finition_oc", label: "Finition OC", type: "select", options: FINITION_OC_OPTIONS, width: 145, editable: true },
     // Piquage Raccord : type de couture pour les raccords de lés (à côté de Piquage Ourlet)
     { key: "piquage_raccord", label: "Piquage Raccord", type: "select", options: ['Couture anglaise', 'Couture à la française', 'Couture ouverte', 'Surfilage', 'Couture anglaise + Surpiqûre', 'Couture bourdon', 'Plate + surfilage', 'Plate + bourdon'], width: 200, editable: true },
 

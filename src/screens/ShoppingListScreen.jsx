@@ -128,7 +128,10 @@ function ItemRows({ item, last }) {
                 <td style={{ ...TD, ...lastBorder, fontWeight: 500 }}>{item.label}</td>
                 {/* L'unité est portée par la ligne, pas par le chapitre : un même
                     chapitre mélange des articles au mètre et à l'unité. */}
-                <td style={{ ...TD, ...lastBorder, textAlign: 'right' }}>{formatQty(item.qty)} <span style={{ color: '#6B7280' }}>{item.unit}</span></td>
+                <td style={{ ...TD, ...lastBorder, textAlign: 'right' }} title={item.arrondiStores ? 'Métrage des stores arrondi au demi-mètre supérieur (une fois pour ce tissu)' : undefined}>
+                    {formatQty(item.qty)} <span style={{ color: '#6B7280' }}>{item.unit}</span>
+                    {item.arrondiStores && <div style={{ fontSize: 11, color: '#9B9A97' }}>stores arrondis au ½ m</div>}
+                </td>
                 <td style={{ ...TD, ...lastBorder, textAlign: 'right', fontWeight: 600 }}>{formatPrice(item.pa)}</td>
             </tr>
             {open && (

@@ -6,7 +6,7 @@
 
 // Champs textiles des lignes de production : [champ nom, champ(s) ML, rôle affiché].
 // Les rideaux ont leurs propres noms de champs, les autres produits la forme `tissu_1`.
-import { bpfMl, isRideauRow, hasPoseCotes } from './bpfMetrage.js';
+import { bpfMl, storeMl, isRideauRow, hasPoseCotes } from './bpfMetrage.js';
 
 export const TEXTILE_FIELDS = [
     ['tissu_deco1', ['ml_tissu1'], 'Tissu 1'],
@@ -53,21 +53,32 @@ export function computeNeeds(rows = [], materials = []) {
             const name = row[nameField];
             if (!name || typeof name !== 'string' || !name.trim()) return;
             if (seen.has(role)) return;
-            // Rideaux : formules du BPF ; sinon (passementerie, autres produits) : métrage saisi.
-            const fromBpf = bpfMl(row, mlFields[0]);
-            const ml = fromBpf != null ? fromBpf : num(mlFields.map((f) => row[f]).find((v) => v != null && v !== ''));
-            const basis = fromBpf == null ? 'saisie' : hasPoseCotes(row) ? 'cotes' : 'plan';
+            // Rideaux : formules du BPF ; stores au nouveau métrage : calcul du store (ML exact) ;
+            // sinon (passementerie, autres produits) : métrage saisi.
+            const fromStore = storeMl(row, mlFields[0]);
+            const fromBpf = fromStore != null ? null : bpfMl(row, mlFields[0]);
+            const ml = fromStore != null ? fromStore : fromBpf != null ? fromBpf : num(mlFields.map((f) => row[f]).find((v) => v != null && v !== ''));
+            const basis = fromStore != null ? 'store' : fromBpf == null ? 'saisie' : hasPoseCotes(row) ? 'cotes' : 'plan';
             if (!(ml > 0)) return;
             seen.add(role);
             const key = needKey(name);
             if (!needs.has(key)) {
                 const material = matByKey.get(key) || null;
-                needs.set(key, { key, name: material?.name || name.trim(), total: 0, inMaterials: !!material, material, sources: [] });
+                needs.set(key, { key, name: material?.name || name.trim(), total: 0, storesMl: 0, inMaterials: !!material, material, sources: [] });
             }
             const n = needs.get(key);
-            n.total = round2(n.total + ml);
+            if (fromStore != null) n.storesMl += ml;
+            else n.total = round2(n.total + ml);
             n.sources.push({ rowId: row.id, label: rowLabel(row, index), zone: row.zone || '', role, ml: round2(ml), basis, rideau: isRideauRow(row) });
         });
+    });
+    // Stores : leur métrage exact est arrondi au demi-mètre supérieur une seule fois par tissu.
+    needs.forEach((n) => {
+        if (n.storesMl > 0) {
+            n.total = round2(n.total + Math.ceil(n.storesMl * 2 - 1e-9) / 2);
+            n.arrondiStores = true;
+        }
+        delete n.storesMl;
     });
     return [...needs.values()].sort((a, b) => b.total - a.total);
 }

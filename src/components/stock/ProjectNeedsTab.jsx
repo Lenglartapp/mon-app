@@ -28,7 +28,7 @@ export function NeedsBasisNote({ basis }) {
     );
 }
 
-const BASIS_LABEL = { cotes: 'cotes de pose', plan: 'cotes du plan', saisie: 'métrage saisi' };
+const BASIS_LABEL = { cotes: 'cotes de pose', plan: 'cotes du plan', saisie: 'métrage saisi', store: 'calcul du store' };
 
 export default function ProjectNeedsTab({ needs, basis }) {
     const [open, setOpen] = useState(() => new Set());
@@ -82,7 +82,10 @@ export default function ProjectNeedsTab({ needs, basis }) {
                                             )}
                                         </td>
                                         <td style={{ ...td, textAlign: 'right', color: '#6B7280' }}>{n.sources.length}</td>
-                                        <td style={{ ...td, textAlign: 'right', fontWeight: 600 }}>{fmt(n.total)} ml</td>
+                                        <td style={{ ...td, textAlign: 'right', fontWeight: 600 }} title={n.arrondiStores ? 'Métrage des stores arrondi au demi-mètre supérieur (une fois pour ce tissu)' : undefined}>
+                                            {fmt(n.total)} ml
+                                            {n.arrondiStores && <div style={{ fontSize: 11, fontWeight: 400, color: '#9B9A97' }}>stores arrondis au ½ m</div>}
+                                        </td>
                                     </tr>
                                     {isOpen && (
                                         <tr>
