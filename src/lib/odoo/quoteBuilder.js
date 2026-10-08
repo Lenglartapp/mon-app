@@ -62,6 +62,13 @@ export const AUTO_PRODUCTS = {
   '@meca': 'Auto — Rail / mécanisme / store selon le modèle',
 };
 
+export const SUB_GROUP_BY_OPTIONS = [
+  { value: 'none', label: 'Pas de sous-section' },
+  { value: 'zone', label: 'Zone' },
+  { value: 'piece', label: 'Pièce' },
+  { value: 'produit', label: 'Produit' },
+];
+
 export const GROUP_BY_OPTIONS = [
   { value: 'none', label: 'Une seule section' },
   { value: 'zone', label: 'Par zone' },
@@ -123,14 +130,12 @@ export const typeOfRow = (row) => {
 
 // ─── Réglages ──────────────────────────────────────────────────────────────────
 export function defaultConfig() {
-  const placement = {};
-  for (const c of COMPONENTS) placement[c.key] = 'section';
   return {
+    // Sections et sous-sections : regroupement des lignes de la minute (zone, pièce, produit…).
     groupBy: 'zone',
+    subGroupBy: 'none',
     // recipes : { [typeKey]: [ { id, label, cols, product, unit } ] } — absent = recette par défaut
     recipes: {},
-    // placement : { [colonne]: 'section' | 'apart' } — « à part » = section dédiée en fin de devis
-    placement,
     // overrides : { [`${groupBy}|${section}`]: { [`${typeKey}:${slotId}`]: article } }
     overrides: {},
     // charges : { [chargeKey]: { host, place } } — absent = défaut (defaultCharge)
@@ -146,8 +151,10 @@ export const recipeOf = (config, typeKey) =>
 /** Complète un réglage sauvegardé (et ignore les anciens formats). */
 export function normalizeConfig(saved) {
   const base = defaultConfig();
-  if (!saved || !saved.placement) return base; // ancien format (mapping/order) → on repart propre
-  return { ...base, ...saved, placement: { ...base.placement, ...saved.placement } };
+  if (!saved || !('logistique' in saved)) return base; // ancien format → on repart propre
+  const rest = { ...saved };
+  delete rest.placement; // « à part » par colonne : abandonné (2026-10-08)
+  return { ...base, ...rest };
 }
 
 export const overrideKey = (groupBy, title) => `${groupBy}|${title}`;
@@ -160,10 +167,9 @@ export const overrideKey = (groupBy, title) => `${groupBy}|${title}`;
 // de ligne : Odoo la calcule depuis `commission_partenaire_taux` (% du CA HT) du devis. La
 // commission commerciale interne est calculée par Odoo lui-même → jamais reportée.
 // host  : un article (nom ou id), '@manufacture', '@commission' ou 'none'.
-// place : 'lignes' (sur les lignes existantes de l'article, au prorata ; à défaut → isolée)
-//       | 'isole' (ligne dans une section dédiée en fin de devis)
-//       | 'reparti' (une ligne dans chaque section, au prorata de la section)
-//       | 'section:<titre>' (ligne dans cette section)
+// place : 'lignes' (sur les lignes existantes de l'article, au prorata ; à défaut → 'auto')
+//       | 'auto'   (suit le choix « Déplacement, transport et location » de l'étape Structure :
+//                   une ligne dans chaque section si fondus, sinon dans la section à part)
 export const CHARGE_SPECIAL_HOSTS = {
   '@commission': 'Commission partenaire (taux % du devis Odoo)',
   '@manufacture': 'Manufacture (sous-traitance) selon le produit',
@@ -172,13 +178,13 @@ export const CHARGE_SPECIAL_HOSTS = {
 const DEFAULT_CHARGES = {
   'Transport Vente': { host: 'Livraison', place: 'lignes' },
   'Transport Sous-Traitance': { host: 'Livraison', place: 'lignes' },
-  Location: { host: 'Location', place: 'isole' },
+  Location: { host: 'Location', place: 'auto' },
   'Intérim': { host: 'Pose', place: 'lignes' },
   'Aide ST Pose': { host: 'Installation', place: 'lignes' },
   'Aide ST Conf': { host: '@manufacture', place: 'lignes' },
   'Commission Partenaire': { host: '@commission', place: 'lignes' },
 };
-export const defaultCharge = (key) => DEFAULT_CHARGES[key] || { host: 'none', place: 'isole' };
+export const defaultCharge = (key) => DEFAULT_CHARGES[key] || { host: 'none', place: 'auto' };
 export const chargeSetting = (config, key) => {
   const v = config.charges?.[key];
   if (!v) return defaultCharge(key);
@@ -389,6 +395,30 @@ export const CG_COST_FIELD = {
 };
 const HOUR_TAGS = new Set(['Pose', 'Conf', 'Prépa']);
 
+const odooLine = (l) => ({
+  ref: l.key,
+  product_id: l.productId,
+  name: l.description,
+  quantity: l.qty,
+  price_unit: l.priceUnit,
+  cost: l.costUnit, // coût UNITAIRE → purchase_price
+  ...(l.hours ? { heures_vendues: l.hours } : {}),
+});
+// Blocs (section, sous-section) → sections Odoo. Les sous-sections partent pour l'instant en
+// ligne de note (« ▸ R+2 ») : support natif line_subsection demandé à l'agent ERP (2026-10-08).
+function groupForOdoo(blocks, fallbackName) {
+  const out = [];
+  for (const b of blocks) {
+    if (!b.lines.length) continue;
+    const name = b.title || fallbackName;
+    let sec = out[out.length - 1];
+    if (!sec || sec.name !== name) { sec = { name, lines: [] }; out.push(sec); }
+    if (b.sub) sec.lines.push({ note: `▸ ${b.sub}` });
+    sec.lines.push(...b.lines.map(odooLine));
+  }
+  return out;
+}
+
 /**
  * Payload de `sale.order.droitfil_upsert_devis` (méthode Odoo, module lenglart_controle_gestion).
  * dest : { mode: 'existing'|'new', opportunity, newName, teamId, userId, sectorTag, typeTag, partner }
@@ -413,28 +443,12 @@ export function toOdooPayload({ quote, dest, minute }) {
     ...(dest.mode === 'new' && dest.userId ? { user_id: dest.userId } : {}),
     objet: minute.name,
     commission_partenaire_taux: Math.round((quote.commissionPartenaire.rate / 100) * 1e6) / 1e6, // fraction
-    sections: quote.sections
-      .filter((sec) => sec.lines.length)
-      .map((sec) => ({
-        name: sec.title || minute.name,
-        lines: sec.lines.map((l) => ({
-          ref: l.key,
-          product_id: l.productId,
-          name: l.description,
-          quantity: l.qty,
-          price_unit: l.priceUnit,
-          cost: l.costUnit, // coût UNITAIRE → purchase_price
-          ...(l.hours ? { heures_vendues: l.hours } : {}),
-        })),
-      })),
+    sections: groupForOdoo(quote.sections, minute.name),
   };
 }
 
 // ─── Construction ──────────────────────────────────────────────────────────────
-const LOGI_TITLE = 'DÉPLACEMENT & TRANSPORT';
-const ANNEX_TITLE = 'FRAIS ANNEXES';
-const ORDER_APART = 1e6;
-const ORDER_ANNEX = 2e6;
+const LOGI_TITLE = 'DÉPLACEMENT, TRANSPORT & LOCATION';
 const ORDER_LOGI = 3e6;
 
 /**
@@ -449,21 +463,28 @@ export function buildQuote({ rows = [], depRows = [], extraRows = [], config, pr
   const missingXml = new Set();
   const resolve = makeResolver(products, missingXml);
   const isolate = config.logistique === 'isole';
-  const sections = new Map(); // titre → { title, order, blocks: Map(typeKey → rang), lines: Map }
+  // Bloc = (section, sous-section). key = titre␟sous-titre.
+  const sections = new Map(); // key → { key, title, sub, order, subOrder, blocks: Map(typeKey → rang), lines: Map }
+  const sectionOrder = new Map(); // titre → rang d'apparition
   const warnings = [];
   const typesUsed = new Map(); // typeKey → { type, rows }
   let minuteTotal = 0;
   let minuteCost = 0;
 
-  const sectionFor = (title, order) => {
-    if (!sections.has(title)) sections.set(title, { title, order, blocks: new Map(), lines: new Map() });
-    return sections.get(title);
+  const sectionFor = (title, order, sub = '') => {
+    const key = `${title}\u241F${sub}`;
+    if (!sections.has(key)) {
+      if (!sectionOrder.has(title)) sectionOrder.set(title, order);
+      sections.set(key, { key, title, sub, order: sectionOrder.get(title), subOrder: sections.size, blocks: new Map(), lines: new Map(), samples: new Map() });
+    }
+    return sections.get(key);
   };
 
   // Une contribution (colonne × ligne de minute) → ligne Odoo de la section.
   // rank = [rang du bloc produit dans la section, rang de la ligne dans la recette]
   const push = ({ sec, typeKey, slot, slotIdx, comp, row, product, amount, cost, ml, hours, byMl }) => {
     if (!sec.blocks.has(typeKey)) sec.blocks.set(typeKey, sec.blocks.size);
+    if (row && !sec.samples.has(typeKey)) sec.samples.set(typeKey, row);
     const ref = byMl ? norm(row?.[comp.refKey]) : '';
     const key = `${typeKey}|${slot.id}|${product?.id ?? slot.id}|${byMl ? 'ml' : 'f'}|${ref}`;
     const line = sec.lines.get(key) || {
@@ -507,7 +528,9 @@ export function buildQuote({ rows = [], depRows = [], extraRows = [], config, pr
     // Coefficient de recalibrage éventuel : réparti au prorata sur toutes les colonnes.
     const k = sum ? (total ? total / sum : 1) : 0;
     const sectionTitle = sectionKeyOf(row, config.groupBy);
-    const sec0 = sectionFor(sectionTitle, sections.has(sectionTitle) ? sections.get(sectionTitle).order : idx);
+    let subTitle = config.subGroupBy && config.subGroupBy !== 'none' ? sectionKeyOf(row, config.subGroupBy) : '';
+    if (subTitle === sectionTitle) subTitle = '';
+    const sec0 = sectionFor(sectionTitle, idx, subTitle);
     const tu = typesUsed.get(type.key) || { type, rows: 0 };
     tu.rows += 1;
     typesUsed.set(type.key, tu);
@@ -531,8 +554,10 @@ export function buildQuote({ rows = [], depRows = [], extraRows = [], config, pr
       // Placement : livraison → logistique si isolée ; colonne « à part » → section dédiée.
       let sec = sec0;
       if (c.key === 'livraison' && isolate) sec = sectionFor(LOGI_TITLE, ORDER_LOGI);
-      else if (config.placement?.[c.key] === 'apart') sec = sectionFor(slot.label.toUpperCase(), ORDER_APART + slotIdx);
-      const ov = config.overrides?.[overrideKey(config.groupBy, sec.title)]?.[`${type.key}:${slot.id}`];
+      // Article : remplacement « ici seulement » (par colonne, puis par ligne) › article de la colonne
+      // dans la recette (lignes « X / Y ») › article de la ligne de recette.
+      const ovs = config.overrides?.[overrideKey(config.groupBy, sec.key)] || {};
+      const ov = ovs[`${type.key}:${slot.id}:${c.key}`] || ovs[`${type.key}:${slot.id}`] || slot.colProducts?.[c.key];
       const product = followsManuf && slot
         ? resolve(ov || '@manufacture', row, c)
         : resolve(ov || slot.product || '@col', row, c);
@@ -548,8 +573,8 @@ export function buildQuote({ rows = [], depRows = [], extraRows = [], config, pr
     }
   });
 
-  // Poids de chaque section « normale » (hors à part / annexes / logistique), pour répartir.
-  const normalSections = () => [...sections.values()].filter((sec) => sec.order < ORDER_APART);
+  // Poids de chaque bloc « normal » (hors section logistique), pour répartir.
+  const normalSections = () => [...sections.values()].filter((sec) => sec.order < ORDER_LOGI);
   const weights = () => {
     const secs = normalSections();
     const amt = secs.map((sec) => [...sec.lines.values()].reduce((a, l) => a + l.amount, 0));
@@ -638,10 +663,7 @@ export function buildQuote({ rows = [], depRows = [], extraRows = [], config, pr
       return { ...ch, host, place, applied: true };
     }
     // 3b. Sinon : une ligne « coût seul » (0 €) de l'article, à l'endroit choisi.
-    let dest;
-    if (place === 'reparti' && ws.length) dest = ws;
-    else if (place.startsWith('section:') && sections.has(place.slice(8))) dest = [{ sec: sections.get(place.slice(8)), w: 1 }];
-    else dest = [{ sec: isolate ? sectionFor(LOGI_TITLE, ORDER_LOGI) : sectionFor(ANNEX_TITLE, ORDER_ANNEX), w: 1 }];
+    const dest = !isolate && ws.length ? ws : [{ sec: sectionFor(LOGI_TITLE, ORDER_LOGI), w: 1 }];
     const chComp = { key: `__charge:${ch.key}`, label: ch.label, family: 'Charges' };
     for (const { sec, w } of dest) {
       const firstRow = [...sec.lines.values()].find((l) => l.sources.length)?.sources[0]?.row || rows[0] || {};
@@ -659,7 +681,7 @@ export function buildQuote({ rows = [], depRows = [], extraRows = [], config, pr
   let quoteTotal = 0;
   let quoteCost = 0;
   const outSections = [...sections.values()]
-    .sort((a, b) => a.order - b.order)
+    .sort((a, b) => a.order - b.order || a.subOrder - b.subOrder)
     .map((sec) => {
       const blockRank = (t) => (t === '__logi' ? 999 : sec.blocks.get(t) ?? 998);
       const lines = [...sec.lines.values()]
@@ -698,13 +720,25 @@ export function buildQuote({ rows = [], depRows = [], extraRows = [], config, pr
             charges: l.charges.map((c) => ({ label: c.label, amount: round2(c.amount) })),
             costOnly: !!l.costOnly,
             from: [...l.comps.values()],
+            // Origine Droitfil lisible : colonnes de la minute + autres dépenses dont le coût est porté ici.
+            sourceLabels: [
+              ...(l.comp.family === 'Charges' ? [] : [...l.comps.values()]),
+              ...(l.comp.family === 'Charges' ? [`Autres dépenses › ${l.comp.label}`] : []),
+              ...[...new Set(l.charges.map((c) => `Autres dépenses › ${c.label}`))],
+            ],
             compKeys: [...l.comps.keys()],
             nbRows: l.sources.length,
           };
         });
       return {
+        key: sec.key,
         title: sec.title,
-        apart: sec.order >= ORDER_APART,
+        sub: sec.sub,
+        apart: sec.order >= ORDER_LOGI,
+        // Types de produit du bloc (dans l'ordre) + une ligne de minute exemple de chacun (pour
+        // afficher les lignes de recette non utilisées et l'article qu'elles prendraient).
+        types: [...sec.blocks.entries()].sort((a, b) => a[1] - b[1]).map(([t]) => t).filter((t) => t !== '__logi'),
+        samples: Object.fromEntries(sec.samples),
         lines,
         total: round2(lines.reduce((a, l) => a + l.subtotal, 0)),
         cost: round2(lines.reduce((a, l) => a + l.cost, 0)),
@@ -723,7 +757,7 @@ export function buildQuote({ rows = [], depRows = [], extraRows = [], config, pr
   if (products.length) {
     for (const sec of outSections) for (const l of sec.lines) {
       if (!l.productId) continue;
-      const where = `${sec.title ? `${sec.title} › ` : ''}${l.productName}`;
+      const where = `${[sec.title, sec.sub].filter(Boolean).map((t) => `${t} › `).join('')}${l.productName}`;
       const hourTag = l.cgTags.some((t) => HOUR_TAGS.has(t));
       const costTag = l.cgTags.some((t) => CG_COST_FIELD[t]);
       if (hourTag && !l.hours) { l.check = 'hours'; blocking.push(`${where} : heures vendues à 0 (obligatoires sur un article ${l.cgTags.join('/')}).`); }

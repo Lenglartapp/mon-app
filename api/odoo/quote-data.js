@@ -14,7 +14,7 @@ async function catalog() {
     searchRead('product.product', [['sale_ok', '=', true]], ['id', 'name', 'uom_id', 'categ_id', 'all_product_tag_ids']),
     searchRead('crm.team', [], ['id', 'name']),
     searchRead('crm.tag', [], ['id', 'name']),
-    searchRead('res.users', [['share', '=', false]], ['id', 'name']),
+    searchRead('res.users', [['share', '=', false]], ['id', 'name', 'login', 'sale_team_id']),
     // Étiquettes analytiques : c'est l'article qui décide de la case du contrôle de gestion
     // Odoo (modèles de distribution analytique, 1 étiquette à 100 % par article).
     searchRead('account.analytic.account', [], ['id', 'name']),
@@ -53,7 +53,7 @@ async function catalog() {
       .sort((a, b) => a.name.localeCompare(b.name, 'fr')),
     teams,
     tags,
-    users,
+    users: users.map((u) => ({ id: u.id, name: u.name, login: u.login, teamId: u.sale_team_id ? u.sale_team_id[0] : null })),
     write: quoteWriteStatus(),
   };
 }
