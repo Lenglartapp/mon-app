@@ -1,208 +1,139 @@
-import React from 'react';
-import { Layers } from 'lucide-react';
-import Dialog from '@mui/material/Dialog';
-import DialogTitle from '@mui/material/DialogTitle';
-import DialogContent from '@mui/material/DialogContent';
-import DialogActions from '@mui/material/DialogActions';
-import Button from '@mui/material/Button';
-import Box from '@mui/material/Box';
-import Typography from '@mui/material/Typography';
+import React, { useMemo } from 'react';
 import { DataGrid } from '@mui/x-data-grid';
 import { frFR } from '@mui/x-data-grid/locales';
-import Chip from '@mui/material/Chip';
 import Avatar from '@mui/material/Avatar';
+import DaDialog from '../../ui/DaDialog';
+import { TonePill } from '../../ui/ToolbarControls';
+import LocationChips from './LocationChips';
+import { DATAGRID_DA_SX, FLUX_TONES, TABLE_FRAME_STYLE } from '../../../lib/constants/daStyles';
+import { LOC_A_COMPLETER, splitLocations } from '../../../lib/inventory/stockFields';
 
-// Helper for avatar color
+// Fiche de vie d'un article du stock : état actuel (quantité, pièces, emplacement) et
+// historique de ses mouvements, à la DA (mêmes pastilles de flux que le Journal).
+
 function stringToColor(string) {
     if (!string) return '#ccc';
     let hash = 0;
-    for (let i = 0; i < string.length; i++) {
-        hash = string.charCodeAt(i) + ((hash << 5) - hash);
-    }
+    for (let i = 0; i < string.length; i++) hash = string.charCodeAt(i) + ((hash << 5) - hash);
     const c = (hash & 0x00ffffff).toString(16).toUpperCase();
-    return '#' + "00000".substring(0, 6 - c.length) + c;
+    return '#' + '00000'.substring(0, 6 - c.length) + c;
 }
+
+const FLUX = {
+    IN: { label: 'Entrée', tone: FLUX_TONES.IN },
+    OUT: { label: 'Sortie', tone: FLUX_TONES.OUT },
+    MOVE: { label: 'Déplacement', tone: FLUX_TONES.MOVE },
+    ADJUST: { label: 'Édition', tone: null },
+};
 
 const COLUMNS = [
     {
-        field: 'date',
-        headerName: 'Date / Heure',
-        width: 150,
-        valueFormatter: (value) => {
-            if (!value) return '';
-            return new Date(value).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
-        }
+        field: 'date', headerName: 'Date / Heure', width: 120,
+        valueFormatter: (value) => (value ? new Date(value).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : ''),
     },
     {
-        field: 'type',
-        headerName: 'Type',
-        width: 100,
-        renderCell: (params) => {
-            const type = params.value; // IN, OUT, MOVE
-            let label = 'SORTIE';
-            let bg = '#FEE2E2';
-            let color = '#991B1B';
-
-            if (type === 'IN') {
-                label = 'ENTRÉE';
-                bg = '#D1FAE5';
-                color = '#065F46';
-            } else if (type === 'MOVE') {
-                label = 'DÉPLACEMENT';
-                bg = '#DBEAFE'; // Blue Light
-                color = '#1E40AF'; // Blue Dark
-            } else if (type === 'ADJUST') {
-                label = 'ÉDITION';
-                bg = '#EDE9FE'; // Violet Light
-                color = '#5B21B6'; // Violet Dark
-            }
-
-            return (
-                <Chip
-                    label={label}
-                    size="small"
-                    sx={{
-                        bgcolor: bg,
-                        color: color,
-                        fontWeight: 700
-                    }}
-                />
-            );
-        }
+        field: 'type', headerName: 'Flux', width: 120,
+        renderCell: (params) => { const f = FLUX[params.value] || FLUX.OUT; return <TonePill tone={f.tone}>{f.label}</TonePill>; },
     },
     {
-        field: 'user',
-        headerName: 'Opérateur',
-        width: 150,
-        renderCell: (params) => params.value ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Avatar sx={{ width: 24, height: 24, fontSize: 11, bgcolor: stringToColor(params.value) }}>
-                    {params.value?.[0]}
-                </Avatar>
-                <span>{params.value}</span>
-            </div>
-        ) : <span style={{ color: '#9CA3AF', fontStyle: 'italic' }}>-</span>
-    },
-    {
-        field: 'qty',
-        headerName: 'Quantité',
-        width: 100,
-        align: 'right',
-        headerAlign: 'right',
+        field: 'qty', headerName: 'Quantité', width: 100, align: 'right', headerAlign: 'right',
         renderCell: (params) => (
             <span style={{ fontWeight: 600 }}>
                 {params.value} <span style={{ fontSize: 11, fontWeight: 400, color: '#6B7280' }}>{params.row.unit}</span>
             </span>
-        )
+        ),
     },
-    { field: 'location', headerName: 'Emplacement', width: 130 },
+    { field: 'location', headerName: 'Emplacement', width: 120 },
     {
-        field: 'project',
-        headerName: 'Affectation',
-        width: 160,
-        renderCell: (params) => params.value ? (
-            <Chip label={params.value} size="small" variant="outlined" sx={{ borderColor: '#E5E7EB', color: '#4B5563' }} />
-        ) : <span style={{ color: '#9CA3AF', fontStyle: 'italic' }}>-</span>
+        field: 'reason', headerName: 'Motif / Détail', flex: 1, minWidth: 200,
+        renderCell: (params) => <span title={params.value || ''} style={{ fontSize: 13, color: '#4B5563', overflow: 'hidden', textOverflow: 'ellipsis' }}>{params.value || '—'}</span>,
     },
     {
-        field: 'reason',
-        headerName: 'Motif / Détail',
-        width: 250,
-        renderCell: (params) => (
-            <span style={{ fontSize: 13, color: '#4B5563' }}>{params.value || '-'}</span>
-        )
+        field: 'pieces_names', headerName: 'Pièce', width: 110,
+        renderCell: (params) => <span style={{ fontSize: 13, color: '#374151' }}>{params.value || '—'}</span>,
     },
     {
-        field: 'pieces_names',
-        headerName: 'Pièce / Rouleau',
-        width: 150,
-        renderCell: (params) => (
-            <span style={{ fontSize: 12, fontWeight: 700, color: '#4338CA' }}>{params.value || '-'}</span>
-        )
+        field: 'user_name', headerName: 'Opérateur', width: 160,
+        renderCell: (params) => (params.value ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                <Avatar sx={{ width: 24, height: 24, fontSize: 11, bgcolor: stringToColor(params.value) }}>{params.value[0]}</Avatar>
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{params.value}</span>
+            </div>
+        ) : <span style={{ color: '#9B9A97' }}>—</span>),
     },
 ];
 
+const norm = (v) => String(v ?? '').trim().toLowerCase();
+
 export default function ProductHistoryModal({ open, onClose, product, movements = [] }) {
+    // Mouvements de CET article : même libellé, et même dossier (les lignes sans dossier,
+    // plus anciennes, sont gardées). Du plus récent au plus ancien.
+    const rows = useMemo(() => {
+        if (!product) return [];
+        const proj = norm(product.project);
+        return movements
+            .filter(m => m.product === product.product && (!norm(m.project) || norm(m.project) === proj))
+            .map(m => ({ ...m, user_name: m.user_name || m.user, id: m.id ?? `log_${m.date}_${m.type}_${m.qty}_${m.pieces_names || ''}` }))
+            .sort((a, b) => new Date(b.date) - new Date(a.date));
+    }, [movements, product]);
+
     if (!product) return null;
 
-    const displayQty = Array.isArray(product.pieces) && product.pieces.length > 0
-        ? product.pieces.reduce((sum, p) => sum + Number(p.qty || 0), 0)
-        : product.qty;
-
-    // Filter movements for this product and sort descending
-    const productMovements = movements
-        .filter(m => m.product === product.product)
-        .map(m => m.id ? m : { ...m, id: `log_${m.date}_${Math.random()}` })
-        .sort((a, b) => new Date(b.date) - new Date(a.date));
+    const pieces = Array.isArray(product.pieces) ? product.pieces : [];
+    const displayQty = pieces.length > 0 ? pieces.reduce((sum, p) => sum + Number(p.qty || 0), 0) : product.qty;
+    const name = product.ref ? [product.ref, product.coloris].filter(Boolean).join(' — ') : product.product;
+    const title = [product.fournisseur, name].filter(Boolean).join(' · ') || 'Article';
+    const subtitle = ['Fiche de vie', product.project || 'Stock libre', product.laize && `laize ${product.laize}`].filter(Boolean).join(' · ');
+    const locs = splitLocations(product.location).filter(l => l !== LOC_A_COMPLETER);
 
     return (
-        <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-            <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: '#F4F4F4', borderBottom: '1px solid #E5E7EB' }}>
-                <Box>
-                    <Typography variant="h6" sx={{ fontWeight: 700, color: '#111827' }}>
-                        Fiche de Vie : {product.product}
-                    </Typography>
-                    <Typography variant="caption" sx={{ color: '#6B7280' }}>
-                        Réf: {product.ref || 'N/A'}
-                    </Typography>
-                </Box>
-                <Chip
-                    label={`Stock Actuel : ${displayQty} ${product.unit}`}
-                    color={product.qty > 0 ? "success" : "error"}
-                    sx={{ fontWeight: 700 }}
-                />
-            </DialogTitle>
+        <DaDialog
+            open={open}
+            onClose={onClose}
+            title={title}
+            subtitle={subtitle}
+            maxWidth="lg"
+            height="85vh"
+            headerExtra={<TonePill tone={Number(displayQty) > 0 ? 0 : null}>Stock : {displayQty} {product.unit}</TonePill>}
+        >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 20, height: '100%', fontFamily: 'Roboto, system-ui, sans-serif' }}>
+                {/* État actuel : pièces + emplacement */}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 24 }}>
+                    {pieces.length > 0 && (
+                        <div>
+                            <div style={{ fontSize: 13, color: '#6B7280', marginBottom: 8 }}>Pièces en stock ({pieces.length})</div>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                                {pieces.map((p, idx) => (
+                                    <TonePill key={p.id || idx} tone={Number(p.qty) > 0 ? 5 : null}>{p.name || `Pièce ${idx + 1}`} · {p.qty} {product.unit}</TonePill>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                    <div>
+                        <div style={{ fontSize: 13, color: '#6B7280', marginBottom: 8 }}>Emplacement</div>
+                        {locs.length ? <LocationChips value={product.location} /> : <span style={{ fontSize: 13, color: '#9B9A97' }}>À compléter</span>}
+                    </div>
+                </div>
 
-            <DialogContent sx={{ p: 0, height: 700, display: 'flex', flexDirection: 'column' }}>
-                {/* ÉTAT ACTUEL DES PIÈCES */}
-                {Array.isArray(product.pieces) && product.pieces.length > 0 && (
-                    <Box sx={{ p: 2, bgcolor: '#EEF2FF', borderBottom: '1px solid #E0E7FF' }}>
-                        <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#4338CA', mb: 1, textTransform: 'uppercase', fontSize: 11 }}>
-                            Pièces en stock actuellement ({product.pieces.length})
-                        </Typography>
-                        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                            {product.pieces.map((p, idx) => (
-                                <Box 
-                                    key={p.id || idx} 
-                                    sx={{ 
-                                        bgcolor: 'white', 
-                                        p: 1, 
-                                        borderRadius: 2, 
-                                        border: '1px solid #C7D2FE',
-                                        minWidth: 120,
-                                        boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
-                                    }}
-                                >
-                                    <Typography sx={{ fontWeight: 700, fontSize: 13, color: '#111827' }}>
-                                        {p.name || `Pièce ${idx + 1}`}
-                                    </Typography>
-                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.5 }}>
-                                        <Typography sx={{ fontSize: 12, fontWeight: 600, color: '#059669' }}>{p.qty} {product.unit}</Typography>
-                                        <Typography sx={{ fontSize: 11, color: '#6B7280' }}>({p.location || '?'})</Typography>
-                                    </Box>
-                                </Box>
-                            ))}
-                        </Box>
-                    </Box>
-                )}
-
-                <Box sx={{ flex: 1 }}>
-                    <DataGrid
-                        rows={productMovements}
-                        columns={COLUMNS}
-                        density="comfortable"
-                        disableSelectionOnClick
-                        localeText={frFR.components.MuiDataGrid.defaultProps.localeText}
-                        sx={{ border: 'none' }}
-                    />
-                </Box>
-            </DialogContent>
-
-            <DialogActions sx={{ p: 2, borderTop: '1px solid #E5E7EB' }}>
-                <Button onClick={onClose} variant="contained" color="primary">
-                    Fermer
-                </Button>
-            </DialogActions>
-        </Dialog>
+                {/* Historique */}
+                <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ fontSize: 17, fontWeight: 500, color: '#111827', marginBottom: 10 }}>
+                        Historique <span style={{ fontSize: 13, fontWeight: 400, color: '#9B9A97' }}>{rows.length} mouvement{rows.length > 1 ? 's' : ''}</span>
+                    </div>
+                    {/* Le tableau occupe la place restante de la fenêtre (il défile à l'intérieur) */}
+                    <div style={{ ...TABLE_FRAME_STYLE, flex: 1, minHeight: 260 }}>
+                        <DataGrid
+                            rows={rows}
+                            columns={COLUMNS}
+                            density="comfortable"
+                            disableRowSelectionOnClick
+                            initialState={{ sorting: { sortModel: [{ field: 'date', sort: 'desc' }] } }}
+                            localeText={{ ...frFR.components.MuiDataGrid.defaultProps.localeText, noRowsLabel: 'Aucun mouvement enregistré pour cet article.' }}
+                            sx={DATAGRID_DA_SX}
+                        />
+                    </div>
+                </div>
+            </div>
+        </DaDialog>
     );
 }

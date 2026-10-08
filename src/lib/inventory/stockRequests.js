@@ -22,6 +22,19 @@ export async function fetchRequests(supabase, { project } = {}) {
   return (data || []).map((r) => ({ ...r, lines: [...(r.lines || [])].sort((a, b) => String(a.created_at).localeCompare(String(b.created_at))) }));
 }
 
+// Ligne de demande à enregistrer : infos article recopiées + pièces / métrage demandés.
+const lineRow = (requestId, { item, pieces, qty }) => ({
+  request_id: requestId,
+  item_id: item.id,
+  product: item.product,
+  ...pickItemMeta(item),
+  unit: item.unit || null,
+  project: item.project || null,
+  from_location: item.location || '',
+  pieces: (pieces || []).map(cleanPiece),
+  qty: pieces?.length ? sumQty(pieces) : round2(qty),
+});
+
 /**
  * Crée une demande et ses lignes.
  * @param {object} req   { project, requested_by, requested_for, comment }
@@ -36,23 +49,51 @@ export async function createRequest(supabase, req, lines) {
   }]).select().single();
   if (error) throw error;
 
-  const rows = lines.map(({ item, pieces, qty }) => ({
-    request_id: data.id,
-    item_id: item.id,
-    product: item.product,
-    ...pickItemMeta(item),
-    unit: item.unit || null,
-    project: item.project || null,
-    from_location: item.location || '',
-    pieces: (pieces || []).map(cleanPiece),
-    qty: pieces?.length ? sumQty(pieces) : round2(qty),
-  }));
+  const rows = lines.map((l) => lineRow(data.id, l));
   const { error: linesErr } = await supabase.from('stock_request_lines').insert(rows);
   if (linesErr) {
     await supabase.from('stock_requests').delete().eq('id', data.id); // pas de demande vide
     throw linesErr;
   }
   return data;
+}
+
+/**
+ * Modifie une demande encore ouverte (sans historique) : en-tête (demandeur, date,
+ * commentaire) et lignes EN ATTENTE. Les lignes déjà mises à disposition ne bougent pas.
+ * @param {object} request la demande d'origine (avec ses lignes)
+ * @param {object} header  { requested_by, requested_for, comment }
+ * @param {Array}  lines   lignes en attente voulues : [{ lineId?, item, pieces, qty }]
+ *                         (lineId = ligne existante à mettre à jour ; absent = nouvelle ligne)
+ */
+export async function updateRequest(supabase, request, header, lines) {
+  const { error } = await supabase.from('stock_requests').update({
+    requested_by: header.requested_by,
+    requested_for: header.requested_for || null,
+    comment: header.comment || null,
+    updated_at: new Date().toISOString(),
+  }).eq('id', request.id);
+  if (error) throw error;
+
+  const pending = (request.lines || []).filter((l) => l.status === 'pending');
+  const keptIds = new Set(lines.map((l) => l.lineId).filter(Boolean));
+  const removed = pending.filter((l) => !keptIds.has(l.id)).map((l) => l.id);
+  if (removed.length) {
+    const { error: delErr } = await supabase.from('stock_request_lines').delete().in('id', removed).eq('status', 'pending');
+    if (delErr) throw delErr;
+  }
+  for (const l of lines.filter((x) => x.lineId)) {
+    const row = lineRow(request.id, l);
+    const { error: upErr } = await supabase.from('stock_request_lines')
+      .update({ pieces: row.pieces, qty: row.qty }).eq('id', l.lineId).eq('status', 'pending');
+    if (upErr) throw upErr;
+  }
+  const added = lines.filter((x) => !x.lineId).map((l) => lineRow(request.id, l));
+  if (added.length) {
+    const { error: insErr } = await supabase.from('stock_request_lines').insert(added);
+    if (insErr) throw insErr;
+  }
+  await refreshRequestStatus(supabase, request.id);
 }
 
 /** Passe la demande à « done » quand plus aucune ligne n'est en attente (ou « cancelled » si tout est annulé). */

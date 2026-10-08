@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Filter } from 'lucide-react';
 import FilterPanel, { isConditionActive } from '../FilterPanel';
+import FitPanel from './FitPanel';
 
 // Bouton « Filtrer » des listes (Chiffrages, Projets, Programmation) : ouvre le panneau de
 // conditions « Lorsque [champ] [opérateur] [valeur] » (ET / OU). Même rendu et même comportement
@@ -33,9 +34,9 @@ export default function ConditionFilterButton({ schema, conditions, onChange, al
       {open && (
         <>
           <div style={{ position: 'fixed', inset: 0, zIndex: 1000 }} onClick={() => setOpen(false)} />
-          <div style={{ position: 'absolute', top: 'calc(100% + 4px)', [align]: 0, zIndex: 1001 }}>
+          <FitPanel style={{ position: 'absolute', top: 'calc(100% + 4px)', [align]: 0, zIndex: 1001 }}>
             <FilterPanel schema={schema} conditions={conditions} onChange={onChange} />
-          </div>
+          </FitPanel>
         </>
       )}
     </div>

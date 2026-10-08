@@ -9,7 +9,7 @@ import { LOC_A_COMPLETER, splitLocations } from '../../../lib/inventory/stockFie
 
 const cleanLocs = (list) => [...new Set(list.map((v) => String(v).trim()).filter((v) => v && v !== LOC_A_COMPLETER))];
 
-export default function LocationInput({ value, onChange, zones = [], label = 'Emplacement', helperText, required, placeholder = 'ex. B3 (plusieurs possibles)' }) {
+export default function LocationInput({ value, onChange, zones = [], label = 'Emplacement', helperText, required, placeholder = 'ex. B3 (plusieurs possibles)', fieldSx }) {
   const [input, setInput] = useState('');
   const zoneByCode = useMemo(() => new Map(zones.filter((z) => z.code).map((z) => [z.code, z])), [zones]);
 
@@ -38,8 +38,9 @@ export default function LocationInput({ value, onChange, zones = [], label = 'Em
       renderInput={(params) => (
         <TextField
           {...params}
-          label={label}
-          required={required}
+          label={label ?? undefined}
+          required={label != null && required}
+          sx={fieldSx}
           placeholder={value.length ? '' : placeholder}
           helperText={helperText}
         />

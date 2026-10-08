@@ -137,7 +137,9 @@ function AgColumnHeader(props) {
   const { displayName, column, showColumnMenu, showFilter, enableFilterButton } = props;
   const colDef = column?.getColDef?.();
   const icon = colDef?.context?._headerIcon;
-  const tooltip = colDef?.headerTooltip;
+  // Explication de la colonne : une seule infobulle, la nôtre (gris foncé, flèche). Elle est
+  // rangée dans `context` et non dans `headerTooltip`, sinon AG Grid affiche la sienne en plus.
+  const tooltip = colDef?.context?._headerTooltip;
 
   // Boutons filtre + menu — le header custom doit les rendre lui-même
   const filterBtnRef = useRef(null);
@@ -206,7 +208,7 @@ function AgColumnHeader(props) {
         </div>
       )}
       {tooltip ? (
-        <Tooltip title={tooltip} placement="top" arrow enterDelay={300}>
+        <Tooltip title={tooltip} placement="top" arrow enterDelay={300} slotProps={{ tooltip: { sx: { whiteSpace: 'pre-line', maxWidth: 360 } } }}>
           {label}
         </Tooltip>
       ) : label}
@@ -307,9 +309,9 @@ export function schemaToGridCols(
       },
     };
 
-    // Tooltip on column header for formula/readOnly columns
+    // Explication sur l'en-tête (colonnes calculées / à saisir) — affichée par AgColumnHeader
     if (col.tooltip) {
-      gridCol.headerTooltip = col.tooltip;
+      gridCol.context = { ...(gridCol.context || {}), _headerTooltip: col.tooltip };
     }
 
     // valueFormatter (explicit override from schema)

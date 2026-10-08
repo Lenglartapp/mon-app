@@ -175,7 +175,7 @@ import { PROJECT_STATUS_OPTIONS } from "../lib/constants/projectStatus";
 import { useViewportWidth } from "../lib/hooks/useViewportWidth";
 
 // 1. SIGNATURE MISE A JOUR
-export function ProductionProjectScreen({ project: propProject, projects, inventory, onUpdateItem, onStockChanged, onBack, onUpdateProjectRows, onUpdateProject, highlightRowId, initialStage, events = [] }) {
+export function ProductionProjectScreen({ project: propProject, projects, inventory, movements = [], onUpdateItem, onStockChanged, onBack, onUpdateProjectRows, onUpdateProject, highlightRowId, initialStage, events = [] }) {
   const { projectId: urlProjectId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -2016,6 +2016,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
         project={project}
         projects={projects}
         inventory={inventory}
+        movements={movements}
         onUpdateItem={onUpdateItem}
         onStockChanged={onStockChanged}
       />

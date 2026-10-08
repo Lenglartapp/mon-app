@@ -13,7 +13,8 @@ export const OPERATORS = [
     'Emilie David', 'Emmanuel Peltier', 'Malcolm Jeantal', 'Florence Gobbe'
 ].sort();
 
-export default function OperatorInput({ value, onChange, sx, label = 'Opérateur' }) {
+// `label={null}` : pas de libellé dans le champ (il est posé au-dessus, cf. DaField) ; `fieldSx` : style du champ.
+export default function OperatorInput({ value, onChange, sx, label = 'Opérateur', fieldSx }) {
     return (
         <Autocomplete
             freeSolo
@@ -26,7 +27,7 @@ export default function OperatorInput({ value, onChange, sx, label = 'Opérateur
             onChange={(e, val) => onChange(val || '')}
             sx={sx}
             renderInput={(params) => (
-                <TextField {...params} label={label} placeholder="Qui ? (ou tape un prénom)" required error={!value.trim()} />
+                <TextField {...params} label={label ?? undefined} placeholder="Qui ? (ou tape un prénom)" required={label != null} error={label != null && !value.trim()} sx={fieldSx} />
             )}
         />
     );

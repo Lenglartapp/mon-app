@@ -11,6 +11,7 @@ import { uid } from '../lib/utils/uid';
 import { createDecentreePair, PAIRE_DECENTREE, DECENTREE_PARENT_ONLY_TECH, orderDecentreeRows } from '../lib/utils/pairDecentree';
 import { Plus, Trash2, Columns, Layers, Edit2, Filter, FileSpreadsheet, PinOff, ChevronDown, ChevronRight, Truck } from 'lucide-react';
 import { TonePill } from './ui/ToolbarControls';
+import FitPanel from './ui/FitPanel';
 import FilterPanel, { isConditionActive, evaluateCondition } from './FilterPanel';
 import { getDefaultMatieres } from '../lib/constants/matiereGroups';
 import { useAuth } from '../auth';
@@ -1826,7 +1827,9 @@ function MinuteGrid({
             {/* Toolbar : posée à droite, sur la barre « Glissez un champ ici pour regrouper » d'AG Grid.
                 Collante (comme cette barre) : elle garde sa place dans le flux et c'est la grille qui remonte
                 dessous (marge négative), pour qu'elle se décolle pile en même temps que le bas du tableau. */}
-            <div className="df-grid-toolbar" style={{ ...(stickyTop != null ? { position: 'sticky', top: stickyTop } : { position: 'absolute', top: 0, left: 0, right: 0 }), height: GROUP_PANEL_HEIGHT, zIndex: 8, padding: '0 8px', display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'flex-end', pointerEvents: 'none' }}>
+            {/* Menu ouvert (Colonnes, Ajouter, Filtrer, Matières) : la barre passe au-dessus des barres
+                des tableaux suivants, sinon leurs boutons s'affichent par-dessus le menu. */}
+            <div className="df-grid-toolbar" style={{ ...(stickyTop != null ? { position: 'sticky', top: stickyTop } : { position: 'absolute', top: 0, left: 0, right: 0 }), height: GROUP_PANEL_HEIGHT, zIndex: (colPanelOpen || addPanelOpen || filterPanelOpen || matierePanelOpen) ? 1100 : 8, padding: '0 8px', display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'flex-end', pointerEvents: 'none' }}>
                 {!readOnly && (
                     /* Bouton scindé : clic = 1 ligne (geste habituel inchangé),
                        chevron — ou clic droit — = « combien de lignes ? ». */
@@ -1852,7 +1855,7 @@ function MinuteGrid({
                     <div style={{ position: 'fixed', inset: 0, zIndex: 999 }} onClick={() => setAddPanelOpen(false)} />
                 )}
                 {addPanelOpen && addPanelPos && (
-                    <div
+                    <FitPanel
                         style={{
                             position: 'fixed', top: addPanelPos.top, left: addPanelPos.left,
                             background: 'white', border: '1px solid #E0DED9', borderRadius: 8,
@@ -1901,7 +1904,7 @@ function MinuteGrid({
                         <div style={{ fontSize: 10, color: '#9ca3af', marginTop: 7 }}>
                             {MAX_ADD_ROWS} lignes maximum d'un coup.
                         </div>
-                    </div>
+                    </FitPanel>
                 )}
                 {selectedCount > 0 && !readOnly && (
                     <button onClick={handleDeleteRows} style={{ cursor: 'pointer', padding: '5px 10px', background: '#ef4444', color: 'white', border: 'none', borderRadius: 4, display: 'flex', alignItems: 'center', gap: 5, fontSize: 12 }}>
@@ -2004,13 +2007,13 @@ function MinuteGrid({
                                 <Filter size={14} /> {label}
                             </button>
                             {filterPanelOpen && (
-                                <div style={{ position: 'absolute', left: 0, top: '100%', marginTop: 4, zIndex: 1001 }}>
+                                <FitPanel style={{ position: 'absolute', left: 0, top: '100%', marginTop: 4, zIndex: 1001 }}>
                                     <FilterPanel
                                         schema={schema}
                                         conditions={filterConditions}
                                         onChange={setFilterConditions}
                                     />
-                                </div>
+                                </FitPanel>
                             )}
                         </div>
                     );
@@ -2047,7 +2050,7 @@ function MinuteGrid({
                             <Layers size={14} /> Configuration
                         </button>
                         {matierePanelOpen && (
-                            <div style={{
+                            <FitPanel style={{
                                 position: 'absolute', left: 0, top: '100%', marginTop: 4,
                                 background: 'white', border: '1px solid #E0DED9', borderRadius: 8,
                                 boxShadow: '0 10px 25px rgba(0,0,0,0.1)', zIndex: 1000,
@@ -2104,7 +2107,7 @@ function MinuteGrid({
                                         ))}
                                     </div>
                                 )}
-                            </div>
+                            </FitPanel>
                         )}
                     </div>
                 )}
@@ -2128,7 +2131,7 @@ function MinuteGrid({
                 )}
                 {/* Panel colonnes en position fixed pour ne pas être rogné par les overflow parents */}
                 {colPanelOpen && colPanelPos && (
-                    <div
+                    <FitPanel
                         style={{
                             position: 'fixed',
                             top: colPanelPos.top,
@@ -2257,7 +2260,7 @@ function MinuteGrid({
                                 );
                             })()}
                         </div>
-                    </div>
+                    </FitPanel>
                 )}
             </div>
 
