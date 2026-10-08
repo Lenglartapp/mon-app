@@ -9,7 +9,28 @@ const th = { padding: '10px 12px', textAlign: 'left', fontSize: 13, fontWeight: 
 const td = { padding: '10px 12px', borderBottom: '1px solid #E8E6E2', verticalAlign: 'middle' };
 const fmt = (n) => Number(n || 0).toLocaleString('fr-FR', { maximumFractionDigits: 2 });
 
-export default function ProjectNeedsTab({ needs }) {
+// Note sur la fiabilité des besoins, selon l'état des cotes des rideaux du dossier.
+const BASIS_NOTE = {
+    validated: { tone: '#EEF4FD', title: 'Toutes les cotes sont validées', text: 'Les besoins sont calculés avec les formules du BPF sur les cotes de pose validées : on peut s’y fier.' },
+    complete: { tone: '#EEF4FD', title: 'Toutes les cotes sont prises', text: 'Les besoins sont calculés avec les formules du BPF sur les cotes de pose (pas encore toutes validées).' },
+    partial: { tone: '#FDF6E7', title: 'Attention : cotes prises en partie', text: 'Mélange de cotes de pose et de cotes du plan (chiffrage) : les lignes sans cotes sont estimées sur le plan.' },
+    plan: { tone: '#FDF6E7', title: 'Attention : aucune cote de pose prise', text: 'Les besoins sont estimés sur les cotes du plan, c’est-à-dire ce qui a été pris en compte au chiffrage.' },
+};
+
+export function NeedsBasisNote({ basis }) {
+    const n = basis?.state && BASIS_NOTE[basis.state];
+    if (!n) return null;
+    const detail = basis.state === 'partial' ? ` (${basis.withCotes} rideau${basis.withCotes > 1 ? 'x' : ''} sur ${basis.total} avec cotes)` : '';
+    return (
+        <div style={{ background: n.tone, borderRadius: 8, padding: '10px 14px', marginBottom: 16, fontSize: 13, color: '#374151', fontFamily: 'Roboto, system-ui, sans-serif' }}>
+            <b style={{ color: '#111827', fontWeight: 600 }}>{n.title}</b>{detail} — {n.text}
+        </div>
+    );
+}
+
+const BASIS_LABEL = { cotes: 'cotes de pose', plan: 'cotes du plan', saisie: 'métrage saisi' };
+
+export default function ProjectNeedsTab({ needs, basis }) {
     const [open, setOpen] = useState(() => new Set());
     const toggle = (key) => setOpen((prev) => {
         const s = new Set(prev);
@@ -21,7 +42,7 @@ export default function ProjectNeedsTab({ needs }) {
         return (
             <div style={{ textAlign: 'center', padding: 48, color: '#9CA3AF' }}>
                 <Ruler size={28} />
-                <div style={{ marginTop: 8 }}>Aucun métrage de tissu dans le BPF de ce dossier.</div>
+                <div style={{ marginTop: 8 }}>Aucun métrage de tissu calculé dans le BPF de ce dossier.</div>
             </div>
         );
     }
@@ -29,6 +50,7 @@ export default function ProjectNeedsTab({ needs }) {
     const total = needs.reduce((s, n) => s + n.total, 0);
     return (
         <div>
+            <NeedsBasisNote basis={basis} />
             <div style={{ display: 'flex', gap: 40, marginBottom: 20, flexWrap: 'wrap' }}>
                 <Stat label="Tissus" value={needs.length} />
                 <Stat label="Métrage total" value={`${fmt(total)} ml`} />
@@ -72,6 +94,7 @@ export default function ProjectNeedsTab({ needs }) {
                                                             <th style={th}>Généré par</th>
                                                             <th style={th}>Zone</th>
                                                             <th style={th}>Rôle</th>
+                                                            <th style={th}>Calculé sur</th>
                                                             <th style={{ ...th, textAlign: 'right' }}>ML</th>
                                                         </tr>
                                                     </thead>
@@ -81,6 +104,7 @@ export default function ProjectNeedsTab({ needs }) {
                                                                 <td style={{ ...td, padding: '6px 12px' }}>{s.label}</td>
                                                                 <td style={{ ...td, padding: '6px 12px', color: '#6B7280' }}>{s.zone || '—'}</td>
                                                                 <td style={{ ...td, padding: '6px 12px', color: '#6B7280' }}>{s.role}</td>
+                                                                <td style={{ ...td, padding: '6px 12px', color: s.basis === 'plan' ? '#92400E' : '#6B7280' }}>{BASIS_LABEL[s.basis] || '—'}</td>
                                                                 <td style={{ ...td, padding: '6px 12px', textAlign: 'right', fontWeight: 600 }}>{fmt(s.ml)}</td>
                                                             </tr>
                                                         ))}
