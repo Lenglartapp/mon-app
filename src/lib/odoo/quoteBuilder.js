@@ -773,6 +773,7 @@ export function buildQuote({ rows = [], depRows = [], extraRows = [], config, pr
   //    - autre article → coût ≠ 0, sinon impression et confirmation bloquées ;
   //    - coût sur un article sans étiquette de coût → compté nulle part dans le contrôle de gestion.
   const blocking = [];
+  const livraisonSansCout = [];
   if (products.length) {
     for (const sec of outSections) for (const l of sec.lines) {
       if (!l.productId) continue;
@@ -780,9 +781,18 @@ export function buildQuote({ rows = [], depRows = [], extraRows = [], config, pr
       const hourTag = l.cgTags.some((t) => HOUR_TAGS.has(t));
       const costTag = l.cgTags.some((t) => CG_COST_FIELD[t]);
       if (hourTag && !l.hours) { l.check = 'hours'; blocking.push(`${where} : heures vendues à 0 (obligatoires sur un article ${l.cgTags.join('/')}).`); }
+      else if (!hourTag && !l.cost && l.compKeys.includes('livraison')) {
+        // Le coût d'une livraison = les « Transport Vente / Transport Sous-Traitance » des Autres dépenses.
+        l.check = 'cost';
+        livraisonSansCout.push(where);
+      }
       else if (!hourTag && !l.cost) { l.check = 'cost'; warnings.push(`${where} : coût à 0 → la confirmation du devis sera bloquée dans Odoo.`); }
       else if (l.cost && !costTag) { l.check = 'untagged'; warnings.push(`${where} : article sans étiquette de coût → ce coût ne sera compté nulle part dans le contrôle de gestion.`); }
     }
+  }
+
+  if (livraisonSansCout.length) {
+    warnings.push(`Livraison vendue sans coût de transport (${livraisonSansCout.length} ligne${livraisonSansCout.length > 1 ? 's' : ''}) : ajoute la dépense « Transport Vente » ou « Transport Sous-Traitance » dans les Autres dépenses de la minute, sinon Odoo bloquera la confirmation du devis.`);
   }
 
   // Contrôle de gestion attendu, calculé côté Droitfil (à comparer au retour d'Odoo).
