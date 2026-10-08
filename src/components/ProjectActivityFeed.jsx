@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { fetchProjectEvents } from '../lib/projectEvents';
 import { mergeRowLogs } from '../lib/lineLogs';
 import { useArchivedRowLogs } from '../hooks/useArchivedRowLogs';
 import { Clock, MessageSquare, CheckCircle, Edit, ArrowRight, Pin, Image as ImageIcon } from 'lucide-react';
@@ -126,7 +127,26 @@ const extractActivity = (rows, wall, pinnedIds = []) => {
     return allEvents.sort((a, b) => b.date - a.date);
 };
 
-export default function ProjectActivityFeed({ rows, wall, pinnedIds, onTogglePin, isMobile = false, projectId, composer = null }) {
+// Événements du DOSSIER (table project_events) : la création (tout en bas du fil, c'est la plus
+// ancienne) en activité, et ce qu'Odoo a déclenché en message publié par « Odoo ».
+const CREATION_TEXT = {
+    blank: () => 'a créé le dossier (projet vierge)',
+    import: (d) => `a créé le dossier par import manuel de la minute « ${d.minuteName || '—'} »`,
+    odoo: (d) => `a créé le dossier à la confirmation de la commande ${d.orderName || ''}`.trim(),
+};
+const projectEventsToFeed = (list) => list.map((e) => {
+    const date = Date.parse(e.created_at) || 0;
+    if (e.type === 'created') {
+        const d = e.detail || {};
+        const text = e.guessed
+            ? `Dossier créé ${e.label.includes('import') ? 'depuis une minute (import)' : '(projet vierge)'} — origine reconstituée`
+            : (CREATION_TEXT[d.origin] || CREATION_TEXT.blank)(d);
+        return { id: `pe-${e.id}`, date, type: 'system_create', category: 'activity', user: e.guessed ? 'Système' : (e.user_name || 'Système'), actionLabel: text, pinned: false };
+    }
+    return { id: `pe-${e.id}`, date, type: 'system_post', category: 'messages', user: e.user_name || 'Système', actionLabel: 'a publié', text: e.label, pinned: false };
+});
+
+export default function ProjectActivityFeed({ project = null, rows, wall, pinnedIds, onTogglePin, isMobile = false, projectId, composer = null }) {
     const { currentUser } = useAuth();
     // Mes propres messages : à droite, sur bulle bleu ciel (comme une conversation)
     const myNames = new Set([currentUser?.name, currentUser?.displayName, currentUser?.email].filter(Boolean).map(n => String(n).trim().toLowerCase()));
@@ -149,7 +169,24 @@ export default function ProjectActivityFeed({ rows, wall, pinnedIds, onTogglePin
         });
     }, [rows, archivedLogs]);
 
-    const events = useMemo(() => extractActivity(rowsWithLogs, wall, pinnedIds), [rowsWithLogs, wall, pinnedIds]);
+    // Création + événements Odoo du dossier ; rechargés quand le statut change (archivage par Odoo…).
+    const [dossierEvents, setDossierEvents] = useState([]);
+    useEffect(() => {
+        if (!project?.id) return undefined;
+        let alive = true;
+        fetchProjectEvents(project).then(({ events: list }) => { if (alive) setDossierEvents(projectEventsToFeed(list)); });
+        return () => { alive = false; };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [project?.id, project?.status]);
+
+    const events = useMemo(() => {
+        const list = extractActivity(rowsWithLogs, wall, pinnedIds);
+        const extra = dossierEvents.map(e => ({ ...e, pinned: (pinnedIds || []).includes(e.id) }));
+        // La création ferme toujours le fil (tout en bas), même si des modifications recopiées du
+        // chiffrage sont plus anciennes que le projet.
+        const isCreation = (e) => e.type === 'system_create' && String(e.id).startsWith('pe-');
+        return [...list, ...extra].sort((a, b) => (isCreation(a) - isCreation(b)) || (b.date - a.date));
+    }, [rowsWithLogs, wall, pinnedIds, dossierEvents]);
     const pinnedPosts = useMemo(() => events.filter(e => e.pinned), [events]);
     const feedEvents = useMemo(() => {
         // Les épinglés sont déjà affichés en haut : on ne les répète pas dans le fil.

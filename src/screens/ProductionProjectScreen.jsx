@@ -1241,6 +1241,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
           <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 16, paddingTop: 4 }}>
 
             <ProjectActivityFeed
+              project={project}
               rows={rows}
               wall={project?.wall}
               pinnedIds={project?.pinnedIds || []}

@@ -12,6 +12,13 @@ import { FORMULES_METRAGE_V2 } from '../formulas/metrageVersion';
 import { FORMULES_STORES_V1 } from '../formulas/storesBateauxMetrage.js';
 import { extractMaterialsFromLines } from '../data/demo';
 import { uid } from '../utils/uid';
+import { isLogEntry } from '../lineLogs';
+
+// Les messages échangés pendant le chiffrage (questions internes…) ne suivent pas dans le projet
+// (décision du 2026-10-08) ; le journal des modifications et les photos restent.
+const withoutChiffrageMessages = (r) => (Array.isArray(r.comments)
+  ? { ...r, comments: r.comments.filter((c) => isLogEntry(c) || c?.type === 'image') }
+  : r);
 
 // Budget d'heures recalculé depuis les lignes (source de vérité, plutôt qu'un snapshot).
 export function budgetFromRows(rows) {
@@ -48,7 +55,7 @@ export function buildProjectFromMinute(minute, opts = {}) {
     // Stores bateaux / velum : le projet suit le nouveau métrage (lignes ajoutées ensuite) ;
     // les lignes reprises du devis gardent le marqueur de leur chiffrage.
     config: { formules_metrage: FORMULES_METRAGE_V2, formules_stores: FORMULES_STORES_V1 },
-    rows: computeFormulas(rows.map((r) => applySchemaDefaults({ ...r, formules_metrage: FORMULES_METRAGE_V2 }, SCHEMA_64)), SCHEMA_64),
+    rows: computeFormulas(rows.map((r) => applySchemaDefaults({ ...withoutChiffrageMessages(r), formules_metrage: FORMULES_METRAGE_V2 }, SCHEMA_64)), SCHEMA_64),
     materials: extractMaterialsFromLines(rows),
   };
 }

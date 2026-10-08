@@ -59,10 +59,7 @@ export function useOdooOrderProjects({ currentUser, addProject, loadMinuteDetail
       if (!minute?.lines?.length) throw new Error('minute sans lignes');
       const link = quote.link || {};
       const project = buildProjectFromMinute(minute);
-      project.notes = [
-        `Créé automatiquement depuis la commande Odoo ${link.name || ''} — à compléter : date de livraison, lieu, type d'intervention.`,
-        project.notes,
-      ].filter(Boolean).join('\n');
+      project.origin = { type: 'odoo', by: 'Odoo', orderName: link.name, minuteName: minute.name };
       // Lien vers le projet Odoo UNIQUEMENT si l'événement vient de la production (le job de
       // nuit pousse les temps vers id_projet_odoo : une id de préprod viserait un autre projet).
       if (link.isProdSource && link.project?.id) project.id_projet_odoo = link.project.id;

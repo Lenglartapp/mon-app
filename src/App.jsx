@@ -108,7 +108,12 @@ function AppShell() {
   const { currentUser } = useAuth();
 
   // --- 1. CHARGEMENT DONNÉES (Supabase) ---
-  const { projects, addProject, updateProject, deleteProject, refreshProjects, loadProjectDetail, loadAllProjects } = useProjects();
+  const { projects, addProject: addProjectRaw, updateProject, deleteProject, refreshProjects, loadProjectDetail, loadAllProjects } = useProjects();
+  // Toute création de projet note qui l'a créé dans l'historique du dossier (origine posée par l'appelant).
+  const addProject = useCallback(
+    (project) => addProjectRaw({ ...project, origin: { by: currentUser?.name, ...(project.origin || {}) } }),
+    [addProjectRaw, currentUser?.name],
+  );
   const { minutes, addMinute, updateMinute, deleteMinute, loadMinuteDetail } = useMinutes();
   const { events: planningEvents, updateEvent, deleteEvent } = useEvents();
   const { inventory, movements, addMovement, bulkUpdateInventory, updateInventoryItem, refreshStocks } = useStocks();

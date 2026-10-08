@@ -563,6 +563,7 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
                 { ...(meta || {}), lines: rows || [] },
                 { name: name || meta?.minuteName, deliveryDate, location, intervention_type, expedition_type },
               );
+              project.origin = { type: 'import', minuteName: meta?.name || meta?.minuteName || name };
 
               if (onCreate) {
                 try {
