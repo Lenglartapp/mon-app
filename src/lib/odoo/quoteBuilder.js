@@ -92,12 +92,12 @@ const S = {
   // Passementerie, embrasses, intérieurs : article « Tissu » (étiquette CG Tissu). Les articles
   // génériques (Article Générique ML/UNITÉS, Accessoire) n'ont AUCUNE étiquette de contrôle de
   // gestion : leur coût ne serait compté nulle part (réponse ERP du 2026-10-06).
-  pass1: () => L('pass1', 'Passementerie 1', ['pv_pass1', 'pv_pass_1'], 'Tissu', { unit: 'ml' }),
-  pass2: () => L('pass2', 'Passementerie 2', ['pv_pass2', 'pv_pass_2'], 'Tissu', { unit: 'ml' }),
-  embrasse: () => L('embrasse', 'Embrasse', ['pv_embrasse'], 'Tissu'),
+  pass1: () => L('pass1', 'Passementerie 1', ['pv_pass1', 'pv_pass_1'], 'xml:product_passementerie', { unit: 'ml' }),
+  pass2: () => L('pass2', 'Passementerie 2', ['pv_pass2', 'pv_pass_2'], 'xml:product_passementerie', { unit: 'ml' }),
+  embrasse: () => L('embrasse', 'Embrasse', ['pv_embrasse'], 'xml:product_embrasse'),
   // Intérieurs : ligne à part seulement pour un coussin confectionné chez nous ; s'il est
   // sous-traité, ils rejoignent la ligne Manufacture (cf. buildQuote).
-  interieur: () => L('interieur', 'Intérieurs (confection Lenglart)', ['pv_interieur'], 'Tissu'),
+  interieur: () => L('interieur', 'Intérieurs (confection Lenglart)', ['pv_interieur'], 'xml:product_interieur_coussin'),
   livraison: () => L('livraison', 'Livraison', ['livraison'], 'Livraison'),
 };
 const recipe = (...ids) => ids.map((id) => S[id]());
@@ -204,7 +204,13 @@ export function collectCharges({ extraRows = [] }) {
 // ─── Résolution des articles Odoo ──────────────────────────────────────────────
 const MOTOR_RE = /motor|moteur|elec|rts|filaire|somfy|lutron/;
 
-export function makeResolver(products) {
+export const XML_PRODUCTS = {
+  'xml:product_passementerie': 'Passementerie',
+  'xml:product_embrasse': 'Embrasse',
+  'xml:product_interieur_coussin': 'Intérieur de coussin',
+};
+
+export function makeResolver(products, missingXml = new Set()) {
   const byName = new Map(products.map((p) => [norm(p.name), p]));
   const byId = new Map(products.map((p) => [String(p.id), p]));
   const named = (...names) => names.map((n) => byName.get(norm(n))).find(Boolean) || null;
@@ -275,10 +281,20 @@ export function makeResolver(products) {
     pv_confection: '@confection', st_conf_pv: '@manufacture',
     pv_prepa: 'Préparation et équipement', livraison: 'Livraison',
     pv_mecanisme: '@meca', pv_mecanisme_bis: '@meca', pv_mecanisme_store: '@meca', pv_baguette_1: '@meca', pv_baguette_2: '@meca',
-    pv_doublure: 'Doublure', pv_interdoublure: 'Interdoublure', pv_embrasse: 'Tissu', pv_interieur: 'Tissu',
-    pv_pass1: 'Tissu', pv_pass2: 'Tissu', pv_pass_1: 'Tissu', pv_pass_2: 'Tissu',
+    pv_doublure: 'Doublure', pv_interdoublure: 'Interdoublure', pv_embrasse: 'xml:product_embrasse', pv_interieur: 'xml:product_interieur_coussin',
+    pv_pass1: 'xml:product_passementerie', pv_pass2: 'xml:product_passementerie', pv_pass_1: 'xml:product_passementerie', pv_pass_2: 'xml:product_passementerie',
   };
+  // 'xml:<nom>' : article créé par le module ERP lenglart_controle_gestion (Passementerie, Embrasse,
+  // Intérieur de coussin), résolu par identifiant XML car son id change d'une base à l'autre. Absent
+  // de la base branchée (préprod antérieure) → repli sur « Tissu » (même étiquette CG Tissu).
+  const byXml = new Map(products.filter((p) => p.xmlId).map((p) => [p.xmlId, p]));
   const resolve = (choice, row, comp) => {
+    if (typeof choice === 'string' && choice.startsWith('xml:')) {
+      const p = byXml.get(choice.slice(4));
+      if (p) return p;
+      missingXml.add(choice.slice(4));
+      return named('Tissu');
+    }
     if (choice === '@col') return resolve(COL_DEFAULT[comp?.key] || 'Tissu', row, comp);
     if (choice === '@confection') return confectionFor(row);
     if (choice === '@manufacture') return manufactureFor(row);
@@ -430,7 +446,8 @@ const ORDER_LOGI = 3e6;
  * @param {Array} p.products  articles Odoo [{ id, name, uom, tag }]
  */
 export function buildQuote({ rows = [], depRows = [], extraRows = [], config, products = [] }) {
-  const resolve = makeResolver(products);
+  const missingXml = new Set();
+  const resolve = makeResolver(products, missingXml);
   const isolate = config.logistique === 'isole';
   const sections = new Map(); // titre → { title, order, blocks: Map(typeKey → rang), lines: Map }
   const warnings = [];
@@ -693,6 +710,10 @@ export function buildQuote({ rows = [], depRows = [], extraRows = [], config, pr
         cost: round2(lines.reduce((a, l) => a + l.cost, 0)),
       };
     });
+
+  for (const x of missingXml) {
+    warnings.push(`Article « ${XML_PRODUCTS[`xml:${x}`] || x} » absent de cette base Odoo : envoyé sur « Tissu » (même étiquette CG).`);
+  }
 
   // 5. Contrôles exigés par Odoo (module lenglart_controle_gestion) :
   //    - article étiqueté Pose / Conf / Prépa → heures vendues ≠ 0, sinon Odoo REFUSE le devis ;

@@ -7,7 +7,7 @@ import Dialog from '@mui/material/Dialog';
 import { X, Search, Check, ArrowLeft, ArrowRight, AlertTriangle, GripVertical, ChevronUp, ChevronDown, ChevronRight, Plus, Trash2 } from 'lucide-react';
 import {
   COMPONENTS, COMPONENT_BY_KEY, AUTO_PRODUCTS, GROUP_BY_OPTIONS, PRODUCT_TYPES, CHARGE_SPECIAL_HOSTS,
-  defaultConfig, normalizeConfig, overrideKey, recipeOf, chargeSetting, buildQuote, toOdooPayload,
+  defaultConfig, normalizeConfig, overrideKey, recipeOf, chargeSetting, buildQuote, toOdooPayload, XML_PRODUCTS,
 } from '../../lib/odoo/quoteBuilder';
 
 const PGRID = '1.2fr 2.2fr 0.7fr 0.8fr 0.9fr 0.8fr 0.45fr';
@@ -281,6 +281,10 @@ const RGRID = '22px 1.1fr 1.3fr 1.6fr 0.75fr 0.6fr 0.55fr 44px';
 function ProductSelect({ value, onChange, products, autoKeys = [], emptyLabel = '— à choisir —', allowEmpty = false, style }) {
   const val = (() => {
     if (!value || String(value).startsWith('@')) return value || '';
+    if (String(value).startsWith('xml:')) {
+      const px = products.find((x) => x.xmlId === String(value).slice(4));
+      return px ? String(px.id) : String(value);
+    }
     const p = products.find((x) => String(x.id) === String(value) || x.name === value);
     return p ? String(p.id) : '';
   })();
@@ -288,6 +292,7 @@ function ProductSelect({ value, onChange, products, autoKeys = [], emptyLabel = 
     <select style={{ ...inputStyle, padding: '6px 8px', ...style }} value={val} onChange={(e) => onChange(e.target.value)}>
       {(!val || allowEmpty) && <option value="">{emptyLabel}</option>}
       {autoKeys.map((k) => <option key={k} value={k}>{AUTO_PRODUCTS[k]}</option>)}
+      {String(val).startsWith('xml:') && <option value={val}>{XML_PRODUCTS[val] || val} (pas encore dans cette base → Tissu)</option>}
       <optgroup label="Articles Odoo">
         {products.map((p) => <option key={p.id} value={String(p.id)}>{p.name}{p.uom === 'ml' ? ' (ml)' : ''}{p.tag ? `  ·  ${p.tag}` : ''}</option>)}
       </optgroup>

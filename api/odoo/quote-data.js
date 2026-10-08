@@ -10,7 +10,7 @@ import { quoteWriteStatus } from './quote-create.js';
 const PARASITES = /^(tva|acompte|loyer|facture oxyg|prise$|\[fact\]|ajustement contrat|service on timesheet|remise|bonus)|\(erreur/i;
 
 async function catalog() {
-  const [products, teams, tags, users, analytic, distrib] = await Promise.all([
+  const [products, teams, tags, users, analytic, distrib, xmlIds] = await Promise.all([
     searchRead('product.product', [['sale_ok', '=', true]], ['id', 'name', 'uom_id', 'categ_id', 'all_product_tag_ids']),
     searchRead('crm.team', [], ['id', 'name']),
     searchRead('crm.tag', [], ['id', 'name']),
@@ -19,7 +19,11 @@ async function catalog() {
     // Odoo (modèles de distribution analytique, 1 étiquette à 100 % par article).
     searchRead('account.analytic.account', [], ['id', 'name']),
     searchRead('account.analytic.distribution.model', [['product_id', '!=', false]], ['product_id', 'analytic_distribution']),
+    // Articles créés par le module ERP (data/product_matiere.xml) : leurs ids diffèrent d'une base
+    // à l'autre (préprod / prod) → on les résout par identifiant XML, jamais en dur.
+    searchRead('ir.model.data', [['module', '=', 'lenglart_controle_gestion'], ['model', '=', 'product.product']], ['name', 'res_id']),
   ]);
+  const xmlIdOf = new Map(xmlIds.map((x) => [x.res_id, x.name]));
   // Étiquettes d'ARTICLE (product.tag) : c'est avec elles que le contrôle de gestion Odoo
   // (module lenglart_controle_gestion) classe chaque coût — pas avec l'analytique.
   const tagIds = [...new Set(products.flatMap((p) => p.all_product_tag_ids || []))];
@@ -44,6 +48,7 @@ async function catalog() {
         categ: p.categ_id ? p.categ_id[1] : '',
         tag: tagOf.get(p.id) || null,
         cgTags: (p.all_product_tag_ids || []).map((id) => productTagName.get(id)).filter(Boolean),
+        xmlId: xmlIdOf.get(p.id) || null,
       }))
       .sort((a, b) => a.name.localeCompare(b.name, 'fr')),
     teams,
