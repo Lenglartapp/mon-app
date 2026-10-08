@@ -18,6 +18,8 @@
 // La sous-traitance n'est pas un achat matière : elle est rendue à part (charges variables
 // côté moulinette, chapitre simple côté liste d'achats).
 
+import { isStoresMetrageRow } from '../formulas/storesBateauxMetrage.js';
+
 export const PURCHASE_CHAPTERS = [
     { key: 'tissus', label: 'Tissus & Doublures' },
     { key: 'passementerie', label: 'Passementerie' },
@@ -102,17 +104,24 @@ const sourceOf = (r, qty, unit, pa) => ({
 
 // Une même référence vendue au mètre sur une ligne et au forfait sur une autre donne
 // deux entrées distinctes : mélanger les unités dans un total n'aurait aucun sens.
-const push = (map, label, qty, unit, pa, source) => {
+// `storesMl` : part du métrage venant des stores bateaux / velums au nouveau métrage
+// (ML exact par ligne), arrondie au demi-mètre une seule fois par tissu (cf. roundStores).
+const push = (map, label, qty, unit, pa, source, storesMl = 0) => {
     const name = String(label ?? '').trim();
     if (!name || name === 'undefined') return;
 
     const key = `${name}|${unit}`;
-    if (!map.has(key)) map.set(key, { label: name, qty: 0, unit, pa: 0, sources: [] });
+    if (!map.has(key)) map.set(key, { label: name, qty: 0, unit, pa: 0, sources: [], storesMl: 0 });
     const item = map.get(key);
     item.qty += qty;
+    item.storesMl += storesMl;
     item.pa += pa;
     if (source) item.sources.push(source);
 };
+
+// Tissus des stores au nouveau métrage : leur ML est exact, l'arrondi se fait par tissu.
+const STORES_FABRICS = new Set(['toile_finition_1', 'doublure']);
+const isStoresFabric = (r, f) => STORES_FABRICS.has(f.name) && isStoresMetrageRow(r) && /bateau|velum|vélum/i.test(String(r.produit || ''));
 
 const collectFabrics = (map, r, q, fields) => {
     for (const f of fields) {
@@ -122,7 +131,21 @@ const collectFabrics = (map, r, q, fields) => {
         const ml = toNum(r[f.ml]) * q;
         const pa = lineCost(r, f.pa, q);
         if (ml <= 0 && pa <= 0) continue;
-        push(map, label, ml, UNIT_ML, pa, sourceOf(r, ml, UNIT_ML, pa));
+        push(map, label, ml, UNIT_ML, pa, sourceOf(r, ml, UNIT_ML, pa), isStoresFabric(r, f) ? ml : 0);
+    }
+};
+
+const ceilHalf = (ml) => Math.ceil(ml * 2 - 1e-9) / 2;
+
+// Arrondi au demi-mètre supérieur, UNE fois par tissu, de la part « stores » du métrage
+// (les autres produits ont déjà un métrage arrondi par ligne). Le PA n'est pas touché.
+const roundStores = (map) => {
+    for (const item of map.values()) {
+        if (item.storesMl > 0) {
+            item.qty = item.qty - item.storesMl + ceilHalf(item.storesMl);
+            item.arrondiStores = true;
+        }
+        delete item.storesMl;
     }
 };
 
@@ -224,6 +247,8 @@ export function aggregatePurchaseChapters(rows = []) {
         collectMecanismes(maps, r, q);
         collectSousTraitance(stMap, r, q);
     }
+
+    roundStores(maps.tissus);
 
     const chapters = {
         tissus: sorted(maps.tissus),
