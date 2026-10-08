@@ -1,5 +1,6 @@
 // src/components/FilterPanel.jsx
 import React, { useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Plus, Trash2 } from 'lucide-react';
 import { uid } from '../lib/utils/uid';
 
@@ -111,6 +112,22 @@ function FieldSelect({ fields, value, onChange }) {
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState('');
     const inputRef = useRef(null);
+    const btnRef = useRef(null);
+    // Liste positionnée par rapport à l'ÉCRAN (fixed) : elle ne peut plus être coupée par le
+    // panneau Filtrer qui la contient. Ouverte vers le haut s'il n'y a pas la place dessous.
+    const [pos, setPos] = useState(null);
+    const openList = () => {
+        const r = btnRef.current?.getBoundingClientRect();
+        if (r) {
+            const H = 240;
+            const below = window.innerHeight - r.bottom - 8;
+            const up = below < H && r.top > below;
+            const left = Math.max(8, Math.min(r.left, window.innerWidth - 220 - 8));
+            setPos(up ? { left, bottom: window.innerHeight - r.top + 2, maxHeight: Math.min(H, r.top - 8) } : { left, top: r.bottom + 2, maxHeight: Math.min(H, Math.max(160, below)) });
+        }
+        setOpen(o => !o);
+        setTimeout(() => inputRef.current?.focus(), 50);
+    };
 
     const filtered = fields.filter(f =>
         colLabel(f).toLowerCase().includes(search.toLowerCase())
@@ -120,7 +137,8 @@ function FieldSelect({ fields, value, onChange }) {
     return (
         <div style={{ position: 'relative' }}>
             <button
-                onClick={() => { setOpen(o => !o); setTimeout(() => inputRef.current?.focus(), 50); }}
+                ref={btnRef}
+                onClick={openList}
                 style={{
                     width: 150, padding: '4px 8px', border: '1px solid #d1d5db', borderRadius: 4,
                     background: 'white', cursor: 'pointer', textAlign: 'left', fontSize: 13,
@@ -133,14 +151,15 @@ function FieldSelect({ fields, value, onChange }) {
                 </span>
                 <span style={{ fontSize: 10, color: '#9ca3af', flexShrink: 0, marginLeft: 4 }}>▾</span>
             </button>
-            {open && (
+            {/* Rendue au niveau de la page (portail) : ni coupée ni décalée par le panneau Filtrer */}
+            {open && createPortal(
                 <>
                     <div style={{ position: 'fixed', inset: 0, zIndex: 9998 }} onClick={() => { setOpen(false); setSearch(''); }} />
                     <div style={{
-                        position: 'absolute', top: '100%', left: 0, marginTop: 2,
+                        position: 'fixed', ...(pos || { top: 0, left: 0 }),
                         background: 'white', border: '1px solid #E0DED9', borderRadius: 6,
                         boxShadow: '0 4px 16px rgba(0,0,0,0.12)', zIndex: 9999,
-                        minWidth: 180, maxHeight: 240, overflow: 'hidden',
+                        minWidth: 220, overflow: 'hidden',
                         display: 'flex', flexDirection: 'column',
                     }}>
                         <div style={{ padding: '6px 8px', borderBottom: '1px solid #f3f4f6' }}>
@@ -175,7 +194,8 @@ function FieldSelect({ fields, value, onChange }) {
                             )}
                         </div>
                     </div>
-                </>
+                </>,
+                document.body
             )}
         </div>
     );

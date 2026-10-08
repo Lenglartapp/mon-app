@@ -23,6 +23,7 @@ export default function FitPanel({ style, children, ...rest }) {
         const fit = () => {
             el.style.transform = '';
             el.style.maxHeight = '';
+            el.style.overflowY = '';
             const r = el.getBoundingClientRect();
             const box = visibleBox();
             let dx = 0;
@@ -30,7 +31,12 @@ export default function FitPanel({ style, children, ...rest }) {
             if (r.left + dx < box.left + MARGIN) dx = box.left + MARGIN - r.left;
             if (dx) el.style.transform = `translateX(${Math.round(dx)}px)`;
             const room = box.bottom - Math.max(r.top, box.top + MARGIN) - MARGIN;
-            if (r.height > room) el.style.maxHeight = `${Math.max(160, Math.floor(room))}px`;
+            // Défilement interne seulement si le menu est trop haut pour l'écran : sinon rien n'est
+            // coupé (ex. la liste « Rechercher un champ » du Filtrer qui dépasse du panneau).
+            if (r.height > room) {
+                el.style.maxHeight = `${Math.max(160, Math.floor(room))}px`;
+                el.style.overflowY = 'auto';
+            }
         };
         fit();
         window.addEventListener('resize', fit);
@@ -43,7 +49,7 @@ export default function FitPanel({ style, children, ...rest }) {
         <div
             ref={ref}
             {...rest}
-            style={{ maxWidth: `min(calc(100vw - ${MARGIN * 2}px), calc(100dvw - ${MARGIN * 2}px))`, overflowY: 'auto', boxSizing: 'border-box', ...style }}
+            style={{ maxWidth: `min(calc(100vw - ${MARGIN * 2}px), calc(100dvw - ${MARGIN * 2}px))`, boxSizing: 'border-box', ...style }}
         >
             {children}
         </div>
