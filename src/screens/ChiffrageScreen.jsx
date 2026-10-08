@@ -104,6 +104,20 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
     [minutes, minuteId]
   );
 
+  // Devis Odoo lié à la minute (créé depuis le module) + son état relu dans Odoo.
+  const [odooLink, setOdooLink] = React.useState(minute?.odoo_quote?.link || null);
+  const [odooOrder, setOdooOrder] = React.useState(null);
+  React.useEffect(() => { setOdooLink(minute?.odoo_quote?.link || null); }, [minute?.id, minute?.odoo_quote?.link]);
+  React.useEffect(() => {
+    if (!ODOO_QUOTE_ENABLED || !odooLink?.orderId) { setOdooOrder(null); return undefined; }
+    let alive = true;
+    fetch(`/api/odoo/quote-data?action=order&id=${odooLink.orderId}`)
+      .then((r) => r.json())
+      .then((j) => { if (alive && j.ok) setOdooOrder(j.data); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [odooLink?.orderId]);
+
   // PERF — La liste des chiffrages est légère (sans `lines`/`deplacements`/`params`…).
   // À l'ouverture, on charge la minute COMPLÈTE par son id et on la fusionne dans la
   // liste globale (via onLoadMinuteDetail). `detailLoadedId` indique quelle minute a
@@ -799,6 +813,21 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
               <FileOutput size={16} /> Devis Odoo
             </button>
           )}
+          {ODOO_QUOTE_ENABLED && odooLink && (() => {
+            const otherBase = odooOrder && odooOrder.target && odooLink.target && odooOrder.target !== odooLink.target;
+            const gone = odooOrder && odooOrder.exists === false;
+            const label = gone || otherBase ? 'introuvable dans cette base' : (odooOrder?.stateLabel || '…');
+            const color = gone || otherBase ? '#9B9A97' : odooOrder?.state === 'sale' ? '#15803D' : odooOrder?.state === 'cancel' ? '#B91C1C' : '#714B67';
+            return (
+              <a href={odooLink.url} target="_blank" rel="noreferrer"
+                title={`Créé le ${new Date(odooLink.at).toLocaleString('fr-FR')}${odooLink.by ? ` par ${odooLink.by}` : ''} · ${odooLink.target || ''}`}
+                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 999, background: '#F4F4F4', color: '#1F2937', fontSize: 13, fontWeight: 600, textDecoration: 'none', border: '1px solid #E0DED9' }}>
+                Devis Odoo {odooLink.name}
+                <span style={{ fontWeight: 500, color }}>· {label}</span>
+                <span style={{ color: '#9B9A97' }}>↗</span>
+              </a>
+            );
+          })()}
         </div>
         </div>
       </div>
@@ -812,6 +841,7 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
           depRows={depRows}
           extraRows={extraRows}
           library={formulaCtx.catalog}
+          onLinked={setOdooLink}
         />
       )}
 

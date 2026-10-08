@@ -90,11 +90,11 @@ export const GROUP_BY_OPTIONS = [
 // ils s'ajoutent en bas de section, après les recettes.
 const L = (id, label, cols, product, extra = {}) => ({ id, label, cols, product, ...extra });
 const S = {
-  pose: () => L('pose', 'Pose / Installation', ['pv_pose', 'st_pose_pv'], '@col'),
+  pose: () => L('pose', 'Pose ou Installation', ['pv_pose', 'st_pose_pv'], '@col'),
   rail: () => L('rail', 'Rail', ['pv_mecanisme', 'pv_mecanisme_bis', 'pv_baguette_1', 'pv_baguette_2'], '@meca'),
   meca: () => L('meca', 'Mécanismes', ['pv_mecanisme_store', 'pv_mecanisme', 'pv_mecanisme_bis', 'pv_baguette_1', 'pv_baguette_2'], '@meca'),
   prepa: () => L('prepa', 'Prépa', ['pv_prepa'], 'Préparation et équipement'),
-  conf: () => L('conf', 'Conf / Manufacture', ['pv_confection', 'st_conf_pv'], '@col'),
+  conf: () => L('conf', 'Conf ou Manufacture', ['pv_confection', 'st_conf_pv'], '@col'),
   tissu1: () => L('tissu1', 'Tissu 1', ['pv_tissu1', 'pv_tissu_1', 'pv_toile_finition_1'], 'Tissu', { unit: 'ml' }),
   tissu2: () => L('tissu2', 'Tissu 2', ['pv_tissu2', 'pv_tissu_2'], 'Tissu', { unit: 'ml' }),
   doublure: () => L('doublure', 'Doublure', ['pv_doublure'], 'Doublure', { unit: 'ml' }),

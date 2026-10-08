@@ -102,6 +102,25 @@ async function partners(q) {
   }));
 }
 
+// État d'un devis lié à une minute (pastille « Devis Odoo CVxx » de l'écran chiffrage).
+const ORDER_STATES = { draft: 'Brouillon', sent: 'Envoyé', sale: 'Confirmé', cancel: 'Annulé' };
+async function order(id) {
+  const orderId = Number(id);
+  if (!orderId) return null;
+  const rows = await searchRead('sale.order', [['id', '=', orderId]], ['name', 'state', 'amount_untaxed', 'opportunity_id']);
+  if (!rows.length) return { exists: false };
+  const o = rows[0];
+  return {
+    exists: true,
+    name: o.name,
+    state: o.state,
+    stateLabel: ORDER_STATES[o.state] || o.state,
+    amountUntaxed: o.amount_untaxed,
+    opportunity: o.opportunity_id ? o.opportunity_id[1] : null,
+    target: quoteWriteStatus().target,
+  };
+}
+
 export default async function handler(req, res) {
   try {
     const action = req.query?.action;
@@ -110,8 +129,9 @@ export default async function handler(req, res) {
     if (action === 'catalog') data = await catalog();
     else if (action === 'opportunities') data = await opportunities(q);
     else if (action === 'partners') data = await partners(q);
+    else if (action === 'order') data = await order(req.query?.id);
     else {
-      res.status(400).json({ ok: false, error: 'Paramètre "action" invalide (catalog | opportunities | partners).' });
+      res.status(400).json({ ok: false, error: 'Paramètre "action" invalide (catalog | opportunities | partners | order).' });
       return;
     }
     res.status(200).json({ ok: true, data });

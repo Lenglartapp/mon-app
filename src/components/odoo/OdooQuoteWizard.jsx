@@ -6,6 +6,7 @@ import React from 'react';
 import Dialog from '@mui/material/Dialog';
 import { X, Search, Check, ArrowLeft, ArrowRight, AlertTriangle, GripVertical, ChevronRight, Eye, EyeOff, Pencil } from 'lucide-react';
 import { useAuth } from '../../auth';
+import { loadSharedProfile, saveSharedProfile, saveMinuteQuote, minuteSettingsOf, SHARED_FIELDS } from '../../lib/odoo/quoteStore';
 import {
   COMPONENT_BY_KEY, GROUP_BY_OPTIONS, SUB_GROUP_BY_OPTIONS, PRODUCT_TYPES,
   defaultConfig, normalizeConfig, overrideKey, recipeOf, chargeSetting, buildQuote, toOdooPayload, makeResolver,
@@ -197,7 +198,7 @@ function StepOpportunity({ minute, catalog, dest, setDest, commercials, needsApp
                 <>
                   <div style={{ fontSize: 13.5, fontWeight: 600, color: C.text }}>{o.name}</div>
                   <div style={{ fontSize: 12.5, color: C.muted, marginTop: 2 }}>
-                    {[o.partner?.name, o.team, o.user, o.stage, `${o.nbQuotes} devis`].filter(Boolean).join(' · ')}
+                    {[o.partner?.name, o.team, o.user, o.stage, o.nbQuotes != null ? `${o.nbQuotes} devis` : 'opportunité du devis déjà créé'].filter(Boolean).join(' · ')}
                   </div>
                 </>
               )} />
@@ -770,14 +771,28 @@ function StepPreview({ quote, dest, odoo, onEditText }) {
 }
 
 // ─── Module ────────────────────────────────────────────────────────────────────
-export default function OdooQuoteWizard({ open, onClose, minute, rows = [], depRows = [], extraRows = [], library = [] }) {
+export default function OdooQuoteWizard({ open, onClose, minute, rows = [], depRows = [], extraRows = [], library = [], onLinked }) {
   const { currentUser, users: dfUsers = [] } = useAuth();
   const [step, setStep] = React.useState(0);
   const [catalog, setCatalog] = React.useState(null);
   const [catalogError, setCatalogError] = React.useState(null);
-  const [config, setConfig] = React.useState(loadProfile);
+  // Réglages : base navigateur (ancien stockage) ‹ réglages de CETTE minute (minutes.odoo_quote)
+  // ‹ réglages communs de l'équipe (app_config, chargés juste après l'ouverture).
+  const saved = minute?.odoo_quote || null;
+  const [config, setConfig] = React.useState(() => normalizeConfig({ ...loadProfile(), ...(saved?.settings || {}) }));
+  const [sharedReady, setSharedReady] = React.useState(false);
+  const [storeState, setStoreState] = React.useState('idle'); // idle | ok | browser
+  const [link, setLink] = React.useState(saved?.link || null);
   // Nom de l'opportunité par défaut = nom de la minute sans son numéro de version.
-  const [dest, setDest] = React.useState(() => ({
+  // Devis déjà créé pour cette minute : on repart sur SON opportunité et SON client (sinon une
+  // mise à jour créerait une seconde opportunité dans Odoo).
+  const [dest, setDest] = React.useState(() => (saved?.link?.opportunityId ? {
+    mode: 'existing',
+    opportunity: { id: saved.link.opportunityId, name: saved.link.opportunityName },
+    partner: saved.link.partner || null,
+    newName: (minute?.name || '').replace(/\s+V\d+\b.*$/i, '').trim(),
+    description: minute?.notes || '',
+  } : {
     mode: 'new', opportunity: null, partner: null,
     newName: (minute?.name || '').replace(/\s+V\d+\b.*$/i, '').trim(),
     description: minute?.notes || '',
@@ -795,7 +810,15 @@ export default function OdooQuoteWizard({ open, onClose, minute, rows = [], depR
     if (!open || catalog) return;
     odoo('catalog').then(setCatalog).catch((e) => setCatalogError(e.message));
   }, [open, catalog]);
-  React.useEffect(() => { saveProfile(config); }, [config]);
+  React.useEffect(() => {
+    let alive = true;
+    loadSharedProfile().then((shared) => {
+      if (!alive) return;
+      if (shared) setConfig((c) => normalizeConfig({ ...c, ...Object.fromEntries(SHARED_FIELDS.filter((k) => shared[k]).map((k) => [k, shared[k]])) }));
+      setSharedReady(true);
+    });
+    return () => { alive = false; };
+  }, []);
 
   // Pré-remplit commercial + équipe : le CHARGÉ D'AFFAIRES de la minute (il fixe aussi le taux de
   // commission, 1 % direction / ADV ou 3,5 %, dans Droitfil comme dans Odoo), sinon la personne
@@ -808,7 +831,7 @@ export default function OdooQuoteWizard({ open, onClose, minute, rows = [], depR
     setDest((d) => ({ ...d, dfUserId: u ? person?.id : null, userId: u?.id || null, teamId: u?.teamId || null, autoUser: u ? (person === owner ? 'owner' : 'me') : false }));
   }, [catalog, currentUser, dfUsers, minute?.owner, dest.userId]);
 
-  const [textEdits, setTextEdits] = React.useState(() => loadEdits(minute?.id));
+  const [textEdits, setTextEdits] = React.useState(() => saved?.texts || loadEdits(minute?.id));
   const builtQuote = React.useMemo(
     () => buildQuote({ rows, depRows, extraRows, config, products: catalog?.products || [], library }),
     [rows, depRows, extraRows, config, catalog, library]
@@ -818,9 +841,35 @@ export default function OdooQuoteWizard({ open, onClose, minute, rows = [], depR
   const editText = (block, line, text) => setTextEdits((cur) => {
     const next = { ...cur };
     if (text == null) delete next[editId(block, line)]; else next[editId(block, line)] = text;
-    saveEdits(minute?.id, next);
     return next;
   });
+
+  // Enregistrement (différé de 0,8 s) : communs → app_config ; minute → minutes.odoo_quote.
+  // Le navigateur garde toujours une copie (secours si la migration n'est pas encore lancée).
+  const sharedJson = JSON.stringify(Object.fromEntries(SHARED_FIELDS.map((k) => [k, config[k]])));
+  const lastShared = React.useRef(null);
+  React.useEffect(() => {
+    if (!sharedReady) return undefined;
+    if (lastShared.current === null) { lastShared.current = sharedJson; return undefined; } // valeur chargée
+    if (lastShared.current === sharedJson) return undefined;
+    const t = setTimeout(() => { lastShared.current = sharedJson; saveSharedProfile(config); }, 800);
+    return () => clearTimeout(t);
+  }, [sharedJson, sharedReady, config]);
+  const persistMinute = React.useCallback(async (patch = {}) => {
+    const odooQuote = { settings: minuteSettingsOf(config), texts: textEdits, link, ...patch };
+    const r = await saveMinuteQuote(minute?.id, odooQuote);
+    setStoreState(r.ok ? 'ok' : 'browser');
+    return r;
+  }, [config, textEdits, link, minute?.id]);
+  const minuteJson = JSON.stringify({ s: minuteSettingsOf(config), t: textEdits });
+  const lastMinute = React.useRef(minuteJson);
+  React.useEffect(() => {
+    saveProfile(config);
+    saveEdits(minute?.id, textEdits);
+    if (lastMinute.current === minuteJson) return undefined;
+    const t = setTimeout(() => { lastMinute.current = minuteJson; persistMinute(); }, 800);
+    return () => clearTimeout(t);
+  }, [minuteJson, config, textEdits, minute?.id, persistMinute]);
 
   // « Vérifier » = dry_run (Odoo calcule tout puis annule) ; « Créer » = devis brouillon réel.
   const write = catalog?.write;
@@ -832,6 +881,19 @@ export default function OdooQuoteWizard({ open, onClose, minute, rows = [], depR
       const res = await fetch('/api/odoo/quote-create', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ payload, dryRun }) });
       const json = await res.json().catch(() => ({ ok: false, error: `HTTP ${res.status}` }));
       setOdooResult(json.ok ? { result: json.result, target: json.target } : { error: json.error });
+      // Devis réellement créé / mis à jour : on mémorise le lien sur la minute.
+      if (json.ok && !dryRun && json.result?.id) {
+        const r = json.result;
+        const newLink = {
+          orderId: r.id, name: r.name, url: r.url, state: r.state, target: json.target,
+          opportunityId: r.opportunity_id, opportunityName: r.opportunity_name,
+          partner: dest.partner ? { id: dest.partner.id, name: dest.partner.name, company: dest.partner.company || null } : null,
+          amountUntaxed: r.amount_untaxed, at: new Date().toISOString(), by: currentUser?.name || currentUser?.email || null,
+        };
+        setLink(newLink);
+        await persistMinute({ link: newLink });
+        onLinked?.(newLink);
+      }
     } catch (e) {
       setOdooResult({ error: e.message });
     } finally {
@@ -904,6 +966,10 @@ export default function OdooQuoteWizard({ open, onClose, minute, rows = [], depR
           <button onClick={() => setConfig(defaultConfig())} style={{ border: 'none', background: 'none', color: C.muted, fontSize: 12.5, cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}>
             Réinitialiser les réglages
           </button>
+          <div style={{ fontSize: 11.5, color: storeState === 'browser' ? '#B45309' : C.soft }}>
+            {storeState === 'ok' && 'Réglages enregistrés dans Droitfil'}
+            {storeState === 'browser' && 'Réglages gardés dans ce navigateur (migration odoo_quote à lancer)'}
+          </div>
           <div style={{ flex: 1, textAlign: 'right', fontSize: 13, color: C.muted }}>
             Total devis <b style={{ color: C.text }}>{eur(quote.total)}</b>
           </div>
@@ -917,7 +983,7 @@ export default function OdooQuoteWizard({ open, onClose, minute, rows = [], depR
                   {sending ? 'Envoi…' : 'Vérifier avec Odoo (sans créer)'}
                 </Btn>
                 <Btn primary disabled={!!sendBlocked || sending} title={sendBlocked || `Instance : ${write?.target}`} onClick={() => sendToOdoo(false)}>
-                  Créer le devis brouillon{write?.target && !write?.isProd ? ' (préprod)' : ''}
+                  {link && link.target === write?.target ? `Mettre à jour le devis ${link.name}` : 'Créer le devis brouillon'}{write?.target && !write?.isProd ? ' (préprod)' : ''}
                 </Btn>
               </>
             )}
