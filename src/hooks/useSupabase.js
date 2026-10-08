@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabaseClient';
+import { logProjectCreation } from '../lib/projectEvents';
 import { db } from '../lib/offlineDb';
 import { getQueuedPayloads } from '../lib/syncQueue';
 import { replaceInlineImages, hasInlineImages } from '../lib/inlineImages';
@@ -198,6 +199,9 @@ export const useProjects = () => {
         delete dbProject.createdAt;
         delete dbProject.updatedAt;
         delete dbProject.sourceMinuteId;
+        // Origine du projet (vierge / import / commande Odoo) : va dans l'historique, pas en base projet.
+        const origin = dbProject.origin || null;
+        delete dbProject.origin;
 
         // 3. Envoi à Supabase
         const { data, error } = await supabase.from('projects').insert([dbProject]).select();
@@ -213,6 +217,11 @@ export const useProjects = () => {
                 sourceMinuteId: newProj.source_minute_id
             };
             setProjects([frontendProject, ...projects]);
+            logProjectCreation(newProj.id, {
+                type: newProj.source_minute_id ? 'import' : 'blank',
+                minuteId: newProj.source_minute_id || undefined,
+                ...(origin || {}),
+            });
         } else if (error) {
             console.error("Erreur création projet:", error);
         }
@@ -575,8 +584,14 @@ export const useMinutes = () => {
             return new Date(val).toISOString();
         };
 
+        // Une nouvelle minute (variante, duplication, recalibrage) n'est jamais liée au devis Odoo de
+        // l'originale : on garde ses réglages de devis, pas le lien (sinon la V2 afficherait le CV de la V1).
+        const odooQuote = minute.odoo_quote ? { ...minute.odoo_quote } : undefined;
+        if (odooQuote) delete odooQuote.link;
+
         const dbMinute = {
             ...minute,
+            ...(odooQuote ? { odoo_quote: odooQuote } : {}),
             lines: linesData,
             created_at: toIsoString(minute.createdAt),
             updated_at: toIsoString(minute.updatedAt),

@@ -11,6 +11,13 @@ import { applySchemaDefaults } from '../utils/schemaDefaults.js';
 import { FORMULES_METRAGE_V2 } from '../formulas/metrageVersion';
 import { extractMaterialsFromLines } from '../data/demo';
 import { uid } from '../utils/uid';
+import { isLogEntry } from '../lineLogs';
+
+// Les messages échangés pendant le chiffrage (questions internes…) ne suivent pas dans le projet
+// (décision du 2026-10-08) ; le journal des modifications et les photos restent.
+const withoutChiffrageMessages = (r) => (Array.isArray(r.comments)
+  ? { ...r, comments: r.comments.filter((c) => isLogEntry(c) || c?.type === 'image') }
+  : r);
 
 // Budget d'heures recalculé depuis les lignes (source de vérité, plutôt qu'un snapshot).
 export function budgetFromRows(rows) {
@@ -45,7 +52,7 @@ export function buildProjectFromMinute(minute, opts = {}) {
     // Défauts du schéma (étiquettes à « Non ») sur les lignes reprises du devis, comme l'ajout
     // manuel d'une ligne ; nouveau projet → formules de métrage v2 (projet + chaque ligne).
     config: { formules_metrage: FORMULES_METRAGE_V2 },
-    rows: computeFormulas(rows.map((r) => applySchemaDefaults({ ...r, formules_metrage: FORMULES_METRAGE_V2 }, SCHEMA_64)), SCHEMA_64),
+    rows: computeFormulas(rows.map((r) => applySchemaDefaults({ ...withoutChiffrageMessages(r), formules_metrage: FORMULES_METRAGE_V2 }, SCHEMA_64)), SCHEMA_64),
     materials: extractMaterialsFromLines(rows),
   };
 }

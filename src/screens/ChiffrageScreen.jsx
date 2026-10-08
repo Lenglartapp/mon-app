@@ -392,6 +392,11 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
     });
   }, [canEdit, rows, extraRows, depRows, minute?.id, updateMinute]);
 
+  // CA HT en direct (même calcul que le CA TOTAL du détail), comparé au devis Odoo lié.
+  const liveCa = React.useMemo(() => (detailReady
+    ? Number(calculateProfitability(rows || [], depRows || [], extraRows || [], commissionRateForOwner(minute?.owner)).kpis.ca_total || 0)
+    : Number(minute?.ca_total || 0)), [detailReady, rows, depRows, extraRows, minute?.owner, minute?.ca_total]);
+
   // --- HEAL-ON-OPEN (Étape 1b) ---
   // Le détail recalcule les prix en direct à l'ouverture (catalogue/taux actuels).
   // Si le ca_total (ou la contribution) stocké en BDD diverge de ce recalcul (minute non rééditée depuis
@@ -819,7 +824,21 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
             const gone = odooOrder && odooOrder.exists === false;
             const label = gone || otherBase ? 'introuvable dans cette base' : (odooOrder?.stateLabel || '…');
             const color = gone || otherBase ? '#9B9A97' : odooOrder?.state === 'sale' ? '#15803D' : odooOrder?.state === 'cancel' ? '#B91C1C' : '#714B67';
+            // Écart de montant Droitfil ↔ Odoo (minute modifiée après le devis, ou devis retouché dans Odoo).
+            const odooHt = Number(odooOrder?.amountUntaxed);
+            const drift = !gone && !otherBase && odooOrder?.exists && odooOrder.state !== 'cancel'
+              && Number.isFinite(odooHt) && Math.abs(Math.round(liveCa) - Math.round(odooHt)) > 1;
+            const eur = (v) => `${Math.round(v).toLocaleString('fr-FR')} €`;
             return (
+              <>
+              {drift && (
+                <span title={odooOrder.state === 'sale'
+                  ? 'Commande confirmée : pour changer le chiffrage, dupliquer la minute (variante) puis générer un nouveau devis.'
+                  : 'Relancer « Devis Odoo » pour mettre à jour le devis brouillon.'}
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 999, background: '#FEF3C7', color: '#92400E', fontSize: 13, fontWeight: 600, border: '1px solid #FCD34D' }}>
+                  ⚠ Écart avec Odoo : {eur(liveCa)} ici, {eur(odooHt)} dans Odoo
+                </span>
+              )}
               <a href={odooLink.url} target="_blank" rel="noreferrer"
                 title={`Créé le ${new Date(odooLink.at).toLocaleString('fr-FR')}${odooLink.by ? ` par ${odooLink.by}` : ''} · ${odooLink.target || ''}`}
                 style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 999, background: '#F4F4F4', color: '#1F2937', fontSize: 13, fontWeight: 600, textDecoration: 'none', border: '1px solid #E0DED9' }}>
@@ -827,6 +846,7 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
                 <span style={{ fontWeight: 500, color }}>· {label}</span>
                 <span style={{ color: '#9B9A97' }}>↗</span>
               </a>
+              </>
             );
           })()}
         </div>
