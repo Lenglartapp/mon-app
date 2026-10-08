@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { calculateProfitability, calculateTargetCA } from '../../../lib/financial/profitabilityCalculator';
+import { calculateProfitability, calculateTargetCA, COMMISSION_EMPLOYER_CHARGES } from '../../../lib/financial/profitabilityCalculator';
 import { PURCHASE_CHAPTERS, ST_LABELS, sumPA } from '../../../lib/purchases/chapters';
 import ProfitabilitySimulatorModal from './ProfitabilitySimulatorModal';
 import { ChevronDown, ChevronRight, Target } from 'lucide-react';
@@ -287,7 +287,7 @@ function CommissionDrillDownRow({ label, mainValue, rate, onUpdate }) {
             >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ color: '#9B9A97', display: 'flex' }}>{open ? <ChevronDown size={15} /> : <ChevronRight size={15} />}</span>
-                    <span style={{ fontWeight: 500, color: '#111827' }}>{label} <span style={{ color: '#6B7280', fontWeight: 400 }}>· {String(rate).replace('.', ',')} %</span></span>
+                    <span style={{ fontWeight: 500, color: '#111827' }}>{label} <span style={{ color: '#6B7280', fontWeight: 400 }}>· {String(rate).replace('.', ',')} % + {COMMISSION_EMPLOYER_CHARGES * 100} % de charges patronales</span></span>
                 </div>
                 <div style={{ textAlign: 'right', fontWeight: 600, color: '#111827' }}>
                     {mainValue}
@@ -296,7 +296,10 @@ function CommissionDrillDownRow({ label, mainValue, rate, onUpdate }) {
 
             {open && (
                 <div style={{ background: '#F7F7F5', padding: '10px 14px', borderRadius: 8, marginBottom: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div style={{ fontSize: 13, color: '#374151', fontWeight: 500 }}>Taux de commission</div>
+                    <div style={{ fontSize: 13, color: '#374151', fontWeight: 500 }}>
+                        Taux de commission
+                        <div style={{ fontSize: 12, color: '#6B7280', fontWeight: 400 }}>majoré de {COMMISSION_EMPLOYER_CHARGES * 100} % de charges patronales (comme dans Odoo)</div>
+                    </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <input
                             type="number"
