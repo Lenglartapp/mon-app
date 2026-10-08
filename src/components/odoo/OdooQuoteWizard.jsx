@@ -4,7 +4,7 @@
 
 import React from 'react';
 import Dialog from '@mui/material/Dialog';
-import { X, Search, Check, ArrowLeft, ArrowRight, AlertTriangle, GripVertical, ChevronRight, Eye, EyeOff } from 'lucide-react';
+import { X, Search, Check, ArrowLeft, ArrowRight, AlertTriangle, GripVertical, ChevronRight, Eye, EyeOff, Pencil } from 'lucide-react';
 import { useAuth } from '../../auth';
 import {
   COMPONENT_BY_KEY, GROUP_BY_OPTIONS, SUB_GROUP_BY_OPTIONS, PRODUCT_TYPES,
@@ -49,6 +49,33 @@ function loadProfile() {
 }
 function saveProfile(cfg) {
   try { localStorage.setItem(PROFILE_KEY, JSON.stringify(cfg)); } catch { /* navigation privée */ }
+}
+
+// Descriptions retouchées à la main dans l'aperçu : gardées par minute (navigateur), clé =
+// bloc (section/sous-section) + ligne. Elles remplacent le texte généré, y compris dans Odoo.
+const TODO_RE = /\bXX\b|\sOU\s/;
+const editsKey = (minuteId) => `df.odooQuote.texts.${minuteId}`;
+function loadEdits(minuteId) {
+  try { return JSON.parse(localStorage.getItem(editsKey(minuteId)) || '{}'); } catch { return {}; }
+}
+function saveEdits(minuteId, edits) {
+  try { localStorage.setItem(editsKey(minuteId), JSON.stringify(edits)); } catch { /* navigation privée */ }
+}
+const editId = (block, line) => `${block.key}::${line.key}`;
+function applyEdits(quote, edits) {
+  const sections = quote.sections.map((b) => ({
+    ...b,
+    lines: b.lines.map((l) => {
+      const e = edits[editId(b, l)];
+      if (e == null) return l;
+      return { ...l, description: `${l.productName}\n${e}`, edited: true, textTodo: e.split('\n').filter((t) => TODO_RE.test(t)).length };
+    }),
+  }));
+  const todo = sections.flatMap((b) => b.lines).filter((l) => l.textTodo).length;
+  const warnings = quote.warnings
+    .filter((w) => !w.includes('« XX »'))
+    .concat(todo ? [`${todo} description(s) contiennent encore des « XX » ou des choix « A OU B » à compléter (surlignés ci-dessous, crayon pour corriger).`] : []);
+  return { ...quote, sections, warnings };
 }
 
 // ─── Petits éléments d'interface ──────────────────────────────────────────────
@@ -573,7 +600,46 @@ function OdooPanel({ quote, odoo }) {
   );
 }
 
-function StepPreview({ quote, dest, odoo }) {
+// Description d'une ligne : texte (surligné s'il reste des XX / « A OU B ») + crayon d'édition.
+function DescriptionCell({ line, onSave }) {
+  const body = line.description.split('\n').slice(1).join('\n');
+  const [editing, setEditing] = React.useState(false);
+  const [draft, setDraft] = React.useState(body);
+  if (editing) {
+    return (
+      <div>
+        <textarea value={draft} onChange={(e) => setDraft(e.target.value)} autoFocus
+          rows={Math.min(14, Math.max(3, draft.split('\n').length + 1))}
+          style={{ ...inputStyle, fontSize: 12.5, lineHeight: 1.45, padding: '6px 8px', resize: 'vertical' }} />
+        <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
+          <button onClick={() => { onSave(draft); setEditing(false); }} style={{ border: 'none', background: C.text, color: 'white', borderRadius: 6, padding: '4px 10px', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>Enregistrer</button>
+          <button onClick={() => { setDraft(body); setEditing(false); }} style={{ border: 'none', background: 'none', color: C.muted, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>Annuler</button>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div style={{ position: 'relative', paddingRight: 22 }}>
+      <div style={{ whiteSpace: 'pre-line', color: '#374151', lineHeight: 1.45 }}>
+        {body ? body.split('\n').map((t, k) => (
+          <div key={k} style={TODO_RE.test(t) ? { background: '#FEF3C7', borderRadius: 3, padding: '0 3px' } : undefined}>{t || '\u00A0'}</div>
+        )) : <span style={{ color: C.soft }}>—</span>}
+      </div>
+      <button onClick={() => { setDraft(body); setEditing(true); }} title="Modifier la description"
+        style={{ position: 'absolute', top: 0, right: 0, border: 'none', background: 'none', cursor: 'pointer', color: line.edited ? C.accent : C.soft, padding: 2 }}>
+        <Pencil size={13} />
+      </button>
+      {line.edited && (
+        <div style={{ fontSize: 11, color: C.accent, marginTop: 3 }}>
+          Modifié à la main ·{' '}
+          <button onClick={() => onSave(null)} style={{ border: 'none', background: 'none', color: C.accent, fontSize: 11, cursor: 'pointer', fontFamily: 'inherit', padding: 0, textDecoration: 'underline' }}>Rétablir le texte automatique</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StepPreview({ quote, dest, odoo, onEditText }) {
   const ok = Math.abs(quote.diff) < 1;
   return (
     <div>
@@ -634,11 +700,7 @@ function StepPreview({ quote, dest, odoo }) {
                     {l.productName}
                     {l.costOnly && <div style={{ fontSize: 11, fontWeight: 500, color: C.accent }}>coût seul</div>}
                   </div>
-                  <div style={{ whiteSpace: 'pre-line', color: '#374151', lineHeight: 1.45 }}>
-                    {l.description.split('\n').slice(1).map((t, k) => (
-                      <div key={k} style={/\bXX\b|\sOU\s/.test(t) ? { background: '#FEF3C7', borderRadius: 3, padding: '0 3px' } : undefined}>{t || '\u00A0'}</div>
-                    ))}
-                  </div>
+                  <DescriptionCell key={`${l.key}:${l.edited ? 'e' : 'a'}`} line={l} onSave={(text) => onEditText(s, l, text)} />
                   <div style={{ textAlign: 'right' }}>{num(l.qty)} {l.uom}</div>
                   <div style={{ textAlign: 'right' }}>{eur(l.priceUnit)}</div>
                   <div style={{ textAlign: 'right', fontWeight: 600 }}>{eur(l.subtotal)}</div>
@@ -694,10 +756,19 @@ export default function OdooQuoteWizard({ open, onClose, minute, rows = [], depR
     setDest((d) => ({ ...d, dfUserId: u ? currentUser?.id : null, userId: u?.id || null, teamId: u?.teamId || null, autoUser: !!u }));
   }, [catalog, currentUser, dest.userId]);
 
-  const quote = React.useMemo(
+  const [textEdits, setTextEdits] = React.useState(() => loadEdits(minute?.id));
+  const builtQuote = React.useMemo(
     () => buildQuote({ rows, depRows, extraRows, config, products: catalog?.products || [], library }),
     [rows, depRows, extraRows, config, catalog, library]
   );
+  // Devis final = calcul + descriptions retouchées à la main.
+  const quote = React.useMemo(() => applyEdits(builtQuote, textEdits), [builtQuote, textEdits]);
+  const editText = (block, line, text) => setTextEdits((cur) => {
+    const next = { ...cur };
+    if (text == null) delete next[editId(block, line)]; else next[editId(block, line)] = text;
+    saveEdits(minute?.id, next);
+    return next;
+  });
 
   // « Vérifier » = dry_run (Odoo calcule tout puis annule) ; « Créer » = devis brouillon réel.
   const write = catalog?.write;
@@ -769,7 +840,7 @@ export default function OdooQuoteWizard({ open, onClose, minute, rows = [], depR
           {step === 2 && (catalog
             ? <StepDetail config={config} setConfig={setConfig} catalog={catalog} quote={quote} />
             : <div style={{ fontSize: 13, color: C.muted }}>Chargement des articles Odoo…</div>)}
-          {step === 3 && <StepPreview quote={quote} dest={dest} odoo={odooResult} />}
+          {step === 3 && <StepPreview quote={quote} dest={dest} odoo={odooResult} onEditText={editText} />}
         </div>
 
         {/* Pied */}
