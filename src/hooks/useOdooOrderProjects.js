@@ -2,15 +2,16 @@
 //
 // Le serveur (api/odoo/order-event.js) reçoit l'événement d'Odoo, passe la minute en « Commande »
 // et, s'il n'existe pas encore de projet, marque la minute « projet à créer »
-// (odoo_quote.link.pendingProject). Ici, l'appli ouverte d'une personne autorisée réclame la
-// minute (mise à jour filtrée → une seule appli la prend), puis crée le projet avec EXACTEMENT
+// (odoo_quote.link.pendingProject). Ici, l'appli ouverte de N'IMPORTE QUEL utilisateur connecté
+// (pour que ça marche même quand Aristide et Audry sont absents) réclame la minute (mise à jour
+// filtrée → une seule appli la prend), puis crée le projet avec EXACTEMENT
 // le même code que l'import manuel (buildProjectFromMinute) et le relie à la minute.
 // Elle rafraîchit aussi minutes et projets quand Odoo a envoyé un événement (annulation…).
 
 import { useCallback, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { buildProjectFromMinute } from '../lib/import/projectFromMinute';
-import { canUseOdooQuote } from '../lib/odoo/quoteAccess';
+import { ODOO_QUOTE_USER_IDS } from '../lib/odoo/quoteAccess';
 
 const POLL_MS = 30_000;
 const STALE_CLAIM_MS = 5 * 60_000; // réclamation abandonnée (appli fermée en cours) → reprise
@@ -28,7 +29,7 @@ async function writeLink(id, patch) {
 }
 
 export function useOdooOrderProjects({ currentUser, addProject, loadMinuteDetail, refreshProjects, addNotification }) {
-  const enabled = canUseOdooQuote(currentUser?.id);
+  const enabled = !!currentUser?.id;
   const busy = useRef(false);
   const since = useRef(new Date().toISOString());
   const deps = useRef({});
@@ -68,11 +69,12 @@ export function useOdooOrderProjects({ currentUser, addProject, loadMinuteDetail
       const { data, error } = await addProject(project);
       if (error || !data?.[0]) throw new Error(error?.message || 'création refusée');
       await writeLink(row.id, { pendingProject: false, droitfilProjectId: data[0].id, pendingClaimAt: null });
-      addNotification?.(
+      // Prévenus : les personnes du module Devis Odoo + celle dont l'appli a créé le projet.
+      new Set([...ODOO_QUOTE_USER_IDS, currentUser?.id].filter(Boolean)).forEach((uid) => addNotification?.(
         'Projet créé depuis Odoo',
         `${link.name || 'Commande'} confirmée : le projet « ${project.name} » a été créé (à compléter).`,
-        'success', null, currentUser?.id,
-      );
+        'success', null, uid,
+      ));
     } catch (e) {
       console.error('[useOdooOrderProjects] création du projet échouée :', e.message);
       await writeLink(row.id, { pendingProject: true, pendingClaimAt: null, lastError: e.message });

@@ -112,7 +112,7 @@ function AppShell() {
   const { minutes, addMinute, updateMinute, deleteMinute, loadMinuteDetail } = useMinutes();
   const { events: planningEvents, updateEvent, deleteEvent } = useEvents();
   const { inventory, movements, addMovement, bulkUpdateInventory, updateInventoryItem, refreshStocks } = useStocks();
-  // Devis Odoo confirmé → minute « Commande » + projet créé et relié (réservé aux accès Devis Odoo).
+  // Devis Odoo confirmé → minute « Commande » + projet créé et relié (par l'appli de n'importe quel connecté).
   const { addNotification } = useNotifications();
   useOdooOrderProjects({ currentUser, addProject, loadMinuteDetail, refreshProjects, addNotification });
 
