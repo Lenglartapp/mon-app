@@ -115,10 +115,11 @@ function pickOption(options, facts) {
 /**
  * @returns {{ text: string, todo: number }} texte rempli + nombre de « XX » / « OU » restants
  */
-export function fillTemplate({ template, productName, typeKey, comp, rows = [], library = [] }) {
+export function fillTemplate({ template, productName, typeKey, comp, rows = [], library = [], refs: refsIn = null, laizes: laizesIn = null }) {
   const lib = new Map(library.map((i) => [norm(i.name), i]));
   const refKey = comp?.refKey;
-  const refs = refKey ? distinct(rows, refKey) : [];
+  // refs / laizes fournis par le moteur quand une ligne regroupe plusieurs colonnes (Tissu 1 + Tissu 2).
+  const refs = refsIn || (refKey ? distinct(rows, refKey) : []);
   const items = refs.map((r) => ({ name: r, item: lib.get(norm(r)) }));
   const lined = rows.some((r) => String(r.doublure || '').trim() || toNum(r.pv_doublure));
   const plis = distinct(rows, 'type_confection').map((p) => (/^plis?\b/i.test(p) ? p.replace(/^pli\b/i, 'Plis') : `Plis ${p}`));
@@ -180,7 +181,7 @@ export function fillTemplate({ template, productName, typeKey, comp, rows = [], 
       continue;
     }
     if (/^laize\s*:\s*xx/.test(n)) {
-      const lz = comp?.laizeKey ? distinct(rows, comp.laizeKey) : [];
+      const lz = laizesIn || (comp?.laizeKey ? distinct(rows, comp.laizeKey) : []);
       const fromLib = items.map((i) => i.item?.width).filter(Boolean).map(String);
       const all = [...new Set([...lz, ...fromLib])];
       if (all.length) out.push(`Laize : ${all.map((x) => fmt(toNum(x))).join(' / ')} cm`); else { out.push(line); todo++; }

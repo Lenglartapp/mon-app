@@ -368,6 +368,8 @@ function describe(line, library) {
     const { text, todo } = fillTemplate({
       template: product.description, productName: product.name, typeKey: type, comp,
       rows: sources.map((s) => s.row).filter(Boolean), library,
+      refs: line.refValues?.size ? [...line.refValues] : null,
+      laizes: line.laizes?.size ? [...line.laizes] : null,
     });
     line.textTodo = todo;
     return text;
@@ -377,8 +379,8 @@ function describe(line, library) {
   if (comp.key === '__deplacement') {
     out.push(...distinct(sources, 'libelle'));
   } else if (fam === 'Tissus' || fam === 'Passementerie') {
-    for (const ref of distinct(sources, comp.refKey)) out.push(`Réalisé en notre référence ${ref}`);
-    if (comp.laizeKey) for (const lz of distinct(sources, comp.laizeKey)) out.push(`Laize : ${lz} cm`);
+    for (const ref of (line.refValues?.size ? [...line.refValues] : distinct(sources, comp.refKey))) out.push(`Réalisé en notre référence ${ref}`);
+    for (const lz of (line.laizes?.size ? [...line.laizes] : comp.laizeKey ? distinct(sources, comp.laizeKey) : [])) out.push(`Laize : ${lz} cm`);
   } else if (fam === 'Mécanismes') {
     out.push(...distinct(sources, comp.refKey || 'modele_mecanisme'));
     out.push('Soit :', ...dimsList(sources, { withMeca: !isStore }));
@@ -516,11 +518,20 @@ export function buildQuote({ rows = [], depRows = [], extraRows = [], config, pr
     if (!sec.blocks.has(typeKey)) sec.blocks.set(typeKey, sec.blocks.size);
     if (row && !sec.samples.has(typeKey)) sec.samples.set(typeKey, row);
     const ref = byMl ? norm(row?.[comp.refKey]) : '';
-    const key = `${typeKey}|${slot.id}|${product?.id ?? slot.id}|${byMl ? 'ml' : 'f'}|${ref}`;
+    // Au mètre : une ligne par article ET par référence, quelle que soit la colonne de la minute
+    // (le même tissu saisi en « Tissu 1 » sur une ligne et en « Tissu 2 » sur une autre = UNE ligne).
+    const key = byMl && ref
+      ? `${typeKey}|ml|${product?.id ?? slot.id}|${ref}`
+      : `${typeKey}|${slot.id}|${product?.id ?? slot.id}|${byMl ? 'ml' : 'f'}|${ref}`;
     const line = sec.lines.get(key) || {
       key, typeKey, type: typeKey, slot, slotIdx, product, comp, byMl,
       amount: 0, cost: 0, ml: 0, hours: 0, sources: [], comps: new Map(), charges: [],
+      refValues: new Set(), laizes: new Set(),
     };
+    if (slotIdx < line.slotIdx) { line.slot = slot; line.slotIdx = slotIdx; } // rangée à la 1re ligne de recette concernée
+    // Référence / laize lues dans la colonne de CHAQUE ligne de minute (pas celle de la 1re).
+    if (row && comp.refKey && String(row[comp.refKey] ?? '').trim()) line.refValues.add(String(row[comp.refKey]).trim());
+    if (row && comp.laizeKey && Number(row[comp.laizeKey])) line.laizes.add(String(row[comp.laizeKey]));
     line.amount += amount;
     line.cost += cost || 0;
     line.ml += ml || 0;
