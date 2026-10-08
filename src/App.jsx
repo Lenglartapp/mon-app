@@ -31,6 +31,7 @@ import { useProjects, useMinutes, useEvents, useStocks } from './hooks/useSupaba
 
 import { useNetworkStatus } from './hooks/useNetworkStatus';
 import { useSyncQueue } from './hooks/useSyncQueue';
+import { useOdooOrderProjects } from './hooks/useOdooOrderProjects';
 import { Bell, WifiOff, RefreshCw, Search } from 'lucide-react';
 import Badge from '@mui/material/Badge';
 import IconButton from '@mui/material/IconButton';
@@ -111,6 +112,9 @@ function AppShell() {
   const { minutes, addMinute, updateMinute, deleteMinute, loadMinuteDetail } = useMinutes();
   const { events: planningEvents, updateEvent, deleteEvent } = useEvents();
   const { inventory, movements, addMovement, bulkUpdateInventory, updateInventoryItem, refreshStocks } = useStocks();
+  // Devis Odoo confirmé → minute « Commande » + projet créé et relié (par l'appli de n'importe quel connecté).
+  const { addNotification } = useNotifications();
+  useOdooOrderProjects({ currentUser, addProject, loadMinuteDetail, refreshProjects, addNotification });
 
   // Alias pour compatibilité
   const cleanProjects = projects;

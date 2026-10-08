@@ -17,9 +17,8 @@ import CreateProjectDialog from "../components/CreateProjectDialog.jsx";
 import ImportProjectsDialog from "../components/ImportProjectsDialog.jsx";
 import OdooLinkCell from "../components/odoo/OdooLinkCell.jsx";
 import { SCHEMA_64 } from "../lib/schemas/production.js";
-import { computeFormulas } from "../lib/formulas/compute.js";
 import { createBlankProject } from "../lib/import/createBlankProject.js";
-import { applySchemaDefaults } from "../lib/utils/schemaDefaults.js";
+import { buildProjectFromMinute } from "../lib/import/projectFromMinute.js";
 
 import { useAuth } from "../auth";
 
@@ -27,7 +26,6 @@ import { can, role } from "../lib/authz";
 import { FORMULES_METRAGE_V2 } from "../lib/formulas/metrageVersion";
 // 👇 IMPORT IMPORTANT
 import { uid } from "../lib/utils/uid";
-import { extractMaterialsFromLines } from "../lib/data/demo";
 
 import { PROJECT_STATUS_OPTIONS } from "../lib/constants/projectStatus";
 import { PROJECT_STATUS_TONE } from "../lib/constants/daStyles";
@@ -558,37 +556,12 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
             prodSchema={SCHEMA_64}
             onCreateFromMinute={async (payload) => {
               const { name, rows, meta, deliveryDate, location, intervention_type, expedition_type } = payload || {};
-              const project = createBlankProject({ name });
-              project.id = project.id || uid();
-              project.name = name || meta?.minuteName || project.name || "Nouveau Projet";
-              project.sourceMinuteId = meta?.id || null;
-              // Calculate budget from rows directly to ensure accuracy
-              const calculateBudgetFromRows = (rs) => {
-                let p = 0, c = 0, i = 0;
-                (rs || []).forEach(r => {
-                  const qty = Number(r.quantite) || 1;
-                  p += (Number(r.heures_prepa) || 0) * qty;
-                  c += (Number(r.heures_confection) || 0) * qty;
-                  i += (Number(r.heures_pose) || 0) * qty;
-                });
-                return { prepa: p, conf: c, pose: i };
-              };
-
-              // Force calculation from rows (Source of Truth) instead of potentially empty/outdated snapshot
-              project.budget = calculateBudgetFromRows(rows);
-              project.manager = meta?.owner || project.manager;
-              project.notes = meta?.notes || project.notes;
-              project.deadline = deliveryDate || null;
-              project.location = location || null;
-              project.intervention_type = intervention_type || null;
-              project.expedition_type = expedition_type || null;
-              // Défauts du schéma (étiquettes à « Non ») sur les lignes reprises du devis :
-              // c'est le chemin de création le plus courant, il doit se comporter comme
-              // l'ajout manuel d'une ligne. Ne remplit que ce qui est absent.
-              // Nouveau projet → formules de métrage v2 (projet + chaque ligne, lue par les getters).
-              project.config = { ...(project.config || {}), formules_metrage: FORMULES_METRAGE_V2 };
-              project.rows = computeFormulas((rows || []).map(r => applySchemaDefaults({ ...r, formules_metrage: FORMULES_METRAGE_V2 }, SCHEMA_64)), SCHEMA_64);
-              project.materials = extractMaterialsFromLines(rows || []);
+              // Construction partagée avec la création automatique depuis une commande Odoo
+              // (src/lib/import/projectFromMinute.js) : mêmes lignes, formules, budget, matières.
+              const project = buildProjectFromMinute(
+                { ...(meta || {}), lines: rows || [] },
+                { name: name || meta?.minuteName, deliveryDate, location, intervention_type, expedition_type },
+              );
 
               if (onCreate) {
                 try {
