@@ -458,6 +458,9 @@ export function toOdooPayload({ quote, dest, minute }) {
             ...(dest.teamId ? { team_id: dest.teamId } : {}),
             ...(dest.userId ? { user_id: dest.userId } : {}),
             ...(tagIds.length ? { tag_ids: tagIds } : {}),
+            // « Signature possible » (date prévue de signature) et importance en étoiles (0 à 3).
+            ...(dest.signatureDate ? { date_deadline: dest.signatureDate } : {}),
+            ...(dest.priority != null ? { priority: String(dest.priority) } : {}),
           },
         },
       }),

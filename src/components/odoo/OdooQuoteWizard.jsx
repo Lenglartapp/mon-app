@@ -211,15 +211,29 @@ function StepOpportunity({ minute, catalog, dest, setDest, commercials }) {
                 <select style={inputStyle} value={dest.teamId || ''} onChange={(e) => set({ teamId: Number(e.target.value) || null })}>
                   <option value="">—</option>{(catalog?.teams || []).map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
                 </select></div>
-              <div><Label>Secteur</Label>
+              <div><Label>Secteur *</Label>
                 <select style={inputStyle} value={dest.sectorTag || ''} onChange={(e) => set({ sectorTag: Number(e.target.value) || null })}>
                   <option value="">—</option>{sectorTags.map((t) => <option key={t.id} value={t.id}>{t.name.replace(/^Sct\./, '')}</option>)}
                 </select></div>
-              <div><Label>Type de client</Label>
+              <div><Label>Type de client *</Label>
                 <select style={inputStyle} value={dest.typeTag || ''} onChange={(e) => set({ typeTag: Number(e.target.value) || null })}>
                   <option value="">—</option>{typeTags.map((t) => <option key={t.id} value={t.id}>{t.name.replace(/^Tp\./, '')}</option>)}
                 </select></div>
+              <div><Label>Signature possible *</Label>
+                <input type="date" style={inputStyle} value={dest.signatureDate || ''} onChange={(e) => set({ signatureDate: e.target.value || null })} /></div>
+              <div><Label>Importance *</Label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 2, height: 36 }}>
+                  {[1, 2, 3].map((n) => (
+                    <button key={n} type="button" onClick={() => set({ priority: dest.priority === n ? 0 : n })}
+                      title={['Faible', 'Moyenne', 'Haute', 'Très haute'][n]}
+                      style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 22, lineHeight: 1, padding: '0 2px', color: (dest.priority || 0) >= n ? '#F5B301' : '#D6D3D1' }}>★</button>
+                  ))}
+                  <span style={{ fontSize: 12, color: C.muted, marginLeft: 6 }}>
+                    {dest.priority == null ? 'à choisir' : ['Faible (0 étoile)', 'Moyenne', 'Haute', 'Très haute'][dest.priority]}
+                  </span>
+                </div></div>
             </div>
+            {dest.priority == null && <div style={{ fontSize: 11.5, color: C.soft, marginTop: -6 }}>Clique sur les étoiles (re-cliquer la même étoile = 0 étoile).</div>}
           </div>
         )}
 
@@ -798,7 +812,9 @@ export default function OdooQuoteWizard({ open, onClose, minute, rows = [], depR
       : quote.blocking?.length ? 'Corrige les points bloquants signalés en rouge.'
         : quote.sections.some((sec) => sec.lines.some((l) => !l.productId)) ? 'Certaines lignes n\'ont pas d\'article Odoo.' : '';
 
-  const canNext = step !== 0 || ((dest.mode === 'existing' ? !!dest.opportunity : !!(dest.newName ?? minute?.name)) && !!dest.partner);
+  // Nouvelle opportunité : nom, secteur, type de client, signature possible et importance obligatoires.
+  const newOppReady = !!(dest.newName ?? minute?.name) && !!dest.sectorTag && !!dest.typeTag && !!dest.signatureDate && dest.priority != null;
+  const canNext = step !== 0 || ((dest.mode === 'existing' ? !!dest.opportunity : newOppReady) && !!dest.partner);
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="lg" PaperProps={{ sx: { borderRadius: '14px', fontFamily: 'Roboto, system-ui, sans-serif' } }}>
@@ -857,7 +873,7 @@ export default function OdooQuoteWizard({ open, onClose, minute, rows = [], depR
           </div>
           {step > 0 && <Btn onClick={() => setStep(step - 1)}><ArrowLeft size={15} /> Retour</Btn>}
           {step < STEPS.length - 1
-            ? <Btn primary disabled={!canNext} onClick={() => setStep(step + 1)} title={canNext ? '' : 'Choisis une opportunité et un client'}>Suivant <ArrowRight size={15} /></Btn>
+            ? <Btn primary disabled={!canNext} onClick={() => setStep(step + 1)} title={canNext ? '' : (dest.mode === 'new' ? 'Complète la nouvelle opportunité (secteur, type de client, signature possible, importance) et le client' : 'Choisis une opportunité et un client')}>Suivant <ArrowRight size={15} /></Btn>
             : (
               <>
                 <Btn disabled={!!sendBlocked || sending} onClick={() => sendToOdoo(true)}
