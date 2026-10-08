@@ -1826,7 +1826,9 @@ function MinuteGrid({
             {/* Toolbar : posée à droite, sur la barre « Glissez un champ ici pour regrouper » d'AG Grid.
                 Collante (comme cette barre) : elle garde sa place dans le flux et c'est la grille qui remonte
                 dessous (marge négative), pour qu'elle se décolle pile en même temps que le bas du tableau. */}
-            <div className="df-grid-toolbar" style={{ ...(stickyTop != null ? { position: 'sticky', top: stickyTop } : { position: 'absolute', top: 0, left: 0, right: 0 }), height: GROUP_PANEL_HEIGHT, zIndex: 8, padding: '0 8px', display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'flex-end', pointerEvents: 'none' }}>
+            {/* Menu ouvert (Colonnes, Ajouter, Filtrer, Matières) : la barre passe au-dessus des barres
+                des tableaux suivants, sinon leurs boutons s'affichent par-dessus le menu. */}
+            <div className="df-grid-toolbar" style={{ ...(stickyTop != null ? { position: 'sticky', top: stickyTop } : { position: 'absolute', top: 0, left: 0, right: 0 }), height: GROUP_PANEL_HEIGHT, zIndex: (colPanelOpen || addPanelOpen || filterPanelOpen || matierePanelOpen) ? 1100 : 8, padding: '0 8px', display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'flex-end', pointerEvents: 'none' }}>
                 {!readOnly && (
                     /* Bouton scindé : clic = 1 ligne (geste habituel inchangé),
                        chevron — ou clic droit — = « combien de lignes ? ». */
