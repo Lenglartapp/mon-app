@@ -6,6 +6,7 @@ import React from 'react';
 import Dialog from '@mui/material/Dialog';
 import { X, Search, Check, ArrowLeft, ArrowRight, AlertTriangle, GripVertical, ChevronRight, Eye, EyeOff, Pencil } from 'lucide-react';
 import { useAuth } from '../../auth';
+import { odooFetch } from '../../lib/odoo/odooFetch';
 import { loadSharedProfile, saveSharedProfile, saveMinuteQuote, minuteSettingsOf, SHARED_FIELDS } from '../../lib/odoo/quoteStore';
 import {
   COMPONENT_BY_KEY, GROUP_BY_OPTIONS, SUB_GROUP_BY_OPTIONS, PRODUCT_TYPES,
@@ -48,7 +49,7 @@ function odooUserForDroitfil(dfUser, odooUsers = []) {
 }
 
 async function odoo(action, q = '') {
-  const res = await fetch(`/api/odoo/quote-data?action=${action}&q=${encodeURIComponent(q)}`);
+  const res = await odooFetch(`/api/odoo/quote-data?action=${action}&q=${encodeURIComponent(q)}`);
   const json = await res.json().catch(() => ({ ok: false, error: `HTTP ${res.status}` }));
   if (!json.ok) throw new Error(json.error || 'Erreur Odoo');
   return json.data;
@@ -882,7 +883,7 @@ export default function OdooQuoteWizard({ open, onClose, minute, rows = [], depR
     setSending(true);
     try {
       const payload = toOdooPayload({ quote, dest, minute });
-      const res = await fetch('/api/odoo/quote-create', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ payload, dryRun }) });
+      const res = await odooFetch('/api/odoo/quote-create', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ payload, dryRun }) });
       const json = await res.json().catch(() => ({ ok: false, error: `HTTP ${res.status}` }));
       setOdooResult(json.ok ? { result: json.result, target: json.target } : { error: json.error });
       // Devis réellement créé / mis à jour : on mémorise le lien sur la minute.
@@ -909,7 +910,7 @@ export default function OdooQuoteWizard({ open, onClose, minute, rows = [], depR
   // Un nouveau calcul invalide le dernier retour Odoo.
   React.useEffect(() => { setOdooResult(null); }, [quote]);
   const sendBlocked = !write?.enabled
-    ? (write?.isProd ? 'Bloqué : Droitfil est branché sur la PRODUCTION Odoo (module en test).' : "Écriture Odoo désactivée sur cet environnement.")
+    ? "Écriture Odoo désactivée sur cet environnement (ODOO_QUOTE_WRITE)." 
     : !dest.partner ? 'Choisis un client (étape Opportunité).'
       : quote.blocking?.length ? 'Corrige les points bloquants signalés en rouge.'
         : quote.sections.some((sec) => sec.lines.some((l) => !l.productId)) ? 'Certaines lignes n\'ont pas d\'article Odoo.' : '';
@@ -931,9 +932,9 @@ export default function OdooQuoteWizard({ open, onClose, minute, rows = [], depR
               <div style={{ fontSize: 13, color: C.muted, marginTop: 2 }}>{minute?.name} · {rows.length} ligne(s)
                 {catalog?.write && (
                   <span style={{ marginLeft: 8, fontSize: 12, padding: '2px 8px', borderRadius: 999, fontWeight: 600,
-                    background: catalog.write.isProd ? '#FEE2E2' : catalog.write.enabled ? '#FEF3C7' : C.grey,
-                    color: catalog.write.isProd ? '#991B1B' : catalog.write.enabled ? '#92400E' : C.muted }}>
-                    {catalog.write.isProd ? 'Odoo PRODUCTION · lecture seule' : catalog.write.enabled ? `Odoo PRÉPROD · ${catalog.write.target}` : 'Odoo · lecture seule'}
+                    background: !catalog.write.enabled ? C.grey : catalog.write.isProd ? '#FEE2E2' : '#FEF3C7',
+                    color: !catalog.write.enabled ? C.muted : catalog.write.isProd ? '#991B1B' : '#92400E' }}>
+                    {!catalog.write.enabled ? 'Odoo · lecture seule' : catalog.write.isProd ? 'Odoo PRODUCTION · devis réels' : `Odoo PRÉPROD · ${catalog.write.target}`}
                   </span>
                 )}</div>
             </div>
@@ -971,7 +972,7 @@ export default function OdooQuoteWizard({ open, onClose, minute, rows = [], depR
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 24px', borderTop: `1px solid ${C.border}`, background: '#FFFBEB' }}>
             <div style={{ flex: 1, fontSize: 13, color: '#92400E' }}>
               {link && link.target === write?.target ? <>Mettre à jour le devis <b>{link.name}</b></> : <>Créer le devis <b>brouillon</b></>} dans Odoo
-              ({write?.target}) ? Il n'est ni confirmé ni envoyé au client.
+              ({write?.isProd ? <b>PRODUCTION — devis réel, numéro CV consommé</b> : write?.target}) ? Il n'est ni confirmé ni envoyé au client.
             </div>
             <Btn onClick={() => setConfirmCreate(false)}>Annuler</Btn>
             <Btn primary disabled={sending} onClick={() => sendToOdoo(false)}>{sending ? 'Envoi…' : 'Confirmer'}</Btn>
@@ -1000,7 +1001,7 @@ export default function OdooQuoteWizard({ open, onClose, minute, rows = [], depR
                   {sending ? 'Envoi…' : 'Vérifier avec Odoo (sans créer)'}
                 </Btn>
                 <Btn primary disabled={!!sendBlocked || sending} title={sendBlocked || `Instance : ${write?.target}`} onClick={() => setConfirmCreate(true)}>
-                  {link && link.target === write?.target ? `Mettre à jour le devis ${link.name}` : 'Créer le devis brouillon'}{write?.target && !write?.isProd ? ' (préprod)' : ''}
+                  {link && link.target === write?.target ? `Mettre à jour le devis ${link.name}` : 'Créer le devis brouillon'}{write?.isProd ? '' : ' (préprod)'}
                 </Btn>
               </>
             )}

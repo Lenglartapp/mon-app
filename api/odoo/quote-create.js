@@ -4,10 +4,13 @@
 // développé côté ERP). Odoo crée ou met à jour le devis BROUILLON lié à la minute
 // (droitfil_minute_id) ; dry_run = tout calculé puis annulé (rien n'est créé).
 //
-// ⚠️ GARDE-FOU tant que le module est en test : refusé si Droitfil pointe sur la PRODUCTION
-// Odoo, ou si ODOO_QUOTE_WRITE n'est pas à 1. La simulation (dry_run) suit la même règle.
+// Garde-fous : ODOO_QUOTE_WRITE=1 sur l'environnement, et utilisateur Droitfil vérifié côté
+// serveur (jeton de session) parmi les personnes autorisées (src/lib/odoo/quoteAccess.js).
+// La production Odoo est autorisée depuis le 2026-10-08 (flux mis en production côté ERP).
 
 import { execute } from '../_odooClient.js';
+import { requireUser } from '../_auth.js';
+import { canUseOdooQuote } from '../../src/lib/odoo/quoteAccess.js';
 
 const PROD_HOSTS = ['lenglart-erp-lenglart.odoo.com'];
 
@@ -15,7 +18,7 @@ export function quoteWriteStatus() {
   const url = process.env.ODOO_URL || '';
   const isProd = PROD_HOSTS.some((h) => url.includes(h));
   return {
-    enabled: process.env.ODOO_QUOTE_WRITE === '1' && !isProd && !!url,
+    enabled: process.env.ODOO_QUOTE_WRITE === '1' && !!url,
     isProd,
     target: url.replace(/^https?:\/\//, '').replace(/\/.*$/, ''),
   };
@@ -27,14 +30,10 @@ export default async function handler(req, res) {
       res.status(405).json({ ok: false, error: 'POST attendu.' });
       return;
     }
+    if (!(await requireUser(req, res, (u) => canUseOdooQuote(u.id)))) return;
     const status = quoteWriteStatus();
     if (!status.enabled) {
-      res.status(403).json({
-        ok: false,
-        error: status.isProd
-          ? 'Bloqué : Droitfil est branché sur la PRODUCTION Odoo (module en test, préproduction uniquement).'
-          : "Création de devis désactivée (ODOO_QUOTE_WRITE n'est pas à 1).",
-      });
+      res.status(403).json({ ok: false, error: "Création de devis désactivée (ODOO_QUOTE_WRITE n'est pas à 1)." });
       return;
     }
     const { payload, dryRun = true } = req.body || {};

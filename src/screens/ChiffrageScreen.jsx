@@ -36,11 +36,12 @@ import { MOBILIER_PRODUIT_RE } from "../lib/constants/productRouting";
 import { applyCatalogRenames } from "../lib/utils/catalogRename";
 import RecalibrationModal from "../components/RecalibrationModal";
 import OdooQuoteWizard from "../components/odoo/OdooQuoteWizard";
+import { canUseOdooQuote } from "../lib/odoo/quoteAccess";
+import { odooFetch } from "../lib/odoo/odooFetch";
 import { BookOpen, History, FileUp, SlidersHorizontal, FileOutput } from 'lucide-react';
 
-// Module « Devis Odoo » encore en chantier : masqué par défaut, visible seulement si
-// VITE_ODOO_QUOTE_ENABLED=1 (serveur de test branché sur la préproduction Odoo).
-const ODOO_QUOTE_ENABLED = import.meta.env.VITE_ODOO_QUOTE_ENABLED === '1';
+// Module « Devis Odoo » : réservé à Aristide et Audry avant la présentation à l'équipe
+// (src/lib/odoo/quoteAccess.js ; le serveur revérifie à chaque appel).
 import { importGlobalExcel } from "../lib/utils/importGlobalExcel";
 
 const toNum = (v) => {
@@ -109,14 +110,14 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
   const [odooOrder, setOdooOrder] = React.useState(null);
   React.useEffect(() => { setOdooLink(minute?.odoo_quote?.link || null); }, [minute?.id, minute?.odoo_quote?.link]);
   React.useEffect(() => {
-    if (!ODOO_QUOTE_ENABLED || !odooLink?.orderId) { setOdooOrder(null); return undefined; }
+    if (!canUseOdooQuote(currentUser?.id) || !odooLink?.orderId) { setOdooOrder(null); return undefined; }
     let alive = true;
-    fetch(`/api/odoo/quote-data?action=order&id=${odooLink.orderId}`)
+    odooFetch(`/api/odoo/quote-data?action=order&id=${odooLink.orderId}`)
       .then((r) => r.json())
       .then((j) => { if (alive && j.ok) setOdooOrder(j.data); })
       .catch(() => {});
     return () => { alive = false; };
-  }, [odooLink?.orderId]);
+  }, [odooLink?.orderId, currentUser?.id]);
 
   // PERF — La liste des chiffrages est légère (sans `lines`/`deplacements`/`params`…).
   // À l'ouverture, on charge la minute COMPLÈTE par son id et on la fusionne dans la
@@ -804,7 +805,7 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
           <button onClick={() => setShowCatalog(true)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', borderRadius: 8, background: 'white', border: '1px solid #E0DED9', cursor: 'pointer', color: '#374151', fontSize: 13, fontWeight: 600 }}>
             <BookOpen size={16} /> Bibliothèque
           </button>
-          {ODOO_QUOTE_ENABLED && (
+          {canUseOdooQuote(currentUser?.id) && (
             <button
               onClick={() => setShowOdooQuote(true)}
               style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', borderRadius: 8, background: 'white', border: '1px solid #E0DED9', cursor: 'pointer', color: '#374151', fontSize: 13, fontWeight: 600 }}
@@ -813,7 +814,7 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
               <FileOutput size={16} /> Devis Odoo
             </button>
           )}
-          {ODOO_QUOTE_ENABLED && odooLink && (() => {
+          {canUseOdooQuote(currentUser?.id) && odooLink && (() => {
             const otherBase = odooOrder && odooOrder.target && odooLink.target && odooOrder.target !== odooLink.target;
             const gone = odooOrder && odooOrder.exists === false;
             const label = gone || otherBase ? 'introuvable dans cette base' : (odooOrder?.stateLabel || '…');

@@ -5,6 +5,8 @@
 
 import { searchRead } from '../_odooClient.js';
 import { quoteWriteStatus } from './quote-create.js';
+import { requireUser } from '../_auth.js';
+import { canUseOdooQuote } from '../../src/lib/odoo/quoteAccess.js';
 
 // Articles vendables qui ne sont pas des articles de devis (TVA, acompte, loyer…).
 const PARASITES = /^(tva|acompte|loyer|facture oxyg|prise$|\[fact\]|ajustement contrat|service on timesheet|remise|bonus)|\(erreur/i;
@@ -123,6 +125,8 @@ async function order(id) {
 
 export default async function handler(req, res) {
   try {
+    // Données clients / articles Odoo : réservé aux utilisateurs du module (vérifié côté serveur).
+    if (!(await requireUser(req, res, (u) => canUseOdooQuote(u.id)))) return;
     const action = req.query?.action;
     const q = (req.query?.q || '').trim();
     let data;

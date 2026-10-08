@@ -481,7 +481,9 @@ export function toOdooPayload({ quote, dest, minute }) {
           },
         },
       }),
-    ...(dest.mode === 'new' && dest.userId ? { user_id: dest.userId } : {}),
+    // Toujours le commercial (chargé d'affaires) : il fixe la commission dans Odoo. Sans lui,
+    // Odoo prendrait l'utilisateur API (Aristide → commission direction à 1 %).
+    ...(dest.userId ? { user_id: dest.userId } : {}),
     objet: minute.name,
     commission_partenaire_taux: Math.round((quote.commissionPartenaire.rate / 100) * 1e6) / 1e6, // fraction
     sections: groupForOdoo(quote.sections, minute.name),
