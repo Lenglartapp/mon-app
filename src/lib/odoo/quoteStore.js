@@ -34,7 +34,7 @@ export function saveSharedProfile(config) {
 // Champs de odoo_quote.link tenus par le SERVEUR (api/odoo/order-event.js, création auto du projet) :
 // l'écran du devis ne doit jamais les écraser avec sa copie, possiblement plus ancienne.
 export const SERVER_LINK_FIELDS = ['state', 'database', 'isProdSource', 'lastEvent', 'confirmedAt', 'project',
-  'pendingProject', 'pendingClaimAt', 'droitfilProjectId', 'statusBeforeOrder', 'archivedByOdoo', 'projectStatusBefore'];
+  'pendingProject', 'pendingClaimAt', 'droitfilProjectId', 'statusBeforeOrder', 'archivedByOdoo', 'archivedReason', 'projectStatusBefore'];
 
 export async function saveMinuteQuote(minuteId, odooQuote) {
   if (!minuteId) return { ok: false };
