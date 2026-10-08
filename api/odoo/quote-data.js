@@ -4,17 +4,42 @@
 // Un seul fichier pour plusieurs actions → ménage le quota de fonctions Vercel (plan Hobby).
 
 import { searchRead } from '../_odooClient.js';
+import { quoteWriteStatus } from './quote-create.js';
+import { requireUser } from '../_auth.js';
+import { canUseOdooQuote } from '../../src/lib/odoo/quoteAccess.js';
 
 // Articles vendables qui ne sont pas des articles de devis (TVA, acompte, loyer…).
-const PARASITES = /^(tva|acompte|loyer|facture oxyg|prise$|\[fact\]|ajustement contrat|service on timesheet|remise|frais de port|bonus)/i;
+const PARASITES = /^(tva|acompte|loyer|facture oxyg|prise$|\[fact\]|ajustement contrat|service on timesheet|remise|bonus)|\(erreur/i;
 
-async function catalog() {
-  const [products, teams, tags, users] = await Promise.all([
-    searchRead('product.product', [['sale_ok', '=', true]], ['id', 'name', 'uom_id', 'categ_id']),
+export async function catalog() {
+  const [products, teams, tags, users, analytic, distrib, xmlIds] = await Promise.all([
+    searchRead('product.product', [['sale_ok', '=', true]], ['id', 'name', 'uom_id', 'categ_id', 'all_product_tag_ids', 'description_sale']),
     searchRead('crm.team', [], ['id', 'name']),
     searchRead('crm.tag', [], ['id', 'name']),
-    searchRead('res.users', [['share', '=', false]], ['id', 'name']),
+    searchRead('res.users', [['share', '=', false]], ['id', 'name', 'login', 'sale_team_id']),
+    // Étiquettes analytiques : c'est l'article qui décide de la case du contrôle de gestion
+    // Odoo (modèles de distribution analytique, 1 étiquette à 100 % par article).
+    searchRead('account.analytic.account', [], ['id', 'name']),
+    searchRead('account.analytic.distribution.model', [['product_id', '!=', false]], ['product_id', 'analytic_distribution']),
+    // Articles créés par le module ERP (data/product_matiere.xml) : leurs ids diffèrent d'une base
+    // à l'autre (préprod / prod) → on les résout par identifiant XML, jamais en dur.
+    searchRead('ir.model.data', [['module', '=', 'lenglart_controle_gestion'], ['model', '=', 'product.product']], ['name', 'res_id']),
   ]);
+  const xmlIdOf = new Map(xmlIds.map((x) => [x.res_id, x.name]));
+  // Étiquettes d'ARTICLE (product.tag) : c'est avec elles que le contrôle de gestion Odoo
+  // (module lenglart_controle_gestion) classe chaque coût — pas avec l'analytique.
+  const tagIds = [...new Set(products.flatMap((p) => p.all_product_tag_ids || []))];
+  const productTags = tagIds.length ? await searchRead('product.tag', [['id', 'in', tagIds]], ['id', 'name']) : [];
+  const productTagName = new Map(productTags.map((t) => [t.id, t.name]));
+  const accountName = new Map(analytic.map((a) => [String(a.id), (a.name || '').trim()]));
+  const tagOf = new Map();
+  for (const d of distrib) {
+    const names = Object.keys(d.analytic_distribution || {})
+      .flatMap((k) => k.split(','))
+      .map((id) => accountName.get(id))
+      .filter(Boolean);
+    if (names.length && !tagOf.has(d.product_id[0])) tagOf.set(d.product_id[0], names[0]);
+  }
   return {
     products: products
       .filter((p) => !PARASITES.test((p.name || '').trim()))
@@ -23,11 +48,17 @@ async function catalog() {
         name: p.name,
         uom: p.uom_id ? p.uom_id[1] : '',
         categ: p.categ_id ? p.categ_id[1] : '',
+        tag: tagOf.get(p.id) || null,
+        cgTags: (p.all_product_tag_ids || []).map((id) => productTagName.get(id)).filter(Boolean),
+        xmlId: xmlIdOf.get(p.id) || null,
+        // Texte type de vente (avec des « XX » à compléter) : base des descriptions du devis.
+        description: (p.description_sale || '').trim() || null,
       }))
       .sort((a, b) => a.name.localeCompare(b.name, 'fr')),
     teams,
     tags,
-    users,
+    users: users.map((u) => ({ id: u.id, name: u.name, login: u.login, teamId: u.sale_team_id ? u.sale_team_id[0] : null })),
+    write: quoteWriteStatus(),
   };
 }
 
@@ -73,16 +104,38 @@ async function partners(q) {
   }));
 }
 
+// État d'un devis lié à une minute (pastille « Devis Odoo CVxx » de l'écran chiffrage).
+const ORDER_STATES = { draft: 'Brouillon', sent: 'Envoyé', sale: 'Confirmé', cancel: 'Annulé' };
+async function order(id) {
+  const orderId = Number(id);
+  if (!orderId) return null;
+  const rows = await searchRead('sale.order', [['id', '=', orderId]], ['name', 'state', 'amount_untaxed', 'opportunity_id']);
+  if (!rows.length) return { exists: false };
+  const o = rows[0];
+  return {
+    exists: true,
+    name: o.name,
+    state: o.state,
+    stateLabel: ORDER_STATES[o.state] || o.state,
+    amountUntaxed: o.amount_untaxed,
+    opportunity: o.opportunity_id ? o.opportunity_id[1] : null,
+    target: quoteWriteStatus().target,
+  };
+}
+
 export default async function handler(req, res) {
   try {
+    // Données clients / articles Odoo : réservé aux utilisateurs du module (vérifié côté serveur).
+    if (!(await requireUser(req, res, (u) => canUseOdooQuote(u.id)))) return;
     const action = req.query?.action;
     const q = (req.query?.q || '').trim();
     let data;
     if (action === 'catalog') data = await catalog();
     else if (action === 'opportunities') data = await opportunities(q);
     else if (action === 'partners') data = await partners(q);
+    else if (action === 'order') data = await order(req.query?.id);
     else {
-      res.status(400).json({ ok: false, error: 'Paramètre "action" invalide (catalog | opportunities | partners).' });
+      res.status(400).json({ ok: false, error: 'Paramètre "action" invalide (catalog | opportunities | partners | order).' });
       return;
     }
     res.status(200).json({ ok: true, data });

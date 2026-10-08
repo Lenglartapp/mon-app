@@ -1,4 +1,5 @@
 import { defineConfig, loadEnv } from 'vite'
+import { statSync } from 'node:fs'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
@@ -8,7 +9,7 @@ import { VitePWA } from 'vite-plugin-pwa'
 function odooApiDevPlugin(env) {
   // Fichiers servables en dev, par préfixe d'URL -> dossier api/.
   const ROUTES = {
-    '/api/odoo/': { dir: './api/odoo/', names: new Set(['ping', 'preview', 'project-status', 'sync', 'course-lines', 'quote-data']) },
+    '/api/odoo/': { dir: './api/odoo/', names: new Set(['ping', 'preview', 'project-status', 'sync', 'course-lines', 'quote-data', 'quote-create']) },
     '/api/cron/': { dir: './api/cron/', names: new Set(['nightly']) },
   }
   return {
@@ -16,7 +17,7 @@ function odooApiDevPlugin(env) {
     apply: 'serve',
     configureServer(server) {
       // Rendre les variables serveur (du .env) visibles aux handlers via process.env
-      const passthru = ['ODOO_URL', 'ODOO_DB', 'ODOO_LOGIN', 'ODOO_KEY',
+      const passthru = ['ODOO_URL', 'ODOO_DB', 'ODOO_LOGIN', 'ODOO_KEY', 'ODOO_QUOTE_WRITE',
         'SUPABASE_URL', 'SUPABASE_SERVICE_KEY', 'VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY', 'CRON_SECRET']
       for (const k of passthru) {
         if (env[k] && !process.env[k]) process.env[k] = env[k]
@@ -52,6 +53,8 @@ function odooApiDevPlugin(env) {
         }
         try {
           const modUrl = new URL(`${dir}${route}.js`, import.meta.url)
+          // Cache-busting sur la date de modif : un handler édité est rechargé sans redémarrer.
+          modUrl.search = `?t=${statSync(modUrl).mtimeMs}`
           const handler = (await import(modUrl.href)).default
           await handler(vreq, vres)
         } catch (e) {
