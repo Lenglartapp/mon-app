@@ -11,7 +11,7 @@ import { canUseOdooQuote } from '../../src/lib/odoo/quoteAccess.js';
 // Articles vendables qui ne sont pas des articles de devis (TVA, acompte, loyer…).
 const PARASITES = /^(tva|acompte|loyer|facture oxyg|prise$|\[fact\]|ajustement contrat|service on timesheet|remise|bonus)|\(erreur/i;
 
-async function catalog() {
+export async function catalog() {
   const [products, teams, tags, users, analytic, distrib, xmlIds] = await Promise.all([
     searchRead('product.product', [['sale_ok', '=', true]], ['id', 'name', 'uom_id', 'categ_id', 'all_product_tag_ids', 'description_sale']),
     searchRead('crm.team', [], ['id', 'name']),
