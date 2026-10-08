@@ -548,7 +548,7 @@ function OdooPanel({ quote, odoo }) {
     ['Total HT', quote.total, r.amount_untaxed, true],
     ['Heures confection', quote.hours.conf, r.heures?.confection],
     ['Heures préparation', quote.hours.prepa, r.heures?.preparation],
-    ['Heures pose (+ prise de cotes)', quote.hours.pose + (quote.hours.depl || 0), r.heures?.pose],
+    ['Heures pose (trajet et prise de cotes compris)', quote.hours.pose + (quote.hours.depl || 0), r.heures?.pose],
     ...CG_ROWS.map(([k, label]) => [label, dfCg[k] || 0, r.cg?.[k] || 0, true]),
   ].filter(([, a, b]) => a || b);
   const corrected = (r.lines || []).filter((l) => l.corrige_apres_creation?.length);
@@ -594,7 +594,7 @@ function StepPreview({ quote, dest, odoo }) {
         {[
           ['Opportunité', dest.mode === 'existing' ? (dest.opportunity?.name || '—') : `Nouvelle : ${dest.newName || '—'}`],
           ['Client', dest.partner ? (dest.partner.company ? `${dest.partner.company}, ${dest.partner.name}` : dest.partner.name) : '—'],
-          ['Heures vendues', `Conf ${num(quote.hours.conf)} · Prépa ${num(quote.hours.prepa)} · Pose ${num(quote.hours.pose)}${quote.hours.depl ? ` · Dépl. ${num(quote.hours.depl)}` : ''}`],
+          ['Heures vendues', `Conf ${num(quote.hours.conf)} · Prépa ${num(quote.hours.prepa)} · Pose ${num(quote.hours.pose + quote.hours.depl)}${quote.hours.trajet || quote.hours.depl ? ` (dont ${[quote.hours.trajet && `${num(quote.hours.trajet)} trajet`, quote.hours.depl && `${num(quote.hours.depl)} prise de cotes`].filter(Boolean).join(', ')})` : ''}`],
           ['Prix de vente', ok ? `✅ ${eur(quote.total)} = minute` : `⚠️ Écart ${eur(quote.diff)}`],
           ['Coûts reportés (achats + charges)', Math.abs(quote.costDiff) < 1 ? `✅ ${eur(quote.cost + quote.commissionPartenaire.amount)} = minute` : `⚠️ écart ${eur(quote.costDiff)} avec la minute`],
           ['Commission partenaire', quote.commissionPartenaire.amount ? `${eur(quote.commissionPartenaire.amount)} → taux ${num(quote.commissionPartenaire.rate)} %` : 'Aucune'],
@@ -646,7 +646,7 @@ function StepPreview({ quote, dest, odoo }) {
                 <div style={{ textAlign: 'right', color: l.cost ? C.muted : C.soft }} title={l.cost ? [`Coût unitaire Odoo : ${eur(l.costUnit)}`, ...l.charges.map((c) => `dont ${c.label} : ${eur(c.amount)}`)].join('\n') : ''}>
                   {l.cost ? eur(l.cost) : '—'}{l.charges.length > 0 && <sup style={{ color: C.accent }}> +</sup>}
                 </div>
-                <div style={{ textAlign: 'right', color: l.hours ? C.text : C.soft }}>{l.hours ? num(l.hours) : '—'}</div>
+                <div style={{ textAlign: 'right', color: l.hours ? C.text : C.soft }} title={l.travelHours ? `dont ${num(l.travelHours)} h de trajet` : ''}>{l.hours ? num(l.hours) : '—'}{l.travelHours ? <sup style={{ color: C.accent }}> +</sup> : null}</div>
               </div>
             ))}
           </React.Fragment>

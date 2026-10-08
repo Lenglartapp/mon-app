@@ -534,12 +534,17 @@ export function buildQuote({ rows = [], depRows = [], extraRows = [], config, pr
   const CHARGE_RANK = 950;
   const LOGI_RANK = 960;
 
-  // 2. Déplacements. Main-d'œuvre (heures facturées) sur l'article auto (Prise de cotes →
-  //    étiquette Pose, sinon Frais de déplacement) ; frais (nuits + repas + billets, revendus
-  //    à prix coûtant) TOUJOURS sur « Frais de déplacement » (étiquette Frais de Déplacement).
+  // 2. Déplacements. Une ligne = temps facturé (heures × taux) + frais (nuits, repas, billets).
+  //    • Prise de cotes (avec ou sans déplacement) : le temps va sur l'article « Prise de cotes »
+  //      (étiquette Pose, ses heures comptent en pose) ; les frais sur « Frais de déplacement ».
+  //    • Déplacement : UNE ligne « Frais de déplacement » au prix complet (temps + frais), coût =
+  //      frais. Les HEURES de trajet (que cet article ne compte pas) sont réparties sur les lignes
+  //      Pose du devis (heures vendues seulement, leur prix ne bouge pas) : elles remontent ainsi
+  //      dans les heures de pose du projet et dans la tâche Pose (règle validée le 2026-10-08).
   //    Isolés → section logistique ; fondus → répartis au prorata des sections.
   const fraisProduct = resolve('Frais de déplacement', {});
   const ws = weights();
+  let travelHours = 0;
   depRows.forEach((row) => {
     const total = toNum(row.prix_total ?? row.total_price);
     const frais = toNum(row.cout_nuits) + toNum(row.cout_repas) + toNum(row.cout_billet_total);
@@ -547,13 +552,38 @@ export function buildQuote({ rows = [], depRows = [], extraRows = [], config, pr
     minuteTotal += total;
     minuteCost += frais;
     const hours = toNum(row.heures_facturees);
-    const mo = total - frais;
+    const priseDeCotes = /cotes/i.test(row.type_deplacement || '');
     const dest = isolate || !ws.length ? [{ sec: sectionFor(LOGI_TITLE, ORDER_LOGI), w: 1 }] : ws;
+    if (!priseDeCotes) travelHours += hours;
     for (const { sec, w } of dest) {
-      if (mo || hours) push({ sec, typeKey: '__logi', slot: LOGI_SLOT, slotIdx: LOGI_RANK, comp: DEP_COMP, row, product: resolve('@deplacement', row), amount: mo * w, cost: 0, hours: hours * w });
-      if (frais) push({ sec, typeKey: '__logi', slot: LOGI_SLOT, slotIdx: LOGI_RANK + 1, comp: DEP_COMP, row, product: fraisProduct, amount: frais * w, cost: frais * w });
+      if (priseDeCotes) {
+        const mo = total - frais;
+        if (mo || hours) push({ sec, typeKey: '__logi', slot: LOGI_SLOT, slotIdx: LOGI_RANK, comp: DEP_COMP, row, product: resolve('Prise de cotes', row), amount: mo * w, cost: 0, hours: hours * w });
+        if (frais) push({ sec, typeKey: '__logi', slot: LOGI_SLOT, slotIdx: LOGI_RANK + 1, comp: DEP_COMP, row, product: fraisProduct, amount: frais * w, cost: frais * w });
+      } else {
+        push({ sec, typeKey: '__logi', slot: LOGI_SLOT, slotIdx: LOGI_RANK + 1, comp: DEP_COMP, row, product: fraisProduct, amount: total * w, cost: frais * w });
+      }
     }
   });
+  // Heures de trajet → lignes Pose (au prorata de leurs heures, sinon de leur prix).
+  if (travelHours) {
+    const poseLines = [...sections.values()].flatMap((sec) => [...sec.lines.values()]).filter((l) => l.comps.has('pv_pose'));
+    if (poseLines.length) {
+      const byHours = poseLines.reduce((a, l) => a + l.hours, 0);
+      const byAmount = poseLines.reduce((a, l) => a + Math.max(0, l.amount), 0);
+      for (const l of poseLines) {
+        const w = byHours > 0 ? l.hours / byHours : byAmount > 0 ? Math.max(0, l.amount) / byAmount : 1 / poseLines.length;
+        l.hours += travelHours * w;
+        l.travelHours = (l.travelHours || 0) + travelHours * w;
+      }
+    } else {
+      // Aucune pose vendue : une ligne « Pose » à 0 € porte les heures de trajet.
+      const sec = isolate || !ws.length ? sectionFor(LOGI_TITLE, ORDER_LOGI) : ws[ws.length - 1].sec;
+      const line = push({ sec, typeKey: '__logi', slot: { id: 'trajet', label: 'Heures de trajet' }, slotIdx: LOGI_RANK + 2, comp: COMPONENT_BY_KEY.get('pv_pose'), row: null, product: resolve('Pose', {}), amount: 0, cost: 0, hours: travelHours });
+      line.travelHours = travelHours;
+      warnings.push(`Aucune ligne de pose dans le devis : les ${round2(travelHours)} h de trajet sont portées par une ligne « Pose » à 0 €.`);
+    }
+  }
 
   // 3. Charges annexes → coût porté par l'article de même nature analytique.
   let commissionPartenaire = 0;
@@ -597,7 +627,8 @@ export function buildQuote({ rows = [], depRows = [], extraRows = [], config, pr
   });
 
   // 4. Mise en forme : PU / quantités, textes, heures par catégorie.
-  const hours = { conf: 0, prepa: 0, pose: 0, depl: 0 };
+  // pose = lignes Pose (trajet compris) ; depl = Prise de cotes ; trajet = part du trajet dans pose.
+  const hours = { conf: 0, prepa: 0, pose: 0, depl: 0, trajet: round2(travelHours) };
   let quoteTotal = 0;
   let quoteCost = 0;
   const outSections = [...sections.values()]
@@ -635,6 +666,7 @@ export function buildQuote({ rows = [], depRows = [], extraRows = [], config, pr
             subtotal: odooSubtotal,
             costUnit, cost,
             hours: round2(l.hours),
+            travelHours: round2(l.travelHours || 0),
             bucket: l.comp.bucket || null,
             charges: l.charges.map((c) => ({ label: c.label, amount: round2(c.amount) })),
             costOnly: !!l.costOnly,
@@ -693,7 +725,7 @@ export function buildQuote({ rows = [], depRows = [], extraRows = [], config, pr
       amount: round2(commissionPartenaire),
       rate: quoteTotal > 0 ? Math.round((commissionPartenaire / quoteTotal) * 1e6) / 1e4 : 0,
     },
-    hours: { conf: round2(hours.conf), prepa: round2(hours.prepa), pose: round2(hours.pose), depl: round2(hours.depl) },
+    hours: { conf: round2(hours.conf), prepa: round2(hours.prepa), pose: round2(hours.pose), depl: round2(hours.depl), trajet: hours.trajet },
     warnings: [...new Set(warnings)],
   };
 }
