@@ -461,6 +461,11 @@ export function toOdooPayload({ quote, dest, minute }) {
             // « Signature possible » (date prévue de signature) et importance en étoiles (0 à 3).
             ...(dest.signatureDate ? { date_deadline: dest.signatureDate } : {}),
             ...(dest.priority != null ? { priority: String(dest.priority) } : {}),
+            // Revenu attendu = montant HT du devis (base du pipeline CRM ; Odoo le met à jour à la confirmation).
+            expected_revenue: quote.total,
+            ...(dest.sourceId ? { source_id: dest.sourceId } : {}),
+            ...(dest.apportePar?.id ? { apporte_par_id: dest.apportePar.id } : {}),
+            ...(dest.description?.trim() ? { description: dest.description.trim() } : {}),
           },
         },
       }),

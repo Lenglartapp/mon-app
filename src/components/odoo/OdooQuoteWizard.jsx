@@ -21,6 +21,16 @@ const num = (n) => new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 3 }).
 const norm = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 const typeLabel = (k) => PRODUCT_TYPES.find((t) => t.key === k)?.label || k;
 
+// Sources d'opportunité réellement utilisées (utm.source, prod 2026).
+const OPPORTUNITY_SOURCES = [
+  { id: 2, name: 'Nouvelle consultation par un partenaire déjà connu' },
+  { id: 11, name: "Nouvelle consultation par un partenaire car connaît quelqu'un qui nous connaît" },
+  { id: 12, name: 'Nouvelle consultation par un nouveau partenaire' },
+  { id: 7, name: 'Prospection Commerciale' },
+  { id: 3, name: 'Site Internet' },
+  { id: 6, name: 'Salon' },
+];
+
 // Commerciaux : la liste montre les personnes de Droitfil ; Odoo reçoit le compte correspondant.
 // Muriel Blondeau et Emmanuel Peltier n'ont pas de compte commercial Odoo : ils créent sous l'ADV.
 const ADV_FIRST_NAMES = ['muriel', 'emmanuel'];
@@ -164,7 +174,7 @@ function OdooSearch({ action, initial = '', placeholder, render, onPick, selecte
 }
 
 // ─── Étape 1 : opportunité ─────────────────────────────────────────────────────
-function StepOpportunity({ minute, catalog, dest, setDest, commercials }) {
+function StepOpportunity({ minute, catalog, dest, setDest, commercials, needsApporteur }) {
   const baseName = (minute?.name || '').replace(/\s+V\d+\b.*$/i, '').trim();
   const sectorTags = (catalog?.tags || []).filter((t) => /^Sct\./.test(t.name));
   const typeTags = (catalog?.tags || []).filter((t) => /^Tp\./.test(t.name));
@@ -234,6 +244,19 @@ function StepOpportunity({ minute, catalog, dest, setDest, commercials }) {
                 </div></div>
             </div>
             {dest.priority == null && <div style={{ fontSize: 11.5, color: C.soft, marginTop: -6 }}>Clique sur les étoiles (re-cliquer la même étoile = 0 étoile).</div>}
+            <div><Label>Source</Label>
+              <select style={inputStyle} value={dest.sourceId || ''} onChange={(e) => set({ sourceId: Number(e.target.value) || null })}>
+                <option value="">—</option>{OPPORTUNITY_SOURCES.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
+              </select></div>
+            <div><Label>Apporté par{needsApporteur ? ' * (la minute a une commission partenaire)' : ''}</Label>
+              <OdooSearch action="partners" placeholder="Partenaire rémunéré…" selected={dest.apportePar}
+                key={dest.apportePar?.id || 'aucun'}
+                onPick={(p) => set({ apportePar: p })}
+                render={(p) => <div style={{ fontSize: 13.5, color: C.text }}>{p.isCompany ? '🏢 ' : '👤 '}{p.name}{p.company && <span style={{ color: C.muted }}> · {p.company}</span>}</div>} />
+            </div>
+            <div><Label>Description (résumé de la demande)</Label>
+              <textarea style={{ ...inputStyle, resize: 'vertical' }} rows={3} value={dest.description ?? (minute?.notes || '')}
+                onChange={(e) => set({ description: e.target.value })} /></div>
           </div>
         )}
 
@@ -565,7 +588,7 @@ const CG_ROWS = [
   ['cg_frais_deplacement', 'Frais de déplacement'], ['cg_montant_location', 'Location / outillage'],
   ['cg_commission_partenaire', 'Commission partenaire'],
 ];
-function OdooPanel({ quote, odoo }) {
+function OdooPanel({ quote, odoo, dest }) {
   if (!odoo) return null;
   if (odoo.error) {
     return <div style={{ border: '1px solid #FCA5A5', background: '#FEF2F2', borderRadius: 10, padding: '10px 14px', marginBottom: 16, fontSize: 13, color: '#991B1B' }}>Odoo a refusé : {odoo.error}</div>;
@@ -604,6 +627,16 @@ function OdooPanel({ quote, odoo }) {
           );
         })}
       </div>
+      {r.opportunity_name && (
+        <div style={{ marginTop: 10, fontSize: 12.5, color: C.muted }}>
+          Opportunité Odoo : <b style={{ color: C.text }}>{r.opportunity_name}</b>
+          {' · '}signature possible {r.opportunity_date_deadline ? new Date(r.opportunity_date_deadline).toLocaleDateString('fr-FR') : '—'}
+          {dest?.mode === 'new' && dest.signatureDate && r.opportunity_date_deadline !== dest.signatureDate ? ' ⚠️' : ''}
+          {' · '}{'★'.repeat(Number(r.opportunity_priority || 0)) || '0 étoile'}
+          {dest?.mode === 'new' && dest.priority != null && String(dest.priority) !== String(r.opportunity_priority) ? ' ⚠️' : ''}
+          {r.opportunity_expected_revenue ? ` · revenu attendu ${eur(r.opportunity_expected_revenue)}` : ''}
+        </div>
+      )}
       {(r.warnings || []).length > 0 && (
         <div style={{ marginTop: 10, fontSize: 12.5, color: '#92400E' }}>{r.warnings.map((w) => <div key={w}>⚠️ Odoo : {w}</div>)}</div>
       )}
@@ -673,7 +706,7 @@ function StepPreview({ quote, dest, odoo, onEditText }) {
         ))}
       </div>
 
-      <OdooPanel quote={quote} odoo={odoo} />
+      <OdooPanel quote={quote} odoo={odoo} dest={dest} />
 
       {quote.blocking?.length > 0 && (
         <div style={{ border: '1px solid #FCA5A5', background: '#FEF2F2', borderRadius: 8, padding: '8px 12px', marginBottom: 14, fontSize: 13, color: '#991B1B' }}>
@@ -747,6 +780,7 @@ export default function OdooQuoteWizard({ open, onClose, minute, rows = [], depR
   const [dest, setDest] = React.useState(() => ({
     mode: 'new', opportunity: null, partner: null,
     newName: (minute?.name || '').replace(/\s+V\d+\b.*$/i, '').trim(),
+    description: minute?.notes || '',
   }));
   const [odooResult, setOdooResult] = React.useState(null);
   const [sending, setSending] = React.useState(false);
@@ -813,7 +847,9 @@ export default function OdooQuoteWizard({ open, onClose, minute, rows = [], depR
         : quote.sections.some((sec) => sec.lines.some((l) => !l.productId)) ? 'Certaines lignes n\'ont pas d\'article Odoo.' : '';
 
   // Nouvelle opportunité : nom, secteur, type de client, signature possible et importance obligatoires.
-  const newOppReady = !!(dest.newName ?? minute?.name) && !!dest.sectorTag && !!dest.typeTag && !!dest.signatureDate && dest.priority != null;
+  const needsApporteur = quote.commissionPartenaire.amount > 0;
+  const newOppReady = !!(dest.newName ?? minute?.name) && !!dest.sectorTag && !!dest.typeTag && !!dest.signatureDate && dest.priority != null
+    && (!needsApporteur || !!dest.apportePar);
   const canNext = step !== 0 || ((dest.mode === 'existing' ? !!dest.opportunity : newOppReady) && !!dest.partner);
 
   return (
@@ -855,7 +891,7 @@ export default function OdooQuoteWizard({ open, onClose, minute, rows = [], depR
               Odoo injoignable : {catalogError}
             </div>
           )}
-          {step === 0 && <StepOpportunity minute={minute} catalog={catalog} dest={dest} setDest={setDest} commercials={commercials} />}
+          {step === 0 && <StepOpportunity minute={minute} catalog={catalog} dest={dest} setDest={setDest} commercials={commercials} needsApporteur={quote.commissionPartenaire.amount > 0} />}
           {step === 1 && <StepStructure config={config} setConfig={setConfig} rows={rows} quote={quote} />}
           {step === 2 && (catalog
             ? <StepDetail config={config} setConfig={setConfig} catalog={catalog} quote={quote} />
@@ -873,7 +909,7 @@ export default function OdooQuoteWizard({ open, onClose, minute, rows = [], depR
           </div>
           {step > 0 && <Btn onClick={() => setStep(step - 1)}><ArrowLeft size={15} /> Retour</Btn>}
           {step < STEPS.length - 1
-            ? <Btn primary disabled={!canNext} onClick={() => setStep(step + 1)} title={canNext ? '' : (dest.mode === 'new' ? 'Complète la nouvelle opportunité (secteur, type de client, signature possible, importance) et le client' : 'Choisis une opportunité et un client')}>Suivant <ArrowRight size={15} /></Btn>
+            ? <Btn primary disabled={!canNext} onClick={() => setStep(step + 1)} title={canNext ? '' : (dest.mode === 'new' ? 'Complète la nouvelle opportunité (secteur, type de client, signature possible, importance, apporteur si commission partenaire) et le client' : 'Choisis une opportunité et un client')}>Suivant <ArrowRight size={15} /></Btn>
             : (
               <>
                 <Btn disabled={!!sendBlocked || sending} onClick={() => sendToOdoo(true)}
