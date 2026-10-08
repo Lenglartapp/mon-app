@@ -38,9 +38,9 @@ import RecalibrationModal from "../components/RecalibrationModal";
 import OdooQuoteWizard from "../components/odoo/OdooQuoteWizard";
 import { BookOpen, History, FileUp, SlidersHorizontal, FileOutput } from 'lucide-react';
 
-// Module « Devis Odoo » encore en chantier (branche odoo/devis-depuis-minute) :
-// masqué en production tant qu'il n'est pas terminé.
-const ODOO_QUOTE_ENABLED = false;
+// Module « Devis Odoo » encore en chantier : masqué par défaut, visible seulement si
+// VITE_ODOO_QUOTE_ENABLED=1 (serveur de test branché sur la préproduction Odoo).
+const ODOO_QUOTE_ENABLED = import.meta.env.VITE_ODOO_QUOTE_ENABLED === '1';
 import { importGlobalExcel } from "../lib/utils/importGlobalExcel";
 
 const toNum = (v) => {
