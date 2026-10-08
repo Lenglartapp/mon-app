@@ -67,6 +67,7 @@ export const SUB_GROUP_BY_OPTIONS = [
   { value: 'zone', label: 'Zone' },
   { value: 'piece', label: 'Pièce' },
   { value: 'produit', label: 'Produit' },
+  { value: 'fenetre', label: 'Fenêtre' },
 ];
 
 export const GROUP_BY_OPTIONS = [
@@ -74,6 +75,7 @@ export const GROUP_BY_OPTIONS = [
   { value: 'zone', label: 'Par zone' },
   { value: 'piece', label: 'Par pièce' },
   { value: 'produit', label: 'Par produit' },
+  { value: 'fenetre', label: 'Par fenêtre' },
   { value: 'zone_produit', label: 'Zone › Produit' },
   { value: 'zone_piece', label: 'Zone › Pièce' },
 ];
@@ -316,11 +318,13 @@ function sectionKeyOf(row, groupBy) {
   const z = (row.zone || '').trim();
   const pc = (row.piece || '').trim();
   const pr = (row.produit || '').trim();
+  const fe = (row.fenetre || '').trim(); // « Fenêtre » : 3e niveau de localisation (colonne masquée par défaut)
   switch (groupBy) {
     case 'none': return '';
     case 'zone': return z || 'Sans zone';
     case 'piece': return pc || 'Sans pièce';
     case 'produit': return pr || 'Sans produit';
+    case 'fenetre': return fe || 'Sans fenêtre';
     case 'zone_produit': return [z, pr].filter(Boolean).join(' — ') || 'Divers';
     case 'zone_piece': return [z, pc].filter(Boolean).join(' — ') || 'Divers';
     default: return '';

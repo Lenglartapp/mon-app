@@ -21,9 +21,20 @@ const num = (n) => new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 3 }).
 const norm = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 const typeLabel = (k) => PRODUCT_TYPES.find((t) => t.key === k)?.label || k;
 
-// Comptes Droitfil sans compte commercial Odoo → rattachés à l'ADV.
+// Commerciaux : la liste montre les personnes de Droitfil ; Odoo reçoit le compte correspondant.
+// Muriel Blondeau et Emmanuel Peltier n'ont pas de compte commercial Odoo : ils créent sous l'ADV.
 const ADV_FIRST_NAMES = ['muriel', 'emmanuel'];
 const ADV_USER_NAME = 'Service Administration des Ventes';
+function odooUserForDroitfil(dfUser, odooUsers = []) {
+  if (!dfUser || !odooUsers.length) return null;
+  const full = norm(dfUser.name || `${dfUser.first_name || ''} ${dfUser.last_name || ''}`).trim();
+  const email = norm(dfUser.email);
+  const direct = odooUsers.find((u) => u.teamId && u.name !== ADV_USER_NAME && (norm(u.name) === full || (email && norm(u.login) === email)));
+  if (direct) return direct;
+  const first = norm(dfUser.first_name || full).split(/\s+/)[0];
+  if (ADV_FIRST_NAMES.includes(first)) return odooUsers.find((u) => u.name === ADV_USER_NAME) || null;
+  return null;
+}
 
 async function odoo(action, q = '') {
   const res = await fetch(`/api/odoo/quote-data?action=${action}&q=${encodeURIComponent(q)}`);
@@ -126,7 +137,7 @@ function OdooSearch({ action, initial = '', placeholder, render, onPick, selecte
 }
 
 // ─── Étape 1 : opportunité ─────────────────────────────────────────────────────
-function StepOpportunity({ minute, catalog, dest, setDest }) {
+function StepOpportunity({ minute, catalog, dest, setDest, commercials }) {
   const baseName = (minute?.name || '').replace(/\s+V\d+\b.*$/i, '').trim();
   const sectorTags = (catalog?.tags || []).filter((t) => /^Sct\./.test(t.name));
   const typeTags = (catalog?.tags || []).filter((t) => /^Tp\./.test(t.name));
@@ -160,12 +171,15 @@ function StepOpportunity({ minute, catalog, dest, setDest }) {
               <input style={inputStyle} value={dest.newName ?? baseName} onChange={(e) => set({ newName: e.target.value })} /></div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div><Label>Commercial{dest.autoUser ? ' (toi)' : ''}</Label>
-                <select style={inputStyle} value={dest.userId || ''} onChange={(e) => {
-                  const u = (catalog?.users || []).find((x) => x.id === Number(e.target.value));
-                  set({ userId: u?.id || null, teamId: u?.teamId || dest.teamId, autoUser: false });
+                <select style={inputStyle} value={dest.dfUserId || ''} onChange={(e) => {
+                  const c = commercials.find((x) => x.id === e.target.value);
+                  set({ dfUserId: c?.id || null, userId: c?.odoo.id || null, teamId: c?.odoo.teamId || dest.teamId, autoUser: false });
                 }}>
-                  <option value="">—</option>{(catalog?.users || []).filter((u) => u.teamId || u.id === dest.userId).map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
-                </select></div>
+                  <option value="">—</option>
+                  {commercials.map((c) => <option key={c.id} value={c.id}>{c.name}{c.odoo.name === ADV_USER_NAME ? ' (ADV dans Odoo)' : ''}</option>)}
+                </select>
+                {dest.userId && <div style={{ fontSize: 11.5, color: C.soft, marginTop: 4 }}>Dans Odoo : {(catalog?.users || []).find((u) => u.id === dest.userId)?.name}</div>}
+              </div>
               <div><Label>Équipe</Label>
                 <select style={inputStyle} value={dest.teamId || ''} onChange={(e) => set({ teamId: Number(e.target.value) || null })}>
                   <option value="">—</option>{(catalog?.teams || []).map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
@@ -207,24 +221,49 @@ function StepOpportunity({ minute, catalog, dest, setDest }) {
 
 // ─── Étape 2 : structure ───────────────────────────────────────────────────────
 // Uniquement la PRÉSENTATION : sections, sous-sections, et place du déplacement / transport.
-function StructureTree({ blocks, max = 40 }) {
-  const tree = [];
-  for (const b of blocks) {
-    let s = tree[tree.length - 1];
-    if (!s || s.title !== b.title) { s = { title: b.title, subs: [] }; tree.push(s); }
-    if (b.sub) s.subs.push(b.sub);
-  }
+// Lignes d'articles simulées (barres grises) sous une section ou une sous-section.
+function FakeLines({ indent }) {
   return (
-    <div style={{ display: 'grid', gap: 6 }}>
-      {tree.slice(0, max).map((s) => (
-        <div key={s.title || '_'} style={{ fontSize: 13 }}>
-          <span style={{ fontWeight: 600, color: C.text }}>{s.title || '(section unique)'}</span>
-          {s.subs.length > 0 && (
-            <span style={{ color: C.muted }}> › {s.subs.join(' · ')}</span>
-          )}
+    <div style={{ padding: `6px 12px 8px ${indent ? 24 : 12}px`, display: 'grid', gap: 4 }}>
+      {[0.62, 0.45].map((w) => (
+        <div key={w} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ height: 6, width: `${w * 100}%`, background: C.grey, borderRadius: 3 }} />
+          <div style={{ flex: 1 }} />
+          <div style={{ height: 6, width: 44, background: C.grey, borderRadius: 3 }} />
         </div>
       ))}
-      {tree.length > max && <div style={{ fontSize: 12.5, color: C.muted }}>+{tree.length - max} sections</div>}
+    </div>
+  );
+}
+
+// Prévisualisation « façon Odoo » : sections grisées empilées, sous-sections dessous, montant à droite.
+function StructurePreview({ blocks }) {
+  const tree = [];
+  for (const b of blocks) {
+    let sec = tree[tree.length - 1];
+    if (!sec || sec.title !== b.title) { sec = { title: b.title, total: 0, subs: [], apart: b.apart }; tree.push(sec); }
+    sec.total += b.total;
+    if (b.sub) sec.subs.push({ title: b.sub, total: b.total });
+  }
+  return (
+    <div style={{ border: `1px solid ${C.border}`, borderRadius: 10, overflow: 'hidden', background: 'white' }}>
+      {tree.map((sec, i) => (
+        <div key={`${sec.title}_${i}`} style={{ borderTop: i ? `1px solid ${C.border}` : 'none' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', background: '#E9ECEF', padding: '7px 12px', fontSize: 13, fontWeight: 700, color: C.text }}>
+            <span>{sec.title || '(section unique)'}</span><span>{eur(sec.total)}</span>
+          </div>
+          {sec.subs.length
+            ? sec.subs.map((sub) => (
+              <React.Fragment key={sub.title}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', background: '#F7F7F5', padding: '6px 12px 6px 24px', fontSize: 12.5, fontWeight: 600, color: '#374151', borderTop: `1px solid ${C.grey}` }}>
+                  <span>{sub.title}</span><span>{eur(sub.total)}</span>
+                </div>
+                <FakeLines indent />
+              </React.Fragment>
+            ))
+            : <FakeLines />}
+        </div>
+      ))}
     </div>
   );
 }
@@ -234,42 +273,44 @@ function StepStructure({ config, setConfig, rows, quote }) {
     .sections.filter((b) => !b.apart).map((b) => b.title)).size;
   const logi = config.logistique || 'fondu';
   return (
-    <div>
-      <H sub="Comment le devis est découpé. Les lignes de la minute sont regroupées selon ces critères.">Sections</H>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0,1fr))', gap: 10 }}>
-        {GROUP_BY_OPTIONS.filter((o) => !o.value.includes('_')).map((o) => {
-          const on = config.groupBy === o.value;
-          const n = countFor(o.value);
-          return (
-            <div key={o.value} onClick={() => setConfig((c) => ({ ...c, groupBy: o.value, subGroupBy: c.subGroupBy === o.value ? 'none' : c.subGroupBy }))}
-              style={{ border: `1px solid ${on ? C.text : C.border}`, borderRadius: 10, padding: '10px 14px', cursor: 'pointer', background: on ? C.grey : 'white' }}>
-              <div style={{ fontSize: 13.5, fontWeight: 600, color: C.text }}>{o.label}</div>
-              <div style={{ fontSize: 12.5, color: C.muted, marginTop: 2 }}>{n} section{n > 1 ? 's' : ''}</div>
-            </div>
-          );
-        })}
-      </div>
+    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: 28, alignItems: 'start' }}>
+      <div>
+        <H sub="Comment le devis est découpé : les lignes de la minute sont regroupées selon ces critères.">Sections</H>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0,1fr))', gap: 8 }}>
+          {GROUP_BY_OPTIONS.filter((o) => !o.value.includes('_')).map((o) => {
+            const on = config.groupBy === o.value;
+            const n = countFor(o.value);
+            return (
+              <div key={o.value} onClick={() => setConfig((c) => ({ ...c, groupBy: o.value, subGroupBy: c.subGroupBy === o.value ? 'none' : c.subGroupBy }))}
+                style={{ border: `1px solid ${on ? C.text : C.border}`, borderRadius: 10, padding: '9px 12px', cursor: 'pointer', background: on ? C.grey : 'white' }}>
+                <div style={{ fontSize: 13.5, fontWeight: 600, color: C.text }}>{o.label}</div>
+                <div style={{ fontSize: 12.5, color: C.muted, marginTop: 2 }}>{n} section{n > 1 ? 's' : ''}</div>
+              </div>
+            );
+          })}
+        </div>
 
-      <div style={{ marginTop: 22 }}>
-        <H sub="Deuxième niveau à l'intérieur de chaque section (ex. Voilages › R+1, R+2).">Sous-sections</H>
-        <Seg value={config.subGroupBy || 'none'} onChange={(v) => setConfig((c) => ({ ...c, subGroupBy: v }))}
-          options={SUB_GROUP_BY_OPTIONS.filter((o) => o.value === 'none' || o.value !== config.groupBy)} />
-      </div>
+        <div style={{ marginTop: 22 }}>
+          <H sub="Deuxième niveau dans chaque section (ex. Voilages › R+1, R+2).">Sous-sections</H>
+          <Seg value={config.subGroupBy || 'none'} onChange={(v) => setConfig((c) => ({ ...c, subGroupBy: v }))}
+            options={SUB_GROUP_BY_OPTIONS.filter((o) => o.value === 'none' || o.value !== config.groupBy)} />
+        </div>
 
-      <div style={{ marginTop: 22 }}>
-        <H sub="Livraison, transport, location et déplacements (temps, hôtels, repas, billets).">Déplacement, transport et location</H>
-        <Seg value={logi} onChange={(v) => setConfig((c) => ({ ...c, logistique: v }))}
-          options={[{ value: 'fondu', label: 'Fondus dans chaque section' }, { value: 'isole', label: 'Section à part' }]} />
-        <div style={{ fontSize: 12.5, color: C.muted, marginTop: 8, lineHeight: 1.5 }}>
-          {logi === 'fondu'
-            ? 'Chaque section reçoit sa part de déplacement et de location (au prorata de son montant) ; la livraison reste avec ses produits.'
-            : 'Une section « DÉPLACEMENT, TRANSPORT & LOCATION » en fin de devis porte la livraison, les déplacements et la location, avec tous leurs coûts.'}
+        <div style={{ marginTop: 22 }}>
+          <H sub="Livraison, transport, location et déplacements (temps, hôtels, repas, billets).">Déplacement, transport et location</H>
+          <Seg value={logi} onChange={(v) => setConfig((c) => ({ ...c, logistique: v }))}
+            options={[{ value: 'fondu', label: 'Fondus dans chaque section' }, { value: 'isole', label: 'Section à part' }]} />
+          <div style={{ fontSize: 12.5, color: C.muted, marginTop: 8, lineHeight: 1.5 }}>
+            {logi === 'fondu'
+              ? 'Chaque section reçoit sa part de déplacement et de location (au prorata de son montant) ; la livraison reste avec ses produits.'
+              : 'Une section « DÉPLACEMENT, TRANSPORT & LOCATION » en fin de devis porte la livraison, les déplacements et la location, avec tous leurs coûts.'}
+          </div>
         </div>
       </div>
 
-      <div style={{ marginTop: 26, borderTop: `1px solid ${C.border}`, paddingTop: 16 }}>
-        <Label>Résultat</Label>
-        <StructureTree blocks={quote.sections} />
+      <div style={{ position: 'sticky', top: 0 }}>
+        <Label>Prévisualisation</Label>
+        <StructurePreview blocks={quote.sections} />
       </div>
     </div>
   );
@@ -616,19 +657,8 @@ function StepPreview({ quote, dest, odoo }) {
 }
 
 // ─── Module ────────────────────────────────────────────────────────────────────
-// Commercial Odoo de la personne connectée : même e-mail ; sinon ADV pour les comptes listés.
-function odooUserFor(currentUser, users = []) {
-  if (!currentUser || !users.length) return null;
-  const email = norm(currentUser.email);
-  const byLogin = users.find((u) => norm(u.login) === email);
-  if (byLogin) return byLogin;
-  const first = norm(currentUser.first_name || currentUser.name || '').split(/\s+/)[0];
-  if (ADV_FIRST_NAMES.includes(first)) return users.find((u) => u.name === ADV_USER_NAME) || null;
-  return null;
-}
-
 export default function OdooQuoteWizard({ open, onClose, minute, rows = [], depRows = [], extraRows = [] }) {
-  const { currentUser } = useAuth();
+  const { currentUser, users: dfUsers = [] } = useAuth();
   const [step, setStep] = React.useState(0);
   const [catalog, setCatalog] = React.useState(null);
   const [catalogError, setCatalogError] = React.useState(null);
@@ -641,6 +671,12 @@ export default function OdooQuoteWizard({ open, onClose, minute, rows = [], depR
   const [odooResult, setOdooResult] = React.useState(null);
   const [sending, setSending] = React.useState(false);
 
+  // Commerciaux proposés = personnes Droitfil qui ont un compte Odoo correspondant (ou l'ADV).
+  const commercials = React.useMemo(() => (catalog ? dfUsers
+    .map((u) => ({ id: u.id, name: u.name, odoo: odooUserForDroitfil(u, catalog.users) }))
+    .filter((x) => x.odoo)
+    .sort((a, b) => a.name.localeCompare(b.name, 'fr')) : []), [catalog, dfUsers]);
+
   React.useEffect(() => {
     if (!open || catalog) return;
     odoo('catalog').then(setCatalog).catch((e) => setCatalogError(e.message));
@@ -650,8 +686,8 @@ export default function OdooQuoteWizard({ open, onClose, minute, rows = [], depR
   // Pré-remplit commercial + équipe d'après la personne connectée (une seule fois).
   React.useEffect(() => {
     if (!catalog || dest.userId !== undefined) return;
-    const u = odooUserFor(currentUser, catalog.users);
-    setDest((d) => ({ ...d, userId: u?.id || null, teamId: u?.teamId || null, autoUser: !!u }));
+    const u = odooUserForDroitfil(currentUser, catalog.users);
+    setDest((d) => ({ ...d, dfUserId: u ? currentUser?.id : null, userId: u?.id || null, teamId: u?.teamId || null, autoUser: !!u }));
   }, [catalog, currentUser, dest.userId]);
 
   const quote = React.useMemo(
@@ -724,7 +760,7 @@ export default function OdooQuoteWizard({ open, onClose, minute, rows = [], depR
               Odoo injoignable : {catalogError}
             </div>
           )}
-          {step === 0 && <StepOpportunity minute={minute} catalog={catalog} dest={dest} setDest={setDest} />}
+          {step === 0 && <StepOpportunity minute={minute} catalog={catalog} dest={dest} setDest={setDest} commercials={commercials} />}
           {step === 1 && <StepStructure config={config} setConfig={setConfig} rows={rows} quote={quote} />}
           {step === 2 && (catalog
             ? <StepDetail config={config} setConfig={setConfig} catalog={catalog} quote={quote} />
