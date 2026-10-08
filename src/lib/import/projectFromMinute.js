@@ -9,6 +9,7 @@ import { SCHEMA_64 } from '../schemas/production.js';
 import { computeFormulas } from '../formulas/compute.js';
 import { applySchemaDefaults } from '../utils/schemaDefaults.js';
 import { FORMULES_METRAGE_V2 } from '../formulas/metrageVersion';
+import { FORMULES_STORES_V1 } from '../formulas/storesBateauxMetrage.js';
 import { extractMaterialsFromLines } from '../data/demo';
 import { uid } from '../utils/uid';
 import { isLogEntry } from '../lineLogs';
@@ -51,7 +52,9 @@ export function buildProjectFromMinute(minute, opts = {}) {
     expedition_type: opts.expedition_type || null,
     // Défauts du schéma (étiquettes à « Non ») sur les lignes reprises du devis, comme l'ajout
     // manuel d'une ligne ; nouveau projet → formules de métrage v2 (projet + chaque ligne).
-    config: { formules_metrage: FORMULES_METRAGE_V2 },
+    // Stores bateaux / velum : le projet suit le nouveau métrage (lignes ajoutées ensuite) ;
+    // les lignes reprises du devis gardent le marqueur de leur chiffrage.
+    config: { formules_metrage: FORMULES_METRAGE_V2, formules_stores: FORMULES_STORES_V1 },
     rows: computeFormulas(rows.map((r) => applySchemaDefaults({ ...withoutChiffrageMessages(r), formules_metrage: FORMULES_METRAGE_V2 }, SCHEMA_64)), SCHEMA_64),
     materials: extractMaterialsFromLines(rows),
   };

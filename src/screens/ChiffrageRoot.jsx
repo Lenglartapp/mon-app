@@ -353,6 +353,8 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
           { id: uid(), name: "nuit_hotel", type: "prix", value: 150 },
           // Version des formules de métrage rideaux (v2 : L. Finie, H. Coupe tête/OB, À plat OC/Chant)
           { id: uid(), name: "formules_metrage", type: "systeme", value: 2 },
+          // Métrage calculé des stores bateaux / velums (sinon saisi à la main) — cf. storesBateauxMetrage.js
+          { id: uid(), name: "formules_stores", type: "systeme", value: 1 },
         ],
         deplacements: [],
         createdAt: now,

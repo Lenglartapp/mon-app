@@ -47,6 +47,7 @@ import { can, role } from "../lib/authz";
 import { HeaderCard, EditableTitle, StatusPill, MetaItem, OwnerPicker } from "../components/ui/EntityHeader";
 import { formatAnyDateFR } from "../lib/utils/formatDate";
 import { FORMULES_METRAGE_V2 } from "../lib/formulas/metrageVersion";
+import { FORMULES_STORES_V1 } from "../lib/formulas/storesBateauxMetrage";
 
 // Hauteur du titre de section collant (les barres du tableau se collent juste dessous).
 const STICKY_TITLE_HEIGHT = 44;
@@ -754,6 +755,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
   // ajoutées en UNE seule mise à jour : N appels enchaînés produiraient autant
   // d'écritures concurrentes sur les lignes du projet.
   const isMetrageV2Project = Number(project?.config?.formules_metrage) >= FORMULES_METRAGE_V2;
+  const isStoresV1Project = Number(project?.config?.formules_stores) >= FORMULES_STORES_V1;
   const handleAddRow = (produitType = "Rideau", count = 1) => {
     const asked = Math.floor(Number(count));
     const n = Number.isFinite(asked) && asked >= 1 ? Math.min(asked, 500) : 1;
@@ -774,6 +776,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
       created: Date.now(),
       // Projet créé avec les formules v2 → la ligne les suit aussi (lu par les getters).
       ...(isMetrageV2Project && { formules_metrage: FORMULES_METRAGE_V2 }),
+      ...(isStoresV1Project && { formules_stores: FORMULES_STORES_V1 }),
     });
 
     const added = Array.from({ length: n }, () => {

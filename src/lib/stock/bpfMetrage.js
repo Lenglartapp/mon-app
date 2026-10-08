@@ -7,6 +7,8 @@
 // déduction rail), ce qui redonne le métrage du chiffrage (à l'arrondi 0,5 m près).
 
 import { RIDEAUX_PROD_SCHEMA } from '../schemas/production/rideaux.js';
+import { storeMetrage } from '../schemas/production/stores_bateaux.js';
+import { isStoresMetrageRow } from '../formulas/storesBateauxMetrage.js';
 
 const getterOf = (key) => RIDEAUX_PROD_SCHEMA.find((c) => c.key === key)?.valueGetter || null;
 const toNum = (v) => { const n = parseFloat(String(v ?? '').replace(',', '.')); return Number.isFinite(n) ? n : 0; };
@@ -21,6 +23,20 @@ const BPF_ML = {
 };
 
 export const isRideauRow = (row) => /rideau|voilage/i.test(String(row?.produit || ''));
+
+/** Store bateau / velum au nouveau métrage : ML de la toile et de la doublure calculés. */
+export const isStoreCalcRow = (row) => isStoresMetrageRow(row) && /bateau|velum|vélum/i.test(String(row?.produit || ''));
+
+/**
+ * ML exact (non arrondi) d'un store au nouveau métrage pour un champ de besoin, ou `null`.
+ * L'arrondi au demi-mètre se fait une fois par tissu, dans les besoins.
+ */
+export function storeMl(row, mlField) {
+    if (!isStoreCalcRow(row)) return null;
+    if (mlField === 'ml_toile_finition_1') return row.toile_finition_1 ? storeMetrage(row).ml : 0;
+    if (mlField === 'ml_doublure') return String(row.doublure || '').trim() ? storeMetrage(row, 'doublure').ml : 0;
+    return null;
+}
 
 /** Cotes de pose prises sur la ligne (au moins une HSPF renseignée). */
 export const hasPoseCotes = (row) => [row?.hspf_droite, row?.hspf_milieu, row?.hspf_gauche].some((v) => toNum(v) > 0);

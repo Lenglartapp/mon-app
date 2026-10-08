@@ -1,3 +1,4 @@
+import { isStoresMetrageRow } from '../../formulas/storesBateauxMetrage.js';
 // src/lib/schemas/chiffrage/stores_bateaux.js
 // Schéma commercial pour le module "Stores" (Bateaux/Velum)
 
@@ -42,7 +43,8 @@ export const STORES_BATEAUX_SCHEMA = [
     { key: "raccord_h_toile_finition_1", label: "Rac H. TF1", type: "number", width: 125 },
 
     // ml_toile_finition_1 (number) : ML Toile finition 1 (Saisie manuelle)
-    { key: "ml_toile_finition_1", label: "ML TF1", type: "number", width: 142 },
+    { key: "ml_toile_finition_1", label: "ML TF1", type: "number", width: 142, readOnly: (row) => isStoresMetrageRow(row),
+      tooltip: "Nouveaux chiffrages : calculé (ourlet 3 × 4, surplus 4 bateau / 5 velum, intervalle 25). Largeur finie = L + 1 ; à plat = L. finie + 12 ; fourreaux = ⌈H ÷ 25⌉ − 1 ; H. coupe = H + surplus × fourreaux + 20. Motif : ⌈à plat ÷ laize⌉ × H. coupe motif ; sinon couché (H. coupe ≤ laize) = à plat, debout (à plat ≤ laize) = H. coupe, sinon bandes × à plat (demi-lé si laize > 140). Anciens chiffrages : saisie libre." },
 
     // pa_toile_finition_1 (number) : PA TF1
     { key: "pa_toile_finition_1", label: "PA TF1", type: "number", width: 120 },
@@ -57,7 +59,8 @@ export const STORES_BATEAUX_SCHEMA = [
     { key: "laize_doublure", label: "Laize D.", type: "number", width: 135 },
 
     // ml_doublure (number) : ML Doubl. (Saisie manuelle)
-    { key: "ml_doublure", label: "ML Doubl.", type: "number", width: 142 },
+    { key: "ml_doublure", label: "ML Doubl.", type: "number", width: 142, readOnly: (row) => isStoresMetrageRow(row),
+      tooltip: "Nouveaux chiffrages : même calcul que le ML TF1, avec la laize de la doublure (sans motif). Anciens chiffrages : saisie libre." },
 
     // pa_doublure (number) : PA Doubl.
     { key: "pa_doublure", label: "PA Doubl.", type: "number", width: 140 },

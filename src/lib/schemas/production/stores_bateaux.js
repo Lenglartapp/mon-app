@@ -1,3 +1,5 @@
+import { FINITION_OB_OPTIONS, FINITION_OC_OPTIONS } from '../../constants/rideauxFields';
+import { metrageStore, isStoresMetrageRow, CAS_COUPE_LABEL } from '../../formulas/storesBateauxMetrage.js';
 // src/lib/schemas/production/stores_bateaux.js
 // Schéma atelier pour le module "Stores" (Bateaux/Velum)
 
@@ -6,6 +8,25 @@ const hideZero = (params) => {
     if (!val || Number(val) === 0) return '';
     return val;
 };
+
+const rowOf = (value, row) => row || value?.row || {};
+const r1 = (n) => Math.round(n * 10) / 10;
+const r2 = (n) => Math.round(n * 100) / 100;
+
+// Nouveau métrage (lignes marquées `formules_stores`) : calcul du module partagé, à partir
+// des vraies cotes de la ligne. Les autres lignes gardent leurs formules historiques.
+export function storeMetrage(row, tissu = 'toile') {
+    const common = {
+        produit: row.produit, largeur: row.largeur, hauteurFinie: row.hauteur_finie,
+        double: String(row.doublure || '').trim() !== '',
+        ourletCote: row.ourlet_de_cote, finitionOC: row.finition_oc,
+        surplus: row.surplus_fourreau, intervalle: row.valeur_intervalle,
+    };
+    return tissu === 'doublure'
+        ? metrageStore({ ...common, laize: row.laize_doublure })
+        : metrageStore({ ...common, laize: row.laize_toile_finition_1, raccordV: row.raccord_v_toile_finition_1 });
+}
+const NEW = (row) => isStoresMetrageRow(row);
 
 // Base definitions for mapSchema
 const BASE_STORES_BATEAUX_SCHEMA = [
@@ -51,9 +72,14 @@ const BASE_STORES_BATEAUX_SCHEMA = [
     // ourlet_de_cote (number) : Ourlet de côté
     { key: "ourlet_de_cote", label: "Ourlet Côté", type: "number", width: 120 },
 
+    // Finition de l'ourlet de côté : fixe le coefficient de l'à plat (Double… / vide → × 4,
+    // Surfil / Point Bourdon → × 2) sur les lignes au nouveau métrage.
+    { key: "finition_oc", label: "Finition OC", type: "select", options: FINITION_OC_OPTIONS, width: 175,
+      tooltip: "Coefficient de l'ourlet de côté dans l'à plat : « Double… » ou vide → × 4 ; « Surfil… » ou « Point Bourdon… » → × 2." },
+
     // a_plat (number, readOnly) : À Plat -> Largeur Finie + (Ourlet * 2)
     {
-        tooltip: "À Plat = L. Finie + 2 × Ourlet côté.",
+        tooltip: "À Plat = L. Finie + 2 × Ourlet côté.\nNouveau métrage : doublé → L. Finie + 4 ; sinon L. Finie + k × Ourlet côté (k = 4 pour « Double… » ou vide, 2 pour Surfil / Point Bourdon).",
         key: "a_plat",
         label: "À Plat",
         type: "number",
@@ -61,6 +87,7 @@ const BASE_STORES_BATEAUX_SCHEMA = [
         readOnly: true,
         valueGetter: (value, row) => {
             const actualRow = row || value?.row || {};
+            if (NEW(actualRow)) return r1(storeMetrage(actualRow).aPlat);
             const L = Number(actualRow.largeur) || 0;
             const lFinie = L + 1; // Formula applies
             const ourlet = Number(actualRow.ourlet_de_cote) || 0;
@@ -82,7 +109,7 @@ const BASE_STORES_BATEAUX_SCHEMA = [
 
     // hauteur_coupe (number, readOnly) : H. Coupe
     {
-        tooltip: "H. Finie + 50 (+ 80 si H. Finie ≥ 400). Si Laize TF1 dépasse cette valeur : = À Plat (toile couchée).",
+        tooltip: "H. Finie + 50 (+ 80 si H. Finie ≥ 400). Si Laize TF1 dépasse cette valeur : = À Plat (toile couchée).\nNouveau métrage : H. Finie + Surplus × Nb Tigettes + 20.",
         key: "hauteur_coupe",
         label: "H. Coupe",
         type: "number",
@@ -90,6 +117,7 @@ const BASE_STORES_BATEAUX_SCHEMA = [
         readOnly: true,
         valueGetter: (value, row) => {
             const actualRow = row || value?.row || {};
+            if (NEW(actualRow)) return r1(storeMetrage(actualRow).hauteurCoupe);
             const hFinie = Number(actualRow.hauteur_finie) || 0;
             const laize = Number(actualRow.laize_toile_finition_1) || 0; // Using TF1 Laize as reference
             const L = Number(actualRow.largeur) || 0;
@@ -125,6 +153,7 @@ const BASE_STORES_BATEAUX_SCHEMA = [
         readOnly: true,
         valueGetter: (value, row) => {
             const actualRow = row || value?.row || {};
+            if (NEW(actualRow)) return Number(actualRow.raccord_v_toile_finition_1) > 0 ? r1(storeMetrage(actualRow).hauteurCoupeMotif) : 0;
             const hFinie = Number(actualRow.hauteur_finie) || 0;
             const laize = Number(actualRow.laize_toile_finition_1) || 0;
             const L = Number(actualRow.largeur) || 0;
@@ -149,7 +178,7 @@ const BASE_STORES_BATEAUX_SCHEMA = [
 
     // hauteur_coupe_doublure (number, readOnly) : H. Coupe Doublure
     {
-        tooltip: "Comme H. Coupe, sur la laize de doublure : H. Finie + 50 (+ 80 si H. Finie ≥ 400), = À Plat si la laize dépasse.",
+        tooltip: "Comme H. Coupe, sur la laize de doublure : H. Finie + 50 (+ 80 si H. Finie ≥ 400), = À Plat si la laize dépasse.\nNouveau métrage : même hauteur de coupe que la toile.",
         key: "hauteur_coupe_doublure",
         label: "H. Coupe Doublure",
         type: "number",
@@ -157,6 +186,7 @@ const BASE_STORES_BATEAUX_SCHEMA = [
         readOnly: true,
         valueGetter: (value, row) => {
             const actualRow = row || value?.row || {};
+            if (NEW(actualRow)) return r1(storeMetrage(actualRow, 'doublure').hauteurCoupe);
             const hFinie = Number(actualRow.hauteur_finie) || 0;
             const laizeDouble = Number(actualRow.laize_doublure) || 0;
             const L = Number(actualRow.largeur) || 0;
@@ -182,8 +212,18 @@ const BASE_STORES_BATEAUX_SCHEMA = [
         }
     },
 
-    // picage_bas (text)
+    // picage_bas (text) — ancien champ libre de l'ourlet du bas, conservé tel quel
     { key: "picage_bas", label: "Picage bas", type: "text", width: 130 },
+
+    // Finition de l'ourlet du bas (liste). Les anciennes lignes dont « Picage bas » indique
+    // « … double apparent » l'affichent en « Double + apparente » sans que rien ne soit réécrit.
+    { key: "piquage_ourlet", label: "Finition OB", type: "select", options: FINITION_OB_OPTIONS, width: 175,
+      valueGetter: (value, row) => {
+        const r = row || value?.row || {};
+        if (r.piquage_ourlet) return r.piquage_ourlet;
+        return /double\s*apparent/i.test(String(r.picage_bas || '')) ? 'Double + apparente' : '';
+      } },
+
 
     // finition_chant_et_retour (text)
     { key: "finition_chant_et_retour", label: "Finition Chant et Retour", type: "text", width: 200 },
@@ -193,12 +233,22 @@ const BASE_STORES_BATEAUX_SCHEMA = [
     { key: "laize_toile_finition_1", label: "Laize TF1", type: "number", width: 120 },
     { key: "raccord_v_toile_finition_1", label: "Rac V. TF1", type: "number", width: 125 },
     { key: "raccord_h_toile_finition_1", label: "Rac H. TF1", type: "number", width: 125 },
-    { key: "ml_toile_finition_1", label: "ML TF1", type: "number", width: 120 },
+    { key: "ml_toile_finition_1", label: "ML TF1", type: "number", width: 120,
+      readOnly: (row) => NEW(row), tooltip: "Nouveau métrage (calculé) : motif → lés debout × H. Coupe Motif ; hauteur dans la laize → couché (À Plat) ; largeur dans la laize → debout (H. Coupe) ; sinon bandes couchées (au demi-lé si laize > 140). Valeur exacte, arrondie au demi-mètre par tissu dans les besoins.",
+      valueGetter: (value, row) => { const r = rowOf(value, row); return NEW(r) ? r2(storeMetrage(r).ml) : r.ml_toile_finition_1; } },
+    { key: "cas_coupe_toile", label: "Coupe TF1", type: "text", width: 150, readOnly: true,
+      tooltip: "Façon de couper la toile (nouveau métrage) : Motif, Couché, Debout ou Bandes couchées.",
+      valueGetter: (value, row) => { const r = rowOf(value, row); if (!NEW(r)) return ''; const m = storeMetrage(r); return m.cas === 'bandes' ? `${CAS_COUPE_LABEL.bandes} × ${m.nbBandes}` : m.cas === 'motif' ? `${CAS_COUPE_LABEL.motif} × ${m.nbBandes}` : CAS_COUPE_LABEL[m.cas]; } },
 
     // DOUBLURE
     { key: "doublure", label: "Doublure", type: "catalog_item", category: "Tissu,Tissus", width: 180 },
     { key: "laize_doublure", label: "Laize D.", type: "number", width: 120 },
-    { key: "ml_doublure", label: "ML Doubl.", type: "number", width: 120 },
+    { key: "ml_doublure", label: "ML Doubl.", type: "number", width: 120,
+      readOnly: (row) => NEW(row), tooltip: "Nouveau métrage (calculé) : motif → lés debout × H. Coupe Motif ; hauteur dans la laize → couché (À Plat) ; largeur dans la laize → debout (H. Coupe) ; sinon bandes couchées (au demi-lé si laize > 140). Valeur exacte, arrondie au demi-mètre par tissu dans les besoins.",
+      valueGetter: (value, row) => { const r = rowOf(value, row); if (!NEW(r)) return r.ml_doublure; return String(r.doublure || '').trim() ? r2(storeMetrage(r, 'doublure').ml) : 0; } },
+    { key: "cas_coupe_doublure", label: "Coupe Doubl.", type: "text", width: 150, readOnly: true,
+      tooltip: "Façon de couper la doublure (nouveau métrage) : Couché, Debout ou Bandes couchées.",
+      valueGetter: (value, row) => { const r = rowOf(value, row); if (!NEW(r) || !String(r.doublure || '').trim()) return ''; const m = storeMetrage(r, 'doublure'); return m.cas === 'bandes' ? `${CAS_COUPE_LABEL.bandes} × ${m.nbBandes}` : CAS_COUPE_LABEL[m.cas]; } },
 
     // GORGE
     { key: "largeur_gorge", label: "Largeur Gorge (cm)", type: "number", width: 155 },
@@ -232,10 +282,10 @@ export const STORES_BATEAUX_PROD_SCHEMA = [
     ...mapSchema([
         'detail',
         'zone', 'piece', 'fenetre', 'produit',
-        'largeur', 'largeur_finie', 'ourlet_de_cote',
+        'largeur', 'largeur_finie', 'ourlet_de_cote', 'finition_oc',
         'a_plat',
         'hauteur_finie', 'statut_cotes', 'hauteur_coupe', 'hauteur_coupe_motif', 'hauteur_coupe_doublure',
-        'picage_bas', 'finition_chant_et_retour',
+        'picage_bas', 'piquage_ourlet', 'finition_chant_et_retour',
 
         // TOILE 1
         { key: 'toile_finition_1', label: 'Tissu 1' },
@@ -243,11 +293,13 @@ export const STORES_BATEAUX_PROD_SCHEMA = [
         'raccord_h_toile_finition_1',
         'laize_toile_finition_1',
         'ml_toile_finition_1',
+        'cas_coupe_toile',
 
         // DOUBLURE
         'doublure',
         'laize_doublure',
         'ml_doublure',
+        'cas_coupe_doublure',
 
         // GORGE
         'largeur_gorge',
@@ -284,7 +336,7 @@ export const STORES_BATEAUX_PROD_SCHEMA = [
     { key: "deportation_premier_anneau", label: "Déport 1er Anneau", type: "text", width: 175 },
     { key: "valeur_velcro", label: "Valeur Velcro", type: "select", options: ["2", "2.5", "5"], width: 130 },
     {
-        tooltip: "Arrondi(H. Finie ÷ Val. Intervalle). 0 sans intervalle.",
+        tooltip: "Arrondi(H. Finie ÷ Val. Intervalle). 0 sans intervalle.\nNouveau métrage : arrondi au supérieur (intervalle vide → 25).",
         key: "nombre_intervalles",
         label: "Nb Intervalles",
         type: "number",
@@ -292,19 +344,26 @@ export const STORES_BATEAUX_PROD_SCHEMA = [
         readOnly: true,
         valueGetter: (v, row) => {
             const actualRow = row || v?.row || {};
+            if (NEW(actualRow)) return storeMetrage(actualRow).nbFourreaux + (Number(actualRow.hauteur_finie) > 0 ? 1 : 0);
             const hFinie = Number(actualRow.hauteur_finie) || 0;
             const vIntervalle = Number(actualRow.valeur_intervalle) || 0;
             if (vIntervalle <= 0) return 0;
             return Math.max(0, Math.round(hFinie / vIntervalle));
         }
     },
-    { key: "valeur_intervalle", label: "Val. Intervalle", type: "number", width: 130 },
+    { key: "valeur_intervalle", label: "Val. Intervalle", type: "number", width: 130, defaultValue: 25 },
+    // Surplus de tissu par fourreau (cm). Vide → 4 (bateau) / 5 (velum).
+    { key: "surplus_fourreau", label: "Surplus fourreau", type: "number", width: 150,
+      tooltip: "Tissu ajouté par fourreau (cm). Vide : 4 cm pour un store bateau, 5 cm pour un velum." },
     { key: "croquis_intervalle", label: "Croquis Int.", type: "photo", width: 130 },
     { key: "barre_de_charge", label: "Barre Charge", type: "text", width: 130 },
     { key: "longueur_barre_de_charge", label: "Long. Barre Ch.", type: "number", width: 150 },
     { key: "longueur_tigette", label: "Long. Tigette", type: "number", width: 135 },
+    // Velum : diamètres (informatifs, sans effet sur le calcul)
+    { key: "diametre_barre_de_charge", label: "Ø Barre Ch.", type: "text", width: 120 },
+    { key: "diametre_tigettes", label: "Ø Tigettes", type: "text", width: 115 },
     {
-        tooltip: "Nb Intervalles − 1 (minimum 0).",
+        tooltip: "Nb Intervalles − 1 (minimum 0). Une tigette par fourreau.",
         key: "nombre_de_tigettes",
         label: "Nb Tigettes",
         type: "number",
@@ -312,6 +371,7 @@ export const STORES_BATEAUX_PROD_SCHEMA = [
         readOnly: true,
         valueGetter: (v, row) => {
             const actualRow = row || v?.row || {};
+            if (NEW(actualRow)) return storeMetrage(actualRow).nbFourreaux;
             const hFinie = Number(actualRow.hauteur_finie) || 0;
             const vIntervalle = Number(actualRow.valeur_intervalle) || 0;
             if (vIntervalle <= 0) return 0;
@@ -351,11 +411,13 @@ export const STORES_BATEAUX_GETTERS = {
         return Math.ceil(l + 1);
     },
     a_plat: (row) => {
+        if (NEW(row)) return r1(storeMetrage(row).aPlat);
         const L = Number(row?.largeur) || 0;
         const ourlet = Number(row?.ourlet_de_cote) || 0;
         return Math.ceil((L + 1) + ourlet * 2);
     },
     hauteur_coupe: (row) => {
+        if (NEW(row)) return r1(storeMetrage(row).hauteurCoupe);
         const hFinie = Number(row?.hauteur_finie) || 0;
         const laize = Number(row?.laize_toile_finition_1) || 0;
         const aPlat = STORES_BATEAUX_GETTERS.a_plat(row);
@@ -363,12 +425,14 @@ export const STORES_BATEAUX_GETTERS = {
         return Math.round((laize > (hFinie + threshold) ? aPlat : hFinie + threshold) * 10) / 10;
     },
     hauteur_coupe_motif: (row) => {
+        if (NEW(row)) return Number(row.raccord_v_toile_finition_1) > 0 ? r1(storeMetrage(row).hauteurCoupeMotif) : 0;
         const hCoupe = STORES_BATEAUX_GETTERS.hauteur_coupe(row);
         const raccordV = Number(row?.raccord_v_toile_finition_1) || 0;
         if (raccordV === 0) return 0;
         return Math.round(((Math.ceil(hCoupe / raccordV) * raccordV) + raccordV) * 10) / 10;
     },
     hauteur_coupe_doublure: (row) => {
+        if (NEW(row)) return r1(storeMetrage(row, 'doublure').hauteurCoupe);
         const hFinie = Number(row?.hauteur_finie) || 0;
         const laizeDouble = Number(row?.laize_doublure) || 0;
         const aPlat = STORES_BATEAUX_GETTERS.a_plat(row);
@@ -380,9 +444,14 @@ export const STORES_BATEAUX_GETTERS = {
         return Math.round((L + 1) / 50) + 1;
     },
     nombre_intervalles: (row) => {
+        if (NEW(row)) return storeMetrage(row).nbFourreaux + (Number(row.hauteur_finie) > 0 ? 1 : 0);
         const hFinie = Number(row?.hauteur_finie) || 0;
         const vIntervalle = Number(row?.valeur_intervalle) || 0;
         if (vIntervalle <= 0) return 0;
         return Math.max(0, Math.round(hFinie / vIntervalle));
     },
+    // Anciennes lignes : valeur telle qu'avant (champ de la ligne), pour ne rien changer aux étiquettes.
+    nombre_de_tigettes: (row) => (NEW(row) ? storeMetrage(row).nbFourreaux : row?.nombre_de_tigettes),
+    ml_toile_finition_1: (row) => (NEW(row) ? r2(storeMetrage(row).ml) : row?.ml_toile_finition_1),
+    ml_doublure: (row) => (NEW(row) ? (String(row.doublure || '').trim() ? r2(storeMetrage(row, 'doublure').ml) : 0) : row?.ml_doublure),
 };
