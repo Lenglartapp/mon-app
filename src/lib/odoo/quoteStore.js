@@ -31,9 +31,22 @@ export function saveSharedProfile(config) {
  * Écrit minutes.odoo_quote. Renvoie { ok, missingColumn } : missingColumn = la migration n'a pas
  * encore été lancée (PostgREST PGRST204 / colonne inconnue) → l'appelant garde le navigateur.
  */
+// Champs de odoo_quote.link tenus par le SERVEUR (api/odoo/order-event.js, création auto du projet) :
+// l'écran du devis ne doit jamais les écraser avec sa copie, possiblement plus ancienne.
+export const SERVER_LINK_FIELDS = ['state', 'database', 'isProdSource', 'lastEvent', 'confirmedAt', 'project',
+  'pendingProject', 'pendingClaimAt', 'droitfilProjectId', 'statusBeforeOrder', 'archivedByOdoo', 'projectStatusBefore'];
+
 export async function saveMinuteQuote(minuteId, odooQuote) {
   if (!minuteId) return { ok: false };
   try {
+    const { data: cur } = await supabase.from('minutes').select('odoo_quote').eq('id', minuteId).maybeSingle();
+    const dbLink = cur?.odoo_quote?.link;
+    if (dbLink && odooQuote?.link && String(dbLink.orderId) === String(odooQuote.link.orderId)) {
+      const kept = Object.fromEntries(SERVER_LINK_FIELDS.filter((k) => k in dbLink).map((k) => [k, dbLink[k]]));
+      odooQuote = { ...odooQuote, link: { ...odooQuote.link, ...kept } };
+    } else if (dbLink && !odooQuote?.link) {
+      odooQuote = { ...odooQuote, link: dbLink };
+    }
     const { error } = await supabase.from('minutes').update({ odoo_quote: odooQuote }).eq('id', minuteId);
     if (!error) return { ok: true };
     const missingColumn = error.code === 'PGRST204' || /odoo_quote/.test(error.message || '');
