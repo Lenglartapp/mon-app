@@ -19,6 +19,7 @@ import { LOC_A_COMPLETER, splitLocations } from '../../../lib/inventory/stockFie
 import { DaField, ChoicePill } from '../../ui/DaForm';
 import { TonePill } from '../../ui/ToolbarControls';
 import { DA_FIELD_SX } from '../../../lib/constants/daStyles';
+import { supabase } from '../../../lib/supabaseClient';
 
 // Entrée / Sortie / Changement d'emplacement — aligné sur le modèle « réception » :
 //  - fournisseur / référence / coloris / laize sont des champs à part ;
@@ -43,6 +44,15 @@ const MENU_PAPER_SX = { mt: 0.5, borderRadius: '8px', border: '1px solid #E0DED9
 
 const EMPTY_FORM = { product: '', ref: '', coloris: '', laize: '', fournisseur: '', qty: '', unit: 'ml', project: '', customReason: '' };
 
+// Liste de courses Odoo : type de produit → catégorie du stock.
+const ODOO_TYPE_TO_CATEGORY = { tissu: 'Tissu', rail: 'Rail', mecanisme: 'Mécanisme', consommable: 'Consommable' };
+// Recherche des articles répertoriés : tous les mots tapés doivent s'y retrouver.
+const filterCatalogued = (options, { inputValue }) => {
+    const words = inputValue.toLowerCase().split(/\s+/).filter(Boolean);
+    if (!words.length) return options;
+    return options.filter((o) => { const t = o.search; return words.every((w) => t.includes(w)); });
+};
+
 /** « DEDAR · SALINGER — 03 » : libellé lisible d'un article du stock. */
 const itemTitle = (it) => {
     const name = it.ref ? [it.ref, it.coloris].filter(Boolean).join(' — ') : it.product;
@@ -63,6 +73,10 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
     const [locations, setLocations] = useState([]);
     const [pieces, setPieces] = useState([]); // entrée : [{id, qty}] — sortie : [{id, name, qty, p_qty}]
     const [existingPiecesCount, setExistingPiecesCount] = useState(0);
+    // Entrée : « répertorié » (tissu d'un dossier : liste de courses, matériauthèque, BPF) par
+    // défaut, ou « non répertorié » (pièce ajoutée au stock sans lien avec une commande).
+    const [catalogued, setCatalogued] = useState(true);
+    const [courseLines, setCourseLines] = useState([]);
 
     const setField = (k, v) => setFormData(prev => ({ ...prev, [k]: v }));
 
@@ -79,41 +93,81 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
         if (open) {
             setTypology('Tissu');
             setExitReason('Production');
+            setCatalogued(true);
             resetSelection('Tissu');
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [open, type]);
+
+    // Liste de courses Odoo (tous dossiers) : fournisseur / référence / coloris / laize déjà séparés.
+    useEffect(() => {
+        if (!open || !isIN) return undefined;
+        let alive = true;
+        supabase.from('odoo_course_lines')
+            .select('odoo_id,droitfil_project_id,reference,coloris,laize,fournisseur,unite,quantite,type_produit,statut,date_reception,removed_from_odoo')
+            .eq('removed_from_odoo', false)
+            .then(({ data }) => { if (alive) setCourseLines(data || []); });
+        return () => { alive = false; };
+    }, [open, isIN]);
+
+    const handleCataloguedChange = (v) => {
+        setCatalogued(v);
+        resetSelection(typology);
+    };
 
     const handleTypologyChange = (t) => {
         setTypology(t);
         resetSelection(t);
     };
 
-    // --- ENTRÉE : suggestions (tissus des dossiers actifs, ou articles déjà connus) ---
+    // --- ENTRÉE RÉPERTORIÉE : articles rattachés aux dossiers actifs ---
+    //  1. liste de courses Odoo : fournisseur, référence, coloris, laize déjà renseignés ;
+    //  2. (tissus) matériauthèque et BPF des dossiers : nom complet + laize ;
+    //  3. (autres catégories) articles déjà connus du stock.
     const sourceOptionsIN = useMemo(() => {
         if (!isIN) return [];
-        const optsMap = new Map();
+        const projById = new Map(projects.map(p => [p.id, p]));
+        const active = projects.filter(p => p.status !== 'ARCHIVED');
+        const opts = [];
+        const seen = new Set();
+        const push = (o) => {
+            const k = `${(o.title || '').toLowerCase()}|${o.project}`;
+            if (seen.has(k)) return;
+            seen.add(k);
+            o.search = [o.fournisseur, o.ref, o.coloris, o.product, o.project, o.laize && `laize ${o.laize}`].filter(Boolean).join(' ').toLowerCase();
+            opts.push(o);
+        };
+        courseLines.forEach(l => {
+            if ((ODOO_TYPE_TO_CATEGORY[l.type_produit] || 'Divers') !== typology) return;
+            const proj = projById.get(l.droitfil_project_id);
+            if (!proj || proj.status === 'ARCHIVED') return;
+            const name = [l.reference, l.coloris].filter(Boolean).join(' — ');
+            push({
+                source: 'Liste de courses', title: [l.fournisseur, name].filter(Boolean).join(' · ') || 'Article',
+                fournisseur: l.fournisseur || '', ref: l.reference || '', coloris: l.coloris || '', laize: l.laize || '',
+                product: name, project: proj.name || '', unit: typology === 'Tissu' ? 'ml' : (l.unite || 'u'),
+                ordered: l.quantite != null ? `${l.quantite} ${l.unite || ''}`.trim() : null,
+                received: !!l.date_reception,
+            });
+        });
         if (typology === 'Tissu') {
-            projects.filter(p => p.status !== 'ARCHIVED').forEach(proj => {
+            active.forEach(proj => {
+                (proj.materials || []).filter(m => /tissu|doublure|inter/i.test(m.category || 'Tissu')).forEach(m => {
+                    if (m.name) push({ source: 'Matériauthèque', title: m.name, product: m.name, laize: m.width || '', project: proj.name || '', unit: 'ml' });
+                });
                 (proj.rows || []).forEach(row => {
-                    const add = (name, width) => {
-                        if (!name) return;
-                        const label = `${name} (${proj.name})`;
-                        if (!optsMap.has(label)) optsMap.set(label, { label, product: name, laize: width || '', project: proj.name });
-                    };
-                    add(row.tissu_deco1, row.laize_tissu1 || row.laize_tissu_deco1);
-                    add(row.tissu_deco2, row.laize_tissu2);
-                    add(row.doublure, row.laize_doublure);
+                    [[row.tissu_deco1, row.laize_tissu1 || row.laize_tissu_deco1], [row.tissu_deco2, row.laize_tissu2], [row.doublure, row.laize_doublure]]
+                        .forEach(([name, laize]) => { if (name) push({ source: 'BPF', title: name, product: name, laize: laize || '', project: proj.name || '', unit: 'ml' }); });
                 });
             });
         } else {
             inventory.filter(it => it.category === typology).forEach(it => {
-                const label = itemTitle(it);
-                if (!optsMap.has(label)) optsMap.set(label, { label, product: it.product, ref: it.ref, coloris: it.coloris, fournisseur: it.fournisseur, unit: it.unit, project: '' });
+                push({ source: 'Stock', title: itemTitle(it), fournisseur: it.fournisseur || '', ref: it.ref || '', coloris: it.coloris || '', laize: it.laize || '', product: it.product, project: '', unit: it.unit || 'u' });
             });
         }
-        return Array.from(optsMap.values()).sort((a, b) => a.label.localeCompare(b.label));
-    }, [projects, inventory, isIN, typology]);
+        const order = { 'Liste de courses': 0, 'Matériauthèque': 1, BPF: 2, Stock: 3 };
+        return opts.sort((a, b) => (order[a.source] - order[b.source]) || a.title.localeCompare(b.title));
+    }, [projects, inventory, isIN, typology, courseLines]);
 
     // --- SORTIE / DÉPLACEMENT : articles réellement en stock ---
     const stockOptions = useMemo(() => {
@@ -123,16 +177,17 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
             .sort((a, b) => itemTitle(a).localeCompare(itemTitle(b)));
     }, [inventory, isIN, typology]);
 
+    // Article répertorié choisi : fournisseur, référence, coloris, laize et dossier se remplissent.
     const handleSourceIN = (e, opt) => {
         setSourceOption(opt);
-        if (!opt || typeof opt === 'string') return;
+        if (!opt) { setFormData(prev => ({ ...EMPTY_FORM, unit: prev.unit })); return; }
         setFormData(prev => ({
             ...prev,
             product: opt.product || '',
-            ref: opt.ref || prev.ref,
-            coloris: opt.coloris || prev.coloris,
-            fournisseur: opt.fournisseur || prev.fournisseur,
-            laize: opt.laize || prev.laize,
+            ref: opt.ref || '',
+            coloris: opt.coloris || '',
+            fournisseur: opt.fournisseur || '',
+            laize: opt.laize || '',
             project: opt.project || '',
             unit: typology === 'Tissu' ? 'ml' : (opt.unit || 'u'),
         }));
@@ -169,7 +224,7 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
     const moveUnchanged = isMOVE && selectedItem && newLocation === splitLocations(selectedItem.location).join(', ');
 
     const canSubmit = !!user.trim() && (
-        isIN ? (qty > 0 && !!(formData.product.trim() || formData.ref.trim()))
+        isIN ? (qty > 0 && !!(formData.product.trim() || formData.ref.trim() || formData.fournisseur.trim()))
             : isOUT ? (!!selectedItem && qty > 0 && qty <= Number(selectedItem.qty))
                 : (!!selectedItem && locations.length > 0 && !moveUnchanged)
     );
@@ -179,7 +234,8 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
         const base = { user: user.trim(), type, date: new Date().toISOString() };
 
         if (isIN) {
-            const product = formData.product.trim() || [formData.ref.trim(), formData.coloris.trim()].filter(Boolean).join(' — ');
+            // Libellé : celui de l'article répertorié, sinon « référence — coloris » (ou le fournisseur).
+            const product = formData.product.trim() || [formData.ref.trim(), formData.coloris.trim()].filter(Boolean).join(' — ') || formData.fournisseur.trim();
             onSave({
                 ...base,
                 product,
@@ -242,39 +298,66 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
                         <Box sx={sectionSx}>
                             {sectionTitle('Article reçu')}
                             <Stack spacing={2}>
-                                <DaField label={typology === 'Tissu' ? 'Tissu d’un dossier (ou saisie libre)' : `${typology} déjà connu (ou saisie libre)`}>
-                                    <Autocomplete
-                                        freeSolo
-                                        options={sourceOptionsIN}
-                                        getOptionLabel={(o) => (typeof o === 'string' ? o : o.label || '')}
-                                        value={sourceOption}
-                                        onChange={handleSourceIN}
-                                        onInputChange={(e, val, reason) => { if (reason === 'input') setField('product', val); }}
-                                        slotProps={{ paper: { sx: MENU_PAPER_SX } }}
-                                        renderInput={(params) => (
-                                            <TextField {...params} size="small" placeholder="Rechercher…" sx={DA_FIELD_SX}
-                                                InputProps={{ ...params.InputProps, startAdornment: <InputAdornment position="start"><Search size={16} color="#9CA3AF" /></InputAdornment> }} />
-                                        )}
-                                    />
-                                </DaField>
-                                <Stack direction="row" spacing={1.5}>
-                                    <Box sx={{ flex: 1 }}><DaField label="Fournisseur"><TextField fullWidth size="small" value={formData.fournisseur} onChange={(e) => setField('fournisseur', e.target.value)} sx={DA_FIELD_SX} /></DaField></Box>
-                                    <Box sx={{ flex: 1 }}><DaField label="Référence"><TextField fullWidth size="small" value={formData.ref} onChange={(e) => setField('ref', e.target.value)} sx={DA_FIELD_SX} /></DaField></Box>
+                                <Box>
+                                <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+                                    <ChoicePill active={catalogued} onClick={() => handleCataloguedChange(true)}>Répertorié</ChoicePill>
+                                    <ChoicePill active={!catalogued} onClick={() => handleCataloguedChange(false)}>Non répertorié</ChoicePill>
                                 </Stack>
-                                <Stack direction="row" spacing={1.5}>
-                                    <Box sx={{ flex: 1 }}><DaField label="Coloris"><TextField fullWidth size="small" value={formData.coloris} onChange={(e) => setField('coloris', e.target.value)} sx={DA_FIELD_SX} /></DaField></Box>
-                                    {typology === 'Tissu' && (
-                                        <Box sx={{ width: 130 }}><DaField label="Laize"><TextField fullWidth size="small" value={formData.laize} onChange={(e) => setField('laize', e.target.value)} placeholder="ex. 140" sx={DA_FIELD_SX} /></DaField></Box>
-                                    )}
-                                </Stack>
-                                <DaField label="Libellé produit">
-                                    <TextField
-                                        fullWidth size="small" value={formData.product}
-                                        onChange={(e) => setField('product', e.target.value)}
-                                        placeholder={formData.ref ? `auto : ${[formData.ref, formData.coloris].filter(Boolean).join(' — ')}` : ''}
-                                        sx={DA_FIELD_SX}
-                                    />
-                                </DaField>
+                                <Typography sx={{ fontSize: 12, color: '#9B9A97', mt: 1 }}>
+                                    {catalogued
+                                        ? 'Lié à un dossier : liste de courses, matériauthèque ou BPF. Les informations se remplissent toutes seules.'
+                                        : 'Pièce ajoutée au stock sans lien avec une commande ni un dossier.'}
+                                </Typography>
+                                </Box>
+                                {catalogued && (
+                                    <DaField label={typology === 'Tissu' ? 'Tissu répertorié' : `${typology} répertorié`}>
+                                        <Autocomplete
+                                            options={sourceOptionsIN}
+                                            value={sourceOption}
+                                            onChange={handleSourceIN}
+                                            filterOptions={filterCatalogued}
+                                            getOptionLabel={(o) => o.title || ''}
+                                            isOptionEqualToValue={(a, b) => a.title === b.title && a.project === b.project}
+                                            slotProps={{ paper: { sx: MENU_PAPER_SX }, listbox: { sx: { maxHeight: 360, p: 0.5 } } }}
+                                            renderOption={(props, o) => {
+                                                const { key, ...rest } = props;
+                                                return (
+                                                    <li key={key} {...rest} style={{ ...rest.style, borderRadius: 6, padding: '8px 10px', alignItems: 'center', gap: 12 }}>
+                                                        <Box sx={{ flex: 1, minWidth: 0 }}>
+                                                            <div style={{ fontSize: 14, fontWeight: 500, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.title}</div>
+                                                            <div style={{ fontSize: 12, color: '#6B7280', marginTop: 2 }}>
+                                                                {o.project || 'Stock libre'}
+                                                                {o.laize && <> · laize {o.laize}</>}
+                                                                {o.ordered && <> · commandé {o.ordered}</>}
+                                                                {o.received && <> · déjà réceptionné (Odoo)</>}
+                                                            </div>
+                                                        </Box>
+                                                        <TonePill tone={o.source === 'Liste de courses' ? 4 : null}>{o.source}</TonePill>
+                                                    </li>
+                                                );
+                                            }}
+                                            renderInput={(params) => (
+                                                <TextField {...params} size="small" placeholder="Fournisseur, référence, coloris, dossier…" sx={DA_FIELD_SX}
+                                                    InputProps={{ ...params.InputProps, startAdornment: <InputAdornment position="start"><Search size={16} color="#9CA3AF" /></InputAdornment> }} />
+                                            )}
+                                            noOptionsText="Aucun article répertorié ne correspond — passe en « Non répertorié »."
+                                        />
+                                    </DaField>
+                                )}
+                                {(!catalogued || sourceOption) && (
+                                    <>
+                                        <Stack direction="row" spacing={1.5}>
+                                            <Box sx={{ flex: 1 }}><DaField label="Fournisseur"><TextField fullWidth size="small" value={formData.fournisseur} onChange={(e) => setField('fournisseur', e.target.value)} sx={DA_FIELD_SX} /></DaField></Box>
+                                            <Box sx={{ flex: 1 }}><DaField label="Référence"><TextField fullWidth size="small" value={formData.ref} onChange={(e) => setField('ref', e.target.value)} sx={DA_FIELD_SX} /></DaField></Box>
+                                        </Stack>
+                                        <Stack direction="row" spacing={1.5}>
+                                            <Box sx={{ flex: 1 }}><DaField label="Coloris"><TextField fullWidth size="small" value={formData.coloris} onChange={(e) => setField('coloris', e.target.value)} sx={DA_FIELD_SX} /></DaField></Box>
+                                            {typology === 'Tissu' && (
+                                                <Box sx={{ width: 130 }}><DaField label="Laize"><TextField fullWidth size="small" value={formData.laize} onChange={(e) => setField('laize', e.target.value)} placeholder="ex. 140" sx={DA_FIELD_SX} /></DaField></Box>
+                                            )}
+                                        </Stack>
+                                    </>
+                                )}
                             </Stack>
                         </Box>
                     ) : (
