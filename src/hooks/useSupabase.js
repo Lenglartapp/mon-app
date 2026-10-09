@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { logProjectCreation } from '../lib/projectEvents';
 import { db } from '../lib/offlineDb';
@@ -1043,7 +1043,9 @@ export const useEvents = () => {
 };
 
 // --- STOCKS (INVENTAIRE) ---
-export const useStocks = () => {
+// `liveProjects` : liste des dossiers déjà tenue par l'appli. Un dossier renommé y change
+// tout de suite : le stock affiche alors son nouveau nom sans attendre un rechargement.
+export const useStocks = (liveProjects) => {
     const [inventory, setInventory] = useState([]);
     const [movements, setMovements] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -1088,10 +1090,15 @@ export const useStocks = () => {
     // celui de l'article (un ou plusieurs codes « B3, C1 »).
     const addMovement = async (movement) => {
         try {
+            // Même dossier : par id quand les deux en ont un (suit un renommage), sinon par nom.
+            const movementProjectId = await resolveProjectId(movement.project);
+            const sameProject = (i) => (i.project_id && movementProjectId
+                ? String(i.project_id) === String(movementProjectId)
+                : (i.project === movement.project || (!i.project && !movement.project)));
             const existingItem = (movement.item_id && inventory.find(i => i.id === movement.item_id)) || inventory.find(i =>
                 i.product === movement.product &&
                 i.location === movement.location &&
-                (i.project === movement.project || (!i.project && !movement.project))
+                sameProject(i)
             );
             const now = new Date().toISOString();
 
@@ -1104,7 +1111,7 @@ export const useStocks = () => {
                 fournisseur: movement.fournisseur || srcItem?.fournisseur,
             });
             const project = movement.project || existingItem?.project || null;
-            const project_id = (await resolveProjectId(project)) ?? existingItem?.project_id ?? null;
+            const project_id = (movement.project ? movementProjectId : null) ?? existingItem?.project_id ?? null;
             const logBase = { product: movement.product, ...meta, unit: movement.unit, user_name: movement.user, project, project_id, date: now };
             const cleanPiece = (p) => ({ id: p.id, qty: Number(p.qty), name: p.name });
 
@@ -1303,9 +1310,19 @@ export const useStocks = () => {
         }
     };
 
+    const liveIndex = useMemo(() => (liveProjects?.length ? projectIndex(liveProjects) : null), [liveProjects]);
+    const inventoryView = useMemo(
+        () => (liveIndex ? inventory.map((r) => withCurrentProjectName(r, liveIndex)) : inventory),
+        [inventory, liveIndex]
+    );
+    const movementsView = useMemo(
+        () => (liveIndex ? movements.map((r) => withCurrentProjectName(r, liveIndex)) : movements),
+        [movements, liveIndex]
+    );
+
     return {
-        inventory,
-        movements,
+        inventory: inventoryView,
+        movements: movementsView,
         loading,
         addMovement,
         refreshStocks: fetchStocks,
