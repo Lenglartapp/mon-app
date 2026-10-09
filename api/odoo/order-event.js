@@ -15,6 +15,8 @@
 //   • project_archived / project_deleted (projet Odoo archivé ou supprimé à la main, commande
 //                 inchangée) : projet Droitfil archivé ; la minute reste en « Commande ».
 //   • project_restored : projet Droitfil ressorti des archives s'il avait été archivé par Odoo.
+//   • course_lines_changed (réception / retour validé, « Solder ») : relecture immédiate de la liste
+//                 de courses des projets indiqués — même code que le job de nuit (syncCourseLinesInto).
 // Chaque action sur le projet est inscrite dans son historique (table project_events).
 // Idempotent : le même événement reçu deux fois ne crée rien de plus.
 //
@@ -24,6 +26,9 @@
 
 import { timingSafeEqual } from 'node:crypto';
 import { getSupabaseAdmin } from '../_supabaseAdmin.js';
+import { searchRead } from '../_odooClient.js';
+import { COURSE_FIELDS } from './course-lines.js';
+import { syncCourseLinesInto } from '../../src/lib/odoo/courseLinesCore.js';
 
 export const PROD_ODOO_DB = 'lenglart-erp-lenglart-main-9543240';
 const EVENTS = new Set(['confirmed', 'cancelled', 'draft', 'deleted', 'project_archived', 'project_restored', 'project_deleted']);
@@ -53,12 +58,32 @@ function authorized(req) {
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
+// Liste de courses modifiée dans Odoo : on relit les projets concernés tout de suite (sans attendre la
+// nuit). Seulement pour la base de PRODUCTION : la lecture se fait sur l'Odoo de l'hébergement (ODOO_URL),
+// un événement d'une autre base viserait d'autres projets. Rejouable sans risque (upsert + garde stock).
+async function courseLinesChanged({ database, project_ids: projectIds = [] }, res) {
+  if (database !== PROD_ODOO_DB) { res.status(200).json({ ok: true, ignored: 'base non production' }); return; }
+  const ids = [...new Set((projectIds || []).map(Number).filter(Boolean))];
+  if (!ids.length) { res.status(200).json({ ok: true, ignored: 'aucun projet' }); return; }
+  const sb = getSupabaseAdmin();
+  const { data: projects, error } = await sb.from('projects').select('id,name,id_projet_odoo').in('id_projet_odoo', ids);
+  if (error) throw new Error(error.message);
+  const synced = [];
+  for (const p of projects || []) {
+    const odooLines = await searchRead('project.course.line', [['project_id', '=', Number(p.id_projet_odoo)]], COURSE_FIELDS, { order: 'sequence' });
+    const r = await syncCourseLinesInto(sb, { odooLines, droitfilProjectId: p.id, odooProjectId: Number(p.id_projet_odoo), projectName: p.name });
+    synced.push({ project: p.name, lines: r.lines.length, receptionsCreated: r.receptionsCreated });
+  }
+  res.status(200).json({ ok: true, event: 'course_lines_changed', synced });
+}
+
 export default async function handler(req, res) {
   try {
     if (req.method !== 'POST') { res.status(405).json({ ok: false, error: 'POST attendu.' }); return; }
     if (!authorized(req)) { res.status(401).json({ ok: false, error: 'Secret invalide.' }); return; }
 
     const { event, database, minute_id: minuteId, order = {}, project = null, sent_at: sentAt } = req.body || {};
+    if (event === 'course_lines_changed') { await courseLinesChanged(req.body || {}, res); return; }
     if (!event || !minuteId) { res.status(400).json({ ok: false, error: 'event ou minute_id manquant.' }); return; }
     // Événement inconnu (ajout futur côté Odoo) : accusé de réception, sinon Odoo le renverrait en boucle.
     if (!EVENTS.has(event)) { res.status(200).json({ ok: true, ignored: `événement ${event} non géré` }); return; }
