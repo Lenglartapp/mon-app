@@ -8,6 +8,7 @@ import { archiveRowLogs } from '../lib/lineLogs';
 import { calculateProfitability, commissionRateForOwner } from '../lib/financial/profitabilityCalculator';
 import { isSchemaDriftError, insertStrippingPhantomColumns, updateStrippingPhantomColumns } from '../lib/schemaDrift';
 import { pickItemMeta } from '../lib/inventory/stockFields';
+import { fetchProjectNames, projectIndex, projectIdOf, withCurrentProjectName } from '../lib/stock/projectLink';
 import { createCoalescedWriter } from '../lib/coalescedWriter';
 
 // RÉSILIENCE — Fusion "liste légère" → état en mémoire.
@@ -1046,18 +1047,34 @@ export const useStocks = () => {
     const [inventory, setInventory] = useState([]);
     const [movements, setMovements] = useState([]);
     const [loading, setLoading] = useState(true);
+    // Dossiers (id + nom) : le stock est rattaché par id, affiché sous le nom ACTUEL du dossier.
+    const projIndexRef = useRef(projectIndex([]));
+    const projectIdFor = (name) => projectIdOf(projIndexRef.current, name);
+    // Dossier créé depuis le dernier chargement : on relit la liste avant de renoncer à l'id.
+    const resolveProjectId = async (name) => {
+        if (!name || projectIdFor(name)) return projectIdFor(name);
+        try { projIndexRef.current = projectIndex(await fetchProjectNames(supabase)); } catch { /* rattachement par nom seul */ }
+        return projectIdFor(name);
+    };
 
     const fetchStocks = async () => {
         setLoading(true);
+        try {
+            projIndexRef.current = projectIndex(await fetchProjectNames(supabase));
+        } catch (e) {
+            console.error("Erreur Fetch dossiers (stock):", e);
+        }
+        const withName = (rec) => withCurrentProjectName(rec, projIndexRef.current);
+
         const { data: invData, error: invError } = await supabase.from('inventory_items').select('*').order('product');
         if (invError) console.error("Erreur Fetch Stock:", invError);
-        if (invData) setInventory(invData);
+        if (invData) setInventory(invData.map(withName));
 
         const { data: logData, error: logError } = await supabase.from('inventory_logs').select('*').order('date', { ascending: false });
         if (logError) console.error("Erreur Fetch Logs:", logError);
 
         if (logData) {
-            const formattedLogs = logData.map(l => ({ ...l, user: l.user_name }));
+            const formattedLogs = logData.map(l => ({ ...withName(l), user: l.user_name }));
             setMovements(formattedLogs);
         }
         setLoading(false);
@@ -1087,7 +1104,8 @@ export const useStocks = () => {
                 fournisseur: movement.fournisseur || srcItem?.fournisseur,
             });
             const project = movement.project || existingItem?.project || null;
-            const logBase = { product: movement.product, ...meta, unit: movement.unit, user_name: movement.user, project, date: now };
+            const project_id = (await resolveProjectId(project)) ?? existingItem?.project_id ?? null;
+            const logBase = { product: movement.product, ...meta, unit: movement.unit, user_name: movement.user, project, project_id, date: now };
             const cleanPiece = (p) => ({ id: p.id, qty: Number(p.qty), name: p.name });
 
             // --- DÉPLACEMENT : toute la réception change d'emplacement ---
@@ -1158,7 +1176,7 @@ export const useStocks = () => {
             } else if (movement.type === 'IN') {
                 const { error } = await insertStrippingPhantomColumns(supabase, 'inventory_items', [{
                     product: movement.product, ...meta, location: movement.location, qty: Number(movement.qty),
-                    unit: movement.unit, project: movement.project || null, category: movement.category,
+                    unit: movement.unit, project: movement.project || null, project_id, category: movement.category,
                     pieces: hasDetailedPieces ? movement.pieces.map(cleanPiece) : [],
                 }]);
                 if (error) throw error;
@@ -1211,6 +1229,7 @@ export const useStocks = () => {
                         user_name: user,
                         location: update.newLocation || update.location,
                         project: update.project,
+                        project_id: projectIdFor(update.project),
                         reason: update.reason || 'SOLDE / DÉSTOCKAGE EXCEL',
                         date: new Date().toISOString()
                     });
@@ -1227,6 +1246,7 @@ export const useStocks = () => {
                         user_name: user,
                         location: update.newLocation,
                         project: update.project,
+                        project_id: projectIdFor(update.project),
                         reason: `DÉPLACEMENT EXCEL (De ${update.oldLocation || 'N/A'} vers ${update.newLocation})`,
                         date: new Date().toISOString()
                     });
@@ -1254,6 +1274,8 @@ export const useStocks = () => {
     // quantité, pièces) + trace « Ajustement » au journal. Rafraîchit l'inventaire.
     const updateInventoryItem = async (itemId, patch, { operator, reason } = {}) => {
         try {
+            // Affectation saisie par nom → rattachée aussi par id (vide si stock libre / nom inconnu).
+            if ('project' in patch) patch = { ...patch, project_id: await resolveProjectId(patch.project) };
             const { error } = await updateStrippingPhantomColumns(supabase, 'inventory_items', itemId, patch);
             if (error) throw error;
 
@@ -1266,6 +1288,7 @@ export const useStocks = () => {
                 user_name: operator || 'Édition',
                 location: patch.location || '',
                 project: patch.project || null,
+                project_id: patch.project_id ?? null,
                 reason: reason || 'Édition manuelle (article)',
                 pieces_names: null,
                 date: new Date().toISOString(),

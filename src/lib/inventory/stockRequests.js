@@ -3,8 +3,9 @@
 // toute la réception si tout est pris, sinon les pièces sont détachées dans une entrée
 // « ATELIER » (même article) et le reste garde son emplacement.
 
-import { insertStrippingPhantomColumns } from '../schemaDrift.js';
+import { insertStrippingPhantomColumns, isSchemaDriftError } from '../schemaDrift.js';
 import { pickItemMeta } from './stockFields.js';
+import { fetchProjectNames, projectIndex, projectIdOf, withCurrentProjectName } from '../stock/projectLink.js';
 
 export const LOC_ATELIER = 'ATELIER';
 export const requestLabel = (req) => `MAD-${req?.num ?? '?'}`;
@@ -13,13 +14,27 @@ const round2 = (n) => Math.round(Number(n) * 100) / 100;
 const cleanPiece = (p) => ({ id: p.id, qty: Number(p.qty), name: p.name });
 const sumQty = (pieces) => round2(pieces.reduce((s, p) => s + Number(p.qty || 0), 0));
 
-/** Demandes (avec leurs lignes), les plus récentes d'abord ; filtrées sur un dossier si fourni. */
+/**
+ * Demandes (avec leurs lignes), les plus récentes d'abord ; filtrées sur un dossier si fourni.
+ * Le dossier est affiché sous son nom actuel (rattachement par id, cf. projectLink.js) :
+ * le filtre se fait donc après lecture, sur ce nom actuel.
+ */
 export async function fetchRequests(supabase, { project } = {}) {
-  let q = supabase.from('stock_requests').select('*, lines:stock_request_lines(*)').order('created_at', { ascending: false });
-  if (project) q = q.eq('project', project);
-  const { data, error } = await q;
+  const [{ data, error }, projects] = await Promise.all([
+    supabase.from('stock_requests').select('*, lines:stock_request_lines(*)').order('created_at', { ascending: false }),
+    fetchProjectNames(supabase),
+  ]);
   if (error) throw error;
-  return (data || []).map((r) => ({ ...r, lines: [...(r.lines || [])].sort((a, b) => String(a.created_at).localeCompare(String(b.created_at))) }));
+  const index = projectIndex(projects);
+  return (data || [])
+    .map((r) => withCurrentProjectName(r, index))
+    .filter((r) => !project || r.project === project)
+    .map((r) => ({
+      ...r,
+      lines: [...(r.lines || [])]
+        .map((l) => withCurrentProjectName(l, index))
+        .sort((a, b) => String(a.created_at).localeCompare(String(b.created_at))),
+    }));
 }
 
 // Ligne de demande à enregistrer : infos article recopiées + pièces / métrage demandés.
@@ -30,6 +45,7 @@ const lineRow = (requestId, { item, pieces, qty }) => ({
   ...pickItemMeta(item),
   unit: item.unit || null,
   project: item.project || null,
+  project_id: item.project_id ?? null,
   from_location: item.location || '',
   pieces: (pieces || []).map(cleanPiece),
   qty: pieces?.length ? sumQty(pieces) : round2(qty),
@@ -41,16 +57,21 @@ const lineRow = (requestId, { item, pieces, qty }) => ({
  * @param {Array}  lines [{ item, pieces:[{id,name,qty}], qty }] — `item` = article inventory_items
  */
 export async function createRequest(supabase, req, lines) {
-  const { data, error } = await supabase.from('stock_requests').insert([{
+  const head = {
     project: req.project || null,
     requested_by: req.requested_by,
     requested_for: req.requested_for || null,
     comment: req.comment || null,
-  }]).select().single();
+  };
+  const insertHead = (row) => supabase.from('stock_requests').insert([row]).select().single();
+  const project_id = req.project ? projectIdOf(projectIndex(await fetchProjectNames(supabase)), req.project) : null;
+  let { data, error } = await insertHead({ ...head, project_id });
+  // Colonne project_id pas encore créée en base : la demande part sans elle.
+  if (error && isSchemaDriftError(error)) ({ data, error } = await insertHead(head));
   if (error) throw error;
 
   const rows = lines.map((l) => lineRow(data.id, l));
-  const { error: linesErr } = await supabase.from('stock_request_lines').insert(rows);
+  const { error: linesErr } = await insertStrippingPhantomColumns(supabase, 'stock_request_lines', rows);
   if (linesErr) {
     await supabase.from('stock_requests').delete().eq('id', data.id); // pas de demande vide
     throw linesErr;
@@ -90,7 +111,7 @@ export async function updateRequest(supabase, request, header, lines) {
   }
   const added = lines.filter((x) => !x.lineId).map((l) => lineRow(request.id, l));
   if (added.length) {
-    const { error: insErr } = await supabase.from('stock_request_lines').insert(added);
+    const { error: insErr } = await insertStrippingPhantomColumns(supabase, 'stock_request_lines', added);
     if (insErr) throw insErr;
   }
   await refreshRequestStatus(supabase, request.id);
@@ -140,11 +161,13 @@ export async function confirmLine(supabase, request, line, operator) {
   const from = item.location || '—';
 
   // Entrée ATELIER déjà existante pour ce même article (même produit, même dossier) ?
-  const { data: atelier } = await supabase.from('inventory_items').select('*')
-    .eq('product', item.product).eq('location', LOC_ATELIER)
-    .filter('project', item.project ? 'eq' : 'is', item.project || null)
-    .neq('id', item.id)
-    .limit(1).maybeSingle();
+  // (même dossier : par id quand l'article en porte un, sinon par nom comme les anciennes lignes)
+  let atelierQ = supabase.from('inventory_items').select('*')
+    .eq('product', item.product).eq('location', LOC_ATELIER);
+  atelierQ = item.project_id
+    ? atelierQ.eq('project_id', item.project_id)
+    : atelierQ.filter('project', item.project ? 'eq' : 'is', item.project || null);
+  const { data: atelier } = await atelierQ.neq('id', item.id).limit(1).maybeSingle();
   const takesAll = remainingQty <= 0 && remaining.length === 0;
 
   if (takesAll && !atelier) {
@@ -165,6 +188,7 @@ export async function confirmLine(supabase, request, line, operator) {
     } else {
       const { error: e2 } = await insertStrippingPhantomColumns(supabase, 'inventory_items', [{
         product: item.product, ...pickItemMeta(item), unit: item.unit, project: item.project || null,
+        project_id: item.project_id ?? null,
         category: item.category, location: LOC_ATELIER, qty: movedQty, pieces: moved,
       }]);
       if (e2) throw e2;
@@ -173,7 +197,7 @@ export async function confirmLine(supabase, request, line, operator) {
 
   const { error: logErr } = await insertStrippingPhantomColumns(supabase, 'inventory_logs', [{
     type: 'MOVE', product: item.product, ...pickItemMeta(item), qty: movedQty, unit: item.unit,
-    user_name: operator, location: LOC_ATELIER, project: item.project || null,
+    user_name: operator, location: LOC_ATELIER, project: item.project || null, project_id: item.project_id ?? null,
     reason: `Mise à disposition ${requestLabel(request)} : de ${from} vers ${LOC_ATELIER}`,
     pieces_names: moved.map((p) => p.name).filter(Boolean).join(', ') || null,
     date: new Date().toISOString(),
