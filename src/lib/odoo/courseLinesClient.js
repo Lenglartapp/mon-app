@@ -16,7 +16,7 @@ async function fetchFromOdoo(odooProjectId) {
     throw new Error("API /api/odoo indisponible (dev local sans plugin, ou déploiement requis).");
   }
   if (!res.ok || data.ok === false) throw new Error(data?.error || `Erreur ${res.status}.`);
-  return data.lines || [];
+  return { lines: data.lines || [], receptions: data.receptions || null };
 }
 
 /** Lit le miroir local (Supabase) d'un projet Droitfil, trié. */
@@ -30,6 +30,6 @@ export async function readCourseLines(droitfilProjectId) {
  * Renvoie { lines, receptionsCreated, receptionErrors }.
  */
 export async function refreshCourseLines(droitfilProjectId, odooProjectId, projectName) {
-  const odooLines = await fetchFromOdoo(odooProjectId);
-  return syncCourseLinesInto(supabase, { odooLines, droitfilProjectId, odooProjectId, projectName });
+  const { lines: odooLines, receptions } = await fetchFromOdoo(odooProjectId);
+  return syncCourseLinesInto(supabase, { odooLines, receptions, droitfilProjectId, odooProjectId, projectName });
 }
