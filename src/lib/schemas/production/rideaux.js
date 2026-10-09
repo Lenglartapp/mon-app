@@ -135,9 +135,13 @@ export const calcML = (aPlat, laize, hCoupe, hCoupeMotif, pans = 1, demiLe = fal
 
 // ML passementerie selon application (I/U/L/-)
 // aPlat, hCoupe en cm → résultat en m
+// En production, l'À Plat est TOUJOURS celui d'un pan (L. Finie par pan, cf. getters) :
+// la largeur à border est donc l'À Plat tel quel, puis × 2 pour une paire. Le « ÷ 2 »
+// d'avant était un reste de l'ancien chiffrage (À Plat de la paire entière) et comptait
+// la largeur à moitié (ex. U, paire, À Plat 300, H 250 : 13 m au lieu de 16 m).
 const calcPassML = (app, aPlat, hCoupe, isPaire) => {
     if (!app || !aPlat || !hCoupe) return 0;
-    const L_Pan = isPaire ? aPlat / 2 : aPlat;
+    const L_Pan = aPlat;
     let res = 0;
     if (app === 'I') res = hCoupe;
     else if (app === 'U') res = (hCoupe * 2) + L_Pan;
@@ -891,7 +895,7 @@ export const RIDEAUX_PROD_SCHEMA = [
         type: "number",
         width: 110,
         readOnly: (row) => row.application_passementerie1 !== "Prise de main",
-        tooltip: "ML Pass. 1 selon application : I = 1 côté | U = périmètre | L = 3 côtés | - = largeur seule | Prise de main = saisie manuelle",
+        tooltip: "En m, par pan puis × 2 pour une paire : I = H. Coupe | U = 2 × H. Coupe + À Plat | L = H. Coupe + À Plat | - = À Plat seul | Prise de main = saisie manuelle.",
         valueGetter: (v, r) => {
             const row = getRow(v, r);
             // Prise de main : bande de tissu appliquée → ML saisi à la main (importé du chiffrage
@@ -909,7 +913,7 @@ export const RIDEAUX_PROD_SCHEMA = [
         type: "number",
         width: 110,
         readOnly: (row) => row.application_passementerie2 !== "Prise de main",
-        tooltip: "ML Pass. 2 selon application : I = 1 côté | U = périmètre | L = 3 côtés | - = largeur seule | Prise de main = saisie manuelle",
+        tooltip: "En m, par pan puis × 2 pour une paire : I = H. Coupe | U = 2 × H. Coupe + À Plat | L = H. Coupe + À Plat | - = À Plat seul | Prise de main = saisie manuelle.",
         valueGetter: (v, r) => {
             const row = getRow(v, r);
             if (row.application_passementerie2 === "Prise de main") return row.ml_pass2;
