@@ -94,6 +94,15 @@ export default function ProfitabilitySimulatorModal({ currentData, onClose }) {
         setValues({ hourly, value, percent });
         setTargetCA(newCA);
     };
+    // Case E: Prix du devis (CA HT) saisi directement ; la contribution suit comme pour la remise.
+    const handleChangePrice = (val) => {
+        const newCA = Math.max(0, parseFloat(val) || 0);
+        const value = newCA * (1 - Com_Rate) - Fixed_Costs;
+        const hourly = value / H;
+        const percent = newCA > 0 ? (value / newCA) * 100 : 0;
+        setValues({ hourly, value, percent });
+        setTargetCA(newCA);
+    };
     // Remise / majoration correspondant au CA cible, quel que soit le levier utilisé.
     const remisePct = currentCA > 0 && Number.isFinite(targetCA) ? (targetCA / currentCA - 1) * 100 : 0;
 
@@ -114,7 +123,7 @@ export default function ProfitabilitySimulatorModal({ currentData, onClose }) {
                     <div>
                         <div style={{ fontSize: 24, fontWeight: 400, color: '#111827' }}>Simulateur de rentabilité</div>
                         <div style={{ fontSize: 13, color: '#6B7280', marginTop: 4 }}>
-                            Modifiez un paramètre (ou appliquez une remise / majoration), les autres s'ajustent.
+                            Modifiez un paramètre, le prix du devis ou une remise / majoration : les autres s'ajustent.
                         </div>
                     </div>
                     <button onClick={onClose} title="Fermer" style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#9B9A97', display: 'flex', padding: 4 }}>
@@ -136,13 +145,14 @@ export default function ProfitabilitySimulatorModal({ currentData, onClose }) {
                         />
                     </div>
 
-                    {/* 4e levier : remise (négatif) ou majoration (positif) en % du prix actuel, saisie libre */}
-                    <div style={{ display: 'flex', alignItems: 'flex-end', gap: 14, flexWrap: 'wrap', marginBottom: 24, paddingTop: 18, borderTop: '1px solid #E8E6E2' }}>
-                        <div style={{ width: 180 }}>
+                    {/* Prix du devis puis remise / majoration : même grille que la ligne du dessus (cadres alignés) */}
+                    <div style={{ paddingTop: 18, borderTop: '1px solid #E8E6E2', marginBottom: 24 }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14 }}>
+                            <InputBlock label="Prix du devis HT" suffix="€" value={Number.isFinite(targetCA) ? targetCA : 0} onChange={handleChangePrice} />
                             <InputBlock label="Remise / majoration" suffix="%" value={remisePct} onChange={handleChangeRemise} />
                         </div>
-                        <div style={{ fontSize: 12, color: '#9B9A97', paddingBottom: 12 }}>
-                            Négatif = remise (ex. −5), positif = majoration (ex. 10), sur le prix actuel.
+                        <div style={{ fontSize: 12, color: '#9B9A97', marginTop: 8 }}>
+                            Remise : négatif (ex. −5) ; majoration : positif (ex. 10), sur le prix actuel ({nfEur0.format(currentCA)}).
                         </div>
                     </div>
 
