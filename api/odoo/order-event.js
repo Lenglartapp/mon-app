@@ -27,7 +27,7 @@
 import { timingSafeEqual } from 'node:crypto';
 import { getSupabaseAdmin } from '../_supabaseAdmin.js';
 import { searchRead } from '../_odooClient.js';
-import { COURSE_FIELDS } from './course-lines.js';
+import { COURSE_FIELDS, readReceptions } from './course-lines.js';
 import { syncCourseLinesInto } from '../../src/lib/odoo/courseLinesCore.js';
 
 export const PROD_ODOO_DB = 'lenglart-erp-lenglart-main-9543240';
@@ -73,7 +73,8 @@ async function courseLinesChanged({ database, project_ids: projectIds = [] }, re
   const synced = [];
   for (const p of projects || []) {
     const odooLines = await searchRead('project.course.line', [['project_id', '=', Number(p.id_projet_odoo)]], COURSE_FIELDS, { order: 'sequence' });
-    const r = await syncCourseLinesInto(sb, { odooLines, droitfilProjectId: p.id, odooProjectId: Number(p.id_projet_odoo), projectName: p.name });
+    const receptions = await readReceptions([Number(p.id_projet_odoo)]);
+    const r = await syncCourseLinesInto(sb, { odooLines, receptions, droitfilProjectId: p.id, odooProjectId: Number(p.id_projet_odoo), projectName: p.name });
     synced.push({ project: p.name, lines: r.lines.length, receptionsCreated: r.receptionsCreated });
   }
   res.status(200).json({ ok: true, event: 'course_lines_changed', synced });

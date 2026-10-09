@@ -22,7 +22,11 @@ const STATUT = {
 
 const TYPE = { tissu: "Tissu", rail: "Rail", mecanisme: "Mécanisme", store: "Store", consommable: "Consommable", autre: "Autre" };
 
-const COLS = ["Fournisseur", "Référence", "Type", "Coloris", "Laize", "Qté", "Unité", "Date de livraison estimée", "Statut", "Date de réception"];
+const COLS = ["Fournisseur", "Référence", "Type", "Coloris", "Laize", "Qté", "Unité", "Date de livraison estimée", "Statut", "Reçu", "Date de réception"];
+
+// « 45 / 60 ml » : quantités du dossier dans l'unité d'achat (Odoo) ; vide tant que la ligne n'est pas reliée à un achat.
+const fmtNum = (n) => Number(n).toLocaleString("fr-FR", { maximumFractionDigits: 2 });
+const recuLabel = (l) => (Number(l.quantite_commandee) > 0 ? `${fmtNum(l.quantite_recue || 0)} / ${fmtNum(l.quantite_commandee)}${l.purchase_uom ? ` ${l.purchase_uom}` : ""}` : "—");
 const fmtDate = (d) => (d ? new Date(d).toLocaleDateString("fr-FR") : "—");
 
 function StatutBadge({ statut }) {
@@ -144,6 +148,7 @@ export default function ProjectCourseListPanel({ droitfilProjectId, odooProjectI
                 <td style={td}>{l.unite || "—"}</td>
                 <td style={{ ...td, whiteSpace: "nowrap" }}>{fmtDate(l.date_livraison_estimee)}</td>
                 <td style={td}><StatutBadge statut={l.statut} /></td>
+                <td style={{ ...td, whiteSpace: "nowrap" }}>{recuLabel(l)}</td>
                 <td style={{ ...td, whiteSpace: "nowrap" }}>{fmtDate(l.date_reception)}</td>
               </tr>
             ))}
@@ -158,6 +163,7 @@ export default function ProjectCourseListPanel({ droitfilProjectId, odooProjectI
                 <td style={td}>{l.unite || "—"}</td>
                 <td style={td}>{fmtDate(l.date_livraison_estimee)}</td>
                 <td style={{ ...td, display: "flex", alignItems: "center", gap: 4 }}><Link2Off size={12} /> retirée d'Odoo</td>
+                <td style={td}>{recuLabel(l)}</td>
                 <td style={td}>{fmtDate(l.date_reception)}</td>
               </tr>
             ))}

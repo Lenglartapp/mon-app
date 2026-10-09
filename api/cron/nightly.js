@@ -10,7 +10,7 @@
 import { searchRead } from '../_odooClient.js';
 import { getSupabaseAdmin } from '../_supabaseAdmin.js';
 import { syncTimesheets } from '../_syncTimes.js';
-import { COURSE_FIELDS } from '../odoo/course-lines.js';
+import { COURSE_FIELDS, readReceptions } from '../odoo/course-lines.js';
 import { aggregateConsumed } from '../../src/lib/odoo/aggregateConsumed.js';
 import { syncCourseLinesInto } from '../../src/lib/odoo/courseLinesCore.js';
 
@@ -116,8 +116,10 @@ export default async function handler(req, res) {
             COURSE_FIELDS,
             { order: 'sequence' }
           );
+          const receptions = await readReceptions([Number(p.id_projet_odoo)]);
           const r = await syncCourseLinesInto(supabase, {
             odooLines,
+            receptions,
             droitfilProjectId: p.id,
             odooProjectId: Number(p.id_projet_odoo),
             projectName: p.name,
