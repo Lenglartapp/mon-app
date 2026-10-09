@@ -54,7 +54,7 @@ export async function readCourseLinesWith(supabase, droitfilProjectId) {
  * les pièces et l'emplacement n'ont pas été saisis dans le stock. Le journal, lui,
  * n'est plus jamais modifié (trace immuable de la réception Odoo).
  */
-async function createReceptionEntryWith(supabase, line, projectName) {
+async function createReceptionEntryWith(supabase, line, projectName, projectId = null) {
   const product = [line.reference, line.coloris].filter(Boolean).join(" — ") || line.reference || "Réception";
   const qty = line.quantite ?? 0;
   const unit = line.unite || null;
@@ -65,12 +65,12 @@ async function createReceptionEntryWith(supabase, line, projectName) {
   const now = new Date().toISOString();
 
   const { error: itemErr } = await insertStrippingPhantomColumns(supabase, "inventory_items", [
-    { product, ...meta, qty, qty_recue: qty, unit, project: projectName || null, location: LOC_A_COMPLETER, category, pieces: [] },
+    { product, ...meta, qty, qty_recue: qty, unit, project: projectName || null, project_id: projectId, location: LOC_A_COMPLETER, category, pieces: [] },
   ]);
   if (itemErr) throw itemErr;
 
   const { error: logErr } = await insertStrippingPhantomColumns(supabase, "inventory_logs", [
-    { type: "IN", product, ...meta, qty, unit, user_name: "Synchro Odoo", location: "", project: projectName || null, reason, pieces_names: null, date: now },
+    { type: "IN", product, ...meta, qty, unit, user_name: "Synchro Odoo", location: "", project: projectName || null, project_id: projectId, reason, pieces_names: null, date: now },
   ]);
   if (logErr) throw logErr;
 }
@@ -115,7 +115,7 @@ export async function syncCourseLinesInto(supabase, { odooLines, droitfilProject
   const receptionErrors = [];
   for (const line of candidates) {
     try {
-      await createReceptionEntryWith(supabase, line, projectName);
+      await createReceptionEntryWith(supabase, line, projectName, droitfilProjectId ?? null);
       const { error } = await supabase
         .from("odoo_course_lines")
         .update({ stock_created: true })
