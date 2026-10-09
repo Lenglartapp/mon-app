@@ -14,6 +14,8 @@ const STATUT = {
   en_stock:        { label: "En stock",       tone: 3 },
   achete_client:   { label: "Acheté client",  tone: null },
   commande_passee: { label: "Commandée",      tone: 2 },
+  // Calculé par Odoo depuis les réceptions de la ligne d'achat (une partie reçue, ou retour fournisseur).
+  reception_partielle: { label: "Réception partielle", tone: 1 },
   receptionne:     { label: "Réceptionné",    tone: 0 },
   probleme:        { label: "Problème",       alert: true },
 };

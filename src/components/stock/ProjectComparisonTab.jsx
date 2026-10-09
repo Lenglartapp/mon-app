@@ -17,7 +17,7 @@ const STATUS = {
 };
 const STATUT_ODOO = {
     a_commander: 'À commander', verifier_stock: 'Vérifier stock', en_stock: 'En stock', achete_client: 'Acheté client',
-    commande_passee: 'Commandée', receptionne: 'Réceptionné', probleme: 'Problème',
+    commande_passee: 'Commandée', reception_partielle: 'Réception partielle', receptionne: 'Réceptionné', probleme: 'Problème',
 };
 
 const th = { padding: '10px 12px', textAlign: 'left', fontSize: 13, fontWeight: 600, color: '#374151', borderBottom: '1px solid #E0DED9', whiteSpace: 'nowrap' };
