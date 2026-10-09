@@ -54,54 +54,53 @@ export async function readCourseLinesWith(supabase, droitfilProjectId) {
 }
 
 /**
- * Crée une entrée d'inventaire + une ligne de journal (mouvement IN) pour une ligne
- * de course réceptionnée. Métrage total ; l'emplacement vaut « À COMPLÉTER » tant que
- * les pièces et l'emplacement n'ont pas été saisis dans le stock. Le journal, lui,
- * n'est plus jamais modifié (trace immuable de la réception Odoo).
+ * Crée une entrée de stock + sa ligne de journal (mouvement IN). L'emplacement vaut « À COMPLÉTER »
+ * tant que les pièces et l'emplacement n'ont pas été saisis. Le journal n'est plus jamais modifié.
+ * Avec `move` (détail Odoo) : quantité, date et bon de réception de CE mouvement ; sinon la ligne entière.
  */
-async function createReceptionEntryWith(supabase, line, projectName, projectId = null, moves = null, alreadyLogged = new Set()) {
-  const product = [line.reference, line.coloris].filter(Boolean).join(" — ") || line.reference || "Réception";
-  // Avec le détail Odoo : quantité réellement reçue (somme des mouvements), sinon quantité de la liste.
-  const movedQty = moves ? Math.round(moves.reduce((t, m) => t + Number(m.quantity || 0), 0) * 100) / 100 : null;
-  const qty = movedQty != null && movedQty > 0 ? movedQty : (line.quantite ?? 0);
+async function createReceptionEntryWith(supabase, line, projectName, projectId = null, move = null) {
+  const product = productOf(line);
+  const qty = move ? Number(move.quantity) || 0 : (line.quantite ?? 0);
   const unit = line.unite || null;
   const category = TYPE_TO_CATEGORY[line.type_produit] || (line.unite && /m/i.test(line.unite) ? "Tissu" : "Divers");
-  const meta = pickItemMeta({ ref: line.reference, coloris: line.coloris, laize: line.laize, fournisseur: line.fournisseur });
+  const meta = metaOf(line);
   // Fournisseur aussi gardé dans le motif : filet de sécurité si la migration des colonnes n'est pas jouée.
-  const reason = ["Réception Odoo", line.fournisseur].filter(Boolean).join(" — ");
-  const now = new Date().toISOString();
+  const reason = ["Réception Odoo", line.fournisseur, move?.picking].filter(Boolean).join(" — ");
+  const date = move ? odooUtc(move.date) : new Date().toISOString();
 
   const { error: itemErr } = await insertStrippingPhantomColumns(supabase, "inventory_items", [
     { product, ...meta, qty, qty_recue: qty, unit, project: projectName || null, project_id: projectId, location: LOC_A_COMPLETER, category, pieces: [] },
   ]);
   if (itemErr) throw itemErr;
 
-  // Journal : une ligne par réception réelle (vraie date, bon de réception), sinon une ligne unique.
-  const logs = moves
-    ? moves.filter((m) => !alreadyLogged.has(moveKey(line.odoo_id, m))).map((m) => moveLog(m, line, { product, meta, unit, projectName, projectId }))
-    : [{ type: "IN", product, ...meta, qty, unit, user_name: "Synchro Odoo", location: "", project: projectName || null, project_id: projectId, reason, pieces_names: null, date: now }];
-  if (logs.length) {
-    const { error: logErr } = await insertStrippingPhantomColumns(supabase, "inventory_logs", logs);
-    if (logErr) throw logErr;
-  }
+  const { error: logErr } = await insertStrippingPhantomColumns(supabase, "inventory_logs", [
+    { type: "IN", product, ...meta, qty, unit, user_name: "Synchro Odoo", location: "", project: projectName || null, project_id: projectId,
+      reason, pieces_names: null, date, ...(move ? { odoo_move_key: moveKey(line.odoo_id, move) } : {}) },
+  ]);
+  if (logErr) throw logErr;
 }
+
+/** Retour fournisseur : inscrit au journal (sortie, vraie date) ; la quantité en stock n'est pas retouchée. */
+async function logReturnWith(supabase, line, projectName, projectId, move) {
+  const { error } = await insertStrippingPhantomColumns(supabase, "inventory_logs", [{
+    type: "OUT", product: productOf(line), ...metaOf(line), qty: Math.abs(Number(move.quantity) || 0), unit: line.unite || null,
+    user_name: "Synchro Odoo", location: "", project: projectName || null, project_id: projectId,
+    reason: ["Retour fournisseur Odoo", line.fournisseur, move.picking, "stock à ajuster à la main"].filter(Boolean).join(" — "),
+    pieces_names: null, date: odooUtc(move.date), odoo_move_key: moveKey(line.odoo_id, move),
+  }]);
+  if (error) throw error;
+}
+
+const productOf = (line) => [line.reference, line.coloris].filter(Boolean).join(" — ") || line.reference || "Réception";
+const metaOf = (line) => pickItemMeta({ ref: line.reference, coloris: line.coloris, laize: line.laize, fournisseur: line.fournisseur });
 
 // --- Réceptions détaillées (project.course.line.droitfil_receptions, Odoo 2026-10-09) -----------
 // Une entrée par mouvement validé : { move_id, date (UTC), quantity (négative = retour), type, picking }.
+// Chaque mouvement entre en stock DÈS qu'il est validé (réception partielle comprise) : 45 ml le 12,
+// puis 45 ml le 15 = deux entrées. La clé « ligne:mouvement » garantit qu'un mouvement n'entre qu'une fois.
 const moveKey = (lineId, m) => `${lineId}:${m.move_id}`;
 const odooUtc = (d) => (d ? new Date(String(d).replace(" ", "T")).toISOString() : new Date().toISOString());
 const sameUnit = (a, b) => !a || !b || String(a).trim().toLowerCase() === String(b).trim().toLowerCase();
-
-function moveLog(m, line, { product, meta, unit, projectName, projectId, after = false }) {
-  const retour = Number(m.quantity) < 0 || m.type === "retour";
-  const what = retour ? "Retour fournisseur Odoo" : "Réception Odoo";
-  const reason = [what, line.fournisseur, m.picking, after && retour ? "stock non ajusté automatiquement" : null].filter(Boolean).join(" — ");
-  return {
-    type: retour ? "OUT" : "IN", product, ...meta, qty: Math.abs(Number(m.quantity) || 0), unit,
-    user_name: "Synchro Odoo", location: "", project: projectName || null, project_id: projectId,
-    reason, pieces_names: null, date: odooUtc(m.date), odoo_move_key: moveKey(line.odoo_id, m),
-  };
-}
 
 /** Index des réceptions par ligne de courses ; ignoré si l'unité d'achat ≠ unité de la ligne. */
 function receptionsByLine(receptions, lines) {
@@ -126,9 +125,11 @@ async function loggedMoveKeys(supabase, keys) {
 
 /**
  * Synchronise dans Supabase les lignes Odoo fournies : upsert, marque « retirées » celles
- * disparues (sans supprimer), puis bascule en stock les tissus « Réceptionné » pas encore basculés.
+ * disparues (sans supprimer), puis met en stock les tissus reçus :
+ *  • avec le détail Odoo (receptions) : chaque réception validée, partielle comprise, à sa date ;
+ *  • sans détail (unité différente, Odoo indisponible) : la ligne entière à « Réceptionné », comme avant.
  * @param {object} supabase   client Supabase (navigateur OU serveur)
- * @param {object} args       { odooLines, droitfilProjectId, odooProjectId, projectName }
+ * @param {object} args       { odooLines, receptions, droitfilProjectId, odooProjectId, projectName }
  * @returns {{ lines, receptionsCreated, receptionErrors }}
  */
 export async function syncCourseLinesInto(supabase, { odooLines, receptions = null, droitfilProjectId, odooProjectId, projectName }) {
@@ -154,11 +155,9 @@ export async function syncCourseLinesInto(supabase, { odooLines, receptions = nu
       .in("odoo_id", toMark);
   }
 
-  // Bascule en stock : SEUL le tissu, réceptionné, pas encore basculé, quantité > 0 (idempotent).
   const current = await readCourseLinesWith(supabase, droitfilProjectId);
-  const candidates = current.filter(
-    (l) => l.statut === "receptionne" && !l.stock_created && !l.removed_from_odoo && Number(l.quantite) > 0 && l.type_produit === "tissu"
-  );
+  const isTissu = (l) => !l.removed_from_odoo && l.type_produit === "tissu";
+  const projectId = droitfilProjectId ?? null;
 
   // Détail des réceptions Odoo, utilisé seulement si le journal sait garder la clé de mouvement.
   const movesByLine = receptionsByLine(receptions, current);
@@ -168,35 +167,33 @@ export async function syncCourseLinesInto(supabase, { odooLines, receptions = nu
 
   let receptionsCreated = 0;
   const receptionErrors = [];
-  for (const line of candidates) {
-    try {
-      await createReceptionEntryWith(supabase, line, projectName, droitfilProjectId ?? null, detailed ? movesByLine.get(line.odoo_id) || null : null, logged || undefined);
-      const { error } = await supabase
-        .from("odoo_course_lines")
-        .update({ stock_created: true })
-        .eq("odoo_id", line.odoo_id);
-      if (error) throw error;
-      receptionsCreated++;
-    } catch (e) {
-      receptionErrors.push(`${line.reference || "#" + line.odoo_id} : ${e?.message || e}`);
-    }
-  }
+  const fail = (line, e) => receptionErrors.push(`${line.reference || "#" + line.odoo_id} : ${e?.message || e}`);
+  const markStocked = async (line) => {
+    const { error } = await supabase.from("odoo_course_lines").update({ stock_created: true }).eq("odoo_id", line.odoo_id);
+    if (error) throw error;
+  };
 
-  // Mouvements arrivés APRÈS la mise en stock (retour fournisseur…) : inscrits au journal, seulement pour
-  // les lignes déjà suivies mouvement par mouvement (les anciennes entrées uniques restent telles quelles).
-  if (detailed) {
-    const done = new Set(candidates.map((l) => l.odoo_id));
-    for (const line of current) {
-      const moves = movesByLine.get(line.odoo_id);
-      if (!moves || !line.stock_created || done.has(line.odoo_id)) continue;
-      if (!moves.some((m) => logged.has(moveKey(line.odoo_id, m)))) continue;
-      const fresh = moves.filter((m) => !logged.has(moveKey(line.odoo_id, m)));
-      if (!fresh.length) continue;
-      const product = [line.reference, line.coloris].filter(Boolean).join(" — ") || line.reference || "Réception";
-      const meta = pickItemMeta({ ref: line.reference, coloris: line.coloris, laize: line.laize, fournisseur: line.fournisseur });
-      const { error } = await insertStrippingPhantomColumns(supabase, "inventory_logs",
-        fresh.map((m) => moveLog(m, line, { product, meta, unit: line.unite || null, projectName, projectId: droitfilProjectId ?? null, after: true })));
-      if (error) receptionErrors.push(`${line.reference || "#" + line.odoo_id} : ${error.message}`);
+  for (const line of current.filter(isTissu)) {
+    const moves = detailed ? movesByLine.get(line.odoo_id) : null;
+    try {
+      if (moves) {
+        // Ligne déjà mise en stock d'un bloc AVANT le détail (ancienne entrée unique) : on n'y touche pas.
+        if (line.stock_created && !moves.some((m) => logged.has(moveKey(line.odoo_id, m)))) continue;
+        for (const m of moves) {
+          if (logged.has(moveKey(line.odoo_id, m))) continue; // déjà entré : seuls les nouveaux mouvements comptent
+          if (Number(m.quantity) < 0 || m.type === "retour") await logReturnWith(supabase, line, projectName, projectId, m);
+          else if (Number(m.quantity) > 0) { await createReceptionEntryWith(supabase, line, projectName, projectId, m); receptionsCreated++; }
+          logged.add(moveKey(line.odoo_id, m));
+        }
+        if (!line.stock_created) await markStocked(line);
+      } else if (line.statut === "receptionne" && !line.stock_created && Number(line.quantite) > 0) {
+        // Sans détail : comportement d'origine, la ligne entière une fois tout reçu.
+        await createReceptionEntryWith(supabase, line, projectName, projectId);
+        await markStocked(line);
+        receptionsCreated++;
+      }
+    } catch (e) {
+      fail(line, e);
     }
   }
 

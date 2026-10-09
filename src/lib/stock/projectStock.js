@@ -26,6 +26,12 @@ export const TEXTILE_FIELDS = [
 
 // Statuts Odoo comptés comme « commandé » : tout sauf « problème » (choix du user).
 export const isOrdered = (line) => line.statut !== 'probleme' && !line.removed_from_odoo;
+// Reçu d'une ligne de courses : quantité réellement reçue d'après Odoo (réception partielle comprise)
+// si elle est dans la même unité que la ligne ; sinon toute la ligne une fois « Réceptionné ».
+const sameUnit = (a, b) => !a || !b || String(a).trim().toLowerCase() === String(b).trim().toLowerCase();
+export const receivedQty = (l) => (Number(l.quantite_commandee) > 0 && sameUnit(l.unite, l.purchase_uom)
+    ? num(l.quantite_recue)
+    : (l.statut === 'receptionne' ? num(l.quantite) : 0));
 export const IGNORE_MATCH = '__ignore__';
 export const JUSTE_MARGIN = 0.05; // ±5 % autour du besoin = « Juste »
 
@@ -161,7 +167,7 @@ export function buildComparison(needs, courseLines) {
         const counted = linked.filter(isOrdered);
         const ordered = round2(counted.reduce((s, l) => s + num(l.quantite), 0));
         const toOrder = round2(counted.filter((l) => l.statut === 'a_commander' || l.statut === 'verifier_stock').reduce((s, l) => s + num(l.quantite), 0));
-        const received = round2(linked.filter((l) => l.statut === 'receptionne').reduce((s, l) => s + num(l.quantite), 0));
+        const received = round2(linked.reduce((s, l) => s + receivedQty(l), 0));
         return { need: n, linked, ordered, toOrder, received, diff: round2(ordered - n.total), status: comparisonStatus(n.total, ordered) };
     });
     const unmatched = lines.filter((l) => !matches.get(l.odoo_id)?.needKey);
