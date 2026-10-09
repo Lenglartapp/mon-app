@@ -31,6 +31,8 @@ import { COURSE_FIELDS } from './course-lines.js';
 import { syncCourseLinesInto } from '../../src/lib/odoo/courseLinesCore.js';
 
 export const PROD_ODOO_DB = 'lenglart-erp-lenglart-main-9543240';
+// La relecture d'une liste de courses enchaîne des appels Odoo / Supabase (comme le job de nuit).
+export const config = { maxDuration: 60 };
 const EVENTS = new Set(['confirmed', 'cancelled', 'draft', 'deleted', 'project_archived', 'project_restored', 'project_deleted']);
 const ARCHIVE_REASON = {
   cancelled: 'Commande Odoo {name} annulée',
