@@ -38,6 +38,8 @@ import { Search, Filter, Layers3, Star, FlaskConical, Image as ImageIcon, Edit2,
 import ProjectMaterialsPanel from "../components/ProjectMaterialsPanel";
 import { applyCatalogRenames } from "../lib/utils/catalogRename";
 import AddressAutocomplete from "../components/AddressAutocomplete"; // Added FileText
+import { ToolbarButton } from "../components/ui/ToolbarControls";
+import ClientReportModal from "../components/report/ClientReportModal";
 import { Dialog, DialogTitle, DialogContent, TextField, DialogActions, Button, Collapse, IconButton } from "@mui/material";
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { differenceInMinutes } from "date-fns";
@@ -215,6 +217,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
   const [search, setSearch] = useState("");
   const [schema, setSchema] = useState(SCHEMA_64);
   const [openedRowId, setOpenedRowId] = useState(null);
+  const [clientReportOpen, setClientReportOpen] = useState(false);
   const [stockOpen, setStockOpen] = useState(false);
   const [showDocs, setShowDocs] = useState(false);
   const [deliveryOpen, setDeliveryOpen] = useState(false);
@@ -1560,7 +1563,12 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
 
       {stage === "suivi" && (
         <div style={cardStyle}>
-          <div style={cardHeaderStyle}>Suivi de projet</div>
+          <div style={{ ...cardHeaderStyle, justifyContent: 'space-between' }}>
+            <span>Suivi de projet</span>
+            {can(currentUser, 'production.client_report') && (
+              <ToolbarButton icon={<FileText size={16} />} onClick={() => setClientReportOpen(true)}>Rapport client</ToolbarButton>
+            )}
+          </div>
           <MinuteGrid
             stickyTop={STICKY_TITLE_HEIGHT}
             rows={filteredRows} // Suivi shows all rows
@@ -1576,6 +1584,9 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
             isMobile={isMobile}
             showExpeditionCol={true}
           />
+          {clientReportOpen && (
+            <ClientReportModal open onClose={() => setClientReportOpen(false)} project={project} rows={rows} />
+          )}
         </div>
       )}
 

@@ -260,7 +260,7 @@ export const DEFAULT_VIEWS = {
     all: [
       "sel", "detail", "zone", "piece", "fenetre", "produit",
       "statut_cotes", "statut_prepa", "statut_conf", "statut_pose",
-      "photos_sur_site",
+      "photos_sur_site", "commentaire_client",
     ],
   },
 };
