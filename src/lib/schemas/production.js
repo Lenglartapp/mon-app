@@ -412,6 +412,9 @@ export const SCHEMA_64 = [
   // PRESERVED COMPONENTS
   { key: "schema_principe", label: "Schéma Principe", type: "photo", width: 150 }, // NEW
   { key: "photos_sur_site", label: "Photos Site", type: "photo", width: 150 },
+  // Texte destiné au client (rapport client). Distinct des commentaires internes de la ligne ;
+  // n'apparaît que dans le Suivi de projet.
+  { key: "commentaire_client", label: "Commentaire client", type: "text", width: 260, editable: true },
   { key: "croquis", label: "Croquis Atelier", type: "croquis", width: 150 },
 ];
 

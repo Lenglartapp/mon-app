@@ -30,6 +30,8 @@ const PERMISSIONS = {
     "inventory.edit": false,
 
     "production.edit": true,
+    // Rapport client (Suivi de projet) : sales, ordo (+ ordo_conf), op et admin.
+    "production.client_report": true,
 
     "logistique.edit": false,
   },
@@ -61,6 +63,8 @@ const PERMISSIONS = {
     "planning.mobile_view_as": true,
 
     "production.edit": true,
+    // Rapport client (Suivi de projet) : sales, ordo (+ ordo_conf), op et admin.
+    "production.client_report": true,
 
     "inventory.view": true,
     "inventory.edit": true,
@@ -85,6 +89,8 @@ const PERMISSIONS = {
     "planning.manage_team": false,
 
     "production.edit": true,
+    // Rapport client (Suivi de projet) : sales, ordo (+ ordo_conf), op et admin.
+    "production.client_report": true,
     "project.create": true,
 
     "inventory.view": true,
