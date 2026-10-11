@@ -34,12 +34,13 @@ import { MOBILIER_PROD_SCHEMA } from "../lib/schemas/production/mobilier";
 import { uid } from "../lib/utils/uid"; // Import uid
 import { compressAndUpload } from "../lib/utils/imageUpload";
 
-import { Search, Filter, Layers3, Star, FlaskConical, Image as ImageIcon, Edit2, FileText, BookOpen, Printer, Package } from "lucide-react";
+import { Search, Filter, Layers3, Star, FlaskConical, Image as ImageIcon, Edit2, FileText, BookOpen, Printer, Package, CalendarRange } from "lucide-react";
 import ProjectMaterialsPanel from "../components/ProjectMaterialsPanel";
 import { applyCatalogRenames } from "../lib/utils/catalogRename";
 import AddressAutocomplete from "../components/AddressAutocomplete"; // Added FileText
 import { ToolbarButton } from "../components/ui/ToolbarControls";
 import ClientReportModal from "../components/report/ClientReportModal";
+import ProjectGanttModal from "../components/project/ProjectGanttModal";
 import { Dialog, DialogTitle, DialogContent, TextField, DialogActions, Button, Collapse, IconButton } from "@mui/material";
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { differenceInMinutes } from "date-fns";
@@ -218,6 +219,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
   const [schema, setSchema] = useState(SCHEMA_64);
   const [openedRowId, setOpenedRowId] = useState(null);
   const [clientReportOpen, setClientReportOpen] = useState(false);
+  const [ganttOpen, setGanttOpen] = useState(false);
   const [stockOpen, setStockOpen] = useState(false);
   const [showDocs, setShowDocs] = useState(false);
   const [deliveryOpen, setDeliveryOpen] = useState(false);
@@ -1076,6 +1078,13 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                   </div>
                 </div>
                 </MetaItem>
+                {/* Planning du projet (Gantt) : à droite de la ligne */}
+                <div style={{ marginLeft: 'auto', alignSelf: 'flex-end' }}>
+                  <ToolbarButton icon={<CalendarRange size={16} />} onClick={() => setGanttOpen(true)}>Planning</ToolbarButton>
+                  {ganttOpen && (
+                    <ProjectGanttModal open onClose={() => setGanttOpen(false)} project={project} events={events} users={users} />
+                  )}
+                </div>
               </div>
             </>
           }
