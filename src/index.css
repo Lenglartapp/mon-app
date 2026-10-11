@@ -191,3 +191,7 @@ button,
   .df-title-tabs > :nth-child(3) { display: none; }
   .df-title-tabs > :nth-child(2) button { white-space: nowrap; flex-shrink: 0; }
 }
+/* Paramètres › Mon profil : identité au-dessus des réglages sur écran étroit */
+@media (max-width: 860px) {
+  .df-settings-profile { grid-template-columns: minmax(0, 1fr) !important; gap: 28px !important; }
+}

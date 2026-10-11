@@ -8,29 +8,16 @@ import { Camera } from "lucide-react";
 import { useAuth, ROLES } from "../auth";
 import { DaField } from "../components/ui/DaForm";
 import { ToolbarButton, TonePill } from "../components/ui/ToolbarControls";
-import { DA_FIELD_SX, TABLE_FRAME_STYLE } from "../lib/constants/daStyles";
+import { DA_FIELD_SX } from "../lib/constants/daStyles";
 import { supabase } from "../lib/supabaseClient";
 import { compressAndUpload } from "../lib/utils/imageUpload";
 import { useAppSettings } from "../hooks/useSupabase";
 
-// Libellés des rôles (clés de lib/authz.js) et pastille du nuancier.
-const ROLE_INFO = {
-  admin: { label: "Administrateur", tone: 0 },
-  sales: { label: "Commercial", tone: 1 },
-  ordo: { label: "Ordonnancement", tone: 2 },
-  ordo_conf: { label: "Ordonnancement · confection", tone: 2 },
-  op: { label: "Opérateur", tone: 3 },
-  prepa: { label: "Préparation", tone: 4 },
-  pose: { label: "Pose", tone: 4 },
-  conf: { label: "Confection", tone: 4 },
-  compta: { label: "Comptabilité", tone: 5 },
-};
-const roleOf = (role) => ROLE_INFO[role] || { label: role || "—", tone: null };
+import UsersAdmin from "../components/settings/UsersAdmin";
+import { roleOf } from "../lib/constants/roleLabels";
 
 const ROBOTO = "Roboto, system-ui, sans-serif";
 const sectionTitle = { fontSize: 20, fontWeight: 500, fontFamily: ROBOTO, color: "#111827", margin: "0 0 14px" };
-const th = { padding: "10px 14px", textAlign: "left", fontSize: 13, fontWeight: 600, color: "#374151", background: "#F4F4F4", borderBottom: "1px solid #E0DED9" };
-const td = { padding: "12px 14px", borderBottom: "1px solid #E8E6E2", fontSize: 14, color: "#111827", verticalAlign: "middle" };
 
 function SoonRow({ title }) {
   return (
@@ -119,7 +106,6 @@ export default function SettingsScreen({ onBack }) {
   };
 
   const role = roleOf(currentUser?.role);
-  const showEmails = users.some((u) => u.email);
   const tabs = [{ key: "profile", label: "Mon profil" }, ...(isAdmin ? [{ key: "users", label: "Utilisateurs" }] : [])];
 
   return (
@@ -156,95 +142,56 @@ export default function SettingsScreen({ onBack }) {
           <div />
         </div>
 
-        {/* === MON PROFIL === */}
+        {/* === MON PROFIL === : identité à gauche, réglages à droite, bloc centré */}
         {tab === "profile" && (
-          <div style={{ maxWidth: 720 }}>
+          <div style={{ maxWidth: 1040, margin: "0 auto", display: "grid", gridTemplateColumns: "minmax(220px, 280px) minmax(0, 1fr)", gap: 48, alignItems: "start" }} className="df-settings-profile">
             {/* Identité */}
-            <div style={{ display: "flex", alignItems: "center", gap: 20, marginBottom: 36 }}>
-              <div style={{ position: "relative", flexShrink: 0 }}>
-                <Avatar src={avatarUrl} sx={{ width: 80, height: 80, bgcolor: "#F4F4F4", color: "#6B7280", fontSize: 26, fontWeight: 500, fontFamily: ROBOTO, border: "1px solid #E0DED9" }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", padding: "28px 20px", background: "#F7F7F5", borderRadius: 12 }}>
+              <div style={{ position: "relative" }}>
+                <Avatar src={avatarUrl} sx={{ width: 104, height: 104, bgcolor: "white", color: "#6B7280", fontSize: 34, fontWeight: 400, fontFamily: ROBOTO, border: "1px solid #E0DED9" }}>
                   {name ? name.substring(0, 2).toUpperCase() : "U"}
                 </Avatar>
-                <label title="Changer la photo" style={{ position: "absolute", right: -2, bottom: -2, width: 30, height: 30, borderRadius: 99, background: "#1E2447", color: "white", display: "flex", alignItems: "center", justifyContent: "center", border: "2px solid white", cursor: avatarUploading ? "wait" : "pointer" }}>
+                <label title="Changer la photo" style={{ position: "absolute", right: 0, bottom: 0, width: 32, height: 32, borderRadius: 99, background: "#1E2447", color: "white", display: "flex", alignItems: "center", justifyContent: "center", border: "2px solid #F7F7F5", cursor: avatarUploading ? "wait" : "pointer" }}>
                   <Camera size={15} />
                   <input hidden accept="image/*" type="file" disabled={avatarUploading} onChange={handleAvatarFile} />
                 </label>
               </div>
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: 24, fontWeight: 400, color: "#111827" }}>{name || "Nouvel utilisateur"}</div>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 6, flexWrap: "wrap" }}>
-                  <TonePill tone={role.tone}>{role.label}</TonePill>
-                  <span style={{ fontSize: 13, color: "#6B7280" }}>{email || "Aucun e-mail"}</span>
-                </div>
-                {avatarUploading && <div style={{ fontSize: 12, color: "#6B7280", marginTop: 6 }}>Envoi de la photo…</div>}
+              <div style={{ fontSize: 22, fontWeight: 400, color: "#111827", marginTop: 16 }}>{name || "Nouvel utilisateur"}</div>
+              <div style={{ marginTop: 8 }}><TonePill tone={role.tone}>{role.label}</TonePill></div>
+              <div style={{ fontSize: 13, color: "#6B7280", marginTop: 10, wordBreak: "break-all" }}>{email || "Aucun e-mail"}</div>
+              {avatarUploading && <div style={{ fontSize: 12, color: "#6B7280", marginTop: 8 }}>Envoi de la photo…</div>}
+            </div>
+
+            {/* Réglages */}
+            <div>
+              <h2 style={sectionTitle}>Informations personnelles</h2>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 36 }}>
+                <DaField label="Nom complet">
+                  <TextField fullWidth size="small" value={name} onChange={(e) => setName(e.target.value)} sx={DA_FIELD_SX} />
+                </DaField>
+                <DaField label="E-mail" hint="Identifiant de connexion, non modifiable ici.">
+                  <TextField fullWidth size="small" value={email} disabled sx={DA_FIELD_SX} />
+                </DaField>
               </div>
-            </div>
 
-            <h2 style={sectionTitle}>Informations personnelles</h2>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 36 }}>
-              <DaField label="Nom complet">
-                <TextField fullWidth size="small" value={name} onChange={(e) => setName(e.target.value)} sx={DA_FIELD_SX} />
-              </DaField>
-              <DaField label="E-mail" hint="Identifiant de connexion, non modifiable ici.">
-                <TextField fullWidth size="small" value={email} disabled sx={DA_FIELD_SX} />
-              </DaField>
-            </div>
+              <h2 style={sectionTitle}>Sécurité et notifications</h2>
+              <div style={{ borderTop: "1px solid #E8E6E2", marginBottom: 32 }}>
+                <SoonRow title="Modification du mot de passe" />
+                <SoonRow title="Préférences de notifications" />
+              </div>
 
-            <h2 style={sectionTitle}>Sécurité et notifications</h2>
-            <div style={{ borderTop: "1px solid #E8E6E2", marginBottom: 32 }}>
-              <SoonRow title="Modification du mot de passe" />
-              <SoonRow title="Préférences de notifications" />
-            </div>
-
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-              <ToolbarButton onClick={onBack}>Annuler</ToolbarButton>
-              <ToolbarButton primary onClick={handleSaveProfile} disabled={saving || avatarUploading}>
-                {saving ? "Enregistrement…" : "Enregistrer"}
-              </ToolbarButton>
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+                <ToolbarButton onClick={onBack}>Annuler</ToolbarButton>
+                <ToolbarButton primary onClick={handleSaveProfile} disabled={saving || avatarUploading}>
+                  {saving ? "Enregistrement…" : "Enregistrer"}
+                </ToolbarButton>
+              </div>
             </div>
           </div>
         )}
 
         {/* === UTILISATEURS (admin) === */}
-        {tab === "users" && isAdmin && (
-          <div>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 14 }}>
-              <h2 style={{ ...sectionTitle, margin: 0 }}>Utilisateurs</h2>
-              <span style={{ fontSize: 13, color: "#9B9A97" }}>{users.length}</span>
-            </div>
-            <div style={TABLE_FRAME_STYLE}>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <thead>
-                  <tr>
-                    <th style={th}>Nom</th>
-                    {showEmails && <th style={th}>E-mail</th>}
-                    <th style={th}>Rôle</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {users.map((u, i) => {
-                    const r = roleOf(u.role);
-                    const last = i === users.length - 1 ? { borderBottom: "none" } : {};
-                    return (
-                      <tr key={u.id}>
-                        <td style={{ ...td, ...last }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                            <Avatar src={u.avatar_url || u.avatarUrl} sx={{ width: 28, height: 28, fontSize: 12, bgcolor: "#F4F4F4", color: "#6B7280", fontFamily: ROBOTO }}>
-                              {(u.name || "?").substring(0, 2).toUpperCase()}
-                            </Avatar>
-                            <span style={{ fontWeight: 500 }}>{u.name}</span>
-                          </div>
-                        </td>
-                        {showEmails && <td style={{ ...td, ...last, color: "#4B5563" }}>{u.email || "—"}</td>}
-                        <td style={{ ...td, ...last }}><TonePill tone={r.tone}>{r.label}</TonePill></td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
+        {tab === "users" && isAdmin && <UsersAdmin users={users} currentUserId={currentUser?.id} />}
       </div>
     </div>
   );

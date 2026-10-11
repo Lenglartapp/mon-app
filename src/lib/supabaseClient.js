@@ -27,6 +27,15 @@ const fetchWithTimeout = (input, init = {}) => {
   return fetch(input, { ...init, signal });
 };
 
+// Lien d'invitation (ou de réinitialisation) reçu par e-mail : Supabase connecte la personne
+// via le fragment d'URL (#…&type=invite), qu'il efface aussitôt. On note le type AVANT, pour
+// lui demander de choisir son mot de passe (voir SetPasswordScreen dans App.jsx).
+export const MUST_SET_PASSWORD_KEY = 'df_must_set_password';
+try {
+  const linkType = new URLSearchParams(window.location.hash.replace(/^#/, '')).get('type');
+  if (linkType === 'invite' || linkType === 'recovery') sessionStorage.setItem(MUST_SET_PASSWORD_KEY, linkType);
+} catch { /* navigation privée : on n'empêche pas la connexion */ }
+
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   global: { fetch: fetchWithTimeout },
 });
