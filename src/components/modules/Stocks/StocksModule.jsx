@@ -55,8 +55,8 @@ export default function StocksModule({
     // Define Tabs
     const TABS = [
         { key: 0, label: "Dashboard" },
-        { key: 1, label: "Journal des mouvements" },
-        { key: 2, label: "État du stock" },
+        { key: 1, label: "Journal" },
+        { key: 2, label: "Stock" },
         { key: 3, label: "Mise à disposition" }
     ];
 
