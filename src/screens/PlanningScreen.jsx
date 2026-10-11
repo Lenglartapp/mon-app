@@ -1417,49 +1417,53 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                 : { height: pageHeight ?? '100vh', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#FFFFFF' }}>
             {/* Bandeau de titre : défile normalement et disparaît au scroll */}
             <div style={{ padding: '24px 24px 0', flexShrink: 0 }}>
-                {/* Titre aligné comme les autres modules (bloc centré 1600 px max) */}
-                <div style={{ maxWidth: 1600, width: '100%', margin: '0 auto 16px' }}>
-                    {onBack && (
-                        <button onClick={onBack} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6B7280', fontWeight: 600, fontSize: 13, marginBottom: 4, padding: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
-                            ← Retour
-                        </button>
-                    )}
-                    <h1 style={{ fontSize: 32, fontWeight: 400, fontFamily: 'Roboto, system-ui, sans-serif', color: '#111827', margin: 0, letterSpacing: '-0.01em' }}>Planning</h1>
+                {/* Titre aligné comme les autres modules (bloc centré 1600 px max). Les vues
+                    Planning / Programmation / Capacité sont sur la MÊME ligne, centrées : une ligne
+                    de hauteur gagnée pour le tableau (petits écrans). */}
+                <div style={{ maxWidth: 1600, width: '100%', margin: '0 auto 14px', display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'end', columnGap: 16 }}>
+                    <div>
+                        {onBack && (
+                            <button onClick={onBack} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6B7280', fontWeight: 600, fontSize: 13, marginBottom: 4, padding: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                ← Retour
+                            </button>
+                        )}
+                        <h1 style={{ fontSize: 32, fontWeight: 400, fontFamily: 'Roboto, system-ui, sans-serif', color: '#111827', margin: 0, letterSpacing: '-0.01em' }}>Planning</h1>
+                    </div>
+                    {canViewAssistant ? (
+                        <div style={{ paddingBottom: 2 }}>
+                            <div style={{ display: 'flex', gap: 2 }}>
+                                {[
+                                    { key: null, label: 'Planning' },
+                                    { key: 'programmation', label: 'Programmation' },
+                                    { key: 'capacite', label: 'Capacité' },
+                                ].map(seg => {
+                                    const active = (assistantMode || null) === seg.key;
+                                    return (
+                                        <button
+                                            key={seg.label}
+                                            className="df-pill-tab" data-active={active}
+                                            onClick={() => setAssistantMode(seg.key)}
+                                            style={{
+                                                padding: '8px 20px', borderRadius: 99, fontSize: 14, fontWeight: 500,
+                                                border: 'none', cursor: 'pointer', transition: 'all 0.2s cubic-bezier(0.25, 1, 0.5, 1)',
+                                                background: active ? '#1E2447' : 'transparent',
+                                                color: active ? 'white' : '#4B5563',
+                                                boxShadow: active ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', outline: 'none',
+                                            }}
+                                        >
+                                            {seg.label}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    ) : <div />}
+                    <div />
                 </div>
             </div>
 
             {/* Bloc sticky : pastilles de navigation + barre d'outils, toujours visibles au scroll */}
             <div ref={stickyHeaderRef} style={{ position: 'sticky', top: 0, zIndex: 70, background: '#FFFFFF', flexShrink: 0 }}>
-                {canViewAssistant && (
-                    <div style={{ display: 'flex', justifyContent: 'center', padding: '8px 24px 12px' }}>
-                        {/* Mêmes pastilles que les vues du chiffrage, sans cadre autour */}
-                        <div style={{ display: 'flex', gap: 2 }}>
-                            {[
-                                { key: null, label: 'Planning' },
-                                { key: 'programmation', label: 'Programmation' },
-                                { key: 'capacite', label: 'Capacité' },
-                            ].map(seg => {
-                                const active = (assistantMode || null) === seg.key;
-                                return (
-                                    <button
-                                        key={seg.label}
-                                        className="df-pill-tab" data-active={active}
-                                        onClick={() => setAssistantMode(seg.key)}
-                                        style={{
-                                            padding: '8px 20px', borderRadius: 99, fontSize: 14, fontWeight: 500,
-                                            border: 'none', cursor: 'pointer', transition: 'all 0.2s cubic-bezier(0.25, 1, 0.5, 1)',
-                                            background: active ? '#1E2447' : 'transparent',
-                                            color: active ? 'white' : '#4B5563',
-                                            boxShadow: active ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', outline: 'none',
-                                        }}
-                                    >
-                                        {seg.label}
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    </div>
-                )}
 
             {/* Barre d'outils calendrier : uniquement sur la vue Planning */}
             {assistantMode === null && (
