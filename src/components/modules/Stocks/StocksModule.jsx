@@ -65,8 +65,9 @@ export default function StocksModule({
             {/* Contenu centré (1600 px max), comme Logistique / Performance */}
             <div style={{ width: '100%', maxWidth: 1600, margin: '0 auto', display: 'flex', flexDirection: 'column', flex: 1 }}>
 
-                {/* 1. Header Row (Back/Title Left, Actions Right) */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
+                {/* 1. En-tête : titre à gauche, onglets centrés sur la MÊME ligne (mêmes pastilles que
+                    les vues du chiffrage) — une ligne de hauteur gagnée pour le contenu. */}
+                <div className="df-title-tabs" style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'end', columnGap: 16, marginBottom: 28 }}>
                     <div>
                         {onBack && (
                             <button
@@ -82,34 +83,31 @@ export default function StocksModule({
                         )}
                         <h1 style={{ fontSize: 32, fontWeight: 400, fontFamily: 'Roboto, system-ui, sans-serif', color: '#111827', margin: 0, letterSpacing: '-0.01em' }}>Inventaire</h1>
                     </div>
-
-                </div>
-
-                {/* 2. Onglets : mêmes pastilles que les vues du chiffrage (Minutes / Liste Achats / Moulinette),
-                    sans cadre autour ; un peu d'air avant le contenu */}
-                <div style={{ display: 'flex', justifyContent: 'center', gap: 2, marginBottom: 36 }}>
-                    {TABS.map(t => (
-                        <button
-                            key={t.key}
-                            className="df-pill-tab" data-active={tabIndex === t.key}
-                            onClick={() => setTabIndex(t.key)}
-                            style={{
-                                padding: '8px 20px',
-                                borderRadius: 99,
-                                fontSize: 14,
-                                fontWeight: 500,
-                                border: 'none',
-                                cursor: 'pointer',
-                                background: tabIndex === t.key ? '#1E2447' : 'transparent',
-                                color: tabIndex === t.key ? '#FFFFFF' : '#4B5563',
-                                transition: 'all 0.2s cubic-bezier(0.25, 1, 0.5, 1)',
-                                boxShadow: tabIndex === t.key ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-                                outline: 'none'
-                            }}
-                        >
-                            {t.label}
-                        </button>
-                    ))}
+                    <div style={{ display: 'flex', gap: 2, paddingBottom: 2 }}>
+                        {TABS.map(t => (
+                            <button
+                                key={t.key}
+                                className="df-pill-tab" data-active={tabIndex === t.key}
+                                onClick={() => setTabIndex(t.key)}
+                                style={{
+                                    padding: '8px 20px',
+                                    borderRadius: 99,
+                                    fontSize: 14,
+                                    fontWeight: 500,
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    background: tabIndex === t.key ? '#1E2447' : 'transparent',
+                                    color: tabIndex === t.key ? '#FFFFFF' : '#4B5563',
+                                    transition: 'all 0.2s cubic-bezier(0.25, 1, 0.5, 1)',
+                                    boxShadow: tabIndex === t.key ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                                    outline: 'none'
+                                }}
+                            >
+                                {t.label}
+                            </button>
+                        ))}
+                    </div>
+                    <div />
                 </div>
 
                 {/* 3. Content */}

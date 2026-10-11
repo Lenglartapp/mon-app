@@ -1420,7 +1420,7 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                 {/* Titre aligné comme les autres modules (bloc centré 1600 px max). Les vues
                     Planning / Programmation / Capacité sont sur la MÊME ligne, centrées : une ligne
                     de hauteur gagnée pour le tableau (petits écrans). */}
-                <div style={{ maxWidth: 1600, width: '100%', margin: '0 auto 14px', display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'end', columnGap: 16 }}>
+                <div className="df-title-tabs" style={{ maxWidth: 1600, width: '100%', margin: '0 auto 14px', display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'end', columnGap: 16 }}>
                     <div>
                         {onBack && (
                             <button onClick={onBack} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6B7280', fontWeight: 600, fontSize: 13, marginBottom: 4, padding: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
