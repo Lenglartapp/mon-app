@@ -11,6 +11,7 @@ function odooApiDevPlugin(env) {
   const ROUTES = {
     '/api/odoo/': { dir: './api/odoo/', names: new Set(['ping', 'preview', 'project-status', 'sync', 'course-lines', 'quote-data', 'quote-create', 'order-event']) },
     '/api/cron/': { dir: './api/cron/', names: new Set(['nightly']) },
+    '/api/admin/': { dir: './api/admin/', names: new Set(['users']) },
   }
   return {
     name: 'odoo-api-dev',

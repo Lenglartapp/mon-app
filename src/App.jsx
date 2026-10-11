@@ -27,6 +27,8 @@ import { isInternalProject } from "./lib/planning/internalProject";
 import LogistiqueScreen from "./screens/LogistiqueScreen";
 import PerformanceScreen from "./screens/PerformanceScreen";
 import OdooSyncScreen from "./screens/OdooSyncScreen";
+import SetPasswordScreen from "./screens/SetPasswordScreen";
+import { MUST_SET_PASSWORD_KEY } from "./lib/supabaseClient";
 import { useProjects, useMinutes, useEvents, useStocks } from './hooks/useSupabase';
 
 import { useNetworkStatus } from './hooks/useNetworkStatus';
@@ -615,7 +617,12 @@ function AppShell() {
 // QU'APRÈS la connexion. `key` : changer d'utilisateur repart d'un état propre.
 function AuthGate() {
   const { currentUser } = useAuth();
+  // Arrivée par un lien d'invitation / de réinitialisation : choisir son mot de passe d'abord.
+  const [mustSetPassword, setMustSetPassword] = React.useState(() => {
+    try { return !!sessionStorage.getItem(MUST_SET_PASSWORD_KEY); } catch { return false; }
+  });
   if (!currentUser) return <LoginScreen />;
+  if (mustSetPassword) return <SetPasswordScreen name={currentUser.name} onDone={() => setMustSetPassword(false)} />;
   return (
     <ActivityProvider key={currentUser.id || currentUser.email}>
       <NotificationProvider>
