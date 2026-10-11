@@ -1,32 +1,54 @@
 // src/screens/SettingsScreen.jsx
+// Paramètres : profil de l'utilisateur connecté et, pour l'admin, la liste des utilisateurs.
+// Même DA que les autres modules : titre de page 32 px, onglets en pastilles sur la ligne du
+// titre, sections sans cadre (titres 20 px), champs DaField, tableau à cadre fin.
 import React, { useState } from "react";
-import {
-  Container, Card, CardContent, CardHeader,
-  Typography, TextField, Button, Avatar, IconButton,
-  Divider, Box, Badge, Chip, Paper
-} from "@mui/material";
-import { Camera, ArrowLeft, Mail, Users, Clock } from "lucide-react";
+import { TextField, Avatar } from "@mui/material";
+import { Camera } from "lucide-react";
 import { useAuth, ROLES } from "../auth";
-
-const ROLE_OPTIONS = [
-  { value: ROLES.ADMIN, label: "Administrateur", color: "#1e1b4b" }, // Indigo 950
-  { value: ROLES.ORDONNANCEMENT, label: "Ordonnancement", color: "#0f766e" }, // Teal 700
-  { value: ROLES.PILOTAGE_PROJET, label: "Pilotage", color: "#c2410c" }, // Orange 700
-  { value: ROLES.PRODUCTION, label: "Production", color: "#374151" }, // Gray 700
-  { value: ROLES.ADV, label: "ADV", color: "#be185d" }, // Pink 700
-];
-
+import { DaField } from "../components/ui/DaForm";
+import { ToolbarButton, TonePill } from "../components/ui/ToolbarControls";
+import { DA_FIELD_SX, TABLE_FRAME_STYLE } from "../lib/constants/daStyles";
 import { supabase } from "../lib/supabaseClient";
 import { compressAndUpload } from "../lib/utils/imageUpload";
-import { useAppSettings } from "../hooks/useSupabase"; // <-- IMPORT HERE
+import { useAppSettings } from "../hooks/useSupabase";
+
+// Libellés des rôles (clés de lib/authz.js) et pastille du nuancier.
+const ROLE_INFO = {
+  admin: { label: "Administrateur", tone: 0 },
+  sales: { label: "Commercial", tone: 1 },
+  ordo: { label: "Ordonnancement", tone: 2 },
+  ordo_conf: { label: "Ordonnancement · confection", tone: 2 },
+  op: { label: "Opérateur", tone: 3 },
+  prepa: { label: "Préparation", tone: 4 },
+  pose: { label: "Pose", tone: 4 },
+  conf: { label: "Confection", tone: 4 },
+  compta: { label: "Comptabilité", tone: 5 },
+};
+const roleOf = (role) => ROLE_INFO[role] || { label: role || "—", tone: null };
+
+const ROBOTO = "Roboto, system-ui, sans-serif";
+const sectionTitle = { fontSize: 20, fontWeight: 500, fontFamily: ROBOTO, color: "#111827", margin: "0 0 14px" };
+const th = { padding: "10px 14px", textAlign: "left", fontSize: 13, fontWeight: 600, color: "#374151", background: "#F4F4F4", borderBottom: "1px solid #E0DED9" };
+const td = { padding: "12px 14px", borderBottom: "1px solid #E8E6E2", fontSize: 14, color: "#111827", verticalAlign: "middle" };
+
+function SoonRow({ title }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 0", borderBottom: "1px solid #E8E6E2" }}>
+      <span style={{ fontSize: 14, color: "#374151" }}>{title}</span>
+      <TonePill tone={null}>Bientôt disponible</TonePill>
+    </div>
+  );
+}
 
 export default function SettingsScreen({ onBack }) {
   const {
     currentUser, setCurrentUser,
-    users, resetPasswordDemo
+    users
   } = useAuth();
 
   const isAdmin = currentUser?.role === ROLES.ADMIN;
+  const [saving, setSaving] = useState(false);
   const [tab, setTab] = useState("profile");
 
   // --- Profile State --- (keeps state)
@@ -46,6 +68,7 @@ export default function SettingsScreen({ onBack }) {
 
 
   const handleSaveProfile = async () => {
+    setSaving(true);
     try {
       // 0. Update Global Settings (Admin Only)
       if (isAdmin) {
@@ -74,6 +97,8 @@ export default function SettingsScreen({ onBack }) {
     } catch (err) {
       console.error("Error updating profile:", err);
       alert("Erreur lors de la mise à jour du profil : " + err.message);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -93,283 +118,134 @@ export default function SettingsScreen({ onBack }) {
     }
   };
 
-  const roleInfo = ROLE_OPTIONS.find(r => r.value === currentUser?.role) || { label: currentUser?.role, color: '#333' };
+  const role = roleOf(currentUser?.role);
+  const showEmails = users.some((u) => u.email);
+  const tabs = [{ key: "profile", label: "Mon profil" }, ...(isAdmin ? [{ key: "users", label: "Utilisateurs" }] : [])];
 
-  // Common styles
-  const cardStyle = {
-    bgcolor: 'transparent',
-    boxShadow: 'none',
-    border: '1px solid rgba(0, 0, 0, 0.08)',
-    borderRadius: 4
-  };
-
-  const inputStyle = {
-    bgcolor: 'white',
-    borderRadius: 1
-  };
-
-  // --- Render ---
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: '#FFFFFF', py: 4 }}>
-      <Container maxWidth="lg">
-
-        {/* HEADER NAV */}
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: 4 }}>
-          <Button
-            startIcon={<ArrowLeft size={20} />}
-            onClick={onBack}
-            sx={{
-              color: '#6B7280',
-              textTransform: 'none',
-              fontWeight: 600,
-              '&:hover': { color: '#111827', bgcolor: 'transparent' }
-            }}
-          >
-            Retour au Dashboard
-          </Button>
-          <Box sx={{ flex: 1 }} />
-
-          {isAdmin && (
-            <Box sx={{ bgcolor: 'rgba(255,255,255,0.6)', borderRadius: 3, p: 0.5, border: '1px solid rgba(0,0,0,0.05)' }}>
-              <Button
-                variant={tab === 'profile' ? 'contained' : 'text'}
-                size="small"
-                onClick={() => setTab('profile')}
-                sx={{
-                  borderRadius: 2,
-                  bgcolor: tab === 'profile' ? '#1F2937' : 'transparent',
-                  color: tab === 'profile' ? 'white' : '#6B7280',
-                  boxShadow: 'none',
-                  textTransform: 'none',
-                  fontWeight: 600,
-                  '&:hover': { bgcolor: tab === 'profile' ? '#374151' : 'rgba(0,0,0,0.04)' }
-                }}
-              >
-                Mon Profil
-              </Button>
-              <Button
-                variant={tab === 'users' ? 'contained' : 'text'}
-                size="small"
-                onClick={() => setTab('users')}
-                sx={{
-                  borderRadius: 2,
-                  bgcolor: tab === 'users' ? '#1F2937' : 'transparent',
-                  color: tab === 'users' ? 'white' : '#6B7280',
-                  boxShadow: 'none',
-                  textTransform: 'none',
-                  fontWeight: 600,
-                  '&:hover': { bgcolor: tab === 'users' ? '#374151' : 'rgba(0,0,0,0.04)' }
-                }}
-              >
-                Utilisateurs
-              </Button>
-            </Box>
-          )}
-        </Box>
-
-        {/* === TAB: PROFILE === */}
-        {tab === 'profile' && (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 32, alignItems: 'start' }}>
-            {/* ... (Keep existing Left Column) */}
-            <div>
-              {/* ... (Avatar & User Info Card Content - same as before) ... */}
-              <Paper
-                elevation={0}
-                sx={{
-                  ...cardStyle,
-                  p: 4,
-                  textAlign: 'center',
-                  height: '100%',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
-              >
-                <Badge
-                  overlap="circular"
-                  anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-                  badgeContent={
-                    <IconButton
-                      component="label"
-                      sx={{
-                        bgcolor: '#1F2937',
-                        color: 'white',
-                        width: 36, height: 36,
-                        border: '3px solid #FFFFFF', // Matches background
-                        '&:hover': { bgcolor: '#374151' }
-                      }}
-                    >
-                      <Camera size={18} />
-                      <input hidden accept="image/*" type="file" disabled={avatarUploading} onChange={handleAvatarFile} />
-                    </IconButton>
-                  }
-                >
-                  <Avatar
-                    src={avatarUrl}
-                    sx={{
-                      width: 120, height: 120,
-                      bgcolor: 'white',
-                      color: '#9CA3AF',
-                      fontSize: 40,
-                      fontWeight: 800,
-                      boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
-                      border: '1px solid rgba(0,0,0,0.05)'
-                    }}
-                  >
-                    {name ? name.substring(0, 2).toUpperCase() : "U"}
-                  </Avatar>
-                </Badge>
-
-                <Typography variant="h5" fontWeight={800} sx={{ mt: 3, color: '#111827' }}>
-                  {name || "Nouvel Utilisateur"}
-                </Typography>
-
-                <Chip
-                  label={roleInfo.label}
-                  size="small"
-                  sx={{
-                    mt: 1,
-                    bgcolor: roleInfo.color,
-                    color: 'white',
-                    fontWeight: 600,
-                    fontSize: 11,
-                    height: 24,
-                    border: '1px solid rgba(255,255,255,0.2)'
+    <div style={{ minHeight: "100vh", background: "#FFFFFF", padding: 24, fontFamily: ROBOTO }}>
+      <div style={{ maxWidth: 1600, margin: "0 auto" }}>
+        {/* Titre + onglets sur la même ligne (comme Planning / Inventaire) */}
+        <div className="df-title-tabs" style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "end", columnGap: 16, marginBottom: 32 }}>
+          <div>
+            {onBack && (
+              <button onClick={onBack} style={{ background: "none", border: "none", cursor: "pointer", color: "#6B7280", fontWeight: 600, fontSize: 13, marginBottom: 4, padding: 0 }}>
+                ← Retour
+              </button>
+            )}
+            <h1 style={{ fontSize: 32, fontWeight: 400, color: "#111827", margin: 0, letterSpacing: "-0.01em" }}>Paramètres</h1>
+          </div>
+          {tabs.length > 1 ? (
+            <div style={{ display: "flex", gap: 2, paddingBottom: 2 }}>
+              {tabs.map((t) => (
+                <button
+                  key={t.key}
+                  className="df-pill-tab" data-active={tab === t.key}
+                  onClick={() => setTab(t.key)}
+                  style={{
+                    padding: "8px 20px", borderRadius: 99, fontSize: 14, fontWeight: 500, border: "none", cursor: "pointer", outline: "none",
+                    background: tab === t.key ? "#1E2447" : "transparent", color: tab === t.key ? "#FFFFFF" : "#4B5563",
+                    boxShadow: tab === t.key ? "0 1px 3px rgba(0,0,0,0.1)" : "none", transition: "all 0.2s cubic-bezier(0.25, 1, 0.5, 1)",
                   }}
-                />
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          ) : <div />}
+          <div />
+        </div>
 
-                <Box sx={{ mt: 4, width: '100%', textAlign: 'left' }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2, color: '#4B5563' }}>
-                    <Mail size={18} />
-                    <Typography variant="body2" fontWeight={500}>{email || "Aucun email"}</Typography>
-                  </Box>
-                </Box>
-
-                <Divider sx={{ my: 3, width: '100%', borderColor: 'rgba(0,0,0,0.06)' }} />
-
-                <Typography variant="caption" color="text.secondary">
-                  Membre depuis 2024
-                </Typography>
-              </Paper>
+        {/* === MON PROFIL === */}
+        {tab === "profile" && (
+          <div style={{ maxWidth: 720 }}>
+            {/* Identité */}
+            <div style={{ display: "flex", alignItems: "center", gap: 20, marginBottom: 36 }}>
+              <div style={{ position: "relative", flexShrink: 0 }}>
+                <Avatar src={avatarUrl} sx={{ width: 80, height: 80, bgcolor: "#F4F4F4", color: "#6B7280", fontSize: 26, fontWeight: 500, fontFamily: ROBOTO, border: "1px solid #E0DED9" }}>
+                  {name ? name.substring(0, 2).toUpperCase() : "U"}
+                </Avatar>
+                <label title="Changer la photo" style={{ position: "absolute", right: -2, bottom: -2, width: 30, height: 30, borderRadius: 99, background: "#1E2447", color: "white", display: "flex", alignItems: "center", justifyContent: "center", border: "2px solid white", cursor: avatarUploading ? "wait" : "pointer" }}>
+                  <Camera size={15} />
+                  <input hidden accept="image/*" type="file" disabled={avatarUploading} onChange={handleAvatarFile} />
+                </label>
+              </div>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 24, fontWeight: 400, color: "#111827" }}>{name || "Nouvel utilisateur"}</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 6, flexWrap: "wrap" }}>
+                  <TonePill tone={role.tone}>{role.label}</TonePill>
+                  <span style={{ fontSize: 13, color: "#6B7280" }}>{email || "Aucun e-mail"}</span>
+                </div>
+                {avatarUploading && <div style={{ fontSize: 12, color: "#6B7280", marginTop: 6 }}>Envoi de la photo…</div>}
+              </div>
             </div>
 
-            {/* COLONNE DROITE: FORMULAIRE */}
-            <div>
-              <Paper
-                elevation={0}
-                sx={{
-                  ...cardStyle,
-                  overflow: 'hidden'
-                }}
-              >
-                <CardHeader
-                  title="Informations Personnelles"
-                  titleTypographyProps={{ variant: 'subtitle1', fontWeight: 800, color: '#111827', letterSpacing: '0.05em', textTransform: 'uppercase', fontSize: 12 }}
-                  sx={{ px: 4, pt: 4, pb: 0 }}
-                />
-                <CardContent sx={{ px: 4, py: 3 }}>
-                  <TextField
-                    label="Nom complet"
-                    fullWidth
-                    variant="outlined"
-                    size="small"
-                    value={name}
-                    onChange={e => setName(e.target.value)}
-                    InputProps={{ sx: inputStyle }}
-                  />
-                </CardContent>
+            <h2 style={sectionTitle}>Informations personnelles</h2>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 36 }}>
+              <DaField label="Nom complet">
+                <TextField fullWidth size="small" value={name} onChange={(e) => setName(e.target.value)} sx={DA_FIELD_SX} />
+              </DaField>
+              <DaField label="E-mail" hint="Identifiant de connexion, non modifiable ici.">
+                <TextField fullWidth size="small" value={email} disabled sx={DA_FIELD_SX} />
+              </DaField>
+            </div>
 
-                <Divider sx={{ mx: 4, borderColor: 'rgba(0,0,0,0.06)' }} />
+            <h2 style={sectionTitle}>Sécurité et notifications</h2>
+            <div style={{ borderTop: "1px solid #E8E6E2", marginBottom: 32 }}>
+              <SoonRow title="Modification du mot de passe" />
+              <SoonRow title="Préférences de notifications" />
+            </div>
 
-                <CardHeader
-                  title="Sécurité & Connexion"
-                  titleTypographyProps={{ variant: 'subtitle1', fontWeight: 800, color: '#111827', letterSpacing: '0.05em', textTransform: 'uppercase', fontSize: 12 }}
-                  sx={{ px: 4, pt: 3, pb: 0 }}
-                />
-                <CardContent sx={{ px: 4, py: 3 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 3, bgcolor: '#F4F4F4', borderRadius: 2, border: '1px solid rgba(0,0,0,0.06)', color: '#9CA3AF' }}>
-                    <Clock size={20} />
-                    <Box>
-                      <Typography fontWeight={600} fontSize={14} color="#6B7280">Modification du mot de passe</Typography>
-                      <Typography variant="caption" color="#9CA3AF">Disponible prochainement</Typography>
-                    </Box>
-                  </Box>
-                </CardContent>
-
-                <Divider sx={{ mx: 4, borderColor: 'rgba(0,0,0,0.06)' }} />
-
-                <CardHeader
-                  title="Gestion des Notifications"
-                  titleTypographyProps={{ variant: 'subtitle1', fontWeight: 800, color: '#111827', letterSpacing: '0.05em', textTransform: 'uppercase', fontSize: 12 }}
-                  sx={{ px: 4, pt: 3, pb: 0 }}
-                />
-                <CardContent sx={{ px: 4, py: 3 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 3, bgcolor: '#F4F4F4', borderRadius: 2, border: '1px solid rgba(0,0,0,0.06)', color: '#9CA3AF' }}>
-                    <Clock size={20} />
-                    <Box>
-                      <Typography fontWeight={600} fontSize={14} color="#6B7280">Préférences de notifications</Typography>
-                      <Typography variant="caption" color="#9CA3AF">Disponible prochainement</Typography>
-                    </Box>
-                  </Box>
-                </CardContent>
-
-                <Divider sx={{ borderColor: 'rgba(0,0,0,0.06)' }} />
-
-                {/* FOOTER ACTIONS */}
-                <Box sx={{ p: 3, display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
-                  <Button
-                    onClick={onBack}
-                    sx={{ color: '#6B7280', fontWeight: 600, textTransform: 'none' }}
-                  >
-                    Annuler
-                  </Button>
-                  <Button
-                    variant="contained"
-                    onClick={handleSaveProfile}
-                    sx={{
-                      px: 4,
-                      py: 1,
-                      borderRadius: 2,
-                      bgcolor: '#1F2937', // Dark Grey like Project List
-                      color: 'white',
-                      textTransform: 'none',
-                      fontWeight: 600,
-                      boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                      '&:hover': { bgcolor: '#111827' }
-                    }}
-                  >
-                    Enregistrer les modifications
-                  </Button>
-                </Box>
-              </Paper>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+              <ToolbarButton onClick={onBack}>Annuler</ToolbarButton>
+              <ToolbarButton primary onClick={handleSaveProfile} disabled={saving || avatarUploading}>
+                {saving ? "Enregistrement…" : "Enregistrer"}
+              </ToolbarButton>
             </div>
           </div>
         )}
 
-        {/* === TAB: USERS (Admin) === */}
-        {tab === 'users' && isAdmin && (
-          <Paper elevation={0} sx={{ ...cardStyle, p: 4 }}>
-            <Typography variant="h6" fontWeight={800} gutterBottom>Gestion des Utilisateurs</Typography>
-            <Box sx={{ mt: 2 }}>
-              {users.map(u => (
-                <Box key={u.id} sx={{ p: 2, borderBottom: '1px solid rgba(0,0,0,0.06)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Box>
-                    <Typography fontWeight={600} color="#1F2937">{u.name}</Typography>
-                    <Typography variant="caption" color="#6B7280">{u.email} — {u.role}</Typography>
-                  </Box>
-                  <Button size="small" variant="outlined" color="inherit" onClick={() => resetPasswordDemo(u.id)} sx={{ bgcolor: 'white' }}>Reset MDP</Button>
-                </Box>
-              ))}
-              <Box sx={{ p: 4, textAlign: 'center', color: '#9CA3AF' }}>
-                <Users size={48} style={{ opacity: 0.2, marginBottom: 16 }} />
-                <Typography variant="body2">Interface d'administration complète bientôt disponible.</Typography>
-              </Box>
-            </Box>
-          </Paper>
+        {/* === UTILISATEURS (admin) === */}
+        {tab === "users" && isAdmin && (
+          <div>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 14 }}>
+              <h2 style={{ ...sectionTitle, margin: 0 }}>Utilisateurs</h2>
+              <span style={{ fontSize: 13, color: "#9B9A97" }}>{users.length}</span>
+            </div>
+            <div style={TABLE_FRAME_STYLE}>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr>
+                    <th style={th}>Nom</th>
+                    {showEmails && <th style={th}>E-mail</th>}
+                    <th style={th}>Rôle</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {users.map((u, i) => {
+                    const r = roleOf(u.role);
+                    const last = i === users.length - 1 ? { borderBottom: "none" } : {};
+                    return (
+                      <tr key={u.id}>
+                        <td style={{ ...td, ...last }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                            <Avatar src={u.avatar_url || u.avatarUrl} sx={{ width: 28, height: 28, fontSize: 12, bgcolor: "#F4F4F4", color: "#6B7280", fontFamily: ROBOTO }}>
+                              {(u.name || "?").substring(0, 2).toUpperCase()}
+                            </Avatar>
+                            <span style={{ fontWeight: 500 }}>{u.name}</span>
+                          </div>
+                        </td>
+                        {showEmails && <td style={{ ...td, ...last, color: "#4B5563" }}>{u.email || "—"}</td>}
+                        <td style={{ ...td, ...last }}><TonePill tone={r.tone}>{r.label}</TonePill></td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
         )}
-
-      </Container>
-    </Box>
+      </div>
+    </div>
   );
 }
