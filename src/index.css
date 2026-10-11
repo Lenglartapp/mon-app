@@ -182,3 +182,12 @@ button,
   /* Boutons d'action des listes (éditer, supprimer…) : zone de toucher d'au moins 36 px */
   .df-list-table td button, .df-list-table td .MuiIconButton-root { min-width: 36px; min-height: 36px; }
 }
+/* Titre de module + onglets centrés sur la même ligne (Planning, Inventaire). Écran étroit :
+   les onglets repassent sous le titre et défilent horizontalement. */
+@media (max-width: 900px) {
+  .df-title-tabs { grid-template-columns: minmax(0, 1fr) !important; row-gap: 12px; }
+  .df-title-tabs > :nth-child(2) { overflow-x: auto; scrollbar-width: none; }
+  .df-title-tabs > :nth-child(2)::-webkit-scrollbar { display: none; }
+  .df-title-tabs > :nth-child(3) { display: none; }
+  .df-title-tabs > :nth-child(2) button { white-space: nowrap; flex-shrink: 0; }
+}
