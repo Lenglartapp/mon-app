@@ -25,7 +25,10 @@ import { frFR } from '@mui/x-data-grid/locales';
 import { calculateProfitability, commissionRateForOwner } from '../lib/financial/profitabilityCalculator';
 import { useAppSettings, useCatalog } from "../hooks/useSupabase";
 import { supabase } from "../lib/supabaseClient";
-import { buildStatusLog, appendHistory } from "../lib/minuteHistory";
+import { appendHistory } from "../lib/minuteHistory";
+import { useNotifications } from "../contexts/NotificationContext";
+import { isFrozen, statusChangeBlocked, disabledStatuses, needsDialog, buildStatusChange } from "../lib/quoteValidation";
+import StatusChangeDialog from "../components/StatusChangeDialog";
 
 // CONSTANTES & HELPERS
 const SEARCH_FIELDS = [
@@ -96,24 +99,27 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
 
   const showKPIs = currentUser?.role === ROLES.ADMIN;
 
-  const handleStatusSelect = async (id, status) => {
-    if (!id || !onUpdate) return;
+  // Changement de statut depuis la liste : mêmes règles que la fiche du devis
+  // (cf. lib/quoteValidation) — valideurs, devis figés, motif, notifications.
+  const { addNotification } = useNotifications();
+  const [statusDialog, setStatusDialog] = useState(null); // { id, to }
 
-    const from = (minutes || []).find(m => m.id === id)?.status || 'DRAFT';
-    if (from === status) return;
-
+  const applyStatus = async (id, status, comment = '') => {
+    const m = (minutes || []).find(x => x.id === id);
+    const from = m?.status || 'DRAFT';
     const patch = { status };
+    const figures = { ca: Math.round(Number(m?.ca_ht ?? m?.ca_total ?? 0)) };
 
-    // JOURNAL — ce changement de statut n'apparaissait nulle part dans
-    // « Historique Complet » : cet écran écrivait le statut sans jamais journaliser.
     // ⚠️ `modules` n'est PAS chargé dans la liste (colonnes légères, cf.
     // MINUTE_LIST_COLUMNS) : on le RELIT avant d'y ajouter une entrée, sinon on
     // écraserait tout l'historique ET les modules actifs du devis.
+    let notifications = [];
     try {
       const { data, error } = await supabase.from('minutes').select('modules').eq('id', id).single();
       if (!error) {
-        const author = currentUser?.name || currentUser?.email || 'Utilisateur';
-        patch.modules = appendHistory(data?.modules, [buildStatusLog(from, status, author)]);
+        const change = buildStatusChange({ minute: { ...m, status: from, modules: data?.modules }, to: status, user: currentUser, users, figures, comment });
+        patch.modules = { ...appendHistory(data?.modules, change.history), validation: change.validation };
+        notifications = change.notifications;
       }
     } catch {
       // Lecture impossible (réseau) : on change quand même le statut, sans journal —
@@ -121,6 +127,17 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
     }
 
     onUpdate(id, patch);
+    notifications.forEach((n) => addNotification(n.title, n.message, n.type, n.action, n.userId));
+  };
+
+  const handleStatusSelect = (id, status) => {
+    if (!id || !onUpdate) return;
+    const from = (minutes || []).find(m => m.id === id)?.status || 'DRAFT';
+    if (from === status) return;
+    const blocked = statusChangeBlocked(currentUser, from, status);
+    if (blocked) { window.alert(blocked); return; }
+    if (needsDialog(status)) setStatusDialog({ id, to: status });
+    else applyStatus(id, status);
   };
 
   const handleOwnerClick = (event, id) => {
@@ -623,6 +640,8 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
                             options={STATUS_OPTIONS}
                             tones={CHIFFRAGE_STATUS_TONE}
                             onChange={(v) => handleStatusSelect(m.id, v)}
+                            disabled={isFrozen(m.status) && currentUser?.role !== 'admin'}
+                            disabledOptions={disabledStatuses(currentUser, m.status || 'DRAFT', Object.keys(STATUS_OPTIONS))}
                           />
                         </td>
                         <td style={{ padding: '12px 8px', textAlign: 'right', whiteSpace: 'nowrap' }}>
@@ -832,6 +851,19 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
           </MenuItem>
         ))}
       </Menu>
+
+      {statusDialog && (() => {
+        const sm = (minutes || []).find(x => x.id === statusDialog.id);
+        return (
+          <StatusChangeDialog
+            to={statusDialog.to}
+            minuteName={sm?.name}
+            figures={{ ca: Number(sm?.ca_ht ?? sm?.ca_total ?? 0) }}
+            onCancel={() => setStatusDialog(null)}
+            onConfirm={async (comment) => { const d = statusDialog; setStatusDialog(null); await applyStatus(d.id, d.to, comment); }}
+          />
+        );
+      })()}
     </div >
   );
 }

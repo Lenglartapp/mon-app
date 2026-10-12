@@ -31,10 +31,12 @@ import { EditableTitle, StatusPill, HeaderButton, MetaItem, OwnerPicker } from "
 import { formatAnyDateFR } from "../lib/utils/formatDate";
 import NotesBlock from "../components/ui/NotesBlock";
 import { readVersionContent, mergeVisualsFromCurrent } from "../lib/minuteVersions";
-import { buildSettingsLogs, buildCatalogLogs, buildStatusLog, appendHistory } from "../lib/minuteHistory";
+import { buildSettingsLogs, buildCatalogLogs, appendHistory } from "../lib/minuteHistory";
 import { MOBILIER_PRODUIT_RE } from "../lib/constants/productRouting";
 import { applyCatalogRenames } from "../lib/utils/catalogRename";
 import RecalibrageAssistant from "../components/recalibrage/RecalibrageAssistant";
+import StatusChangeDialog from "../components/StatusChangeDialog";
+import { isFrozen, statusChangeBlocked, disabledStatuses, needsDialog, buildStatusChange, buildInvalidation } from "../lib/quoteValidation";
 import OdooQuoteWizard from "../components/odoo/OdooQuoteWizard";
 import { canUseOdooQuote } from "../lib/odoo/quoteAccess";
 import { odooFetch } from "../lib/odoo/odooFetch";
@@ -97,13 +99,24 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
 
   // Permissions
   const canView = can(currentUser, "chiffrage.view");
-  const canEdit = can(currentUser, "chiffrage.edit");
+  const canEditBase = can(currentUser, "chiffrage.edit");
 
   // Minute Data
   const minute = React.useMemo(
     () => (minutes || []).find((m) => m.id.toLowerCase().startsWith(String(minuteId).toLowerCase())),
     [minutes, minuteId]
   );
+
+  // Devis en « Commande » / « Commande terminée » : figé (lecture seule). Seul le statut
+  // reste modifiable, par un administrateur (cf. lib/quoteValidation).
+  const frozen = isFrozen(minute?.status);
+  const canEdit = canEditBase && !frozen;
+
+  // Les variantes repartent sans circuit de validation (demande / décision du parent).
+  const createMinute = React.useCallback((m) => onCreate?.({
+    ...m,
+    ...(m?.modules ? { modules: { ...m.modules, validation: undefined } } : {}),
+  }), [onCreate]);
 
   // Devis Odoo lié à la minute (créé depuis le module) + son état relu dans Odoo.
   const [odooLink, setOdooLink] = React.useState(minute?.odoo_quote?.link || null);
@@ -310,10 +323,16 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
   const nfEur0 = React.useMemo(() => new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }), []);
 
   // Update Wrapper (Memoized)
-  const updateMinute = React.useCallback((patch) => {
-    if (!canEdit) return;
+  // `force` : changement de statut, seul enregistrement permis sur un devis figé.
+  const updateMinute = React.useCallback((patch, { force = false } = {}) => {
+    if (!canEditBase || (frozen && !force)) return;
     if (onUpdate && minute?.id) onUpdate(minute.id, patch);
-  }, [canEdit, onUpdate, minute?.id]);
+  }, [canEditBase, frozen, onUpdate, minute?.id]);
+
+  // Une modification faite par l'utilisateur (≠ recalcul à l'ouverture) : sert à
+  // repasser « En cours » un devis validé dont le prix change.
+  const userEditedRef = React.useRef(false);
+  React.useEffect(() => { userEditedRef.current = false; }, [minute?.id]);
 
   // PERF — Props STABLES pour l'éditeur (React.memo). Recréés inline à chaque rendu,
   // ils forçaient un re-rendu complet de l'éditeur et de toutes ses grilles au moindre
@@ -363,6 +382,7 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
       return;
     }
 
+    userEditedRef.current = true;
     const newLines = all.filter(r => r.produit !== "Autre Dépense" && r.produit !== "Déplacement");
     const newExtras = all.filter(r => r.produit === "Autre Dépense");
     const newDeps = all.filter(r => r.produit === "Déplacement");
@@ -438,43 +458,65 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
     setLocalStatus(minute?.status || "DRAFT");
   }, [minute?.status]);
 
-  // Status Change with Logging (Memoized)
+  // ——— CIRCUIT DE VALIDATION (cf. lib/quoteValidation) ———
+  // Montants figés dans l'historique au moment d'une demande / décision.
+  const currentFigures = React.useCallback(() => {
+    const { kpis } = calculateProfitability(rows || [], depRows || [], extraRows || [], commissionRateForOwner(minute?.owner));
+    return { ca: Math.round(kpis.ca_total || 0), achats: Math.round(kpis.achats_fixes || 0), heures: kpis.total_heures || 0, lignes: (rows || []).length };
+  }, [rows, depRows, extraRows, minute?.owner]);
+
+  const [statusDialog, setStatusDialog] = React.useState(null); // statut cible en attente de confirmation
+
+  const commitStatus = React.useCallback((newStatus, comment = '') => {
+    const oldStatus = minute?.status || "DRAFT";
+    const figures = currentFigures();
+    const change = buildStatusChange({ minute: { ...minute, status: oldStatus }, to: newStatus, user: currentUser, users, figures, comment });
+    const withHistory = pushHistory(change.history) || modulesRef.current;
+    const modules = { ...withHistory, validation: change.validation };
+    modulesRef.current = modules;
+    const payload = { status: newStatus, modules };
+    if (newStatus === "VALIDATED") {
+      payload.budgetSnapshot = { prepa: recap?.hPrepa || 0, conf: recap?.hConf || 0, pose: recap?.hPose || 0 };
+    }
+    setLocalStatus(newStatus);
+    updateMinute(payload, { force: true });
+    change.notifications.forEach((n) => addNotification(n.title, n.message, n.type, n.action, n.userId));
+  }, [minute, currentFigures, currentUser, users, pushHistory, recap, updateMinute, addNotification]);
+
   const handleStatusChange = React.useCallback((newStatus) => {
-    if (!canEdit) return;
+    if (!canEditBase) return;
     const oldStatus = minute?.status || "DRAFT";
     if (newStatus === oldStatus) return;
+    const blocked = statusChangeBlocked(currentUser, oldStatus, newStatus);
+    if (blocked) { window.alert(blocked); return; }
+    if (needsDialog(newStatus)) setStatusDialog(newStatus);
+    else commitStatus(newStatus);
+  }, [canEditBase, minute?.status, currentUser, commitStatus]);
 
-    // Optimistic Update
-    setLocalStatus(newStatus);
+  // Devis validé dont le prix change après une modification de l'utilisateur :
+  // il repasse « En cours » (le montant validé reste dans l'historique).
+  React.useEffect(() => {
+    if (minute?.status !== "VALIDATED" || !detailReady || !userEditedRef.current) return undefined;
+    const t = setTimeout(() => {
+      const inv = buildInvalidation({ minute, currentCa: Math.round(liveCa), user: currentUser });
+      if (!inv) return;
+      setLocalStatus(inv.status);
+      updateMinute({ status: inv.status, modules: pushHistory(inv.history) });
+    }, 1500);
+    return () => clearTimeout(t);
+  }, [liveCa, minute, detailReady, currentUser, updateMinute, pushHistory]);
 
-    const performUpdate = () => {
-      // Ensure Author Name is valid
-      const safeAuthor = currentUser?.name || currentUser?.email || 'Utilisateur';
-
-      // Même mécanique que les autres journalisations (ref à jour + plafond 500).
-      const payload = {
-        status: newStatus,
-        modules: pushHistory([buildStatusLog(oldStatus, newStatus, safeAuthor)]),
-      };
-
-      if (newStatus === "VALIDATED") {
-        payload.budgetSnapshot = { prepa: recap?.hPrepa || 0, conf: recap?.hConf || 0, pose: recap?.hPose || 0 };
-      }
-      updateMinute(payload);
-    };
-
-    if (newStatus === "VALIDATED") {
-      if (confirm("Valider ce devis ?")) performUpdate();
-      else setLocalStatus(oldStatus); // Revert
-    } else {
-      // ⚠️ Sans ce `else`, performUpdate() n'était appelé QUE pour « Validée » :
-      // tous les autres changements de statut (En cours, À reprendre, Commande,
-      // Commande terminée, Perdu, À valider, À faire) ne modifiaient que l'état
-      // LOCAL. Ils n'étaient ni enregistrés en base — donc perdus au rechargement —
-      // ni journalisés dans l'historique.
-      performUpdate();
-    }
-  }, [canEdit, minute, currentUser, recap, updateMinute]);
+  // Mention sous le statut : montant validé, ou demande en cours.
+  const validationCaption = React.useMemo(() => {
+    const v = minute?.modules?.validation;
+    const day = (iso) => (iso ? new Date(iso).toLocaleDateString('fr-FR') : '');
+    const who = (p) => String(p?.name || '').split(/\s+/)[0];
+    if (localStatus === 'VALIDATED' && v?.validated?.ca != null) return `${nfEur0.format(v.validated.ca)} HT · ${who(v.validated.by)} · ${day(v.validated.at)}`;
+    if (localStatus === 'PENDING_APPROVAL' && v?.request) return `demandée par ${who(v.request.by)} · ${day(v.request.at)}`;
+    if (localStatus === 'REVISE' && v?.decision?.status === 'REVISE') return `${who(v.decision.by)} · ${day(v.decision.at)}`;
+    if (frozen) return 'devis figé';
+    return null;
+  }, [minute?.modules?.validation, localStatus, nfEur0, frozen]);
 
   // Créer une variante simple (copie sans recalibrage)
   const handleCreateVariant = React.useCallback(async () => {
@@ -501,11 +543,11 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
-    const result = await onCreate(copy);
+    const result = await createMinute(copy);
     const newId = result?.data?.[0]?.id || copy.id;
     if (onOpenMinute) onOpenMinute(newId);
     else onBack();
-  }, [minute, minutes, onCreate, onBack, onOpenMinute]);
+  }, [minute, minutes, onCreate, createMinute, onBack, onOpenMinute]);
 
   // ——— RESTAURATION D'UNE VERSION (historique de versions) ———
   // A. Revenir à la version SUR le devis actuel (remplace le contenu). L'état courant
@@ -554,15 +596,16 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
-    const result = await onCreate(copy);
+    const result = await createMinute(copy);
     const newId = result?.data?.[0]?.id || copy.id;
     if (onOpenMinute) onOpenMinute(newId); else onBack();
-  }, [minute, minutes, onCreate, onOpenMinute, onBack, addNotification]);
+  }, [minute, minutes, onCreate, createMinute, onOpenMinute, onBack, addNotification]);
 
   const fileInputRef = React.useRef(null);
   const handleGlobalImport = async (e) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file || !canEdit) return;
+    userEditedRef.current = true;
 
     try {
       const importedRows = await importGlobalExcel(file, formulaCtx, catalog);
@@ -597,8 +640,9 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
   const familyTabs = React.useMemo(() => buildFamilyTabs(minutes, minute), [minutes, minute]);
 
   const handleNotesSave = React.useCallback((newNotes) => {
+    if (!canEdit) return;
     updateMinute({ notes: newNotes });
-  }, [updateMinute]);
+  }, [canEdit, updateMinute]);
 
   // Tabs
   const [activeTab, setActiveTab] = React.useState("minutes");
@@ -658,6 +702,7 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
 
   const handleDetailUpdate = React.useCallback((updatedRow) => {
     if (!canEdit) return;
+    userEditedRef.current = true;
     if ((rows || []).some(r => r.id === updatedRow.id)) {
       const newLines = rows.map(r => r.id === updatedRow.id ? updatedRow : r);
       setRows(newLines);
@@ -756,8 +801,13 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
                 options={CHIFFRAGE_STATUS}
                 tones={CHIFFRAGE_STATUS_TONE}
                 onChange={handleStatusChange}
-                disabled={!canEdit && localStatus !== "VALIDATED"}
+                disabled={!canEditBase || (frozen && currentUser?.role !== 'admin')}
+                disabledOptions={disabledStatuses(currentUser, localStatus, Object.keys(CHIFFRAGE_STATUS))}
+                title={frozen ? 'Devis en commande : figé' : 'Changer le statut'}
               />
+              {validationCaption && (
+                <span style={{ fontSize: 12, fontWeight: 400, color: '#6B7280', whiteSpace: 'nowrap' }}>{validationCaption}</span>
+              )}
             </MetaItem>
           </div>
           <div style={{ position: 'relative', minWidth: 0, height: 104 }}>
@@ -765,7 +815,7 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
               fill
               value={minute?.notes || ""}
               onSave={handleNotesSave}
-              editable={canEdit && minute?.status !== "VALIDATED"}
+              editable={canEdit}
             />
           </div>
         </div>
@@ -777,7 +827,7 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
               tabs={familyTabs}
               activeId={minute?.id}
               onOpen={(id) => onOpenMinute?.(id)}
-              onCreate={canEdit ? handleCreateVariant : undefined}
+              onCreate={canEditBase ? handleCreateVariant : undefined}
             />
           </div>
         {/* Vues du chiffrage, au centre de la ligne des variantes */}
@@ -875,6 +925,17 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
         onRestoreAsVariant={handleRestoreAsVariant}
       />
 
+      {statusDialog && (
+        <StatusChangeDialog
+          to={statusDialog}
+          minuteName={minute?.name}
+          figures={currentFigures()}
+          requester={minute?.modules?.validation?.request?.by?.name}
+          onCancel={() => setStatusDialog(null)}
+          onConfirm={(comment) => { commitStatus(statusDialog, comment); setStatusDialog(null); }}
+        />
+      )}
+
       {showRecalibration && (
         <RecalibrageAssistant
           minute={minute}
@@ -889,7 +950,7 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
           onClose={() => setShowRecalibration(false)}
           onCreateVariant={async (variant) => {
             if (onCreate) {
-              const result = await onCreate(variant);
+              const result = await createMinute(variant);
               const newId = result?.data?.[0]?.id || variant.id;
               setShowRecalibration(false);
               if (onOpenMinute) onOpenMinute(newId);
@@ -907,7 +968,7 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
             <MemoizedMinuteEditor
               key={`${minute?.id}-${restoreNonce}-${Object.keys(mods || {}).filter(k => mods[k]).sort().join('-')}`} // FORCE REMOUNT on module change / restauration
               minute={editorMinute}
-              readOnly={minute?.status === "VALIDATED"}
+              readOnly={frozen}
               currentUser={currentUser}
               onChangeMinute={handleEditorChange}
               enableCellFormulas={true}
@@ -939,6 +1000,8 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
         onClose={() => setShowCatalog(false)}
         catalog={minute?.catalog || []}
         onCatalogChange={(newCatalog) => {
+          if (!canEdit) return;
+          userEditedRef.current = true;
           const patch = { catalog: newCatalog };
           const modules = pushHistory(buildCatalogLogs(minute?.catalog || [], newCatalog, historyAuthor));
           if (modules) patch.modules = modules;
@@ -962,6 +1025,8 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
         }}
         settings={formulaCtx.settings}
         onSettingsChange={(newSettings) => {
+          if (!canEdit) return;
+          userEditedRef.current = true;
           setLocalSettings({ ...localSettings, ...newSettings }); // Optimistic UI
 
           // Journal : compare aux réglages EFFECTIVEMENT affichés (formulaCtx),

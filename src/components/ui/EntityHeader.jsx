@@ -124,8 +124,8 @@ export function EditableTitle({ value, onSave, canEdit, placeholder = "Sans nom"
 
 // options: { KEY: { label, color } }
 // Statut d'entête (projet, chiffrage) : même pastille et même liste déroulante que dans les listes.
-export function StatusPill({ value, options, tones, onChange, disabled }) {
-  return <StatusSelectPill value={value} options={options} tones={tones} onChange={onChange} disabled={disabled} />;
+export function StatusPill({ value, options, tones, onChange, disabled, title, disabledOptions }) {
+  return <StatusSelectPill value={value} options={options} tones={tones} onChange={onChange} disabled={disabled} title={title} disabledOptions={disabledOptions} />;
 }
 
 export function HeaderButton({ onClick, title, children }) {
