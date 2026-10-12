@@ -139,7 +139,7 @@ export function ToolbarMenu({ value, onChange, options, width = 240, multiple = 
 /** Statut modifiable : la pastille du nuancier (TonePill) + la liste déroulante native, invisible,
     posée par-dessus. Même rendu et même menu partout (listes Chiffrages / Projets, Programmation,
     entêtes de projet et de chiffrage). options : { CLE: { label } } ; tones : { CLE: 0..5 | null }. */
-export function StatusSelectPill({ value, options, tones, onChange, disabled = false, title = 'Changer le statut' }) {
+export function StatusSelectPill({ value, options, tones, onChange, disabled = false, title = 'Changer le statut', disabledOptions = [] }) {
   const opt = options[value] || Object.values(options)[0];
   return (
     <div style={{ position: 'relative', display: 'inline-flex' }} onClick={(e) => e.stopPropagation()}>
@@ -152,7 +152,7 @@ export function StatusSelectPill({ value, options, tones, onChange, disabled = f
         style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: disabled ? 'default' : 'pointer', appearance: 'none', border: 'none' }}
       >
         {Object.entries(options).map(([key, o]) => (
-          <option key={key} value={key}>{o.label}</option>
+          <option key={key} value={key} disabled={disabledOptions.includes(key)}>{o.label}</option>
         ))}
       </select>
     </div>
