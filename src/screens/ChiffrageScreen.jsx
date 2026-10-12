@@ -34,7 +34,7 @@ import { readVersionContent, mergeVisualsFromCurrent } from "../lib/minuteVersio
 import { buildSettingsLogs, buildCatalogLogs, buildStatusLog, appendHistory } from "../lib/minuteHistory";
 import { MOBILIER_PRODUIT_RE } from "../lib/constants/productRouting";
 import { applyCatalogRenames } from "../lib/utils/catalogRename";
-import RecalibrationModal from "../components/RecalibrationModal";
+import RecalibrageAssistant from "../components/recalibrage/RecalibrageAssistant";
 import OdooQuoteWizard from "../components/odoo/OdooQuoteWizard";
 import { canUseOdooQuote } from "../lib/odoo/quoteAccess";
 import { odooFetch } from "../lib/odoo/odooFetch";
@@ -876,9 +876,16 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
       />
 
       {showRecalibration && (
-        <RecalibrationModal
+        <RecalibrageAssistant
           minute={minute}
           minutes={minutes}
+          rows={rows}
+          depRows={depRows}
+          extraRows={extraRows}
+          formulaCtx={formulaCtx}
+          schema={schema}
+          commissionRate={commissionRateForOwner(minute?.owner)}
+          author={historyAuthor}
           onClose={() => setShowRecalibration(false)}
           onCreateVariant={async (variant) => {
             if (onCreate) {
