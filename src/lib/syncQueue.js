@@ -5,6 +5,8 @@ import { isPermanentDbError, backoffDelay } from './dbErrors';
 import { withRowLock } from './rowWriteLock';
 import { mergeRows } from './rowsMerge';
 import { getServerRows, saveServerRows } from './offlineProjects';
+import { applyPhotoToRows, rememberSyncedPhoto, PHOTOS_SYNCED_EVENT } from './photos';
+import { uploadBlobToStorage } from './utils/imageUpload';
 
 /**
  * Enfile une mutation UPDATE pour envoi ultérieur.
@@ -225,12 +227,13 @@ const base64ToBlob = (dataUrl) => {
  * Enfile une photo pour upload ultérieur.
  * @param {string} projectId
  * @param {string} rowId
- * @param {string} fieldKey
- * @param {string} localId    - ID temporaire déjà mis dans le tableau de photos
+ * @param {string} fieldKey     - champ photo de la ligne, ou '__activity__' (photo en commentaire)
+ * @param {string} localId      - ID déjà mis sur l'entrée « en attente » (gardé par l'entrée réelle)
  * @param {string} base64DataUrl
- * @param {object} photoMeta  - { user, timestamp }
+ * @param {object} photoMeta    - { user, timestamp, caption? }
+ * @param {string} [thumbBase64] - vignette (facultative)
  */
-export const queuePhoto = async (projectId, rowId, fieldKey, localId, base64DataUrl, photoMeta) => {
+export const queuePhoto = async (projectId, rowId, fieldKey, localId, base64DataUrl, photoMeta, thumbBase64 = null) => {
   try {
     await db.offline_photos.add({
       project_id: String(projectId),
@@ -238,20 +241,44 @@ export const queuePhoto = async (projectId, rowId, fieldKey, localId, base64Data
       field_key: fieldKey,
       local_id: localId,
       base64: base64DataUrl,
+      thumb64: thumbBase64,
       photo_meta: photoMeta,
       timestamp: Date.now(),
     });
+    if (typeof window !== 'undefined') window.dispatchEvent(new Event(QUEUE_EVENT));
   } catch (e) {
     console.warn('Impossible d\'enregistrer la photo offline:', e);
   }
 };
 
-/** Nombre de photos en attente */
-export const getPendingPhotoCount = () => db.offline_photos.count();
+/** Nombre de photos en attente (hors photos dont la ligne a disparu, gardées à part). */
+export const getPendingPhotoCount = async () => (await db.offline_photos.toArray()).filter(p => !p.orphan).length;
+
+const PHOTO_UPLOAD_CONCURRENCY = 3;
+const extOfDataUrl = (d) => (/^data:image\/png/.test(d || '') ? 'png' : 'jpg');
+
+/** Entrées réelles d'une photo envoyée (même id que l'entrée en attente). */
+const photoEntries = (photo, url, thumb) => {
+  const ts = photo.photo_meta?.timestamp || new Date().toISOString();
+  const user = photo.photo_meta?.user || 'Utilisateur';
+  const entry = { id: photo.local_id, url, ...(thumb ? { thumb } : {}), timestamp: ts, user };
+  const activity = {
+    id: photo.local_id, content: url, ...(thumb ? { thumb } : {}),
+    caption: photo.photo_meta?.caption || null, type: 'image',
+    createdAt: ts, date: new Date(ts).getTime(), author: user,
+  };
+  return { entry, activity };
+};
 
 /**
- * Upload toutes les photos en attente vers Supabase Storage,
- * puis patche les rows du projet avec les vraies URLs.
+ * Envoie les photos en attente puis les range dans leurs lignes.
+ *  1. Envoi des fichiers (3 à la fois). L'URL obtenue est notée sur la photo en file :
+ *     une coupure en plein milieu ne crée jamais de doublon au prochain essai.
+ *  2. UNE seule écriture par projet (verrouillée, sur la version actuelle du serveur)
+ *     pour toutes ses photos, au lieu d'une réécriture complète par photo.
+ *  3. Ligne supprimée entre-temps : la photo n'est PAS jetée, elle reste sur l'appareil
+ *     (marquée « orpheline ») pour être récupérée.
+ * Reprise progressive en cas d'échec (30 s → 30 min), mémorisée avec la photo.
  */
 // Verrou module-level : évite deux drainPhotos simultanés dans le même onglet
 let _drainPhotosRunning = false;
@@ -261,111 +288,100 @@ export const drainPhotos = async () => {
   _drainPhotosRunning = true;
 
   try {
-  const photos = await db.offline_photos.orderBy('timestamp').toArray();
-  if (photos.length === 0) return { synced: 0, failed: 0 };
+    const now = Date.now();
+    const photos = (await db.offline_photos.orderBy('timestamp').toArray())
+      .filter(p => !p.orphan && !(p.next_at && p.next_at > now));
+    if (photos.length === 0) return { synced: 0, failed: 0 };
 
-  let synced = 0;
-  let failed = 0;
-
-  for (const photo of photos) {
-    try {
-      // 1. Upload vers Supabase Storage
-      const blob = base64ToBlob(photo.base64);
-      const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.jpg`;
-      const filePath = `minutes/${fileName}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('attachments')
-        .upload(filePath, blob);
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('attachments')
-        .getPublicUrl(filePath);
-
-      // Lecture-modification-écriture VERROUILLÉE sur la ligne : aucune autre
-      // sauvegarde de ce projet ne peut s'intercaler (sinon perte de la photo
-      // ou écrasement des rows plus récents).
-      await withRowLock('projects', photo.project_id, async () => {
-        // 2. Récupérer les rows actuelles du projet depuis Supabase
-        const { data: project, error: fetchError } = await supabase
-          .from('projects')
-          .select('rows')
-          .eq('id', photo.project_id)
-          .single();
-        if (fetchError) throw fetchError;
-
-        const realPhotoEntry = {
-          url: publicUrl,
-          id: Date.now(),
-          timestamp: photo.photo_meta?.timestamp || new Date().toISOString(),
-          user: photo.photo_meta?.user || 'Utilisateur',
-        };
-
-        let updatedRows;
-
-        if (photo.field_key === '__activity__') {
-          // Cas photo uploadée depuis la sidebar activité :
-          // → remplacer l'entrée pending dans comments + ajouter à photos_sur_site si présent
-          updatedRows = (project.rows || []).map(row => {
-            if (String(row.id) !== String(photo.row_id)) return row;
-
-            // Remplacer/ajouter dans comments (matching par localId)
-            const existingComments = Array.isArray(row.comments) ? row.comments : [];
-            const hasEntry = existingComments.some(c => c.id === photo.local_id);
-            const realActivity = {
-              id: Date.now(),
-              content: publicUrl,
-              caption: photo.photo_meta?.caption || null,
-              type: 'image',
-              createdAt: photo.photo_meta?.timestamp || new Date().toISOString(),
-              date: new Date(photo.photo_meta?.timestamp || Date.now()).getTime(),
-              author: photo.photo_meta?.user || 'Utilisateur',
-            };
-            const updatedComments = hasEntry
-              ? existingComments.map(c => c.id === photo.local_id ? realActivity : c)
-              : [...existingComments, realActivity];
-
-            // Ajouter à photos_sur_site si ce champ existe dans la row
-            const hasSurSite = Array.isArray(row.photos_sur_site);
-            const updatedPhotosSurSite = hasSurSite
-              ? [...row.photos_sur_site.filter(p => p?.id !== photo.local_id), realPhotoEntry]
-              : row.photos_sur_site;
-
-            return {
-              ...row,
-              comments: updatedComments,
-              ...(hasSurSite && { photos_sur_site: updatedPhotosSurSite }),
-            };
-          });
-        } else {
-          // 3. Cas photo d'un champ schema (GridPhotoCell) : patcher uniquement le champ ciblé
-          updatedRows = (project.rows || []).map(row => {
-            if (String(row.id) !== String(photo.row_id)) return row;
-            const existing = Array.isArray(row[photo.field_key]) ? row[photo.field_key] : [];
-            const filtered = existing.filter(p => p?.id !== photo.local_id);
-            return { ...row, [photo.field_key]: [...filtered, realPhotoEntry] };
-          });
-        }
-
-        // 4. Mettre à jour le projet dans Supabase
-        const { error: updateError } = await supabase
-          .from('projects')
-          .update({ rows: updatedRows })
-          .eq('id', photo.project_id);
-        if (updateError) throw updateError;
-      });
-
-      // 5. Nettoyer IndexedDB
-      await db.offline_photos.delete(photo.id);
-      synced++;
-    } catch (e) {
-      console.error('Photo sync échouée:', e);
+    let failed = 0;
+    const markFailure = async (photo, e) => {
       failed++;
-    }
-  }
+      const failures = (photo.failures || 0) + 1;
+      console.error('Photo sync échouée:', e);
+      await db.offline_photos.update(photo.id, {
+        failures, next_at: Date.now() + Math.min(30_000 * 2 ** (failures - 1), 30 * 60_000),
+      }).catch(() => {});
+    };
 
-  return { synced, failed };
+    // 1. Envoi des fichiers
+    const queue = photos.filter(p => !p.uploaded_url);
+    const worker = async () => {
+      while (queue.length) {
+        const photo = queue.shift();
+        try {
+          const folder = photo.field_key === '__activity__' ? 'activity' : 'minutes';
+          const url = await uploadBlobToStorage(base64ToBlob(photo.base64), folder, extOfDataUrl(photo.base64));
+          let thumb = null;
+          if (photo.thumb64) {
+            try { thumb = await uploadBlobToStorage(base64ToBlob(photo.thumb64), `${folder}/thumbs`, 'jpg'); } catch { /* sans vignette */ }
+          }
+          photo.uploaded_url = url;
+          photo.uploaded_thumb = thumb;
+          await db.offline_photos.update(photo.id, { uploaded_url: url, uploaded_thumb: thumb });
+        } catch (e) { await markFailure(photo, e); }
+      }
+    };
+    await Promise.all(Array.from({ length: PHOTO_UPLOAD_CONCURRENCY }, worker));
+
+    // 2. Rangement dans les lignes : une écriture par projet
+    const byProject = new Map();
+    for (const p of photos) {
+      if (!p.uploaded_url) continue;
+      if (!byProject.has(p.project_id)) byProject.set(p.project_id, []);
+      byProject.get(p.project_id).push(p);
+    }
+
+    let synced = 0;
+    for (const [projectId, list] of byProject) {
+      try {
+        const reps = list.map(p => ({ photo: p, rep: { rowId: p.row_id, fieldKey: p.field_key, localId: p.local_id, ...photoEntries(p, p.uploaded_url, p.uploaded_thumb) } }));
+        const result = await withRowLock('projects', projectId, async () => {
+          const { data: project, error: fetchError } = await supabase
+            .from('projects').select('rows').eq('id', projectId).single();
+          if (fetchError) throw fetchError;
+          let rows = project?.rows || [];
+          const placed = [], orphans = [];
+          for (const r of reps) {
+            const res = applyPhotoToRows(rows, r.rep);
+            if (res.found) { rows = res.rows; placed.push(r); } else orphans.push(r);
+          }
+          if (placed.length > 0) {
+            const { error: updateError } = await supabase.from('projects').update({ rows }).eq('id', projectId);
+            if (updateError) throw updateError;
+          }
+          return { placed, orphans };
+        });
+
+        for (const r of result.placed) {
+          rememberSyncedPhoto(r.rep.localId, r.rep);
+          await db.offline_photos.delete(r.photo.id);
+          synced++;
+        }
+        for (const r of result.orphans) {
+          console.warn('[drainPhotos] ligne introuvable, photo gardée sur l\'appareil :', r.rep);
+          await db.offline_photos.update(r.photo.id, { orphan: true });
+        }
+        // Copie de l'appareil à jour (sinon un projet rouvert hors ligne montrerait encore
+        // l'entrée en attente) + écrans ouverts prévenus.
+        if (result.placed.length > 0) {
+          try {
+            const cached = await db.projects.get(projectId);
+            if (cached && Array.isArray(cached.rows)) {
+              let rows = cached.rows;
+              for (const r of result.placed) rows = applyPhotoToRows(rows, r.rep).rows;
+              await db.projects.update(projectId, { rows });
+            }
+          } catch { /* cache best effort */ }
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent(PHOTOS_SYNCED_EVENT, { detail: { projectId, reps: result.placed.map(r => r.rep) } }));
+          }
+        }
+      } catch (e) {
+        for (const p of list) await markFailure(p, e);
+      }
+    }
+
+    return { synced, failed };
   } finally {
     _drainPhotosRunning = false;
   }

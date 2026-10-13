@@ -1,10 +1,10 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useReducer, useRef, useState } from 'react';
 import { Plus } from 'lucide-react';
 import { COLORS } from '../../lib/constants/ui';
 import ImageLightbox from './ImageLightbox';
 import { useAuth } from '../../auth';
-import { supabase } from '../../lib/supabaseClient';
 import { blobToBase64, queuePhoto } from '../../lib/syncQueue';
+import { preparePhoto, uploadPhotoPair, thumbOf, resolvePendingPhoto, PHOTOS_SYNCED_EVENT } from '../../lib/photos';
 
 const normalizePhoto = (item) => {
     if (typeof item === 'string') {
@@ -20,95 +20,53 @@ export default function GridPhotoCell({ value, onImageUpload, onCustomAdd, offli
     const [uploading, setUploading] = useState(false);
     const { currentUser } = useAuth();
 
+    // Une photo hors ligne vient de partir : on réaffiche (vraie photo au lieu de « en attente »).
+    const [, refresh] = useReducer((n) => n + 1, 0);
+    useEffect(() => {
+        window.addEventListener(PHOTOS_SYNCED_EVENT, refresh);
+        return () => window.removeEventListener(PHOTOS_SYNCED_EVENT, refresh);
+    }, []);
+
     const rawArray = Array.isArray(value) ? value : (value ? [value] : []);
-    const photos = rawArray.map(normalizePhoto);
-
-    // Compression client avant upload (max 1600px, JPEG q=0.82)
-    const compressImage = (file) => new Promise((resolve) => {
-        const MAX_PX = 1600;
-        const QUALITY = 0.82;
-        const img = new Image();
-        const objectUrl = URL.createObjectURL(file);
-        img.onload = () => {
-            URL.revokeObjectURL(objectUrl);
-            let { width, height } = img;
-            if (width > MAX_PX || height > MAX_PX) {
-                if (width >= height) { height = Math.round(height * MAX_PX / width); width = MAX_PX; }
-                else { width = Math.round(width * MAX_PX / height); height = MAX_PX; }
-            }
-            const canvas = document.createElement('canvas');
-            canvas.width = width;
-            canvas.height = height;
-            canvas.getContext('2d').drawImage(img, 0, 0, width, height);
-            canvas.toBlob(resolve, 'image/jpeg', QUALITY);
-        };
-        img.src = objectUrl;
-    });
-
-    // Upload vers Supabase Storage
-    const uploadToSupabase = async (file) => {
-        const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.jpg`;
-        const filePath = `minutes/${fileName}`;
-
-        const { error: uploadError } = await supabase.storage
-            .from('attachments')
-            .upload(filePath, file);
-
-        if (uploadError) throw uploadError;
-
-        const { data: { publicUrl } } = supabase.storage
-            .from('attachments')
-            .getPublicUrl(filePath);
-
-        return publicUrl;
-    };
+    const photos = rawArray.map(normalizePhoto).map(resolvePendingPhoto);
 
     const handleUpload = async (e) => {
         e.stopPropagation();
         const file = e.target.files?.[0];
+        if (e.target) e.target.value = ''; // permet de reprendre la même photo
         if (!file) return;
 
         try {
             setUploading(true);
-            const compressed = await compressImage(file);
+            // Photo nette (1600 px) + vignette légère pour l'affichage (cf. lib/photos).
+            const prepared = await preparePhoto(file);
+            const timestamp = new Date().toISOString();
+            const user = currentUser?.name || 'Utilisateur';
 
             try {
                 // Tentative d'upload en ligne
-                const publicUrl = await uploadToSupabase(compressed);
-                const newPhoto = {
-                    url: publicUrl,
-                    timestamp: new Date().toISOString(),
-                    user: currentUser?.name || 'Utilisateur',
-                    id: Date.now(),
-                };
+                const { url, thumb } = await uploadPhotoPair(prepared, 'minutes');
+                const newPhoto = { url, ...(thumb ? { thumb } : {}), timestamp, user, id: Date.now() };
                 if (onImageUpload) onImageUpload([...rawArray, newPhoto]);
             } catch {
-                // Hors ligne : stocker en base64 + afficher en pending
+                // Hors ligne : la photo attend sur l'appareil, envoi automatique au retour du réseau.
                 if (!offlineContext?.projectId || !offlineContext?.rowId || !offlineContext?.fieldKey) {
                     alert("Impossible d'ajouter une photo hors ligne ici. Reconnectez-vous et réessayez.");
                     return;
                 }
-                const base64 = await blobToBase64(compressed);
+                const base64 = await blobToBase64(prepared.full);
+                const thumb64 = prepared.thumb ? await blobToBase64(prepared.thumb) : null;
                 const localId = `pending_${Date.now()}`;
-                const photoMeta = {
-                    timestamp: new Date().toISOString(),
-                    user: currentUser?.name || 'Utilisateur',
-                };
                 await queuePhoto(
                     offlineContext.projectId,
                     offlineContext.rowId,
                     offlineContext.fieldKey,
                     localId,
                     base64,
-                    photoMeta,
+                    { timestamp, user },
+                    thumb64,
                 );
-                const pendingPhoto = {
-                    url: base64,
-                    id: localId,
-                    pending: true,
-                    timestamp: photoMeta.timestamp,
-                    user: photoMeta.user,
-                };
+                const pendingPhoto = { url: base64, ...(thumb64 ? { thumb: thumb64 } : {}), id: localId, pending: true, timestamp, user };
                 if (onImageUpload) onImageUpload([...rawArray, pendingPhoto]);
             }
         } finally {
@@ -140,7 +98,7 @@ export default function GridPhotoCell({ value, onImageUpload, onCustomAdd, offli
                         position: 'relative',
                         width: 30, height: 30, flexShrink: 0, borderRadius: 4,
                         border: `1px solid ${photo.pending ? '#f59e0b' : COLORS.border}`,
-                        backgroundImage: `url(${photo.url})`, backgroundSize: 'cover', backgroundPosition: 'center', cursor: 'pointer',
+                        backgroundImage: `url(${thumbOf(photo)})`, backgroundSize: 'cover', backgroundPosition: 'center', cursor: 'pointer',
                     }}
                 >
                     {photo.pending && (

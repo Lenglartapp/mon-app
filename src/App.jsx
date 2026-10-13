@@ -34,6 +34,7 @@ import { useProjects, useMinutes, useEvents, useStocks } from './hooks/useSupaba
 import { useNetworkStatus } from './hooks/useNetworkStatus';
 import { useSyncQueue } from './hooks/useSyncQueue';
 import { isOpenedOffline } from './lib/offlineProjects';
+import { applyPhotoToRows, PHOTOS_SYNCED_EVENT } from './lib/photos';
 import { useOdooOrderProjects } from './hooks/useOdooOrderProjects';
 import { Bell, WifiOff, RefreshCw, Search } from 'lucide-react';
 import Badge from '@mui/material/Badge';
@@ -350,6 +351,21 @@ function AppShell() {
 
   const isOnline = useNetworkStatus();
   const { pendingCount, isSyncing } = useSyncQueue(refreshProjects);
+
+  // Photos hors ligne envoyées : le projet affiché montre la vraie photo (et sa vignette).
+  useEffect(() => {
+    const onPhotos = (e) => {
+      const { projectId, reps } = e.detail || {};
+      setCurrentProject((cur) => {
+        if (!cur || String(cur.id) !== String(projectId) || !Array.isArray(cur.rows)) return cur;
+        let rows = cur.rows;
+        for (const r of reps || []) rows = applyPhotoToRows(rows, r).rows;
+        return { ...cur, rows };
+      });
+    };
+    window.addEventListener(PHOTOS_SYNCED_EVENT, onPhotos);
+    return () => window.removeEventListener(PHOTOS_SYNCED_EVENT, onPhotos);
+  }, []);
 
   // Projet ouvert hors connexion (copie du téléphone) : une fois le réseau revenu et tout
   // envoyé (fusionné), on le recharge depuis le serveur pour afficher la version à jour.
