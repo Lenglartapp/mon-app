@@ -1,5 +1,20 @@
 import React, { createContext, useContext, useState, useEffect, useMemo } from "react";
+import { isAuthRetryableFetchError } from "@supabase/supabase-js";
 import { supabase } from "./lib/supabaseClient";
+
+// Session gardée par Supabase sur l'appareil (même expirée). Hors connexion, Supabase ne
+// peut pas la renouveler et répond « pas de session » : sans ce qui suit, le poseur qui
+// rouvre l'appli sur un chantier sans réseau tombait sur l'écran de connexion.
+const storedSessionUserId = () => {
+  try {
+    const raw = localStorage.getItem(supabase.auth.storageKey);
+    const sess = raw ? JSON.parse(raw) : null;
+    return sess?.refresh_token ? (sess.user?.id || null) : null;
+  } catch { return null; }
+};
+const cachedProfile = (uid) => {
+  try { return JSON.parse(localStorage.getItem(`df_profile_${uid}`) || 'null'); } catch { return null; }
+};
 
 /** Rôles disponibles (clé canonique) */
 export const ROLES = {
@@ -19,11 +34,24 @@ export const AuthProvider = ({ children }) => {
 
   // Synchronisation Session Supabase <-> Profil Visuel
   useEffect(() => {
+    // HORS CONNEXION : session expirée qui n'a pas pu être renouvelée faute de réseau
+    // (elle reste sur l'appareil) → on reprend le profil gardé sur l'appareil. Supabase
+    // renouvellera la session tout seul au retour du réseau (événement TOKEN_REFRESHED).
+    const restoreOffline = (error) => {
+      const offline = (typeof navigator !== 'undefined' && navigator.onLine === false) || isAuthRetryableFetchError(error);
+      const uid = offline ? storedSessionUserId() : null;
+      const profile = uid ? cachedProfile(uid) : null;
+      if (!profile) return false;
+      setCurrentUser(profile);
+      return true;
+    };
+
     // 1. Initial Load
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
       if (session?.user) {
         syncUser(session.user);
       } else {
+        restoreOffline(error);
         setLoading(false);
       }
     });
@@ -35,16 +63,23 @@ export const AuthProvider = ({ children }) => {
         // L'équipe (profiles) n'est lisible qu'une fois connecté (RLS) : on la recharge
         // à la connexion, sinon la liste chargée avant le login resterait vide.
         if (event === 'SIGNED_IN') fetchUsers();
-      } else {
+      } else if (event === 'SIGNED_OUT') {
+        // Vraie déconnexion (ou session refusée par le serveur) : écran de connexion.
         setCurrentUser(null);
         setLoading(false);
       }
+      // INITIAL_SESSION sans session : traité par getSession() ci-dessus (reprise hors ligne).
     });
+
+    // 3. Retour du réseau : on relance le renouvellement de la session tout de suite
+    //    (sans attendre le prochain passage automatique de Supabase).
+    const onOnline = () => { supabase.auth.getSession().catch(() => {}); };
+    window.addEventListener('online', onOnline);
 
     // 3. Fetch All Users (for mentions, etc.)
     fetchUsers();
 
-    return () => subscription.unsubscribe();
+    return () => { subscription.unsubscribe(); window.removeEventListener('online', onOnline); };
   }, []);
 
   const USERS_KEY = 'df_users';

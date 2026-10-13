@@ -3,6 +3,8 @@ import { supabase } from './supabaseClient';
 import { updateStrippingPhantomColumns } from './schemaDrift';
 import { isPermanentDbError, backoffDelay } from './dbErrors';
 import { withRowLock } from './rowWriteLock';
+import { mergeRows } from './rowsMerge';
+import { getServerRows, saveServerRows } from './offlineProjects';
 
 /**
  * Enfile une mutation UPDATE pour envoi ultérieur.
@@ -99,6 +101,20 @@ export const supersedeQueuedMutations = async (table, recordId, writtenKeys, wri
   }
 };
 
+/**
+ * Fusion « à trois » des lignes d'un projet avant envoi (cf. lib/rowsMerge).
+ * @returns {{ rows: object[]|null, error?: any }} rows null = pas de base fiable :
+ *          on envoie la version locale telle quelle (comportement historique).
+ */
+const mergeWithServerRows = async (projectId, localRows) => {
+  const base = await getServerRows(projectId);
+  if (!base) return { rows: null };
+  const { data, error } = await supabase.from('projects').select('rows').eq('id', projectId).single();
+  if (error) return { rows: null, error };
+  const merged = mergeRows(base, localRows, Array.isArray(data?.rows) ? data.rows : []);
+  return { rows: merged };
+};
+
 // Reprise progressive par ligne (mémoire de l'onglet) : après un échec transitoire,
 // on attend 5 s, 10 s, 20 s… (max 5 min) avant de réessayer. Évite de renvoyer des
 // Mo de `rows` à chaque retour sur l'onglet pendant que la base est déjà saturée.
@@ -145,7 +161,16 @@ export const drainQueue = async () => {
       const current = {};
       fresh.sort((x, y) => x.timestamp - y.timestamp).forEach(m => Object.assign(current, m.payload));
       if (Object.keys(current).length === 0) return { error: null, dropped: [], skipped: true };
-      return updateStrippingPhantomColumns(supabase, table, record_id, current);
+      // PROJETS : on ne rejoue que ce que le téléphone a réellement modifié, fusionné
+      // avec la version actuelle du serveur (le bureau a pu travailler entre-temps).
+      if (table === 'projects' && Array.isArray(current.rows)) {
+        const merged = await mergeWithServerRows(record_id, current.rows);
+        if (merged.error) return { error: merged.error, dropped: [] };
+        if (merged.rows) current.rows = merged.rows;
+      }
+      const res = await updateStrippingPhantomColumns(supabase, table, record_id, current);
+      if (!res.error && table === 'projects' && Array.isArray(res.body.rows)) await saveServerRows(record_id, res.body.rows);
+      return res;
     });
     if (skipped) { await db.pending_mutations.bulkDelete(ids); retryState.delete(key); continue; }
     if (dropped.length > 0) {

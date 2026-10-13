@@ -15,6 +15,17 @@ const WRITE_TIMEOUT_MS = 60_000;
 
 const fetchWithTimeout = (input, init = {}) => {
   const url = typeof input === 'string' ? input : input?.url || '';
+  // Requête de données SANS session (jeton anonyme) : toutes les tables sont réservées
+  // aux connectés (RLS), la base répondrait « aucune ligne » — ce que l'appli prendrait
+  // pour une liste vide et pourrait recopier dans son cache hors ligne. Cas réel : session
+  // expirée qu'un réseau instable n'a pas pu renouveler. On échoue comme une coupure
+  // réseau : les écrans gardent la copie de l'appareil et les envois restent en file.
+  if (url.includes('/rest/v1/')) {
+    const headers = new Headers(init.headers || (typeof input === 'object' ? input.headers : undefined));
+    if (headers.get('Authorization') === `Bearer ${supabaseAnonKey}`) {
+      return Promise.reject(new TypeError('Failed to fetch (session non renouvelée)'));
+    }
+  }
   if (!url.includes('/rest/v1/') || typeof AbortSignal?.timeout !== 'function') {
     return fetch(input, init);
   }

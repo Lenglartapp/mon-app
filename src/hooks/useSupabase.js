@@ -2,7 +2,8 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { logProjectCreation } from '../lib/projectEvents';
 import { db } from '../lib/offlineDb';
-import { getQueuedPayloads } from '../lib/syncQueue';
+import { getQueuedPayloads, queueMutation } from '../lib/syncQueue';
+import { saveServerRows, getServerRows, markOpenedOffline, isOpenedOffline, clearOpenedOffline, isNetworkFailure } from '../lib/offlineProjects';
 import { replaceInlineImages, hasInlineImages } from '../lib/inlineImages';
 import { archiveRowLogs } from '../lib/lineLogs';
 import { calculateProfitability, commissionRateForOwner } from '../lib/financial/profitabilityCalculator';
@@ -121,8 +122,15 @@ export const useProjects = () => {
             .single();
         if (error || !data) {
             console.error('[useProjects] loadProjectDetail échoué :', error?.message);
+            // HORS CONNEXION : on ouvre la copie COMPLÈTE gardée sur le téléphone (jamais
+            // la version légère sans `rows`, cf. App.jsx). Ses modifications passeront par
+            // la file et seront fusionnées au retour du réseau (lib/offlineProjects).
+            if (isNetworkFailure(error)) return openFromDeviceCopy(id, queued);
             return null;
         }
+        // Base de fusion : les lignes TELLES QUE REÇUES du serveur (avant la file).
+        saveServerRows(id, data.rows);
+        clearOpenedOffline(id);
         // Superpose les modifications encore en file (pas encore arrivées en base).
         Object.assign(data, queued.get(String(id)) || {});
         // Mapping DB -> Frontend : la colonne `pinned_ids` est lue en `pinnedIds`.
@@ -140,6 +148,22 @@ export const useProjects = () => {
                 if (healed.changed) updateProject(id, { wall: healed.value });
             });
         }
+        return data;
+    };
+
+    // Ouverture hors connexion depuis la copie du téléphone (null si elle n'a pas les lignes).
+    const openFromDeviceCopy = async (id, queued) => {
+        let cached = null;
+        try { cached = await db.projects.get(id); } catch { /* IndexedDB indisponible */ }
+        if (!cached || !Array.isArray(cached.rows)) return null;
+        const pending = queued.get(String(id));
+        // Pas encore de base de fusion : la copie fait foi si rien n'est en attente pour
+        // ce projet (elle est alors identique à la dernière version reçue du serveur).
+        if (!pending && !(await getServerRows(id))) await saveServerRows(id, cached.rows);
+        const data = { ...cached, ...(pending || {}) };
+        if ('pinned_ids' in data) data.pinnedIds = data.pinned_ids || [];
+        markOpenedOffline(id);
+        setProjects(prev => prev.map(p => p.id === id ? { ...p, ...data } : p));
         return data;
     };
 
@@ -242,6 +266,8 @@ export const useProjects = () => {
         transform: async (id, payload) => (
             Array.isArray(payload.rows) ? { ...payload, rows: await archiveRowLogs(id, payload.rows) } : payload
         ),
+        // Lignes écrites avec succès = nouvelle base de fusion hors connexion.
+        onWritten: (id, body) => { if (Array.isArray(body.rows)) return saveServerRows(id, body.rows); },
     });
 
     const updateProject = async (id, updates) => {
@@ -301,7 +327,12 @@ export const useProjects = () => {
             });
         }
 
-        // 5. Écriture COALESCÉE (aucun UPDATE concurrent sur la même ligne).
+        // 5. Projet ouvert hors connexion (copie du téléphone, possiblement en retard) :
+        //    JAMAIS d'écriture directe du tableau entier — tout passe par la file, qui
+        //    fusionne avec la version du serveur au retour du réseau.
+        if (isOpenedOffline(id)) return queueMutation('projects', id, dbUpdates);
+
+        // 6. Écriture COALESCÉE (aucun UPDATE concurrent sur la même ligne).
         return projectWriterRef.current.write(id, dbUpdates);
     };
 

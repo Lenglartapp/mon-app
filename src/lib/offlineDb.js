@@ -40,3 +40,17 @@ db.version(4).stores({
   pending_mutations: '++id, table, record_id, timestamp',
   offline_photos: '++id, project_id, timestamp',
 });
+
+// Version 5 : dernière version des lignes (`rows`) REÇUE DU SERVEUR par projet.
+// Sert de base à la fusion au retour du réseau (lib/rowsMerge) : on ne rejoue que ce
+// que le téléphone a réellement modifié, sans écraser le travail fait au bureau.
+db.version(5).stores({
+  projects: 'id',
+  minutes: 'id',
+  events: 'id',
+  expedition_items: 'id',
+  expedition_colis: 'id',
+  pending_mutations: '++id, table, record_id, timestamp',
+  offline_photos: '++id, project_id, timestamp',
+  server_rows: 'id',
+});
