@@ -1,3 +1,4 @@
+import { resolvePendingPhoto } from '../../lib/photos';
 import React, { useRef, useEffect, useState, useMemo, useCallback } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
@@ -401,7 +402,9 @@ const LogItem = React.memo(({ act }) => {
     );
 });
 
-const MessageItem = React.memo(({ act, isMe }) => {
+const MessageItem = React.memo(({ act: rawAct, isMe }) => {
+    // Photo hors ligne déjà envoyée : on affiche la vraie (cf. lib/photos).
+    const act = resolvePendingPhoto(rawAct);
     const authorName = act.author || act.user || "Utilisateur";
     const [lightboxOpen, setLightboxOpen] = useState(false);
 
@@ -443,7 +446,7 @@ const MessageItem = React.memo(({ act, isMe }) => {
                                 <Box sx={{ position: 'relative', display: 'inline-block' }}>
                                     <Box
                                         component="img"
-                                        src={content}
+                                        src={act.thumb || content}
                                         onClick={() => !act.pending && setLightboxOpen(true)}
                                         sx={{
                                             maxWidth: 200,

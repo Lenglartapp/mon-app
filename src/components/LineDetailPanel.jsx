@@ -19,7 +19,7 @@ import BlurTextField from './ui/BlurTextField';
 import { useAuth } from '../auth'; // <--- NEW IMPORT
 import { supabase } from '../lib/supabaseClient'; // <--- NEW IMPORT
 import { blobToBase64, queuePhoto } from '../lib/syncQueue';
-import { compressImageToBlob, uploadBlobToStorage } from '../lib/utils/imageUpload';
+import { preparePhoto, uploadPhotoPair } from '../lib/photos';
 
 const ROBOTO = 'Roboto, system-ui, sans-serif';
 
@@ -107,12 +107,12 @@ export default function LineDetailPanel({ open, onClose, row, schema, onRowChang
     const handleAddImage = React.useCallback(async (file, caption) => {
         if (!row || !file) return;
 
-        // Compression (canvas) alignée sur les autres photos ; si elle échoue on garde le fichier brut
-        let uploadBlob = file;
-        try { uploadBlob = await compressImageToBlob(file); } catch { /* garde le fichier brut */ }
+        // Photo nette (1600 px) + vignette légère (cf. lib/photos) ; fichier brut si illisible.
+        const prepared = await preparePhoto(file);
+        const uploadBlob = prepared.full;
 
         try {
-            const publicUrl = await uploadBlobToStorage(uploadBlob, 'activity', 'jpg');
+            const { url: publicUrl, thumb } = await uploadPhotoPair(prepared, 'activity');
 
             const authorName = currentUser?.name || 'Utilisateur';
             const now = new Date().toISOString();
@@ -121,6 +121,7 @@ export default function LineDetailPanel({ open, onClose, row, schema, onRowChang
             const newActivity = {
                 id: Date.now(),
                 content: publicUrl,
+                ...(thumb ? { thumb } : {}),
                 caption: caption || null,
                 type: 'image',
                 createdAt: now,
@@ -133,7 +134,7 @@ export default function LineDetailPanel({ open, onClose, row, schema, onRowChang
             const hasSurSite = schema && schema.some(col => col.key === 'photos_sur_site');
             const updatedPhotosSurSite = hasSurSite
                 ? [...(Array.isArray(row.photos_sur_site) ? row.photos_sur_site : []),
-                   { url: publicUrl, timestamp: now, user: authorName, id: Date.now() }]
+                   { url: publicUrl, ...(thumb ? { thumb } : {}), timestamp: now, user: authorName, id: Date.now() }]
                 : row.photos_sur_site;
 
             const updatedRow = {
@@ -159,18 +160,20 @@ export default function LineDetailPanel({ open, onClose, row, schema, onRowChang
                 try {
                     const localId = `pending_activity_${Date.now()}`;
                     const base64 = await blobToBase64(uploadBlob);
+                    const thumb64 = prepared.thumb ? await blobToBase64(prepared.thumb) : null;
                     const authorName = currentUser?.name || 'Utilisateur';
                     const now = new Date().toISOString();
 
                     // '__activity__' : sentinel pour drainPhotos qui mettra à jour comments + photos_sur_site
                     await queuePhoto(projectId, row.id, '__activity__', localId, base64, {
                         timestamp: now, user: authorName, caption: caption || null
-                    });
+                    }, thumb64);
 
                     // id = localId pour pouvoir matcher et remplacer dans drainPhotos
                     const pendingActivity = {
                         id: localId,
                         content: base64,
+                        ...(thumb64 ? { thumb: thumb64 } : {}),
                         caption: caption || null,
                         type: 'image',
                         createdAt: now,
@@ -183,7 +186,7 @@ export default function LineDetailPanel({ open, onClose, row, schema, onRowChang
                     const hasSurSite = schema && schema.some(col => col.key === 'photos_sur_site');
                     const updatedPhotosSurSite = hasSurSite
                         ? [...(Array.isArray(row.photos_sur_site) ? row.photos_sur_site : []),
-                           { url: base64, id: localId, pending: true, timestamp: now, user: authorName }]
+                           { url: base64, ...(thumb64 ? { thumb: thumb64 } : {}), id: localId, pending: true, timestamp: now, user: authorName }]
                         : row.photos_sur_site;
 
                     onRowChange({

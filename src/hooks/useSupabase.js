@@ -11,6 +11,7 @@ import { isSchemaDriftError, insertStrippingPhantomColumns, updateStrippingPhant
 import { pickItemMeta } from '../lib/inventory/stockFields';
 import { fetchProjectNames, projectIndex, projectIdOf, withCurrentProjectName } from '../lib/stock/projectLink';
 import { createCoalescedWriter } from '../lib/coalescedWriter';
+import { cleanPendingPhotosForSave, applyPhotoToRows, PHOTOS_SYNCED_EVENT } from '../lib/photos';
 
 // RÉSILIENCE — Fusion "liste légère" → état en mémoire.
 // La liste ne contient que des colonnes légères. La REMPLACER telle quelle effaçait
@@ -201,6 +202,22 @@ export const useProjects = () => {
 
     useEffect(() => { fetchProjects(); }, []);
 
+    // Photos hors ligne qui viennent de partir : on remplace leur entrée « en attente »
+    // dans les projets en mémoire (vraie photo + vignette à l'écran).
+    useEffect(() => {
+        const onPhotos = (e) => {
+            const { projectId, reps } = e.detail || {};
+            setProjects(prev => prev.map(p => {
+                if (String(p.id) !== String(projectId) || !Array.isArray(p.rows)) return p;
+                let rows = p.rows;
+                for (const r of reps || []) rows = applyPhotoToRows(rows, r).rows;
+                return { ...p, rows };
+            }));
+        };
+        window.addEventListener(PHOTOS_SYNCED_EVENT, onPhotos);
+        return () => window.removeEventListener(PHOTOS_SYNCED_EVENT, onPhotos);
+    }, []);
+
     const addProject = async (project) => {
         // Helper pour garantir le format ISO (évite l'erreur "out of range")
         const toIsoString = (val) => val ? new Date(val).toISOString() : null;
@@ -314,18 +331,10 @@ export const useProjects = () => {
             if (dbUpdates[key]) dbUpdates[key] = replaceInlineImages(dbUpdates[key]).value;
         }
 
-        // 4. Nettoyer les photos pending (base64) des rows avant envoi à Supabase
-        if (dbUpdates.rows) {
-            dbUpdates.rows = dbUpdates.rows.map(row => {
-                const cleanRow = { ...row };
-                for (const key of Object.keys(cleanRow)) {
-                    if (Array.isArray(cleanRow[key]) && cleanRow[key].some(p => p?.pending)) {
-                        cleanRow[key] = cleanRow[key].filter(p => !p?.pending);
-                    }
-                }
-                return cleanRow;
-            });
-        }
+        // 4. Photos « en attente » (base64) jamais envoyées en base : remplacées par leur
+        //    version déjà envoyée si elle existe (sinon une modification faite juste après
+        //    l'envoi effaçait la photo), sinon retirées — leur envoi les rajoutera.
+        if (dbUpdates.rows) dbUpdates.rows = cleanPendingPhotosForSave(dbUpdates.rows);
 
         // 5. Projet ouvert hors connexion (copie du téléphone, possiblement en retard) :
         //    JAMAIS d'écriture directe du tableau entier — tout passe par la file, qui

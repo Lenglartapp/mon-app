@@ -1,6 +1,8 @@
 // Rapport client (suivi de projet) — logique pure : regroupement des lignes selon la
 // structure choisie, statut de pose traduit pour le client, photos, avancement.
 
+import { resolvePendingPhoto } from '../photos';
+
 export const GROUP_FIELDS = [
     { key: 'produit', label: 'Produit' },
     { key: 'zone', label: 'Zone' },
@@ -35,8 +37,11 @@ export function clientStatus(row, labels = DEFAULT_STATUS_LABELS) {
 /** Photos sur site, la plus récente d'abord. */
 export function rowPhotos(row) {
     const list = Array.isArray(row?.photos_sur_site) ? row.photos_sur_site : [];
+    // Photo encore en attente d'envoi (base64 sur l'appareil) : remplacée par sa version
+    // envoyée si elle existe, sinon exclue (jamais de base64 enregistré dans un rapport).
     return list
-        .filter((p) => p && p.url)
+        .map(resolvePendingPhoto)
+        .filter((p) => p && p.url && !p.pending)
         .sort((a, b) => String(b.timestamp || b.id || '').localeCompare(String(a.timestamp || a.id || '')));
 }
 
