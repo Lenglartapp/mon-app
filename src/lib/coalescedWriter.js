@@ -33,8 +33,9 @@ import { withRowLock } from './rowWriteLock';
  * @param {(id: string, payload: object) => Promise<object>} [opts.transform]
  *        transformation asynchrone juste avant l'envoi (ex. archivage de l'historique
  *        des lignes) ; doit renvoyer le payload d'origine en cas d'échec.
+ * @param {(id: string, body: object) => any} [opts.onWritten] écriture réussie (dans le verrou)
  */
-export const createCoalescedWriter = (table, { prepare = (p) => p, onDropped, transform } = {}) => {
+export const createCoalescedWriter = (table, { prepare = (p) => p, onDropped, transform, onWritten } = {}) => {
   const inFlight = new Set();
   const pending = new Map();   // id -> payload fusionné en attente
   const pause = new Map();     // id -> { failures, until }
@@ -63,7 +64,10 @@ export const createCoalescedWriter = (table, { prepare = (p) => p, onDropped, tr
         const startedAt = Date.now();
         const { error, dropped, body } = await withRowLock(table, id, async () => {
           const res = await updateStrippingPhantomColumns(supabase, table, id, cleaned);
-          if (!res.error) await supersedeQueuedMutations(table, id, Object.keys(res.body), startedAt);
+          if (!res.error) {
+            await supersedeQueuedMutations(table, id, Object.keys(res.body), startedAt);
+            try { await onWritten?.(id, res.body); } catch { /* best effort */ }
+          }
           return res;
         });
         if (dropped.length > 0) {

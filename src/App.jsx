@@ -33,6 +33,7 @@ import { useProjects, useMinutes, useEvents, useStocks } from './hooks/useSupaba
 
 import { useNetworkStatus } from './hooks/useNetworkStatus';
 import { useSyncQueue } from './hooks/useSyncQueue';
+import { isOpenedOffline } from './lib/offlineProjects';
 import { useOdooOrderProjects } from './hooks/useOdooOrderProjects';
 import { Bell, WifiOff, RefreshCw, Search } from 'lucide-react';
 import Badge from '@mui/material/Badge';
@@ -350,6 +351,18 @@ function AppShell() {
   const isOnline = useNetworkStatus();
   const { pendingCount, isSyncing } = useSyncQueue(refreshProjects);
 
+  // Projet ouvert hors connexion (copie du téléphone) : une fois le réseau revenu et tout
+  // envoyé (fusionné), on le recharge depuis le serveur pour afficher la version à jour.
+  const currentProjectId = currentProject?.id;
+  useEffect(() => {
+    if (!isOnline || pendingCount > 0 || isSyncing || !currentProjectId || !isOpenedOffline(currentProjectId)) return;
+    loadProjectDetail(currentProjectId).then((full) => {
+      if (full && !isOpenedOffline(currentProjectId)) {
+        setCurrentProject((cur) => (cur && String(cur.id) === String(currentProjectId) ? full : cur));
+      }
+    }).catch(() => {});
+  }, [isOnline, pendingCount, isSyncing, currentProjectId, loadProjectDetail]);
+
   if (!currentUser) return <LoginScreen />;
 
   return (
@@ -449,7 +462,9 @@ function AppShell() {
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '50vh', gap: 12, color: '#6B7280', padding: 16 }}>
             <div style={{ fontSize: 15, fontWeight: 600, color: '#111827' }}>{projectLoadError.name || 'Projet'}</div>
             <div style={{ fontSize: 13, color: '#B91C1C', textAlign: 'center', maxWidth: 420 }}>
-              Le projet n'a pas pu être chargé (serveur lent ou connexion interrompue). Aucune donnée n'a été modifiée.
+              {isOnline
+                ? "Le projet n'a pas pu être chargé (serveur lent ou connexion interrompue). Aucune donnée n'a été modifiée."
+                : "Pas de réseau, et ce projet n'a pas encore été ouvert sur cet appareil. Ouvrez-le une fois avec du réseau : il restera ensuite disponible hors connexion."}
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               <button onClick={() => navigate("/production")} style={{ background: '#F3F4F6', color: '#111827', border: 'none', padding: '8px 16px', borderRadius: 6, fontWeight: 600, cursor: 'pointer' }}>Retour</button>
