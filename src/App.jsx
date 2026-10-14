@@ -43,6 +43,7 @@ import NotificationMenu from "./components/NotificationMenu";
 
 import { NotificationProvider, useNotifications } from "./contexts/NotificationContext";
 import CommandPalette from "./components/CommandPalette";
+import UndoShortcuts from "./components/UndoShortcuts";
 
 // --- Composants UI ---
 function UserAvatarMenu({ onSettings }) {
@@ -383,6 +384,7 @@ function AppShell() {
 
   return (
     <div style={S.page}>
+      <UndoShortcuts />
       {!isOnline && (
         <div style={{
           display: 'flex', alignItems: 'center', gap: 8,

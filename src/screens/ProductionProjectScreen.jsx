@@ -730,8 +730,25 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
           addedRows.filter(a => a.pair_id === r.pair_id).forEach(a => finalRows.push(a));
         }
       });
+      // Autres lignes ajoutées (ex. ligne réapparue par Ctrl+Z) : placées juste après leur
+      // voisine précédente DANS LE TABLEAU, pour retrouver leur place (avant : en fin de liste).
       const placed = new Set(finalRows.map(r => r.id));
-      addedRows.forEach(a => { if (!placed.has(a.id)) finalRows.push(a); });
+      newSubsetRows.forEach((a, i) => {
+        if (placed.has(a.id) || !addedRows.includes(a)) return;
+        let at = -1;
+        for (let k = i - 1; k >= 0 && at < 0; k--) {
+          const pos = finalRows.findIndex(r => r.id === newSubsetRows[k].id);
+          if (pos >= 0) at = pos + 1;
+        }
+        if (at < 0) {
+          // Première du tableau : avant la première ligne actuelle de ce tableau.
+          const firstOfSubset = newSubsetRows.find(r => placed.has(r.id));
+          const pos = firstOfSubset ? finalRows.findIndex(r => r.id === firstOfSubset.id) : -1;
+          at = pos >= 0 ? pos : finalRows.length;
+        }
+        finalRows.splice(at, 0, a);
+        placed.add(a.id);
+      });
     }
 
     setRows(finalRows);
