@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useLayoutEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth';
 import { slugify } from '../lib/utils/slugify';
@@ -7,7 +7,7 @@ import {
     startOfQuarter, endOfQuarter, startOfYear, endOfYear, eachMonthOfInterval,
     addMonths, subMonths, addQuarters, subQuarters, addYears, subYears,
     differenceInDays, setHours, setMinutes,
-    isWeekend, parseISO, differenceInMinutes, getMinutes
+    isWeekend, parseISO, differenceInMinutes, getMinutes, getISOWeek
 } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useCapacityPlanning } from '../hooks/useCapacityPlanning';
@@ -29,6 +29,32 @@ import BacklogCreationModal from '../components/planning/BacklogCreationModal';
 import { findInternalProject, buildInternalProject, configWithChapter } from '../lib/planning/internalProject';
 import { generatePlanningTemplate, processPlanningImport } from '../lib/utils/planningExcelUtils';
 import { useFillViewportHeight } from '../lib/hooks/useFillViewportHeight';
+import VariantTabs from '../components/VariantTabs';
+import { computeProjectHours } from '../lib/projectMetrics';
+
+// Ordre alphabétique ; le Combiné se place toujours en dernier.
+const SERVICE_TABS = [
+    { id: 'conf', code: 'Confection', name: '' },
+    { id: 'pose', code: 'Pose', name: '' },
+    { id: 'prepa', code: 'Préparation', name: '' },
+];
+const SERVICE_IDS = ['conf', 'pose', 'prepa'];
+// Intercalaires de service : gris clair écrit en noir ; l'actif en bleu nuit écrit en blanc.
+const serviceTabColor = (i, n, on) => (on ? { bg: '#1E2447', fg: '#FFFFFF' } : { bg: '#F4F4F4', fg: '#111827', stroke: '#E0DED9' });
+const SERVICE_ADD_COLOR = { bg: '#F4F4F4', fg: '#6B7280', stroke: '#E0DED9' };
+const weekDayLabel = (d) => format(d, 'EE d MMM', { locale: fr });
+
+// Fenêtre initiale de la vue Mois : du mois précédent aux deux mois suivants.
+const monthWindow = (monday) => {
+    const start = startOfWeek(startOfMonth(subMonths(monday, 1)), { weekStartsOn: 1 });
+    const end = startOfWeek(endOfMonth(addMonths(monday, 2)), { weekStartsOn: 1 });
+    return { start, count: Math.round(differenceInDays(end, start) / 7) + 1 };
+};
+// Première semaine d'un mois = celle dont le jeudi tombe dans le mois (règle ISO).
+const firstWeekOfMonth = (date) => {
+    const monday = startOfWeek(startOfMonth(date), { weekStartsOn: 1 });
+    return addDays(monday, 3).getMonth() === date.getMonth() ? monday : addDays(monday, 7);
+};
 
 // --- Helpers atelier : durée <-> créneau (pause déjeuner 12h-13h) ---
 
@@ -235,7 +261,47 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
     const [showWeekends, setShowWeekends] = useState(false);
     const [customRange, setCustomRange] = useState(null);
     // 0 = replié, 1 = programme seulement (conf uniquement), 2 = déplié complet
-    const [expandedGroups, setExpandedGroups] = useState({ pose: 2, conf: 2, prepa: 2 });
+    const [expandedGroups, setExpandedGroups] = useState({ pose: 2, conf: 1, prepa: 2 });
+
+    // Intercalaires de service : un seul planning (Préparation / Confection / Pose) affiché à la fois.
+    // Le Planning s'ouvre toujours sur la Confection.
+    const [activeService, setActiveService] = useState('conf');
+    // Intercalaire « Combiné » : créé à la demande, affiche ensemble les services choisis.
+    const [combined, setCombined] = useState(() => {
+        try {
+            const saved = JSON.parse(localStorage.getItem('planning.combined') || 'null');
+            if (Array.isArray(saved)) {
+                const ids = SERVICE_IDS.filter(id => saved.includes(id));
+                if (ids.length >= 2) return ids;
+            }
+        } catch { /* stockage indisponible */ }
+        return null;
+    });
+    useEffect(() => {
+        try { localStorage.setItem('planning.combined', JSON.stringify(combined)); } catch { /* stockage indisponible */ }
+    }, [combined]);
+    const [combinedEditor, setCombinedEditor] = useState(null); // services cochés dans la fenêtre de création
+    const serviceLabel = (id) => SERVICE_TABS.find(t => t.id === id)?.code;
+    const effectiveService = activeService === 'combined' && !combined ? 'conf' : activeService;
+
+    // Vues empilées : « 2 semaines » = deux semaines l'une sous l'autre ; « Mois » = semaines
+    // les unes sous les autres, défilement continu vers les mois d'avant et d'après.
+    const [monthWeeks, setMonthWeeks] = useState(null); // { start: lundi, count: nb de semaines }
+    const [, setJumpTick] = useState(0);
+    // Vues empilées : déplier le Programme (ou un service) ne vaut que pour la semaine concernée.
+    const [weekExpanded, setWeekExpanded] = useState({}); // { 'yyyy-MM-dd': { conf: 2, … } }
+    const [landedIds, setLandedIds] = useState(null); // créneaux tout juste déposés (animation)
+    const landTimer = useRef(null);
+    const markLanded = (ids) => {
+        setLandedIds(new Set(ids));
+        clearTimeout(landTimer.current);
+        landTimer.current = setTimeout(() => setLandedIds(null), 700);
+    };
+    const stackRef = useRef(null);
+    const pendingJump = useRef(null);   // lundi de la semaine à amener en haut
+    const prependRef = useRef(null);    // compensation du défilement après ajout de semaines au-dessus
+    const extendingRef = useRef(false);
+    const visibleWeekRef = useRef(null); // lundi de la semaine visible en haut (vue Mois)
 
     // MODALE & EVENTS
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -576,8 +642,42 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
     }, [resizingEvent, localEvents, showWeekends]);
 
     // --- NAVIGATION TIME ---
-    const navPrev = () => { setHistoryHighlightProjectId(null); if (view === 'month') setCurrentDate(d => subMonths(d, 1)); else if (view === 'quarter') setCurrentDate(d => subQuarters(d, 1)); else if (view === 'year') setCurrentDate(d => subYears(d, 1)); else if (view === 'twoweeks') setCurrentDate(d => addDays(d, -14)); else setCurrentDate(d => addDays(d, view === 'day' ? -1 : -7)); };
-    const navNext = () => { setHistoryHighlightProjectId(null); if (view === 'month') setCurrentDate(d => addMonths(d, 1)); else if (view === 'quarter') setCurrentDate(d => addQuarters(d, 1)); else if (view === 'year') setCurrentDate(d => addYears(d, 1)); else if (view === 'twoweeks') setCurrentDate(d => addDays(d, 14)); else setCurrentDate(d => addDays(d, view === 'day' ? 1 : 7)); };
+    const showStackedWeek = (monday) => {
+        setCurrentDate(monday);
+        setMonthWeeks(m => (m && monday >= m.start && monday < addDays(m.start, m.count * 7)) ? m : monthWindow(monday));
+        pendingJump.current = monday;
+        visibleWeekRef.current = monday;
+        setJumpTick(t => t + 1);
+    };
+    // Mois précédent / suivant à partir de la semaine visible : on arrive sur la 1re semaine du mois.
+    const goMonth = (delta) => {
+        const base = addDays(visibleWeekRef.current || startOfWeek(currentDate, { weekStartsOn: 1 }), 3);
+        showStackedWeek(firstWeekOfMonth(addMonths(base, delta)));
+    };
+    useEffect(() => {
+        if (view === 'month') showStackedWeek(startOfWeek(currentDate, { weekStartsOn: 1 }));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [view]);
+    // Trimestre / Année : mêmes semaines empilées que le Mois, mais bornées à la période
+    // (pas de chargement au-delà) ; on arrive sur la semaine en cours si elle en fait partie.
+    const periodKey = view === 'quarter' ? format(startOfQuarter(currentDate), 'yyyy-MM') : view === 'year' ? String(currentDate.getFullYear()) : null;
+    useEffect(() => {
+        if (!periodKey) return;
+        const [ps, pe] = view === 'quarter'
+            ? [startOfQuarter(currentDate), endOfQuarter(currentDate)]
+            : [startOfYear(currentDate), endOfYear(currentDate)];
+        const start = startOfWeek(ps, { weekStartsOn: 1 });
+        const end = startOfWeek(pe, { weekStartsOn: 1 });
+        setMonthWeeks({ start, count: Math.round(differenceInDays(end, start) / 7) + 1 });
+        const today = new Date();
+        const target = today >= ps && today <= pe ? startOfWeek(today, { weekStartsOn: 1 }) : start;
+        pendingJump.current = target;
+        visibleWeekRef.current = target;
+        setJumpTick(t => t + 1);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [periodKey]);
+    const navPrev = () => { setHistoryHighlightProjectId(null); if (view === 'month') goMonth(-1); else if (view === 'quarter') setCurrentDate(d => subQuarters(d, 1)); else if (view === 'year') setCurrentDate(d => subYears(d, 1)); else if (view === 'twoweeks') setCurrentDate(d => addDays(d, -14)); else setCurrentDate(d => addDays(d, view === 'day' ? -1 : -7)); };
+    const navNext = () => { setHistoryHighlightProjectId(null); if (view === 'month') goMonth(1); else if (view === 'quarter') setCurrentDate(d => addQuarters(d, 1)); else if (view === 'year') setCurrentDate(d => addYears(d, 1)); else if (view === 'twoweeks') setCurrentDate(d => addDays(d, 14)); else setCurrentDate(d => addDays(d, view === 'day' ? 1 : 7)); };
 
     // --- RECHERCHE MULTI-CRITÈRES ---
     const [activeFilters, setActiveFilters] = useState([]);
@@ -632,12 +732,13 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
         let start = currentDate, end = currentDate;
         if (view === 'week') { start = startOfWeek(currentDate, { weekStartsOn: 1 }); end = addDays(start, 6); }
         else if (view === 'twoweeks') { start = startOfWeek(currentDate, { weekStartsOn: 1 }); end = addDays(start, 13); }
+        else if ((view === 'month' || view === 'quarter' || view === 'year') && monthWeeks) { start = monthWeeks.start; end = addDays(monthWeeks.start, monthWeeks.count * 7 - 1); }
         else if (view === 'month') { start = startOfMonth(currentDate); end = endOfMonth(currentDate); }
         else if (view === 'quarter') { start = startOfQuarter(currentDate); end = endOfQuarter(currentDate); }
         else if (view === 'year') { start = startOfYear(currentDate); end = endOfYear(currentDate); }
         else if (view === 'custom' && customRange) { start = customRange.start; end = customRange.end; }
         return { start: format(start, 'yyyy-MM-dd'), end: format(end, 'yyyy-MM-dd') };
-    }, [view, currentDate, customRange]);
+    }, [view, currentDate, customRange, monthWeeks]);
 
     // --- FILTRAGE DES RESSOURCES MASQUÉES ET FINS DE CONTRAT ---
     const visibleGroupsConfig = useMemo(() => {
@@ -750,6 +851,90 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
         );
     }, [localEvents, activeFilters, projects]);
 
+    // Seul le service de l'intercalaire actif est affiché (« Ma vue » garde ses propres lignes).
+    const tabbedGroups = useMemo(() => {
+        if (myViewMode) return filteredGroups;
+        const keys = effectiveService === 'combined' ? combined : [effectiveService];
+        return Object.fromEntries(keys.filter(k => filteredGroups[k]).map(k => [k, filteredGroups[k]]));
+    }, [filteredGroups, effectiveService, combined, myViewMode]);
+
+    // Avancement par projet, calculé une fois pour toutes les grilles de semaine.
+    const projectHoursById = useMemo(() => {
+        const map = {};
+        (projects || []).forEach(p => { map[p.id] = computeProjectHours(p, filteredEvents); });
+        return map;
+    }, [projects, filteredEvents]);
+
+    const stackedWeeks = useMemo(() => {
+        if (view === 'twoweeks') {
+            const s = startOfWeek(currentDate, { weekStartsOn: 1 });
+            return [s, addDays(s, 7)];
+        }
+        if ((view === 'month' || view === 'quarter' || view === 'year') && monthWeeks) return Array.from({ length: monthWeeks.count }, (_, i) => addDays(monthWeeks.start, i * 7));
+        return [];
+    }, [view, currentDate, monthWeeks]);
+
+    // Créneaux de chaque semaine (marge d'un jour : dates ISO en UTC).
+    const eventsByWeek = useMemo(() => {
+        const map = new Map();
+        stackedWeeks.forEach(monday => {
+            const from = format(addDays(monday, -1), 'yyyy-MM-dd');
+            const to = format(addDays(monday, 7), 'yyyy-MM-dd');
+            map.set(format(monday, 'yyyy-MM-dd'), filteredEvents.filter(e => {
+                const a = (e.meta?.start || e.date || '').slice(0, 10);
+                const b = (e.meta?.end || e.date || '').slice(0, 10) || a;
+                return a <= to && b >= from;
+            }));
+        });
+        return map;
+    }, [stackedWeeks, filteredEvents]);
+
+    useLayoutEffect(() => {
+        extendingRef.current = false;
+        const el = stackRef.current;
+        if (!el) return;
+        if (prependRef.current) {
+            const { prevHeight, prevTop } = prependRef.current;
+            el.scrollTop = prevTop + (el.scrollHeight - prevHeight);
+            prependRef.current = null;
+        }
+        if (pendingJump.current) {
+            const sec = el.querySelector(`[data-week="${format(pendingJump.current, 'yyyy-MM-dd')}"]`);
+            if (sec) { el.scrollTop = sec.offsetTop - (el.querySelector(':scope > [data-banner]')?.offsetHeight || 0); pendingJump.current = null; }
+        }
+    });
+
+    // Vues empilées : chaque semaine n'affiche que les personnes sous contrat cette semaine-là
+    // (ou ayant un créneau dedans), comme la vue Semaine.
+    const groupsForWeek = (monday, weekEvents) => {
+        const from = format(monday, 'yyyy-MM-dd');
+        const to = format(addDays(monday, 6), 'yyyy-MM-dd');
+        return Object.fromEntries(Object.entries(tabbedGroups).map(([k, g]) => [k, {
+            ...g,
+            members: g.members.filter(m => m.id === 'backlog_confection'
+                || memberContractOverlaps(m, from, to)
+                || weekEvents.some(e => e.resourceId === m.id)),
+        }]));
+    };
+
+    const handleStackScroll = (e) => {
+        if (!monthWeeks || !['month', 'quarter', 'year'].includes(view)) return;
+        const el = e.currentTarget;
+        for (const sec of el.querySelectorAll(':scope > [data-week]')) {
+            if (sec.offsetTop + sec.offsetHeight > el.scrollTop + 60) { visibleWeekRef.current = parseISO(sec.dataset.week); break; }
+        }
+        // Seule la vue Mois charge des semaines au-delà ; Trimestre et Année restent bornés.
+        if (view !== 'month' || extendingRef.current) return;
+        if (el.scrollHeight - el.scrollTop - el.clientHeight < 800) {
+            extendingRef.current = true;
+            setMonthWeeks(m => ({ ...m, count: m.count + 4 }));
+        } else if (el.scrollTop < 300) {
+            extendingRef.current = true;
+            prependRef.current = { prevHeight: el.scrollHeight, prevTop: el.scrollTop };
+            setMonthWeeks(m => ({ start: addDays(m.start, -28), count: m.count + 4 }));
+        }
+    };
+
     const handleToggleMyView = () => {
         if (!myViewMode) {
             setMyViewMode(true);
@@ -858,7 +1043,10 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                     startD.setHours(parseInt(sTime[0]), parseInt(sTime[1]), 0, 0);
                     endD = new Date(d);
                     endD.setHours(parseInt(eTime[0]), parseInt(eTime[1]), 0, 0);
+                    // Intervention de nuit (ex. 18h → 8h) : la fin tombe le lendemain matin.
+                    if (eventData.night || endD <= startD) endD = addDays(endD, 1);
                 }
+                const night = !isHourMode && endD.getDate() !== startD.getDate();
 
                 const evt = {
                     id: uid(),
@@ -877,6 +1065,7 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                         status: eventData.status || 'pending',
                         // Découché (pose) : l'équipe dort sur place ces nuits-là. Affiché en icône sur l'encart.
                         ...(eventData.decouche && { decouche: true }),
+                        ...(night && { night: true }),
                         // Absence : on reconduit le sous-type (Congés/RTT/Maladie), lu par
                         // la grille pour l'affichage. Sans ça, l'édition le perdrait.
                         ...(eventData.type === 'absence' && { type: eventData.absenceSubtype }),
@@ -1121,6 +1310,7 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
 
             // Persist : le nouvel event + tous les créneaux non validés recalculés
             rebalanced.forEach(e => { if (onUpdateEvent) onUpdateEvent(e); });
+            markLanded([newEvent.id]);
 
             setDraggedEvent(null);
             return;
@@ -1163,6 +1353,7 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
             seriesEvents.forEach(evt => {
                 if (onUpdateEvent) onUpdateEvent(buildUpdated(evt));
             });
+            markLanded(seriesEvents.map(e => e.id));
 
         } else {
             // Single event
@@ -1183,6 +1374,7 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
 
             // PERSIST
             if (onUpdateEvent) onUpdateEvent(updated);
+            markLanded([updated.id]);
         }
         setDraggedEvent(null);
     };
@@ -1388,6 +1580,46 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
     const pageRef = useRef(null);
     const pageHeight = useFillViewportHeight(pageRef, { bottomGap: 0, min: 400 });
 
+    const gridProps = {
+        filteredGroups: tabbedGroups,
+        expandedGroups,
+        onToggleGroup: (key) => setExpandedGroups(prev => {
+            if (key === 'conf') {
+                // Entête : replié ↔ Programme semaine (0 ↔ 1).
+                // Le "par personne" (niveau 2) se pilote via le chevron de la
+                // ligne Programme semaine (onToggleMembers).
+                return { ...prev, [key]: prev[key] > 0 ? 0 : 1 };
+            }
+            return { ...prev, [key]: prev[key] === 0 ? 2 : 0 };
+        }),
+        // Ligne Programme semaine : Programme seul ↔ par personne (1 ↔ 2)
+        onToggleMembers: (key) => setExpandedGroups(prev => ({ ...prev, [key]: prev[key] >= 2 ? 1 : 2 })),
+        projects,
+        projectHours: projectHoursById,
+        highlightProjectId: historyHighlightProjectId,
+        hiddenResources,
+        onCellClick: handleCellClick,
+        onEventClick: handleEventClick,
+        onDeleteEvent: requestDeleteEvent,
+        onUpdateEvent: (updatedEvent) => {
+            setLocalEvents(prev => prev.map(e => e.id === updatedEvent.id ? updatedEvent : e));
+            if (onUpdateEvent) onUpdateEvent(updatedEvent);
+        },
+        onDragStart: handleDragStart,
+        onDragOver: handleDragOver,
+        onDrop: handleDrop,
+        hoveredEventId,
+        onHoverEvent: setHoveredEventId,
+        onResizeStart: handleResizeStart,
+        getCellContent,
+        readOnly: !canEdit,
+        showGauges,
+        showTotal: Object.keys(tabbedGroups).length > 1,
+        // Un seul service affiché : l'intercalaire le nomme déjà, sa ligne devient « Charge ».
+        hideGroupLabel: Object.keys(tabbedGroups).length === 1,
+        landedIds,
+    };
+
     // --- VUE MOBILE (téléphone / PWA) : agenda Pose vertical, lecture seule ---
     if (isMobile) {
         return (
@@ -1475,7 +1707,16 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                 currentDate={currentDate}
                 onPrev={navPrev}
                 onNext={navNext}
-                onToday={() => { setHistoryHighlightProjectId(null); setCurrentDate(new Date()); }}
+                onToday={() => {
+                    setHistoryHighlightProjectId(null);
+                    if (view === 'month') showStackedWeek(startOfWeek(new Date(), { weekStartsOn: 1 }));
+                    else if (view === 'quarter' || view === 'year') {
+                        setCurrentDate(new Date());
+                        pendingJump.current = startOfWeek(new Date(), { weekStartsOn: 1 });
+                        setJumpTick(t => t + 1);
+                    }
+                    else setCurrentDate(new Date());
+                }}
                 customRange={customRange}
                 onCustomRangeChange={(r) => { setCustomRange(r); setView('custom'); }}
                 onNew={() => { if (canEdit) { setEditingEvent(null); setIsModalOpen(true); } }}
@@ -1669,48 +1910,124 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
             ) : assistantMode === 'capacite' ? (
                 <CapaciteView localUsers={localUsers} localEvents={localEvents} projects={projects} />
             ) : (
-                <PlanningGrid
-                    days={columns}
-                    columns={columns}
-                    superHeaders={superHeaders}
-                    view={view}
-                    filteredGroups={filteredGroups}
-                    expandedGroups={expandedGroups}
-                    onToggleGroup={(key) => setExpandedGroups(prev => {
-                        if (key === 'conf') {
-                            // Entête : replié ↔ Programme semaine (0 ↔ 1).
-                            // Le "par personne" (niveau 2) se pilote via le chevron de la
-                            // ligne Programme semaine (onToggleMembers).
-                            return { ...prev, [key]: prev[key] > 0 ? 0 : 1 };
-                        }
-                        return { ...prev, [key]: prev[key] === 0 ? 2 : 0 };
-                    })}
-                    onToggleMembers={(key) => setExpandedGroups(prev => (
-                        // Ligne Programme semaine : Programme seul ↔ par personne (1 ↔ 2)
-                        { ...prev, [key]: prev[key] >= 2 ? 1 : 2 }
-                    ))}
-                    events={filteredEvents}
-                    projects={projects}
-                    highlightProjectId={historyHighlightProjectId}
-                    hiddenResources={hiddenResources}
-                    onCellClick={handleCellClick}
-                    onEventClick={handleEventClick}
-                    onDeleteEvent={requestDeleteEvent}
-                    onUpdateEvent={(updatedEvent) => {
-                        setLocalEvents(prev => prev.map(e => e.id === updatedEvent.id ? updatedEvent : e));
-                        if (onUpdateEvent) onUpdateEvent(updatedEvent);
-                    }}
-                    onDragStart={handleDragStart}
-                    onDragOver={handleDragOver}
-                    onDrop={handleDrop}
-                    hoveredEventId={hoveredEventId}
-                    onHoverEvent={setHoveredEventId}
-                    onResizeStart={handleResizeStart}
-                    getCellContent={getCellContent}
-                    readOnly={!canEdit}
-                    showGauges={showGauges}
-                    isVertical={myViewMode}
-                />
+                <>
+                    {!myViewMode && (
+                        <div style={{ padding: '6px 24px 0 40px', display: 'flex', alignItems: 'flex-end', flexShrink: 0, position: 'relative' }}>
+                            <VariantTabs
+                                tabs={combined ? [...SERVICE_TABS, { id: 'combined', code: 'Combiné', name: combined.map(serviceLabel).join(' + ') }] : SERVICE_TABS}
+                                activeId={effectiveService}
+                                onOpen={setActiveService}
+                                onCreate={combined ? undefined : () => setCombinedEditor(['conf', 'pose'])}
+                                addLabel="Combiné"
+                                addTitle="Créer un planning combiné (plusieurs services ensemble)"
+                                colorFor={serviceTabColor}
+                                addColor={SERVICE_ADD_COLOR}
+                                shrink
+                            />
+                            {effectiveService === 'combined' && (
+                                <button onClick={() => setCombinedEditor(combined)} style={{ marginLeft: 12, marginBottom: 6, background: 'none', border: 'none', padding: 0, fontSize: 12, fontWeight: 600, color: '#6B7280', cursor: 'pointer', textDecoration: 'underline' }}>
+                                    Modifier
+                                </button>
+                            )}
+                            {combinedEditor && (
+                                <div style={{ position: 'absolute', top: 'calc(100% + 8px)', left: 36, zIndex: 90, width: 300, background: 'white', border: '1px solid #E5E7EB', borderRadius: 10, boxShadow: '0 12px 32px rgba(17,24,39,0.16)', padding: 16 }}>
+                                    <div style={{ fontFamily: 'Roboto, system-ui, sans-serif', fontSize: 15, fontWeight: 500, color: '#111827' }}>Planning combiné</div>
+                                    <div style={{ fontSize: 12, color: '#6B7280', margin: '4px 0 12px' }}>Choisissez les services à afficher ensemble (au moins deux).</div>
+                                    {SERVICE_IDS.map(id => (
+                                        <label key={id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', fontSize: 13, color: '#111827', cursor: 'pointer' }}>
+                                            <input
+                                                type="checkbox"
+                                                checked={combinedEditor.includes(id)}
+                                                onChange={() => setCombinedEditor(prev => prev.includes(id) ? prev.filter(x => x !== id) : SERVICE_IDS.filter(x => x === id || prev.includes(x)))}
+                                            />
+                                            {serviceLabel(id)}
+                                        </label>
+                                    ))}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 14 }}>
+                                        {combined && (
+                                            <button onClick={() => { setCombined(null); setCombinedEditor(null); setActiveService('conf'); }} style={{ background: 'none', border: 'none', padding: 0, fontSize: 12, fontWeight: 600, color: '#B91C1C', cursor: 'pointer' }}>
+                                                Supprimer
+                                            </button>
+                                        )}
+                                        <div style={{ flex: 1 }} />
+                                        <button onClick={() => setCombinedEditor(null)} style={{ height: 32, padding: '0 12px', borderRadius: 8, border: '1px solid #E5E7EB', background: 'white', fontSize: 13, fontWeight: 600, color: '#374151', cursor: 'pointer' }}>
+                                            Annuler
+                                        </button>
+                                        <button
+                                            disabled={combinedEditor.length < 2}
+                                            onClick={() => { setCombined(combinedEditor); setCombinedEditor(null); setActiveService('combined'); }}
+                                            style={{ height: 32, padding: '0 14px', borderRadius: 8, border: 'none', background: combinedEditor.length < 2 ? '#9CA3AF' : '#1E2447', fontSize: 13, fontWeight: 600, color: 'white', cursor: combinedEditor.length < 2 ? 'not-allowed' : 'pointer' }}
+                                        >
+                                            {combined ? 'Enregistrer' : 'Créer'}
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                    {stackedWeeks.length > 0 && !myViewMode ? (
+                        <div ref={stackRef} onScroll={handleStackScroll} style={{ flex: 1, minHeight: 0, overflowY: 'auto', position: 'relative', paddingBottom: 24 }}>
+                            {/* Haut du tableau gardé sous les intercalaires pendant le défilement : trait et coins
+                                arrondis comme le bord des tableaux ; le halo blanc masque ce qui passe derrière les coins. */}
+                            <div aria-hidden="true" style={{
+                                position: 'sticky', top: 0, zIndex: 65, height: 12, margin: '0 24px -12px', boxSizing: 'border-box',
+                                border: '1px solid #E0DED9', borderBottom: 'none', borderRadius: '12px 12px 0 0',
+                                boxShadow: '0 0 0 12px #FFFFFF', clipPath: 'inset(-12px -12px 0 -12px)', pointerEvents: 'none',
+                            }} />
+                            {stackedWeeks.map((monday, i) => {
+                                const key = format(monday, 'yyyy-MM-dd');
+                                const thursday = addDays(monday, 3);
+                                const newMonth = view !== 'twoweeks' && (i === 0 || addDays(stackedWeeks[i - 1], 3).getMonth() !== thursday.getMonth());
+                                const cols = Array.from({ length: 7 }, (_, d) => addDays(monday, d)).filter(d => showWeekends || !isWeekend(d));
+                                const isPast = monday < startOfWeek(new Date(), { weekStartsOn: 1 });
+                                return (
+                                    <div key={key} data-week={key} style={{ paddingTop: i === 0 ? 0 : 16 }}>
+                                        {newMonth && (
+                                            <div style={{ padding: '4px 24px 10px', fontFamily: 'Roboto, system-ui, sans-serif', fontSize: 20, fontWeight: 500, color: '#111827', textTransform: 'capitalize' }}>
+                                                {format(thursday, 'MMMM yyyy', { locale: fr })}
+                                            </div>
+                                        )}
+                                        <PlanningGrid
+                                            {...gridProps}
+                                            embedded
+                                            days={cols}
+                                            columns={cols}
+                                            superHeaders={[]}
+                                            expandedGroups={{ ...expandedGroups, ...(weekExpanded[key] || {}) }}
+                                            onToggleMembers={(g) => setWeekExpanded(prev => {
+                                                const cur = { ...expandedGroups, ...(prev[key] || {}) };
+                                                return { ...prev, [key]: { ...(prev[key] || {}), [g]: cur[g] >= 2 ? 1 : 2 } };
+                                            })}
+                                            onToggleGroup={(g) => setWeekExpanded(prev => {
+                                                const cur = { ...expandedGroups, ...(prev[key] || {}) };
+                                                const next = g === 'conf' ? (cur[g] > 0 ? 0 : 1) : (cur[g] === 0 ? 2 : 0);
+                                                return { ...prev, [key]: { ...(prev[key] || {}), [g]: next } };
+                                            })}
+                                            cornerLabel={`Semaine ${getISOWeek(monday)}`}
+                                            view="week"
+                                            getCellContent={weekDayLabel}
+                                            events={eventsByWeek.get(key) || []}
+                                            filteredGroups={groupsForWeek(monday, eventsByWeek.get(key) || [])}
+                                            allEvents={filteredEvents}
+                                            isPast={isPast}
+                                        />
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    ) : (
+                        <PlanningGrid
+                            {...gridProps}
+                            days={columns}
+                            columns={columns}
+                            superHeaders={superHeaders}
+                            cornerLabel={view === 'week' ? `Semaine ${getISOWeek(currentDate)}` : null}
+                            view={view}
+                            events={filteredEvents}
+                            isVertical={myViewMode}
+                        />
+                    )}
+                </>
             )}
             </div>
         </div>

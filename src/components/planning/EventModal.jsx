@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { X, Briefcase, Check, Calendar as CalendarIcon, Clock, ArrowRight, User, ChevronDown, Trash2, CheckCircle, BedDouble } from 'lucide-react';
-import { format, differenceInMinutes } from 'date-fns';
+import { X, Briefcase, Check, Calendar as CalendarIcon, Clock, ArrowRight, User, ChevronDown, Trash2, CheckCircle, BedDouble, Moon } from 'lucide-react';
+import { format, differenceInMinutes, addDays } from 'date-fns';
 import { ATELIER_HOURS_PER_DAY } from './constants';
 import {
     INTERNAL_PROJECT_NAME, isInternalProject, findInternalProject,
@@ -21,6 +21,7 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
     const [showResourceList, setShowResourceList] = useState(false);
     const [description, setDescription] = useState('');
     const [decouche, setDecouche] = useState(false); // Pose : l'équipe dort sur place (nuit sur place)
+    const [night, setNight] = useState(false); // Pose : intervention de nuit (fin le lendemain matin)
 
     // Dates & Heures
     const [startDate, setStartDate] = useState(format(new Date(), 'yyyy-MM-dd'));
@@ -112,7 +113,10 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
                 const endDateObj = new Date(eventToEdit.meta?.end || eventToEdit.date);
                 setStartDate(format(startDateObj, 'yyyy-MM-dd'));
                 setStartTime(format(startDateObj, 'HH:mm'));
-                setEndDate(format(endDateObj, 'yyyy-MM-dd'));
+                // Nuit : la fin tombe le lendemain, mais la période saisie reste celle des soirs de départ.
+                const isNight = !!eventToEdit.meta?.night;
+                setNight(isNight);
+                setEndDate(format(isNight ? addDays(endDateObj, -1) : endDateObj, 'yyyy-MM-dd'));
                 setEndTime(format(endDateObj, 'HH:mm'));
                 setDescription(eventToEdit.meta?.description || '');
                 setDecouche(!!eventToEdit.meta?.decouche);
@@ -129,6 +133,7 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
                 setEndTime('17:00');
                 setDescription('');
                 setDecouche(false);
+                setNight(false);
                 setDurationHours(ATELIER_HOURS_PER_DAY);
             } else {
                 // Mode Création (Bouton Nouveau)
@@ -142,6 +147,7 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
                 setEndTime('17:00');
                 setDescription('');
                 setDecouche(false);
+                setNight(false);
                 setDurationHours(ATELIER_HOURS_PER_DAY);
             }
         }
@@ -233,6 +239,7 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
                 durationHours: isHourMode ? parseFloat(durationHours) || ATELIER_HOURS_PER_DAY : null,
                 description,
                 decouche: selectedGroup === 'pose' ? decouche : false, // découché : pertinent pour la pose
+                night: selectedGroup === 'pose' ? night : false,
                 status: eventToEdit?.meta?.status || 'pending', // Preserves status or defaults to pending
                 type: allMembers.find(m => m.id === selectedResources[0])?.group || 'default'
             });
@@ -392,6 +399,26 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
                                     />
                                     <BedDouble size={18} color={decouche ? '#4338CA' : '#6B7280'} />
                                     <span style={{ fontSize: 13, fontWeight: 600, color: decouche ? '#3730A3' : '#374151' }}>Découché — nuit sur place</span>
+                                </label>
+                            )}
+
+                            {/* INTERVENTION DE NUIT (pose uniquement) : 18h → 8h par défaut, fin le lendemain */}
+                            {selectedGroup === 'pose' && (
+                                <label style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 8, padding: '10px 12px', borderRadius: 8, border: `1px solid ${night ? '#1E2447' : '#E0DED9'}`, background: night ? '#EEF0F8' : '#fff', cursor: readOnly ? 'default' : 'pointer' }}>
+                                    <input
+                                        type="checkbox"
+                                        checked={night}
+                                        disabled={readOnly}
+                                        onChange={(e) => {
+                                            const on = e.target.checked;
+                                            setNight(on);
+                                            if (on && startTime === '08:00' && endTime === '17:00') { setStartTime('18:00'); setEndTime('08:00'); }
+                                            if (!on && startTime === '18:00' && endTime === '08:00') { setStartTime('08:00'); setEndTime('17:00'); }
+                                        }}
+                                        style={{ width: 16, height: 16, cursor: readOnly ? 'default' : 'pointer', accentColor: '#1E2447' }}
+                                    />
+                                    <Moon size={18} color={night ? '#1E2447' : '#6B7280'} />
+                                    <span style={{ fontSize: 13, fontWeight: 600, color: night ? '#1E2447' : '#374151' }}>Intervention de nuit — fin le lendemain matin</span>
                                 </label>
                             )}
                         </div>

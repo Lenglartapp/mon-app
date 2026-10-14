@@ -7,8 +7,10 @@ import { variantShade } from "../lib/minuteFamily";
 
 // Flanc gauche (le droit est le même, retourné). Étiré en hauteur avec l'onglet.
 const CAP_PATH = "M0,32 C5,32 6,30 7.2,27 L11,6 C12,2 14,0 18,0 L18,32 Z";
+// Bord extérieur du flanc seul (pour un contour optionnel).
+const CAP_EDGE = "M0,32 C5,32 6,30 7.2,27 L11,6 C12,2 14,0 18,0";
 
-function Cap({ side, fill }) {
+function Cap({ side, fill, stroke }) {
   return (
     <svg
       className="vtab-cap"
@@ -18,6 +20,7 @@ function Cap({ side, fill }) {
       style={{ transform: side === "right" ? "scaleX(-1)" : undefined }}
     >
       <path d={CAP_PATH} fill={fill} />
+      {stroke && <path d={CAP_EDGE} fill="none" stroke={stroke} strokeWidth="1" vectorEffect="non-scaling-stroke" />}
     </svg>
   );
 }
@@ -36,16 +39,22 @@ const CSS = `
   .vtab:hover .vtab-name, .vtab.on .vtab-name { max-width: 320px; opacity: .85; }
   .vtab.on { height: 36px; cursor: default; }
   .vtab.add .vtab-body { font-weight: 600; font-size: 15px; padding: 0 2px; }
+  .vtabs.shrink .vtab:not(.on) { height: 26px; }
+  .vtabs.shrink .vtab:not(.on) .vtab-body { font-size: 12px; }
+  .vtabs.shrink .vtab:not(.on):hover { height: 30px; }
 `;
 
-export default function VariantTabs({ tabs, activeId, onOpen, onCreate }) {
+// colorFor(index, count, actif) → { bg, fg, stroke? } : remplace le dégradé par défaut (stroke = contour).
+// shrink : les intercalaires non sélectionnés sont plus bas, l'actif ressort.
+export default function VariantTabs({ tabs, activeId, onOpen, onCreate, addLabel, addTitle, colorFor, addColor, shrink = false }) {
   const n = tabs.length;
+  const add = addColor || { bg: "#E5E7EB", fg: "#4B5563" };
   return (
-    <div className="vtabs">
+    <div className={`vtabs${shrink ? " shrink" : ""}`}>
       <style>{CSS}</style>
       {tabs.map((t, i) => {
         const on = t.id === activeId;
-        const { bg, fg } = variantShade(i, n);
+        const { bg, fg, stroke } = colorFor ? colorFor(i, n, on) : variantShade(i, n);
         return (
           <button
             key={t.id}
@@ -54,20 +63,22 @@ export default function VariantTabs({ tabs, activeId, onOpen, onCreate }) {
             title={t.name}
             onClick={() => { if (!on) onOpen(t.id); }}
           >
-            <Cap side="left" fill={bg} />
-            <span className="vtab-body" style={{ background: bg, color: fg }}>
+            <Cap side="left" fill={bg} stroke={stroke} />
+            <span className="vtab-body" style={{ background: bg, color: fg, boxShadow: stroke ? `inset 0 1px 0 ${stroke}` : undefined }}>
               {t.code}
               <span className="vtab-name">{t.name}</span>
             </span>
-            <Cap side="right" fill={bg} />
+            <Cap side="right" fill={bg} stroke={stroke} />
           </button>
         );
       })}
       {onCreate && (
-        <button className="vtab add" style={{ zIndex: 0 }} title="Créer une variante" onClick={onCreate}>
-          <Cap side="left" fill="#E5E7EB" />
-          <span className="vtab-body" style={{ background: "#E5E7EB", color: "#4B5563" }}>+</span>
-          <Cap side="right" fill="#E5E7EB" />
+        <button className="vtab add" style={{ zIndex: 0 }} title={addTitle || "Créer une variante"} onClick={onCreate}>
+          <Cap side="left" fill={add.bg} stroke={add.stroke} />
+          <span className="vtab-body" style={{ background: add.bg, color: add.fg, boxShadow: add.stroke ? `inset 0 1px 0 ${add.stroke}` : undefined }}>
+            +{addLabel && <span style={{ fontSize: 12, fontWeight: 500, marginLeft: 5 }}>{addLabel}</span>}
+          </span>
+          <Cap side="right" fill={add.bg} stroke={add.stroke} />
         </button>
       )}
     </div>
