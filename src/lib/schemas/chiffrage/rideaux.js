@@ -188,7 +188,7 @@ export const RIDEAUX_SCHEMA = [
     // 72
     { key: "livraison", label: "Livraison", type: "number", width: 140 },
     // 73
-    { key: "unit_price", label: "P.U", type: "number", width: 115, readOnly: true, tooltip: "P.U = somme des PV (tissus, doublures, passementeries, embrasse, mécas, prépa, pose, confection, sous-traitance, livraison) ÷ Qté.", valueFormatter: (value) => new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(value) },
+    { key: "unit_price", label: "P.U", type: "number", width: 115, readOnly: true, tooltip: "P.U = somme des PV (tissus, doublures, passementeries, embrasse, mécas, prépa, pose, confection, sous-traitance, livraison) ÷ Qté.", valueFormatter: (value) => (value === null || value === undefined || value === "" || !isFinite(Number(value))) ? "" : new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(Number(value)) },
     // 74
     { key: "quantite", label: "Qté", type: "number", width: 115, defaultValue: 1, readOnly: true, tooltip: "Quantité de la ligne (1 par défaut)." },
     // 75

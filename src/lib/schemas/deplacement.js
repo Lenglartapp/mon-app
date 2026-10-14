@@ -77,7 +77,7 @@ export const CHIFFRAGE_SCHEMA_DEP = [
     type: "number",
     width: 150,
     readOnly: (row) => row.type_deplacement === "Prise de cotes",
-    valueFormatter: (value) => new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(value),
+    valueFormatter: (value) => (value === null || value === undefined || value === "" || !isFinite(Number(value))) ? "" : new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(Number(value)),
     tooltip: "Prix unitaire du billet (avion ou train) par technicien et par A/R.\nCoût Transport = Prix Billet × Nb tech × Nb A/R.\n⚠ Bloqué en mode Prise de cotes."
   },
 
@@ -119,7 +119,7 @@ export const CHIFFRAGE_SCHEMA_DEP = [
     type: "number",
     width: 150,
     readOnly: true,
-    valueFormatter: (value) => new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(value),
+    valueFormatter: (value) => (value === null || value === undefined || value === "" || !isFinite(Number(value))) ? "" : new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(Number(value)),
     tooltip: "Coût main d'œuvre du trajet, basé sur le taux horaire des paramètres globaux.\n\n📐 Déplacement / Prise de cotes avec déplacement :\n• Si aller ≤ 8h : Coût = H. Facturées × Taux horaire\n• Si aller > 8h : les 16 premières heures (8h aller + retour) au tarif normal, les heures supplémentaires au tarif × 1,25\n\n✏ Prise de cotes : Coût = H. Facturées (saisie) × Taux horaire"
   },
 
@@ -130,7 +130,7 @@ export const CHIFFRAGE_SCHEMA_DEP = [
     type: "number",
     width: 130,
     readOnly: true,
-    valueFormatter: (value) => new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(value),
+    valueFormatter: (value) => (value === null || value === undefined || value === "" || !isFinite(Number(value))) ? "" : new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(Number(value)),
     tooltip: "Calculé : Nb Nuits × Prix nuit (paramètres globaux).\nToujours 0 si Découchage = Non ou en Prise de cotes."
   },
 
@@ -141,7 +141,7 @@ export const CHIFFRAGE_SCHEMA_DEP = [
     type: "number",
     width: 150,
     readOnly: true,
-    valueFormatter: (value) => new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(value),
+    valueFormatter: (value) => (value === null || value === undefined || value === "" || !isFinite(Number(value))) ? "" : new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(Number(value)),
     tooltip: "Calculé : Nb Repas × Prix repas (paramètres globaux).\nToujours 0 si Découchage = Non ou en Prise de cotes."
   },
 
@@ -152,7 +152,7 @@ export const CHIFFRAGE_SCHEMA_DEP = [
     type: "number",
     width: 150,
     readOnly: true,
-    valueFormatter: (value) => new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(value),
+    valueFormatter: (value) => (value === null || value === undefined || value === "" || !isFinite(Number(value))) ? "" : new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(Number(value)),
     tooltip: "Calculé : Prix Billet × Nb tech × Nb A/R.\nToujours 0 en Prise de cotes."
   },
 
@@ -163,7 +163,7 @@ export const CHIFFRAGE_SCHEMA_DEP = [
     type: "number",
     width: 125,
     readOnly: true,
-    valueFormatter: (value) => new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(value),
+    valueFormatter: (value) => (value === null || value === undefined || value === "" || !isFinite(Number(value))) ? "" : new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(Number(value)),
     tooltip: "Total = Coût MO + Coût Nuits + Coût Repas + Coût Transport."
   }
 ];
