@@ -1,3 +1,15 @@
+// Police Roboto intégrée à l'appli (et gardée hors ligne par le service worker).
+// Avant : chargée depuis Google Fonts dans index.html — sur iPhone en mode avion, cette
+// requête restait en attente et Safari n'affichait RIEN (écran blanc).
+import '@fontsource/roboto/latin-300.css';
+import '@fontsource/roboto/latin-300-italic.css';
+import '@fontsource/roboto/latin-400.css';
+import '@fontsource/roboto/latin-500.css';
+import '@fontsource/roboto/latin-700.css';
+import '@fontsource/roboto/latin-ext-300.css';
+import '@fontsource/roboto/latin-ext-400.css';
+import '@fontsource/roboto/latin-ext-500.css';
+import '@fontsource/roboto/latin-ext-700.css';
 // src/main.jsx
 import React from 'react';
 import ReactDOM from "react-dom/client";
@@ -46,6 +58,10 @@ if (isLocalhost) {
   // et l'appli restait bloquée sur un ancien build (ex. chiffrages vides sur iPad alors que
   // Safari était à jour). On vérifie au retour sur l'appli et toutes les 30 min ;
   // `autoUpdate` recharge alors la page sur la nouvelle version.
+  // Ancien cache d'un service worker fait main (avant vite-plugin-pwa) : inutile, on le retire.
+  if (window.caches?.keys) {
+    caches.keys().then((keys) => keys.filter((k) => k.startsWith('droit-fil-cache')).forEach((k) => caches.delete(k))).catch(() => {});
+  }
   registerSW({
     immediate: true,
     onRegisteredSW(_url, registration) {

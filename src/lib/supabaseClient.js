@@ -3,15 +3,58 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-// RÉSILIENCE — Délai maximum sur les requêtes BASE (PostgREST `/rest/v1/`).
-// Sans ça, quand la base est saturée ("Unhealthy"), les promesses restent pendantes
-// indéfiniment : loader infini, écran figé, et les requêtes s'empilent côté serveur.
-// Avec un délai, l'appel échoue proprement (erreur réseau) → l'UI peut proposer
-// « Réessayer » et les écritures repassent par leur mécanisme de reprise.
-// Lectures : 30 s. Écritures (payloads JSONB de plusieurs Mo) : 60 s.
-// Storage (upload photos) et Auth ne sont PAS concernés (durées légitimement longues).
+// RÉSILIENCE — Délai maximum sur TOUTES les requêtes vers Supabase.
+// Sans ça, une requête peut rester en attente indéfiniment : base saturée ("Unhealthy"),
+// et surtout iPhone en mode avion, où les requêtes ne ÉCHOUENT pas, elles attendent
+// (loader infini, écran blanc à l'ouverture, photo qui tourne sans fin). Avec un délai,
+// l'appel échoue proprement (erreur réseau) → l'appli bascule sur la copie de l'appareil
+// et les envois passent en file.
+//   Base (lecture 30 s / écriture 60 s, gros JSONB) · Connexion 10 s · Fichiers 30 s.
 const READ_TIMEOUT_MS = 30_000;
 const WRITE_TIMEOUT_MS = 60_000;
+const AUTH_TIMEOUT_MS = 10_000;
+const STORAGE_TIMEOUT_MS = 30_000;
+
+const timeoutFor = (url, method) => {
+  if (url.includes('/rest/v1/')) return method === 'GET' || method === 'HEAD' ? READ_TIMEOUT_MS : WRITE_TIMEOUT_MS;
+  if (url.includes('/auth/v1/')) return AUTH_TIMEOUT_MS;
+  if (url.includes('/storage/v1/')) return STORAGE_TIMEOUT_MS;
+  return null;
+};
+
+// Signal de délai compatible avec les anciens iOS (AbortSignal.timeout / .any absents).
+const withTimeout = (callerSignal, ms) => {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(new DOMException('Délai dépassé (réseau injoignable)', 'TimeoutError')), ms);
+  if (callerSignal) {
+    if (callerSignal.aborted) ctrl.abort(callerSignal.reason);
+    else callerSignal.addEventListener('abort', () => ctrl.abort(callerSignal.reason), { once: true });
+  }
+  return { signal: ctrl.signal, done: () => clearTimeout(timer) };
+};
+
+// ——— Joignabilité RÉELLE du serveur ———
+// Sur iPhone (appli installée), `navigator.onLine` reste à true en mode avion : on ne peut
+// pas s'y fier. On observe les requêtes : un échec réseau (ou un délai dépassé) → hors
+// ligne ; la moindre réponse du serveur, même une erreur HTTP → en ligne.
+export const CONNECTIVITY_EVENT = 'droitfil:connectivity';
+let serverReachable = true;
+const setReachable = (ok) => {
+  if (ok === serverReachable) return;
+  serverReachable = ok;
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event(CONNECTIVITY_EVENT));
+};
+/** Le serveur est-il joignable ? (navigator.onLine ET dernières requêtes réussies) */
+export const isServerReachable = () => (typeof navigator === 'undefined' || navigator.onLine !== false) && serverReachable;
+if (typeof window !== 'undefined') window.addEventListener('online', () => { serverReachable = true; });
+
+/** Petite requête sans données (santé du service de connexion) : le serveur répond-il ? */
+export const probeServer = async () => {
+  try {
+    const res = await fetchWithTimeout(`${supabaseUrl}/auth/v1/health`, { headers: { apikey: supabaseAnonKey } });
+    return !!res;
+  } catch { return false; }
+};
 
 const fetchWithTimeout = (input, init = {}) => {
   const url = typeof input === 'string' ? input : input?.url || '';
@@ -26,16 +69,19 @@ const fetchWithTimeout = (input, init = {}) => {
       return Promise.reject(new TypeError('Failed to fetch (session non renouvelée)'));
     }
   }
-  if (!url.includes('/rest/v1/') || typeof AbortSignal?.timeout !== 'function') {
-    return fetch(input, init);
-  }
-  const method = String(init.method || 'GET').toUpperCase();
-  const timeoutSignal = AbortSignal.timeout(method === 'GET' || method === 'HEAD' ? READ_TIMEOUT_MS : WRITE_TIMEOUT_MS);
-  // Conserve un éventuel signal fourni par l'appelant (.abortSignal()).
-  const signal = init.signal && typeof AbortSignal.any === 'function'
-    ? AbortSignal.any([init.signal, timeoutSignal])
-    : (init.signal || timeoutSignal);
-  return fetch(input, { ...init, signal });
+  const ms = timeoutFor(url, String(init.method || 'GET').toUpperCase());
+  if (!ms) return fetch(input, init);
+  const { signal, done } = withTimeout(init.signal, ms);
+  return fetch(input, { ...init, signal }).then(
+    (res) => { done(); setReachable(true); return res; },
+    (err) => {
+      done();
+      // Abandon volontaire de l'appelant (pas un délai) : ne dit rien sur le réseau.
+      const callerAbort = init.signal?.aborted && err?.name === 'AbortError';
+      if (!callerAbort) setReachable(false);
+      throw err;
+    },
+  );
 };
 
 // Lien d'invitation (ou de réinitialisation) reçu par e-mail : Supabase connecte la personne

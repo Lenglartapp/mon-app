@@ -4,6 +4,7 @@ import { COLORS } from '../../lib/constants/ui';
 import ImageLightbox from './ImageLightbox';
 import { useAuth } from '../../auth';
 import { blobToBase64, queuePhoto } from '../../lib/syncQueue';
+import { isServerReachable } from '../../lib/supabaseClient';
 import { preparePhoto, uploadPhotoPair, thumbOf, resolvePendingPhoto, PHOTOS_SYNCED_EVENT } from '../../lib/photos';
 
 const normalizePhoto = (item) => {
@@ -44,7 +45,9 @@ export default function GridPhotoCell({ value, onImageUpload, onCustomAdd, offli
             const user = currentUser?.name || 'Utilisateur';
 
             try {
-                // Tentative d'upload en ligne
+                // Tentative d'upload en ligne (sautée si le serveur est déjà connu injoignable :
+                // sur iPhone en mode avion, l'envoi attendrait au lieu d'échouer).
+                if (!isServerReachable()) throw new Error('hors ligne');
                 const { url, thumb } = await uploadPhotoPair(prepared, 'minutes');
                 const newPhoto = { url, ...(thumb ? { thumb } : {}), timestamp, user, id: Date.now() };
                 if (onImageUpload) onImageUpload([...rawArray, newPhoto]);

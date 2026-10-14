@@ -78,7 +78,7 @@ export default defineConfig(({ mode }) => {
         registerType: 'autoUpdate',
         manifest: false, // utilise public/manifest.json existant
         workbox: {
-          globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
+          globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2,json}'], // json : manifest.json gardé hors ligne
           maximumFileSizeToCacheInBytes: 8 * 1024 * 1024, // 8 MiB (bundle ~6 MiB avec AG Grid Enterprise)
         },
       }),
