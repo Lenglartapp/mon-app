@@ -64,7 +64,7 @@ export default function EditStockItemModal({ item, zones = [], onClose, onSave }
     const patch = {
       product, fournisseur: fournisseur || null, ref: ref || null, coloris: coloris || null,
       category, laize: laize || null, project: project || null, location,
-      qty: totalQty, unit: unit || null, pieces: cleanPieces,
+      qty: totalQty, unit: category === 'Tissu' ? 'ml' : (unit || null), pieces: cleanPieces,
     };
     const reason = isToComplete && location !== LOC_A_COMPLETER
       ? `Complément réception : ${cleanPieces.length} pièce(s) → ${location}`
@@ -86,7 +86,7 @@ export default function EditStockItemModal({ item, zones = [], onClose, onSave }
       <TextField fullWidth size="small" value={value} onChange={(e) => setValue(e.target.value)} sx={DA_FIELD_SX} {...props} />
     </DaField>
   );
-  const unitLabel = unit || item.unit || 'ml';
+  const unitLabel = category === 'Tissu' ? 'ml' : (unit || item.unit || 'ml');
   const canSave = !saving && !!product.trim() && !!operator.trim();
 
   return (
@@ -111,7 +111,7 @@ export default function EditStockItemModal({ item, zones = [], onClose, onSave }
       <Stack spacing={3}>
         {isToComplete && (
           <Typography sx={{ fontSize: 13, color: '#374151', bgcolor: '#EEF4FD', borderRadius: '8px', px: 1.5, py: 1 }}>
-            Réception Odoo : <b>{received} {item.unit || ''}</b> reçus. Détaille les pièces puis indique l'emplacement.
+            Réception Odoo : <b>{received} {unitLabel}</b> reçus. Détaille les pièces puis indique l'emplacement.
           </Typography>
         )}
 
@@ -131,7 +131,10 @@ export default function EditStockItemModal({ item, zones = [], onClose, onSave }
             <Stack direction="row" spacing={1.5}>
               <Box sx={{ flex: 1 }}>{field('Coloris', coloris, setColoris)}</Box>
               <Box sx={{ width: 110 }}>{field('Laize', laize, setLaize, { placeholder: 'ex. 140' })}</Box>
-              <Box sx={{ width: 100 }}>{field('Unité', unit, setUnit, { placeholder: 'ml, u…' })}</Box>
+              {/* Un tissu se compte toujours en mètres linéaires (règle Droitfil ↔ Odoo). */}
+              <Box sx={{ width: 100 }}>{category === 'Tissu'
+                ? field('Unité', 'ml', () => {}, { disabled: true })
+                : field('Unité', unit, setUnit, { placeholder: 'ml, u…' })}</Box>
             </Stack>
             {field('Libellé produit', product, setProduct)}
             {field('Affectation (dossier)', project, setProject, { placeholder: 'Stock libre' })}
@@ -158,7 +161,7 @@ export default function EditStockItemModal({ item, zones = [], onClose, onSave }
                 <TextField
                   type="number" value={p.qty} onChange={(e) => setPieceQty(p.id, e.target.value)} size="small" sx={{ ...DA_FIELD_SX, width: 140 }}
                   autoFocus={isToComplete && idx === pieces.length - 1 && p.qty === ''}
-                  InputProps={{ endAdornment: <InputAdornment position="end"><span style={{ color: '#6B7280', fontSize: 13 }}>{item.unit || 'ml'}</span></InputAdornment> }}
+                  InputProps={{ endAdornment: <InputAdornment position="end"><span style={{ color: '#6B7280', fontSize: 13 }}>{unitLabel}</span></InputAdornment> }}
                 />
                 <Box sx={{ flex: 1 }} />
                 <IconButton size="small" onClick={() => removePiece(p.id)} title="Retirer la pièce" sx={{ color: '#6B7280' }}><Minus size={16} /></IconButton>
@@ -167,7 +170,7 @@ export default function EditStockItemModal({ item, zones = [], onClose, onSave }
           </Stack>
           {hasPieces && (
             <Box sx={{ mt: 1.5, display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', fontSize: 13, color: '#6B7280' }}>
-              <span>{filledPieces.length ? 'Total' : 'Stock actuel'} : <b style={{ color: '#111827' }}>{totalQty}</b> {item.unit || ''}</span>
+              <span>{filledPieces.length ? 'Total' : 'Stock actuel'} : <b style={{ color: '#111827' }}>{totalQty}</b> {unitLabel}</span>
               {ecart != null && (ecart === 0
                 ? <TonePill tone={4}>Conforme à la réception ({received})</TonePill>
                 : <TonePill tone={null}>Écart de {ecart > 0 ? '+' : ''}{ecart} avec la réception ({received}) — le total des pièces fera foi</TonePill>)}
