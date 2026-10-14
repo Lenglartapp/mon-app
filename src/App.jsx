@@ -537,6 +537,7 @@ function AppShell() {
             minutes={cleanMinutes}
             onUpdate={updateMinute}
             onCreate={addMinute}
+            onDelete={deleteMinute}
             onLoadMinuteDetail={loadMinuteDetail}
             onBack={() => navigate("/chiffrage")}
             onOpenMinute={(id) => {
