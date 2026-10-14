@@ -691,6 +691,7 @@ export const useMinutes = () => {
         } else {
             console.error("Erreur delete minute:", error);
         }
+        return { error };
     };
 
     return {

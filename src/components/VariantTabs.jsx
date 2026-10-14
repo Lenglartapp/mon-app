@@ -42,11 +42,16 @@ const CSS = `
   .vtabs.shrink .vtab:not(.on) { height: 26px; }
   .vtabs.shrink .vtab:not(.on) .vtab-body { font-size: 12px; }
   .vtabs.shrink .vtab:not(.on):hover { height: 30px; }
+  .vtab-del { display: none; align-items: center; justify-content: center; width: 16px; height: 16px; margin-left: 2px;
+    border-radius: 99px; font-size: 13px; line-height: 1; font-weight: 500; opacity: .7; cursor: pointer; }
+  .vtab:hover .vtab-del, .vtab.on .vtab-del { display: inline-flex; }
+  .vtab-del:hover { opacity: 1; background: rgba(255,255,255,.25); }
 `;
 
 // colorFor(index, count, actif) → { bg, fg, stroke? } : remplace le dégradé par défaut (stroke = contour).
 // shrink : les intercalaires non sélectionnés sont plus bas, l'actif ressort.
-export default function VariantTabs({ tabs, activeId, onOpen, onCreate, addLabel, addTitle, colorFor, addColor, shrink = false }) {
+// onDelete(tab) : croix « Supprimer » sur l'intercalaire ; canDelete(tab) → true | texte (raison du refus).
+export default function VariantTabs({ tabs, activeId, onOpen, onCreate, onDelete, canDelete, addLabel, addTitle, colorFor, addColor, shrink = false }) {
   const n = tabs.length;
   const add = addColor || { bg: "#E5E7EB", fg: "#4B5563" };
   return (
@@ -67,6 +72,19 @@ export default function VariantTabs({ tabs, activeId, onOpen, onCreate, addLabel
             <span className="vtab-body" style={{ background: bg, color: fg, boxShadow: stroke ? `inset 0 1px 0 ${stroke}` : undefined }}>
               {t.code}
               <span className="vtab-name">{t.name}</span>
+              {onDelete && (() => {
+                const allowed = canDelete ? canDelete(t) : true;
+                return (
+                  <span
+                    className="vtab-del"
+                    role="button"
+                    aria-label={`Supprimer ${t.code}`}
+                    title={allowed === true ? `Supprimer ${t.code}` : allowed}
+                    style={allowed === true ? undefined : { opacity: 0.35, cursor: 'not-allowed' }}
+                    onClick={(e) => { e.stopPropagation(); if (allowed === true) onDelete(t); }}
+                  >×</span>
+                );
+              })()}
             </span>
             <Cap side="right" fill={bg} stroke={stroke} />
           </button>

@@ -36,6 +36,8 @@ import { MOBILIER_PRODUIT_RE } from "../lib/constants/productRouting";
 import { applyCatalogRenames } from "../lib/utils/catalogRename";
 import RecalibrageAssistant from "../components/recalibrage/RecalibrageAssistant";
 import StatusChangeDialog from "../components/StatusChangeDialog";
+import DaDialog from "../components/ui/DaDialog";
+import { ToolbarButton } from "../components/ui/ToolbarControls";
 import { isFrozen, statusChangeBlocked, disabledStatuses, needsDialog, buildStatusChange, buildInvalidation } from "../lib/quoteValidation";
 import OdooQuoteWizard from "../components/odoo/OdooQuoteWizard";
 import { canUseOdooQuote } from "../lib/odoo/quoteAccess";
@@ -69,7 +71,7 @@ const MemoizedDashboardSummary = React.memo(DashboardSummary);
 const MemoizedShoppingListScreen = React.memo(ShoppingListScreen);
 const MemoizedMoulinetteView = React.memo(MoulinetteView);
 
-function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDetail, onBack, onOpenMinute, highlightRowId }) {
+function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onDelete, onLoadMinuteDetail, onBack, onOpenMinute, highlightRowId }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [localRowId, setLocalRowId] = React.useState(null);
@@ -641,6 +643,41 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
 
   const familyTabs = React.useMemo(() => buildFamilyTabs(minutes, minute), [minutes, minute]);
 
+  // ——— SUPPRESSION D'UN INTERCALAIRE (variante ou original) ———
+  const [deleteTab, setDeleteTab] = React.useState(null);
+  const [deleting, setDeleting] = React.useState(false);
+  // true = autorisé ; sinon le texte affiché au survol de la croix.
+  const canDeleteTab = React.useCallback((tab) => {
+    const m = tab.id === minute?.id ? minute : (minutes || []).find((x) => x.id === tab.id);
+    if (isFrozen(m?.status)) return 'Devis en commande : il ne peut pas être supprimé.';
+    return true;
+  }, [minute, minutes]);
+  // Original (V1) supprimé alors qu'il a des variantes : la plus ancienne devient l'original.
+  const heirOf = (tab) => (tab?.isRoot && familyTabs.length > 1 ? familyTabs[1] : null);
+  const confirmDeleteTab = React.useCallback(async () => {
+    const tab = deleteTab;
+    if (!tab || !onDelete || deleting) return;
+    setDeleting(true);
+    const idx = familyTabs.findIndex((t) => t.id === tab.id);
+    const heir = heirOf(tab);
+    const next = heir || familyTabs[idx - 1] || familyTabs[idx + 1] || null;
+    // Les variantes sont rattachées à l'original : AVANT de le supprimer, la plus ancienne
+    // devient le nouvel original et les autres lui sont rattachées (famille intacte).
+    if (heir && onUpdate) {
+      await onUpdate(heir.id, { parentId: null });
+      for (const t of familyTabs.slice(2)) await onUpdate(t.id, { parentId: heir.id });
+    }
+    const res = await onDelete(tab.id);
+    setDeleting(false);
+    if (res?.error) { window.alert(`Suppression impossible : ${res.error.message || res.error}`); return; }
+    setDeleteTab(null);
+    // L'intercalaire supprimé était celui affiché : on ouvre son voisin (ou la liste).
+    if (tab.id === minute?.id) {
+      if (next) onOpenMinute?.(next.id); else onBack?.();
+    }
+  }, [deleteTab, onDelete, onUpdate, deleting, familyTabs, minute?.id, onOpenMinute, onBack]); // eslint-disable-line react-hooks/exhaustive-deps
+
+
   const handleNotesSave = React.useCallback((newNotes) => {
     if (!canEdit) return;
     updateMinute({ notes: newNotes });
@@ -830,6 +867,8 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
               activeId={minute?.id}
               onOpen={(id) => onOpenMinute?.(id)}
               onCreate={canEditBase ? handleCreateVariant : undefined}
+              onDelete={canEditBase && onDelete ? setDeleteTab : undefined}
+              canDelete={canDeleteTab}
             />
           </div>
         {/* Vues du chiffrage, au centre de la ligne des variantes */}
@@ -926,6 +965,37 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
         onRestoreInPlace={handleRestoreInPlace}
         onRestoreAsVariant={handleRestoreAsVariant}
       />
+
+      {deleteTab && (
+        <DaDialog
+          open
+          onClose={() => !deleting && setDeleteTab(null)}
+          title={deleteTab.isRoot ? "Supprimer l'original (V1)" : `Supprimer la variante ${deleteTab.code}`}
+          subtitle={deleteTab.name}
+          maxWidth="xs"
+          footer={(
+            <>
+              <span style={{ flex: 1 }} />
+              <ToolbarButton onClick={() => setDeleteTab(null)} disabled={deleting}>Annuler</ToolbarButton>
+              <button
+                type="button"
+                onClick={confirmDeleteTab}
+                disabled={deleting}
+                style={{ height: 38, padding: '0 14px', borderRadius: 8, border: '1px solid #B91C1C', background: '#B91C1C', color: 'white', fontSize: 13, fontWeight: 600, fontFamily: 'inherit', cursor: deleting ? 'wait' : 'pointer', opacity: deleting ? 0.6 : 1 }}
+              >
+                {deleting ? 'Suppression…' : 'Supprimer'}
+              </button>
+            </>
+          )}
+        >
+          <div style={{ fontSize: 13, color: '#374151', lineHeight: 1.5 }}>
+            {deleteTab.isRoot ? 'Ce chiffrage' : 'Cette variante'} sera supprimé{deleteTab.isRoot ? '' : 'e'} définitivement, avec son historique de versions.
+            {heirOf(deleteTab)
+              ? <> La variante <b style={{ fontWeight: 500 }}>{heirOf(deleteTab).code} « {heirOf(deleteTab).name} »</b> deviendra l'original (V1) ; les autres variantes sont conservées.</>
+              : ' Les autres variantes ne sont pas touchées.'}
+          </div>
+        </DaDialog>
+      )}
 
       {statusDialog && (
         <StatusChangeDialog
