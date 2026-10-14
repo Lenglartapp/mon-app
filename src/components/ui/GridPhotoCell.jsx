@@ -3,7 +3,7 @@ import { Plus } from 'lucide-react';
 import { COLORS } from '../../lib/constants/ui';
 import ImageLightbox from './ImageLightbox';
 import { useAuth } from '../../auth';
-import { blobToBase64, queuePhoto } from '../../lib/syncQueue';
+import { queuePhotoSafely } from '../../lib/syncQueue';
 import { isServerReachable } from '../../lib/supabaseClient';
 import { preparePhoto, uploadPhotoPair, thumbOf, resolvePendingPhoto, PHOTOS_SYNCED_EVENT } from '../../lib/photos';
 
@@ -31,6 +31,29 @@ export default function GridPhotoCell({ value, onImageUpload, onCustomAdd, offli
     const rawArray = Array.isArray(value) ? value : (value ? [value] : []);
     const photos = rawArray.map(normalizePhoto).map(resolvePendingPhoto);
 
+    // Hors ligne : la photo est mise en file sur l'appareil (lib/syncQueue.queuePhotoSafely)
+    // et n'est affichée « en attente » qu'une fois l'enregistrement CONFIRMÉ.
+    const addOffline = async (file, prepared, timestamp, user) => {
+        if (!offlineContext?.projectId || !offlineContext?.rowId || !offlineContext?.fieldKey) {
+            alert("Impossible d'ajouter une photo hors ligne ici. Reconnectez-vous et réessayez.");
+            return;
+        }
+        try {
+            const { localId, url, thumb } = await queuePhotoSafely({
+                file, prepared,
+                projectId: offlineContext.projectId,
+                rowId: offlineContext.rowId,
+                fieldKey: offlineContext.fieldKey,
+                meta: { timestamp, user },
+            });
+            const pendingPhoto = { url, ...(thumb ? { thumb } : {}), id: localId, pending: true, timestamp, user };
+            if (onImageUpload) onImageUpload([...rawArray, pendingPhoto]);
+        } catch (err) {
+            console.error('[photo] enregistrement hors ligne impossible :', err);
+            alert("La photo n'a pas pu être enregistrée sur l'appareil (espace insuffisant ?). Réessayez.");
+        }
+    };
+
     const handleUpload = async (e) => {
         e.stopPropagation();
         const file = e.target.files?.[0];
@@ -39,38 +62,21 @@ export default function GridPhotoCell({ value, onImageUpload, onCustomAdd, offli
 
         try {
             setUploading(true);
-            // Photo nette (1600 px) + vignette légère pour l'affichage (cf. lib/photos).
-            const prepared = await preparePhoto(file);
             const timestamp = new Date().toISOString();
             const user = currentUser?.name || 'Utilisateur';
+            // Serveur connu injoignable : en file TOUT DE SUITE (fichier d'origine), avant la
+            // compression — lente sur iPhone, une appli fermée entre-temps perdait la photo.
+            if (!isServerReachable()) { await addOffline(file, null, timestamp, user); return; }
 
+            // Photo nette (1600 px) + vignette légère pour l'affichage (cf. lib/photos).
+            const prepared = await preparePhoto(file);
             try {
-                // Tentative d'upload en ligne (sautée si le serveur est déjà connu injoignable :
-                // sur iPhone en mode avion, l'envoi attendrait au lieu d'échouer).
-                if (!isServerReachable()) throw new Error('hors ligne');
                 const { url, thumb } = await uploadPhotoPair(prepared, 'minutes');
                 const newPhoto = { url, ...(thumb ? { thumb } : {}), timestamp, user, id: Date.now() };
                 if (onImageUpload) onImageUpload([...rawArray, newPhoto]);
             } catch {
-                // Hors ligne : la photo attend sur l'appareil, envoi automatique au retour du réseau.
-                if (!offlineContext?.projectId || !offlineContext?.rowId || !offlineContext?.fieldKey) {
-                    alert("Impossible d'ajouter une photo hors ligne ici. Reconnectez-vous et réessayez.");
-                    return;
-                }
-                const base64 = await blobToBase64(prepared.full);
-                const thumb64 = prepared.thumb ? await blobToBase64(prepared.thumb) : null;
-                const localId = `pending_${Date.now()}`;
-                await queuePhoto(
-                    offlineContext.projectId,
-                    offlineContext.rowId,
-                    offlineContext.fieldKey,
-                    localId,
-                    base64,
-                    { timestamp, user },
-                    thumb64,
-                );
-                const pendingPhoto = { url: base64, ...(thumb64 ? { thumb: thumb64 } : {}), id: localId, pending: true, timestamp, user };
-                if (onImageUpload) onImageUpload([...rawArray, pendingPhoto]);
+                // Envoi impossible : la photo attend sur l'appareil, envoi automatique au retour du réseau.
+                await addOffline(file, prepared, timestamp, user);
             }
         } finally {
             setUploading(false);

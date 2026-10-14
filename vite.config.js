@@ -80,6 +80,25 @@ export default defineConfig(({ mode }) => {
         workbox: {
           globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2,json}'], // json : manifest.json gardé hors ligne
           maximumFileSizeToCacheInBytes: 8 * 1024 * 1024, // 8 MiB (bundle ~6 MiB avec AG Grid Enterprise)
+          // Photos et vignettes (Storage Supabase, URL publiques) gardées sur l'appareil : une
+          // photo vue en ligne reste visible hors ligne. JAMAIS les données (/rest/v1/) ni la
+          // connexion (/auth/) : seules les URL /storage/v1/object/public/ sont concernées.
+          runtimeCaching: [{
+            urlPattern: ({ url }) => url.hostname.endsWith('.supabase.co') && url.pathname.startsWith('/storage/v1/object/public/'),
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'droitfil-photos',
+              expiration: { maxEntries: 2000, maxAgeSeconds: 60 * 24 * 60 * 60, purgeOnQuotaError: true },
+              // Réponses complètes uniquement : une réponse « opaque » (balise <img> sans CORS)
+              // est comptée ~7 Mo par Chrome et saturerait vite l'espace du téléphone.
+              cacheableResponse: { statuses: [200] },
+              plugins: [{
+                // On redemande l'image en CORS (accepté par le Storage public Supabase) pour
+                // obtenir une réponse complète et cachable.
+                requestWillFetch: async ({ request }) => new Request(request.url, { mode: 'cors', credentials: 'omit' }),
+              }],
+            },
+          }],
         },
       }),
       odooApiDevPlugin(env),

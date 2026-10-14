@@ -389,8 +389,10 @@ function AppShell() {
         <div style={{
           display: 'flex', alignItems: 'center', gap: 8,
           background: '#92400e', color: '#fef3c7',
-          padding: '8px 16px', fontSize: 13, fontWeight: 500,
-          position: 'sticky', top: 0, zIndex: 9999,
+          padding: '8px 16px', paddingTop: 'calc(8px + env(safe-area-inset-top, 0px))', fontSize: 13, fontWeight: 500,
+          // SOUS les fenêtres (MUI : tiroirs 1200, dialogues 1300) : sinon le bandeau recouvrait
+          // l'en-tête de la fiche de ligne sur iPhone (impossible de la fermer ou de poster).
+          position: 'sticky', top: 0, zIndex: 1100,
         }}>
           <WifiOff size={15} />
           Mode hors ligne — les données affichées sont celles de votre dernière connexion
@@ -405,8 +407,8 @@ function AppShell() {
         <div style={{
           display: 'flex', alignItems: 'center', gap: 8,
           background: '#1d4ed8', color: '#eff6ff',
-          padding: '8px 16px', fontSize: 13, fontWeight: 500,
-          position: 'sticky', top: 0, zIndex: 9999,
+          padding: '8px 16px', paddingTop: 'calc(8px + env(safe-area-inset-top, 0px))', fontSize: 13, fontWeight: 500,
+          position: 'sticky', top: 0, zIndex: 1100, // sous les fenêtres (cf. bandeau hors ligne)
         }}>
           <RefreshCw size={15} style={{ animation: 'spin 1s linear infinite' }} />
           Synchronisation des modifications hors ligne…
