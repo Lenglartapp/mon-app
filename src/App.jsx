@@ -33,7 +33,7 @@ import { useProjects, useMinutes, useEvents, useStocks } from './hooks/useSupaba
 
 import { useNetworkStatus } from './hooks/useNetworkStatus';
 import { useSyncQueue } from './hooks/useSyncQueue';
-import { isOpenedOffline } from './lib/offlineProjects';
+import { isOpenedOffline, detailFailureOf } from './lib/offlineProjects';
 import { applyPhotoToRows, PHOTOS_SYNCED_EVENT } from './lib/photos';
 import { useOdooOrderProjects } from './hooks/useOdooOrderProjects';
 import { Bell, WifiOff, RefreshCw, Search } from 'lucide-react';
@@ -240,7 +240,7 @@ function AppShell() {
       // prochaine sauvegarde pourrait écraser les lignes. On affiche une erreur.
       if (!full) {
         failedProjectRef.current = project.id;
-        setProjectLoadError({ name: project.name });
+        setProjectLoadError({ name: project.name, network: detailFailureOf(project.id) === 'network' });
         setScreen("projectError");
         return;
       }
@@ -478,9 +478,9 @@ function AppShell() {
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '50vh', gap: 12, color: '#6B7280', padding: 16 }}>
             <div style={{ fontSize: 15, fontWeight: 600, color: '#111827' }}>{projectLoadError.name || 'Projet'}</div>
             <div style={{ fontSize: 13, color: '#B91C1C', textAlign: 'center', maxWidth: 420 }}>
-              {isOnline
-                ? "Le projet n'a pas pu être chargé (serveur lent ou connexion interrompue). Aucune donnée n'a été modifiée."
-                : "Pas de réseau, et ce projet n'a pas encore été ouvert sur cet appareil. Ouvrez-le une fois avec du réseau : il restera ensuite disponible hors connexion."}
+              {projectLoadError.network
+                ? "Pas de réseau (ou réseau trop faible), et ce projet n'a pas encore été ouvert sur cet appareil. Ouvrez-le une fois avec du réseau : il restera ensuite disponible hors connexion."
+                : "Le projet n'a pas pu être chargé. Aucune donnée n'a été modifiée."}
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               <button onClick={() => navigate("/production")} style={{ background: '#F3F4F6', color: '#111827', border: 'none', padding: '8px 16px', borderRadius: 6, fontWeight: 600, cursor: 'pointer' }}>Retour</button>

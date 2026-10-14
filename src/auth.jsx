@@ -46,12 +46,20 @@ export const AuthProvider = ({ children }) => {
       return true;
     };
 
+    // 0. Ouverture IMMÉDIATE avec le profil gardé sur l'appareil (si une session y est
+    //    gardée) : on n'attend pas le serveur pour afficher l'appli. Sur iPhone en mode
+    //    avion, les requêtes attendent au lieu d'échouer → sinon écran blanc.
+    //    Si la session s'avère refusée par le serveur, SIGNED_OUT ramène au login.
+    const uid0 = storedSessionUserId();
+    const profile0 = uid0 ? cachedProfile(uid0) : null;
+    if (profile0) { setCurrentUser(profile0); setLoading(false); }
+
     // 1. Initial Load
     supabase.auth.getSession().then(({ data: { session }, error }) => {
       if (session?.user) {
         syncUser(session.user);
       } else {
-        restoreOffline(error);
+        if (!restoreOffline(error)) setCurrentUser(null);
         setLoading(false);
       }
     });
@@ -110,6 +118,12 @@ export const AuthProvider = ({ children }) => {
 
   const syncUser = async (supabaseUser) => {
     const PROFILE_KEY = `df_profile_${supabaseUser.id}`;
+    // Profil déjà gardé sur l'appareil : affiché tout de suite, rafraîchi ci-dessous.
+    const known = cachedProfile(supabaseUser.id);
+    if (known) {
+      setCurrentUser((cur) => (cur?.id === known.id ? cur : known));
+      setLoading(false);
+    }
     const { data: profile, error } = await supabase
       .from('profiles')
       .select('*')

@@ -17,7 +17,7 @@ import { useArchivedRowLogs } from '../hooks/useArchivedRowLogs';
 
 import BlurTextField from './ui/BlurTextField';
 import { useAuth } from '../auth'; // <--- NEW IMPORT
-import { supabase } from '../lib/supabaseClient'; // <--- NEW IMPORT
+import { supabase, isServerReachable } from '../lib/supabaseClient';
 import { blobToBase64, queuePhoto } from '../lib/syncQueue';
 import { preparePhoto, uploadPhotoPair } from '../lib/photos';
 
@@ -112,6 +112,8 @@ export default function LineDetailPanel({ open, onClose, row, schema, onRowChang
         const uploadBlob = prepared.full;
 
         try {
+            // Serveur déjà connu injoignable : directement en attente (cf. GridPhotoCell).
+            if (!isServerReachable()) throw new Error('hors ligne');
             const { url: publicUrl, thumb } = await uploadPhotoPair(prepared, 'activity');
 
             const authorName = currentUser?.name || 'Utilisateur';

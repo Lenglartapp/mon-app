@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabaseClient';
 import { logProjectCreation } from '../lib/projectEvents';
 import { db } from '../lib/offlineDb';
 import { getQueuedPayloads, queueMutation } from '../lib/syncQueue';
-import { saveServerRows, getServerRows, markOpenedOffline, isOpenedOffline, clearOpenedOffline, isNetworkFailure } from '../lib/offlineProjects';
+import { saveServerRows, getServerRows, markOpenedOffline, isOpenedOffline, clearOpenedOffline, isNetworkFailure, noteDetailFailure } from '../lib/offlineProjects';
 import { replaceInlineImages, hasInlineImages } from '../lib/inlineImages';
 import { archiveRowLogs } from '../lib/lineLogs';
 import { calculateProfitability, commissionRateForOwner } from '../lib/financial/profitabilityCalculator';
@@ -116,11 +116,18 @@ export const useProjects = () => {
         // File lue AVANT la base : si l'envoi en attente se termine entre les deux,
         // la base est à jour ; sinon la file l'est. Aucun ordre ne donne une vieille version.
         const queued = await getQueuedPayloads('projects', [id]);
-        const { data, error } = await supabase
-            .from('projects')
-            .select('*')
-            .eq('id', id)
-            .single();
+        // Copie complète déjà sur l'appareil : on n'attend pas plus de 8 s le serveur avant
+        // de l'ouvrir (iPhone en mode avion : la requête attend au lieu d'échouer).
+        let hasDeviceCopy = false;
+        try { hasDeviceCopy = Array.isArray((await db.projects.get(id))?.rows); } catch { /* IndexedDB indisponible */ }
+        let query = supabase.from('projects').select('*').eq('id', id);
+        if (hasDeviceCopy) {
+            const ctrl = new AbortController();
+            setTimeout(() => ctrl.abort(new DOMException('Délai dépassé (réseau injoignable)', 'TimeoutError')), 8_000);
+            query = query.abortSignal(ctrl.signal);
+        }
+        const { data, error } = await query.single();
+        noteDetailFailure(id, error || !data ? (isNetworkFailure(error) ? 'network' : 'error') : null);
         if (error || !data) {
             console.error('[useProjects] loadProjectDetail échoué :', error?.message);
             // HORS CONNEXION : on ouvre la copie COMPLÈTE gardée sur le téléphone (jamais
