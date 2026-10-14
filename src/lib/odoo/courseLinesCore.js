@@ -61,7 +61,7 @@ export async function readCourseLinesWith(supabase, droitfilProjectId) {
 async function createReceptionEntryWith(supabase, line, projectName, projectId = null, move = null) {
   const product = productOf(line);
   const qty = move ? Number(move.quantity) || 0 : (line.quantite ?? 0);
-  const unit = line.unite || null;
+  const unit = stockUnitOf(line);
   const category = TYPE_TO_CATEGORY[line.type_produit] || (line.unite && /m/i.test(line.unite) ? "Tissu" : "Divers");
   const meta = metaOf(line);
   // Fournisseur aussi gardé dans le motif : filet de sécurité si la migration des colonnes n'est pas jouée.
@@ -83,13 +83,23 @@ async function createReceptionEntryWith(supabase, line, projectName, projectId =
 /** Retour fournisseur : inscrit au journal (sortie, vraie date) ; la quantité en stock n'est pas retouchée. */
 async function logReturnWith(supabase, line, projectName, projectId, move) {
   const { error } = await insertStrippingPhantomColumns(supabase, "inventory_logs", [{
-    type: "OUT", product: productOf(line), ...metaOf(line), qty: Math.abs(Number(move.quantity) || 0), unit: line.unite || null,
+    type: "OUT", product: productOf(line), ...metaOf(line), qty: Math.abs(Number(move.quantity) || 0), unit: stockUnitOf(line),
     user_name: "Synchro Odoo", location: "", project: projectName || null, project_id: projectId,
     reason: ["Retour fournisseur Odoo", line.fournisseur, move.picking, "stock à ajuster à la main"].filter(Boolean).join(" — "),
     pieces_names: null, date: odooUtc(move.date), odoo_move_key: moveKey(line.odoo_id, move),
   }]);
   if (error) throw error;
 }
+
+// Unités (règle Droitfil ↔ Odoo, 2026-10-14) : un TISSU se compte toujours en mètres
+// linéaires « ml » — Odoo l'impose sur la ligne de courses et envoie les réceptions tissu
+// en ml (converties si besoin). Les lignes à l'unité arrivent en « Unit(s) » → « u ».
+const UNIT_ALIASES = { "unit(s)": "u", "unité": "u", "unités": "u", "unite": "u", "unites": "u", "pce": "u", "pièce": "u", "pièces": "u" };
+const stockUnitOf = (line) => {
+  if (line.type_produit === "tissu") return "ml";
+  const u = String(line.unite || "").trim();
+  return UNIT_ALIASES[u.toLowerCase()] || u || null;
+};
 
 const productOf = (line) => [line.reference, line.coloris].filter(Boolean).join(" — ") || line.reference || "Réception";
 const metaOf = (line) => pickItemMeta({ ref: line.reference, coloris: line.coloris, laize: line.laize, fournisseur: line.fournisseur });
@@ -102,17 +112,26 @@ const moveKey = (lineId, m) => `${lineId}:${m.move_id}`;
 const odooUtc = (d) => (d ? new Date(String(d).replace(" ", "T")).toISOString() : new Date().toISOString());
 const sameUnit = (a, b) => !a || !b || String(a).trim().toLowerCase() === String(b).trim().toLowerCase();
 
-/** Index des réceptions par ligne de courses ; ignoré si l'unité d'achat ≠ unité de la ligne. */
+/**
+ * Index des réceptions par ligne de courses.
+ *  • Tissu : quantités toujours lues en ml (Odoo les envoie en ml, converties si besoin).
+ *  • Autres : ignorées si l'unité d'achat ≠ unité de la ligne.
+ *  • `error` renvoyé par Odoo (ex. tissu acheté dans une unité non convertible) : la ligne
+ *    est signalée dans `errors` et ne doit JAMAIS retomber sur la quantité de la liste.
+ */
 function receptionsByLine(receptions, lines) {
   const byId = new Map(lines.map((l) => [l.odoo_id, l]));
   const out = new Map();
+  const errors = new Map();
   for (const r of receptions || []) {
     const line = byId.get(r.course_line_id);
-    if (!line || !Array.isArray(r.receptions) || !r.receptions.length) continue;
-    if (!sameUnit(line.unite, r.uom)) continue;
+    if (!line) continue;
+    if (r.error) { errors.set(r.course_line_id, r.error.message || r.error.code || "Erreur Odoo"); continue; }
+    if (!Array.isArray(r.receptions) || !r.receptions.length) continue;
+    if (line.type_produit !== "tissu" && !sameUnit(line.unite, r.uom)) continue;
     out.set(r.course_line_id, [...r.receptions].sort((a, b) => String(a.date).localeCompare(String(b.date))));
   }
-  return out;
+  return { moves: out, errors };
 }
 
 /** Clés de mouvements déjà inscrites au journal ; null si la colonne n'existe pas (migration non jouée). */
@@ -160,7 +179,7 @@ export async function syncCourseLinesInto(supabase, { odooLines, receptions = nu
   const projectId = droitfilProjectId ?? null;
 
   // Détail des réceptions Odoo, utilisé seulement si le journal sait garder la clé de mouvement.
-  const movesByLine = receptionsByLine(receptions, current);
+  const { moves: movesByLine, errors: odooErrors } = receptionsByLine(receptions, current);
   const allKeys = [...movesByLine].flatMap(([id, ms]) => ms.map((m) => moveKey(id, m)));
   const logged = await loggedMoveKeys(supabase, allKeys);
   const detailed = logged !== null;
@@ -174,6 +193,9 @@ export async function syncCourseLinesInto(supabase, { odooLines, receptions = nu
   };
 
   for (const line of current.filter(isTissu)) {
+    // Odoo signale un problème sur cette ligne (unité non convertible…) : on l'affiche et on
+    // NE met rien en stock (surtout pas la quantité de la liste de courses).
+    if (odooErrors.has(line.odoo_id)) { fail(line, odooErrors.get(line.odoo_id)); continue; }
     const moves = detailed ? movesByLine.get(line.odoo_id) : null;
     try {
       if (moves) {

@@ -137,7 +137,7 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
                     key: l.odoo_id,
                     title: [l.fournisseur, name].filter(Boolean).join(' · ') || 'Article',
                     fournisseur: l.fournisseur || '', ref: l.reference || '', coloris: l.coloris || '', laize: l.laize || '',
-                    product: name, project: proj.name || '', unit: typology === 'Tissu' ? 'ml' : (l.unite || 'u'),
+                    product: name, project: proj.name || '', unit: typology === 'Tissu' ? 'ml' : (/^unit|^unité/i.test(l.unite || '') ? 'u' : (l.unite || 'u')),
                     ordered: l.quantite != null ? `${l.quantite} ${l.unite || ''}`.trim() : null,
                     received: !!l.date_reception,
                 };
