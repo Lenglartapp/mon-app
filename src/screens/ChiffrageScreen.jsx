@@ -1054,10 +1054,11 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onDelete, onLo
         </div>
       )}
 
-      {activeTab === "achats" && <MemoizedShoppingListScreen minutes={[minute]} />}
+      {activeTab === "achats" && <MemoizedShoppingListScreen minutes={[minute]} catalog={formulaCtx.catalog} />}
       {activeTab === "moulinette" && can(currentUser, "chiffrage.moulinette") && (
         <MemoizedMoulinetteView
           rows={rows}
+          catalog={formulaCtx.catalog}
           extraRows={extraRows}
           depRows={depRows}
           // Taux fixé par le chargé d'affaires de la minute (1 % direction / ADV, 3,5 % sinon),
