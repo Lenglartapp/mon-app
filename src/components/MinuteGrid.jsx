@@ -1817,6 +1817,31 @@ function MinuteGrid({
         return [totals];
     }, [rows, schema, colAggregations, filterConditions, filterVersion]);
 
+    // Hooks AVANT le retour anticipé de la vue mobile : sinon, passer d'un écran large à un
+    // écran étroit (tablette tournée, fenêtre réduite) faisait planter le tableau.
+    useEffect(() => {
+        const activeFields = new Set(filterConditions.filter(isConditionActive).map(c => c.field));
+        activeFilterFieldsRef.current = activeFields;
+        if (!isGridReadyRef.current || !gridRef.current?.api) return;
+        gridRef.current.api.onFilterChanged();
+        gridRef.current.api.refreshHeader();
+    }, [filterConditions]);
+
+    // Rafraîchit les cellules AG Grid quand rowData change (ex: mise à jour prix catalog ML)
+    useEffect(() => {
+        if (!isGridReadyRef.current || !gridRef.current?.api) return;
+        gridRef.current.api.refreshCells({ force: true });
+    }, [rows]);
+
+    // Colonnes visibles pour le panneau (en excluant la colonne checkbox)
+    const schemaCols = useMemo(() =>
+        schema.filter(col => col.key !== 'sel' && !col.hidden).map(col => ({
+            field: col.key,
+            label: col.headerName || col.label || col.key,
+        })),
+        [schema]
+    );
+
     // Vue mobile (cards)
     if (isMobile) {
         // Carte mobile à la DA : statut d'avancement dans le nuancier bleu (du plus en amont, bleu ciel,
@@ -1878,29 +1903,6 @@ function MinuteGrid({
             </div>
         );
     }
-
-    useEffect(() => {
-        const activeFields = new Set(filterConditions.filter(isConditionActive).map(c => c.field));
-        activeFilterFieldsRef.current = activeFields;
-        if (!isGridReadyRef.current || !gridRef.current?.api) return;
-        gridRef.current.api.onFilterChanged();
-        gridRef.current.api.refreshHeader();
-    }, [filterConditions]);
-
-    // Rafraîchit les cellules AG Grid quand rowData change (ex: mise à jour prix catalog ML)
-    useEffect(() => {
-        if (!isGridReadyRef.current || !gridRef.current?.api) return;
-        gridRef.current.api.refreshCells({ force: true });
-    }, [rows]);
-
-    // Colonnes visibles pour le panneau (en excluant la colonne checkbox)
-    const schemaCols = useMemo(() =>
-        schema.filter(col => col.key !== 'sel' && !col.hidden).map(col => ({
-            field: col.key,
-            label: col.headerName || col.label || col.key,
-        })),
-        [schema]
-    );
 
     return (
         <>

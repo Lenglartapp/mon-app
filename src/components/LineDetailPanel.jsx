@@ -18,7 +18,7 @@ import { useArchivedRowLogs } from '../hooks/useArchivedRowLogs';
 import BlurTextField from './ui/BlurTextField';
 import { useAuth } from '../auth'; // <--- NEW IMPORT
 import { supabase, isServerReachable } from '../lib/supabaseClient';
-import { blobToBase64, queuePhoto } from '../lib/syncQueue';
+import { queuePhotoSafely } from '../lib/syncQueue';
 import { preparePhoto, uploadPhotoPair } from '../lib/photos';
 
 const ROBOTO = 'Roboto, system-ui, sans-serif';
@@ -107,13 +107,57 @@ export default function LineDetailPanel({ open, onClose, row, schema, onRowChang
     const handleAddImage = React.useCallback(async (file, caption) => {
         if (!row || !file) return;
 
+        // Hors ligne : photo mise en file sur l'appareil (lib/syncQueue.queuePhotoSafely),
+        // affichée « en attente » seulement une fois l'enregistrement CONFIRMÉ.
+        const addOffline = async (prepared) => {
+            const authorName = currentUser?.name || 'Utilisateur';
+            const now = new Date().toISOString();
+            let queued;
+            try {
+                // '__activity__' : sentinel pour drainPhotos qui mettra à jour comments + photos_sur_site
+                queued = await queuePhotoSafely({
+                    file, prepared, projectId, rowId: row.id, fieldKey: '__activity__',
+                    meta: { timestamp: now, user: authorName, caption: caption || null },
+                });
+            } catch (offlineError) {
+                console.error("Erreur fallback offline photo:", offlineError);
+                alert("La photo n'a pas pu être enregistrée sur l'appareil (espace insuffisant ?). Réessayez.");
+                return;
+            }
+            const { localId, url, thumb: thumb64 } = queued;
+            // id = localId pour pouvoir matcher et remplacer dans drainPhotos
+            const pendingActivity = {
+                id: localId,
+                content: url,
+                ...(thumb64 ? { thumb: thumb64 } : {}),
+                caption: caption || null,
+                type: 'image',
+                createdAt: now,
+                date: Date.now(),
+                author: authorName,
+                pending: true,
+            };
+            const updatedComments = row.comments ? [...row.comments, pendingActivity] : [pendingActivity];
+            const hasSurSite = schema && schema.some(col => col.key === 'photos_sur_site');
+            const updatedPhotosSurSite = hasSurSite
+                ? [...(Array.isArray(row.photos_sur_site) ? row.photos_sur_site : []),
+                   { url, ...(thumb64 ? { thumb: thumb64 } : {}), id: localId, pending: true, timestamp: now, user: authorName }]
+                : row.photos_sur_site;
+            onRowChange({
+                ...row,
+                comments: updatedComments,
+                ...(hasSurSite && { photos_sur_site: updatedPhotosSurSite })
+            });
+        };
+
+        // Serveur connu injoignable : en file TOUT DE SUITE (fichier d'origine), avant la
+        // compression — lente sur iPhone, une appli fermée entre-temps perdait la photo.
+        if (!isServerReachable() && projectId) { await addOffline(null); return; }
+
         // Photo nette (1600 px) + vignette légère (cf. lib/photos) ; fichier brut si illisible.
         const prepared = await preparePhoto(file);
-        const uploadBlob = prepared.full;
 
         try {
-            // Serveur déjà connu injoignable : directement en attente (cf. GridPhotoCell).
-            if (!isServerReachable()) throw new Error('hors ligne');
             const { url: publicUrl, thumb } = await uploadPhotoPair(prepared, 'activity');
 
             const authorName = currentUser?.name || 'Utilisateur';
@@ -157,50 +201,8 @@ export default function LineDetailPanel({ open, onClose, row, schema, onRowChang
             });
 
         } catch (error) {
-            // Offline fallback : stocker en base64 + afficher en pending
-            if (projectId && row) {
-                try {
-                    const localId = `pending_activity_${Date.now()}`;
-                    const base64 = await blobToBase64(uploadBlob);
-                    const thumb64 = prepared.thumb ? await blobToBase64(prepared.thumb) : null;
-                    const authorName = currentUser?.name || 'Utilisateur';
-                    const now = new Date().toISOString();
-
-                    // '__activity__' : sentinel pour drainPhotos qui mettra à jour comments + photos_sur_site
-                    await queuePhoto(projectId, row.id, '__activity__', localId, base64, {
-                        timestamp: now, user: authorName, caption: caption || null
-                    }, thumb64);
-
-                    // id = localId pour pouvoir matcher et remplacer dans drainPhotos
-                    const pendingActivity = {
-                        id: localId,
-                        content: base64,
-                        ...(thumb64 ? { thumb: thumb64 } : {}),
-                        caption: caption || null,
-                        type: 'image',
-                        createdAt: now,
-                        date: Date.now(),
-                        author: authorName,
-                        pending: true,
-                    };
-                    const updatedComments = row.comments ? [...row.comments, pendingActivity] : [pendingActivity];
-
-                    const hasSurSite = schema && schema.some(col => col.key === 'photos_sur_site');
-                    const updatedPhotosSurSite = hasSurSite
-                        ? [...(Array.isArray(row.photos_sur_site) ? row.photos_sur_site : []),
-                           { url: base64, ...(thumb64 ? { thumb: thumb64 } : {}), id: localId, pending: true, timestamp: now, user: authorName }]
-                        : row.photos_sur_site;
-
-                    onRowChange({
-                        ...row,
-                        comments: updatedComments,
-                        ...(hasSurSite && { photos_sur_site: updatedPhotosSurSite })
-                    });
-                    return;
-                } catch (offlineError) {
-                    console.error("Erreur fallback offline photo:", offlineError);
-                }
-            }
+            // Envoi impossible : la photo attend sur l'appareil, envoi au retour du réseau.
+            if (projectId && row) { await addOffline(prepared); return; }
             console.error("Error uploading image:", error);
             alert("Erreur lors de l'envoi de l'image");
         }

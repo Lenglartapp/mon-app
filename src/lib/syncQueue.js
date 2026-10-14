@@ -5,7 +5,7 @@ import { isPermanentDbError, backoffDelay } from './dbErrors';
 import { withRowLock } from './rowWriteLock';
 import { mergeRows } from './rowsMerge';
 import { getServerRows, saveServerRows } from './offlineProjects';
-import { applyPhotoToRows, rememberSyncedPhoto, PHOTOS_SYNCED_EVENT } from './photos';
+import { applyPhotoToRows, rememberSyncedPhoto, PHOTOS_SYNCED_EVENT, preparePhoto } from './photos';
 import { uploadBlobToStorage } from './utils/imageUpload';
 
 /**
@@ -233,29 +233,57 @@ const base64ToBlob = (dataUrl) => {
  * @param {object} photoMeta    - { user, timestamp, caption? }
  * @param {string} [thumbBase64] - vignette (facultative)
  */
-export const queuePhoto = async (projectId, rowId, fieldKey, localId, base64DataUrl, photoMeta, thumbBase64 = null) => {
-  try {
-    await db.offline_photos.add({
-      project_id: String(projectId),
-      row_id: String(rowId),
-      field_key: fieldKey,
-      local_id: localId,
-      base64: base64DataUrl,
-      thumb64: thumbBase64,
-      photo_meta: photoMeta,
-      timestamp: Date.now(),
-    });
-    if (typeof window !== 'undefined') window.dispatchEvent(new Event(QUEUE_EVENT));
-  } catch (e) {
-    console.warn('Impossible d\'enregistrer la photo offline:', e);
+export const queuePhoto = async (projectId, rowId, fieldKey, localId, base64DataUrl, photoMeta, thumbBase64 = null, rawFile = null) => {
+  // L'échec d'écriture (espace plein…) REMONTE à l'appelant : il ne doit pas afficher une
+  // photo « en attente » qui n'existe nulle part (elle disparaissait ensuite sans prévenir).
+  const id = await db.offline_photos.add({
+    project_id: String(projectId),
+    row_id: String(rowId),
+    field_key: fieldKey,
+    local_id: localId,
+    base64: base64DataUrl,
+    thumb64: thumbBase64,
+    raw: rawFile, // fichier d'origine, gardé tant que la photo n'est pas préparée
+    photo_meta: photoMeta,
+    timestamp: Date.now(),
+  });
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event(QUEUE_EVENT));
+  return id;
+};
+
+/**
+ * Photo prise hors ligne, mise en file SANS délai : le fichier d'origine est enregistré
+ * dès le choix (la compression est lente sur iPhone ; une appli fermée entre-temps
+ * perdait la photo), puis remplacé par la photo préparée (1600 px + vignette).
+ * Si la préparation n'a pas eu le temps de se faire, elle se fera à l'envoi.
+ * @param {{ file: Blob, prepared?: {full, thumb}|null, projectId, rowId, fieldKey, meta }} args
+ * @returns {Promise<{ localId, url, thumb }>} entrée à afficher « en attente » ; lève une
+ *          erreur si l'appareil n'a pas pu enregistrer la photo.
+ */
+export const queuePhotoSafely = async ({ file, prepared = null, projectId, rowId, fieldKey, meta }) => {
+  const localId = `${fieldKey === '__activity__' ? 'pending_activity' : 'pending'}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+  let base64 = null;
+  let thumb64 = null;
+  if (prepared) {
+    base64 = await blobToBase64(prepared.full);
+    thumb64 = prepared.thumb ? await blobToBase64(prepared.thumb) : null;
   }
+  const qid = await queuePhoto(projectId, rowId, fieldKey, localId, base64, meta, thumb64, prepared ? null : file);
+  if (!prepared) {
+    try {
+      const p = await preparePhoto(file);
+      base64 = await blobToBase64(p.full);
+      thumb64 = p.thumb ? await blobToBase64(p.thumb) : null;
+      await db.offline_photos.update(qid, { base64, thumb64, raw: null });
+    } catch { /* le fichier d'origine reste en file : préparé à l'envoi */ }
+  }
+  return { localId, url: base64 || (typeof URL !== 'undefined' ? URL.createObjectURL(file) : null), thumb: thumb64 };
 };
 
 /** Nombre de photos en attente (hors photos dont la ligne a disparu, gardées à part). */
 export const getPendingPhotoCount = async () => (await db.offline_photos.toArray()).filter(p => !p.orphan).length;
 
 const PHOTO_UPLOAD_CONCURRENCY = 3;
-const extOfDataUrl = (d) => (/^data:image\/png/.test(d || '') ? 'png' : 'jpg');
 
 /** Entrées réelles d'une photo envoyée (même id que l'entrée en attente). */
 const photoEntries = (photo, url, thumb) => {
@@ -310,10 +338,20 @@ export const drainPhotos = async () => {
         const photo = queue.shift();
         try {
           const folder = photo.field_key === '__activity__' ? 'activity' : 'minutes';
-          const url = await uploadBlobToStorage(base64ToBlob(photo.base64), folder, extOfDataUrl(photo.base64));
+          // Photo enregistrée brute (appli fermée avant la préparation) : préparée maintenant.
+          let fullBlob = photo.base64 ? base64ToBlob(photo.base64) : null;
+          let thumbBlob = photo.thumb64 ? base64ToBlob(photo.thumb64) : null;
+          if (!fullBlob && photo.raw) {
+            const p = await preparePhoto(photo.raw);
+            fullBlob = p.full;
+            thumbBlob = p.thumb;
+          }
+          if (!fullBlob) throw new Error('photo vide');
+          const ext = /png/.test(fullBlob.type || '') ? 'png' : 'jpg';
+          const url = await uploadBlobToStorage(fullBlob, folder, ext);
           let thumb = null;
-          if (photo.thumb64) {
-            try { thumb = await uploadBlobToStorage(base64ToBlob(photo.thumb64), `${folder}/thumbs`, 'jpg'); } catch { /* sans vignette */ }
+          if (thumbBlob) {
+            try { thumb = await uploadBlobToStorage(thumbBlob, `${folder}/thumbs`, 'jpg'); } catch { /* sans vignette */ }
           }
           photo.uploaded_url = url;
           photo.uploaded_thumb = thumb;
@@ -357,9 +395,19 @@ export const drainPhotos = async () => {
           await db.offline_photos.delete(r.photo.id);
           synced++;
         }
-        for (const r of result.orphans) {
-          console.warn('[drainPhotos] ligne introuvable, photo gardée sur l\'appareil :', r.rep);
-          await db.offline_photos.update(r.photo.id, { orphan: true });
+        // Ligne introuvable sur le serveur. Si des modifications de ce projet sont encore en
+        // file (ex. ligne créée hors ligne, pas encore envoyée), la photo ATTEND et réessaie ;
+        // sinon la ligne a été supprimée : photo gardée à part sur l'appareil (orpheline).
+        if (result.orphans.length > 0) {
+          const projectPending = await db.pending_mutations
+            .where('record_id').equals(String(projectId))
+            .filter(m => m.table === 'projects' && !m.dead)
+            .count();
+          for (const r of result.orphans) {
+            if (projectPending > 0) { await markFailure(r.photo, new Error('ligne pas encore envoyée')); continue; }
+            console.warn('[drainPhotos] ligne introuvable, photo gardée sur l\'appareil :', r.rep);
+            await db.offline_photos.update(r.photo.id, { orphan: true });
+          }
         }
         // Copie de l'appareil à jour (sinon un projet rouvert hors ligne montrerait encore
         // l'entrée en attente) + écrans ouverts prévenus.
