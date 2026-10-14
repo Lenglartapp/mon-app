@@ -1,11 +1,27 @@
-import React, { useState, useMemo } from 'react';
-import { ChevronDown, ChevronRight as ChevronRightIcon, CheckCircle, X, Plus as PlusIcon, BedDouble } from 'lucide-react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { ChevronDown, ChevronRight as ChevronRightIcon, CheckCircle, X, Plus as PlusIcon, BedDouble, Moon } from 'lucide-react';
 import { format, isSameDay, startOfMonth, startOfDay, endOfMonth, eachDayOfInterval, isWeekend, differenceInMinutes, addDays, parseISO, getHours, getMinutes, getISOWeek, addWeeks, startOfWeek, endOfWeek } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { PLANNING_COLORS, getProjectColor, ROW_HEIGHT, PROGRAMME_ROW_HEIGHT, HEADER_HEIGHT_1, HEADER_HEIGHT_2, TOTAL_WORK_MINUTES, WORK_START_HOUR, WORK_END_HOUR, DEFAULT_DAILY_HOURS, ATELIER_HOURS_PER_DAY, dailyHoursForGroup } from './constants';
 import { uid } from '../../lib/utils/uid';
 import { stripMarks } from '../../lib/utils/richText';
 import { computeProjectHours } from '../../lib/projectMetrics';
+
+// Intervention de nuit : la plage 18h → 8h est dessinée dans la même case que la journée.
+const NIGHT_START = 18 * 60;
+const NIGHT_SPAN = 14 * 60;
+const isNightEvent = (e) => {
+    if (e.meta?.night) return true;
+    if (e.type === 'absence' || !e.meta?.start || !e.meta?.end) return false;
+    return format(new Date(e.meta.start), 'yyyy-MM-dd') !== format(new Date(e.meta.end), 'yyyy-MM-dd');
+};
+const nightRange = (e) => {
+    const s = new Date(e.meta.start);
+    const from = ((getHours(s) * 60 + getMinutes(s)) - NIGHT_START + 1440) % 1440;
+    const dur = Math.min(NIGHT_SPAN - from, Math.max(1, differenceInMinutes(new Date(e.meta.end), s)));
+    const k = TOTAL_WORK_MINUTES / NIGHT_SPAN;
+    return [Math.min(TOTAL_WORK_MINUTES - 1, from * k), Math.min(TOTAL_WORK_MINUTES, (from + dur) * k)];
+};
 
 // --- STICKY CELLS ---
 const ROBOTO = 'Roboto, system-ui, sans-serif';
@@ -37,8 +53,53 @@ const PlanningGrid = ({
     getCellContent,
     showGauges = true,
     readOnly = false,
-    isVertical = false
+    isVertical = false,
+    // Vues empilées (2 semaines / mois) : une grille par semaine dans une zone de défilement commune.
+    embedded = false,
+    allEvents = null,
+    projectHours = null,
+    showTotal = true,
+    stickyTop = 0,          // hauteur d'un éventuel bandeau collant au-dessus
+    cornerLabel = null,     // en-tête allégé : « Semaine 42 » à gauche de la ligne des jours
+    hideGroupLabel = false, // service déjà nommé dans le bandeau : la ligne devient « Charge »
+    isPast = false,         // semaine passée : fond hachuré, pour information
+    landedIds = null        // créneaux qui viennent d'être déposés (petite animation d'atterrissage)
 }) => {
+    // --- Glisser-déposer : carte « soulevée », place d'origine estompée, case visée éclairée ---
+    const [draggingId, setDraggingId] = useState(null);
+    const [dropCell, setDropCell] = useState(null);
+    const startDrag = (e, evt) => {
+        const card = e.currentTarget;
+        try {
+            const r = card.getBoundingClientRect();
+            const wrap = document.createElement('div');
+            wrap.style.cssText = 'position:fixed;top:-2000px;left:-2000px;padding:16px;pointer-events:none;';
+            const ghost = card.cloneNode(true);
+            ghost.style.cssText += `;position:relative;inset:auto;top:auto;left:auto;width:${r.width}px;height:${r.height}px;opacity:1;transform:rotate(-2deg) scale(1.04);box-shadow:0 12px 26px rgba(17,24,39,0.24),0 2px 6px rgba(17,24,39,0.12);`;
+            wrap.appendChild(ghost);
+            document.body.appendChild(wrap);
+            e.dataTransfer.setDragImage(wrap, e.clientX - r.left + 16, e.clientY - r.top + 16);
+            setTimeout(() => wrap.remove(), 0);
+        } catch { /* image de glisser par défaut */ }
+        e.dataTransfer.effectAllowed = 'move';
+        setDraggingId(evt.meta?.seriesId || evt.id);
+        onDragStart(e, evt);
+    };
+    const endDrag = () => { setDraggingId(null); setDropCell(null); };
+    // Le créneau déplacé quitte sa case au dépôt : son « dragend » n'arrive alors jamais.
+    // On termine donc le glisser sur n'importe quel dépôt ou fin de glisser de la page.
+    useEffect(() => {
+        if (!draggingId && !dropCell) return;
+        const clear = () => { setDraggingId(null); setDropCell(null); };
+        document.addEventListener('drop', clear, true);
+        document.addEventListener('dragend', clear, true);
+        return () => {
+            document.removeEventListener('drop', clear, true);
+            document.removeEventListener('dragend', clear, true);
+        };
+    }, [draggingId, dropCell]);
+    const isDragged = (evt) => draggingId && (evt.id === draggingId || evt.meta?.seriesId === draggingId);
+    const findEvent = (id) => (allEvents || events).find(ev => ev.id === id);
 
     const MIN_WIDTH = view === 'year' ? 80 : (view === 'quarter' || view === 'month' ? 40 : 120);
 
@@ -88,7 +149,9 @@ const PlanningGrid = ({
                                 draggable={!readOnly}
                                 onMouseEnter={() => onHoverEvent && onHoverEvent(evt.id)}
                                 onMouseLeave={() => onHoverEvent && onHoverEvent(null)}
-                                onDragStart={(e) => onDragStart(e, evt)}
+                                onDragStart={(e) => startDrag(e, evt)}
+                                onDragEnd={endDrag}
+                                className={landedIds?.has(evt.id) ? 'df-landed' : undefined}
                                 onClick={(e) => { e.stopPropagation(); onEventClick(evt); }}
                                 title={`${evt.title} — ${dh}h`}
                                 style={{
@@ -104,7 +167,8 @@ const PlanningGrid = ({
                                     padding: '2px 4px',
                                     overflow: 'hidden',
                                     cursor: 'grab',
-                                    opacity: isHighlighted ? 1 : (isValidated ? 1 : 0.9),
+                                    opacity: isDragged(evt) ? 0.3 : (isHighlighted ? 1 : (isValidated ? 1 : 0.9)),
+                                    transition: 'opacity .15s ease',
                                     outline: isHighlighted ? '2px solid #111827' : 'none',
                                     outlineOffset: isHighlighted ? '1px' : 0,
                                     zIndex: isHighlighted ? 5 : 'auto',
@@ -140,6 +204,7 @@ const PlanningGrid = ({
         // qu'aucun créneau n'en masque un autre.
         const slotMinutes = (e) => {
             if (!e.meta?.start || !e.meta?.end) return [0, TOTAL_WORK_MINUTES];
+            if (isNightEvent(e)) return nightRange(e);
             const s = new Date(e.meta.start);
             const en = new Date(e.meta.end);
             const sMin = Math.max(0, getHours(s) * 60 + getMinutes(s) - WORK_START_HOUR * 60);
@@ -244,7 +309,11 @@ const PlanningGrid = ({
             let leftPercent = 0;
             let widthPercent = 100;
 
-            if (evt.meta?.start && evt.meta?.end) {
+            if (evt.meta?.start && evt.meta?.end && isNightEvent(evt)) {
+                const [a, b] = nightRange(evt);
+                leftPercent = (a / TOTAL_WORK_MINUTES) * 100;
+                widthPercent = ((b - a) / TOTAL_WORK_MINUTES) * 100;
+            } else if (evt.meta?.start && evt.meta?.end) {
                 const s = new Date(evt.meta.start);
                 const e = new Date(evt.meta.end);
                 const sMinutes = getHours(s) * 60 + getMinutes(s);
@@ -283,7 +352,9 @@ const PlanningGrid = ({
                 <div key={evt.id} draggable={!readOnly && !isBacklog}
                     onMouseEnter={() => onHoverEvent && onHoverEvent(evt.id)}
                     onMouseLeave={() => onHoverEvent && onHoverEvent(null)}
-                    onDragStart={(e) => onDragStart(e, evt)}
+                    onDragStart={(e) => startDrag(e, evt)}
+                    onDragEnd={endDrag}
+                    className={landedIds?.has(evt.id) ? 'df-landed' : undefined}
                     onClick={(e) => { e.stopPropagation(); onEventClick(evt); }}
                     title={isBacklog ? `ID:${evt.id} | Enfants:${childEvents.length} | Backlog: ${plannedHours}h / ${totalHours}h planifié` : `${evt.title} (${labelTime})`}
                     style={{
@@ -302,7 +373,8 @@ const PlanningGrid = ({
                         padding: '2px 4px',
                         overflow: 'hidden',
                         cursor: 'grab',
-                        opacity: isHighlighted ? 1 : opacity,
+                        opacity: isDragged(evt) ? 0.3 : (isHighlighted ? 1 : opacity),
+                        transition: 'opacity .15s ease',
                         outline: isHighlighted ? '2px solid #111827' : 'none',
                         outlineOffset: isHighlighted ? '1px' : 0,
                         boxShadow: isHighlighted ? '0 0 0 3px rgba(17,24,39,0.15)' : '0 1px 2px rgba(0,0,0,0.1)',
@@ -314,6 +386,7 @@ const PlanningGrid = ({
                     {isBacklog ? renderBacklogContent() : (
                         <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', height: '100%', gap: 1, overflow: 'hidden' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, overflow: 'hidden' }}>
+                                {isNightEvent(evt) && <Moon size={12} color={style.text} style={{ flexShrink: 0 }} aria-label="Intervention de nuit" />}
                                 {evt.meta?.decouche && <BedDouble size={12} color={style.text} style={{ flexShrink: 0 }} aria-label="Découché — nuit sur place" />}
                                 <div style={{ fontSize: 11, fontWeight: fontWeight, color: style.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                     {evt.title}
@@ -475,10 +548,11 @@ const PlanningGrid = ({
     // Avancement (consommé / budget) par projet — source unique partagée avec le
     // dossier. Sert aux barres des cartes du Programme semaine.
     const projectHoursById = useMemo(() => {
+        if (projectHours) return projectHours;
         const map = {};
         (projects || []).forEach(p => { map[p.id] = computeProjectHours(p, events); });
         return map;
-    }, [projects, events]);
+    }, [projects, events, projectHours]);
 
     const getStats = (memberIds, dateRange, allEvents) => {
         let totalAbsenceHours = 0;
@@ -602,17 +676,32 @@ const PlanningGrid = ({
 
 
     return (
-        <div style={{ flex: 1, overflow: 'hidden', padding: '0 24px 24px', display: 'flex', flexDirection: 'column' }}>
-            <div className="df-noscrollbar" style={{ height: 'fit-content', maxHeight: '100%', overflow: 'auto', background: 'white', border: '1px solid #E0DED9', borderRadius: 12, position: 'relative' }}>
+        <div style={embedded ? { padding: '0 24px' } : { flex: 1, overflow: 'hidden', padding: '0 24px 24px', display: 'flex', flexDirection: 'column' }}>
+            <div className="df-noscrollbar" style={embedded
+                // overflow « clip » : coupe les cases aux coins arrondis sans créer de zone de défilement
+                // (les en-têtes restent collants dans la zone de défilement commune).
+                ? { background: 'white', border: '1px solid #E0DED9', borderRadius: 12, position: 'relative', overflow: 'clip' }
+                : { height: 'fit-content', maxHeight: '100%', overflow: 'auto', background: 'white', border: '1px solid #E0DED9', borderRadius: 12, position: 'relative' }}>
+                <style>{`
+                    @keyframes dfLand { 0% { transform: scale(0.88); box-shadow: 0 12px 26px rgba(17,24,39,0.24); } 60% { transform: scale(1.04); } 100% { transform: scale(1); } }
+                    .df-landed { animation: dfLand .38s cubic-bezier(.2,.8,.3,1.2); }
+                    @media (prefers-reduced-motion: reduce) { .df-landed { animation: none; } }
+                `}</style>
+                {isPast && (
+                    <div aria-hidden="true" style={{ position: 'absolute', inset: 0, zIndex: 35, pointerEvents: 'none', borderRadius: 12, background: 'repeating-linear-gradient(135deg, rgba(17,24,39,0.045) 0 1px, transparent 1px 9px), rgba(244,244,244,0.35)' }} />
+                )}
                 <div style={{ display: 'grid', gridTemplateColumns: `260px repeat(${gridCols.length}, minmax(${MIN_WIDTH}px, 1fr))`, gridAutoRows: 'max-content', width: (view === 'year' || view === 'quarter' || view === 'month') ? 'max-content' : '100%', minWidth: '100%' }}>
-                    <StickyCorner style={{ height: HEADER_HEIGHT_1, borderBottom: 'none' }} />
-                    {superHeaders.map((header, i) => (<div key={i} style={{ gridColumn: `span ${header.span}`, position: 'sticky', top: 0, zIndex: 40, background: 'white', borderBottom: '1px solid #E5E7EB', borderRight: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: ROBOTO, fontSize: 13, fontWeight: 500, color: '#6B7280' }}>{header.label}</div>))}
-                    <StickyCorner style={{ top: HEADER_HEIGHT_1, height: HEADER_HEIGHT_2 }} />
+                    {!cornerLabel && <StickyCorner style={{ top: stickyTop, height: HEADER_HEIGHT_1, borderBottom: 'none' }} />}
+                    {!cornerLabel && superHeaders.map((header, i) => (<div key={i} style={{ gridColumn: `span ${header.span}`, position: 'sticky', top: stickyTop, zIndex: 40, background: 'white', borderBottom: '1px solid #E5E7EB', borderRight: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: ROBOTO, fontSize: 13, fontWeight: 500, color: '#6B7280' }}>{header.label}</div>))}
+                    <StickyCorner style={{ top: cornerLabel ? stickyTop : stickyTop + HEADER_HEIGHT_1, height: HEADER_HEIGHT_2, fontFamily: ROBOTO, fontWeight: 500, fontSize: 14, ...(cornerLabel && { background: '#F4F4F4' }) }}>
+                        {cornerLabel}
+                        {cornerLabel && isPast && <span style={{ marginLeft: 8, fontSize: 12, fontWeight: 400, color: '#9CA3AF' }}>passée</span>}
+                    </StickyCorner>
                     {gridCols.map(col => {
                         // Jour actuel : pastille bleu nuit de la charte autour du libellé.
                         const today = view !== 'year' && isSameDay(col, new Date());
                         return (
-                            <StickyTopCell key={col.toString()} style={{ top: HEADER_HEIGHT_1, height: HEADER_HEIGHT_2, background: 'white', color: '#4B5563' }}>
+                            <StickyTopCell key={col.toString()} style={{ top: cornerLabel ? stickyTop : stickyTop + HEADER_HEIGHT_1, height: HEADER_HEIGHT_2, background: cornerLabel ? '#F4F4F4' : 'white', color: '#4B5563' }}>
                                 {today
                                     ? <span style={{ background: '#1E2447', color: 'white', borderRadius: 99, padding: '4px 12px', fontWeight: 600 }}>{getCellContent(col)}</span>
                                     : getCellContent(col)}
@@ -627,6 +716,20 @@ const PlanningGrid = ({
 
                         return (
                             <React.Fragment key={key}>
+                                {hideGroupLabel ? (showGauges && (
+                                    <>
+                                        <StickyLeftCell style={{ fontFamily: ROBOTO, fontWeight: 500, fontSize: 13, color: '#6B7280', paddingLeft: 42 }}>
+                                            <div style={{ flex: 1 }}>Charge</div>
+                                            <div style={{ fontSize: 11, fontWeight: 600, color: groupStats.percent > 100 ? '#EF4444' : '#6B7280', background: '#F4F4F4', padding: '2px 6px', borderRadius: 4 }}>
+                                                {Math.round(groupStats.percent)}%
+                                            </div>
+                                        </StickyLeftCell>
+                                        {gridCols.map(col => {
+                                            const cellStats = getStats(activeMembers.map(m => m.id), [col], events);
+                                            return renderGaugeCell(cellStats.load, cellStats.cap, cellStats.percent, col.toString());
+                                        })}
+                                    </>
+                                )) : (<>
                                 <StickyLeftCell onClick={() => onToggleGroup(key)} bg={group.bg} style={{ fontFamily: ROBOTO, fontWeight: 500, fontSize: 17, color: '#111827' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
                                         {expandedGroups[key] > 0 ? <ChevronDown size={14} style={{ marginRight: 8 }} /> : <ChevronRightIcon size={14} style={{ marginRight: 8 }} />}
@@ -659,6 +762,7 @@ const PlanningGrid = ({
                                         </div>
                                     )
                                 })}
+                                </>)}
 
                                 {expandedGroups[key] > 0 && group.members
                                 .filter(member => expandedGroups[key] >= 2 || member.id === 'backlog_confection')
@@ -688,7 +792,7 @@ const PlanningGrid = ({
                                                     </span>
                                                 </>
                                             ) : (
-                                                <span>{`${member.first_name} ${member.last_name?.charAt(0)}.`}</span>
+                                                <span>{`${member.first_name}${member.last_name ? ` ${member.last_name.charAt(0)}.` : ''}`}</span>
                                             )}
 
                                             {member.id === 'backlog_confection' && (() => {
@@ -826,7 +930,7 @@ const PlanningGrid = ({
                                                                     if (type !== 'backlog-sort') return;
                                                                     const sourceId = e.dataTransfer.getData('text/plain');
 
-                                                                    const evt = events.find(ev => ev.id === sourceId);
+                                                                    const evt = findEvent(sourceId);
                                                                     if (!evt) return;
 
                                                                     // Update Date to start of this week bin (Monday 09:00)
@@ -943,7 +1047,7 @@ const PlanningGrid = ({
                                                                                         });
                                                                                     } else {
                                                                                         // Case 2: Move from other week (or bin)
-                                                                                        const sourceEvt = events.find(ev => ev.id === sourceId);
+                                                                                        const sourceEvt = findEvent(sourceId);
                                                                                         if (!sourceEvt) return;
 
                                                                                         // Update Date to start of this week bin
@@ -1073,9 +1177,20 @@ const PlanningGrid = ({
                                                 <div
                                                     key={`${member.id}-${col}`}
                                                     onClick={() => onCellClick(member.id, col)}
-                                                    onDragOver={onDragOver}
-                                                    onDrop={(e) => onDrop(e, member.id, col)}
-                                                    style={{ borderBottom: '1px solid #E5E7EB', borderRight: '1px solid #F3F4F6', background: 'transparent', height: ROW_HEIGHT, position: 'relative' }}
+                                                    onDragOver={(e) => {
+                                                        onDragOver(e);
+                                                        const k = `${member.id}|${col}`;
+                                                        if (dropCell !== k) setDropCell(k);
+                                                    }}
+                                                    onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setDropCell(null); }}
+                                                    onDrop={(e) => { setDropCell(null); onDrop(e, member.id, col); }}
+                                                    style={{
+                                                        borderBottom: '1px solid #E5E7EB', borderRight: '1px solid #F3F4F6', height: ROW_HEIGHT, position: 'relative',
+                                                        transition: 'background-color .12s ease, box-shadow .12s ease',
+                                                        ...(dropCell === `${member.id}|${col}`
+                                                            ? { background: 'rgba(30,36,71,0.06)', boxShadow: 'inset 0 0 0 2px rgba(30,36,71,0.35)', borderRadius: 6 }
+                                                            : { background: 'transparent' }),
+                                                    }}
                                                 >
                                                     {renderEventsForCell(member.id, col)}
                                                 </div>
@@ -1088,7 +1203,7 @@ const PlanningGrid = ({
                     })}
 
                     {/* --- TOTAL ROW --- */}
-                    {showGauges && (() => {
+                    {showGauges && showTotal && (() => {
                         // Gather ALL visible members
                         const allActiveMembers = Object.values(filteredGroups).flatMap(g => g.members).filter(m => !hiddenResources.includes(m.id));
                         const allMemberIds = allActiveMembers.map(m => m.id);
