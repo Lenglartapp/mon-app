@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { fetchProjectEvents } from '../lib/projectEvents';
+import { fetchProjectEvents, PROJECT_EVENTS_CHANGED } from '../lib/projectEvents';
 import { mergeRowLogs } from '../lib/lineLogs';
 import { useArchivedRowLogs } from '../hooks/useArchivedRowLogs';
 import { Clock, MessageSquare, CheckCircle, Edit, ArrowRight, Pin, Image as ImageIcon } from 'lucide-react';
@@ -174,8 +174,10 @@ export default function ProjectActivityFeed({ project = null, rows, wall, pinned
     useEffect(() => {
         if (!project?.id) return undefined;
         let alive = true;
-        fetchProjectEvents(project).then(({ events: list }) => { if (alive) setDossierEvents(projectEventsToFeed(list)); });
-        return () => { alive = false; };
+        const load = () => fetchProjectEvents(project).then(({ events: list }) => { if (alive) setDossierEvents(projectEventsToFeed(list)); });
+        load();
+        window.addEventListener(PROJECT_EVENTS_CHANGED, load);
+        return () => { alive = false; window.removeEventListener(PROJECT_EVENTS_CHANGED, load); };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [project?.id, project?.status]);
 
