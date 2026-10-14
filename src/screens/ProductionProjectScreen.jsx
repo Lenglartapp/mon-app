@@ -650,8 +650,8 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
   }, [onUpdateProjectRows]);
 
   // --- HISTORIQUE DES VERSIONS (lignes du projet) ---
-  // Ouvert à tous ceux qui peuvent modifier le tableau ; chaque restauration est inscrite
-  // au journal du projet et peut être annulée (version « Avant restauration »).
+  // Ouvert à tous ceux qui peuvent modifier le tableau. Comme Excel : revenir à une version
+  // garde l'état d'avant dans la liste (« Avant restauration »), et c'est inscrit au journal.
   const canRestoreVersion = can(currentUser, "production.edit")
     || can(currentUser, "production.edit.prise_de_cotes")
     || can(currentUser, "production.edit.suivi_projet");
@@ -669,9 +669,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
     onUpdateProjectRows(project.id, restored);
     // Journal du projet : toute l'équipe voit qui a restauré quoi, et quand.
     const when = new Date(version.captured_at).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' });
-    const label = version.reason === 'pre-restore'
-      ? `Restauration annulée : lignes revenues à leur état du ${when} (${versionRows.length} ligne(s)).`
-      : `Lignes du projet revenues à la version du ${when} (${versionRows.length} ligne(s)). Annulable depuis « Historique ».`;
+    const label = `Lignes du projet revenues à la version du ${when} (${versionRows.length} ligne(s)).`;
     await logProjectEvent(project.id, 'version_restored', label, { versionId: version.id, reason: version.reason }, currentUser?.name || null);
     window.dispatchEvent(new Event(PROJECT_EVENTS_CHANGED));
   }, [project, onUpdateProjectRows, currentUser?.name]);
