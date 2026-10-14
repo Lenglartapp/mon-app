@@ -34,13 +34,15 @@ import { MOBILIER_PROD_SCHEMA } from "../lib/schemas/production/mobilier";
 import { uid } from "../lib/utils/uid"; // Import uid
 import { compressAndUpload } from "../lib/utils/imageUpload";
 
-import { Search, Filter, Layers3, Star, FlaskConical, Image as ImageIcon, Edit2, FileText, BookOpen, Printer, Package, CalendarRange } from "lucide-react";
+import { Search, Filter, Layers3, Star, FlaskConical, Image as ImageIcon, Edit2, FileText, BookOpen, Printer, Package, CalendarRange, History } from "lucide-react";
 import ProjectMaterialsPanel from "../components/ProjectMaterialsPanel";
 import { applyCatalogRenames } from "../lib/utils/catalogRename";
 import AddressAutocomplete from "../components/AddressAutocomplete"; // Added FileText
 import { ToolbarButton } from "../components/ui/ToolbarControls";
 import ClientReportModal from "../components/report/ClientReportModal";
 import ProjectGanttModal from "../components/project/ProjectGanttModal";
+import ProjectVersionsDialog from "../components/project/ProjectVersionsDialog";
+import { readProjectVersionRows, saveVersionBeforeRestore } from "../lib/projectVersions";
 import { Dialog, DialogTitle, DialogContent, TextField, DialogActions, Button, Collapse, IconButton } from "@mui/material";
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { differenceInMinutes } from "date-fns";
@@ -646,6 +648,22 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
     }, 800);
   }, [onUpdateProjectRows]);
 
+  // --- HISTORIQUE DES VERSIONS (lignes du projet ; admins / ordo) ---
+  const canRestoreVersion = can(currentUser, "production.restore_version");
+  const [versionsOpen, setVersionsOpen] = useState(false);
+  const handleRestoreVersion = useCallback(async (version) => {
+    if (!project?.id || !onUpdateProjectRows) return;
+    const versionRows = await readProjectVersionRows(version.id);
+    if (!versionRows) throw new Error("Version introuvable.");
+    // Une saisie encore en attente d'enregistrement écraserait la version restaurée :
+    // on l'annule (elle fait partie de l'état actuel, gardé juste ci-dessous).
+    if (saveTimerRef.current) { clearTimeout(saveTimerRef.current); saveTimerRef.current = null; }
+    await saveVersionBeforeRestore(project, rowsRef.current || [], currentUser?.name);
+    const restored = computeFormulas(versionRows, SCHEMA_64);
+    setRows(restored);
+    onUpdateProjectRows(project.id, restored);
+  }, [project, onUpdateProjectRows, currentUser?.name]);
+
   // --- HANDLERS ---
 
   // 1. handleSubsetChange — useCallback + rowsRef pour référence stable
@@ -1080,7 +1098,15 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                 </MetaItem>
                 {/* Planning du projet (Gantt) : à droite de la ligne */}
                 <div style={{ marginLeft: 'auto', alignSelf: 'flex-end' }}>
-                  <ToolbarButton icon={<CalendarRange size={16} />} onClick={() => setGanttOpen(true)}>Planning</ToolbarButton>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    {canRestoreVersion && (
+                      <ToolbarButton icon={<History size={16} />} onClick={() => setVersionsOpen(true)} title="Historique des versions des lignes du projet">Historique</ToolbarButton>
+                    )}
+                    <ToolbarButton icon={<CalendarRange size={16} />} onClick={() => setGanttOpen(true)}>Planning</ToolbarButton>
+                  </div>
+                  {versionsOpen && (
+                    <ProjectVersionsDialog project={project} currentCount={(rows || []).length} onClose={() => setVersionsOpen(false)} onRestore={handleRestoreVersion} />
+                  )}
                   {ganttOpen && (
                     <ProjectGanttModal open onClose={() => setGanttOpen(false)} project={project} events={events} users={users} />
                   )}

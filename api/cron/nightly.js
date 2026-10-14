@@ -2,6 +2,7 @@
 // Rejoue automatiquement, pour tous les projets Droitfil reliés (id_projet_odoo) :
 //   1) Flux Temps      : agrège le consommé validé (depuis la date de bascule) -> feuilles de temps Odoo
 //   2) Flux Courses    : lit project.course.line -> miroir Supabase + bascule des tissus réceptionnés en stock
+//   3) Ménage          : historiques de versions (projets + chiffrages), fonction SQL prune_versions_history
 //
 // Sécurité : si CRON_SECRET est défini, exige l'en-tête « Authorization: Bearer <secret> »
 // (envoyé automatiquement par Vercel Cron) ou « ?secret=<secret> » (déclenchement manuel).
@@ -136,6 +137,18 @@ export default async function handler(req, res) {
     } catch (e) {
       report.courses = { error: e.message };
       report.errors.push(`Courses : ${e.message}`);
+    }
+
+    // 3) Ménage des historiques de versions (projets + chiffrages) : tout sur 2 jours,
+    //    puis 1 par jour jusqu'à 1 mois, 1 par semaine jusqu'à 6 mois, rien au-delà.
+    //    Fonction absente (SQL pas encore joué) : simplement signalé, rien n'est bloqué.
+    try {
+      const { data, error } = await supabase.rpc('prune_versions_history');
+      if (error) throw error;
+      report.versions = data;
+    } catch (e) {
+      report.versions = { error: e.message };
+      report.errors.push(`Historique des versions : ${e.message}`);
     }
 
     report.finishedAt = new Date().toISOString();

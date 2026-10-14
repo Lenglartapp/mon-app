@@ -65,6 +65,8 @@ const PERMISSIONS = {
     "production.edit": true,
     // Rapport client (Suivi de projet) : sales, ordo (+ ordo_conf), op et admin.
     "production.client_report": true,
+    // Revenir à une version précédente des lignes d'un projet : ordo (+ ordo_conf) et admin.
+    "production.restore_version": true,
 
     "inventory.view": true,
     "inventory.edit": true,
