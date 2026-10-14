@@ -1191,6 +1191,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
         open={isCatalogOpen}
         onClose={() => setIsCatalogOpen(false)}
         catalog={catalog}
+        rows={isCatalogOpen ? rows : null}
         onCatalogChange={handleCatalogChange}
         settings={extendedCtx.settings}
         onSettingsChange={handleSettingsChange}

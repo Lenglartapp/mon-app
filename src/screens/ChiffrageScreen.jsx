@@ -1071,6 +1071,7 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onDelete, onLo
         open={showCatalog}
         onClose={() => setShowCatalog(false)}
         catalog={minute?.catalog || []}
+        rows={showCatalog ? [...(rows || []), ...(depRows || []), ...(extraRows || [])] : null}
         onCatalogChange={(newCatalog) => {
           if (!canEdit) return;
           userEditedRef.current = true;

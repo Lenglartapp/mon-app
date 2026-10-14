@@ -1,60 +1,59 @@
-import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
-import Dialog from '@mui/material/Dialog';
-import DialogTitle from '@mui/material/DialogTitle';
-import DialogContent from '@mui/material/DialogContent';
-import DialogActions from '@mui/material/DialogActions';
-import Button from '@mui/material/Button';
-import Chip from '@mui/material/Chip';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import TextField from '@mui/material/TextField';
-import IconButton from '@mui/material/IconButton';
-import CloseIcon from '@mui/icons-material/Close';
-import { DataGrid, GridToolbarContainer, GridToolbarFilterButton } from '@mui/x-data-grid';
+import Popover from '@mui/material/Popover';
+import { DataGrid } from '@mui/x-data-grid';
 import { frFR } from '@mui/x-data-grid/locales';
-import { Plus, Trash2 } from 'lucide-react';
-import { COLORS } from '../lib/constants/ui';
+import { Plus, Trash2, ChevronDown } from 'lucide-react';
+import DaDialog, { DaTabs } from './ui/DaDialog';
+import VariantTabs from './VariantTabs';
+import { DaField } from './ui/DaForm';
+import { ToolbarButton, ToolbarSearch } from './ui/ToolbarControls';
+import { DATAGRID_DA_SX, TABLE_FRAME_STYLE, DA_FIELD_SX } from '../lib/constants/daStyles';
+import { CHIFFRAGE_SCHEMA } from '../lib/schemas/chiffrage';
 import { uid } from '../lib/utils/uid';
 
-// Helper Style Island Nav (Copied from ChiffrageScreen)
-const getNavStyle = (isActive) => ({
-    padding: '6px 16px', // Reduced padding for finer look
-    borderRadius: 99,
-    border: 'none',
-    cursor: 'pointer',
-    fontSize: 14,
-    fontWeight: 500,
-    transition: 'all 0.2s cubic-bezier(0.25, 1, 0.5, 1)',
-    outline: 'none',
-    background: isActive ? '#1E2447' : 'transparent',
-    color: isActive ? '#FFFFFF' : '#4B5563',
-    boxShadow: isActive ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-});
+const CATEGORY_TABS = [
+    { key: 'tissus', label: 'Tissus' },
+    { key: 'rails', label: 'Rails' },
+    { key: 'stores', label: 'Stores' },
+    { key: 'passementerie', label: 'Passementerie' },
+];
 
-function CatalogToolbar({ onAdd, onDelete, selectedCount }) {
-    return (
-        <GridToolbarContainer style={{ padding: 10, borderBottom: '1px solid #e5e7eb' }}>
-            <div style={{ display: 'flex', gap: 10, marginRight: 'auto' }}>
-                <button
-                    onClick={onAdd}
-                    style={{ cursor: 'pointer', padding: '6px 12px', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, display: 'flex', alignItems: 'center', gap: 6 }}
-                >
-                    <Plus size={16} /> Ajouter Article
-                </button>
-                {selectedCount > 0 && (
-                    <button
-                        onClick={onDelete}
-                        style={{ cursor: 'pointer', padding: '6px 12px', background: '#ef4444', color: 'white', border: 'none', borderRadius: 4, display: 'flex', alignItems: 'center', gap: 6 }}
-                    >
-                        <Trash2 size={16} /> Supprimer ({selectedCount})
-                    </button>
-                )}
-            </div>
-            <GridToolbarFilterButton />
-        </GridToolbarContainer>
-    );
+// Libellé de la colonne d'une ligne de chiffrage qui référence un article (« Tissu 1 »…).
+const FIELD_LABELS = Object.fromEntries((CHIFFRAGE_SCHEMA || []).map((c) => [c.key, c.label]));
+const EXTRA_LABELS = { tissu_1: 'Tissu 1', tissu_2: 'Tissu 2', passementerie_1: 'Passementerie 1', passementerie_2: 'Passementerie 2', type_interieur: 'Intérieur', molleton: 'Molleton', baguette_1: 'Baguette 1', baguette_2: 'Baguette 2', mecanisme_fourniture: 'Mécanisme', mecanisme_store: 'Mécanisme store', toile_finition_1: 'Toile' };
+const fieldLabel = (k) => FIELD_LABELS[k] || EXTRA_LABELS[k] || k;
+const lineLabel = (r) => [r.zone, r.piece, r.produit].filter(Boolean).join(' · ') || 'Ligne sans repère';
+
+/**
+ * Où chaque article de la bibliothèque est utilisé dans le chiffrage :
+ * nom d'article → [{ id, label, fields: [colonne…] }]
+ */
+function buildUsage(rows, names) {
+    const out = new Map();
+    (rows || []).forEach((r) => {
+        if (!r || typeof r !== 'object') return;
+        const hits = new Map();
+        Object.entries(r).forEach(([k, v]) => {
+            if (typeof v !== 'string' || !names.has(v)) return;
+            if (!hits.has(v)) hits.set(v, []);
+            hits.get(v).push(fieldLabel(k));
+        });
+        hits.forEach((fields, name) => {
+            if (!out.has(name)) out.set(name, []);
+            out.get(name).push({ id: r.id, label: lineLabel(r), fields });
+        });
+    });
+    return out;
 }
 
-export default function CatalogManager({ open, onClose, catalog, onCatalogChange, ...props }) {
+const SECTION_TITLE = { fontSize: 16, fontWeight: 500, color: '#111827', margin: 0 };
+
+// rows : lignes du chiffrage (colonne « Utilisé » + détail des lignes qui utilisent l'article).
+export default function CatalogManager({ open, onClose, catalog, onCatalogChange, rows = null, ...props }) {
     const [selectionModel, setSelectionModel] = useState([]);
+    const [search, setSearch] = useState('');
+    const [usageAnchor, setUsageAnchor] = useState(null); // { el, name }
     const [activeTab, setActiveTab] = React.useState('catalog');
     const [activeCategoryTab, setActiveCategoryTab] = React.useState('tissus'); // New Sub-tab state
     const [localSettings, setLocalSettings] = React.useState(props.settings || { taux_horaire: 135, prix_nuit: 180, prix_repas: 25 });
@@ -132,20 +131,22 @@ export default function CatalogManager({ open, onClose, catalog, onCatalogChange
         // Sécurité : Assurer que chaque ligne a un ID pour éviter le crash DataGrid
         const sanitized = catalog.map(r => r.id ? r : { ...r, id: uid() });
 
-        if (activeCategoryTab === 'tissus') {
-            return sanitized.filter(r => ['Tissu', 'Tissus', 'Doublure', 'Doublures', 'Inter', 'Confection'].includes(r.category));
-        }
-        if (activeCategoryTab === 'rails') {
-            return sanitized.filter(r => ['Rail', 'Rails', 'Tringle', 'Mecanisme', 'Mécanisme'].includes(r.category));
-        }
-        if (activeCategoryTab === 'stores') {
-            return sanitized.filter(r => ['Store', 'Stores', 'Mecanisme Store'].includes(r.category));
-        }
-        if (activeCategoryTab === 'passementerie') {
-            return sanitized.filter(r => ['Passementerie'].includes(r.category));
-        }
-        return sanitized;
-    }, [catalog, activeCategoryTab]);
+        let list = sanitized;
+        if (activeCategoryTab === 'tissus') list = sanitized.filter(r => ['Tissu', 'Tissus', 'Doublure', 'Doublures', 'Inter', 'Confection'].includes(r.category));
+        else if (activeCategoryTab === 'rails') list = sanitized.filter(r => ['Rail', 'Rails', 'Tringle', 'Mecanisme', 'Mécanisme'].includes(r.category));
+        else if (activeCategoryTab === 'stores') list = sanitized.filter(r => ['Store', 'Stores', 'Mecanisme Store'].includes(r.category));
+        else if (activeCategoryTab === 'passementerie') list = sanitized.filter(r => ['Passementerie'].includes(r.category));
+        const q = search.trim().toLowerCase();
+        if (q) list = list.filter(r => [r.name, r.provider, r.reference, r.color].filter(Boolean).join(' ').toLowerCase().includes(q));
+        return list;
+    }, [catalog, activeCategoryTab, search]);
+
+    // Utilisation de chaque article dans les lignes du chiffrage.
+    const usage = useMemo(() => {
+        if (!Array.isArray(rows)) return null;
+        return buildUsage(rows, new Set((catalog || []).map(i => i?.name).filter(Boolean)));
+    }, [rows, catalog]);
+    const usageList = usageAnchor ? (usage?.get(usageAnchor.name) || []) : [];
 
     const handleAddRow = () => {
         const newId = uid();
@@ -294,145 +295,139 @@ export default function CatalogManager({ open, onClose, catalog, onCatalogChange
         // (proportions = largeurs d'origine, plancher bas) — jamais de défilement
         // horizontal, laize et raccords visibles quel que soit l'écran. Libellé complet
         // en infobulle (`description`) quand l'en-tête est abrégé.
+        // Utilisation dans le chiffrage : nombre de lignes, cliquable pour voir lesquelles.
+        if (usage) {
+            cols = [...cols, {
+                field: '__usage',
+                headerName: 'Utilisé',
+                description: "Nombre de lignes du chiffrage qui utilisent l'article (cliquer pour les voir)",
+                width: 90,
+                type: 'number',
+                align: 'right',
+                headerAlign: 'right',
+                editable: false,
+                valueGetter: (_v, row) => usage.get(row?.name)?.length || 0,
+                renderCell: (params) => {
+                    const n = params.value || 0;
+                    if (!n) return <span style={{ color: '#D1D5DB' }}>—</span>;
+                    return (
+                        <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); setUsageAnchor({ el: e.currentTarget, name: params.row.name }); }}
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: 4, height: 24, padding: '0 8px', borderRadius: 99, border: 'none', background: '#E8EAF2', color: '#1E2447', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+                        >
+                            {n} <ChevronDown size={12} />
+                        </button>
+                    );
+                },
+            }];
+        }
+
         return cols.map(({ width, ...col }) => ({ ...col, flex: width, minWidth: 60 }));
-    }, [activeCategoryTab]);
+    }, [activeCategoryTab, usage]);
+
+    if (!open) return null;
+
+    const settingField = (key, label, hint, extra = {}) => (
+        <DaField label={label} hint={hint}>
+            <TextField
+                type="number"
+                size="small"
+                fullWidth
+                value={localSettings[key] ?? (key === 'coef_sous_traitance' ? 2 : '')}
+                onChange={(e) => handleSettingChange(key, e.target.value)}
+                sx={DA_FIELD_SX}
+                inputProps={extra}
+            />
+        </DaField>
+    );
 
     return (
-        <Dialog open={open} onClose={onClose} maxWidth="xl" fullWidth>
-            <DialogTitle sx={{ m: 0, p: 2, background: COLORS.page }}>
-                {/* Header Row: Titles + Close */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', gap: 20 }}>
-                        <span
-                            onClick={() => setActiveTab('catalog')}
-                            style={{ cursor: 'pointer', opacity: activeTab === 'catalog' ? 1 : 0.5, textDecoration: activeTab === 'catalog' ? 'underline' : 'none', fontWeight: activeTab === 'catalog' ? 'bold' : 'normal' }}
-                        >
-                            Bibliothèque d'Articles
-                        </span>
-                        <span
-                            onClick={() => setActiveTab('settings')}
-                            style={{ cursor: 'pointer', opacity: activeTab === 'settings' ? 1 : 0.5, textDecoration: activeTab === 'settings' ? 'underline' : 'none', fontWeight: activeTab === 'settings' ? 'bold' : 'normal' }}
-                        >
-                            Paramètres Globaux
-                        </span>
-                    </div>
-                    <IconButton onClick={onClose}>
-                        <CloseIcon />
-                    </IconButton>
+        <DaDialog
+            open
+            onClose={onClose}
+            title="Bibliothèque"
+            subtitle="Articles et paramètres de ce chiffrage"
+            maxWidth="xl"
+            height="90vh"
+            bodyPadding="0"
+            tabs={(
+                // Intercalaires (comme les variantes du chiffrage), posés sur le trait sous l'en-tête.
+                <div style={{ marginBottom: -15 }}>
+                    <VariantTabs
+                        tabs={[{ id: 'catalog', code: "Bibliothèque d'articles", name: '' }, { id: 'settings', code: 'Paramètres globaux', name: '' }]}
+                        activeId={activeTab}
+                        onOpen={setActiveTab}
+                        colorFor={(_i, _n, on) => (on ? { bg: '#1E2447', fg: '#FFFFFF' } : { bg: '#E8EAF2', fg: '#1E2447' })}
+                    />
                 </div>
-
-                {/* Sub-Tabs (Capsule Style) - Centered below title */}
-                {activeTab === 'catalog' && (
-                    <div style={{ display: 'flex', justifyContent: 'center', marginTop: 16 }}>
-                        <div style={{
-                            display: 'inline-flex',
-                            background: 'white', // White background as requested
-                            padding: 3, // Reduced container padding
-                            borderRadius: 99,
-                            gap: 4,
-                            flexWrap: 'wrap',
-                            justifyContent: 'center',
-                            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)', // Drop Shadow
-                            border: '1px solid #f3f4f6' // Subtle border to ensure visibility on white dialog
-                        }}>
-                            {['tissus', 'rails', 'stores', 'passementerie'].map((tab) => (
-                                <button
-                                    key={tab}
-                                    className="df-pill-tab" data-active={activeCategoryTab === tab}
-                                    style={getNavStyle(activeCategoryTab === tab)}
-                                    onClick={() => setActiveCategoryTab(tab)}
-                                >
-                                    {tab.charAt(0).toUpperCase() + tab.slice(1)}
-                                </button>
+            )}
+        >
+            {activeTab === 'catalog' ? (
+                <div style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: '16px 28px 20px', boxSizing: 'border-box', gap: 14 }}>
+                    {/* Barre : familles à gauche, actions à droite */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                        <DaTabs tabs={CATEGORY_TABS} value={activeCategoryTab} onChange={(k) => { setActiveCategoryTab(k); setSelectionModel([]); }} />
+                        <span style={{ flex: 1 }} />
+                        <ToolbarSearch value={search} onChange={setSearch} placeholder="Rechercher un article…" width={260} grow />
+                        {selectionModel.length > 0 && (
+                            <ToolbarButton icon={<Trash2 size={15} />} onClick={handleDeleteRows}>Supprimer ({selectionModel.length})</ToolbarButton>
+                        )}
+                        <ToolbarButton primary icon={<Plus size={15} />} onClick={handleAddRow}>Ajouter un article</ToolbarButton>
+                    </div>
+                    <div style={{ ...TABLE_FRAME_STYLE, flex: 1, minHeight: 0 }}>
+                        <DataGrid
+                            rows={filteredRows}
+                            columns={columns}
+                            processRowUpdate={processRowUpdate}
+                            checkboxSelection
+                            disableRowSelectionOnClick
+                            rowSelectionModel={selectionModel}
+                            onRowSelectionModelChange={setSelectionModel}
+                            localeText={frFR.components.MuiDataGrid.defaultProps.localeText}
+                            rowHeight={40}
+                            columnHeaderHeight={42}
+                            // L'icône de menu masquée de la dernière colonne dépassait de quelques px
+                            // et suffisait à faire apparaître un défilement horizontal.
+                            sx={{ ...DATAGRID_DA_SX, height: '100%', '& .MuiDataGrid-menuIcon': { overflow: 'hidden' } }}
+                        />
+                    </div>
+                    <Popover
+                        open={!!usageAnchor}
+                        anchorEl={usageAnchor?.el}
+                        onClose={() => setUsageAnchor(null)}
+                        anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+                        transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+                        PaperProps={{ sx: { borderRadius: '8px', border: '1px solid #E0DED9', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', maxWidth: 420 } }}
+                    >
+                        <div style={{ padding: '10px 14px', borderBottom: '1px solid #E8E6E2' }}>
+                            <div style={{ fontSize: 13, fontWeight: 500, color: '#111827' }}>{usageAnchor?.name}</div>
+                            <div style={{ fontSize: 12, color: '#6B7280', marginTop: 2 }}>Utilisé sur {usageList.length} ligne{usageList.length > 1 ? 's' : ''} du chiffrage</div>
+                        </div>
+                        <div style={{ maxHeight: 320, overflowY: 'auto', padding: '4px 0' }}>
+                            {usageList.map((u, i) => (
+                                <div key={u.id || i} style={{ display: 'flex', gap: 10, justifyContent: 'space-between', padding: '6px 14px', fontSize: 13, color: '#374151' }}>
+                                    <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.label}</span>
+                                    <span style={{ color: '#6B7280', whiteSpace: 'nowrap' }}>{u.fields.join(', ')}</span>
+                                </div>
                             ))}
                         </div>
+                    </Popover>
+                </div>
+            ) : (
+                <div style={{ padding: '24px 28px', maxWidth: 760 }}>
+                    <p style={SECTION_TITLE}>Paramètres de chiffrage</p>
+                    <div style={{ fontSize: 13, color: '#6B7280', margin: '6px 0 20px' }}>
+                        Valeurs de base des calculs automatiques de ce chiffrage (pose, confection, déplacements).
                     </div>
-                )}
-            </DialogTitle>
-            <DialogContent dividers sx={{ height: '70vh', p: 0, background: 'white' }}>
-                {activeTab === 'catalog' ? (
-                    <DataGrid
-                        rows={filteredRows}
-                        columns={columns}
-                        processRowUpdate={processRowUpdate}
-                        checkboxSelection
-                        disableRowSelectionOnClick
-                        rowSelectionModel={selectionModel}
-                        onRowSelectionModelChange={setSelectionModel}
-                        slots={{ toolbar: CatalogToolbar }}
-                        slotProps={{
-                            toolbar: { onAdd: handleAddRow, onDelete: handleDeleteRows, selectedCount: selectionModel.length }
-                        }}
-                        localeText={frFR.components.MuiDataGrid.defaultProps.localeText}
-                        // L'icône de menu masquée de la dernière colonne dépassait de quelques px
-                        // et suffisait à faire apparaître un défilement horizontal.
-                        sx={{ '& .MuiDataGrid-menuIcon': { overflow: 'hidden' } }}
-                    />
-                ) : (
-                    <div style={{ padding: 40, display: 'flex', flexDirection: 'column', gap: 24, maxWidth: 600, margin: '0 auto' }}>
-                        <h3>Paramètres de Chiffrage par Défaut</h3>
-                        <p style={{ color: '#666' }}>Ces valeurs servent de base pour les calculs automatiques (Pose, Confection, Déplacements).</p>
-
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
-                            <div style={{ border: '1px solid #ddd', padding: 20, borderRadius: 8 }}>
-                                <TextField
-                                    label="Taux Horaire (€/h)"
-                                    type="number"
-                                    value={localSettings.taux_horaire ?? ''}
-                                    onChange={(e) => handleSettingChange('taux_horaire', e.target.value)}
-                                    fullWidth
-                                    variant="outlined"
-                                    InputLabelProps={{ shrink: true }}
-                                />
-                                <small style={{ display: 'block', marginTop: 8, color: '#888' }}>Utilisé pour la main d'œuvre (Pose, Confection, Prépa).</small>
-                            </div>
-
-                            <div style={{ border: '1px solid #ddd', padding: 20, borderRadius: 8 }}>
-                                <TextField
-                                    label="Prix Nuit Hôtel (€)"
-                                    type="number"
-                                    value={localSettings.prix_nuit ?? ''}
-                                    onChange={(e) => handleSettingChange('prix_nuit', e.target.value)}
-                                    fullWidth
-                                    variant="outlined"
-                                    InputLabelProps={{ shrink: true }}
-                                />
-                                <small style={{ display: 'block', marginTop: 8, color: '#888' }}>Coût unitaire d'une nuitée par technicien.</small>
-                            </div>
-
-                            <div style={{ border: '1px solid #ddd', padding: 20, borderRadius: 8 }}>
-                                <TextField
-                                    label="Prix Repas (€)"
-                                    type="number"
-                                    value={localSettings.prix_repas ?? ''}
-                                    onChange={(e) => handleSettingChange('prix_repas', e.target.value)}
-                                    fullWidth
-                                    variant="outlined"
-                                    InputLabelProps={{ shrink: true }}
-                                />
-                                <small style={{ display: 'block', marginTop: 8, color: '#888' }}>Coût unitaire d'un repas par technicien.</small>
-                            </div>
-
-                            <div style={{ border: '1px solid #ddd', padding: 20, borderRadius: 8 }}>
-                                <TextField
-                                    label="Coeff. Marge Sous-traitance"
-                                    type="number"
-                                    value={localSettings.coef_sous_traitance ?? 2}
-                                    onChange={(e) => handleSettingChange('coef_sous_traitance', e.target.value)}
-                                    fullWidth
-                                    variant="outlined"
-                                    inputProps={{ step: "0.1" }}
-                                    InputLabelProps={{ shrink: true }}
-                                />
-                                <small style={{ display: 'block', marginTop: 8, color: '#888' }}>Multiplicateur appliqué au PA sous-traitance pour obtenir le PV.</small>
-                            </div>
-                        </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '20px 24px' }}>
+                        {settingField('taux_horaire', 'Taux horaire (€/h)', "Main d'œuvre : pose, confection, préparation.")}
+                        {settingField('prix_nuit', 'Prix nuit hôtel (€)', "Coût d'une nuitée par technicien.")}
+                        {settingField('prix_repas', 'Prix repas (€)', "Coût d'un repas par technicien.")}
+                        {settingField('coef_sous_traitance', 'Coef. sous-traitance', 'PV sous-traitance = PA × coef.', { step: '0.1' })}
                     </div>
-                )}
-            </DialogContent>
-            <DialogActions>
-                <Button onClick={onClose} variant="contained">Fermer</Button>
-            </DialogActions>
-        </Dialog>
+                </div>
+            )}
+        </DaDialog>
     );
 }
