@@ -134,7 +134,9 @@ export default function ShoppingListScreen({ minutes = [], catalog = [] }) {
 
 const ROBOTO = 'Roboto, system-ui, sans-serif';
 const TH = { padding: '10px 12px', fontSize: 13, fontWeight: 600, color: '#374151', background: '#F4F4F4', borderBottom: '1px solid #E0DED9', textAlign: 'left', whiteSpace: 'nowrap' };
-const TD = { padding: '10px 12px', fontSize: 13, color: '#111827', borderBottom: '1px solid #E8E6E2', verticalAlign: 'middle' };
+const TD = { padding: '10px 12px', fontSize: 13, color: '#111827', borderBottom: '1px solid #E8E6E2', verticalAlign: 'middle', overflowWrap: 'anywhere' };
+
+const COL_WIDTHS = { fournisseur: '22%', reference: '34%' }; // coloris : le reste
 
 // Chapitre : titre repliable (même rendu que les sections du chiffrage) + tableau au contour des listes.
 // Un chapitre reste affiché même vide, avec un total à 0.
@@ -163,12 +165,13 @@ function Section({ title, items: filtered, allItems = filtered, filters = {}, on
                         <div style={{ padding: '14px 12px', fontSize: 13, color: '#9CA3AF' }}>Aucun article dans ce chapitre.</div>
                     ) : (
                         // Sélectionnable à la souris (glisser puis Cmd+C) pour coller dans un e-mail.
-                        <table style={{ width: '100%', borderCollapse: 'collapse', userSelect: 'text' }}>
+                        // Largeurs fixes : les colonnes tombent au même endroit d'un tableau à l'autre.
+                        <table style={{ width: '100%', borderCollapse: 'collapse', userSelect: 'text', tableLayout: 'fixed' }}>
                             <thead>
                                 <tr>
                                     <th style={{ ...TH, width: 36 }} />
                                     {FILTER_FIELDS.map(f => (
-                                        <th key={f.key} style={TH}>
+                                        <th key={f.key} style={{ ...TH, width: COL_WIDTHS[f.key], overflowWrap: 'anywhere' }}>
                                             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                                                 {f.label}
                                                 {onFilter && (
