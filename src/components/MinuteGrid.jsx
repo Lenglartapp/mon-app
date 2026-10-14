@@ -7,6 +7,7 @@ import 'ag-grid-community/styles/ag-theme-alpine.css';
 import { schemaToGridCols, GridSelectChip } from '../lib/utils/schemaToGridCols.jsx';
 import { recomputeRow } from '../lib/formulas/recomputeRow';
 import { generateRowLogs } from '../lib/utils/logUtils';
+import { recordAction, diffRows, changedFields, applyChanges } from '../lib/undoManager';
 import { uid } from '../lib/utils/uid';
 import { createDecentreePair, PAIRE_DECENTREE, DECENTREE_PARENT_ONLY_TECH, orderDecentreeRows } from '../lib/utils/pairDecentree';
 import { Plus, Trash2, Columns, Layers, Edit2, Filter, FileSpreadsheet, PinOff, ChevronDown, ChevronRight, Truck } from 'lucide-react';
@@ -383,6 +384,27 @@ if (typeof document !== 'undefined') {
     style.textContent = AG_CUSTOM_CSS;
 }
 
+// Libellé court d'une action (message « Annulé : … »).
+function describeRowChanges(changes, schema, hintFields = null) {
+    const added = changes.filter((c) => !c.before).length;
+    const removed = changes.filter((c) => !c.after).length;
+    const modified = changes.filter((c) => c.before && c.after);
+    if (added && !removed && !modified.length) return `ajout de ${added} ligne${added > 1 ? 's' : ''}`;
+    if (removed && !added && !modified.length) return `suppression de ${removed} ligne${removed > 1 ? 's' : ''}`;
+    const labelOf = (k) => (schema || []).find((c) => c.key === k)?.label || k;
+    // Champs SAISIS (pas ceux recalculés par les formules : métrage, prix…).
+    const editable = (k) => { const col = (schema || []).find((c) => c.key === k); return !!col && col.type !== 'formula' && col.readOnly !== true && !col.computed; };
+    // Colonnes réellement saisies (connues pour une saisie / un collage), sinon déduites.
+    const fields = hintFields?.length ? hintFields : [...new Set(modified.flatMap((c) => changedFields(c.before, c.after).filter(editable)))];
+    const what = fields.length === 1 ? labelOf(fields[0]) : fields.length > 1 ? `${fields.length} champs` : 'modification';
+    if (modified.length === 1 && !added && !removed) {
+        const r = modified[0].after;
+        const where = [r.zone, r.piece, r.produit].filter(Boolean).join(' · ');
+        return where ? `${what} — ${where}` : what;
+    }
+    return `${what} sur ${changes.length} ligne${changes.length > 1 ? 's' : ''}`;
+}
+
 function MinuteGrid({
     fillField = null,      // colonne qui s'étire pour occuper toute la largeur restante du tableau
     stickyTop = null,      // null = pas d'en-têtes collants ; sinon décalage (px) sous le titre de section collant
@@ -517,6 +539,7 @@ function MinuteGrid({
     localConfRef.current = localConf;
     const isGridReadyRef = useRef(false);
     const pendingRowUpdatesRef = useRef({});  // batch des onCellValueChanged simultanés (paste/fill)
+    const pendingFieldsRef = useRef(new Set()); // colonnes saisies dans ce lot (libellé Ctrl+Z)
     const flushScheduledRef    = useRef(false);
 
     const rowsRef = useRef(rows);
@@ -527,6 +550,61 @@ function MinuteGrid({
     onRowsChangeRef.current = onRowsChange;
     const onAddRef = useRef(onAdd);
     onAddRef.current = onAdd;
+
+    // ——— Ctrl+Z / Cmd+Z (lib/undoManager) ———
+    // Toute modification du tableau passe par `emitRows` : l'action est enregistrée avec
+    // de quoi la défaire / refaire, case par case (jamais le reste du tableau).
+    const mountedRef = useRef(true);
+    useEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false; }; }, []);
+    const undoCtxRef = useRef({});
+    undoCtxRef.current = {
+        scope: String(minuteId || projectId || gridKey || title || 'tableau'),
+        readOnly, schema, author: resolvedUser?.name || resolvedUser?.email || 'Utilisateur',
+    };
+    const recordRowsChange = useCallback((before, after, { onlyAdded = false, fields = null } = {}) => {
+        const ctx = undoCtxRef.current;
+        if (ctx.readOnly) return;
+        let changes = diffRows(before, after);
+        if (onlyAdded) changes = changes.filter((c) => !c.before);
+        if (!changes.length) return;
+        recordAction({
+            scope: ctx.scope,
+            label: describeRowChanges(changes, ctx.schema, fields),
+            apply: (direction) => {
+                if (!mountedRef.current) return false; // tableau fermé entre-temps
+                const current = rowsRef.current || [];
+                const { rows: next, removed, touched } = applyChanges(current, changes, direction);
+                if (!touched) return false;
+                // Trace dans l'historique de la ligne (« Modif … »), comme une saisie.
+                const byId = new Map(current.map((r) => [String(r.id), r]));
+                const traced = next.map((r) => {
+                    const prev = byId.get(String(r.id));
+                    if (!prev || prev === r) return r;
+                    const logs = generateRowLogs(prev, r, undoCtxRef.current.schema, undoCtxRef.current.author);
+                    return logs.length ? { ...r, comments: [...(Array.isArray(r.comments) ? r.comments : []), ...logs] } : r;
+                });
+                onRowsChangeRef.current(traced, removed ? { deleted: true } : undefined);
+                return true;
+            },
+        });
+    }, []);
+    // Copie des lignes que le tableau ne peut pas modifier : AG Grid écrit la valeur saisie
+    // directement dans l'objet de la ligne, la version « avant » serait sinon déjà modifiée.
+    const snapshotRows = (list) => (list || []).map((r) => (r && typeof r === 'object' ? { ...r } : r));
+    const beforeRowsRef = useRef(snapshotRows(rows));
+    useEffect(() => { beforeRowsRef.current = snapshotRows(rows); }, [rows]);
+    const emitRows = useCallback((newRows, meta, { fields = null } = {}) => {
+        recordRowsChange(beforeRowsRef.current, newRows, { fields });
+        beforeRowsRef.current = snapshotRows(newRows);
+        onRowsChangeRef.current(newRows, meta);
+    }, [recordRowsChange]);
+    // Ajout délégué à l'écran parent (onAdd) : les nouvelles lignes arrivent par `rows`.
+    const pendingAddRef = useRef(null);
+    useEffect(() => {
+        if (!pendingAddRef.current) return;
+        const before = pendingAddRef.current;
+        if ((rows || []).length > before.length) { pendingAddRef.current = null; recordRowsChange(before, rows, { onlyAdded: true }); }
+    }, [rows, recordRowsChange]);
 
     // Clé de persistance, PORTÉE PAR DOSSIER : masquer une colonne sur un devis ne
     // doit plus impacter les autres devis. `gridKey` (ex. "chiff_rideaux") identifie
@@ -1002,27 +1080,27 @@ function MinuteGrid({
 
             return updatedRow;
         });
-        onRowsChange(newRows);
-    }, [onRowsChange, resolvedUser]);
+        emitRows(newRows);
+    }, [emitRows, resolvedUser]);
 
     // Mettre à jour un champ lien (embout_meca_link, support_link, etc.)
     const handleLinkUpdate = useCallback((id, field, value) => {
         const newRows = rowsRef.current.map(r =>
             r.id !== id ? r : { ...r, [field]: value }
         );
-        onRowsChange(newRows);
-    }, [onRowsChange]);
+        emitRows(newRows);
+    }, [emitRows]);
 
     // Ajouter une ou plusieurs lignes.
     // Les N lignes partent en UNE seule mise à jour : un ajout en lot ne doit pas
     // déclencher N écritures concurrentes sur le même JSONB (cf. saturation base).
     const handleAddRow = useCallback((count = 1) => {
         const n = clampAddCount(count);
-        if (onAddRef.current) { onAddRef.current(n); return; }
+        if (onAddRef.current) { pendingAddRef.current = rowsRef.current || []; onAddRef.current(n); return; }
         const blank = Object.fromEntries(schema.map(col => [col.key, '']));
         const newRows = Array.from({ length: n }, () => ({ id: uid(), ...blank }));
-        onRowsChangeRef.current([...rowsRef.current, ...newRows]);
-    }, [schema]);
+        emitRows([...rowsRef.current, ...newRows]);
+    }, [schema, emitRows]);
 
     // Ouvre / ferme le panneau « combien de lignes ? »
     const openAddPanel = useCallback((e) => {
@@ -1059,10 +1137,10 @@ function MinuteGrid({
             !(r.pair_role && r.pair_role !== 'parent' && deletedParentPairs.has(r.pair_id))
         );
         // Suppression voulue par l'utilisateur : le tableau peut devenir vide (cf. garde-fous).
-        onRowsChange(newRows, { deleted: true });
+        emitRows(newRows, { deleted: true });
         setSelectedCount(0);
         setSelectedRows([]);
-    }, [onRowsChange]);
+    }, [emitRows]);
 
     const onSelectionChanged = useCallback((params) => {
         const rows = params.api.getSelectedRows();
@@ -1126,11 +1204,11 @@ function MinuteGrid({
             if (col?.readOnly && (typeof col.readOnly === 'function' ? col.readOnly(r) : col.readOnly)) return r;
             return { ...r, [bulkField]: bulkValue };
         });
-        onRowsChangeRef.current(next);
+        emitRows(next, undefined, { fields: [bulkField] });
         setShowBulkUpdate(false);
         setBulkField('');
         setBulkValue('');
-    }, [bulkField, bulkValue, schema]);
+    }, [bulkField, bulkValue, schema, emitRows]);
 
     // Panneau de visibilité des colonnes
     const [colPanelPos, setColPanelPos] = useState(null);
@@ -1462,8 +1540,8 @@ function MinuteGrid({
         const newOrder = [];
         api.forEachNode((node) => { if (node.data && node.rowPinned == null) newOrder.push(node.data); });
         if (newOrder.length === 0) return;
-        onRowsChangeRef.current(orderDecentreeRows(newOrder));
-    }, []);
+        emitRows(orderDecentreeRows(newOrder));
+    }, [emitRows]);
 
     const defaultColDef = useMemo(() => ({
         resizable: true,
@@ -1512,7 +1590,7 @@ function MinuteGrid({
                 if (String(r.id) === String(params.data.id)) next.push(...triplet);
                 else next.push(r);
             });
-            onRowsChangeRef.current(next);
+            emitRows(next);
             return;
         }
 
@@ -1637,22 +1715,25 @@ function MinuteGrid({
             // Nécessaire pour paste/fill Enterprise qui appelle onCellValueChanged
             // pour chaque cellule en séquence — sans batch, seule la dernière survit.
             pendingRowUpdatesRef.current[String(recomputed.id)] = recomputed;
+            pendingFieldsRef.current.add(changedKey); // libellé du Ctrl+Z (colonne saisie)
             if (!flushScheduledRef.current) {
                 flushScheduledRef.current = true;
                 Promise.resolve().then(() => {
                     flushScheduledRef.current = false;
                     const updates = { ...pendingRowUpdatesRef.current };
                     pendingRowUpdatesRef.current = {};
+                    const editedFields = [...pendingFieldsRef.current];
+                    pendingFieldsRef.current = new Set();
                     const newAllRows = (rowsRef.current || []).map(
                         r => updates[String(r.id)] ?? r
                     );
-                    onRowsChangeRef.current(newAllRows);
+                    emitRows(newAllRows, undefined, { fields: editedFields });
                 });
             }
         } catch (e) {
             console.error('Erreur calcul', e);
         }
-    }, [schema, formulaCtx, catalog, resolvedUser, enableCellFormulas, enableDecentree]);
+    }, [schema, formulaCtx, catalog, resolvedUser, enableCellFormulas, enableDecentree, emitRows]);
 
     // Valide la valeur avant de l'appliquer via clipboard/fill.
     // Pour les selects, rejette toute valeur absente des options autorisées.
