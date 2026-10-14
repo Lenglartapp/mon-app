@@ -9,6 +9,9 @@ export const ORIGIN_LABEL = {
   odoo: (o) => `Projet créé automatiquement à la confirmation de la commande Odoo ${o.orderName || ''}`.trim(),
 };
 
+/** Un événement vient d'être ajouté au dossier : le journal ouvert se recharge. */
+export const PROJECT_EVENTS_CHANGED = 'droitfil:project-events-changed';
+
 export async function logProjectEvent(projectId, type, label, detail = null, userName = null) {
   if (!projectId) return;
   try {

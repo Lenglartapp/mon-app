@@ -43,7 +43,11 @@ export default function ProjectVersionsDialog({ project, currentCount, onClose, 
 
   const restore = async (v) => {
     if (busy) return;
-    if (!window.confirm(`Revenir aux lignes du ${new Date(v.captured_at).toLocaleString('fr-FR')} ?\nL'état actuel est gardé : vous pourrez y revenir depuis cette même liste.`)) return;
+    const when = new Date(v.captured_at).toLocaleString('fr-FR');
+    const question = v.reason === 'pre-restore'
+      ? `Annuler cette restauration et remettre les lignes telles qu'elles étaient le ${when} ?`
+      : `Revenir aux lignes du ${when} ?\nL'état actuel est gardé : la restauration pourra être annulée depuis cette même liste.`;
+    if (!window.confirm(question)) return;
     setBusy(true);
     setError(null);
     try { await onRestore(v); onClose(); }
@@ -64,6 +68,7 @@ export default function ProjectVersionsDialog({ project, currentCount, onClose, 
       <div style={{ fontSize: 13, color: MUTED, marginBottom: 14, lineHeight: 1.5 }}>
         Une version est gardée automatiquement avant chaque modification (au plus une toutes les 15 minutes).
         Revenir à une version remplace les lignes du projet ; le journal et les infos du dossier ne changent pas.
+        Chaque restauration est inscrite au journal du projet et peut être annulée.
       </div>
       {loading && <div style={{ color: '#9CA3AF', fontSize: 13 }}>Chargement des versions…</div>}
       {error && <div style={{ color: '#B91C1C', fontSize: 13, marginBottom: 10 }}>{error}</div>}
@@ -72,9 +77,19 @@ export default function ProjectVersionsDialog({ project, currentCount, onClose, 
           Aucune version pour l'instant.<br />Les versions se créent automatiquement au fil des modifications.
         </div>
       )}
+      {versions[0]?.reason === 'pre-restore' && (
+        <div style={{ border: '1px solid #1E2447', borderRadius: 8, padding: '10px 12px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', background: '#EEF4FD' }}>
+          <div style={{ flex: 1, minWidth: 200, fontSize: 13, color: '#111827' }}>
+            Dernière action : restauration{versions[0].author ? ` par ${versions[0].author}` : ''} ({relative(versions[0].captured_at).toLowerCase()}).
+            <div style={{ fontSize: 12, color: MUTED, marginTop: 2 }}>Erreur ? Remettez les lignes telles qu'elles étaient juste avant.</div>
+          </div>
+          <ToolbarButton primary disabled={busy} onClick={() => restore(versions[0])}>Annuler cette restauration</ToolbarButton>
+        </div>
+      )}
       {versions.map((v) => {
         const r = REASONS[v.reason] || REASONS.auto;
         const isSel = selected === v.id;
+        const isUndo = v.reason === 'pre-restore';
         const who = v.reason === 'pre-restore' ? (v.author ? `restauration par ${v.author}` : null) : (v.changed_by ? `modifié ensuite par ${v.changed_by}` : null);
         return (
           <div key={v.id} style={{ border: `1px solid ${isSel ? '#1E2447' : '#E8E6E2'}`, borderRadius: 8, marginBottom: 8, background: 'white', overflow: 'hidden' }}>
@@ -90,9 +105,11 @@ export default function ProjectVersionsDialog({ project, currentCount, onClose, 
             {isSel && (
               <div style={{ borderTop: '1px solid #E8E6E2', padding: 12, background: '#F4F4F4', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                 <span style={{ fontSize: 12, color: MUTED, flex: 1, minWidth: 200 }}>
-                  Les lignes reviennent à cet état ({v.nb_lignes ?? '—'} ligne(s)). L'état actuel est gardé avant.
+                  {isUndo
+                    ? `Remet les lignes telles qu'elles étaient juste avant cette restauration (${v.nb_lignes ?? '—'} ligne(s)).`
+                    : `Les lignes reviennent à cet état (${v.nb_lignes ?? '—'} ligne(s)). L'état actuel est gardé avant.`}
                 </span>
-                <ToolbarButton primary disabled={busy} onClick={() => restore(v)}>{busy ? 'Restauration…' : 'Revenir à cette version'}</ToolbarButton>
+                <ToolbarButton primary disabled={busy} onClick={() => restore(v)}>{busy ? 'Restauration…' : (isUndo ? 'Annuler cette restauration' : 'Revenir à cette version')}</ToolbarButton>
               </div>
             )}
           </div>

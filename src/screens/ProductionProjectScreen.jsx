@@ -43,6 +43,7 @@ import ClientReportModal from "../components/report/ClientReportModal";
 import ProjectGanttModal from "../components/project/ProjectGanttModal";
 import ProjectVersionsDialog from "../components/project/ProjectVersionsDialog";
 import { readProjectVersionRows, saveVersionBeforeRestore } from "../lib/projectVersions";
+import { logProjectEvent, PROJECT_EVENTS_CHANGED } from "../lib/projectEvents";
 import { Dialog, DialogTitle, DialogContent, TextField, DialogActions, Button, Collapse, IconButton } from "@mui/material";
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { differenceInMinutes } from "date-fns";
@@ -648,8 +649,12 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
     }, 800);
   }, [onUpdateProjectRows]);
 
-  // --- HISTORIQUE DES VERSIONS (lignes du projet ; admins / ordo) ---
-  const canRestoreVersion = can(currentUser, "production.restore_version");
+  // --- HISTORIQUE DES VERSIONS (lignes du projet) ---
+  // Ouvert à tous ceux qui peuvent modifier le tableau ; chaque restauration est inscrite
+  // au journal du projet et peut être annulée (version « Avant restauration »).
+  const canRestoreVersion = can(currentUser, "production.edit")
+    || can(currentUser, "production.edit.prise_de_cotes")
+    || can(currentUser, "production.edit.suivi_projet");
   const [versionsOpen, setVersionsOpen] = useState(false);
   const handleRestoreVersion = useCallback(async (version) => {
     if (!project?.id || !onUpdateProjectRows) return;
@@ -662,6 +667,13 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
     const restored = computeFormulas(versionRows, SCHEMA_64);
     setRows(restored);
     onUpdateProjectRows(project.id, restored);
+    // Journal du projet : toute l'équipe voit qui a restauré quoi, et quand.
+    const when = new Date(version.captured_at).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' });
+    const label = version.reason === 'pre-restore'
+      ? `Restauration annulée : lignes revenues à leur état du ${when} (${versionRows.length} ligne(s)).`
+      : `Lignes du projet revenues à la version du ${when} (${versionRows.length} ligne(s)). Annulable depuis « Historique ».`;
+    await logProjectEvent(project.id, 'version_restored', label, { versionId: version.id, reason: version.reason }, currentUser?.name || null);
+    window.dispatchEvent(new Event(PROJECT_EVENTS_CHANGED));
   }, [project, onUpdateProjectRows, currentUser?.name]);
 
   // --- HANDLERS ---
