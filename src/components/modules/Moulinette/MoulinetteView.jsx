@@ -4,6 +4,8 @@ import { PURCHASE_CHAPTERS, ST_LABELS, sumPA } from '../../../lib/purchases/chap
 import ProfitabilitySimulatorModal from './ProfitabilitySimulatorModal';
 import { ChevronDown, ChevronRight, Target } from 'lucide-react';
 import { ToolbarButton } from '../../ui/ToolbarControls';
+import { ValueFilter } from '../../purchases/purchaseTools';
+import { FILTER_FIELDS, withCatalogInfo, passes, sortItems, DEFAULT_SORT } from '../../../lib/purchases/supplierInfo';
 
 const ROBOTO = 'Roboto, system-ui, sans-serif';
 
@@ -12,9 +14,11 @@ const nfEur0 = new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EU
 const nf0 = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 });
 const pct = (val) => `${Math.round(val || 0)} %`;
 
-export default function MoulinetteView({ rows, depRows, extraRows, commissionRate = 3.5, commissionOwner, onUpdateCommission }) {
+export default function MoulinetteView({ rows, depRows, extraRows, catalog = [], commissionRate = 3.5, commissionOwner, onUpdateCommission }) {
     const data = useMemo(() => calculateProfitability(rows, depRows, extraRows, commissionRate), [rows, depRows, extraRows, commissionRate]);
     const [showSimulator, setShowSimulator] = useState(false);
+    // Fournisseur / référence / coloris / laize des achats, lus dans la bibliothèque (comme la Liste Achats).
+    const byName = useMemo(() => new Map((catalog || []).filter(i => i?.name).map(i => [i.name, i])), [catalog]);
 
     return (
         <div style={{ position: 'relative' }}>
@@ -38,7 +42,7 @@ export default function MoulinetteView({ rows, depRows, extraRows, commissionRat
                     defaultOpen={true}
                 >
                     {PURCHASE_CHAPTERS.map(ch => (
-                        <DetailGroup key={ch.key} title={ch.label} items={data.achats_fixes_details[ch.key]} />
+                        <PurchaseGroup key={ch.key} title={ch.label} items={(data.achats_fixes_details[ch.key] || []).map(it => withCatalogInfo(it, byName))} />
                     ))}
                 </ExpandableCard>
 
@@ -188,26 +192,83 @@ function DrillDownRow({ label, mainValue, subValue, sources, type = 'price' }) {
 
 // Un chapitre reste affiché même vide, avec un total à 0 : la structure ne bouge pas
 // d'un chiffrage à l'autre.
-function DetailGroup({ title, items = [] }) {
+// Chapitre d'achats : colonnes Fournisseur / Référence / Coloris / Laize + quantité et coût
+// (mêmes informations que la Liste Achats, mieux rangées), filtrables dans l'en-tête.
+const PURCHASE_GRID = '20px minmax(0,1.1fr) minmax(0,1.3fr) minmax(0,1fr) 60px 110px 110px';
+function PurchaseGroup({ title, items = [] }) {
+    const [filters, setFilters] = useState({});
+    // Tri de la colonne choisie ; par défaut la plus grande quantité d'abord.
+    const [sort, setSort] = useState(DEFAULT_SORT);
+    const setFilter = (key) => (v) => setFilters(prev => ({ ...prev, [key]: v }));
+    const shown = sortItems(items.filter(it => passes(it, filters)), sort);
+    const head = { fontSize: 12, fontWeight: 500, color: '#6B7280', fontFamily: ROBOTO };
     return (
         <div>
-            {/* Bandeau gris pleine largeur (comme l'en-tête des tableaux de la Liste Achats) :
-                chapitre à gauche, total tout à droite ; le détail reste en blanc dessous. */}
             <div className="df-moul-chapter" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '0 -16px', padding: '10px 16px', background: '#F4F4F4', borderBottom: '1px solid #E0DED9' }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: '#374151', fontFamily: ROBOTO }}>{title}</div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: '#374151', fontFamily: ROBOTO }}>{nfEur0.format(sumPA(items))}</div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#374151', fontFamily: ROBOTO }}>
+                    {title}
+                    {shown.length !== items.length && <span style={{ fontWeight: 400, color: '#6B7280' }}> · {shown.length} sur {items.length}</span>}
+                </div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#374151', fontFamily: ROBOTO }}>{nfEur0.format(sumPA(shown))}</div>
             </div>
             {items.length === 0 ? (
                 <div style={{ fontSize: 13, color: '#9CA3AF', padding: '8px 0' }}>Aucun achat dans ce chapitre.</div>
-            ) : items.map((item, idx) => (
-                <DrillDownRow
-                    key={idx}
-                    label={item.label}
-                    mainValue={nfEur0.format(item.pa)}
-                    subValue={`${nf0.format(item.qty)} ${item.unit}`}
-                    sources={item.sources}
-                />
-            ))}
+            ) : (
+                <>
+                    <div style={{ display: 'grid', gridTemplateColumns: PURCHASE_GRID, gap: 10, alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #E8E6E2' }}>
+                        <span />
+                        {FILTER_FIELDS.map(f => (
+                            <span key={f.key} style={{ ...head, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                {f.label}
+                                <ValueFilter label={f.label} items={items} field={f.key} value={filters[f.key] || null} onChange={setFilter(f.key)} variant="icon" sort={sort} onSort={setSort} />
+                            </span>
+                        ))}
+                        <span style={{ ...head, textAlign: 'right' }}>Laize</span>
+                        <span style={{ ...head, display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
+                            Quantité
+                            <ValueFilter label="Quantité" items={items} field="qtyLabel" numeric sortKey="qty" value={filters.qtyLabel || null} onChange={setFilter('qtyLabel')} variant="icon" sort={sort} onSort={setSort} />
+                        </span>
+                        <span style={{ ...head, textAlign: 'right' }}>Coût</span>
+                    </div>
+                    {shown.map((item, idx) => <PurchaseRow key={`${item.label}-${idx}`} item={item} />)}
+                    {shown.length === 0 && <div style={{ fontSize: 13, color: '#9CA3AF', padding: '8px 0' }}>Aucun achat ne correspond aux filtres.</div>}
+                </>
+            )}
+        </div>
+    );
+}
+
+function PurchaseRow({ item }) {
+    const [open, setOpen] = useState(false);
+    const cell = { fontSize: 14, color: '#111827', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' };
+    return (
+        <div className="df-moul-row" style={{ borderBottom: '1px solid #E8E6E2' }}>
+            <div onClick={() => setOpen(o => !o)} style={{ display: 'grid', gridTemplateColumns: PURCHASE_GRID, gap: 10, alignItems: 'center', padding: '10px 0', cursor: 'pointer' }}>
+                <span style={{ color: '#9B9A97', display: 'flex' }}>{open ? <ChevronDown size={15} /> : <ChevronRight size={15} />}</span>
+                <span style={{ ...cell, fontWeight: 500 }} title={item.fournisseur}>{item.fournisseur || <span style={{ color: '#D1D5DB' }}>—</span>}</span>
+                <span style={cell} title={item.reference}>{item.reference}</span>
+                <span style={cell} title={item.coloris}>{item.coloris}</span>
+                <span style={{ ...cell, textAlign: 'right', color: '#6B7280' }}>{item.laize || ''}</span>
+                <span style={{ ...cell, textAlign: 'right', color: '#6B7280' }}>{nf0.format(item.qty)} {item.unit}</span>
+                <span style={{ ...cell, textAlign: 'right', fontWeight: 600 }}>{nfEur0.format(item.pa)}</span>
+            </div>
+            {open && item.sources?.length > 0 && (
+                <div style={{ background: '#F7F7F5', padding: '8px 12px', borderRadius: 8, marginBottom: 10, fontSize: 13 }}>
+                    <table style={{ width: '100%' }}>
+                        <tbody>
+                            {item.sources.map((src, i) => (
+                                <tr key={i}>
+                                    <td style={{ padding: '2px 0', color: '#4b5563' }}>
+                                        {src.minute} <span style={{ opacity: 0.5 }}>({src.piece || '-'}/{src.zone || '-'})</span>
+                                    </td>
+                                    <td style={{ textAlign: 'right', padding: '2px 0', color: '#6b7280' }}>{src.unit ? `${nf0.format(src.qty)} ${src.unit}` : null}</td>
+                                    <td style={{ textAlign: 'right', padding: '2px 0', fontWeight: 500 }}>{src.pa !== undefined && nfEur0.format(src.pa)}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            )}
         </div>
     );
 }
