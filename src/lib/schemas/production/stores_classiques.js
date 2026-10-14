@@ -129,7 +129,7 @@ const BASE_STORES_CLASSIQUES_SCHEMA = [
     { key: "livraison", label: "Livraison", type: "number", width: 140 },
 
     // unit_price (number, readOnly) : P.U
-    { key: "unit_price", label: "P.U", type: "number", width: 115, valueFormatter: (value) => new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(value) },
+    { key: "unit_price", label: "P.U", type: "number", width: 115, valueFormatter: (value) => (value === null || value === undefined || value === "" || !isFinite(Number(value))) ? "" : new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(Number(value)) },
 
     // quantite (number) : Qté
     { key: "quantite", label: "Qté", type: "number", width: 70 },

@@ -73,7 +73,7 @@ export const PLAID_SCHEMA = [
 
     createCol('livraison', 'Livraison', 140, 'number'),
 
-    createCol('unit_price', 'P.U.', 115, 'number', { valueFormatter: (value) => new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(value) }),
+    createCol('unit_price', 'P.U.', 115, 'number', { valueFormatter: (value) => (value === null || value === undefined || value === "" || !isFinite(Number(value))) ? "" : new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(Number(value)) }),
     createCol('quantite', 'Qté', 115, 'number', { defaultValue: 1 }),
     createCol('total_price', 'Total', 125, 'number'),
 ].map(c => ({ ...c, key: c.field }));

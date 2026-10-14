@@ -491,7 +491,9 @@ export const useMinutes = () => {
 
     useEffect(() => { fetchMinutes(); }, []);
 
-    const updateMinute = async (id, updates) => {
+    // opts.allowEmpty : suppression de lignes confirmée par l'utilisateur → un tableau
+    // peut alors devenir vide (seul cas où le garde-fou anti-perte le laisse passer).
+    const updateMinute = async (id, updates, opts = {}) => {
         const dbUpdates = { ...updates };
         if (updates.tables) {
             dbUpdates.lines = updates.tables;
@@ -501,14 +503,21 @@ export const useMinutes = () => {
         // ⛔️ SÉCURITÉ DONNÉES (anti-perte) — filet de sécurité ultime :
         // NE JAMAIS écraser des lignes/déplacements/dépenses NON VIDES par un tableau VIDE.
         // Protège contre un save accidentel (ex. éditeur monté avant le chargement complet).
-        // Si un jour il faut vraiment vider un devis, le faire via une action dédiée explicite.
+        // Vider volontairement un tableau passe par opts.allowEmpty (suppression confirmée).
         const curForGuard = minutes.find(m => m.id === id);
-        for (const key of ['lines', 'deplacements', 'extraDepenses']) {
-            if (Array.isArray(dbUpdates[key]) && dbUpdates[key].length === 0) {
-                const prev = curForGuard?.[key];
-                if (Array.isArray(prev) && prev.length > 0) {
-                    console.warn(`[updateMinute] BLOQUÉ : écrasement de ${key} (${prev.length} → 0) refusé sur ${id}`);
-                    delete dbUpdates[key];
+        if (!opts.allowEmpty) {
+            for (const key of ['lines', 'deplacements', 'extraDepenses']) {
+                if (Array.isArray(dbUpdates[key]) && dbUpdates[key].length === 0) {
+                    const prev = curForGuard?.[key];
+                    if (Array.isArray(prev) && prev.length > 0) {
+                        console.warn(`[updateMinute] BLOQUÉ : écrasement de ${key} (${prev.length} → 0) refusé sur ${id}`);
+                        delete dbUpdates[key];
+                        // L'état local garde aussi les lignes : sinon la sauvegarde suivante
+                        // (état déjà vide) passerait le garde-fou et viderait réellement la base.
+                        updates = { ...updates };
+                        delete updates[key];
+                        if (key === 'lines') delete updates.tables;
+                    }
                 }
             }
         }
@@ -521,10 +530,12 @@ export const useMinutes = () => {
         const touchesLines = 'lines' in updates || 'tables' in updates
             || 'deplacements' in updates || 'extraDepenses' in updates;
         if (touchesLines) {
+            // Calcul sur ce qui est RÉELLEMENT enregistré (après le garde-fou), pour que le
+            // montant de la liste ne diverge jamais des lignes en base.
             const cur = minutes.find(m => m.id === id) || {};
             const lines  = dbUpdates.lines !== undefined ? dbUpdates.lines : (cur.lines || []);
-            const deps   = 'deplacements'  in updates ? (updates.deplacements  || []) : (cur.deplacements  || []);
-            const extras = 'extraDepenses' in updates ? (updates.extraDepenses || []) : (cur.extraDepenses || []);
+            const deps   = 'deplacements'  in dbUpdates ? (dbUpdates.deplacements  || []) : (cur.deplacements  || []);
+            const extras = 'extraDepenses' in dbUpdates ? (dbUpdates.extraDepenses || []) : (cur.extraDepenses || []);
             // Commission selon le chargé d'affaires (1 % direction / ADV, 3,5 % sinon) ; le changement
             // de chargé d'affaires est recalculé dans ChiffrageScreen (lignes chargées), pas ici :
             // la liste allégée n'a pas les lignes et écraserait les KPIs à 0.

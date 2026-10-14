@@ -324,9 +324,9 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
 
   // Update Wrapper (Memoized)
   // `force` : changement de statut, seul enregistrement permis sur un devis figé.
-  const updateMinute = React.useCallback((patch, { force = false } = {}) => {
+  const updateMinute = React.useCallback((patch, { force = false, allowEmpty = false } = {}) => {
     if (!canEditBase || (frozen && !force)) return;
-    if (onUpdate && minute?.id) onUpdate(minute.id, patch);
+    if (onUpdate && minute?.id) onUpdate(minute.id, patch, allowEmpty ? { allowEmpty: true } : undefined);
   }, [canEditBase, frozen, onUpdate, minute?.id]);
 
   // Une modification faite par l'utilisateur (≠ recalcul à l'ouverture) : sert à
@@ -360,7 +360,9 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
     // protection de performSave. Le remontage forcé de l'éditeur (key sur les modules)
     // peut y renvoyer une liste momentanément vide → tous les tableaux se vidaient.
     const currentCount = (rows?.length || 0) + (extraRows?.length || 0) + (depRows?.length || 0);
-    if (all.length === 0 && currentCount > 0) {
+    // Suppression de lignes confirmée par l'utilisateur : vider un tableau est voulu.
+    const deleteIntent = !!m.__deleteIntent;
+    if (!deleteIntent && all.length === 0 && currentCount > 0) {
       console.warn('[chiffrage] Écrasement vide bloqué (garde-fou suppression tableau).', {
         minuteId: minute?.id,
         lignesConservees: currentCount,
@@ -409,7 +411,7 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onLoadMinuteDe
       catalog: m.catalog,
       modules: m.modules,
       matieres: m.matieres,
-    });
+    }, { allowEmpty: deleteIntent });
   }, [canEdit, rows, extraRows, depRows, minute?.id, updateMinute]);
 
   // CA HT en direct (même calcul que le CA TOTAL du détail), comparé au devis Odoo lié.

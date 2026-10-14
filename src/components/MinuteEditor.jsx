@@ -116,12 +116,17 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
     }
   }, [minute?.lines, localLines]);
 
+  // Suppression confirmée par l'utilisateur : la sauvegarde suivante peut légitimement
+  // vider un tableau (dernière ligne de déplacement, d'autres dépenses, de produit…).
+  const deleteIntentRef = React.useRef(false);
+
   // FONCTION DE SAUVEGARDE SÉCURISÉE
   const performSave = React.useCallback((newLines) => {
     if (!onChangeMinute) return;
+    const deleteIntent = deleteIntentRef.current;
 
-    // 1. PROTECTION "TABLEAU VIDE"
-    if (lastSavedCountRef.current > 0 && (!newLines || newLines.length === 0)) {
+    // 1. PROTECTION "TABLEAU VIDE" (sauf suppression volontaire)
+    if (!deleteIntent && lastSavedCountRef.current > 0 && (!newLines || newLines.length === 0)) {
       console.warn("⛔️ Sauvegarde bloquée : Tentative d'écraser une minute pleine par une minute vide.");
       // On ne sauve PAS.
       return;
@@ -140,9 +145,10 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
     });
 
     // Appel Parent (Supabase)
-    onChangeMinute({ ...minute, lines: cleanLines, updatedAt: Date.now() });
+    onChangeMinute({ ...minute, lines: cleanLines, updatedAt: Date.now(), ...(deleteIntent && { __deleteIntent: true }) });
 
     // Update ref
+    deleteIntentRef.current = false;
     lastSavedCountRef.current = cleanLines.length;
     pendingLinesRef.current = null; // Reset pending
 
@@ -379,7 +385,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
     (Array.isArray(arr) ? arr : []).map((r) => (r?.id ? r : { ...r, id: genId() }));
 
   // Réinjecte TOUT le sous-tableau (ajouts + edits) dans rows
-  const mergeChildRowsFor = (key) => (childRows) => {
+  const mergeChildRowsFor = (key) => (childRows, change) => {
     // Normalise la sous-liste reçue du DataTable :
     const normalizedChild = withIds((childRows || []).map((r) => ensureProduitFor(key, r)));
 
@@ -423,6 +429,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
     const withFx = next.map((row) => recomputeRow(row, targetSchema, extendedCtx));
 
     // DEBOUNCED UPDATE
+    if (change?.deleted) deleteIntentRef.current = true;
     triggerUpdate(withFx);
     // onChangeMinute?.({ ...minute, lines: withFx, updatedAt: Date.now() });
   };
@@ -498,6 +505,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
     const nextRows = rowsRef.current.filter(r => !idsToDelete.includes(r.id));
 
     // DEBOUNCED UPDATE (ou immédiat pour delete? on garde debounced pour consistance)
+    deleteIntentRef.current = true;
     triggerUpdate(nextRows);
     // onChangeMinute?.({ ...minute, lines: nextRows, updatedAt: Date.now() });
 

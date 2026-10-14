@@ -1058,7 +1058,8 @@ function MinuteGrid({
             !selectedIds.has(r.id) &&
             !(r.pair_role && r.pair_role !== 'parent' && deletedParentPairs.has(r.pair_id))
         );
-        onRowsChange(newRows);
+        // Suppression voulue par l'utilisateur : le tableau peut devenir vide (cf. garde-fous).
+        onRowsChange(newRows, { deleted: true });
         setSelectedCount(0);
         setSelectedRows([]);
     }, [onRowsChange]);
