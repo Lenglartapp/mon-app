@@ -1,5 +1,6 @@
 import React from 'react';
 import { ChevronDown } from 'lucide-react';
+import TextNumberEditCell from './TextNumberEditCell';
 
 /**
  * Colonne « Utilisé » (DataGrid) : nombre de lignes qui utilisent l'article,
@@ -30,4 +31,10 @@ export function usageColumn(usage, onOpen, where = 'du chiffrage') {
             );
         },
     };
+}
+
+/** Colonne numérique éditée dans un champ texte (curseur plaçable, virgule acceptée). */
+export function withTextNumberEditor(col) {
+    if (col.type !== 'number' || !col.editable) return col;
+    return { ...col, renderEditCell: (params) => <TextNumberEditCell {...params} /> };
 }

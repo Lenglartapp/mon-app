@@ -12,7 +12,8 @@ import { useCatalog, useCatalogRail } from '../hooks/useSupabase';
 import { supabase } from '../lib/supabaseClient';
 import { buildUsage } from '../lib/catalogUsage';
 import UsagePopover from './catalog/UsagePopover';
-import { usageColumn } from './catalog/usageColumn';
+import { usageColumn, withTextNumberEditor } from './catalog/usageColumn';
+import { useExcelCaret, FOCUS_ROW_SX } from '../lib/hooks/useExcelCaret';
 
 const TABS = [
   { key: 'Tissu',         label: 'Tissus',        categories: ['Tissu', 'Tissus', 'Doublure', 'Doublures', 'Inter', 'Confection'] },
@@ -103,6 +104,8 @@ export default function ProjectMaterialsPanel({ open, onClose, materials = [], o
   const [usageAnchor, setUsageAnchor] = useState(null);
   const [catalogAnchor, setCatalogAnchor] = useState(null);
   const [minuteCatalog, setMinuteCatalog] = useState([]);
+  const [gridWrapEl, setGridWrapEl] = useState(null);
+  useExcelCaret(gridWrapEl);
 
   // Fournisseur / référence / coloris : les articles repris d'un chiffrage ne portent
   // que leur nom complet. On les retrouve dans la bibliothèque du chiffrage d'origine
@@ -217,7 +220,7 @@ export default function ProjectMaterialsPanel({ open, onClose, materials = [], o
       );
     }
     if (usage) cols.push(usageColumn(usage, setUsageAnchor, 'du projet'));
-    return cols.map(({ width, ...col }) => ({ ...col, flex: width, minWidth: 60 }));
+    return cols.map(({ width, ...col }) => withTextNumberEditor({ ...col, flex: width, minWidth: 60 }));
   }, [activeTabKey, usage]);
 
   if (!open) return null;
@@ -244,7 +247,7 @@ export default function ProjectMaterialsPanel({ open, onClose, materials = [], o
           <ToolbarButton icon={<Library size={15} />} onClick={(e) => setCatalogAnchor(e.currentTarget)}>Depuis le catalogue</ToolbarButton>
           <ToolbarButton primary icon={<Plus size={15} />} onClick={handleAddBlank}>Ajouter un article</ToolbarButton>
         </div>
-        <div style={{ ...TABLE_FRAME_STYLE, flex: 1, minHeight: 0 }}>
+        <div ref={setGridWrapEl} style={{ ...TABLE_FRAME_STYLE, flex: 1, minHeight: 0 }}>
           <DataGrid
             rows={displayRows}
             columns={columns}
@@ -256,7 +259,7 @@ export default function ProjectMaterialsPanel({ open, onClose, materials = [], o
             localeText={{ ...frFR.components.MuiDataGrid.defaultProps.localeText, noRowsLabel: 'Aucun article dans cette catégorie.' }}
             rowHeight={40}
             columnHeaderHeight={42}
-            sx={{ ...DATAGRID_DA_SX, height: '100%', '& .MuiDataGrid-menuIcon': { overflow: 'hidden' } }}
+            sx={{ ...DATAGRID_DA_SX, ...FOCUS_ROW_SX, height: '100%', '& .MuiDataGrid-menuIcon': { overflow: 'hidden' } }}
           />
         </div>
         <div style={{ fontSize: 13, color: '#6B7280' }}>
