@@ -76,6 +76,24 @@ function withSchemaOrderForNewCols(columnState, schema, makeEntry = (key) => ({ 
     return out;
 }
 
+// État des bascules (matières, méca, conf) lu dans la mise en page enregistrée :
+// un groupe est actif si sa première colonne y est visible. Sert aux dossiers dont
+// l'état partagé ne porte pas encore les bascules elles-mêmes.
+function groupStateFromColumns(groups, columnState) {
+    const out = {};
+    if (!Array.isArray(columnState)) return out;
+    const byId = new Map(columnState.filter(cs => cs?.colId).map(cs => [cs.colId, cs]));
+    (groups || []).forEach(g => {
+        const cs = byId.get(g.fields?.[0]);
+        if (cs && !cs.__new) out[g.id] = !cs.hide;
+    });
+    return out;
+}
+
+// Sources AG Grid qui ne sont pas un geste de l'utilisateur : la restauration de la
+// mise en page ne doit pas se ré-enregistrer elle-même.
+const NON_USER_COLUMN_SOURCES = new Set(['api', 'gridOptionsChanged', 'gridInitializing']);
+
 
 const AG_GRID_LOCALE_FR = {
     // Regroupement (panneau « Regrouper par »)
@@ -525,6 +543,8 @@ function MinuteGrid({
     );
     const localMatieresRef = useRef(localMatieres);
     localMatieresRef.current = localMatieres;
+    const onMatiereChangeRef = useRef(onMatiereChange);
+    onMatiereChangeRef.current = onMatiereChange;
 
     // État local méca et conf — initialisés depuis les defaults, mis à jour par sharedState après chargement Supabase
     const [localMeca, setLocalMeca] = useState(() =>
@@ -538,6 +558,24 @@ function MinuteGrid({
     const localConfRef = useRef(localConf);
     localConfRef.current = localConf;
     const isGridReadyRef = useRef(false);
+    // Le tableau reste invisible tant que la mise en page enregistrée du dossier
+    // (ordre, colonnes masquées) n'est pas posée : sinon il s'affichait d'abord dans
+    // l'ordre par défaut puis les colonnes bougeaient une à deux secondes plus tard.
+    const [layoutShown, setLayoutShown] = useState(false);
+    const showLayout = useCallback(() => {
+        requestAnimationFrame(() => setLayoutShown(true));
+    }, []);
+    // Le tableau n'est CRÉÉ qu'une fois la mise en page connue : créé avant, il se
+    // dessinait avec toutes ses colonnes (lourd) et retardait d'autant l'arrivée de
+    // la mise en page. Filet de sécurité (réseau lent, hors ligne) : on y va quand même.
+    const [layoutWaitOver, setLayoutWaitOver] = useState(false);
+    useEffect(() => {
+        const t1 = setTimeout(() => setLayoutWaitOver(true), 1500);
+        // Mieux vaut attendre un peu qu'afficher des colonnes qui bougent sous la saisie :
+        // on ne montre un tableau non rangé qu'en dernier recours (serveur injoignable).
+        const t2 = setTimeout(() => setLayoutShown(true), 8000);
+        return () => { clearTimeout(t1); clearTimeout(t2); };
+    }, []);
     const pendingRowUpdatesRef = useRef({});  // batch des onCellValueChanged simultanés (paste/fill)
     const pendingFieldsRef = useRef(new Set()); // colonnes saisies dans ce lot (libellé Ctrl+Z)
     const flushScheduledRef    = useRef(false);
@@ -623,6 +661,11 @@ function MinuteGrid({
     const gridId = `${STORAGE_PREFIX}${scopedGridKey}`;
     const supabaseGridKey = scopedGridKey;
     const { data: sharedState, loaded: sharedStateLoaded, save: saveSharedState } = useSharedGridState(supabaseGridKey, templateGridKey);
+    const initialVisibilityModelRef = useRef(initialVisibilityModel);
+    initialVisibilityModelRef.current = initialVisibilityModel;
+    const gridMountedRef = useRef(false);
+    const mountGrid = gridMountedRef.current || sharedStateLoaded || layoutWaitOver;
+    gridMountedRef.current = mountGrid; // une fois créé, le tableau reste en place
 
     // Réglages PERSONNELS (filtres de lignes, tri, regroupement) — voir le commentaire
     // du hook : un filtre partagé masquerait des lignes chez les collègues.
@@ -736,11 +779,21 @@ function MinuteGrid({
             Object.assign(visMap, initialVisibilityModel);
         }
 
+        // Colonnes des bascules (matières, méca, conf) : masquées par défaut mais
+        // activables, comme `softHidden`.
+        const groupFields = new Set(
+            [...(matiereGroups || []), ...(mecaGroups || []), ...(confGroups || [])].flatMap(g => g.fields || [])
+        );
+
         if (columnState && v === GRID_STATE_VERSION) {
             // Réglages de l'équipe par-dessus. Une colonne que la vue exclut reste
-            // masquée même si un ancien état enregistré la disait visible.
+            // masquée si un ANCIEN état enregistré la disait visible. Un état enregistré
+            // depuis le panneau Colonnes actuel (`trusted`) est un choix réel : on le
+            // respecte tel quel — sinon une colonne masquée par défaut (ex. passementerie
+            // au chiffrage) disparaissait à chaque retour sur le dossier.
             const allowed = (colId) =>
-                !hasVisibilityModel || initialVisibilityModel[colId] !== false || softHidden.has(colId);
+                state?.trusted === true || !hasVisibilityModel || initialVisibilityModel[colId] !== false
+                || softHidden.has(colId) || groupFields.has(colId);
             api.applyColumnState({
                 // rowGroupIndex volontairement ABSENT : le regroupement est devenu
                 // personnel (userState), il ne doit plus être imposé par l'équipe.
@@ -760,10 +813,38 @@ function MinuteGrid({
         }
         if (Object.keys(visMap).length > 0) setColVisibility(visMap);
 
+        // Matières : enregistrées avec la mise en page du dossier (partagée). Avant,
+        // elles ne vivaient que dans le navigateur de chacun et repassaient PAR-DESSUS
+        // la mise en page à l'ouverture : un collègue, un autre appareil ou un
+        // navigateur vidé retombait sur la vue par défaut (passementerie masquée).
+        // Dossier sans matières enregistrées : on les lit dans les colonnes visibles.
+        if (matiereGroups?.length > 0) {
+            const savedMat = { ...groupStateFromColumns(matiereGroups, columnState), ...(state?.matieres || {}) };
+            if (Object.keys(savedMat).length > 0) {
+                const prevMat = localMatieresRef.current;
+                const nextMat = { ...prevMat, ...savedMat };
+                localMatieresRef.current = nextMat;
+                setLocalMatieres(nextMat);
+                const matState = [];
+                matiereGroups.forEach(group => {
+                    const isActive = nextMat[group.id] !== false;
+                    group.fields.forEach(field => matState.push({ colId: field, hide: !isActive }));
+                });
+                api.applyColumnState({ state: matState });
+                if (JSON.stringify(nextMat) !== JSON.stringify(prevMat)) onMatiereChangeRef.current?.(nextMat);
+            }
+        }
+
         // Meca et conf depuis l'état partagé
-        const savedMeca = state?.meca;
-        const savedConf = state?.conf;
+        // (à défaut, lus dans les colonnes visibles, comme les matières)
+        const fromCols = (groups, current) => {
+            const g = groupStateFromColumns(groups, columnState);
+            return Object.keys(g).length ? { ...current, ...g } : null;
+        };
+        const savedMeca = state?.meca ?? fromCols(mecaGroups, localMecaRef.current);
+        const savedConf = state?.conf ?? fromCols(confGroups, localConfRef.current);
         if (savedMeca && mecaGroups?.length > 0) {
+            localMecaRef.current = savedMeca;
             setLocalMeca(savedMeca);
             const mecaState = [];
             mecaGroups.forEach(group => {
@@ -773,6 +854,7 @@ function MinuteGrid({
             api.applyColumnState({ state: mecaState });
         }
         if (savedConf && confGroups?.length > 0) {
+            localConfRef.current = savedConf;
             setLocalConf(savedConf);
             const confState = [];
             confGroups.forEach(group => {
@@ -781,21 +863,15 @@ function MinuteGrid({
             });
             api.applyColumnState({ state: confState });
         }
-    }, [initialVisibilityModel, mecaGroups, confGroups, schema, fillField]);
+    }, [initialVisibilityModel, matiereGroups, mecaGroups, confGroups, schema, fillField]);
 
     const onGridReady = useCallback((params) => {
         isGridReadyRef.current = true;
 
-        // Si Supabase a déjà répondu, on applique directement
-        if (sharedStateRef.current !== null || sharedStateLoaded) {
-            applySharedState(params.api, sharedStateRef.current);
-        }
-        // Vue personnelle (filtres / tri / regroupement) par-dessus la mise en page.
-        if (userStateRef.current) applyUserState(params.api, userStateRef.current);
-        refreshPinnedCount(params.api);
-        // Sinon, le useEffect ci-dessous prendra le relais dès que loaded=true
-
-        // Appliquer les matières sauvegardées (override par-dessus initialVisibilityModel)
+        // Bascules (matières, méca, conf) d'abord, avec leur valeur locale / par défaut ;
+        // la mise en page enregistrée du dossier passe ENSUITE et a le dernier mot.
+        // (Dans l'ordre inverse, revenir sur un dossier dont la mise en page était déjà
+        // en cache re-masquait aussitôt la passementerie affichée.)
         if (matiereGroups?.length > 0) {
             const currentMatieres = localMatieresRef.current;
             const matiereState = [];
@@ -825,6 +901,16 @@ function MinuteGrid({
             });
             params.api.applyColumnState({ state: confState });
         }
+
+        // Mise en page du dossier : si Supabase a déjà répondu, on applique directement
+        if (sharedStateRef.current !== null || sharedStateLoaded) {
+            applySharedState(params.api, sharedStateRef.current);
+            showLayout();
+        }
+        // Vue personnelle (filtres / tri / regroupement) par-dessus la mise en page.
+        if (userStateRef.current) applyUserState(params.api, userStateRef.current);
+        refreshPinnedCount(params.api);
+        // Sinon, le useEffect ci-dessous prendra le relais dès que loaded=true
     }, [gridId, initialVisibilityModel, matiereGroups, mecaGroups, confGroups]);
 
     // Appliquer l'état partagé quand Supabase répond après que la grille est prête.
@@ -835,6 +921,7 @@ function MinuteGrid({
         const api = gridRef.current?.api;
         if (!api || !isGridReadyRef.current) return;
         applySharedState(api, sharedStateRef.current);
+        showLayout();
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [sharedStateLoaded]); // intentionnellement sans sharedState dans les deps
 
@@ -908,7 +995,8 @@ function MinuteGrid({
     const saveColumnState = useCallback((api) => {
         const columnState = api.getColumnState()
             .map(({ colId, hide, pinned, width, flex }) => ({ colId, hide, pinned, width, flex }));
-        saveSharedState({ columnState, v: GRID_STATE_VERSION });
+        // `trusted` : état issu des gestes de l'équipe, à respecter tel quel au retour.
+        saveSharedState({ columnState, v: GRID_STATE_VERSION, trusted: true });
     }, [saveSharedState]);
 
     // ── PERSISTANCE PERSONNELLE : filtres de lignes, tri, regroupement ────────
@@ -988,12 +1076,12 @@ function MinuteGrid({
             return next;
         });
 
-        setLocalMatieres(prev => {
-            const next = { ...prev, [groupId]: active };
-            onMatiereChange?.(next);
-            return next;
-        });
-    }, [matiereGroups, saveColumnState, onMatiereChange]);
+        const next = { ...localMatieresRef.current, [groupId]: active };
+        localMatieresRef.current = next;
+        setLocalMatieres(next);
+        saveSharedState({ matieres: next }); // partagé avec la mise en page du dossier
+        onMatiereChange?.(next);
+    }, [matiereGroups, saveColumnState, saveSharedState, onMatiereChange]);
 
     const handleToggleMeca = useCallback((groupId, active) => {
         const api = gridRef.current?.api;
@@ -1035,6 +1123,10 @@ function MinuteGrid({
     }, [gridId, saveColumnState]);
 
     const onColumnVisible = useCallback((params) => {
+        // Seulement un geste de l'utilisateur (menu de colonne…) : nos propres
+        // applyColumnState / setColumnsVisible s'enregistrent déjà eux-mêmes, et la
+        // restauration à l'ouverture ne doit pas écrire une mise en page intermédiaire.
+        if (NON_USER_COLUMN_SOURCES.has(params.source)) return;
         saveColumnState(params.api);
     }, [saveColumnState]);
 
@@ -1319,11 +1411,13 @@ function MinuteGrid({
         // Remet aussi les bascules matière dans leur état par défaut.
         if (matiereGroups?.length) {
             const defMat = getDefaultMatieres(matiereGroups, initialVisibilityModel);
+            localMatieresRef.current = defMat;
             setLocalMatieres(defMat);
+            saveSharedState({ matieres: defMat });
             onMatiereChange?.(defMat);
         }
         setColPanelOpen(false);
-    }, [initialVisibilityModel, initialColumnOrder, schema, saveColumnState, matiereGroups, onMatiereChange]);
+    }, [initialVisibilityModel, initialColumnOrder, schema, saveColumnState, saveSharedState, matiereGroups, onMatiereChange]);
 
     // Réinitialise les LARGEURS à leur valeur par défaut (auto-ajustée au nom de champ) :
     // efface les largeurs sauvegardées et ré-applique la largeur par défaut à chaque colonne.
@@ -1375,6 +1469,7 @@ function MinuteGrid({
     // Cela évite tout problème de timing avec initialWidth / applyColumnState.
     const columnDefs = useMemo(() => {
         const savedWidths = initialWidths;
+        const defaultVis = initialVisibilityModelRef.current || {};
 
         const canEditLinks = ['admin', 'sales', 'ordo', 'op'].includes(resolvedUser?.role?.toLowerCase());
         const cols = schemaToGridCols(
@@ -1404,6 +1499,9 @@ function MinuteGrid({
                 // Les largeurs sauvegardées sont restaurées après coup via applyColumnState (chargement async Supabase).
                 width: undefined,
                 initialWidth: w,
+                // Masquée dès la création si la vue l'exclut par défaut : le premier dessin
+                // ne porte plus les ~110 colonnes (la mise en page enregistrée suit aussitôt).
+                initialHide: defaultVis[col.field] === false,
                 aggFunc,
                 // Colonne « de remplissage » : prend toute la largeur restante (jamais moins que sa largeur normale)
                 ...(fillField && col.field === fillField ? { flex: 1, minWidth: w } : {}),
@@ -2403,7 +2501,11 @@ function MinuteGrid({
 
             {/* AG Grid + poignée de redimensionnement vertical */}
             <div style={{ position: 'relative', ...(stickyTop != null ? { marginTop: -GROUP_PANEL_HEIGHT } : {}) }}>
-            <div ref={gridContainerRef} className={`ag-theme-alpine${reorderBlocked ? ' reorder-blocked' : ''}`} style={{ width: '100%', height: effectiveHeight }}>
+            <div ref={gridContainerRef} className={`ag-theme-alpine${reorderBlocked ? ' reorder-blocked' : ''}`} style={{ width: '100%', height: effectiveHeight, visibility: layoutShown ? 'visible' : 'hidden' }}>
+                {!layoutShown && (
+                    <div style={{ visibility: 'visible', position: 'absolute', top: 14, left: 14, fontSize: 13, color: '#9CA3AF' }}>Chargement du tableau…</div>
+                )}
+                {mountGrid && (
                 <AgGridReact
                     ref={gridRef}
                     rowData={rows}
@@ -2474,6 +2576,7 @@ function MinuteGrid({
                     animateRows={false}
                     stopEditingWhenCellsLoseFocus
                 />
+                )}
             </div>
 
             </div>
