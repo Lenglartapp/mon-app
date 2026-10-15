@@ -40,5 +40,5 @@ export function useExcelCaret(el) {
 /** Pas de surbrillance au survol ; seule la ligne de la case cliquée est surlignée. */
 export const FOCUS_ROW_SX = {
     '& .MuiDataGrid-row:hover': { backgroundColor: 'transparent' },
-    '& .MuiDataGrid-row:has(.MuiDataGrid-cell:focus), & .MuiDataGrid-row:has(.MuiDataGrid-cell:focus-within)': { backgroundColor: '#F4F4F4' },
+    '& .MuiDataGrid-row:has(.MuiDataGrid-cell:focus), & .MuiDataGrid-row:has(.MuiDataGrid-cell:focus-within)': { backgroundColor: '#EEF4FD' }, // bleu ciel ≠ gris des en-têtes
 };

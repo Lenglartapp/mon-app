@@ -301,7 +301,7 @@ const AG_CUSTOM_CSS = `
 /* Pas de surbrillance au survol (trop chargé) : seule la ligne de la case cliquée
    est surlignée, et l'effet disparaît en cliquant hors du tableau. */
 .ag-theme-alpine .ag-row-focus {
-  background-color: #F4F4F4 !important;
+  background-color: #EEF4FD !important; /* bleu ciel du nuancier : ne pas confondre avec le gris des en-têtes */
 }
 .ag-theme-alpine .ag-row-selected {
   background-color: #dbeafe !important;
