@@ -1,9 +1,8 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import TextField from '@mui/material/TextField';
-import Popover from '@mui/material/Popover';
 import { DataGrid } from '@mui/x-data-grid';
 import { frFR } from '@mui/x-data-grid/locales';
-import { Plus, Trash2, ChevronDown } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import DaDialog, { DaTabs } from './ui/DaDialog';
 import VariantTabs from './VariantTabs';
 import { DaField } from './ui/DaForm';
@@ -11,6 +10,9 @@ import { ToolbarButton, ToolbarSearch } from './ui/ToolbarControls';
 import { DATAGRID_DA_SX, TABLE_FRAME_STYLE, DA_FIELD_SX } from '../lib/constants/daStyles';
 import { CHIFFRAGE_SCHEMA } from '../lib/schemas/chiffrage';
 import { uid } from '../lib/utils/uid';
+import { buildUsage } from '../lib/catalogUsage';
+import UsagePopover from './catalog/UsagePopover';
+import { usageColumn } from './catalog/usageColumn';
 
 const CATEGORY_TABS = [
     { key: 'tissus', label: 'Tissus' },
@@ -23,29 +25,6 @@ const CATEGORY_TABS = [
 const FIELD_LABELS = Object.fromEntries((CHIFFRAGE_SCHEMA || []).map((c) => [c.key, c.label]));
 const EXTRA_LABELS = { tissu_1: 'Tissu 1', tissu_2: 'Tissu 2', passementerie_1: 'Passementerie 1', passementerie_2: 'Passementerie 2', type_interieur: 'Intérieur', molleton: 'Molleton', baguette_1: 'Baguette 1', baguette_2: 'Baguette 2', mecanisme_fourniture: 'Mécanisme', mecanisme_store: 'Mécanisme store', toile_finition_1: 'Toile' };
 const fieldLabel = (k) => FIELD_LABELS[k] || EXTRA_LABELS[k] || k;
-const lineLabel = (r) => [r.zone, r.piece, r.produit].filter(Boolean).join(' · ') || 'Ligne sans repère';
-
-/**
- * Où chaque article de la bibliothèque est utilisé dans le chiffrage :
- * nom d'article → [{ id, label, fields: [colonne…] }]
- */
-function buildUsage(rows, names) {
-    const out = new Map();
-    (rows || []).forEach((r) => {
-        if (!r || typeof r !== 'object') return;
-        const hits = new Map();
-        Object.entries(r).forEach(([k, v]) => {
-            if (typeof v !== 'string' || !names.has(v)) return;
-            if (!hits.has(v)) hits.set(v, []);
-            hits.get(v).push(fieldLabel(k));
-        });
-        hits.forEach((fields, name) => {
-            if (!out.has(name)) out.set(name, []);
-            out.get(name).push({ id: r.id, label: lineLabel(r), fields });
-        });
-    });
-    return out;
-}
 
 const SECTION_TITLE = { fontSize: 16, fontWeight: 500, color: '#111827', margin: 0 };
 
@@ -144,7 +123,7 @@ export default function CatalogManager({ open, onClose, catalog, onCatalogChange
     // Utilisation de chaque article dans les lignes du chiffrage.
     const usage = useMemo(() => {
         if (!Array.isArray(rows)) return null;
-        return buildUsage(rows, new Set((catalog || []).map(i => i?.name).filter(Boolean)));
+        return buildUsage(rows, new Set((catalog || []).map(i => i?.name).filter(Boolean)), fieldLabel);
     }, [rows, catalog]);
     const usageList = usageAnchor ? (usage?.get(usageAnchor.name) || []) : [];
 
@@ -296,32 +275,7 @@ export default function CatalogManager({ open, onClose, catalog, onCatalogChange
         // horizontal, laize et raccords visibles quel que soit l'écran. Libellé complet
         // en infobulle (`description`) quand l'en-tête est abrégé.
         // Utilisation dans le chiffrage : nombre de lignes, cliquable pour voir lesquelles.
-        if (usage) {
-            cols = [...cols, {
-                field: '__usage',
-                headerName: 'Utilisé',
-                description: "Nombre de lignes du chiffrage qui utilisent l'article (cliquer pour les voir)",
-                width: 90,
-                type: 'number',
-                align: 'right',
-                headerAlign: 'right',
-                editable: false,
-                valueGetter: (_v, row) => usage.get(row?.name)?.length || 0,
-                renderCell: (params) => {
-                    const n = params.value || 0;
-                    if (!n) return <span style={{ color: '#D1D5DB' }}>—</span>;
-                    return (
-                        <button
-                            type="button"
-                            onClick={(e) => { e.stopPropagation(); setUsageAnchor({ el: e.currentTarget, name: params.row.name }); }}
-                            style={{ display: 'inline-flex', alignItems: 'center', gap: 4, height: 24, padding: '0 8px', borderRadius: 99, border: 'none', background: '#E8EAF2', color: '#1E2447', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
-                        >
-                            {n} <ChevronDown size={12} />
-                        </button>
-                    );
-                },
-            }];
-        }
+        if (usage) cols = [...cols, usageColumn(usage, setUsageAnchor)];
 
         return cols.map(({ width, ...col }) => ({ ...col, flex: width, minWidth: 60 }));
     }, [activeCategoryTab, usage]);
@@ -392,27 +346,7 @@ export default function CatalogManager({ open, onClose, catalog, onCatalogChange
                             sx={{ ...DATAGRID_DA_SX, height: '100%', '& .MuiDataGrid-menuIcon': { overflow: 'hidden' } }}
                         />
                     </div>
-                    <Popover
-                        open={!!usageAnchor}
-                        anchorEl={usageAnchor?.el}
-                        onClose={() => setUsageAnchor(null)}
-                        anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
-                        transformOrigin={{ vertical: 'top', horizontal: 'left' }}
-                        PaperProps={{ sx: { borderRadius: '8px', border: '1px solid #E0DED9', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', maxWidth: 420 } }}
-                    >
-                        <div style={{ padding: '10px 14px', borderBottom: '1px solid #E8E6E2' }}>
-                            <div style={{ fontSize: 13, fontWeight: 500, color: '#111827' }}>{usageAnchor?.name}</div>
-                            <div style={{ fontSize: 12, color: '#6B7280', marginTop: 2 }}>Utilisé sur {usageList.length} ligne{usageList.length > 1 ? 's' : ''} du chiffrage</div>
-                        </div>
-                        <div style={{ maxHeight: 320, overflowY: 'auto', padding: '4px 0' }}>
-                            {usageList.map((u, i) => (
-                                <div key={u.id || i} style={{ display: 'flex', gap: 10, justifyContent: 'space-between', padding: '6px 14px', fontSize: 13, color: '#374151' }}>
-                                    <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.label}</span>
-                                    <span style={{ color: '#6B7280', whiteSpace: 'nowrap' }}>{u.fields.join(', ')}</span>
-                                </div>
-                            ))}
-                        </div>
-                    </Popover>
+                    <UsagePopover anchor={usageAnchor} list={usageList} onClose={() => setUsageAnchor(null)} where="du chiffrage" />
                 </div>
             ) : (
                 <div style={{ padding: '24px 28px', maxWidth: 760 }}>
