@@ -15,6 +15,7 @@ import { TonePill } from './ui/ToolbarControls';
 import FitPanel from './ui/FitPanel';
 import FilterPanel, { isConditionActive, evaluateCondition } from './FilterPanel';
 import { getDefaultMatieres } from '../lib/constants/matiereGroups';
+import { caretIndexAtOffset, offsetInCellText } from '../lib/utils/caretFromPoint';
 import { useAuth } from '../auth';
 import { useSharedGridState } from '../lib/hooks/useSharedGridState';
 import { useUserGridState } from '../lib/hooks/useUserGridState';
@@ -952,6 +953,52 @@ function MinuteGrid({
         return () => document.removeEventListener('mousedown', handleOutsideClick);
     }, []);
 
+    // Saisie à la Excel : type du dernier appui (souris / doigt) et dernier double-clic,
+    // pour placer le curseur de texte là où l'on a double-cliqué.
+    const lastPointerTypeRef = useRef('mouse');
+    const lastDblClickRef = useRef(null);
+    useEffect(() => {
+        const el = gridContainerRef.current;
+        if (!el) return undefined;
+        const onPointer = (e) => { lastPointerTypeRef.current = e.pointerType || 'mouse'; };
+        // Position du clic DANS le texte affiché de la case : le champ de saisie ne place
+        // pas son texte exactement au même endroit, on reporte donc l'écart, pas le point.
+        const onDbl = (e) => {
+            const cell = e.target?.closest?.('.ag-cell');
+            lastDblClickRef.current = { dx: offsetInCellText(cell, e.clientX), t: Date.now() };
+        };
+        el.addEventListener('pointerdown', onPointer, true);
+        el.addEventListener('dblclick', onDbl, true);
+        return () => { el.removeEventListener('pointerdown', onPointer, true); el.removeEventListener('dblclick', onDbl, true); };
+    }, [mountGrid]);
+
+    // AG Grid ouvre la case avec TOUT le texte sélectionné (double-clic, Entrée) : la
+    // moindre frappe effaçait la valeur. On place à la place le curseur à l'endroit
+    // double-cliqué (ou en fin de texte), comme Excel. Une saisie commencée en tapant
+    // directement sur la case remplace toujours la valeur (comme Excel aussi).
+    const onCellEditingStarted = useCallback(() => {
+        const dbl = lastDblClickRef.current;
+        lastDblClickRef.current = null;
+        // AG Grid sélectionne tout dans afterGuiAttached, juste avant ou juste après cet
+        // événement selon les cases : on vérifie tout de suite, puis à quelques instants
+        // (minuteries, pas d'images d'animation : celles-ci sont ralenties quand l'onglet
+        // est peu actif). On n'agit qu'une fois, et seulement sur un « tout sélectionné » :
+        // une saisie commencée en tapant ne l'est jamais, elle reste telle quelle.
+        let done = false;
+        const place = () => {
+            if (done) return;
+            const input = gridContainerRef.current?.querySelector('.ag-cell-inline-editing input:not([type=checkbox])');
+            const len = String(input?.value ?? '').length;
+            if (!input || !len || input.selectionStart !== 0 || input.selectionEnd !== len) return;
+            done = true;
+            const at = dbl && dbl.dx != null && Date.now() - dbl.t < 800 ? caretIndexAtOffset(input, dbl.dx) : len;
+            try { input.setSelectionRange(at, at); } catch { /* type sans sélection */ }
+        };
+        place();
+        queueMicrotask(place);
+        [0, 30, 100, 250].forEach(ms => setTimeout(place, ms));
+    }, []);
+
     const onCellClicked = useCallback((params) => {
         // Ligne de totaux : ouvre le menu d'agrégation
         if (params.node.rowPinned === 'bottom') {
@@ -972,7 +1019,10 @@ function MinuteGrid({
             return;
         }
 
-        // singleClickEdit pour les cellules non-select (les selects s'éditent au double-clic)
+        // Comme Excel : un clic SÉLECTIONNE la case, le double-clic (ou la frappe, Entrée,
+        // F2) l'ouvre. Exception : au doigt (tablette), un toucher ouvre encore la case,
+        // le double-toucher étant peu pratique.
+        if (lastPointerTypeRef.current !== 'touch') return;
         if (readOnly || params.node.rowPinned) return;
         if (SELECT_EDITORS.has(params.colDef?.cellEditor)) return;
         const isEditable = typeof params.colDef?.editable === 'function'
@@ -2557,6 +2607,7 @@ function MinuteGrid({
                     }}
                     onSelectionChanged={onSelectionChanged}
                     onCellClicked={onCellClicked}
+                    onCellEditingStarted={onCellEditingStarted}
                     onCellValueChanged={onCellValueChanged}
                     onFilterChanged={(e) => { setFilterVersion(v => v + 1); updateReorderState(); persistUserView(e.api); }}
                     onSortChanged={(e) => { updateReorderState(); persistUserView(e.api); }}
