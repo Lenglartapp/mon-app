@@ -298,7 +298,9 @@ const AG_CUSTOM_CSS = `
 .ag-theme-alpine .ag-row-odd {
   background-color: #ffffff;
 }
-.ag-theme-alpine .ag-row-hover {
+/* Pas de surbrillance au survol (trop chargé) : seule la ligne de la case cliquée
+   est surlignée, et l'effet disparaît en cliquant hors du tableau. */
+.ag-theme-alpine .ag-row-focus {
   background-color: #F4F4F4 !important;
 }
 .ag-theme-alpine .ag-row-selected {
@@ -947,6 +949,11 @@ function MinuteGrid({
             if (!gridContainerRef.current) return;
             if (!gridContainerRef.current.contains(e.target)) {
                 gridRef.current?.api?.clearCellSelection();
+                // Clic hors du tableau : la ligne n'est plus surlignée — sauf vers un menu
+                // ou une fenêtre ouverte depuis le tableau (le travail continue dessus).
+                if (!e.target?.closest?.('.MuiPopover-root, .MuiPopper-root, .MuiDialog-root, .MuiMenu-root, .ag-popup')) {
+                    gridRef.current?.api?.clearFocusedCell();
+                }
             }
         };
         document.addEventListener('mousedown', handleOutsideClick);
@@ -2608,6 +2615,7 @@ function MinuteGrid({
                     onSelectionChanged={onSelectionChanged}
                     onCellClicked={onCellClicked}
                     onCellEditingStarted={onCellEditingStarted}
+                    suppressRowHoverHighlight
                     onCellValueChanged={onCellValueChanged}
                     onFilterChanged={(e) => { setFilterVersion(v => v + 1); updateReorderState(); persistUserView(e.api); }}
                     onSortChanged={(e) => { updateReorderState(); persistUserView(e.api); }}

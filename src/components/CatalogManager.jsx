@@ -12,7 +12,8 @@ import { CHIFFRAGE_SCHEMA } from '../lib/schemas/chiffrage';
 import { uid } from '../lib/utils/uid';
 import { buildUsage } from '../lib/catalogUsage';
 import UsagePopover from './catalog/UsagePopover';
-import { usageColumn } from './catalog/usageColumn';
+import { usageColumn, withTextNumberEditor } from './catalog/usageColumn';
+import { useExcelCaret, FOCUS_ROW_SX } from '../lib/hooks/useExcelCaret';
 
 const CATEGORY_TABS = [
     { key: 'tissus', label: 'Tissus' },
@@ -35,6 +36,8 @@ export default function CatalogManager({ open, onClose, catalog, onCatalogChange
     const [usageAnchor, setUsageAnchor] = useState(null); // { el, name }
     const [activeTab, setActiveTab] = React.useState('catalog');
     const [activeCategoryTab, setActiveCategoryTab] = React.useState('tissus'); // New Sub-tab state
+    const [gridWrapEl, setGridWrapEl] = useState(null);
+    useExcelCaret(gridWrapEl);
     const [localSettings, setLocalSettings] = React.useState(props.settings || { taux_horaire: 135, prix_nuit: 180, prix_repas: 25 });
 
     // Track previous props to prevent overwrite loops caused by parent re-renders
@@ -277,7 +280,7 @@ export default function CatalogManager({ open, onClose, catalog, onCatalogChange
         // Utilisation dans le chiffrage : nombre de lignes, cliquable pour voir lesquelles.
         if (usage) cols = [...cols, usageColumn(usage, setUsageAnchor)];
 
-        return cols.map(({ width, ...col }) => ({ ...col, flex: width, minWidth: 60 }));
+        return cols.map(({ width, ...col }) => withTextNumberEditor({ ...col, flex: width, minWidth: 60 }));
     }, [activeCategoryTab, usage]);
 
     if (!open) return null;
@@ -329,7 +332,7 @@ export default function CatalogManager({ open, onClose, catalog, onCatalogChange
                         )}
                         <ToolbarButton primary icon={<Plus size={15} />} onClick={handleAddRow}>Ajouter un article</ToolbarButton>
                     </div>
-                    <div style={{ ...TABLE_FRAME_STYLE, flex: 1, minHeight: 0 }}>
+                    <div ref={setGridWrapEl} style={{ ...TABLE_FRAME_STYLE, flex: 1, minHeight: 0 }}>
                         <DataGrid
                             rows={filteredRows}
                             columns={columns}
@@ -343,7 +346,7 @@ export default function CatalogManager({ open, onClose, catalog, onCatalogChange
                             columnHeaderHeight={42}
                             // L'icône de menu masquée de la dernière colonne dépassait de quelques px
                             // et suffisait à faire apparaître un défilement horizontal.
-                            sx={{ ...DATAGRID_DA_SX, height: '100%', '& .MuiDataGrid-menuIcon': { overflow: 'hidden' } }}
+                            sx={{ ...DATAGRID_DA_SX, ...FOCUS_ROW_SX, height: '100%', '& .MuiDataGrid-menuIcon': { overflow: 'hidden' } }}
                         />
                     </div>
                     <UsagePopover anchor={usageAnchor} list={usageList} onClose={() => setUsageAnchor(null)} where="du chiffrage" />

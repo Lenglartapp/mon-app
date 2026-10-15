@@ -10,10 +10,16 @@ const ROBOTO = 'Roboto, system-ui, sans-serif';
 //  - `tabs`        : rangée d'onglets sous l'en-tête (cf. DaTabs)
 //  - `footer`      : pied (boutons) ; omis = pas de pied
 export default function DaDialog({ open, onClose, title, subtitle, headerExtra, tabs, footer, children, maxWidth = 'sm', height, bodyPadding = '20px 28px' }) {
+  // Échap pendant la saisie dans une case de tableau : annule la saisie seulement,
+  // la fenêtre reste ouverte (avant, elle se fermait d'un coup).
+  const handleClose = (event, reason) => {
+    if (reason === 'escapeKeyDown' && document.querySelector('.MuiDataGrid-cell--editing, .ag-cell-inline-editing')) return;
+    onClose?.(event, reason);
+  };
   return (
     <Dialog
       open={open}
-      onClose={onClose}
+      onClose={handleClose}
       maxWidth={maxWidth}
       fullWidth
       PaperProps={{ sx: { borderRadius: '12px', overflow: 'hidden', boxShadow: '0 20px 40px rgba(17,24,39,0.18)', fontFamily: ROBOTO, ...(height ? { height } : {}) } }}
