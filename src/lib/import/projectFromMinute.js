@@ -56,6 +56,8 @@ export function buildProjectFromMinute(minute, opts = {}) {
     // les lignes reprises du devis gardent le marqueur de leur chiffrage.
     config: { formules_metrage: FORMULES_METRAGE_V2, formules_stores: FORMULES_STORES_V1 },
     rows: computeFormulas(rows.map((r) => applySchemaDefaults({ ...withoutChiffrageMessages(r), formules_metrage: FORMULES_METRAGE_V2 }, SCHEMA_64)), SCHEMA_64),
-    materials: extractMaterialsFromLines(rows),
+    // Bibliothèque du chiffrage → matériauthèque : fournisseur, référence, coloris,
+    // famille, laize, motif et raccords de chaque article utilisé.
+    materials: extractMaterialsFromLines(rows, minute?.catalog),
   };
 }

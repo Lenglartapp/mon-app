@@ -2114,6 +2114,8 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
         onClose={() => setShowMaterials(false)}
         materials={projectMaterials}
         onMaterialsChange={handleMaterialsChange}
+        rows={rows}
+        sourceMinuteId={project?.sourceMinuteId || project?.source_minute_id || null}
       />
 
     </div >
