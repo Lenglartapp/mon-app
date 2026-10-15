@@ -49,15 +49,18 @@ export function useSharedGridState(gridKey, templateKey = null) {
             setLoaded(true);
         };
 
+        // Mise en page du dossier ET modèle de départ en UNE requête : auparavant le
+        // modèle n'était demandé qu'après la réponse du dossier (deux allers-retours,
+        // le tableau attendait d'autant plus pour s'afficher bien rangé).
+        const keys = templateKey && templateKey !== gridKey ? [gridKey, templateKey] : [gridKey];
         supabase
             .from('grid_views')
-            .select('column_state')
-            .eq('grid_key', gridKey)
-            .maybeSingle()
-            .then(({ data: row }) => {
+            .select('grid_key, column_state')
+            .in('grid_key', keys)
+            .then(({ data: rows, error }) => {
                 if (cancelled) return;
-                const state = row?.column_state ?? null;
-
+                if (error) { apply(null); return; }
+                const byKey = Object.fromEntries((rows || []).map(r => [r.grid_key, r.column_state]));
                 // MODÈLE DE DÉPART — un dossier qui n'a pas encore sa propre mise en
                 // page hérite de la mise en page globale historique (`templateKey`).
                 // Sans ça, la bascule « une mise en page par dossier » ferait repartir
@@ -65,16 +68,7 @@ export function useSharedGridState(gridKey, templateKey = null) {
                 // 114 colonnes au lieu des 22 réglées par l'atelier.
                 // Le modèle n'est PAS réécrit : il sert de point de départ, et la
                 // première modification enregistre une ligne propre au dossier.
-                if (state === null && templateKey && templateKey !== gridKey) {
-                    supabase
-                        .from('grid_views')
-                        .select('column_state')
-                        .eq('grid_key', templateKey)
-                        .maybeSingle()
-                        .then(({ data: tpl }) => apply(tpl?.column_state ?? null));
-                    return;
-                }
-                apply(state);
+                apply(byKey[gridKey] ?? (keys.length > 1 ? byKey[templateKey] ?? null : null));
             });
 
         return () => { cancelled = true; };

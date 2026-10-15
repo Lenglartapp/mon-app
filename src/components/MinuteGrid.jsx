@@ -558,6 +558,24 @@ function MinuteGrid({
     const localConfRef = useRef(localConf);
     localConfRef.current = localConf;
     const isGridReadyRef = useRef(false);
+    // Le tableau reste invisible tant que la mise en page enregistrée du dossier
+    // (ordre, colonnes masquées) n'est pas posée : sinon il s'affichait d'abord dans
+    // l'ordre par défaut puis les colonnes bougeaient une à deux secondes plus tard.
+    const [layoutShown, setLayoutShown] = useState(false);
+    const showLayout = useCallback(() => {
+        requestAnimationFrame(() => setLayoutShown(true));
+    }, []);
+    // Le tableau n'est CRÉÉ qu'une fois la mise en page connue : créé avant, il se
+    // dessinait avec toutes ses colonnes (lourd) et retardait d'autant l'arrivée de
+    // la mise en page. Filet de sécurité (réseau lent, hors ligne) : on y va quand même.
+    const [layoutWaitOver, setLayoutWaitOver] = useState(false);
+    useEffect(() => {
+        const t1 = setTimeout(() => setLayoutWaitOver(true), 1500);
+        // Mieux vaut attendre un peu qu'afficher des colonnes qui bougent sous la saisie :
+        // on ne montre un tableau non rangé qu'en dernier recours (serveur injoignable).
+        const t2 = setTimeout(() => setLayoutShown(true), 8000);
+        return () => { clearTimeout(t1); clearTimeout(t2); };
+    }, []);
     const pendingRowUpdatesRef = useRef({});  // batch des onCellValueChanged simultanés (paste/fill)
     const pendingFieldsRef = useRef(new Set()); // colonnes saisies dans ce lot (libellé Ctrl+Z)
     const flushScheduledRef    = useRef(false);
@@ -643,6 +661,11 @@ function MinuteGrid({
     const gridId = `${STORAGE_PREFIX}${scopedGridKey}`;
     const supabaseGridKey = scopedGridKey;
     const { data: sharedState, loaded: sharedStateLoaded, save: saveSharedState } = useSharedGridState(supabaseGridKey, templateGridKey);
+    const initialVisibilityModelRef = useRef(initialVisibilityModel);
+    initialVisibilityModelRef.current = initialVisibilityModel;
+    const gridMountedRef = useRef(false);
+    const mountGrid = gridMountedRef.current || sharedStateLoaded || layoutWaitOver;
+    gridMountedRef.current = mountGrid; // une fois créé, le tableau reste en place
 
     // Réglages PERSONNELS (filtres de lignes, tri, regroupement) — voir le commentaire
     // du hook : un filtre partagé masquerait des lignes chez les collègues.
@@ -882,6 +905,7 @@ function MinuteGrid({
         // Mise en page du dossier : si Supabase a déjà répondu, on applique directement
         if (sharedStateRef.current !== null || sharedStateLoaded) {
             applySharedState(params.api, sharedStateRef.current);
+            showLayout();
         }
         // Vue personnelle (filtres / tri / regroupement) par-dessus la mise en page.
         if (userStateRef.current) applyUserState(params.api, userStateRef.current);
@@ -897,6 +921,7 @@ function MinuteGrid({
         const api = gridRef.current?.api;
         if (!api || !isGridReadyRef.current) return;
         applySharedState(api, sharedStateRef.current);
+        showLayout();
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [sharedStateLoaded]); // intentionnellement sans sharedState dans les deps
 
@@ -1444,6 +1469,7 @@ function MinuteGrid({
     // Cela évite tout problème de timing avec initialWidth / applyColumnState.
     const columnDefs = useMemo(() => {
         const savedWidths = initialWidths;
+        const defaultVis = initialVisibilityModelRef.current || {};
 
         const canEditLinks = ['admin', 'sales', 'ordo', 'op'].includes(resolvedUser?.role?.toLowerCase());
         const cols = schemaToGridCols(
@@ -1473,6 +1499,9 @@ function MinuteGrid({
                 // Les largeurs sauvegardées sont restaurées après coup via applyColumnState (chargement async Supabase).
                 width: undefined,
                 initialWidth: w,
+                // Masquée dès la création si la vue l'exclut par défaut : le premier dessin
+                // ne porte plus les ~110 colonnes (la mise en page enregistrée suit aussitôt).
+                initialHide: defaultVis[col.field] === false,
                 aggFunc,
                 // Colonne « de remplissage » : prend toute la largeur restante (jamais moins que sa largeur normale)
                 ...(fillField && col.field === fillField ? { flex: 1, minWidth: w } : {}),
@@ -2472,7 +2501,11 @@ function MinuteGrid({
 
             {/* AG Grid + poignée de redimensionnement vertical */}
             <div style={{ position: 'relative', ...(stickyTop != null ? { marginTop: -GROUP_PANEL_HEIGHT } : {}) }}>
-            <div ref={gridContainerRef} className={`ag-theme-alpine${reorderBlocked ? ' reorder-blocked' : ''}`} style={{ width: '100%', height: effectiveHeight }}>
+            <div ref={gridContainerRef} className={`ag-theme-alpine${reorderBlocked ? ' reorder-blocked' : ''}`} style={{ width: '100%', height: effectiveHeight, visibility: layoutShown ? 'visible' : 'hidden' }}>
+                {!layoutShown && (
+                    <div style={{ visibility: 'visible', position: 'absolute', top: 14, left: 14, fontSize: 13, color: '#9CA3AF' }}>Chargement du tableau…</div>
+                )}
+                {mountGrid && (
                 <AgGridReact
                     ref={gridRef}
                     rowData={rows}
@@ -2543,6 +2576,7 @@ function MinuteGrid({
                     animateRows={false}
                     stopEditingWhenCellsLoseFocus
                 />
+                )}
             </div>
 
             </div>
