@@ -41,9 +41,68 @@ const MATERIAL_FIELDS = [
   { nameKey: 'mecanisme_store',   laizeKey: null,                      rvKey: null,                          rhKey: null,                          category: 'Store' },
 ];
 
-export function extractMaterialsFromLines(rows) {
+const cleanText = (v) => String(v ?? '').replace(/\s+/g, ' ').trim();
+
+/**
+ * Matériauthèque d'un projet créé depuis un chiffrage.
+ *
+ * 1. Chaque article de la BIBLIOTHÈQUE du chiffrage utilisé par au moins une ligne
+ *    (quelle que soit la colonne : tissu, doublure, passementerie, méca, coussins,
+ *    plaids…) est repris avec ses fournisseur / référence / coloris, sa famille,
+ *    sa laize, son motif et ses raccords.
+ * 2. Les noms présents sur les lignes mais absents de la bibliothèque (saisie libre)
+ *    sont repris comme avant, depuis les colonnes connues des lignes.
+ *
+ * @param {object[]} rows     lignes du chiffrage
+ * @param {object[]} catalog  bibliothèque du chiffrage (minute.catalog)
+ */
+export function extractMaterialsFromLines(rows, catalog = []) {
   const seen = new Set();
   const materials = [];
+
+  // Laize / raccords lus sur les lignes : repli quand la bibliothèque ne les porte pas.
+  const fromLines = new Map();
+  (rows || []).forEach(row => {
+    MATERIAL_FIELDS.forEach(({ nameKey, laizeKey, rvKey, rhKey }) => {
+      const name = row?.[nameKey];
+      if (!name || fromLines.has(name)) return;
+      fromLines.set(name, {
+        width: laizeKey ? Number(row[laizeKey] || 0) : 0,
+        raccord_v: rvKey ? Number(row[rvKey] || 0) : 0,
+        raccord_h: rhKey ? Number(row[rhKey] || 0) : 0,
+      });
+    });
+  });
+
+  // 1. Articles de la bibliothèque utilisés par les lignes
+  const used = new Set();
+  (rows || []).forEach(row => {
+    if (!row || typeof row !== 'object') return;
+    Object.values(row).forEach(v => { if (typeof v === 'string' && v) used.add(v); });
+  });
+  (Array.isArray(catalog) ? catalog : []).forEach(item => {
+    const name = item?.name;
+    if (!name || seen.has(name) || !used.has(name)) return;
+    seen.add(name);
+    const line = fromLines.get(name) || {};
+    const num = (v, fallback) => (Number(v) > 0 ? Number(v) : (fallback || 0));
+    const rv = num(item.raccord_v, line.raccord_v);
+    const rh = num(item.raccord_h, line.raccord_h);
+    materials.push({
+      id: uid(),
+      name,
+      provider: cleanText(item.provider),
+      reference: cleanText(item.reference),
+      color: cleanText(item.color),
+      category: item.category || 'Tissu',
+      width: num(item.width ?? item.laize, line.width),
+      motif: Boolean(item.motif) || rv > 0 || rh > 0,
+      raccord_v: rv,
+      raccord_h: rh,
+    });
+  });
+
+  // 2. Noms saisis sur les lignes, absents de la bibliothèque
   (rows || []).forEach(row => {
     MATERIAL_FIELDS.forEach(({ nameKey, laizeKey, rvKey, rhKey, category }) => {
       const name = row[nameKey];
