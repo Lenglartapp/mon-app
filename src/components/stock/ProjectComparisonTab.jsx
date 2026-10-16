@@ -16,7 +16,7 @@ const STATUS = {
     missing: { label: 'Pas commandé', tone: null },
 };
 const STATUT_ODOO = {
-    a_commander: 'À commander', verifier_stock: 'Vérifier stock', en_stock: 'En stock', achete_client: 'Acheté client',
+    en_attente: 'En attente', a_commander: 'À commander', verifier_stock: 'Vérifier stock', en_stock: 'En stock', achete_client: 'Acheté client',
     commande_passee: 'Commandée', reception_partielle: 'Réception partielle', receptionne: 'Réceptionné', probleme: 'Problème',
 };
 
@@ -150,6 +150,7 @@ export default function ProjectComparisonTab({ needs, basis, courseLines, loadin
                                         <td style={{ ...td, textAlign: 'right' }}>
                                             <div style={{ fontWeight: 600 }}>{fmt(r.ordered)} ml</div>
                                             {r.toOrder > 0 && <div style={{ fontSize: 11, color: '#B45309' }}>dont {fmt(r.toOrder)} à commander</div>}
+                                            {r.onHold > 0 && <div style={{ fontSize: 11, color: '#6B7280' }}>dont {fmt(r.onHold)} en attente</div>}
                                         </td>
                                         <td style={{ ...td, textAlign: 'right', fontWeight: 600 }}>{fmt(r.received)} ml</td>
                                         <td style={{ ...td, textAlign: 'right', fontWeight: 600, color: r.diff < 0 ? '#B91C1C' : '#374151' }}>

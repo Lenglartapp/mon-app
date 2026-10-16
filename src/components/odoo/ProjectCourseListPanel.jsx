@@ -9,6 +9,9 @@ import { TonePill, ToolbarButton } from "../ui/ToolbarControls";
 // Statut de la ligne de courses : pastille du nuancier bleu, de « à commander » (bleu ciel)
 // à « réceptionné » (bleu nuit) ; « problème » reste signalé en rouge.
 const STATUT = {
+  // Posé à la main par le chargé d'affaires (métrage à confirmer, validation client,
+  // acompte…) : ni commandé ni reçu, à ne pas commander tant qu'il n'est pas levé.
+  en_attente:      { label: "En attente",     tone: null },
   a_commander:     { label: "À commander",    tone: 5 },
   verifier_stock:  { label: "Vérifier stock", tone: 4 },
   en_stock:        { label: "En stock",       tone: 3 },

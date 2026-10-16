@@ -167,8 +167,11 @@ export function buildComparison(needs, courseLines) {
         const counted = linked.filter(isOrdered);
         const ordered = round2(counted.reduce((s, l) => s + num(l.quantite), 0));
         const toOrder = round2(counted.filter((l) => l.statut === 'a_commander' || l.statut === 'verifier_stock').reduce((s, l) => s + num(l.quantite), 0));
+        // « En attente » (posé par le chargé d'affaires) : prévu sur la liste mais à ne pas
+        // encore commander — compté comme « À commander », signalé à part.
+        const onHold = round2(counted.filter((l) => l.statut === 'en_attente').reduce((s, l) => s + num(l.quantite), 0));
         const received = round2(linked.reduce((s, l) => s + receivedQty(l), 0));
-        return { need: n, linked, ordered, toOrder, received, diff: round2(ordered - n.total), status: comparisonStatus(n.total, ordered) };
+        return { need: n, linked, ordered, toOrder, onHold, received, diff: round2(ordered - n.total), status: comparisonStatus(n.total, ordered) };
     });
     const unmatched = lines.filter((l) => !matches.get(l.odoo_id)?.needKey);
     return { rows, unmatched, matches };
