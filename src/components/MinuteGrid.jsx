@@ -1764,6 +1764,14 @@ function MinuteGrid({
             updatedRow.pv_mecanisme = 0;
         }
 
+        // 0 bis. Chiffrage : la largeur SUIT chaque changement de L. Méca (600 → 200 : la
+        //    largeur passe à 200). L'inverse non : modifier la largeur seule ne touche pas
+        //    au rail. En production (projectId), les deux restent indépendantes.
+        if (changedKey === 'largeur_mecanisme' && !projectId
+            && newVal !== '' && newVal != null && String(newVal) !== String(oldVal ?? '')) {
+            updatedRow.largeur = newVal;
+        }
+
         // 1. Catalog auto-fill
         const isCatalogColumn = changedKey && (
             changedKey.includes('tissu') ||
@@ -1888,7 +1896,7 @@ function MinuteGrid({
         } catch (e) {
             console.error('Erreur calcul', e);
         }
-    }, [schema, formulaCtx, catalog, resolvedUser, enableCellFormulas, enableDecentree, emitRows]);
+    }, [schema, formulaCtx, catalog, resolvedUser, enableCellFormulas, enableDecentree, emitRows, projectId]);
 
     // Valide la valeur avant de l'appliquer via clipboard/fill.
     // Pour les selects, rejette toute valeur absente des options autorisées.
