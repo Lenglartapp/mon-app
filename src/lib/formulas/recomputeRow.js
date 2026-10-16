@@ -401,12 +401,14 @@ export function recomputeRow(row, schema, ctx = {}) {
       next.pv_mecanisme_bis = 0;
     }
 
-    // Embrasse (passementerie vendue à la pièce)
+    // Embrasse : passementerie à la pièce (toute faite) ou au mètre (réalisée dans une
+    // passementerie). Pas de quantité : le PA saisi sur la ligne couvre toutes les
+    // embrasses du rideau (2 embrasses = PA des 2).
     next.pv_embrasse_auto = false; // repère de verrouillage du PV
     if (next.embrasse) {
       const embItem = catalog.find(i => i.name === next.embrasse);
-      if (embItem?.unit === 'pce') {
-        // À la pièce : PA saisi à la main dans le tableau, PV = PA × marge (coef de la
+      if (embItem) {
+        // PA saisi à la main dans le tableau, PV = PA × marge (coef de l'article dans la
         // biblio, 2 par défaut). Le PV devient auto → verrouillé (pv_embrasse_auto).
         const coef = Number(embItem.coef) || 2;
         next.pv_embrasse = Math.round(NVL(next.pa_embrasse) * coef * 100) / 100;
