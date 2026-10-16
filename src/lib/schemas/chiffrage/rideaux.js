@@ -142,8 +142,8 @@ export const RIDEAUX_SCHEMA = [
 
     // 56b — Embrasse (passementerie vendue à la pièce)
     { key: "embrasse", label: "Embrasse", type: "catalog_item", category: "Passementerie", width: 165 },
-    { tooltip: "Prix d'achat de l'embrasse (à saisir, article vendu à la pièce).", key: "pa_embrasse", label: "PA Embrasse", type: "number", width: 145 },
-    { tooltip: "Article à la pièce : PA × coef. de l'article (2 par défaut).", key: "pv_embrasse", label: "PV Embrasse", type: "number", width: 145, readOnly: (row) => row.pv_embrasse_auto === true },
+    { tooltip: "Prix d'achat de l'embrasse, à saisir : total des embrasses du rideau (ex. 2 embrasses = PA des 2), article à la pièce ou au mètre.", key: "pa_embrasse", label: "PA Embrasse", type: "number", width: 145 },
+    { tooltip: "PA × coef. de l'article dans la bibliothèque (2 par défaut).", key: "pv_embrasse", label: "PV Embrasse", type: "number", width: 145, readOnly: (row) => row.pv_embrasse_auto === true },
 
     // 57
     { key: "type_mecanisme", label: "Type Méca", type: "select", options: ["Rail", "Tringle", "Rail Motorisé", "Sans Méca"], width: 148 },

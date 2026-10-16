@@ -399,11 +399,9 @@ export function schemaToGridCols(
           }
           return { values: ['', ...subFiltered.map(a => a.name)], ...richParams };
         };
-      } else if (col.key === 'embrasse') {
-        // Embrasse = passementerie vendue à la pièce → ne lister que les articles 'pce'
-        const embItems = filteredCatalog.filter(a => a.unit === 'pce');
-        gridCol.cellEditorParams = { values: ['', ...embItems.map(a => a.name)], ...richParams };
       } else {
+        // (Embrasse comprise : toutes les passementeries, à la pièce OU au mètre — une
+        // embrasse peut être achetée toute faite ou réalisée dans une passementerie.)
         gridCol.cellEditorParams = { values: ['', ...filteredCatalog.map(a => a.name)], ...richParams };
       }
     }
