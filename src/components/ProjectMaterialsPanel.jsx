@@ -30,6 +30,12 @@ const fieldLabel = (k) => FIELD_LABELS[k] || EXTRA_LABELS[k] || k;
 
 const clean = (v) => String(v ?? '').replace(/\s+/g, ' ').trim();
 const nameFromParts = (r) => [r.provider, r.reference, r.color].map(clean).filter(Boolean).join(' ');
+// Nom provisoire d'un article ajouté avec « Ajouter un article » : à remplacer par
+// Fournisseur + Référence + Coloris dès qu'ils sont saisis.
+const PLACEHOLDER_NAME = 'Nouvel article (à compléter)';
+// Un tissu sans laize ne sert à rien (pas de métrage possible) : saisie obligatoire.
+const isFabric = (m) => inTab(TABS[0], m);
+const missingLaize = (m) => isFabric(m) && !(Number(m.width) > 0);
 
 const parseDecimal = (value) => {
   const n = parseFloat(String(value ?? '').trim().replace(',', '.'));
@@ -106,6 +112,39 @@ export default function ProjectMaterialsPanel({ open, onClose, materials = [], o
   const [minuteCatalog, setMinuteCatalog] = useState([]);
   const [gridWrapEl, setGridWrapEl] = useState(null);
   useExcelCaret(gridWrapEl);
+  const [laizeAlert, setLaizeAlert] = useState(false);
+  // Dernière liste connue : deux saisies rapprochées ne doivent pas s'écraser.
+  const materialsRef = React.useRef(materials);
+  materialsRef.current = materials;
+  const commit = (next) => { materialsRef.current = next; onMaterialsChange(next); };
+
+  // Réparation : articles ajoutés avant ce correctif, restés sur le nom provisoire alors
+  // que fournisseur / référence / coloris sont saisis → nom recomposé (et reporté sur
+  // les lignes par l'appelant, comme tout renommage).
+  useEffect(() => {
+    if (!open) return;
+    const stuck = materials.some(m => clean(m?.name) === PLACEHOLDER_NAME && nameFromParts(m));
+    if (stuck) commit(materials.map(m => (clean(m?.name) === PLACEHOLDER_NAME && nameFromParts(m) ? { ...m, name: nameFromParts(m) } : m)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, materials]);
+
+  // Tissus AJOUTÉS pendant cette ouverture : leur laize est obligatoire. Les anciens
+  // tissus sans laize sont signalés en rouge sans bloquer (on doit pouvoir consulter la
+  // matériauthèque d'un vieux dossier sans tout compléter).
+  const addedIdsRef = React.useRef(new Set());
+  useEffect(() => { if (open) addedIdsRef.current = new Set(); else setLaizeAlert(false); }, [open]);
+  const fabricsWithoutLaize = materials.filter(m => m && addedIdsRef.current.has(m.id) && missingLaize(m));
+  // Fermeture bloquée tant qu'un tissu ajouté n'a pas de laize (croix, Échap, clic à côté).
+  const handleClose = (event, reason) => {
+    if (fabricsWithoutLaize.length) {
+      setLaizeAlert(true);
+      setActiveTabKey('Tissu');
+      setSearch('');
+      return;
+    }
+    setLaizeAlert(false);
+    onClose?.(event, reason);
+  };
 
   // Fournisseur / référence / coloris : les articles repris d'un chiffrage ne portent
   // que leur nom complet. On les retrouve dans la bibliothèque du chiffrage d'origine
@@ -159,31 +198,34 @@ export default function ProjectMaterialsPanel({ open, onClose, materials = [], o
     return { key: t.key, label: `${t.label}${n > 0 ? ` (${n})` : ''}` };
   });
 
-  const handleAdd = (item) => { onMaterialsChange([...materials, item]); setCatalogAnchor(null); };
+  const handleAdd = (item) => { addedIdsRef.current.add(item.id); commit([...materialsRef.current, item]); setCatalogAnchor(null); };
 
   const handleAddBlank = () => {
-    onMaterialsChange([...materials, {
-      id: uid(), name: 'Nouvel article (à compléter)', provider: '', reference: '', color: '',
+    const id = uid();
+    addedIdsRef.current.add(id);
+    commit([...materialsRef.current, {
+      id, name: PLACEHOLDER_NAME, provider: '', reference: '', color: '',
       category: activeTab.key, width: 0, motif: false, raccord_v: 0, raccord_h: 0,
     }]);
   };
 
   const handleDelete = () => {
     const ids = new Set(selection);
-    onMaterialsChange(materials.filter(m => !ids.has(m.id || m.name)));
+    commit(materialsRef.current.filter(m => !ids.has(m.id || m.name)));
     setSelection([]);
   };
 
   // Le NOM est la clé du lien article ↔ lignes ; un renommage est reporté sur les
   // lignes par l'appelant (applyCatalogRenames). Il est recomposé (Fournisseur +
   // Référence + Coloris, comme au chiffrage) quand l'un des trois change, SEULEMENT
-  // s'il en était déjà la composition : un article saisi à la main (« ZIMMER & RHODE
-  // Moon 1311 11 ») garde son nom quand on complète son fournisseur. Il reste
-  // modifiable directement dans « Nom complet ».
+  // s'il en était déjà la composition (ou s'il est vide / provisoire) : un article saisi
+  // à la main (« ZIMMER & RHODE Moon 1311 11 ») garde son nom quand on complète son
+  // fournisseur. Il reste modifiable directement dans « Nom complet ».
   // La laize et les raccords se reportent d'eux-mêmes au prochain recalcul.
   const processRowUpdate = (newRow, oldRow) => {
     const partsChanged = ['provider', 'reference', 'color'].some(k => clean(newRow[k]) !== clean(oldRow[k]));
-    const composed = clean(oldRow.name) === nameFromParts(oldRow);
+    const oldName = clean(oldRow.name);
+    const composed = !oldName || oldName === PLACEHOLDER_NAME || oldName === nameFromParts(oldRow);
     let name = oldRow.name;
     if (clean(newRow.name) && clean(newRow.name) !== clean(oldRow.name)) name = clean(newRow.name);
     else if (partsChanged && composed) name = nameFromParts(newRow) || oldRow.name;
@@ -200,7 +242,7 @@ export default function ProjectMaterialsPanel({ open, onClose, materials = [], o
       raccord_h: rh,
       motif: Boolean(newRow.motif) || rv > 0 || rh > 0,
     };
-    onMaterialsChange(materials.map(m => ((m.id || m.name) === newRow.id ? { ...m, ...updated, id: m.id || updated.id } : m)));
+    commit(materialsRef.current.map(m => ((m.id || m.name) === newRow.id ? { ...m, ...updated, id: m.id || updated.id } : m)));
     return updated;
   };
 
@@ -213,7 +255,8 @@ export default function ProjectMaterialsPanel({ open, onClose, materials = [], o
     ];
     if (activeTabKey === 'Tissu') {
       cols.push(
-        { field: 'width', headerName: 'Laize', description: 'Laize (cm)', width: 80, editable: true, type: 'number', valueParser: parseDecimal },
+        { field: 'width', headerName: 'Laize', description: 'Laize (cm) — obligatoire pour un tissu', width: 80, editable: true, type: 'number', valueParser: parseDecimal,
+          cellClassName: (p) => (missingLaize(p.row) ? 'laize-manquante' : '') },
         { field: 'motif', headerName: 'Motif', description: 'Tissu à motif ?', width: 70, editable: true, type: 'boolean' },
         { field: 'raccord_v', headerName: 'Racc. V', description: 'Raccord vertical (cm)', width: 85, editable: true, type: 'number', valueParser: parseDecimal },
         { field: 'raccord_h', headerName: 'Racc. H', description: 'Raccord horizontal (cm)', width: 85, editable: true, type: 'number', valueParser: parseDecimal },
@@ -228,7 +271,7 @@ export default function ProjectMaterialsPanel({ open, onClose, materials = [], o
   return (
     <DaDialog
       open
-      onClose={onClose}
+      onClose={handleClose}
       title="Matériauthèque du projet"
       subtitle="Articles utilisés par ce dossier : la laize et les raccords se reportent sur les lignes."
       maxWidth="xl"
@@ -237,6 +280,12 @@ export default function ProjectMaterialsPanel({ open, onClose, materials = [], o
     >
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: '16px 28px 20px', boxSizing: 'border-box', gap: 14 }}>
         {/* Barre : familles à gauche, actions à droite (comme la Bibliothèque du chiffrage) */}
+        {laizeAlert && fabricsWithoutLaize.length > 0 && (
+          <div role="alert" style={{ background: '#FEF2F2', border: '1px solid #FCA5A5', color: '#B91C1C', borderRadius: 8, padding: '10px 14px', fontSize: 13, lineHeight: 1.5 }}>
+            <strong>Laize manquante</strong> : un tissu sans laize ne permet aucun métrage. Renseignez-la (case en rouge)
+            ou supprimez l'article avant de fermer — {fabricsWithoutLaize.map(m => clean(m.name) || 'article sans nom').join(', ')}.
+          </div>
+        )}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           <DaTabs tabs={tabsWithCounts} value={activeTabKey} onChange={(k) => { setActiveTabKey(k); setSelection([]); }} />
           <span style={{ flex: 1 }} />
@@ -259,7 +308,8 @@ export default function ProjectMaterialsPanel({ open, onClose, materials = [], o
             localeText={{ ...frFR.components.MuiDataGrid.defaultProps.localeText, noRowsLabel: 'Aucun article dans cette catégorie.' }}
             rowHeight={40}
             columnHeaderHeight={42}
-            sx={{ ...DATAGRID_DA_SX, ...FOCUS_ROW_SX, height: '100%', '& .MuiDataGrid-menuIcon': { overflow: 'hidden' } }}
+            sx={{ ...DATAGRID_DA_SX, ...FOCUS_ROW_SX, height: '100%', '& .MuiDataGrid-menuIcon': { overflow: 'hidden' },
+              '& .laize-manquante': { backgroundColor: '#FEF2F2', boxShadow: 'inset 0 0 0 1px #FCA5A5' } }}
           />
         </div>
         <div style={{ fontSize: 13, color: '#6B7280' }}>
