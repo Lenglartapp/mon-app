@@ -121,7 +121,7 @@ function AppShell() {
   );
   const { minutes, addMinute, updateMinute, deleteMinute, loadMinuteDetail } = useMinutes();
   const { events: planningEvents, updateEvent, deleteEvent } = useEvents();
-  const { inventory, movements, addMovement, bulkUpdateInventory, updateInventoryItem, refreshStocks } = useStocks(projects);
+  const { inventory, movements, addMovement, bulkUpdateInventory, importStockItems, updateInventoryItem, refreshStocks } = useStocks(projects);
   // Devis Odoo confirmé → minute « Commande » + projet créé et relié (par l'appli de n'importe quel connecté).
   const { addNotification } = useNotifications();
   useOdooOrderProjects({ currentUser, addProject, loadMinuteDetail, refreshProjects, addNotification });
@@ -593,6 +593,7 @@ function AppShell() {
             movements={movements}
             onAddMovement={addMovement}
             onBulkMovement={bulkUpdateInventory}
+            onImportStock={importStockItems}
             onUpdateItem={updateInventoryItem}
             onStockChanged={refreshStocks}
             onBack={() => navigate("/")}

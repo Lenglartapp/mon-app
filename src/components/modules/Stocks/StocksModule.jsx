@@ -27,6 +27,7 @@ export default function StocksModule({
     movements = [],
     onAddMovement,
     onBulkMovement,
+    onImportStock,
     onUpdateItem,
     onStockChanged
 }) {
@@ -142,7 +143,8 @@ export default function StocksModule({
                             inventory={inventory}
                             projects={projects}
                             movements={movements}
-                            onBulkMovement={onBulkMovement}
+                            onBulkMovement={canEdit ? onBulkMovement : undefined}
+                            onImportStock={canEdit ? onImportStock : undefined}
                             onUpdateItem={onUpdateItem}
                             zones={zones}
                         />

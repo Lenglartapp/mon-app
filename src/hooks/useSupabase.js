@@ -1262,75 +1262,79 @@ export const useStocks = (liveProjects) => {
         }
     };
 
-    const bulkUpdateInventory = async (updates, user) => {
+    // Mise à jour du stock depuis le fichier Excel exporté (cf. lib/inventory/stockImport :
+    // analyzeUpdateFile). Chaque ligne porte la nouvelle quantité (écart saisi appliqué au
+    // stock actuel) et/ou le nouvel emplacement. Une ligne en échec n'arrête pas les autres :
+    // le résultat dit lesquelles sont passées.
+    const bulkUpdateInventory = async (lines, user) => {
         setLoading(true);
+        const done = [], failed = [];
+        const logsToCreate = [];
+        const now = new Date().toISOString();
         try {
-            const logsToCreate = [];
-
-            for (const update of updates) {
-                // 1. Mise à jour de l'item (Qty et/ou Location)
-                const itemUpdates = {};
-                if (update.hasQtyChange) itemUpdates.qty = Math.max(0, update.newTotalQty);
-                if (update.hasLocChange) itemUpdates.location = update.newLocation;
-
-                if (Object.keys(itemUpdates).length > 0) {
-                    const { error: itemError } = await supabase
-                        .from('inventory_items')
-                        .update(itemUpdates)
-                        .eq('id', update.id);
-
-                    if (itemError) throw itemError;
+            for (const l of lines) {
+                const it = l.item;
+                const patch = {};
+                if (l.delta && l.newQty !== null && l.newQty !== undefined) patch.qty = Math.max(0, l.newQty);
+                if (l.locChanged) patch.location = l.newLocation;
+                if (!Object.keys(patch).length) continue;
+                const { error } = await supabase.from('inventory_items').update(patch).eq('id', it.id);
+                if (error) { failed.push({ line: l, error: error.message }); continue; }
+                done.push(l);
+                const base = { product: it.product, ...pickItemMeta(it), unit: it.unit, user_name: user, project: it.project || null, project_id: it.project_id ?? null, date: now, pieces_names: null };
+                if ('qty' in patch) {
+                    const diff = Math.abs(l.delta);
+                    logsToCreate.push(l.delta < 0
+                        ? { ...base, type: 'OUT', qty: diff, location: patch.location || it.location, reason: 'Mise à jour du stock (import Excel) — sortie' }
+                        : { ...base, type: 'IN', qty: diff, location: patch.location || it.location, reason: 'Ajustement inventaire (import Excel)' });
                 }
-
-                // 2. Préparation des logs (fournisseur / réf / coloris / laize repris de l'article)
-                const meta = pickItemMeta(inventory.find(i => i.id === update.id));
-                // Log de Sortie si Qty a baissé
-                if (update.hasQtyChange) {
-                    logsToCreate.push({
-                        type: 'OUT',
-                        product: update.product,
-                        ...meta,
-                        qty: Number(update.qtyToRemove),
-                        unit: update.unit,
-                        user_name: user,
-                        location: update.newLocation || update.location,
-                        project: update.project,
-                        project_id: projectIdFor(update.project),
-                        reason: update.reason || 'SOLDE / DÉSTOCKAGE EXCEL',
-                        date: new Date().toISOString()
-                    });
-                }
-
-                // Log de Déplacement si Location a changé
-                if (update.hasLocChange) {
-                    logsToCreate.push({
-                        type: 'MOVE',
-                        product: update.product,
-                        ...meta,
-                        qty: Number(update.newTotalQty),
-                        unit: update.unit,
-                        user_name: user,
-                        location: update.newLocation,
-                        project: update.project,
-                        project_id: projectIdFor(update.project),
-                        reason: `DÉPLACEMENT EXCEL (De ${update.oldLocation || 'N/A'} vers ${update.newLocation})`,
-                        date: new Date().toISOString()
-                    });
+                if ('location' in patch) {
+                    logsToCreate.push({ ...base, type: 'MOVE', qty: Number(patch.qty ?? it.qty), location: patch.location, reason: `Déplacement (import Excel) de ${it.location || '—'} vers ${patch.location}` });
                 }
             }
-
-            // 3. Insertion des logs en une seule fois
-            if (logsToCreate.length > 0) {
+            if (logsToCreate.length) {
                 const { error: logError } = await insertStrippingPhantomColumns(supabase, 'inventory_logs', logsToCreate);
-                if (logError) throw logError;
+                if (logError) console.error('Journal import Excel :', logError);
             }
-
             fetchStocks();
-            return { success: true, count: updates.length };
+            return { success: failed.length === 0, done: done.length, failed };
         } catch (error) {
             console.error('Erreur bulkUpdateInventory:', error);
-            alert(`Erreur lors de la mise à jour groupée : ${error.message}`);
-            return { success: false, error };
+            fetchStocks();
+            return { success: false, done: done.length, failed: [...failed, { line: null, error: error.message }] };
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Ajout d'ANCIEN stock en lot (modèle Excel) : articles en stock libre (aucun dossier),
+    // une entrée « Reprise ancien stock » au journal pour chacun. Par paquets de 200.
+    const importStockItems = async (items, user) => {
+        setLoading(true);
+        const now = new Date().toISOString();
+        let done = 0;
+        const failed = [];
+        try {
+            for (let i = 0; i < items.length; i += 200) {
+                const chunk = items.slice(i, i + 200);
+                const rows = chunk.map(d => ({
+                    product: d.product, ...pickItemMeta(d), location: d.location, qty: Number(d.qty), unit: d.unit,
+                    project: null, project_id: null, category: d.category,
+                    pieces: (d.pieces || []).map((p, idx) => ({ id: `imp-${Date.now()}-${i + idx}-${Math.random().toString(36).slice(2, 7)}`, qty: Number(p.qty), name: p.name })),
+                }));
+                const { error } = await insertStrippingPhantomColumns(supabase, 'inventory_items', rows);
+                if (error) { failed.push({ from: chunk[0]._row ?? i + 1, to: chunk[chunk.length - 1]._row ?? i + chunk.length, error: error.message }); continue; }
+                done += chunk.length;
+                const logs = chunk.map(d => ({
+                    type: 'IN', product: d.product, ...pickItemMeta(d), qty: Number(d.qty), unit: d.unit, user_name: user,
+                    location: d.location, project: null, project_id: null, date: now, pieces_names: null,
+                    reason: d.comment ? `${d.reason} — ${d.comment}` : d.reason,
+                }));
+                const { error: logError } = await insertStrippingPhantomColumns(supabase, 'inventory_logs', logs);
+                if (logError) console.error('Journal reprise ancien stock :', logError);
+            }
+            fetchStocks();
+            return { success: failed.length === 0, done, failed };
         } finally {
             setLoading(false);
         }
@@ -1386,6 +1390,7 @@ export const useStocks = (liveProjects) => {
         addMovement,
         refreshStocks: fetchStocks,
         bulkUpdateInventory,
+        importStockItems,
         updateInventoryItem
     };
 };
