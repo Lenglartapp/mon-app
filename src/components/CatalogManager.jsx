@@ -27,6 +27,11 @@ const FIELD_LABELS = Object.fromEntries((CHIFFRAGE_SCHEMA || []).map((c) => [c.k
 const EXTRA_LABELS = { tissu_1: 'Tissu 1', tissu_2: 'Tissu 2', passementerie_1: 'Passementerie 1', passementerie_2: 'Passementerie 2', type_interieur: 'Intérieur', molleton: 'Molleton', baguette_1: 'Baguette 1', baguette_2: 'Baguette 2', mecanisme_fourniture: 'Mécanisme', mecanisme_store: 'Mécanisme store', toile_finition_1: 'Toile' };
 const fieldLabel = (k) => FIELD_LABELS[k] || EXTRA_LABELS[k] || k;
 
+// Un tissu sans laize ne permet aucun métrage : saisie obligatoire (cf. Matériauthèque).
+const FABRIC_CATEGORIES = ['Tissu', 'Tissus', 'Doublure', 'Doublures', 'Inter', 'Confection'];
+const missingLaize = (r) => FABRIC_CATEGORIES.includes(r?.category) && !(Number(r?.width || r?.laize) > 0);
+const PLACEHOLDER_NAME = 'Nouvel Article (à compléter)';
+
 const SECTION_TITLE = { fontSize: 16, fontWeight: 500, color: '#111827', margin: 0 };
 
 // rows : lignes du chiffrage (colonne « Utilisé » + détail des lignes qui utilisent l'article).
@@ -37,6 +42,23 @@ export default function CatalogManager({ open, onClose, catalog, onCatalogChange
     const [activeTab, setActiveTab] = React.useState('catalog');
     const [activeCategoryTab, setActiveCategoryTab] = React.useState('tissus'); // New Sub-tab state
     const [gridWrapEl, setGridWrapEl] = useState(null);
+    // Tissus AJOUTÉS pendant cette ouverture : laize obligatoire avant de fermer. Les
+    // anciens tissus sans laize sont signalés en rouge sans bloquer.
+    const addedIdsRef = useRef(new Set());
+    const [laizeAlert, setLaizeAlert] = useState(false);
+    useEffect(() => { if (open) addedIdsRef.current = new Set(); else setLaizeAlert(false); }, [open]);
+    const fabricsWithoutLaize = (catalog || []).filter(r => r && addedIdsRef.current.has(r.id) && missingLaize(r));
+    const handleClose = (event, reason) => {
+        if (fabricsWithoutLaize.length) {
+            setLaizeAlert(true);
+            setActiveTab('catalog');
+            setActiveCategoryTab('tissus');
+            setSearch('');
+            return;
+        }
+        setLaizeAlert(false);
+        onClose?.(event, reason);
+    };
     useExcelCaret(gridWrapEl);
     const [localSettings, setLocalSettings] = React.useState(props.settings || { taux_horaire: 135, prix_nuit: 180, prix_repas: 25 });
 
@@ -88,10 +110,13 @@ export default function CatalogManager({ open, onClose, catalog, onCatalogChange
         setSelectionModel([]);
     };
 
-    const processRowUpdate = (newRow) => {
-        // Auto-concat logic: Fournisseur + Référence + Coloris
+    const processRowUpdate = (newRow, oldRow) => {
+        // Nom = Fournisseur + Référence + Coloris. Sans aucun des trois, on garde le nom
+        // actuel : modifier la laize ou le prix d'un article sans fournisseur ne doit pas
+        // le renommer « Article Sans Nom » (ses lignes seraient renommées avec lui).
         const nameParts = [newRow.provider, newRow.reference, newRow.color].filter(Boolean);
-        const name = nameParts.length > 0 ? nameParts.join(' ') : 'Article Sans Nom';
+        const keep = oldRow?.name && oldRow.name !== PLACEHOLDER_NAME ? oldRow.name : 'Article Sans Nom';
+        const name = nameParts.length > 0 ? nameParts.join(' ') : keep;
         
         // Auto-compute sellPrice if buyPrice or coef changed (except for stores)
         let sellPrice = newRow.sellPrice;
@@ -157,7 +182,8 @@ export default function CatalogManager({ open, onClose, catalog, onCatalogChange
             unit: activeCategoryTab === 'stores' ? 'pce' : 'ml'
         };
         // Auto-compute name immediately
-        newRow.name = 'Nouvel Article (à compléter)';
+        newRow.name = PLACEHOLDER_NAME;
+        addedIdsRef.current.add(newId);
         onCatalogChange([...catalog, newRow]);
     };
 
@@ -246,7 +272,8 @@ export default function CatalogManager({ open, onClose, catalog, onCatalogChange
         ];
 
         const fabricCols = [
-            { field: 'width', headerName: 'Laize', description: 'Laize (cm)', width: 80, editable: true, type: 'number', valueParser: (value) => parseDecimal(value) },
+            { field: 'width', headerName: 'Laize', description: 'Laize (cm) — obligatoire pour un tissu (sinon pas de métrage)', width: 80, editable: true, type: 'number', valueParser: (value) => parseDecimal(value),
+              cellClassName: (p) => (missingLaize(p.row) ? 'laize-manquante' : '') },
             { field: 'motif', headerName: 'Motif', description: 'Tissu à motif ?', width: 70, editable: true, type: 'boolean' },
             { field: 'raccord_v', headerName: 'Racc. V', description: 'Raccord vertical (cm)', width: 85, editable: true, type: 'number', valueParser: (value) => parseDecimal(value) },
             { field: 'raccord_h', headerName: 'Racc. H', description: 'Raccord horizontal (cm)', width: 85, editable: true, type: 'number', valueParser: (value) => parseDecimal(value) },
@@ -302,7 +329,7 @@ export default function CatalogManager({ open, onClose, catalog, onCatalogChange
     return (
         <DaDialog
             open
-            onClose={onClose}
+            onClose={handleClose}
             title="Bibliothèque"
             subtitle="Articles et paramètres de ce chiffrage"
             maxWidth="xl"
@@ -322,6 +349,12 @@ export default function CatalogManager({ open, onClose, catalog, onCatalogChange
         >
             {activeTab === 'catalog' ? (
                 <div style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: '16px 28px 20px', boxSizing: 'border-box', gap: 14 }}>
+                    {laizeAlert && fabricsWithoutLaize.length > 0 && (
+                        <div role="alert" style={{ background: '#FEF2F2', border: '1px solid #FCA5A5', color: '#B91C1C', borderRadius: 8, padding: '10px 14px', fontSize: 13, lineHeight: 1.5 }}>
+                            <strong>Laize manquante</strong> : sans laize, le métrage du tissu ne se calcule pas. Renseignez-la (case en rouge)
+                            ou supprimez l'article avant de fermer — {fabricsWithoutLaize.map(r => r.name || 'article sans nom').join(', ')}.
+                        </div>
+                    )}
                     {/* Barre : familles à gauche, actions à droite */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                         <DaTabs tabs={CATEGORY_TABS} value={activeCategoryTab} onChange={(k) => { setActiveCategoryTab(k); setSelectionModel([]); }} />
@@ -346,7 +379,8 @@ export default function CatalogManager({ open, onClose, catalog, onCatalogChange
                             columnHeaderHeight={42}
                             // L'icône de menu masquée de la dernière colonne dépassait de quelques px
                             // et suffisait à faire apparaître un défilement horizontal.
-                            sx={{ ...DATAGRID_DA_SX, ...FOCUS_ROW_SX, height: '100%', '& .MuiDataGrid-menuIcon': { overflow: 'hidden' } }}
+                            sx={{ ...DATAGRID_DA_SX, ...FOCUS_ROW_SX, height: '100%', '& .MuiDataGrid-menuIcon': { overflow: 'hidden' },
+                                '& .laize-manquante': { backgroundColor: '#FEF2F2', boxShadow: 'inset 0 0 0 1px #FCA5A5' } }}
                         />
                     </div>
                     <UsagePopover anchor={usageAnchor} list={usageList} onClose={() => setUsageAnchor(null)} where="du chiffrage" />
