@@ -36,6 +36,19 @@ const SHEET_ALIASES = {
     cantonniere: { product: 'Mobilier', produit: 'Cantonnière' },
 };
 
+/**
+ * Quantité par ligne : fixée à 1 (rideaux, stores, tentures — une ligne = un article)
+ * ou saisissable (coussins, plaids, mobilier… — colonne « Qté »).
+ */
+export function quantityRule(product) {
+    const q = (product?.schema || []).find(c => c?.key === 'quantite');
+    return !q || q.readOnly || q.editable === false ? 'fixed' : 'free';
+}
+export const QTY_HINT = {
+    fixed: 'Une ligne = un article (quantité toujours 1) : pour 3 identiques, faites 3 lignes.',
+    free: 'Plusieurs articles possibles par ligne : ajoutez la colonne « Qté ».',
+};
+
 /** Colonnes toujours présentes dans le modèle (choix du user : le reste au choix). */
 export const REQUIRED_KEYS = ['zone', 'piece', 'produit'];
 
@@ -99,6 +112,8 @@ export async function downloadMinuteTemplate(selection, { catalog = [], minuteNa
         ws.columns = cols.map(c => ({ header: c.label, key: c.key, width: Math.max(12, Math.min(30, c.label.length + 6)) }));
         const head = ws.getRow(1);
         head.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        const produitIdx = cols.findIndex(c => c.key === 'produit');
+        if (produitIdx >= 0) head.getCell(produitIdx + 1).note = `Vide = ${product.produit}. ${QTY_HINT[quantityRule(product)]}`;
         head.height = 22;
         head.eachCell((cell) => { cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E2447' } }; cell.alignment = { vertical: 'middle' }; });
 
@@ -109,7 +124,7 @@ export async function downloadMinuteTemplate(selection, { catalog = [], minuteNa
             let validation = null;
             if (values && values.length) {
                 validation = { type: 'list', allowBlank: true, formulae: [listRange(values)], showErrorMessage: c.type !== 'catalog_item', errorTitle: c.label, error: 'Choisissez dans la liste.' };
-                head.getCell(idx + 1).note = c.type === 'catalog_item' ? 'Liste = bibliothèque du chiffrage (autre nom accepté, signalé à l’import).' : 'Choisissez dans la liste.';
+                if (c.key !== 'produit') head.getCell(idx + 1).note = c.type === 'catalog_item' ? 'Liste = bibliothèque du chiffrage (autre nom accepté, signalé à l’import).' : 'Choisissez dans la liste.';
             } else if (c.type === 'number') {
                 validation = { type: 'decimal', allowBlank: true, operator: 'greaterThanOrEqual', formulae: [0], showErrorMessage: true, errorTitle: c.label, error: 'Nombre attendu (virgule acceptée).' };
             }
@@ -128,7 +143,10 @@ export async function downloadMinuteTemplate(selection, { catalog = [], minuteNa
         '3. Les listes déroulantes reprennent les choix du tableau et les articles de la bibliothèque de ce chiffrage.',
         '   Un article absent de la bibliothèque est accepté mais signalé : ajoutez-le ensuite à la bibliothèque pour qu’il soit chiffré.',
         '4. Nombres : virgule acceptée (12,5). Les colonnes calculées (métrages, prix de vente…) ne sont pas à remplir : Droitfil les calcule.',
-        '5. Dans Droitfil › Chiffrage › Importer Excel, déposez ce fichier : un aperçu s’affiche, puis les lignes s’ajoutent à la suite.',
+        '5. Quantité par ligne :',
+        ...selection.map(({ key }) => MINUTE_PRODUCTS.find(p => p.key === key)).filter(Boolean)
+            .map(p => `   • ${p.label} : ${QTY_HINT[quantityRule(p)]}`),
+        '6. Dans Droitfil › Chiffrage › Importer Excel, déposez ce fichier : un aperçu s’affiche, puis les lignes s’ajoutent à la suite.',
         '',
         'Ne modifiez pas les titres de la première ligne ni le nom des onglets. Les lignes vides sont ignorées.',
     ].forEach((t, i) => { const r = help.addRow([t]); if (i === 0) r.font = { bold: true, size: 14 }; });
@@ -169,6 +187,7 @@ export async function analyzeMinuteFile(file, catalog = []) {
         const header = rows[0].map(h => labelToCol.get(norm(h)) || null);
         rows[0].forEach((h, i) => {
             if (clean(h) && !header[i]) ignored.push(`Onglet « ${sheetName} » : colonne « ${clean(h)} » non reconnue (ignorée).`);
+            else if (header[i]?.key === 'quantite' && quantityRule(product) === 'fixed') ignored.push(`Onglet « ${sheetName} » : colonne « ${clean(h)} » ignorée — ${QTY_HINT.fixed}`);
             else if (header[i] && isComputed(header[i])) ignored.push(`Onglet « ${sheetName} » : colonne « ${clean(h)} » calculée par Droitfil (ignorée).`);
         });
 
@@ -177,7 +196,11 @@ export async function analyzeMinuteFile(file, catalog = []) {
             if (cells.every(v => clean(v) === '')) continue; // ligne vide
             const raw = {};
             const warnings = [];
+            const qtyFixed = quantityRule(product) === 'fixed';
             header.forEach((col, i) => {
+                if (col?.key === 'quantite' && qtyFixed && Number(String(cells[i] ?? '').replace(',', '.')) > 1) {
+                    warnings.push(`Qté ${clean(cells[i])} non prise en compte : une ligne = un article. Dupliquez la ligne pour en avoir plusieurs.`);
+                }
                 if (!col || isComputed(col)) return;
                 const v = cells[i];
                 if (v === null || v === undefined || clean(v) === '') return;

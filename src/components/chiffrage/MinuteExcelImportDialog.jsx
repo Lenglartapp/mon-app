@@ -4,7 +4,7 @@ import DaDialog from '../ui/DaDialog';
 import { DaField } from '../ui/DaForm';
 import MultiSelect from '../ui/MultiSelect';
 import { ToolbarButton, TonePill } from '../ui/ToolbarControls';
-import { MINUTE_PRODUCTS, REQUIRED_KEYS, analyzeMinuteFile, buildMinuteRows, downloadMinuteTemplate, importableColumns } from '../../lib/import/minuteExcelImport';
+import { MINUTE_PRODUCTS, QTY_HINT, REQUIRED_KEYS, analyzeMinuteFile, buildMinuteRows, downloadMinuteTemplate, importableColumns, quantityRule } from '../../lib/import/minuteExcelImport';
 
 const MUTED = '#6B7280';
 const STORE_KEY = 'droitfil.minuteImport.v1'; // dernier choix produits / colonnes (par appareil)
@@ -121,7 +121,10 @@ export default function MinuteExcelImportDialog({ onClose, catalog = [], ctx, mi
                                 const chosen = columns[key] || [];
                                 return (
                                     <React.Fragment key={key}>
-                                        <div style={{ fontSize: 13, color: '#374151', paddingBottom: 10 }}>{product.label}</div>
+                                        <div style={{ fontSize: 13, color: '#374151', paddingBottom: 4, alignSelf: 'end' }}>
+                                            {product.label}
+                                            <div style={{ fontSize: 11.5, color: MUTED, marginTop: 2, lineHeight: 1.35 }}>{QTY_HINT[quantityRule(product)]}</div>
+                                        </div>
                                         <DaField label={`Colonnes (${REQUIRED_KEYS.length + chosen.filter(c => !REQUIRED_KEYS.includes(c)).length})`}>
                                             <MultiSelect value={chosen} onChange={(v) => setColumnsFor(key, v)}
                                                 options={cols.map(c => ({ value: c.key, label: c.label, locked: REQUIRED_KEYS.includes(c.key) }))} />
