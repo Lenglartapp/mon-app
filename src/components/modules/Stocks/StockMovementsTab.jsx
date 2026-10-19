@@ -80,16 +80,16 @@ const COLUMNS = [
         headerName: 'Motif / Détail',
         flex: 1,
         minWidth: 160,
+        // Les pièces se suivent sur la ligne de stock : plus de colonne « Pièce / Rouleau ».
+        // Le nom de pièce d'un mouvement (entrée détaillée, sortie ciblée) reste lisible
+        // dans le motif quand celui-ci ne le contient pas déjà.
+        valueGetter: (value, row) => {
+            const reason = value || '';
+            const piece = row?.pieces_names;
+            return piece && !reason.includes(piece) ? [reason, piece].filter(Boolean).join(' — ') : reason;
+        },
         renderCell: (params) => (
             <span title={params.value || ''} style={{ fontSize: 13, color: '#4B5563', overflow: 'hidden', textOverflow: 'ellipsis' }}>{params.value || '-'}</span>
-        )
-    },
-    {
-        field: 'pieces_names',
-        headerName: 'Pièce / Rouleau',
-        width: 115,
-        renderCell: (params) => (
-            <span style={{ fontSize: 12, fontWeight: 700, color: '#4338CA' }}>{params.value || '-'}</span>
         )
     },
     {
