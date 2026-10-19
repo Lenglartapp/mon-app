@@ -46,7 +46,7 @@ import { BookOpen, History, FileUp, SlidersHorizontal, FileOutput } from 'lucide
 
 // Module « Devis Odoo » : réservé à Aristide et Audry avant la présentation à l'équipe
 // (src/lib/odoo/quoteAccess.js ; le serveur revérifie à chaque appel).
-import { importGlobalExcel } from "../lib/utils/importGlobalExcel";
+import MinuteExcelImportDialog from "../components/chiffrage/MinuteExcelImportDialog";
 
 const toNum = (v) => {
   const n = Number(String(v ?? "").replace(",", "."));
@@ -605,33 +605,15 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onDelete, onLo
     if (onOpenMinute) onOpenMinute(newId); else onBack();
   }, [minute, minutes, onCreate, createMinute, onOpenMinute, onBack, addNotification]);
 
-  const fileInputRef = React.useRef(null);
-  const handleGlobalImport = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file || !canEdit) return;
+  // Import Excel (assistant : colonnes → modèle → dépôt → aperçu). Lignes ajoutées à la suite.
+  const [excelImportOpen, setExcelImportOpen] = React.useState(false);
+  const handleExcelRows = (importedRows) => {
+    if (!canEdit || !importedRows?.length) return;
     userEditedRef.current = true;
-
-    try {
-      const importedRows = await importGlobalExcel(file, formulaCtx, catalog);
-
-      if (!importedRows || importedRows.length === 0) {
-        if (addNotification) addNotification("Aucune ligne valide à importer.", "warning");
-        e.target.value = null;
-        return;
-      }
-
-      const newLines = [...(rows || []), ...importedRows];
-      setRows(newLines);
-
-      // Update Minute state (propagates to MinuteEditor)
-      updateMinute({ lines: newLines });
-
-      if (addNotification) addNotification(`${importedRows.length} ligne(s) importée(s) avec succès !`, "success");
-    } catch (err) {
-      if (addNotification) addNotification(`Erreur d'import : ${err.message}`, "error");
-    }
-
-    e.target.value = null; // reset input
+    const newLines = [...(rows || []), ...importedRows];
+    setRows(newLines);
+    updateMinute({ lines: newLines }); // propage à MinuteEditor
+    if (addNotification) addNotification(`${importedRows.length} ligne(s) importée(s) avec succès !`, "success");
   };
 
   // Header State
@@ -878,16 +860,20 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onDelete, onLo
           {can(currentUser, "chiffrage.moulinette") && <button className="df-pill-tab" data-active={activeTab === "moulinette"} style={getNavStyle(activeTab === "moulinette")} onClick={() => setActiveTab("moulinette")}>Moulinette</button>}
         </div>
         <div className="df-chf-actions" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10, flexWrap: 'wrap', marginBottom: 8 }}>
-          <input
-            type="file"
-            ref={fileInputRef}
-            style={{ display: "none" }}
-            accept=".xlsx, .xls"
-            onChange={handleGlobalImport}
-          />
-          <button onClick={() => fileInputRef.current?.click()} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', borderRadius: 8, background: 'white', border: '1px solid #E0DED9', cursor: 'pointer', color: '#374151', fontSize: 13, fontWeight: 600 }}>
-            <FileUp size={16} /> Importer Excel
-          </button>
+          {canEdit && (
+            <button onClick={() => setExcelImportOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', borderRadius: 8, background: 'white', border: '1px solid #E0DED9', cursor: 'pointer', color: '#374151', fontSize: 13, fontWeight: 600 }}>
+              <FileUp size={16} /> Importer Excel
+            </button>
+          )}
+          {excelImportOpen && (
+            <MinuteExcelImportDialog
+              onClose={() => setExcelImportOpen(false)}
+              catalog={formulaCtx.catalog}
+              ctx={formulaCtx}
+              minuteName={name}
+              onImport={handleExcelRows}
+            />
+          )}
 
           {canEdit && (
             <button

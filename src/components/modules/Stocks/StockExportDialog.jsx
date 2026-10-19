@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
-import Popover from '@mui/material/Popover';
-import { Download, RefreshCw, ClipboardList, FileText, ChevronDown, Check as CheckIcon, Lock } from 'lucide-react';
+import { Download, RefreshCw, ClipboardList, FileText } from 'lucide-react';
+import MultiSelect from '../../ui/MultiSelect';
 import { DaField } from '../../ui/DaForm';
 import DaDialog from '../../ui/DaDialog';
 import { ToolbarButton } from '../../ui/ToolbarControls';
@@ -11,74 +11,6 @@ const label = { fontSize: 13, fontWeight: 600, color: '#111827', margin: '0 0 8p
 const USAGE_ICONS = { update: <RefreshCw size={16} />, count: <ClipboardList size={16} />, view: <FileText size={16} /> };
 // Colonnes imposées : sans elles, le fichier ne se réimporte pas correctement.
 const LOCKED = { update: ['qty', 'unit'], count: ['location', 'qty', 'unit'], view: [] };
-
-// Menu déroulant à choix multiples, au format d'un champ de la DA : le bouton résume la
-// sélection (« Toutes (9) », « A, B, D », « 5 sur 12 ») ; cases à cocher + Tout / Aucun.
-// options : [{ value, label, count?, locked? }] ; `value` = valeurs cochées.
-function MultiSelect({ options, value, onChange, allLabel = 'Toutes', single = false, width }) {
-    const [anchor, setAnchor] = useState(null);
-    const on = (v) => value.includes(v);
-    const picked = options.filter(o => on(o.value) || o.locked);
-    const summary = single ? (options.find(o => on(o.value))?.label || '—')
-        : picked.length === options.length ? `${allLabel} (${options.length})`
-        : picked.length === 0 ? 'Aucune'
-        : picked.length <= 3 ? picked.map(o => o.label).join(', ')
-        : `${picked.length} sur ${options.length}`;
-    const toggle = (o) => {
-        if (o.locked) return;
-        if (single) { onChange([o.value]); setAnchor(null); return; }
-        onChange(on(o.value) ? value.filter(v => v !== o.value) : [...value, o.value]);
-    };
-    return (
-        <>
-            <button
-                type="button"
-                onClick={(e) => setAnchor(e.currentTarget)}
-                style={{
-                    width: width || '100%', height: 38, display: 'flex', alignItems: 'center', gap: 8, padding: '0 12px', boxSizing: 'border-box',
-                    border: `1px solid ${anchor ? '#1E2447' : '#E0DED9'}`, borderRadius: 8, background: 'white', cursor: 'pointer',
-                    fontFamily: 'inherit', fontSize: 14, color: '#111827', textAlign: 'left',
-                }}
-            >
-                <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{summary}</span>
-                <ChevronDown size={16} color="#6B7280" />
-            </button>
-            <Popover
-                open={!!anchor}
-                anchorEl={anchor}
-                onClose={() => setAnchor(null)}
-                anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
-                transformOrigin={{ vertical: 'top', horizontal: 'left' }}
-                PaperProps={{ sx: { mt: 0.5, borderRadius: '8px', border: '1px solid #E0DED9', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', minWidth: anchor?.offsetWidth || 220, maxHeight: 360, p: 0.5 } }}
-            >
-                {!single && options.length > 3 && (
-                    <div style={{ display: 'flex', gap: 12, padding: '6px 10px 8px', borderBottom: '1px solid #E8E6E2', marginBottom: 4 }}>
-                        {[['Tout', options.map(o => o.value)], ['Aucun', options.filter(o => o.locked).map(o => o.value)]].map(([t, v]) => (
-                            <button key={t} type="button" onClick={() => onChange(v)} style={{ border: 'none', background: 'none', padding: 0, color: '#1E2447', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>{t}</button>
-                        ))}
-                    </div>
-                )}
-                {options.map(o => {
-                    const checked = on(o.value) || o.locked;
-                    return (
-                        <div key={o.value} onClick={() => toggle(o)} title={o.locked ? 'Nécessaire pour réimporter le fichier' : undefined}
-                            style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 10px', borderRadius: 6, fontSize: 13, color: '#111827', cursor: o.locked ? 'default' : 'pointer', background: checked && !single ? '#EEF4FD' : 'transparent' }}>
-                            {!single && (
-                                <span style={{ width: 16, height: 16, borderRadius: 4, flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', border: `1.5px solid ${checked ? '#1E2447' : '#C9C7C2'}`, background: checked ? '#1E2447' : 'white', opacity: o.locked ? 0.6 : 1 }}>
-                                    {checked && <CheckIcon size={11} color="white" strokeWidth={3} />}
-                                </span>
-                            )}
-                            <span style={{ flex: 1 }}>{o.label}</span>
-                            {o.locked && <Lock size={12} color="#9CA3AF" />}
-                            {o.count != null && <span style={{ color: '#9CA3AF', fontSize: 12 }}>{o.count}</span>}
-                            {single && checked && <CheckIcon size={14} color="#1E2447" />}
-                        </div>
-                    );
-                })}
-            </Popover>
-        </>
-    );
-}
 
 function Check({ checked, onChange, children }) {
     return (
