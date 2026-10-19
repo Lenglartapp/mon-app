@@ -36,7 +36,7 @@ export const FINITION_OB_OPTIONS = [...FINITION_OURLET_OPTIONS, "Pastille Velcro
 
 // -----------------------------------------------------------------------------
 // ANCIENS LIBELLÉS D'EN-TÊTE
-// Les deux imports Excel (importGlobalExcel pour le chiffrage,
+// Les deux imports Excel (minuteExcelImport pour le chiffrage,
 // importProjectsFromExcel pour la production) associent les colonnes du fichier
 // aux clés internes PAR LE LIBELLÉ. Renommer un libellé rendrait donc muets tous
 // les fichiers déjà remplis par les équipes : la colonne serait ignorée en
