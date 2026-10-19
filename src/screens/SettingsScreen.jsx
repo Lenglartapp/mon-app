@@ -14,6 +14,7 @@ import { compressAndUpload } from "../lib/utils/imageUpload";
 import { useAppSettings } from "../hooks/useSupabase";
 
 import UsersAdmin from "../components/settings/UsersAdmin";
+import InstallApp from "../components/settings/InstallApp";
 import { roleOf } from "../lib/constants/roleLabels";
 
 const ROBOTO = "Roboto, system-ui, sans-serif";
@@ -178,6 +179,17 @@ export default function SettingsScreen({ onBack }) {
               <div style={{ borderTop: "1px solid #E8E6E2", marginBottom: 32 }}>
                 <SoonRow title="Modification du mot de passe" />
                 <SoonRow title="Préférences de notifications" />
+              </div>
+
+              <h2 style={sectionTitle}>Application</h2>
+              <div style={{ borderTop: "1px solid #E8E6E2", marginBottom: 32 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, padding: "12px 0", borderBottom: "1px solid #E8E6E2" }}>
+                  <div>
+                    <div style={{ fontSize: 14, color: "#374151" }}>Installer Droitfil sur cet appareil</div>
+                    <div style={{ fontSize: 12, color: "#6B7280", marginTop: 2 }}>Dans le Dock (Mac), le menu Démarrer (Windows) ou sur l'écran d'accueil, dans sa propre fenêtre. Mises à jour automatiques.</div>
+                  </div>
+                  <InstallApp />
+                </div>
               </div>
 
               <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>

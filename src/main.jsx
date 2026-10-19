@@ -12,6 +12,7 @@ import '@fontsource/roboto/latin-ext-500.css';
 import '@fontsource/roboto/latin-ext-700.css';
 // src/main.jsx
 import React from 'react';
+import './lib/install'; // tôt : capte la proposition d'installation (Paramètres › Application)
 import ReactDOM from "react-dom/client";
 import "./index.css";
 
