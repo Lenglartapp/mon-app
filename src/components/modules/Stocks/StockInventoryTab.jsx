@@ -12,10 +12,11 @@ import ListItemButton from '@mui/material/ListItemButton';
 import ListItemText from '@mui/material/ListItemText';
 import ProductHistoryModal from './ProductHistoryModal';
 import EditStockItemModal from './EditStockItemModal';
-import { useMemo, useRef } from 'react';
+import { useMemo } from 'react';
 import { Download, Upload, Map as MapIcon, Filter as FilterIcon, ChevronDown } from 'lucide-react';
-import { exportInventoryToExcel, processInventoryClearanceImport } from '../../../lib/utils/inventoryExcelUtils';
-import { useAuth } from '../../../auth';
+import { stockSortCompare } from '../../../lib/inventory/stockImport';
+import StockImportDialog from './StockImportDialog';
+import StockExportDialog from './StockExportDialog';
 import WarehouseMap from './WarehouseMap';
 import { itemMetaColumns } from './stockColumns';
 import LocationChips from './LocationChips';
@@ -50,52 +51,12 @@ function stockStatusOf(projectName, projects) {
     return STOCK_STATUS[code] || { label: proj.status || '?', tone: 4 };
 }
 
-export default function StockInventoryTab({ inventory, projects = [], movements = [], onBulkMovement, onUpdateItem, zones = [], embedded = false }) {
-    const { currentUser } = useAuth();
-    const fileInputRef = useRef(null);
+export default function StockInventoryTab({ inventory, projects = [], movements = [], onBulkMovement, onImportStock, onUpdateItem, zones = [], embedded = false }) {
     const [search, setSearch] = useState('');
     const [showMap, setShowMap] = useState(false);
+    const [importOpen, setImportOpen] = useState(false);
+    const [exportOpen, setExportOpen] = useState(false);
 
-    const handleExport = async () => {
-        try {
-            await exportInventoryToExcel(inventory);
-        } catch (err) {
-            alert("Erreur lors de l'export: " + err.message);
-        }
-    };
-
-    const handleImportClick = () => {
-        fileInputRef.current?.click();
-    };
-
-    const handleImportFile = async (e) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-
-        try {
-            const updates = await processInventoryClearanceImport(file, inventory);
-            if (updates.length === 0) {
-                alert("Aucun changement (quantité ou emplacement) détecté dans le fichier.");
-                return;
-            }
-
-            const qtyChanges = updates.filter(u => u.hasQtyChange).length;
-            const locChanges = updates.filter(u => u.hasLocChange).length;
-
-            let confirmMsg = `Import Excel : \n- ${qtyChanges} sortie(s) de stock\n- ${locChanges} déplacement(s) d'emplacement\n\nConfirmer la mise à jour ?`;
-            
-            if (window.confirm(confirmMsg)) {
-                const res = await onBulkMovement(updates, currentUser?.name || 'Administrateur');
-                if (res.success) {
-                    alert(`Succès : ${updates.length} articles mis à jour.`);
-                }
-            }
-        } catch (err) {
-            alert("Erreur lors de l'import: " + err.message);
-        } finally {
-            e.target.value = ''; // Reset input
-        }
-    };
     // Filtres : conditions du panneau « Filtrer » (même module que les tableaux du chiffrage)
     const [filterConditions, setFilterConditions] = useState([]);
     const [filterPanelOpen, setFilterPanelOpen] = useState(false);
@@ -274,6 +235,7 @@ export default function StockInventoryTab({ inventory, projects = [], movements 
             }
         });
         
+        // Ordre : réceptions « À compléter » d'abord, puis par emplacement (A1, A2… A10, B1).
         return Object.values(groups).map(g => ({
             ...g,
             location: Array.from(g.allLocations).sort().join(', '),
@@ -285,7 +247,7 @@ export default function StockInventoryTab({ inventory, projects = [], movements 
             })(),
             project: Array.from(g.allProjects).sort().join(', '),
             pieces: g.allPieces
-        }));
+        })).sort(stockSortCompare);
     }, [filteredRows]);
 
     return (
@@ -329,22 +291,37 @@ export default function StockInventoryTab({ inventory, projects = [], movements 
                     <ToolbarButton icon={<MapIcon size={16} />} active={showMap} onClick={() => setShowMap(v => !v)}>
                         Vue entrepôt
                     </ToolbarButton>
-                    <ToolbarButton icon={<Download size={16} />} onClick={handleExport} title="Exporter le stock (solde) en Excel">
+                    <ToolbarButton icon={<Download size={16} />} onClick={() => setExportOpen(true)} title="Exporter le stock en Excel : réimport, feuille de comptage ou état à envoyer">
                         Exporter
                     </ToolbarButton>
-                    <ToolbarButton icon={<Upload size={16} />} onClick={handleImportClick} title="Importer une mise à jour du stock (solde)">
-                        Importer
-                    </ToolbarButton>
+                    {(onImportStock || onBulkMovement) && (
+                        <ToolbarButton icon={<Upload size={16} />} onClick={() => setImportOpen(true)} title="Ajouter de l'ancien stock ou mettre à jour le stock depuis Excel">
+                            Importer
+                        </ToolbarButton>
+                    )}
                 </div>
-
-                <input
-                    type="file"
-                    ref={fileInputRef}
-                    style={{ display: 'none' }}
-                    accept=".xlsx, .xls"
-                    onChange={handleImportFile}
-                />
             </div>
+
+            {exportOpen && (
+                <StockExportDialog
+                    onClose={() => setExportOpen(false)}
+                    allItems={inventory}
+                    shownItems={filteredRows}
+                    filtered={!!(search || activeConditions.length || onlyToComplete)}
+                    statusOf={(it) => stockStatusOf(it.project, projects).label}
+                />
+            )}
+
+            {importOpen && (
+                <StockImportDialog
+                    onClose={() => setImportOpen(false)}
+                    inventory={inventory}
+                    exportItems={filteredRows}
+                    zones={zones}
+                    onImport={onImportStock}
+                    onUpdate={onBulkMovement}
+                />
+            )}
 
             {/* Note flottante bas-droite (comme « pièces en double » du chiffrage) : réceptions dont
                 l'emplacement reste à compléter. Repliée par défaut ; filtre le tableau à la demande. */}
