@@ -108,9 +108,13 @@ const PlanningGrid = ({
 
     const renderEventsForCell = (memberId, dayDate) => {
         // Filtrer les événements pour ce jour et cette ressource
+        // Jour de fermeture : les absences individuelles (congés, RTT…) ne sont pas
+        // affichées, le grisé « Fermeture · … » suffit. Elles restent en base.
+        const closedDay = view !== 'year' && closureOfDay(format(dayDate, 'yyyy-MM-dd'));
         const dayEvents = events.filter(e =>
             e.resourceId === memberId &&
-            isSameDay(parseISO(e.date), dayDate)
+            isSameDay(parseISO(e.date), dayDate) &&
+            !(closedDay && e.type === 'absence')
         );
 
         if (dayEvents.length === 0) return null;
