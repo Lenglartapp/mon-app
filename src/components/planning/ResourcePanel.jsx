@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, Calendar as CalendarIcon, Settings, UserPlus, Trash2 } from 'lucide-react';
+import { X, Calendar as CalendarIcon, Settings, UserPlus, Trash2, Pencil } from 'lucide-react';
 import { format } from 'date-fns';
 import { productionGroup } from '../../lib/authz';
 import { CONTRACT_TYPES } from './constants';
@@ -29,7 +29,7 @@ const ResourcePanel = ({
     isOpen, onClose,
     users, onAddAbsence,
     closures = [], archivedUsers = [],
-    onAddClosure, onDeleteClosure,
+    onAddClosure, onDeleteClosure, onUpdateClosure,
     onAddMember, onReactivateMember, onUpdateContract, onDeleteMember,
 }) => {
     // --- Absence state ---
@@ -46,6 +46,8 @@ const ResourcePanel = ({
     const [closureLabel, setClosureLabel] = useState('');
     const [closureStart, setClosureStart] = useState(format(new Date(), 'yyyy-MM-dd'));
     const [closureEnd, setClosureEnd] = useState(format(new Date(), 'yyyy-MM-dd'));
+    // Fermeture en cours de modification (null = formulaire d'ajout)
+    const [editingClosureId, setEditingClosureId] = useState(null);
 
     // --- Contract settings state (édition sur la fiche) ---
     const [contractSettingsFor, setContractSettingsFor] = useState(null);
@@ -91,9 +93,22 @@ const ResourcePanel = ({
         setAbsEndTime('17:00');
     };
 
+    const closureValid = !!closureLabel.trim() && !!closureStart && !!closureEnd && closureEnd >= closureStart;
+
+    const startEditClosure = (c) => {
+        setEditingClosureId(c.id);
+        setClosureLabel(c.title || '');
+        setClosureStart(c.meta?.start ? format(new Date(c.meta.start), 'yyyy-MM-dd') : (c.date || ''));
+        setClosureEnd(c.meta?.end ? format(new Date(c.meta.end), 'yyyy-MM-dd') : (c.date || ''));
+        setShowClosureForm(true);
+    };
+
     const handleAddClosure = () => {
-        if (!closureLabel.trim()) return;
-        onAddClosure(closureLabel.trim(), closureStart, closureEnd);
+        if (!closureValid) return;
+        // Modification : même fermeture (même id), pas de suppression / recréation.
+        if (editingClosureId) onUpdateClosure(editingClosureId, closureLabel.trim(), closureStart, closureEnd);
+        else onAddClosure(closureLabel.trim(), closureStart, closureEnd);
+        setEditingClosureId(null);
         setShowClosureForm(false);
         setClosureLabel('');
         setClosureStart(format(new Date(), 'yyyy-MM-dd'));
@@ -474,7 +489,7 @@ const ResourcePanel = ({
                                 Fermetures annuelles
                             </span>
                             {!showClosureForm && (
-                                <button onClick={() => setShowClosureForm(true)}
+                                <button onClick={() => { setEditingClosureId(null); setClosureLabel(''); setShowClosureForm(true); }}
                                     style={{ height: 30, background: NAVY, color: 'white', border: 'none', borderRadius: 8, padding: '0 12px', fontSize: 12, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>
                                     + Ajouter
                                 </button>
@@ -487,7 +502,7 @@ const ResourcePanel = ({
                             </div>
                         )}
 
-                        {closures.map(c => (
+                        {closures.filter(c => c.id !== editingClosureId).map(c => (
                             <div key={c.id} style={{
                                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                                 padding: '10px 12px', background: 'white', border: '1px solid #E0DED9',
@@ -501,10 +516,16 @@ const ResourcePanel = ({
                                         {c.meta?.end ? format(new Date(c.meta.end), 'dd/MM/yyyy') : '—'}
                                     </div>
                                 </div>
-                                <button onClick={() => onDeleteClosure(c.id)}
-                                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', padding: 4 }}>
-                                    <X size={13} />
-                                </button>
+                                <div style={{ display: 'flex', gap: 2 }}>
+                                    <button onClick={() => startEditClosure(c)} title="Modifier la fermeture"
+                                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', padding: 4 }}>
+                                        <Pencil size={13} />
+                                    </button>
+                                    <button onClick={() => onDeleteClosure(c.id)} title="Supprimer la fermeture"
+                                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', padding: 4 }}>
+                                        <X size={13} />
+                                    </button>
+                                </div>
                             </div>
                         ))}
 
@@ -530,12 +551,15 @@ const ResourcePanel = ({
                                                 style={IN} />
                                         </div>
                                     </div>
+                                    {closureEnd && closureStart && closureEnd < closureStart && (
+                                        <div style={{ fontSize: 12, color: '#B91C1C' }}>La fin doit être après le début.</div>
+                                    )}
                                     <div style={{ display: 'flex', gap: 7 }}>
-                                        <button onClick={() => { setShowClosureForm(false); setClosureLabel(''); }} style={BTN}>
+                                        <button onClick={() => { setShowClosureForm(false); setEditingClosureId(null); setClosureLabel(''); }} style={BTN}>
                                             Annuler
                                         </button>
-                                        <button onClick={handleAddClosure} disabled={!closureLabel.trim()} style={BTN_PRIMARY(!!closureLabel.trim())}>
-                                            Ajouter
+                                        <button onClick={handleAddClosure} disabled={!closureValid} style={BTN_PRIMARY(closureValid)}>
+                                            {editingClosureId ? 'Enregistrer' : 'Ajouter'}
                                         </button>
                                     </div>
                                 </div>

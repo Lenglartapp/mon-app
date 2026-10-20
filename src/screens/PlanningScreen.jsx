@@ -1256,6 +1256,24 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
         if (onUpdateEvent) onUpdateEvent(evt);
     };
 
+    // Modifier une fermeture : même événement (même id), dates et libellé mis à jour.
+    const handleUpdateClosure = (closureId, label, startDate, endDate) => {
+        const current = localEvents.find(e => e.id === closureId);
+        if (!current) return;
+        const evt = {
+            ...current,
+            date: startDate,
+            title: label,
+            meta: {
+                ...current.meta,
+                start: new Date(startDate).toISOString(),
+                end: new Date(endDate).toISOString(),
+            },
+        };
+        setLocalEvents(prev => prev.map(e => e.id === closureId ? evt : e));
+        if (onUpdateEvent) onUpdateEvent(evt);
+    };
+
     const handleDeleteClosure = (closureId) => {
         setLocalEvents(prev => prev.filter(e => e.id !== closureId));
         if (onDeleteEventProp) onDeleteEventProp(closureId);
@@ -1896,6 +1914,7 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                 archivedUsers={localUsers.filter(u => u.archived_at)}
                 onAddClosure={handleAddClosure}
                 onDeleteClosure={handleDeleteClosure}
+                onUpdateClosure={handleUpdateClosure}
                 onAddMember={handleAddMember}
                 onReactivateMember={handleReactivateMember}
                 onUpdateContract={handleUpdateContract}
