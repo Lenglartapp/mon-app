@@ -1403,7 +1403,9 @@ export const useWarehouseZones = () => {
         supabase
             .from('warehouse_zones')
             .select('code, allee, niveau, niveau_label, type, section, capacite, capacite_unite, label_carte, description')
-            .eq('is_storage', true)
+            // Emplacements de stockage + l'atelier (zone « structure » en base, mais on y
+            // range des pièces : mises à disposition, coupes en cours).
+            .or('is_storage.eq.true,code.eq.ATELIER')
             .order('section')
             .order('code')
             .then(({ data, error }) => {

@@ -11,8 +11,26 @@ export function rollsOf(item) {
     return Array.isArray(item.pieces) && item.pieces.length > 0 ? item.pieces.length : 1;
 }
 
-/** Rouleaux en stock (tissus en stock, non épuisés). */
-export const countRouleaux = (inventory = []) => inventory.reduce((acc, it) => acc + rollsOf(it), 0);
+/** Emplacements hors entrepôt : ce qui y est n'occupe pas les rayonnages. */
+export const OUTSIDE_WAREHOUSE = new Set(['ATELIER']);
+
+/**
+ * Rouleaux d'un article qui occupent l'entrepôt : un article à l'atelier ne compte pas ;
+ * réparti (« ATELIER, B3 »), seule la part hors atelier compte. Sans emplacement
+ * (ou « À COMPLÉTER »), il est supposé dans l'entrepôt.
+ */
+export function warehouseRollsOf(item) {
+    const rolls = rollsOf(item);
+    if (!rolls) return 0;
+    const locs = splitLocations(item.location);
+    if (!locs.length) return rolls;
+    const inside = locs.filter(l => !OUTSIDE_WAREHOUSE.has(l.toUpperCase())).length;
+    return rolls * inside / locs.length;
+}
+
+/** Rouleaux en stock DANS l'entrepôt (tissus non épuisés, hors atelier). */
+export const countRouleaux = (inventory = []) =>
+    Math.round(inventory.reduce((acc, it) => acc + warehouseRollsOf(it), 0) * 10) / 10;
 
 /** Capacité d'un emplacement en rouleaux (palettes converties), null si non définie. */
 export function capacityInRolls(zone) {
