@@ -852,6 +852,9 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
     }, [localEvents, activeFilters, projects]);
 
     // Seul le service de l'intercalaire actif est affiché (« Ma vue » garde ses propres lignes).
+    // Fermetures de l'entreprise : capacité nulle ces jours-là (grille comme vue Capacité).
+    const planningClosures = useMemo(() => localEvents.filter(e => e.type === 'closure'), [localEvents]);
+
     const tabbedGroups = useMemo(() => {
         if (myViewMode) return filteredGroups;
         const keys = effectiveService === 'combined' ? combined : [effectiveService];
@@ -1582,6 +1585,7 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
 
     const gridProps = {
         filteredGroups: tabbedGroups,
+        closures: planningClosures,
         expandedGroups,
         onToggleGroup: (key) => setExpandedGroups(prev => {
             if (key === 'conf') {
