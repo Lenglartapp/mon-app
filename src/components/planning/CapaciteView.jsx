@@ -586,15 +586,17 @@ const CapaciteView = ({ localUsers, localEvents, projects = [] }) => {
     const CustomTooltip = ({ active, payload }) => {
         if (!active || !payload?.length) return null;
         const d = payload[0]?.payload;
-        const over = d.planifie > d.capa;
+        const plan = includeInternal ? d.planifieTotal : d.planifie;
+        const chg  = includeInternal ? d.chargeTotal   : d.charge;
+        const over = plan > d.capa;
         return (
             <div style={{ background: 'white', border: '1px solid #E0DED9', borderRadius: 8, padding: '10px 14px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', fontSize: 12, fontFamily: ROBOTO }}>
                 <div style={{ fontWeight: 500, fontSize: 13, marginBottom: 6 }}>{d.weekFullLabel}</div>
                 <div style={{ color: '#6B7280', marginBottom: 2 }}>Capacité : <strong>{d.capa}h</strong></div>
                 <div style={{ fontWeight: 600, color: over ? COLOR_OVER : COLOR_PLANIFIE }}>
-                    Planifié : {d.planifie}h{over ? ` (+${Math.round((d.planifie - d.capa) * 10) / 10}h)` : ''}
+                    Planifié : {plan}h{over ? ` (+${Math.round((plan - d.capa) * 10) / 10}h)` : ''}
                 </div>
-                <div style={{ marginTop: 2, color: COLOR_CHARGE }}>Charge : {d.charge}h</div>
+                <div style={{ marginTop: 2, color: COLOR_CHARGE }}>Charge : {chg}h</div>
                 <div style={{ marginTop: 6, color: '#9CA3AF', fontSize: 11 }}>Clic pour le détail</div>
             </div>
         );
@@ -733,12 +735,15 @@ const CapaciteView = ({ localUsers, localEvents, projects = [] }) => {
                         </thead>
                         <tbody>
                             {chartData.map((row, i) => {
-                                const ratePlan  = row.capa > 0 ? Math.round(row.planifie / row.capa * 100) : 0;
-                                const rateChg   = row.capa > 0 ? Math.round(row.charge   / row.capa * 100) : 0;
-                                const ecartPlan = Math.round((row.planifie - row.capa) * 10) / 10;
-                                const ecartChg  = Math.round((row.charge   - row.capa) * 10) / 10;
-                                const overPlan  = row.planifie > row.capa;
-                                const overChg   = row.charge   > row.capa;
+                                // Mêmes heures que les tuiles et la courbe : interne compris si l'interrupteur est actif.
+                                const plan = includeInternal ? row.planifieTotal : row.planifie;
+                                const chg  = includeInternal ? row.chargeTotal   : row.charge;
+                                const ratePlan  = row.capa > 0 ? Math.round(plan / row.capa * 100) : 0;
+                                const rateChg   = row.capa > 0 ? Math.round(chg  / row.capa * 100) : 0;
+                                const ecartPlan = Math.round((plan - row.capa) * 10) / 10;
+                                const ecartChg  = Math.round((chg  - row.capa) * 10) / 10;
+                                const overPlan  = plan > row.capa;
+                                const overChg   = chg  > row.capa;
                                 const isCurr  = row.weekLabel === todayWeekLabel;
                                 const isSel   = selectedWeekData?.weekLabel === row.weekLabel;
                                 return (
@@ -753,8 +758,14 @@ const CapaciteView = ({ localUsers, localEvents, projects = [] }) => {
                                             </span>
                                         </td>
                                         <td style={{ padding: '9px 14px', textAlign: 'right', fontSize: 13, color: '#374151' }}>{row.capa}h</td>
-                                        <td style={{ padding: '9px 14px', textAlign: 'right', fontSize: 13, fontWeight: 600, color: overPlan ? COLOR_OVER : '#111827' }}>{row.planifie}h</td>
-                                        <td style={{ padding: '9px 14px', textAlign: 'right', fontSize: 13, fontWeight: 600, color: '#111827' }}>{row.charge}h</td>
+                                        <td style={{ padding: '9px 14px', textAlign: 'right', fontSize: 13, fontWeight: 600, color: overPlan ? COLOR_OVER : '#111827' }}>
+                                            {plan}h
+                                            {includeInternal && row.internalPlanifie > 0 && <div style={{ fontSize: 11, fontWeight: 400, color: COLOR_INTERNE }}>dont {row.internalPlanifie}h interne</div>}
+                                        </td>
+                                        <td style={{ padding: '9px 14px', textAlign: 'right', fontSize: 13, fontWeight: 600, color: '#111827' }}>
+                                            {chg}h
+                                            {includeInternal && row.internalCharge > 0 && <div style={{ fontSize: 11, fontWeight: 400, color: COLOR_INTERNE }}>dont {row.internalCharge}h interne</div>}
+                                        </td>
                                         <td style={{ padding: '9px 14px', textAlign: 'right', fontSize: 13, borderLeft: '1px solid #E8E6E2' }}>
                                             <span style={{ fontWeight: 600, color: rateColor(ratePlan) }}>{ratePlan}%</span>
                                         </td>
@@ -781,11 +792,11 @@ const CapaciteView = ({ localUsers, localEvents, projects = [] }) => {
                         <div>
                             <div style={{ fontWeight: 400, fontSize: 20, color: '#111827' }}>{selectedWeekData.weekFullLabel}</div>
                             <div style={{ fontSize: 12, color: '#6B7280', marginTop: 4 }}>
-                                Capa {selectedWeekData.capa}h &nbsp;·&nbsp; Planifié {selectedWeekData.planifie}h &nbsp;·&nbsp; Consommé {selectedWeekData.charge}h
+                                Capa {selectedWeekData.capa}h &nbsp;·&nbsp; Planifié {includeInternal ? selectedWeekData.planifieTotal : selectedWeekData.planifie}h &nbsp;·&nbsp; Consommé {includeInternal ? selectedWeekData.chargeTotal : selectedWeekData.charge}h
                             </div>
-                            {selectedWeekData.planifie > selectedWeekData.capa && (
+                            {(includeInternal ? selectedWeekData.planifieTotal : selectedWeekData.planifie) > selectedWeekData.capa && (
                                 <div style={{ marginTop: 4, fontSize: 12, fontWeight: 600, color: COLOR_OVER }}>
-                                    Dépassement +{Math.round((selectedWeekData.planifie - selectedWeekData.capa) * 10) / 10}h
+                                    Dépassement +{Math.round(((includeInternal ? selectedWeekData.planifieTotal : selectedWeekData.planifie) - selectedWeekData.capa) * 10) / 10}h
                                 </div>
                             )}
                         </div>
