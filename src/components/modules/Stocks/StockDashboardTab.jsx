@@ -7,6 +7,7 @@ import {
 import {
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine
 } from 'recharts';
+import { countRouleaux } from '../../../lib/warehouse/occupancy';
 
 const PALETTE_TO_ROULEAUX = 10;
 
@@ -20,11 +21,9 @@ const computeTotalCapacity = (zones) => {
     }, 0);
 };
 
-const countRouleaux = (inventory) =>
-    inventory.reduce((acc, item) => {
-        if (item.category !== 'Tissu') return acc;
-        return acc + (Array.isArray(item.pieces) ? item.pieces.length : 1);
-    }, 0);
+// Rouleaux en stock : règle partagée avec la Vue entrepôt (lib/warehouse/occupancy).
+// Avant : un tissu sans pièce détaillée comptait 0 (tableau de pièces vide) et un article
+// épuisé comptait encore → occupation faussée.
 
 const getISOWeekStart = (date) => {
     const d = new Date(date);
@@ -80,7 +79,12 @@ export default function StockDashboardTab({ inventory = [], projects = [], movem
         const tensionLevel = freeRouleaux < capacite * 0.15 ? 'critique'
             : freeRouleaux < capacite * 0.30 ? 'attention' : 'ok';
 
-        const top10 = [...inventory]
+        // Top 10 des tissus en mètres ; leur part se calcule sur les mètres de tissu en stock
+        // (avant : mètres ÷ nombre de rouleaux → parts de 258 %).
+        const isMl = (u) => String(u || '').trim().toLowerCase() === 'ml';
+        const fabrics = inventory.filter(i => isMl(i.unit) && Number(i.qty) > 0);
+        const mlTotal = fabrics.reduce((s, i) => s + Number(i.qty), 0);
+        const top10 = [...fabrics]
             .sort((a, b) => (Number(b.qty) || 0) - (Number(a.qty) || 0))
             .slice(0, 10);
 
@@ -91,7 +95,7 @@ export default function StockDashboardTab({ inventory = [], projects = [], movem
 
         return {
             rouleauxEnStock, capacite, occupancyPct, reserved, deadStock, freeRouleaux,
-            tensionLevel, top10, tensionAlerts: activeWithoutStock.slice(0, 3),
+            tensionLevel, top10, mlTotal, tensionAlerts: activeWithoutStock.slice(0, 3),
             zonesLoaded: totalCapacity > 0,
         };
     }, [inventory, projects, zones]);
@@ -106,23 +110,33 @@ export default function StockDashboardTab({ inventory = [], projects = [], movem
             return { weekStart, weekEnd, netChange: 0 };
         });
 
+        // Historique reconstruit en MÈTRES de tissu (les mouvements sont en ml) puis ramené
+        // au taux d'occupation actuel. Avant : on retirait des mètres d'un nombre de
+        // ROULEAUX (163 rouleaux − 5 000 ml…) → taux fortement négatifs.
+        const isMl = (u) => String(u || '').trim().toLowerCase() === 'ml';
         movements.forEach(m => {
+            if (!isMl(m.unit)) return;
             const date = new Date(m.date || m.created_at);
             if (isNaN(date)) return;
             const w = weeks.find(w => date >= w.weekStart && date < w.weekEnd);
             if (!w) return;
-            const qty = Number(m.qty) || 1;
+            const qty = Number(m.qty) || 0;
             if (m.type === 'IN') w.netChange += qty;
             else if (m.type === 'OUT') w.netChange -= qty;
         });
 
-        let running = stats.rouleauxEnStock;
+        const mlNow = inventory.reduce((s, i) => s + (isMl(i.unit) && Number(i.qty) > 0 ? Number(i.qty) : 0), 0);
+        const occNow = stats.capacite > 0 ? Math.min(stats.rouleauxEnStock / stats.capacite, 1) : 0;
+        let running = mlNow;
         return [...weeks].reverse().map(w => {
-            const occ = stats.capacite > 0 ? Math.min(Math.round((running / stats.capacite) * 100), 100) : 0;
+            // Taux de la semaine = taux actuel × (mètres en stock cette semaine-là / mètres aujourd'hui).
+            // Borné à 0–100 % : avant le début du suivi (mars 2026), une partie du stock n'a pas
+            // d'entrée au journal et le calcul passerait sous zéro.
+            const occ = mlNow > 0 ? Math.max(0, Math.min(Math.round(occNow * (running / mlNow) * 100), 100)) : 0;
             running -= w.netChange;
             return { weekStart: w.weekStart, label: w.weekStart.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }), occupancy: occ };
         }).reverse();
-    }, [movements, stats.rouleauxEnStock, stats.capacite]);
+    }, [movements, inventory, stats.rouleauxEnStock, stats.capacite]);
 
     const filteredWeeklyData = useMemo(() => {
         const from = new Date(dateFrom);
@@ -267,7 +281,7 @@ export default function StockDashboardTab({ inventory = [], projects = [], movem
                     <div style={title}><Package size={14} color="#111827" /> Top 10 par occupation</div>
                     <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2 }}>
                         {stats.top10.map((item, i) => {
-                            const pct = stats.rouleauxEnStock > 0 ? Math.round((Number(item.qty) / stats.rouleauxEnStock) * 100) : 0;
+                            const pct = stats.mlTotal > 0 ? Math.round((Number(item.qty) / stats.mlTotal) * 100) : 0;
                             return (
                                 <div key={i} style={{
                                     display: 'flex', alignItems: 'center', gap: 8,
@@ -284,7 +298,7 @@ export default function StockDashboardTab({ inventory = [], projects = [], movem
                                         )}
                                     </div>
                                     <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                                        <div style={{ fontSize: 12, fontWeight: 700, color: '#111827' }}>{Number(item.qty).toLocaleString()}</div>
+                                        <div style={{ fontSize: 12, fontWeight: 700, color: '#111827' }}>{Number(item.qty).toLocaleString('fr-FR')} <span style={{ fontWeight: 400, color: '#6B7280' }}>ml</span></div>
                                         <div style={{ fontSize: 10, color: '#9CA3AF' }}>{pct}%</div>
                                     </div>
                                 </div>
