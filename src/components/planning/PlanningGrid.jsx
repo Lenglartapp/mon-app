@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { ChevronDown, ChevronRight as ChevronRightIcon, CheckCircle, X, Plus as PlusIcon, BedDouble, Moon } from 'lucide-react';
 import { format, isSameDay, startOfMonth, startOfDay, endOfMonth, eachDayOfInterval, isWeekend, differenceInMinutes, addDays, parseISO, getHours, getMinutes, getISOWeek, addWeeks, startOfWeek, endOfWeek } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { PLANNING_COLORS, getProjectColor, ROW_HEIGHT, PROGRAMME_ROW_HEIGHT, HEADER_HEIGHT_1, HEADER_HEIGHT_2, TOTAL_WORK_MINUTES, WORK_START_HOUR, WORK_END_HOUR, DEFAULT_DAILY_HOURS, ATELIER_HOURS_PER_DAY, dailyHoursForGroup } from './constants';
+import { PLANNING_COLORS, getProjectColor, ROW_HEIGHT, PROGRAMME_ROW_HEIGHT, HEADER_HEIGHT_1, HEADER_HEIGHT_2, TOTAL_WORK_MINUTES, WORK_START_HOUR, WORK_END_HOUR, DEFAULT_DAILY_HOURS, ATELIER_HOURS_PER_DAY, dailyHoursForGroup, isMemberActiveOnDay } from './constants';
 import { uid } from '../../lib/utils/uid';
 import { stripMarks } from '../../lib/utils/richText';
 import { computeProjectHours } from '../../lib/projectMetrics';
@@ -45,6 +45,7 @@ const PlanningGrid = ({
     days, columns: gridCols, superHeaders, view,
     filteredGroups, expandedGroups, onToggleGroup, onToggleMembers,
     events, projects = [], hiddenResources,
+    closures = [], // fermetures de l'entreprise : capacité nulle ces jours-là
     highlightProjectId = null,
     onCellClick, onEventClick, onDeleteEvent, onUpdateEvent,
     onDragStart, onDragOver, onDrop,
@@ -544,6 +545,26 @@ const PlanningGrid = ({
         });
         return map;
     }, [filteredGroups]);
+    // (calcul simple, pas un hook : ce bloc vient après un return anticipé)
+    const memberById = {};
+    Object.values(filteredGroups).forEach(g => g.members.forEach(m => { memberById[m.id] = m; }));
+    // Jour fermé (fermeture de l'entreprise) — même règle que la vue Capacité.
+    const isClosedDay = (dayStr) => closures.some(c => {
+        const s = c.meta?.start ? format(new Date(c.meta.start), 'yyyy-MM-dd') : c.date;
+        const e = c.meta?.end ? format(new Date(c.meta.end), 'yyyy-MM-dd') : s;
+        return s && s <= dayStr && e >= dayStr;
+    });
+    // Capacité d'un jour : heures contractuelles des membres sous contrat ce jour-là,
+    // 0 le week-end et les jours de fermeture (alignée sur la vue Capacité).
+    const dayCapacity = (memberIds, day) => {
+        if (isWeekend(day)) return 0;
+        const dayStr = format(day, 'yyyy-MM-dd');
+        if (isClosedDay(dayStr)) return 0;
+        return memberIds
+            .filter(id => id !== 'backlog_confection')
+            .filter(id => !memberById[id] || isMemberActiveOnDay(memberById[id], dayStr))
+            .reduce((sum, id) => sum + (memberDailyHours[id] ?? DEFAULT_DAILY_HOURS), 0);
+    };
 
     // Avancement (consommé / budget) par projet — source unique partagée avec le
     // dossier. Sert aux barres des cartes du Programme semaine.
@@ -568,20 +589,11 @@ const PlanningGrid = ({
             const colStart = isMonthColumn ? startOfMonth(col) : startOfDay(col);
             const colEnd = isMonthColumn ? endOfMonth(col) : new Date(col.getFullYear(), col.getMonth(), col.getDate(), 23, 59, 59);
 
-            let workDaysCount = 0;
-            if (isMonthColumn) {
-                const daysInMonth = eachDayOfInterval({ start: colStart, end: colEnd });
-                workDaysCount = daysInMonth.filter(d => !isWeekend(d)).length;
-            } else {
-                workDaysCount = isWeekend(colStart) ? 0 : 1;
-            }
-            // For this column (Day or Month), capacity is:
-            // EXCLUDE BACKLOG FROM CAPACITY
-            // Somme des heures contractuelles/jour de chaque membre (7,8h atelier, 8h pose)
-            const dailyCapacity = memberIds
-                .filter(id => id !== 'backlog_confection')
-                .reduce((sum, id) => sum + (memberDailyHours[id] ?? DEFAULT_DAILY_HOURS), 0);
-            theoreticalCapacity += dailyCapacity * workDaysCount;
+            // Capacité de la colonne (jour ou mois) : jour par jour, sans week-ends ni jours
+            // de fermeture, membres sous contrat seulement. Avant : toute la semaine était
+            // comptée ouverte (ex. fermeture du 15/12 ignorée → 390h affichées au lieu de 78h).
+            const colDays = isMonthColumn ? eachDayOfInterval({ start: colStart, end: colEnd }) : [colStart];
+            colDays.forEach(d => { theoreticalCapacity += dayCapacity(memberIds, d); });
         });
 
         activeMemberCount = memberIds.length;
@@ -630,7 +642,8 @@ const PlanningGrid = ({
                 const hours = effectiveMinutes / 60;
                 const isAbsence = ['Congés', 'RTT', 'Maladie', 'Autre', 'absence'].includes(evt.type) || ['Congés', 'RTT', 'Maladie', 'Autre'].includes(evt.title);
 
-                if (isAbsence) totalAbsenceHours += hours;
+                // Absence un jour déjà sans capacité (fermeture, week-end) : rien à retirer.
+                if (isAbsence) { if (isMonthColumn || dayCapacity(memberIds, colStart) > 0) totalAbsenceHours += hours; }
                 else totalLoadHours += hours;
             });
         });
