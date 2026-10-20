@@ -549,11 +549,25 @@ const PlanningGrid = ({
     const memberById = {};
     Object.values(filteredGroups).forEach(g => g.members.forEach(m => { memberById[m.id] = m; }));
     // Jour fermé (fermeture de l'entreprise) — même règle que la vue Capacité.
-    const isClosedDay = (dayStr) => closures.some(c => {
+    const closureOfDay = (dayStr) => closures.find(c => {
         const s = c.meta?.start ? format(new Date(c.meta.start), 'yyyy-MM-dd') : c.date;
         const e = c.meta?.end ? format(new Date(c.meta.end), 'yyyy-MM-dd') : s;
         return s && s <= dayStr && e >= dayStr;
     });
+    const isClosedDay = (dayStr) => !!closureOfDay(dayStr);
+    // Fermeture d'une colonne jour (rien en vue année : colonnes = mois).
+    const closureOfCol = (col) => (view === 'year' ? null : closureOfDay(format(col, 'yyyy-MM-dd')));
+    // Libellé d'une fermeture : posé sur la première colonne de la période visible,
+    // étalé sur toutes ses colonnes. Renvoie { closure, span } ou null.
+    const closureLabelAt = (colIndex) => {
+        const closure = closureOfCol(gridCols[colIndex]);
+        if (!closure) return null;
+        if (colIndex > 0 && closureOfCol(gridCols[colIndex - 1])?.id === closure.id) return null;
+        let span = 1;
+        while (colIndex + span < gridCols.length && closureOfCol(gridCols[colIndex + span])?.id === closure.id) span++;
+        return { closure, span };
+    };
+    const CLOSED_BG = 'repeating-linear-gradient(135deg, rgba(17,24,39,0.06) 0 1px, transparent 1px 8px), #F4F4F4';
     // Capacité d'un jour : heures contractuelles des membres sous contrat ce jour-là,
     // 0 le week-end et les jours de fermeture (alignée sur la vue Capacité).
     const dayCapacity = (memberIds, day) => {
@@ -713,8 +727,9 @@ const PlanningGrid = ({
                     {gridCols.map(col => {
                         // Jour actuel : pastille bleu nuit de la charte autour du libellé.
                         const today = view !== 'year' && isSameDay(col, new Date());
+                        const closure = closureOfCol(col);
                         return (
-                            <StickyTopCell key={col.toString()} style={{ top: cornerLabel ? stickyTop : stickyTop + HEADER_HEIGHT_1, height: HEADER_HEIGHT_2, background: cornerLabel ? '#F4F4F4' : 'white', color: '#4B5563' }}>
+                            <StickyTopCell key={col.toString()} style={{ top: cornerLabel ? stickyTop : stickyTop + HEADER_HEIGHT_1, height: HEADER_HEIGHT_2, background: cornerLabel ? '#F4F4F4' : 'white', color: closure ? '#9CA3AF' : '#4B5563' }}>
                                 {today
                                     ? <span style={{ background: '#1E2447', color: 'white', borderRadius: 99, padding: '4px 12px', fontWeight: 600 }}>{getCellContent(col)}</span>
                                     : getCellContent(col)}
@@ -779,7 +794,7 @@ const PlanningGrid = ({
 
                                 {expandedGroups[key] > 0 && group.members
                                 .filter(member => expandedGroups[key] >= 2 || member.id === 'backlog_confection')
-                                .map(member => (
+                                .map((member, _i, shown) => (
                                     <React.Fragment key={member.id}>
                                         <StickyLeftCell style={{ paddingLeft: 42, color: member.id === 'backlog_confection' ? '#BE123C' : '#4B5563', fontWeight: 500, display: 'flex', ...(member.id === 'backlog_confection'
                                             ? { flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'center', gap: 4, fontFamily: ROBOTO, minHeight: PROGRAMME_ROW_HEIGHT, height: 'auto', alignSelf: 'stretch' }
@@ -1186,7 +1201,7 @@ const PlanningGrid = ({
 
                                             </>
                                         ) : (
-                                            gridCols.map(col => (
+                                            gridCols.map((col, colIndex) => (
                                                 <div
                                                     key={`${member.id}-${col}`}
                                                     onClick={() => onCellClick(member.id, col)}
@@ -1202,10 +1217,24 @@ const PlanningGrid = ({
                                                         transition: 'background-color .12s ease, box-shadow .12s ease',
                                                         ...(dropCell === `${member.id}|${col}`
                                                             ? { background: 'rgba(30,36,71,0.06)', boxShadow: 'inset 0 0 0 2px rgba(30,36,71,0.35)', borderRadius: 6 }
-                                                            : { background: 'transparent' }),
+                                                            : { background: closureOfCol(col) ? CLOSED_BG : 'transparent' }),
                                                     }}
                                                 >
                                                     {renderEventsForCell(member.id, col)}
+                                                    {(() => {
+                                                        // Libellé de fermeture sur la ligne du milieu, au cœur des hachures.
+                                                        const people = shown.filter(m => m.id !== 'backlog_confection');
+                                                        if (people[Math.floor(people.length / 2)]?.id !== member.id) return null;
+                                                        const lbl = closureLabelAt(colIndex);
+                                                        if (!lbl) return null;
+                                                        return (
+                                                            <div style={{ position: 'absolute', top: 0, bottom: 0, left: 0, width: `${lbl.span * 100}%`, zIndex: 2, pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                                <span style={{ fontFamily: ROBOTO, fontSize: 13, fontWeight: 500, color: '#6B7280', background: '#F4F4F4', padding: '3px 10px', borderRadius: 4, whiteSpace: 'nowrap' }}>
+                                                                    Fermeture · {lbl.closure.title}
+                                                                </span>
+                                                            </div>
+                                                        );
+                                                    })()}
                                                 </div>
                                             ))
                                         )}
