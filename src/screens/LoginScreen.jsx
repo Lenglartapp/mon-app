@@ -1,25 +1,24 @@
+// Écran de connexion : même DA que le reste de Droitfil (Roboto, champs à libellé au-dessus,
+// trait #E0DED9, bouton bleu nuit, pas de majuscules). Photo de l'atelier à gauche sur ordinateur.
 import React, { useState } from 'react';
+import { TextField, InputAdornment, IconButton, CircularProgress } from '@mui/material';
+import { Mail, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { useAuth } from '../auth';
-import {
-    Box,
-    TextField,
-    Button,
-    CircularProgress,
-    Alert,
-    Typography,
-    Container,
-    Paper,
-    InputAdornment,
-    IconButton
-} from '@mui/material';
-import { Visibility, VisibilityOff, Lock, Mail } from '@mui/icons-material';
+import { DaField } from '../components/ui/DaForm';
+import { DA_FIELD_SX } from '../lib/constants/daStyles';
+
+const ROBOTO = 'Roboto, system-ui, sans-serif';
+
+// Champs un peu plus hauts que dans l'appli (écran d'entrée, souvent sur tablette / téléphone)
+const FIELD_SX = {
+    ...DA_FIELD_SX,
+    '& .MuiOutlinedInput-root': { ...DA_FIELD_SX['& .MuiOutlinedInput-root'], height: 44, fontSize: 15 },
+};
 
 export default function LoginScreen() {
     const { login } = useAuth();
-
-    // Etats du formulaire
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
@@ -32,184 +31,92 @@ export default function LoginScreen() {
             await login(email, password);
         } catch (err) {
             console.error(err);
-            setError("Email ou mot de passe incorrect.");
+            setError('E-mail ou mot de passe incorrect.');
             setLoading(false);
         }
     };
 
+    const canSubmit = !loading && !!email && !!password;
+
     return (
-        <Box sx={{
-            minHeight: '100vh',
-            width: '100%',
-            bgcolor: 'var(--df-surface-2)', // Fond gris clair
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            p: 2
-        }}>
-            <Paper
-                elevation={6}
-                sx={{
-                    width: '100%',
-                    maxWidth: 1000,
-                    height: { xs: 'auto', md: 600 }, // Hauteur fixe sur desktop
-                    borderRadius: '24px',
-                    overflow: 'hidden',
-                    display: 'flex',
-                    flexDirection: { xs: 'column-reverse', md: 'row' }, // Stack vertical sur mobile
-                    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.15)'
-                }}
-            >
-                {/* --- LEFT: Image & Catchline (Hidden/Small on Mobile) --- */}
-                <Box sx={{
-                    flex: 1.1, // Un peu plus large que le form
-                    position: 'relative',
-                    bgcolor: 'var(--df-text)',
-                    display: { xs: 'none', md: 'block' } // Masqué sur mobile comme demandé
-                }}>
-                    <Box
-                        component="img"
-                        src="/atelier-lenglart.jpg"
-                        alt="Atelier Lenglart"
-                        sx={{
-                            width: '100%',
-                            height: '100%',
-                            objectFit: 'cover',
-                            opacity: 0.7 // Pour assombrir l'image
-                        }}
-                    />
+        <div className="df-login" style={{ minHeight: '100vh', display: 'flex', background: 'var(--df-bg)', fontFamily: ROBOTO }}>
+            <style>{`
+                .df-login-photo { display: none; }
+                @media (min-width: 900px) { .df-login-photo { display: block; } }
+            `}</style>
 
-                    {/* Overlay Text */}
-                    <Box sx={{
-                        position: 'absolute',
-                        bottom: 0,
-                        left: 0,
-                        width: '100%',
-                        p: 6,
-                        background: 'linear-gradient(to top, rgba(0,0,0,0.9), transparent)',
-                        color: 'white'
-                    }}>
-                        <Typography variant="overline" sx={{ fontWeight: 600, letterSpacing: 2, color: 'rgba(255,255,255,0.8)' }}>
-                            L'excellence au bout du fil
-                        </Typography>
-                        <Typography variant="h3" sx={{
-                            fontFamily: 'Roboto, sans-serif',
-                            fontWeight: 900,
-                            lineHeight: 1.1,
-                            mt: 1,
-                            textTransform: 'uppercase'
-                        }}>
+            {/* Photo de l'atelier (ordinateur / tablette paysage) */}
+            <div className="df-login-photo" style={{ flex: '1 1 52%', padding: 16 }}>
+                <div style={{ position: 'relative', height: '100%', minHeight: 560, borderRadius: 12, overflow: 'hidden', background: '#111827' }}>
+                    <img src="/atelier-lenglart.jpg" alt="Atelier Lenglart"
+                        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(17,24,39,0.82) 0%, rgba(17,24,39,0.15) 55%, transparent 100%)' }} />
+                    <div style={{ position: 'absolute', left: 40, right: 40, bottom: 40, color: '#FFFFFF' }}>
+                        <div style={{ fontSize: 14, fontWeight: 500, color: 'rgba(255,255,255,0.75)' }}>L'excellence au bout du fil</div>
+                        <div style={{ fontSize: 40, fontWeight: 300, lineHeight: 1.15, marginTop: 8, letterSpacing: -0.5 }}>
                             Faire du beau<br />et du durable
-                        </Typography>
-                    </Box>
-                </Box>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-                {/* --- RIGHT: Login Form --- */}
-                <Box sx={{
-                    flex: 1,
-                    p: { xs: 4, md: 6 },
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'center',
-                    bgcolor: 'var(--df-bg)'
-                }}>
-                    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 4, width: '100%' }}>
-                        <img
-                            src="/logo.png"
-                            alt="LENGLART"
-                            style={{ height: 48, marginBottom: 24 }}
-                        />
-                        <Typography variant="h5" sx={{ fontWeight: 800, color: 'var(--df-text)', mb: 1 }}>
-                            Connexion
-                        </Typography>
-                        <Typography variant="body2" sx={{ color: 'var(--df-muted)', fontWeight: 500 }}>
-                            Accédez à votre espace production
-                        </Typography>
-                    </Box>
+            {/* Formulaire */}
+            <div style={{ flex: '1 1 48%', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', padding: '40px 24px' }}>
+                <form onSubmit={handleLogin} style={{ width: '100%', maxWidth: 380, display: 'flex', flexDirection: 'column', gap: 18 }}>
+                    <img className="df-logo" src="/logo.png" alt="Droitfil" style={{ height: 40, objectFit: 'contain', alignSelf: 'flex-start', marginBottom: 12, marginLeft: -26 /* marge blanche intégrée à l'image */ }} />
+
+                    <div>
+                        <h1 style={{ fontSize: 32, fontWeight: 400, color: 'var(--df-text)', margin: 0 }}>Connexion</h1>
+                        <div style={{ fontSize: 14, color: 'var(--df-muted)', marginTop: 6 }}>Accédez à votre espace Droitfil.</div>
+                    </div>
 
                     {error && (
-                        <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }}>
-                            {error}
-                        </Alert>
+                        <div role="alert" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', borderRadius: 8, border: '1px solid var(--df-danger-border)', background: 'var(--df-danger-bg)', color: 'var(--df-danger-text)', fontSize: 13 }}>
+                            <AlertCircle size={16} style={{ flexShrink: 0 }} /> {error}
+                        </div>
                     )}
 
-                    <form onSubmit={handleLogin}>
-                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
-                            <TextField
-                                label="Email"
-                                type="email"
-                                fullWidth
-                                variant="outlined"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                disabled={loading}
-                                InputProps={{
-                                    startAdornment: (
-                                        <InputAdornment position="start">
-                                            <Mail size={20} color="var(--df-faint)" />
-                                        </InputAdornment>
-                                    ),
-                                    sx: { borderRadius: 3 }
-                                }}
-                            />
+                    <DaField label="E-mail">
+                        <TextField
+                            type="email" fullWidth autoFocus autoComplete="username"
+                            value={email} onChange={(e) => setEmail(e.target.value)} disabled={loading}
+                            placeholder="prenom.nom@lenglart.com" sx={FIELD_SX}
+                            InputProps={{
+                                startAdornment: <InputAdornment position="start"><Mail size={17} color="var(--df-faint)" /></InputAdornment>,
+                            }}
+                        />
+                    </DaField>
 
-                            <TextField
-                                label="Mot de passe"
-                                type={showPassword ? "text" : "password"}
-                                fullWidth
-                                variant="outlined"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                disabled={loading}
-                                InputProps={{
-                                    startAdornment: (
-                                        <InputAdornment position="start">
-                                            <Lock size={20} color="var(--df-faint)" />
-                                        </InputAdornment>
-                                    ),
-                                    endAdornment: (
-                                        <InputAdornment position="end">
-                                            <IconButton
-                                                onClick={() => setShowPassword(!showPassword)}
-                                                edge="end"
-                                            >
-                                                {showPassword ? <VisibilityOff /> : <Visibility />}
-                                            </IconButton>
-                                        </InputAdornment>
-                                    ),
-                                    sx: { borderRadius: 3 }
-                                }}
-                            />
+                    <DaField label="Mot de passe">
+                        <TextField
+                            type={showPassword ? 'text' : 'password'} fullWidth autoComplete="current-password"
+                            value={password} onChange={(e) => setPassword(e.target.value)} disabled={loading}
+                            sx={FIELD_SX}
+                            InputProps={{
+                                startAdornment: <InputAdornment position="start"><Lock size={17} color="var(--df-faint)" /></InputAdornment>,
+                                endAdornment: (
+                                    <InputAdornment position="end">
+                                        <IconButton onClick={() => setShowPassword((v) => !v)} edge="end" size="small"
+                                            aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}>
+                                            {showPassword ? <EyeOff size={17} color="var(--df-muted)" /> : <Eye size={17} color="var(--df-muted)" />}
+                                        </IconButton>
+                                    </InputAdornment>
+                                ),
+                            }}
+                        />
+                    </DaField>
 
-                            <Button
-                                type="submit"
-                                variant="contained"
-                                size="large"
-                                disabled={loading || !email || !password}
-                                sx={{
-                                    mt: 2,
-                                    py: 1.5,
-                                    borderRadius: 3,
-                                    fontWeight: 700,
-                                    bgcolor: 'var(--df-text)',
-                                    fontSize: 15,
-                                    textTransform: 'none',
-                                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                                    '&:hover': { bgcolor: 'black', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }
-                                }}
-                            >
-                                {loading ? <CircularProgress size={24} color="inherit" /> : 'Se connecter'}
-                            </Button>
-                        </Box>
-                    </form>
+                    <button type="submit" disabled={!canSubmit} style={{
+                        marginTop: 6, height: 44, borderRadius: 8, border: 'none', fontFamily: ROBOTO, fontSize: 14, fontWeight: 600,
+                        background: 'var(--df-primary)', color: '#FFFFFF', cursor: canSubmit ? 'pointer' : 'not-allowed',
+                        opacity: canSubmit || loading ? 1 : 0.45, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                    }}>
+                        {loading ? <><CircularProgress size={16} color="inherit" /> Connexion…</> : 'Se connecter'}
+                    </button>
 
-                    <Box sx={{ mt: 4, textAlign: 'center' }}>
-                        <Typography variant="caption" sx={{ color: 'var(--df-faint)' }}>
-                            © 2024 Lenglart - Production 1.0
-                        </Typography>
-                    </Box>
-                </Box>
-            </Paper>
-        </Box>
+                    <div style={{ fontSize: 12, color: 'var(--df-faint)', marginTop: 24 }}>© {new Date().getFullYear()} Lenglart</div>
+                </form>
+            </div>
+        </div>
     );
 }
