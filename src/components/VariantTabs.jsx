@@ -53,7 +53,7 @@ const CSS = `
 // onDelete(tab) : croix « Supprimer » sur l'intercalaire ; canDelete(tab) → true | texte (raison du refus).
 export default function VariantTabs({ tabs, activeId, onOpen, onCreate, onDelete, canDelete, addLabel, addTitle, colorFor, addColor, shrink = false }) {
   const n = tabs.length;
-  const add = addColor || { bg: "#E5E7EB", fg: "#4B5563" };
+  const add = addColor || { bg: "var(--df-border-2)", fg: "var(--df-text-3)" };
   return (
     <div className={`vtabs${shrink ? " shrink" : ""}`}>
       <style>{CSS}</style>

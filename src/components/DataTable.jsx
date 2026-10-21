@@ -1679,7 +1679,7 @@ const handleDoubleClickCell = (e, rowIndex, colKey) => {
         padding: "2px 6px",
         borderRadius: 6,
         border: `1px solid ${COLORS.border}`,
-        background: "#fff",
+        background: "var(--df-bg)",
       }}
     >
       {options.map(o => (
@@ -1723,7 +1723,7 @@ const HeaderMenu = ({ anchor }) => {
           width: 280,
           maxHeight: "70vh",
           overflow: "auto",
-          background: "#fff",
+          background: "var(--df-bg)",
           border: `1px solid ${COLORS.border}`,
           borderRadius: 12,
           boxShadow: "0 12px 28px rgba(0,0,0,.18)",
@@ -1744,7 +1744,7 @@ const HeaderMenu = ({ anchor }) => {
   gap: 8 
 }}>
   <span style={{ opacity: .7 }}>Clé pour formules :</span>
-  <code style={{ background: "#f3f4f6", padding: "2px 6px", borderRadius: 6 }}>
+  <code style={{ background: "var(--df-surface-2)", padding: "2px 6px", borderRadius: 6 }}>
     {col.key}
   </code>
   <button
@@ -1793,7 +1793,7 @@ const HeaderMenu = ({ anchor }) => {
           </button>
 
           <button
-  style={{ ...S.smallBtn, color: "#b91c1c", borderColor: COLORS.border, opacity: lock ? .5 : 1 }}
+  style={{ ...S.smallBtn, color: "var(--df-danger-text)", borderColor: COLORS.border, opacity: lock ? .5 : 1 }}
   disabled={lock}
   onClick={() => removeField(k)}
 >
@@ -1969,7 +1969,7 @@ const insertField = (key, side = "right") => {
         style={{
           border: `1px solid ${COLORS.border}`,
           borderRadius: 12,
-          background: "#fff",
+          background: "var(--df-bg)",
           padding: 12,
         }}
       >
@@ -2025,7 +2025,7 @@ const insertField = (key, side = "right") => {
   {selectedRowIds.size > 0 && bulkStatutCols.length > 0 && (
     <div style={{ position: "relative", display: "inline-block" }}>
       <button
-        style={{ ...S.smallBtn, background: "#2563eb", color: "#fff", borderColor: "#2563eb" }}
+        style={{ ...S.smallBtn, background: "var(--df-blue)", color: "#fff", borderColor: "var(--df-blue)" }}
         onClick={() => setShowBulkUpdate(s => !s)}
       >
         <Edit3 size={16} /> Mettre à jour ({selectedRowIds.size})
@@ -2033,11 +2033,11 @@ const insertField = (key, side = "right") => {
       {showBulkUpdate && (
         <div style={{
           position: "absolute", top: "calc(100% + 6px)", left: 0, zIndex: 999,
-          background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10,
+          background: "var(--df-bg)", border: "1px solid var(--df-slate-border)", borderRadius: 10,
           boxShadow: "0 4px 16px rgba(0,0,0,0.12)", padding: "14px 16px",
           minWidth: 260, display: "flex", flexDirection: "column", gap: 10,
         }}>
-          <div style={{ fontWeight: 600, fontSize: 13, color: "#1e293b" }}>
+          <div style={{ fontWeight: 600, fontSize: 13, color: "var(--df-ink-4)" }}>
             Mettre à jour {selectedRowIds.size} ligne{selectedRowIds.size > 1 ? "s" : ""}
           </div>
           <select
@@ -2070,7 +2070,7 @@ const insertField = (key, side = "right") => {
               Annuler
             </button>
             <button
-              style={{ ...S.smallBtn, background: "#2563eb", color: "#fff", borderColor: "#2563eb" }}
+              style={{ ...S.smallBtn, background: "var(--df-blue)", color: "#fff", borderColor: "var(--df-blue)" }}
               disabled={!bulkField || !bulkValue}
               onClick={applyBulkUpdate}
             >
@@ -2153,7 +2153,7 @@ const insertField = (key, side = "right") => {
   <button
   style={{
     ...S.smallBtn,
-    background: debugKeys ? "#2563eb" : "#f3f4f6",
+    background: debugKeys ? "var(--df-blue)" : "var(--df-surface-2)",
     color: debugKeys ? "#fff" : "#111",
   }}
   onClick={() => setDebugKeys(d => !d)}
@@ -2197,8 +2197,8 @@ const insertField = (key, side = "right") => {
         margin: "8px 0 10px",
         padding: "8px 10px",
         borderRadius: 8,
-        border: "1px dashed #e5e7eb",
-        background: "#fffbea",
+        border: "1px dashed var(--df-border-2)",
+        background: "var(--df-x-FFFBEA)",
         fontSize: 12,
         display: "flex",
         alignItems: "center",
@@ -2219,7 +2219,7 @@ const insertField = (key, side = "right") => {
     {cols.map((c, i) => {
       const isSticky = leftOffsets[c.key] !== undefined;
       const stickyStyle = isSticky
-        ? { position: "sticky", left: leftOffsets[c.key], zIndex: 3, background: "#fff" }
+        ? { position: "sticky", left: leftOffsets[c.key], zIndex: 3, background: "var(--df-bg)" }
         : {};
 
       return (
@@ -2258,7 +2258,7 @@ const insertField = (key, side = "right") => {
                     top: 0,
                     bottom: 0,
                     width: 2,
-                    background: "#2563eb",
+                    background: "var(--df-blue)",
                   }}
                 />
               )}
@@ -2270,7 +2270,7 @@ const insertField = (key, side = "right") => {
                     top: 0,
                     bottom: 0,
                     width: 2,
-                    background: "#2563eb",
+                    background: "var(--df-blue)",
                   }}
                 />
               )}
@@ -2326,7 +2326,7 @@ const insertField = (key, side = "right") => {
                 position: "sticky",
                 left: leftOffsets[c.key],
                 zIndex: 3,
-                background: "#fff",
+                background: "var(--df-bg)",
               }
             : {};
           const isCellSelected = isSelected(rowIndex, c.key);
@@ -2348,7 +2348,7 @@ const insertField = (key, side = "right") => {
                 ...stickyStyles,
                 ...(isCellSelected
                   ? {
-                      outline: debugKeys ? "2px solid #10b981" : "2px solid #2563eb",
+                      outline: debugKeys ? "2px solid #10b981" : "2px solid var(--df-blue)",
                       outlineOffset: -2,
                     }
                   : {}),
@@ -2413,8 +2413,8 @@ const insertField = (key, side = "right") => {
                         position: "absolute",
                         top: 2,
                         right: 2,
-                        border: "1px solid #E0DED9",
-                        background: "#fff",
+                        border: "1px solid var(--df-border)",
+                        background: "var(--df-bg)",
                         borderRadius: 6,
                         fontSize: 12,
                         lineHeight: 1,
@@ -2440,7 +2440,7 @@ const insertField = (key, side = "right") => {
       const count = rowsIn.length;
       return (
         <React.Fragment key={`grp_${gv}_${gi}`}>
-          <tr style={{ background: "#fafafa" }}>
+          <tr style={{ background: "var(--df-surface-5)" }}>
             <td colSpan={cols.length} style={{ padding: 8, borderBottom: `1px solid ${COLORS.border}` }}>
               <button
                 onClick={() => toggleGroup(gv)}
@@ -2484,12 +2484,12 @@ const insertField = (key, side = "right") => {
       position: "sticky",
       left: leftOffsets[c.key],
       zIndex: 3,
-      background: "#fff",
+      background: "var(--df-bg)",
     }
   : {}),
                         ...(isSelected(absIdx, c.key)
                           ? {
-      outline: debugKeys ? "2px solid #10b981" : "2px solid #2563eb",
+      outline: debugKeys ? "2px solid #10b981" : "2px solid var(--df-blue)",
       outlineOffset: -2,
       boxShadow: `inset 0 0 0 1px ${debugKeys ? "#10b98133" : "#2563eb22"}`,
     }
@@ -2567,8 +2567,8 @@ const insertField = (key, side = "right") => {
                                   position: "absolute",
                                   top: 2,
                                   right: 2,
-                                  border: "1px solid #E0DED9",
-                                  background: "#fff",
+                                  border: "1px solid var(--df-border)",
+                                  background: "var(--df-bg)",
                                   borderRadius: 6,
                                   fontSize: 12,
                                   lineHeight: 1,
@@ -2603,11 +2603,11 @@ const insertField = (key, side = "right") => {
           position: leftOffsets[c.key] !== undefined ? "sticky" : undefined,
           left: leftOffsets[c.key],
           zIndex: leftOffsets[c.key] !== undefined ? 1 : undefined,
-          background: "#fafafa",
+          background: "var(--df-surface-5)",
           borderTop: `1px solid ${COLORS.border}`,
           // un peu de style “footer”
           fontSize: 12,
-          color: "#111827",
+          color: "var(--df-text)",
         }}
       >
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
@@ -2631,7 +2631,7 @@ const insertField = (key, side = "right") => {
     padding: 8, 
     border: `1px dashed ${COLORS.border}`, 
     borderRadius: 8, 
-    background: "#fafafa", 
+    background: "var(--df-surface-5)", 
     fontSize: 12, 
     lineHeight: 1.5 
   }}>

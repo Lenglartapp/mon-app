@@ -45,19 +45,19 @@ export default function ActivitySidebar({ row, colsByKey, onClose }) {
 
       <div style={{ display: "flex", gap: 8, padding: "0 12px 8px" }}>
         <button
-          style={{ ...S.smallBtn, background: tab === "all" ? "#111827" : "#fff", color: tab === "all" ? "#fff" : "#111" }}
+          style={{ ...S.smallBtn, background: tab === "all" ? "var(--df-text)" : "var(--df-bg)", color: tab === "all" ? "#fff" : "#111" }}
           onClick={() => setTab("all")}
         >
           Toutes
         </button>
         <button
-          style={{ ...S.smallBtn, background: tab === "comments" ? "#111827" : "#fff", color: tab === "comments" ? "#fff" : "#111" }}
+          style={{ ...S.smallBtn, background: tab === "comments" ? "var(--df-text)" : "var(--df-bg)", color: tab === "comments" ? "#fff" : "#111" }}
           onClick={() => setTab("comments")}
         >
           Commentaires
         </button>
         <button
-          style={{ ...S.smallBtn, background: tab === "history" ? "#111827" : "#fff", color: tab === "history" ? "#fff" : "#111" }}
+          style={{ ...S.smallBtn, background: tab === "history" ? "var(--df-text)" : "var(--df-bg)", color: tab === "history" ? "#fff" : "#111" }}
           onClick={() => setTab("history")}
         >
           Historique
@@ -70,7 +70,7 @@ export default function ActivitySidebar({ row, colsByKey, onClose }) {
         ) : (
           console.log("DEBUG SIDEBAR - Liste des items:", items) || items.map(it => (
             <div key={it.id} style={{ padding: 10, border: `1px solid ${COLORS.border}`, borderRadius: 10, marginBottom: 8 }}>
-              <div style={{ fontSize: 12, opacity: 1, fontWeight: 700, color: '#111827', marginBottom: 4 }}>
+              <div style={{ fontSize: 12, opacity: 1, fontWeight: 700, color: 'var(--df-text)', marginBottom: 4 }}>
                 {new Date(it.ts).toLocaleString()} — {it.user_name || "Auteur inconnu"}
               </div>
               {it.type === "comment" ? (
@@ -80,7 +80,7 @@ export default function ActivitySidebar({ row, colsByKey, onClose }) {
                   <b>{colMap?.[it.field]?.label || it.field}</b> :{" "}
                   <span style={{ textDecoration: "line-through", opacity: .7 }}>{String(it.from ?? "—")}</span>
                   {" "}<span>→</span>{" "}
-                  <span style={{ color: "#166534", fontWeight: 600 }}>{String(it.to ?? "—")}</span>
+                  <span style={{ color: "var(--df-chip-status)", fontWeight: 600 }}>{String(it.to ?? "—")}</span>
                 </div>
               )}
             </div>

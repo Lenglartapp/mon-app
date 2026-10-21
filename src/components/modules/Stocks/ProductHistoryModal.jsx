@@ -39,18 +39,18 @@ const COLUMNS = [
         field: 'qty', headerName: 'Quantité', width: 100, align: 'right', headerAlign: 'right',
         renderCell: (params) => (
             <span style={{ fontWeight: 600 }}>
-                {params.value} <span style={{ fontSize: 11, fontWeight: 400, color: '#6B7280' }}>{params.row.unit}</span>
+                {params.value} <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--df-muted)' }}>{params.row.unit}</span>
             </span>
         ),
     },
     { field: 'location', headerName: 'Emplacement', width: 120 },
     {
         field: 'reason', headerName: 'Motif / Détail', flex: 1, minWidth: 200,
-        renderCell: (params) => <span title={params.value || ''} style={{ fontSize: 13, color: '#4B5563', overflow: 'hidden', textOverflow: 'ellipsis' }}>{params.value || '—'}</span>,
+        renderCell: (params) => <span title={params.value || ''} style={{ fontSize: 13, color: 'var(--df-text-3)', overflow: 'hidden', textOverflow: 'ellipsis' }}>{params.value || '—'}</span>,
     },
     {
         field: 'pieces_names', headerName: 'Pièce', width: 110,
-        renderCell: (params) => <span style={{ fontSize: 13, color: '#374151' }}>{params.value || '—'}</span>,
+        renderCell: (params) => <span style={{ fontSize: 13, color: 'var(--df-text-2)' }}>{params.value || '—'}</span>,
     },
     {
         field: 'user_name', headerName: 'Opérateur', width: 160,
@@ -59,7 +59,7 @@ const COLUMNS = [
                 <Avatar sx={{ width: 24, height: 24, fontSize: 11, bgcolor: stringToColor(params.value) }}>{params.value[0]}</Avatar>
                 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{params.value}</span>
             </div>
-        ) : <span style={{ color: '#9B9A97' }}>—</span>),
+        ) : <span style={{ color: 'var(--df-faint-2)' }}>—</span>),
     },
 ];
 
@@ -101,7 +101,7 @@ export default function ProductHistoryModal({ open, onClose, product, movements 
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 24 }}>
                     {pieces.length > 0 && (
                         <div>
-                            <div style={{ fontSize: 13, color: '#6B7280', marginBottom: 8 }}>Pièces en stock ({pieces.length})</div>
+                            <div style={{ fontSize: 13, color: 'var(--df-muted)', marginBottom: 8 }}>Pièces en stock ({pieces.length})</div>
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                                 {pieces.map((p, idx) => (
                                     <TonePill key={p.id || idx} tone={Number(p.qty) > 0 ? 5 : null}>{p.name || `Pièce ${idx + 1}`} · {p.qty} {product.unit}</TonePill>
@@ -110,15 +110,15 @@ export default function ProductHistoryModal({ open, onClose, product, movements 
                         </div>
                     )}
                     <div>
-                        <div style={{ fontSize: 13, color: '#6B7280', marginBottom: 8 }}>Emplacement</div>
-                        {locs.length ? <LocationChips value={product.location} /> : <span style={{ fontSize: 13, color: '#9B9A97' }}>À compléter</span>}
+                        <div style={{ fontSize: 13, color: 'var(--df-muted)', marginBottom: 8 }}>Emplacement</div>
+                        {locs.length ? <LocationChips value={product.location} /> : <span style={{ fontSize: 13, color: 'var(--df-faint-2)' }}>À compléter</span>}
                     </div>
                 </div>
 
                 {/* Historique */}
                 <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-                    <div style={{ fontSize: 17, fontWeight: 500, color: '#111827', marginBottom: 10 }}>
-                        Historique <span style={{ fontSize: 13, fontWeight: 400, color: '#9B9A97' }}>{rows.length} mouvement{rows.length > 1 ? 's' : ''}</span>
+                    <div style={{ fontSize: 17, fontWeight: 500, color: 'var(--df-text)', marginBottom: 10 }}>
+                        Historique <span style={{ fontSize: 13, fontWeight: 400, color: 'var(--df-faint-2)' }}>{rows.length} mouvement{rows.length > 1 ? 's' : ''}</span>
                     </div>
                     {/* Le tableau occupe la place restante de la fenêtre (il défile à l'intérieur) */}
                     <div style={{ ...TABLE_FRAME_STYLE, flex: 1, minHeight: 260 }}>

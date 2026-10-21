@@ -93,8 +93,8 @@ export default function AddressAutocomplete({ value, onChange, onCommit, placeho
     if (isConfirmed && value) {
         return (
             <div style={{ position: 'relative', ...style }}>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, maxWidth: '100%', fontSize: 13, color: '#111827', fontWeight: 500 }}>
-                    <MapPin size={13} color="#1E2447" style={{ flexShrink: 0 }} />
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, maxWidth: '100%', fontSize: 13, color: 'var(--df-text)', fontWeight: 500 }}>
+                    <MapPin size={13} color="var(--df-primary-text)" style={{ flexShrink: 0 }} />
                     <span
                         onClick={() => { setIsConfirmed(false); setTimeout(() => inputRef.current?.focus(), 50); }}
                         title="Modifier l'adresse"
@@ -106,7 +106,7 @@ export default function AddressAutocomplete({ value, onChange, onCommit, placeho
                         type="button"
                         onClick={clear}
                         title="Effacer l'adresse"
-                        style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', color: '#9CA3AF', flexShrink: 0 }}
+                        style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', color: 'var(--df-faint)', flexShrink: 0 }}
                     >
                         <X size={12} />
                     </button>
@@ -128,7 +128,7 @@ export default function AddressAutocomplete({ value, onChange, onCommit, placeho
                 autoComplete="off"
                 style={{
                     border: 'none', background: 'transparent',
-                    color: '#374151', fontSize: 13, fontFamily: 'inherit',
+                    color: 'var(--df-text-2)', fontSize: 13, fontFamily: 'inherit',
                     outline: 'none', width: '100%',
                     ...inputStyle,
                 }}
@@ -136,21 +136,21 @@ export default function AddressAutocomplete({ value, onChange, onCommit, placeho
             {open && (
                 <div style={{
                     position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, zIndex: 1000,
-                    background: '#fff', border: '1px solid #E0DED9', borderRadius: 8,
+                    background: 'var(--df-bg)', border: '1px solid var(--df-border)', borderRadius: 8,
                     boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', maxHeight: 280, overflowY: 'auto', minWidth: 320,
                 }}>
                     {suggestions.map((s, i) => (
                         <div
                             key={i}
                             onMouseDown={() => pick(s)}
-                            style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '8px 12px', cursor: 'pointer', fontSize: 13, borderBottom: i < suggestions.length - 1 ? '1px solid #E8E6E2' : 'none' }}
-                            onMouseEnter={e => e.currentTarget.style.background = '#F7F7F5'}
-                            onMouseLeave={e => e.currentTarget.style.background = '#fff'}
+                            style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '8px 12px', cursor: 'pointer', fontSize: 13, borderBottom: i < suggestions.length - 1 ? '1px solid var(--df-border-soft)' : 'none' }}
+                            onMouseEnter={e => e.currentTarget.style.background = 'var(--df-surface-3)'}
+                            onMouseLeave={e => e.currentTarget.style.background = 'var(--df-bg)'}
                         >
-                            <MapPin size={13} color="#9B9A97" style={{ flexShrink: 0, marginTop: 2 }} />
+                            <MapPin size={13} color="var(--df-faint-2)" style={{ flexShrink: 0, marginTop: 2 }} />
                             <div style={{ minWidth: 0 }}>
-                                <div style={{ color: '#111827' }}>{s.label}</div>
-                                {s.sub && <div style={{ fontSize: 11, color: '#9CA3AF' }}>{s.sub}</div>}
+                                <div style={{ color: 'var(--df-text)' }}>{s.label}</div>
+                                {s.sub && <div style={{ fontSize: 11, color: 'var(--df-faint)' }}>{s.sub}</div>}
                             </div>
                         </div>
                     ))}

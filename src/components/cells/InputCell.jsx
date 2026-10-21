@@ -264,7 +264,7 @@ function InputCell({
                 padding: "2px 6px",
                 borderRadius: 8,
                 border: "1px solid #ddd",
-                background: active ? "#2563eb" : "#f8fafc",
+                background: active ? "var(--df-blue)" : "var(--df-slate-bg)",
                 color: active ? "#fff" : "#111",
                 fontSize: 12,
               }}
@@ -282,7 +282,7 @@ function InputCell({
         style={{ display: "flex", gap: 6, flexWrap: "wrap", cursor: readOnly ? "default" : "text" }}
       >
         {asLabels.length ? asLabels.map((t, i) => (
-          <span key={i} style={{ padding: "2px 6px", borderRadius: 8, border: "1px solid #E0DED9", background: "#f8fafc", fontSize: 12 }}>
+          <span key={i} style={{ padding: "2px 6px", borderRadius: 8, border: "1px solid var(--df-border)", background: "var(--df-slate-bg)", fontSize: 12 }}>
             {t}
           </span>
         )) : "—"}
@@ -309,8 +309,8 @@ function InputCell({
       <div
         onDoubleClick={() => !readOnly && onStartEdit?.()}
         style={{
-          color: readOnly ? "#9CA3AF" : "inherit",
-          backgroundColor: readOnly ? "#F4F4F4" : "transparent",
+          color: readOnly ? "var(--df-faint)" : "inherit",
+          backgroundColor: readOnly ? "var(--df-surface)" : "transparent",
           fontStyle: readOnly ? "italic" : "normal",
           padding: "2px 4px", borderRadius: 4
         }}
@@ -341,7 +341,7 @@ function InputCell({
               height: 40,
               borderRadius: 6,
               overflow: "hidden",
-              border: "1px solid #E0DED9",
+              border: "1px solid var(--df-border)",
               padding: 0,
             }}
             title="Voir"
@@ -377,7 +377,7 @@ function InputCell({
                 height: 40,
                 borderRadius: 6,
                 overflow: "hidden",
-                border: "1px solid #E0DED9",
+                border: "1px solid var(--df-border)",
                 padding: 0,
                 cursor: "pointer",
               }}
@@ -539,8 +539,8 @@ function InputCell({
         onDoubleClick={() => !readOnly && onStartEdit?.()}
         style={{
           cursor: readOnly ? "default" : "text",
-          color: readOnly ? "#9CA3AF" : "inherit", // Gray text
-          backgroundColor: readOnly ? "#F4F4F4" : "transparent", // Light gray bg
+          color: readOnly ? "var(--df-faint)" : "inherit", // Gray text
+          backgroundColor: readOnly ? "var(--df-surface)" : "transparent", // Light gray bg
           fontStyle: readOnly ? "italic" : "normal",
           padding: "2px 4px",
           borderRadius: 4
@@ -568,8 +568,8 @@ function InputCell({
       onDoubleClick={() => !readOnly && onStartEdit?.()}
       style={{
         cursor: readOnly ? "default" : "text",
-        color: readOnly ? "#9CA3AF" : "inherit",
-        backgroundColor: readOnly ? "#F4F4F4" : "transparent",
+        color: readOnly ? "var(--df-faint)" : "inherit",
+        backgroundColor: readOnly ? "var(--df-surface)" : "transparent",
         fontStyle: readOnly ? "italic" : "normal",
         padding: "2px 4px",
         borderRadius: 4

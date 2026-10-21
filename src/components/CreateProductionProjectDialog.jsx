@@ -201,10 +201,10 @@ export default function CreateProductionProjectDialog({
             value={location}
             onChange={setLocation}
             placeholder="Ex: 12 rue de la Paix, Nantes"
-            style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid #d1d5db', boxSizing: 'border-box', background: '#fff' }}
+            style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--df-border-strong)', boxSizing: 'border-box', background: 'var(--df-bg)' }}
           />
           {location && (
-            <div style={{ marginTop: 6, fontSize: 12, color: "#6B7280", padding: "4px 8px", background: "#f8fafc", borderRadius: 6, border: "1px solid #e2e8f0" }}>
+            <div style={{ marginTop: 6, fontSize: 12, color: "var(--df-muted)", padding: "4px 8px", background: "var(--df-slate-bg)", borderRadius: 6, border: "1px solid var(--df-slate-border)" }}>
               📍 {location}
             </div>
           )}
@@ -225,9 +225,9 @@ export default function CreateProductionProjectDialog({
                 onClick={() => setInterventionType(opt.value)}
                 style={{
                   padding: "7px 18px", borderRadius: 8, fontSize: 13, cursor: "pointer",
-                  border: `1.5px solid ${interventionType === opt.value ? "#2563eb" : "#e2e8f0"}`,
-                  background: interventionType === opt.value ? "#eff6ff" : "#fff",
-                  color: interventionType === opt.value ? "#2563eb" : "#374151",
+                  border: `1.5px solid ${interventionType === opt.value ? "var(--df-blue)" : "var(--df-slate-border)"}`,
+                  background: interventionType === opt.value ? "var(--df-blue-bg)" : "var(--df-bg)",
+                  color: interventionType === opt.value ? "var(--df-blue)" : "var(--df-text-2)",
                   fontWeight: interventionType === opt.value ? 600 : 400,
                 }}
               >
@@ -239,7 +239,7 @@ export default function CreateProductionProjectDialog({
 
         {/* Mode expédition — seulement si Installation */}
         {interventionType === "installation" && (
-          <div style={{ marginTop: 10, padding: "10px 12px", background: "#f8fafc", borderRadius: 8, border: "1px solid #e2e8f0" }}>
+          <div style={{ marginTop: 10, padding: "10px 12px", background: "var(--df-slate-bg)", borderRadius: 8, border: "1px solid var(--df-slate-border)" }}>
             <label style={{ display: "block", marginBottom: 8, fontWeight: 600, fontSize: 13 }}>
               Comment la marchandise arrive sur place ?
             </label>
@@ -253,9 +253,9 @@ export default function CreateProductionProjectDialog({
                   onClick={() => setExpeditionType(opt.value)}
                   style={{
                     padding: "7px 14px", borderRadius: 8, fontSize: 12, cursor: "pointer",
-                    border: `1.5px solid ${expeditionType === opt.value ? "#2563eb" : "#e2e8f0"}`,
-                    background: expeditionType === opt.value ? "#eff6ff" : "#fff",
-                    color: expeditionType === opt.value ? "#2563eb" : "#374151",
+                    border: `1.5px solid ${expeditionType === opt.value ? "var(--df-blue)" : "var(--df-slate-border)"}`,
+                    background: expeditionType === opt.value ? "var(--df-blue-bg)" : "var(--df-bg)",
+                    color: expeditionType === opt.value ? "var(--df-blue)" : "var(--df-text-2)",
                     fontWeight: expeditionType === opt.value ? 600 : 400,
                     textAlign: "left",
                   }}
@@ -280,10 +280,10 @@ export default function CreateProductionProjectDialog({
             {/* Colonne gauche : recherche + liste */}
             <div
               style={{
-                border: "1px solid #E0DED9",
+                border: "1px solid var(--df-border)",
                 borderRadius: 12,
                 padding: 10,
-                background: "#fff",
+                background: "var(--df-bg)",
               }}
             >
               <input
@@ -332,10 +332,10 @@ export default function CreateProductionProjectDialog({
             {/* Colonne droite : aperçu */}
             <div
               style={{
-                border: "1px solid #E0DED9",
+                border: "1px solid var(--df-border)",
                 borderRadius: 12,
                 padding: 10,
-                background: "#fff",
+                background: "var(--df-bg)",
               }}
             >
               <div style={{ fontWeight: 600, marginBottom: 6 }}>Aperçu</div>

@@ -9,12 +9,12 @@ import FitPanel from './FitPanel';
 
 const BOX = {
   display: 'flex', alignItems: 'center', gap: 8, height: 38, boxSizing: 'border-box',
-  background: 'white', border: '1px solid #E0DED9', borderRadius: 8, padding: '0 10px',
-  boxShadow: '0 1px 2px rgba(0,0,0,0.05)', fontSize: 13, color: '#111827',
+  background: 'var(--df-bg)', border: '1px solid var(--df-border)', borderRadius: 8, padding: '0 10px',
+  boxShadow: '0 1px 2px rgba(0,0,0,0.05)', fontSize: 13, color: 'var(--df-text)',
 };
 const INPUT = {
   flex: 1, minWidth: 0, border: 'none', outline: 'none', background: 'transparent',
-  fontSize: 13, color: '#111827', fontFamily: 'inherit', padding: 0,
+  fontSize: 13, color: 'var(--df-text)', fontFamily: 'inherit', padding: 0,
 };
 
 /** Champ de recherche (loupe à gauche, croix pour vider). `list` : id d'un <datalist> de suggestions. */
@@ -23,10 +23,10 @@ export function ToolbarSearch({ value, onChange, placeholder, width = 320, list,
   // les boutons voisins à la ligne.
   return (
     <div style={{ ...BOX, ...(grow ? { flex: '1 1 200px', maxWidth: width, minWidth: 180 } : { width }) }}>
-      {icon && <Search size={16} color="#9CA3AF" style={{ flexShrink: 0 }} />}
+      {icon && <Search size={16} color="var(--df-faint)" style={{ flexShrink: 0 }} />}
       <input value={value || ''} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} list={list} style={INPUT} />
       {value ? (
-        <button onClick={() => onChange('')} title="Effacer" style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', color: '#9CA3AF', display: 'flex' }}>
+        <button onClick={() => onChange('')} title="Effacer" style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', color: 'var(--df-faint)', display: 'flex' }}>
           <X size={14} />
         </button>
       ) : null}
@@ -38,8 +38,8 @@ export function ToolbarSearch({ value, onChange, placeholder, width = 320, list,
 export function ToolbarSelect({ label, value, onChange, options }) {
   const active = options[0] && value !== options[0].value;
   return (
-    <label style={{ ...BOX, cursor: 'pointer', borderColor: active ? '#1E2447' : '#E0DED9' }}>
-      <span style={{ color: '#9B9A97', whiteSpace: 'nowrap' }}>{label}</span>
+    <label style={{ ...BOX, cursor: 'pointer', borderColor: active ? 'var(--df-primary)' : 'var(--df-border)' }}>
+      <span style={{ color: 'var(--df-faint-2)', whiteSpace: 'nowrap' }}>{label}</span>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -56,7 +56,7 @@ export function ToolbarSelect({ label, value, onChange, options }) {
 export function ToolbarButton({ icon, children, onClick, primary = false, active = false, tone = null, title, disabled = false }) {
   const dark = primary || active;
   const t = tone != null ? BLUE_TONES[tone] : null;
-  const bg = t ? t.bg : dark ? '#1E2447' : 'white';
+  const bg = t ? t.bg : dark ? 'var(--df-primary)' : 'var(--df-bg)';
   return (
     <button
       onClick={disabled ? undefined : onClick}
@@ -65,8 +65,8 @@ export function ToolbarButton({ icon, children, onClick, primary = false, active
       style={{
         opacity: disabled ? 0.45 : 1, cursor: disabled ? 'not-allowed' : 'pointer',
         display: 'flex', alignItems: 'center', gap: 8, height: 38, padding: '0 14px', borderRadius: 8,
-        background: bg, color: t ? t.color : dark ? 'white' : '#374151',
-        border: `1px solid ${t || dark ? bg : '#E5E7EB'}`,
+        background: bg, color: t ? t.color : dark ? 'white' : 'var(--df-text-2)',
+        border: `1px solid ${t || dark ? bg : 'var(--df-border-2)'}`,
         fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap', fontFamily: 'inherit',
       }}
     >
@@ -108,25 +108,25 @@ export function ToolbarMenu({ value, onChange, options, width = 240, multiple = 
         onClick={() => setOpen(o => !o)}
         style={{ ...BOX, cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit', whiteSpace: 'nowrap' }}
       >
-        {buttonText} <ChevronDown size={14} color="#6B7280" />
+        {buttonText} <ChevronDown size={14} color="var(--df-muted)" />
       </button>
       {open && (
         <>
           <div style={{ position: 'fixed', inset: 0, zIndex: 80 }} onClick={() => setOpen(false)} />
-          <FitPanel style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, width, background: 'white', borderRadius: 8, boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', border: '1px solid #E0DED9', zIndex: 90, padding: 4 }}>
+          <FitPanel style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, width, background: 'var(--df-bg)', borderRadius: 8, boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', border: '1px solid var(--df-border)', zIndex: 90, padding: 4 }}>
             {options.map(o => (
               <div
                 key={o.value}
                 onClick={() => pick(o.value)}
-                style={{ padding: '8px 12px', fontSize: 13, cursor: 'pointer', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, background: isOn(o.value) ? '#EEF4FD' : 'transparent', color: '#111827', fontWeight: isOn(o.value) ? 600 : 400 }}
+                style={{ padding: '8px 12px', fontSize: 13, cursor: 'pointer', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, background: isOn(o.value) ? 'var(--df-selected)' : 'transparent', color: 'var(--df-text)', fontWeight: isOn(o.value) ? 600 : 400 }}
               >
                 {multiple && (
-                  <span style={{ width: 16, height: 16, borderRadius: 4, flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', border: `1.5px solid ${isOn(o.value) ? '#1E2447' : '#C9C7C2'}`, background: isOn(o.value) ? '#1E2447' : 'white' }}>
+                  <span style={{ width: 16, height: 16, borderRadius: 4, flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', border: `1.5px solid ${isOn(o.value) ? 'var(--df-primary)' : 'var(--df-border-hover)'}`, background: isOn(o.value) ? 'var(--df-primary)' : 'var(--df-bg)' }}>
                     {isOn(o.value) && <Check size={11} color="white" strokeWidth={3} />}
                   </span>
                 )}
                 <span style={{ flex: 1 }}>{text(o)}</span>
-                {!multiple && isOn(o.value) && <Check size={14} color="#1E2447" />}
+                {!multiple && isOn(o.value) && <Check size={14} color="var(--df-primary-text)" />}
               </div>
             ))}
           </FitPanel>

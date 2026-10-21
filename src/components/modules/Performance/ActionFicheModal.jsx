@@ -3,19 +3,19 @@ import { X } from 'lucide-react';
 import { RAISONS_CATALOGUE } from './PerformanceEntryModal';
 
 const STATUT_OPTIONS = [
-  { key: 'A_FAIRE', label: 'À faire', color: '#6B7280', bg: '#F3F4F6' },
-  { key: 'EN_COURS', label: 'En cours', color: '#2563EB', bg: '#DBEAFE' },
-  { key: 'TERMINE', label: 'Terminé', color: '#059669', bg: '#D1FAE5' },
+  { key: 'A_FAIRE', label: 'À faire', color: 'var(--df-muted)', bg: 'var(--df-surface-2)' },
+  { key: 'EN_COURS', label: 'En cours', color: 'var(--df-blue)', bg: 'var(--df-blue-bg-2)' },
+  { key: 'TERMINE', label: 'Terminé', color: '#059669', bg: 'var(--df-green-bg)' },
 ];
 
 const inputStyle = {
   width: '100%', boxSizing: 'border-box',
-  border: '1px solid #E0DED9', borderRadius: 8, padding: '8px 12px',
-  fontSize: 14, color: '#374151', outline: 'none', fontFamily: 'inherit',
+  border: '1px solid var(--df-border)', borderRadius: 8, padding: '8px 12px',
+  fontSize: 14, color: 'var(--df-text-2)', outline: 'none', fontFamily: 'inherit',
 };
 
 const labelStyle = {
-  display: 'block', fontSize: 12, fontWeight: 600, color: '#6B7280',
+  display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--df-muted)',
   textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 6,
 };
 
@@ -49,16 +49,16 @@ export default function ActionFicheModal({ action, projects, onSave, onClose }) 
       display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000,
     }} onClick={e => e.target === e.currentTarget && onClose()}>
       <div style={{
-        background: '#fff', borderRadius: 16, width: 'min(600px, 95vw)',
+        background: 'var(--df-bg)', borderRadius: 16, width: 'min(600px, 95vw)',
         maxHeight: '90vh', display: 'flex', flexDirection: 'column',
         boxShadow: '0 8px 40px rgba(0,0,0,0.15)',
       }}>
         {/* Header */}
-        <div style={{ padding: '20px 24px 16px', borderBottom: '1px solid #F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span style={{ fontWeight: 700, fontSize: 16, color: '#111827' }}>
+        <div style={{ padding: '20px 24px 16px', borderBottom: '1px solid var(--df-surface-2)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span style={{ fontWeight: 700, fontSize: 16, color: 'var(--df-text)' }}>
             {isEdit ? 'Modifier la fiche' : 'Nouvelle fiche d\'action'}
           </span>
-          <button onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#9CA3AF' }}>
+          <button onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--df-faint)' }}>
             <X size={18} />
           </button>
         </div>
@@ -68,7 +68,7 @@ export default function ActionFicheModal({ action, projects, onSave, onClose }) 
 
           {/* Titre */}
           <div>
-            <label style={labelStyle}>Titre <span style={{ color: '#EF4444' }}>*</span></label>
+            <label style={labelStyle}>Titre <span style={{ color: 'var(--df-danger)' }}>*</span></label>
             <input
               autoFocus
               style={inputStyle}
@@ -163,13 +163,13 @@ export default function ActionFicheModal({ action, projects, onSave, onClose }) 
         </div>
 
         {/* Footer */}
-        <div style={{ padding: '16px 24px', borderTop: '1px solid #F3F4F6', display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+        <div style={{ padding: '16px 24px', borderTop: '1px solid var(--df-surface-2)', display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
           <button onClick={onClose} style={{
-            border: '1px solid #E0DED9', background: 'white', borderRadius: 8,
-            padding: '8px 18px', fontSize: 14, cursor: 'pointer', color: '#374151', fontWeight: 500,
+            border: '1px solid var(--df-border)', background: 'var(--df-bg)', borderRadius: 8,
+            padding: '8px 18px', fontSize: 14, cursor: 'pointer', color: 'var(--df-text-2)', fontWeight: 500,
           }}>Annuler</button>
           <button onClick={handleSave} disabled={saving || !form.titre.trim()} style={{
-            background: '#1E2447', color: 'white', border: 'none', borderRadius: 8,
+            background: 'var(--df-primary)', color: 'white', border: 'none', borderRadius: 8,
             padding: '8px 20px', fontSize: 14, fontWeight: 600,
             cursor: (saving || !form.titre.trim()) ? 'not-allowed' : 'pointer',
             opacity: (saving || !form.titre.trim()) ? 0.6 : 1,

@@ -39,14 +39,14 @@ const CustomTooltip = ({ active, payload, label }) => {
     if (!active || !payload?.length) return null;
     return (
         <div style={{
-            background: 'white', border: '1px solid #E0DED9',
+            background: 'var(--df-bg)', border: '1px solid var(--df-border)',
             borderRadius: 10, padding: '10px 16px',
             boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
         }}>
-            <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 4 }}>{label}</div>
-            <div style={{ fontSize: 18, fontWeight: 800, color: '#1E2447' }}>
+            <div style={{ fontSize: 12, color: 'var(--df-muted)', marginBottom: 4 }}>{label}</div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--df-primary-text)' }}>
                 {payload[0].value}%
-                <span style={{ fontSize: 12, fontWeight: 400, color: '#9CA3AF', marginLeft: 6 }}>occupation</span>
+                <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--df-faint)', marginLeft: 6 }}>occupation</span>
             </div>
         </div>
     );
@@ -147,19 +147,19 @@ export default function StockDashboardTab({ inventory = [], projects = [], movem
     const xInterval = Math.max(0, Math.floor(filteredWeeklyData.length / 10) - 1);
 
     const card = {
-        background: 'white', borderRadius: 16, padding: 20, height: '100%',
+        background: 'var(--df-bg)', borderRadius: 16, padding: 20, height: '100%',
         boxShadow: '0 2px 12px rgba(0,0,0,0.04)', border: '1px solid rgba(0,0,0,0.06)',
         display: 'flex', flexDirection: 'column', boxSizing: 'border-box',
     };
 
     // Titres des tuiles : Roboto, sans majuscules, comme les titres de sections du chiffrage / projet
     const title = {
-        fontSize: 16, fontWeight: 500, color: '#111827', fontFamily: 'Roboto, system-ui, sans-serif',
+        fontSize: 16, fontWeight: 500, color: 'var(--df-text)', fontFamily: 'Roboto, system-ui, sans-serif',
         marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8,
     };
 
-    const occupancyColor = stats.occupancyPct >= 85 ? '#EF4444'
-        : stats.occupancyPct >= 70 ? '#F59E0B' : '#1E2447';
+    const occupancyColor = stats.occupancyPct >= 85 ? 'var(--df-danger)'
+        : stats.occupancyPct >= 70 ? '#F59E0B' : 'var(--df-primary)';
 
     return (
         <div style={{ width: '100%', boxSizing: 'border-box' }}>
@@ -169,11 +169,11 @@ export default function StockDashboardTab({ inventory = [], projects = [], movem
 
                 {/* Occupation générale */}
                 <div style={card}>
-                    <div style={title}><Activity size={14} color="#2563EB" /> Occupation générale</div>
+                    <div style={title}><Activity size={14} color="var(--df-blue)" /> Occupation générale</div>
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
                         <div style={{ position: 'relative', display: 'inline-flex' }}>
                             <svg width="130" height="130" viewBox="0 0 130 130">
-                                <circle cx="65" cy="65" r="56" fill="none" stroke="#F3F4F6" strokeWidth="10" />
+                                <circle cx="65" cy="65" r="56" fill="none" stroke="var(--df-surface-2)" strokeWidth="10" />
                                 <circle cx="65" cy="65" r="56" fill="none" stroke={occupancyColor}
                                     strokeWidth="10" strokeDasharray={352}
                                     strokeDashoffset={352 - (352 * stats.occupancyPct) / 100}
@@ -183,15 +183,15 @@ export default function StockDashboardTab({ inventory = [], projects = [], movem
                             </svg>
                             <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
                                 <span style={{ fontWeight: 800, fontSize: 28, color: occupancyColor, lineHeight: 1 }}>{stats.occupancyPct}%</span>
-                                <span style={{ fontSize: 10, color: '#9CA3AF', fontWeight: 600, letterSpacing: '0.08em' }}>PLEIN</span>
+                                <span style={{ fontSize: 10, color: 'var(--df-faint)', fontWeight: 600, letterSpacing: '0.08em' }}>PLEIN</span>
                             </div>
                         </div>
                         <div style={{ textAlign: 'center' }}>
-                            <div style={{ fontSize: 12, color: '#6B7280' }}>
-                                <strong style={{ color: '#111827' }}>{stats.rouleauxEnStock.toLocaleString()}</strong>
-                                {' '}/ <strong style={{ color: '#111827' }}>{stats.capacite.toLocaleString()}</strong> rouleaux
+                            <div style={{ fontSize: 12, color: 'var(--df-muted)' }}>
+                                <strong style={{ color: 'var(--df-text)' }}>{stats.rouleauxEnStock.toLocaleString()}</strong>
+                                {' '}/ <strong style={{ color: 'var(--df-text)' }}>{stats.capacite.toLocaleString()}</strong> rouleaux
                             </div>
-                            <div style={{ fontWeight: 700, fontSize: 13, marginTop: 4, color: stats.freeRouleaux < 50 ? '#EF4444' : '#10B981' }}>
+                            <div style={{ fontWeight: 700, fontSize: 13, marginTop: 4, color: stats.freeRouleaux < 50 ? 'var(--df-danger)' : '#10B981' }}>
                                 {stats.freeRouleaux} libres
                             </div>
                         </div>
@@ -203,23 +203,23 @@ export default function StockDashboardTab({ inventory = [], projects = [], movem
                     <div style={title}><Layers size={14} color="#9333EA" /> Ventilation du stock</div>
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 20 }}>
                         {[
-                            { label: 'Réservé (projets)', val: stats.reserved, color: '#1E2447', icon: <CheckCircle2 size={13} /> },
-                            { label: 'Stock Mort', val: stats.deadStock, color: '#EF4444', icon: <Clock size={13} /> },
+                            { label: 'Réservé (projets)', val: stats.reserved, color: 'var(--df-primary-text)', icon: <CheckCircle2 size={13} /> },
+                            { label: 'Stock Mort', val: stats.deadStock, color: 'var(--df-danger)', icon: <Clock size={13} /> },
                             { label: 'Emplacements libres', val: stats.freeRouleaux, color: '#10B981', icon: <TrendingUp size={13} /> },
                         ].map((item, i) => {
                             const pct = Math.round((item.val / stats.capacite) * 100);
                             return (
                                 <div key={i}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, alignItems: 'center' }}>
-                                        <span style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                        <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--df-text-2)', display: 'flex', alignItems: 'center', gap: 6 }}>
                                             <span style={{ color: item.color }}>{item.icon}</span>{item.label}
                                         </span>
-                                        <span style={{ fontSize: 12, fontWeight: 700, color: '#111827' }}>
-                                            {pct}% <span style={{ color: '#9CA3AF', fontWeight: 400, fontSize: 11 }}>({item.val})</span>
+                                        <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--df-text)' }}>
+                                            {pct}% <span style={{ color: 'var(--df-faint)', fontWeight: 400, fontSize: 11 }}>({item.val})</span>
                                         </span>
                                     </div>
                                     <LinearProgress variant="determinate" value={pct} sx={{
-                                        height: 7, borderRadius: 4, bgcolor: '#F3F4F6',
+                                        height: 7, borderRadius: 4, bgcolor: 'var(--df-surface-2)',
                                         '& .MuiLinearProgress-bar': { bgcolor: item.color, borderRadius: 4 }
                                     }} />
                                 </div>
@@ -231,22 +231,22 @@ export default function StockDashboardTab({ inventory = [], projects = [], movem
                 {/* Alertes de tension */}
                 <div style={card}>
                     <div style={title}>
-                        <AlertTriangle size={14} color={stats.tensionLevel === 'critique' ? '#EF4444' : '#F59E0B'} />
+                        <AlertTriangle size={14} color={stats.tensionLevel === 'critique' ? 'var(--df-danger)' : '#F59E0B'} />
                         Alertes de tension
                     </div>
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 12 }}>
                         <div style={{
                             padding: 12, borderRadius: 10,
-                            background: stats.tensionLevel === 'critique' ? '#FEF2F2' : stats.tensionLevel === 'attention' ? '#FFFBEB' : '#F0FDF4',
-                            border: `1px solid ${stats.tensionLevel === 'critique' ? '#FECACA' : stats.tensionLevel === 'attention' ? '#FEF3C7' : '#BBF7D0'}`,
+                            background: stats.tensionLevel === 'critique' ? 'var(--df-danger-bg)' : stats.tensionLevel === 'attention' ? 'var(--df-chip-adv-bg)' : 'var(--df-chip-status-bg)',
+                            border: `1px solid ${stats.tensionLevel === 'critique' ? 'var(--df-x-FECACA)' : stats.tensionLevel === 'attention' ? 'var(--df-amber-bg)' : 'var(--df-x-BBF7D0)'}`,
                         }}>
-                            <div style={{ fontSize: 10, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                            <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--df-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                                 Espace libre entrepôt
                             </div>
                             <div style={{ fontWeight: 800, fontSize: 22, marginTop: 2, color: stats.tensionLevel === 'critique' ? '#DC2626' : stats.tensionLevel === 'attention' ? '#D97706' : '#059669' }}>
                                 {stats.freeRouleaux} rouleaux
                             </div>
-                            <div style={{ fontSize: 11, color: '#6B7280' }}>
+                            <div style={{ fontSize: 11, color: 'var(--df-muted)' }}>
                                 {stats.tensionLevel === 'critique' ? '⚠️ Critique — <15% libre'
                                     : stats.tensionLevel === 'attention' ? '⚡ Attention — <30% libre'
                                     : '✅ Capacité suffisante'}
@@ -254,16 +254,16 @@ export default function StockDashboardTab({ inventory = [], projects = [], movem
                         </div>
                         {stats.tensionAlerts.length > 0 ? (
                             <div>
-                                <div style={{ fontSize: 10, fontWeight: 700, color: '#9CA3AF', letterSpacing: '0.05em', marginBottom: 8 }}>
+                                <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--df-faint)', letterSpacing: '0.05em', marginBottom: 8 }}>
                                     PROJETS SANS STOCK
                                 </div>
                                 {stats.tensionAlerts.map((p, i) => (
-                                    <div key={i} style={{ padding: '8px 10px', marginBottom: 6, background: '#FFFBEB', border: '1px solid #FEF3C7', borderRadius: 8 }}>
+                                    <div key={i} style={{ padding: '8px 10px', marginBottom: 6, background: 'var(--df-chip-adv-bg)', border: '1px solid var(--df-amber-bg)', borderRadius: 8 }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                            <span style={{ fontSize: 12, fontWeight: 700, color: '#92400E' }}>{p.nom || p.name || `Projet #${p.id}`}</span>
-                                            <ArrowUpRight size={13} color="#B45309" />
+                                            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--df-warn-text)' }}>{p.nom || p.name || `Projet #${p.id}`}</span>
+                                            <ArrowUpRight size={13} color="var(--df-x-B45309)" />
                                         </div>
-                                        <div style={{ fontSize: 11, color: '#B45309' }}>Tissu non réceptionné</div>
+                                        <div style={{ fontSize: 11, color: 'var(--df-x-B45309)' }}>Tissu non réceptionné</div>
                                     </div>
                                 ))}
                             </div>
@@ -278,7 +278,7 @@ export default function StockDashboardTab({ inventory = [], projects = [], movem
 
                 {/* Top 10 compact */}
                 <div style={card}>
-                    <div style={title}><Package size={14} color="#111827" /> Top 10 par occupation</div>
+                    <div style={title}><Package size={14} color="var(--df-text)" /> Top 10 par occupation</div>
                     <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2 }}>
                         {stats.top10.map((item, i) => {
                             const pct = stats.mlTotal > 0 ? Math.round((Number(item.qty) / stats.mlTotal) * 100) : 0;
@@ -286,20 +286,20 @@ export default function StockDashboardTab({ inventory = [], projects = [], movem
                                 <div key={i} style={{
                                     display: 'flex', alignItems: 'center', gap: 8,
                                     padding: '7px 10px', borderRadius: 8,
-                                    background: i % 2 === 0 ? '#FAFAFA' : 'transparent',
+                                    background: i % 2 === 0 ? 'var(--df-surface-5)' : 'transparent',
                                 }}>
-                                    <span style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', width: 18, flexShrink: 0 }}>{i + 1}</span>
+                                    <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--df-faint)', width: 18, flexShrink: 0 }}>{i + 1}</span>
                                     <div style={{ flex: 1, minWidth: 0 }}>
-                                        <div style={{ fontSize: 12, fontWeight: 600, color: '#111827', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                        <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--df-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                             {item.product || 'N/A'}
                                         </div>
                                         {item.project && (
-                                            <div style={{ fontSize: 10, color: '#1E40AF', fontWeight: 600 }}>{item.project}</div>
+                                            <div style={{ fontSize: 10, color: 'var(--df-x-1E40AF)', fontWeight: 600 }}>{item.project}</div>
                                         )}
                                     </div>
                                     <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                                        <div style={{ fontSize: 12, fontWeight: 700, color: '#111827' }}>{Number(item.qty).toLocaleString('fr-FR')} <span style={{ fontWeight: 400, color: '#6B7280' }}>ml</span></div>
-                                        <div style={{ fontSize: 10, color: '#9CA3AF' }}>{pct}%</div>
+                                        <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--df-text)' }}>{Number(item.qty).toLocaleString('fr-FR')} <span style={{ fontWeight: 400, color: 'var(--df-muted)' }}>ml</span></div>
+                                        <div style={{ fontSize: 10, color: 'var(--df-faint)' }}>{pct}%</div>
                                     </div>
                                 </div>
                             );
@@ -332,12 +332,12 @@ export default function StockDashboardTab({ inventory = [], projects = [], movem
                         />
                         <div style={{ display: 'flex', gap: 16, marginLeft: 8 }}>
                             {[
-                                { color: '#EF4444', label: 'Critique (>85%)' },
+                                { color: 'var(--df-danger)', label: 'Critique (>85%)' },
                                 { color: '#F59E0B', label: 'Attention (>70%)' },
                             ].map((l, i) => (
                                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                     <svg width="20" height="2"><line x1="0" y1="1" x2="20" y2="1" stroke={l.color} strokeWidth="2" strokeDasharray="4 3" /></svg>
-                                    <span style={{ fontSize: 11, color: '#9CA3AF' }}>{l.label}</span>
+                                    <span style={{ fontSize: 11, color: 'var(--df-faint)' }}>{l.label}</span>
                                 </div>
                             ))}
                         </div>
@@ -348,16 +348,16 @@ export default function StockDashboardTab({ inventory = [], projects = [], movem
                     <div style={{ width: '100%', height: 240 }}>
                         <ResponsiveContainer width="100%" height="100%">
                             <LineChart data={filteredWeeklyData} margin={{ top: 8, right: 24, left: 0, bottom: 0 }}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
-                                <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#9CA3AF' }} tickLine={false} axisLine={false} interval={xInterval} />
-                                <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: '#9CA3AF' }} tickLine={false} axisLine={false} tickFormatter={v => `${v}%`} width={44} />
+                                <CartesianGrid strokeDasharray="3 3" stroke="var(--df-surface-2)" vertical={false} />
+                                <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'var(--df-faint)' }} tickLine={false} axisLine={false} interval={xInterval} />
+                                <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: 'var(--df-faint)' }} tickLine={false} axisLine={false} tickFormatter={v => `${v}%`} width={44} />
                                 <Tooltip content={<CustomTooltip />} />
-                                <ReferenceLine y={85} stroke="#EF4444" strokeDasharray="4 4" strokeOpacity={0.45}
-                                    label={{ value: 'Critique', position: 'right', fontSize: 10, fill: '#EF4444' }} />
+                                <ReferenceLine y={85} stroke="var(--df-danger)" strokeDasharray="4 4" strokeOpacity={0.45}
+                                    label={{ value: 'Critique', position: 'right', fontSize: 10, fill: 'var(--df-danger)' }} />
                                 <ReferenceLine y={70} stroke="#F59E0B" strokeDasharray="4 4" strokeOpacity={0.45}
                                     label={{ value: 'Attention', position: 'right', fontSize: 10, fill: '#F59E0B' }} />
-                                <Line type="monotone" dataKey="occupancy" stroke="#1E2447" strokeWidth={2.5}
-                                    dot={false} activeDot={{ r: 5, fill: '#1E2447', stroke: 'white', strokeWidth: 2 }} />
+                                <Line type="monotone" dataKey="occupancy" stroke="var(--df-primary)" strokeWidth={2.5}
+                                    dot={false} activeDot={{ r: 5, fill: 'var(--df-primary)', stroke: 'white', strokeWidth: 2 }} />
                             </LineChart>
                         </ResponsiveContainer>
                     </div>

@@ -10,9 +10,9 @@ import {
   listLevers, solveBalanced, AMPLEUR_MIN, TEMPS_MAX,
 } from '../../lib/recalibrage/engine';
 
-const NAVY = '#1E2447';
-const LINE = '#E8E6E2';
-const MUTED = '#6B7280';
+const NAVY = 'var(--df-primary)';
+const LINE = 'var(--df-border-soft)';
+const MUTED = 'var(--df-muted)';
 
 const num = (v) => {
   const n = Number(String(v ?? '').replace(',', '.').replace(/\s/g, ''));
@@ -26,7 +26,7 @@ const signed = (n, formatter) => (Math.abs(n) < 0.5 ? '—' : `${n > 0 ? '+' : '
 function Section({ title, hint, children }) {
   return (
     <section style={{ padding: '18px 0', borderBottom: `1px solid ${LINE}` }}>
-      <div style={{ fontSize: 16, fontWeight: 500, color: '#111827' }}>{title}</div>
+      <div style={{ fontSize: 16, fontWeight: 500, color: 'var(--df-text)' }}>{title}</div>
       {hint && <div style={{ fontSize: 12, color: MUTED, marginTop: 4 }}>{hint}</div>}
       <div style={{ marginTop: 12 }}>{children}</div>
     </section>
@@ -42,8 +42,8 @@ function NumInput({ value, onChange, placeholder, suffix, width = 84 }) {
         placeholder={placeholder}
         inputMode="decimal"
         style={{
-          width, height: 32, padding: '0 8px', borderRadius: 8, border: `1px solid ${value ? NAVY : '#E0DED9'}`,
-          fontSize: 13, fontFamily: 'inherit', textAlign: 'right', outline: 'none', background: 'white', color: '#111827',
+          width, height: 32, padding: '0 8px', borderRadius: 8, border: `1px solid ${value ? NAVY : 'var(--df-border)'}`,
+          fontSize: 13, fontFamily: 'inherit', textAlign: 'right', outline: 'none', background: 'var(--df-bg)', color: 'var(--df-text)',
         }}
       />
       {suffix && <span style={{ fontSize: 12, color: MUTED }}>{suffix}</span>}
@@ -52,7 +52,7 @@ function NumInput({ value, onChange, placeholder, suffix, width = 84 }) {
 }
 
 const th = { textAlign: 'left', fontSize: 12, fontWeight: 500, color: MUTED, padding: '0 8px 8px 0' };
-const td = { fontSize: 13, color: '#111827', padding: '6px 8px 6px 0', borderTop: `1px solid ${LINE}` };
+const td = { fontSize: 13, color: 'var(--df-text)', padding: '6px 8px 6px 0', borderTop: `1px solid ${LINE}` };
 
 export default function RecalibrageAssistant({
   minute, minutes, rows, depRows, extraRows, formulaCtx, schema, commissionRate, author, onClose, onCreateVariant,
@@ -221,7 +221,7 @@ export default function RecalibrageAssistant({
       footer={(
         <>
           <span style={{ fontSize: 13, color: MUTED, flex: 1 }}>
-            {changes.length ? <>Création de <b style={{ color: '#111827', fontWeight: 500 }}>{variantName}</b></> : 'Modifiez au moins un levier.'}
+            {changes.length ? <>Création de <b style={{ color: 'var(--df-text)', fontWeight: 500 }}>{variantName}</b></> : 'Modifiez au moins un levier.'}
           </span>
           <ToolbarButton onClick={reset} disabled={!changes.length}>Réinitialiser</ToolbarButton>
           <ToolbarButton onClick={onClose}>Annuler</ToolbarButton>
@@ -241,7 +241,7 @@ export default function RecalibrageAssistant({
             </div>
             {suggestion && (
               <div style={{ marginTop: 16 }}>
-                <div style={{ fontSize: 13, fontWeight: 500, color: '#111827', marginBottom: 8 }}>Recommandation de l'assistant</div>
+                <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--df-text)', marginBottom: 8 }}>Recommandation de l'assistant</div>
                 {suggestion.balanced.ok ? (
                   <ScenarioCard
                     title={chosen.length > 1 ? 'Effort réparti sur les leviers choisis' : chosen[0]?.label}
@@ -251,7 +251,7 @@ export default function RecalibrageAssistant({
                     primary
                   />
                 ) : (
-                  <div style={{ fontSize: 13, color: '#B45309' }}>
+                  <div style={{ fontSize: 13, color: 'var(--df-x-B45309)' }}>
                     {suggestion.balanced.reason === 'none' && 'Choisissez au moins un levier.'}
                     {suggestion.balanced.reason === 'high' && 'Le prix cible est au-dessus du prix actuel : rien à baisser.'}
                     {suggestion.balanced.reason === 'low' && `Inatteignable avec ces leviers : au maximum (coef ×1, ampleur ${fmt(AMPLEUR_MIN)}, temps −${TEMPS_MAX} %), le devis fait ${eur.format(suggestion.balanced.min)}. Ajoutez un levier.`}
@@ -339,7 +339,7 @@ export default function RecalibrageAssistant({
                                 placeholder="−%"
                               />
                             </span>
-                          ) : <span style={{ color: '#D1D5DB' }}>—</span>}
+                          ) : <span style={{ color: 'var(--df-border-strong)' }}>—</span>}
                         </td>
                       ))}
                     </tr>
@@ -351,7 +351,7 @@ export default function RecalibrageAssistant({
 
           {analysis.legacyLines > 0 && (
             <Section title="Ancien recalibrage">
-              <label style={{ display: 'flex', gap: 10, fontSize: 13, color: '#374151', cursor: 'pointer', alignItems: 'flex-start' }}>
+              <label style={{ display: 'flex', gap: 10, fontSize: 13, color: 'var(--df-text-2)', cursor: 'pointer', alignItems: 'flex-start' }}>
                 <input type="checkbox" checked={clearLegacy} onChange={(e) => setClearLegacy(e.target.checked)} style={{ marginTop: 2 }} />
                 <span>
                   {analysis.legacyLines} ligne(s) portent des prix figés par l'ancien assistant. Les recalculer avec les formules
@@ -367,10 +367,10 @@ export default function RecalibrageAssistant({
               onChange={(e) => setNoteDraft(e.target.value)}
               placeholder="Modifiez un levier pour générer la note…"
               rows={Math.min(12, Math.max(4, note.split('\n').length + 2))}
-              style={{ width: '100%', boxSizing: 'border-box', borderRadius: 8, border: '1px solid #E0DED9', padding: '8px 10px', fontSize: 13, lineHeight: 1.5, fontFamily: 'inherit', resize: 'vertical', outline: 'none' }}
+              style={{ width: '100%', boxSizing: 'border-box', borderRadius: 8, border: '1px solid var(--df-border)', padding: '8px 10px', fontSize: 13, lineHeight: 1.5, fontFamily: 'inherit', resize: 'vertical', outline: 'none' }}
             />
             {noteDraft != null && noteDraft !== autoNote && (
-              <button type="button" onClick={() => setNoteDraft(null)} style={{ marginTop: 6, border: 'none', background: 'none', padding: 0, color: NAVY, fontSize: 12, cursor: 'pointer' }}>
+              <button type="button" onClick={() => setNoteDraft(null)} style={{ marginTop: 6, border: 'none', background: 'none', padding: 0, color: 'var(--df-primary-text)', fontSize: 12, cursor: 'pointer' }}>
                 Régénérer le texte automatique
               </button>
             )}
@@ -378,12 +378,12 @@ export default function RecalibrageAssistant({
         </div>
 
         {/* ——— APERÇU ——— */}
-        <div style={{ background: '#F4F4F4', padding: '18px 24px 24px', borderLeft: `1px solid ${LINE}` }}>
+        <div style={{ background: 'var(--df-surface)', padding: '18px 24px 24px', borderLeft: `1px solid ${LINE}` }}>
           <div style={{ position: 'sticky', top: 0 }}>
-            <div style={{ fontSize: 16, fontWeight: 500, color: '#111827' }}>Aperçu</div>
+            <div style={{ fontSize: 16, fontWeight: 500, color: 'var(--df-text)' }}>Aperçu</div>
             <div style={{ margin: '14px 0 4px', display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
-              <span style={{ fontSize: 28, fontWeight: 400, color: NAVY }}>{eur.format(k1.ca_total)}</span>
-              <span style={{ fontSize: 14, color: caDelta < 0 ? '#B91C1C' : caDelta > 0 ? '#047857' : MUTED }}>
+              <span style={{ fontSize: 28, fontWeight: 400, color: 'var(--df-primary-text)' }}>{eur.format(k1.ca_total)}</span>
+              <span style={{ fontSize: 14, color: caDelta < 0 ? 'var(--df-danger-text)' : caDelta > 0 ? 'var(--df-success-text)' : MUTED }}>
                 {Math.abs(caDelta) < 0.5 ? 'inchangé' : `${signed(caDelta, eur.format)} (${caPct > 0 ? '+' : ''}${fmt(caPct, 1)} %)`}
               </span>
             </div>
@@ -405,28 +405,28 @@ export default function RecalibrageAssistant({
               </tbody>
             </table>
 
-            <div style={{ fontSize: 13, fontWeight: 500, color: '#111827', margin: '20px 0 8px' }}>D'où vient l'écart</div>
+            <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--df-text)', margin: '20px 0 8px' }}>D'où vient l'écart</div>
             {[['Coefficients', split.marges], ['Ampleur', split.ampleur], ['Temps de production', split.temps]].map(([label, v]) => (
               <div key={label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, padding: '4px 0' }}>
-                <span style={{ color: '#374151' }}>{label}</span>
-                <span style={{ color: Math.abs(v) < 0.5 ? '#9CA3AF' : '#111827' }}>{signed(v, eur.format)}</span>
+                <span style={{ color: 'var(--df-text-2)' }}>{label}</span>
+                <span style={{ color: Math.abs(v) < 0.5 ? 'var(--df-faint)' : 'var(--df-text)' }}>{signed(v, eur.format)}</span>
               </div>
             ))}
 
-            <div style={{ fontSize: 13, fontWeight: 500, color: '#111827', margin: '20px 0 8px' }}>
+            <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--df-text)', margin: '20px 0 8px' }}>
               Lignes modifiées {lineDiffs.length > 0 && <span style={{ color: MUTED, fontWeight: 400 }}>({lineDiffs.length})</span>}
             </div>
             {lineDiffs.length === 0 ? <Empty>Aucune ligne ne change pour l'instant.</Empty> : (
               <div style={{ display: 'grid', gap: 2 }}>
                 {visibleLines.map((l) => (
                   <div key={l.id} style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) auto auto', gap: 10, fontSize: 12, padding: '5px 0', borderTop: `1px solid ${LINE}` }}>
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: '#374151' }} title={l.label}>{l.label}</span>
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--df-text-2)' }} title={l.label}>{l.label}</span>
                     <span style={{ color: MUTED }}>{eur.format(l.before)} → {eur.format(l.after)}</span>
-                    <span style={{ minWidth: 64, textAlign: 'right', color: l.delta < 0 ? '#B91C1C' : '#047857' }}>{signed(l.delta, eur.format)}</span>
+                    <span style={{ minWidth: 64, textAlign: 'right', color: l.delta < 0 ? 'var(--df-danger-text)' : 'var(--df-success-text)' }}>{signed(l.delta, eur.format)}</span>
                   </div>
                 ))}
                 {lineDiffs.length > 8 && (
-                  <button type="button" onClick={() => setShowAllLines((s) => !s)} style={{ marginTop: 6, border: 'none', background: 'none', color: NAVY, fontSize: 12, cursor: 'pointer', textAlign: 'left', padding: 0 }}>
+                  <button type="button" onClick={() => setShowAllLines((s) => !s)} style={{ marginTop: 6, border: 'none', background: 'none', color: 'var(--df-primary-text)', fontSize: 12, cursor: 'pointer', textAlign: 'left', padding: 0 }}>
                     {showAllLines ? 'Réduire' : `Voir les ${lineDiffs.length} lignes`}
                   </button>
                 )}
@@ -441,7 +441,7 @@ export default function RecalibrageAssistant({
 
 function SuggestionRow({ text, onApply }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 13, color: '#374151' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 13, color: 'var(--df-text-2)' }}>
       <span style={{ flex: 1 }}>{text}</span>
       <ToolbarButton onClick={onApply}>Appliquer</ToolbarButton>
     </div>
@@ -449,21 +449,21 @@ function SuggestionRow({ text, onApply }) {
 }
 
 function Empty({ children }) {
-  return <div style={{ fontSize: 13, color: '#9CA3AF' }}>{children}</div>;
+  return <div style={{ fontSize: 13, color: 'var(--df-faint)' }}>{children}</div>;
 }
 
 function ScenarioCard({ title, ca, lines, onApply, primary = false }) {
   return (
-    <div style={{ border: `1px solid ${primary ? NAVY : LINE}`, borderRadius: 8, padding: '10px 12px', background: 'white' }}>
+    <div style={{ border: `1px solid ${primary ? NAVY : LINE}`, borderRadius: 8, padding: '10px 12px', background: 'var(--df-bg)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 13, fontWeight: 500, color: '#111827' }}>{title}</div>
+          <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--df-text)' }}>{title}</div>
           <div style={{ fontSize: 12, color: MUTED }}>→ {eur.format(ca)} HT</div>
         </div>
         <ToolbarButton primary={primary} onClick={onApply}>Appliquer</ToolbarButton>
       </div>
       {lines.length > 0 && (
-        <ul style={{ margin: '8px 0 0', paddingLeft: 18, fontSize: 12, color: '#374151', lineHeight: 1.6 }}>
+        <ul style={{ margin: '8px 0 0', paddingLeft: 18, fontSize: 12, color: 'var(--df-text-2)', lineHeight: 1.6 }}>
           {lines.map((c, i) => <li key={i}>{c.group} · {c.label} : {c.from} → <b style={{ fontWeight: 500 }}>{c.to}</b></li>)}
         </ul>
       )}
@@ -486,24 +486,24 @@ function LeverPicker({ levers, value, onChange }) {
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        style={{ display: 'flex', alignItems: 'center', gap: 8, height: 32, padding: '0 10px', borderRadius: 8, border: '1px solid #E0DED9', background: 'white', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit', color: '#111827' }}
+        style={{ display: 'flex', alignItems: 'center', gap: 8, height: 32, padding: '0 10px', borderRadius: 8, border: '1px solid var(--df-border)', background: 'var(--df-bg)', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit', color: 'var(--df-text)' }}
       >
-        <span style={{ color: '#9B9A97' }}>Leviers</span>
+        <span style={{ color: 'var(--df-faint-2)' }}>Leviers</span>
         <span style={{ fontWeight: 500 }}>{summary || 'aucun'}</span>
         <ChevronDown size={14} color={MUTED} />
       </button>
       {open && (
         <>
           <div style={{ position: 'fixed', inset: 0, zIndex: 80 }} onClick={() => setOpen(false)} />
-          <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, width: 280, background: 'white', borderRadius: 8, boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', border: '1px solid #E0DED9', zIndex: 90, padding: 4, maxHeight: 360, overflowY: 'auto' }}>
+          <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, width: 280, background: 'var(--df-bg)', borderRadius: 8, boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', border: '1px solid var(--df-border)', zIndex: 90, padding: 4, maxHeight: 360, overflowY: 'auto' }}>
             {groups.map((g) => (
               <div key={g}>
-                <div style={{ fontSize: 11, color: '#9CA3AF', padding: '8px 12px 4px', textTransform: 'uppercase', letterSpacing: 0.4 }}>{g}</div>
+                <div style={{ fontSize: 11, color: 'var(--df-faint)', padding: '8px 12px 4px', textTransform: 'uppercase', letterSpacing: 0.4 }}>{g}</div>
                 {levers.filter((l) => l.group === g).map((l) => {
                   const on = value.includes(l.id);
                   return (
-                    <div key={l.id} onClick={() => toggle(l.id)} style={{ padding: '7px 12px', fontSize: 13, cursor: 'pointer', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 10, background: on ? '#EEF4FD' : 'transparent' }}>
-                      <span style={{ width: 16, height: 16, borderRadius: 4, flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', border: `1.5px solid ${on ? NAVY : '#C9C7C2'}`, background: on ? NAVY : 'white' }}>
+                    <div key={l.id} onClick={() => toggle(l.id)} style={{ padding: '7px 12px', fontSize: 13, cursor: 'pointer', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 10, background: on ? 'var(--df-selected)' : 'transparent' }}>
+                      <span style={{ width: 16, height: 16, borderRadius: 4, flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', border: `1.5px solid ${on ? NAVY : 'var(--df-border-hover)'}`, background: on ? NAVY : 'var(--df-bg)' }}>
                         {on && <Check size={11} color="white" strokeWidth={3} />}
                       </span>
                       <span style={{ flex: 1 }}>{l.label}</span>

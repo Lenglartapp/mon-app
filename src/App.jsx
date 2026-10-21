@@ -44,6 +44,7 @@ import NotificationMenu from "./components/NotificationMenu";
 import { NotificationProvider, useNotifications } from "./contexts/NotificationContext";
 import CommandPalette from "./components/CommandPalette";
 import UndoShortcuts from "./components/UndoShortcuts";
+import { ThemeModeProvider } from "./theme/ThemeMode";
 
 // --- Composants UI ---
 function UserAvatarMenu({ onSettings }) {
@@ -67,7 +68,7 @@ function UserAvatarMenu({ onSettings }) {
         aria-label="Menu utilisateur"
         style={{
           width: 36, height: 36, borderRadius: "50%",
-          background: "#1E2447", color: "#fff",
+          background: "var(--df-primary)", color: "#fff",
           border: "none", cursor: "pointer",
           fontWeight: 700, fontSize: 13,
           fontFamily: "Roboto, system-ui, sans-serif",
@@ -81,25 +82,25 @@ function UserAvatarMenu({ onSettings }) {
       {open && (
         <div style={{
           position: "absolute", top: "calc(100% + 10px)", right: 0,
-          background: "#fff", borderRadius: 12,
-          border: "1px solid #E6DDD2",
+          background: "var(--df-bg)", borderRadius: 12,
+          border: "1px solid var(--df-beige-border)",
           boxShadow: "0 8px 28px rgba(30,36,71,0.13)",
           minWidth: 200, zIndex: 200, overflow: "hidden",
           fontFamily: "Roboto, system-ui, sans-serif",
         }}>
-          <div style={{ padding: "12px 16px", borderBottom: "1px solid #F0EBE3" }}>
-            <div style={{ fontWeight: 600, fontSize: 14, color: "#191919" }}>{currentUser?.name || "Utilisateur"}</div>
+          <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--df-warm-bg-2)" }}>
+            <div style={{ fontWeight: 600, fontSize: 14, color: "var(--df-ink-1)" }}>{currentUser?.name || "Utilisateur"}</div>
             <div style={{ fontSize: 12, color: "#9E8E7E", marginTop: 2, textTransform: "capitalize" }}>{currentUser?.role || ""}</div>
           </div>
           <button
             onClick={() => { setOpen(false); onSettings(); }}
-            style={{ width: "100%", padding: "11px 16px", textAlign: "left", background: "transparent", border: "none", cursor: "pointer", fontSize: 14, color: "#191919", display: "flex", alignItems: "center", gap: 10 }}
+            style={{ width: "100%", padding: "11px 16px", textAlign: "left", background: "transparent", border: "none", cursor: "pointer", fontSize: 14, color: "var(--df-ink-1)", display: "flex", alignItems: "center", gap: 10 }}
           >
             Paramètres
           </button>
           <button
             onClick={() => { setOpen(false); if (window.confirm("Se déconnecter ?")) logout(); }}
-            style={{ width: "100%", padding: "11px 16px", textAlign: "left", background: "transparent", border: "none", cursor: "pointer", fontSize: 14, color: "#ef4444", display: "flex", alignItems: "center", gap: 10, borderTop: "1px solid #F0EBE3" }}
+            style={{ width: "100%", padding: "11px 16px", textAlign: "left", background: "transparent", border: "none", cursor: "pointer", fontSize: 14, color: "var(--df-danger)", display: "flex", alignItems: "center", gap: 10, borderTop: "1px solid var(--df-warm-bg-2)" }}
           >
             Se déconnecter
           </button>
@@ -388,7 +389,7 @@ function AppShell() {
       {!isOnline && (
         <div style={{
           display: 'flex', alignItems: 'center', gap: 8,
-          background: '#92400e', color: '#fef3c7',
+          background: 'var(--df-warn-text)', color: 'var(--df-amber-bg)',
           padding: '8px 16px', paddingTop: 'calc(8px + env(safe-area-inset-top, 0px))', fontSize: 13, fontWeight: 500,
           // SOUS les fenêtres (MUI : tiroirs 1200, dialogues 1300) : sinon le bandeau recouvrait
           // l'en-tête de la fiche de ligne sur iPhone (impossible de la fermer ou de poster).
@@ -406,7 +407,7 @@ function AppShell() {
       {isOnline && isSyncing && (
         <div style={{
           display: 'flex', alignItems: 'center', gap: 8,
-          background: '#1d4ed8', color: '#eff6ff',
+          background: 'var(--df-x-1D4ED8)', color: 'var(--df-blue-bg)',
           padding: '8px 16px', paddingTop: 'calc(8px + env(safe-area-inset-top, 0px))', fontSize: 13, fontWeight: 500,
           position: 'sticky', top: 0, zIndex: 1100, // sous les fenêtres (cf. bandeau hors ligne)
         }}>
@@ -418,7 +419,7 @@ function AppShell() {
         {/* Gauche : logo */}
         <button style={S.brandBtn} onClick={() => navigate("/")} aria-label="Retour à l'accueil">
           {logoOk ? (
-            <img src={LOGO_SRC} alt="LENGLART" style={{ height: "clamp(24px, 5vw, 36px)", width: "auto" }} onError={() => setLogoOk(false)} />
+            <img className="df-logo" src={LOGO_SRC} alt="LENGLART" style={{ height: "clamp(24px, 5vw, 36px)", width: "auto" }} onError={() => setLogoOk(false)} />
           ) : (
             <span style={S.logoText}>LENGLART</span>
           )}
@@ -430,20 +431,20 @@ function AppShell() {
             onClick={() => cmdRef.current?.open()}
             style={{
               display: "flex", alignItems: "center", gap: 10,
-              background: "#fff", border: "1px solid #E6DDD2",
+              background: "var(--df-bg)", border: "1px solid var(--df-beige-border)",
               borderRadius: 999, padding: "8px 16px",
-              color: "#9B8E82", fontSize: 13, cursor: "pointer",
+              color: "var(--df-beige-text)", fontSize: 13, cursor: "pointer",
               fontFamily: "Roboto, system-ui, sans-serif",
               width: "min(480px, 100%)",
               boxShadow: "0 1px 4px rgba(30,36,71,0.06)",
             }}
           >
-            <Search size={14} color="#CEAB95" />
-            <span style={{ flex: 1, textAlign: "left", color: "#B0A396" }}>Rechercher…</span>
+            <Search size={14} color="var(--df-beige-icon)" />
+            <span style={{ flex: 1, textAlign: "left", color: "var(--df-beige-text-2)" }}>Rechercher…</span>
             <kbd className="df-hide-mobile" style={{
-              background: "#F5EFE6", border: "1px solid #E6DDD2",
+              background: "var(--df-beige-bg)", border: "1px solid var(--df-beige-border)",
               borderRadius: 6, padding: "1px 6px",
-              fontSize: 11, color: "#B0A396",
+              fontSize: 11, color: "var(--df-beige-text-2)",
               fontFamily: "Roboto, system-ui, sans-serif",
             }}>
               {isMac ? "⌘K" : "Ctrl+K"}
@@ -453,7 +454,7 @@ function AppShell() {
 
         {/* Droite : cloche + avatar */}
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <IconButton onClick={handleNotifClick} sx={{ color: '#9B8E82' }}>
+          <IconButton onClick={handleNotifClick} sx={{ color: 'var(--df-beige-text)' }}>
             <Badge badgeContent={unreadCount} color="error" invisible={unreadCount === 0} sx={{ '& .MuiBadge-badge': { fontSize: 10, height: 16, minWidth: 16 } }}>
               <Bell size={20} />
             </Badge>
@@ -475,20 +476,20 @@ function AppShell() {
       {/* Filet de sécurité par écran : un plantage n'emporte plus toute l'application. */}
       <ScreenErrorBoundary resetKey={location.pathname} onBack={() => navigate("/")}>
         {screen === "projectError" && !projectLoadError && (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '50vh', fontSize: 13, color: '#6B7280' }}>Chargement du projet…</div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '50vh', fontSize: 13, color: 'var(--df-muted)' }}>Chargement du projet…</div>
         )}
 
         {screen === "projectError" && projectLoadError && (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '50vh', gap: 12, color: '#6B7280', padding: 16 }}>
-            <div style={{ fontSize: 15, fontWeight: 600, color: '#111827' }}>{projectLoadError.name || 'Projet'}</div>
-            <div style={{ fontSize: 13, color: '#B91C1C', textAlign: 'center', maxWidth: 420 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '50vh', gap: 12, color: 'var(--df-muted)', padding: 16 }}>
+            <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--df-text)' }}>{projectLoadError.name || 'Projet'}</div>
+            <div style={{ fontSize: 13, color: 'var(--df-danger-text)', textAlign: 'center', maxWidth: 420 }}>
               {projectLoadError.network
                 ? "Pas de réseau (ou réseau trop faible), et ce projet n'a pas encore été ouvert sur cet appareil. Ouvrez-le une fois avec du réseau : il restera ensuite disponible hors connexion."
                 : "Le projet n'a pas pu être chargé. Aucune donnée n'a été modifiée."}
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={() => navigate("/production")} style={{ background: '#F3F4F6', color: '#111827', border: 'none', padding: '8px 16px', borderRadius: 6, fontWeight: 600, cursor: 'pointer' }}>Retour</button>
-              <button onClick={() => { failedProjectRef.current = null; setProjectLoadError(null); setProjectRetry((n) => n + 1); }} style={{ background: '#1E2447', color: 'white', border: 'none', padding: '8px 16px', borderRadius: 6, fontWeight: 600, cursor: 'pointer' }}>Réessayer</button>
+              <button onClick={() => navigate("/production")} style={{ background: 'var(--df-surface-2)', color: 'var(--df-text)', border: 'none', padding: '8px 16px', borderRadius: 6, fontWeight: 600, cursor: 'pointer' }}>Retour</button>
+              <button onClick={() => { failedProjectRef.current = null; setProjectLoadError(null); setProjectRetry((n) => n + 1); }} style={{ background: 'var(--df-primary)', color: 'white', border: 'none', padding: '8px 16px', borderRadius: 6, fontWeight: 600, cursor: 'pointer' }}>Réessayer</button>
             </div>
           </div>
         )}
@@ -671,10 +672,12 @@ function AuthGate() {
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <AuthGate />
-      </AuthProvider>
-    </BrowserRouter>
+    <ThemeModeProvider>
+      <BrowserRouter>
+        <AuthProvider>
+          <AuthGate />
+        </AuthProvider>
+      </BrowserRouter>
+    </ThemeModeProvider>
   );
 }

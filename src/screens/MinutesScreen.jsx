@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { alpha } from '../theme/palette';
 import { COLORS, S } from "../lib/constants/ui";
 import MinuteEditor from "../components/MinuteEditor";
 import { uid } from "../lib/utils/uid";
@@ -10,10 +11,10 @@ import { Plus, Trash2, Copy, AlertCircle, Check, FileText } from "lucide-react";
 
 /** STYLES & CONSTANTS */
 const STATUS_OPTIONS = {
-  DRAFT: { label: "À faire", color: "#9CA3AF" }, // Gray
+  DRAFT: { label: "À faire", color: "var(--df-faint)" }, // Gray
   IN_PROGRESS: { label: "En cours", color: "#3B82F6" }, // Blue
   PENDING_APPROVAL: { label: "À valider", color: "#F59E0B" }, // Orange
-  REVISE: { label: "À reprendre", color: "#EF4444" }, // Red
+  REVISE: { label: "À reprendre", color: "var(--df-danger)" }, // Red
   VALIDATED: { label: "Validée", color: "#10B981" }, // Green
 };
 
@@ -28,7 +29,7 @@ const CreateModal = ({ isOpen, onClose, onCreate }) => {
       position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
       display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999
     }}>
-      <div style={{ background: 'white', padding: 24, borderRadius: 12, width: 400, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
+      <div style={{ background: 'var(--df-bg)', padding: 24, borderRadius: 12, width: 400, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
         <h3 style={{ marginTop: 0 }}>Créer une nouvelle minute</h3>
 
         <div style={{ marginBottom: 16 }}>
@@ -52,13 +53,13 @@ const CreateModal = ({ isOpen, onClose, onCreate }) => {
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
-          <button onClick={onClose} style={{ ...S.smallBtn, background: '#f3f4f6', color: '#374151' }}>Annuler</button>
+          <button onClick={onClose} style={{ ...S.smallBtn, background: 'var(--df-surface-2)', color: 'var(--df-text-2)' }}>Annuler</button>
           <button
             disabled={!client.trim()}
             onClick={() => onCreate(name, client)}
             style={{
               ...S.smallBtn,
-              background: client.trim() ? '#2563eb' : '#9ca3af',
+              background: client.trim() ? 'var(--df-blue)' : 'var(--df-faint)',
               color: 'white',
               cursor: client.trim() ? 'pointer' : 'not-allowed'
             }}
@@ -168,11 +169,11 @@ export default function MinutesScreen({ onExportToProduction }) {
   return (
     <div style={{ display: "grid", gridTemplateColumns: "300px 1fr", gap: 16, height: 'calc(100vh - 80px)' }}>
       {/* LEFT COLUMN: LIST */}
-      <div style={{ border: `1px solid ${COLORS.border}`, borderRadius: 12, overflow: "hidden", display: 'flex', flexDirection: 'column', background: 'white' }}>
-        <div style={{ padding: 16, borderBottom: `1px solid ${COLORS.border}`, display: "flex", justifyContent: "space-between", alignItems: "center", background: '#F4F4F4' }}>
-          <span style={{ fontWeight: 600, color: '#1F2937' }}>Minutes ({minutes.length})</span>
+      <div style={{ border: `1px solid ${COLORS.border}`, borderRadius: 12, overflow: "hidden", display: 'flex', flexDirection: 'column', background: 'var(--df-bg)' }}>
+        <div style={{ padding: 16, borderBottom: `1px solid ${COLORS.border}`, display: "flex", justifyContent: "space-between", alignItems: "center", background: 'var(--df-surface)' }}>
+          <span style={{ fontWeight: 600, color: 'var(--df-text-1b)' }}>Minutes ({minutes.length})</span>
           <button
-            style={{ ...S.smallBtn, background: '#111827', color: 'white', border: 'none', display: 'flex', gap: 6, padding: '6px 12px' }}
+            style={{ ...S.smallBtn, background: 'var(--df-text)', color: 'white', border: 'none', display: 'flex', gap: 6, padding: '6px 12px' }}
             onClick={() => setIsModalOpen(true)}
           >
             <Plus size={14} /> Nouvelle
@@ -190,31 +191,31 @@ export default function MinutesScreen({ onExportToProduction }) {
                   padding: "12px 16px",
                   borderBottom: `1px solid ${COLORS.border}`,
                   cursor: "pointer",
-                  background: isSel ? "#EFF6FF" : "#fff",
+                  background: isSel ? "var(--df-blue-bg)" : "var(--df-bg)",
                   borderLeft: isSel ? `4px solid ${st.color}` : '4px solid transparent',
                   transition: 'background 0.2s'
                 }}
               >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", marginBottom: 4 }}>
-                  <div style={{ fontWeight: isSel ? 700 : 500, color: '#111827' }}>{m.name}</div>
+                  <div style={{ fontWeight: isSel ? 700 : 500, color: 'var(--df-text)' }}>{m.name}</div>
                   <div style={{
                     fontSize: 10, padding: '2px 6px', borderRadius: 10,
-                    background: st.color + '15', color: st.color, fontWeight: 700,
+                    background: alpha(st.color, '15'), color: st.color, fontWeight: 700,
                     textTransform: 'uppercase', whiteSpace: 'nowrap'
                   }}>
                     {st.label}
                   </div>
                 </div>
-                <div style={{ fontSize: 13, color: '#6B7280', marginBottom: 4 }}>Client: {m.client || "-"}</div>
+                <div style={{ fontSize: 13, color: 'var(--df-muted)', marginBottom: 4 }}>Client: {m.client || "-"}</div>
 
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
-                  <div style={{ fontSize: 11, color: '#9CA3AF' }}>v{m.version} • {new Date(m.updatedAt || m.createdAt).toLocaleDateString()}</div>
+                  <div style={{ fontSize: 11, color: 'var(--df-faint)' }}>v{m.version} • {new Date(m.updatedAt || m.createdAt).toLocaleDateString()}</div>
                   <div style={{ display: "flex", gap: 6, opacity: isSel ? 1 : 0.4 }}>
                     <button style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2 }} title="Dupliquer" onClick={(e) => { e.stopPropagation(); duplicateMinute(m.id); }}>
-                      <Copy size={12} color="#4B5563" />
+                      <Copy size={12} color="var(--df-text-3)" />
                     </button>
                     <button style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2 }} title="Supprimer" onClick={(e) => { e.stopPropagation(); deleteMinute(m.id); }}>
-                      <Trash2 size={12} color="#EF4444" />
+                      <Trash2 size={12} color="var(--df-danger)" />
                     </button>
                   </div>
                 </div>
@@ -222,7 +223,7 @@ export default function MinutesScreen({ onExportToProduction }) {
             )
           })}
           {!minutes?.length && (
-            <div style={{ padding: 24, textAlign: 'center', color: '#9CA3AF', fontSize: 14 }}>
+            <div style={{ padding: 24, textAlign: 'center', color: 'var(--df-faint)', fontSize: 14 }}>
               Aucune minute.<br />Cliquez sur "Nouvelle" pour commencer.
             </div>
           )}
@@ -234,23 +235,23 @@ export default function MinutesScreen({ onExportToProduction }) {
         {selected ? (
           <>
             {/* --- HEADER --- */}
-            <div style={{ background: 'white', borderRadius: 12, border: `1px solid ${COLORS.border}`, padding: "20px 24px" }}>
+            <div style={{ background: 'var(--df-bg)', borderRadius: 12, border: `1px solid ${COLORS.border}`, padding: "20px 24px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
                 {/* Title & Client */}
                 <div>
-                  <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800, color: '#111827', letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800, color: 'var(--df-text)', letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', gap: 12 }}>
                     {selected.name}
                     {/* Small edit trigger for title could be here, but we allow editing inside MinuteEditor? No, name is here. */}
                     {/* We can make it Editable if we really want, but let's keep it simple for now as requested "Affiche le titre... en grand" */}
                   </h1>
-                  <div style={{ fontSize: 16, color: '#6B7280', marginTop: 4, fontWeight: 500 }}>
-                    Client : <span style={{ color: '#374151' }}>{selected.client}</span>
+                  <div style={{ fontSize: 16, color: 'var(--df-muted)', marginTop: 4, fontWeight: 500 }}>
+                    Client : <span style={{ color: 'var(--df-text-2)' }}>{selected.client}</span>
                   </div>
                 </div>
 
                 {/* Status Selector */}
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8 }}>
-                  <label style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', color: '#9CA3AF' }}>Statut</label>
+                  <label style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', color: 'var(--df-faint)' }}>Statut</label>
                   <select
                     value={selected.status || "DRAFT"}
                     onChange={(e) => handleStatusChange(e.target.value)}
@@ -258,7 +259,7 @@ export default function MinutesScreen({ onExportToProduction }) {
                       padding: "8px 12px",
                       borderRadius: 6,
                       border: `1px solid ${STATUS_OPTIONS[selected.status || "DRAFT"].color}`,
-                      background: 'white',
+                      background: 'var(--df-bg)',
                       fontWeight: 600,
                       color: STATUS_OPTIONS[selected.status || "DRAFT"].color,
                       cursor: 'pointer',
@@ -274,8 +275,8 @@ export default function MinutesScreen({ onExportToProduction }) {
               </div>
 
               {/* Comments Area */}
-              <div style={{ borderTop: '1px solid #F3F4F6', paddingTop: 16, marginTop: 8 }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: '#4B5563', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{ borderTop: '1px solid var(--df-surface-2)', paddingTop: 16, marginTop: 8 }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--df-text-3)', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
                   <FileText size={14} /> Commentaires / Contexte
                 </div>
                 <textarea
@@ -285,14 +286,14 @@ export default function MinutesScreen({ onExportToProduction }) {
                   style={{
                     width: '100%',
                     minHeight: 60,
-                    border: '1px solid #E0DED9',
+                    border: '1px solid var(--df-border)',
                     borderRadius: 6,
                     padding: 8,
                     fontSize: 13,
                     fontFamily: "inherit",
                     resize: 'vertical',
-                    background: isReadOnly ? '#F4F4F4' : 'white',
-                    color: isReadOnly ? '#6b7280' : 'inherit'
+                    background: isReadOnly ? 'var(--df-surface)' : 'var(--df-bg)',
+                    color: isReadOnly ? 'var(--df-muted)' : 'inherit'
                   }}
                   readOnly={isReadOnly}
                 />
@@ -300,7 +301,7 @@ export default function MinutesScreen({ onExportToProduction }) {
 
               {/* Read Only warning */}
               {isReadOnly && (
-                <div style={{ marginTop: 12, padding: "8px 12px", background: "#ECFDF5", borderRadius: 6, color: "#065F46", fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ marginTop: 12, padding: "8px 12px", background: "var(--df-success-bg)", borderRadius: 6, color: "var(--df-x-065F46)", fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
                   <Check size={16} />
                   Ce devis est validé. Les calculs sont verrouillés. Passez en statut "À reprendre" pour modifier.
                 </div>
@@ -315,7 +316,7 @@ export default function MinutesScreen({ onExportToProduction }) {
             />
           </>
         ) : (
-          <div style={{ padding: 40, border: `2px dashed ${COLORS.border}`, borderRadius: 12, textAlign: "center", color: '#9CA3AF', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ padding: 40, border: `2px dashed ${COLORS.border}`, borderRadius: 12, textAlign: "center", color: 'var(--df-faint)', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
             <AlertCircle size={48} style={{ marginBottom: 16, opacity: 0.5 }} />
             <div style={{ fontSize: 16, fontWeight: 500 }}>Aucune minute sélectionnée</div>
             <p>Sélectionnez une minute dans la liste ou créez-en une nouvelle.</p>

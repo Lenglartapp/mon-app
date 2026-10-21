@@ -17,7 +17,7 @@ const PGRID = '1.2fr 2.2fr 0.7fr 0.8fr 0.9fr 0.8fr 0.45fr';
 const DGRID = '18px 1.7fr 0.9fr 1.5fr 0.45fr 0.7fr 0.75fr 0.75fr';
 const PROFILE_KEY = 'df.odooQuote.profile.v3';
 const STEPS = ['Opportunité', 'Structure', 'Détail', 'Aperçu'];
-const C = { border: '#E0DED9', grey: '#F4F4F4', text: '#1F2937', muted: '#6B7280', soft: '#9B9A97', accent: '#714B67' };
+const C = { border: 'var(--df-border)', grey: 'var(--df-surface)', text: 'var(--df-text-1b)', muted: 'var(--df-muted)', soft: 'var(--df-faint-2)', accent: '#714B67' };
 const eur = (n) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(n || 0);
 const num = (n) => new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 3 }).format(n || 0);
 const norm = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
@@ -91,7 +91,7 @@ function applyEdits(quote, edits) {
 }
 
 // ─── Petits éléments d'interface ──────────────────────────────────────────────
-const inputStyle = { border: `1px solid ${C.border}`, borderRadius: 8, padding: '8px 10px', fontSize: 13.5, color: C.text, background: 'white', outline: 'none', fontFamily: 'inherit', width: '100%', boxSizing: 'border-box' };
+const inputStyle = { border: `1px solid ${C.border}`, borderRadius: 8, padding: '8px 10px', fontSize: 13.5, color: C.text, background: 'var(--df-bg)', outline: 'none', fontFamily: 'inherit', width: '100%', boxSizing: 'border-box' };
 const Label = ({ children }) => <div style={{ fontSize: 12.5, color: C.soft, marginBottom: 6 }}>{children}</div>;
 const H = ({ children, sub }) => (
   <div style={{ marginBottom: 16 }}>
@@ -105,7 +105,7 @@ function Seg({ value, options, onChange }) {
       {options.map((o) => (
         <button key={o.value} onClick={() => onChange(o.value)}
           style={{ border: 'none', borderRadius: 6, padding: '6px 12px', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit',
-            background: value === o.value ? 'white' : 'transparent', color: value === o.value ? C.text : C.muted,
+            background: value === o.value ? 'var(--df-bg)' : 'transparent', color: value === o.value ? C.text : C.muted,
             fontWeight: value === o.value ? 600 : 500, boxShadow: value === o.value ? '0 1px 2px rgba(0,0,0,.08)' : 'none' }}>
           {o.label}
         </button>
@@ -118,7 +118,7 @@ function Btn({ primary, disabled, onClick, children, title }) {
     <button onClick={onClick} disabled={disabled} title={title}
       style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 8, fontSize: 13.5, fontWeight: 600,
         cursor: disabled ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: disabled ? 0.45 : 1,
-        border: primary ? 'none' : `1px solid ${C.border}`, background: primary ? C.text : 'white', color: primary ? 'white' : '#374151' }}>
+        border: primary ? 'none' : `1px solid ${C.border}`, background: primary ? C.text : 'var(--df-bg)', color: primary ? 'white' : 'var(--df-text-2)' }}>
       {children}
     </button>
   );
@@ -148,7 +148,7 @@ function OdooSearch({ action, initial = '', placeholder, render, onPick, selecte
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, border: `1px solid ${C.text}`, background: C.grey, borderRadius: 8, padding: '10px 12px' }}>
         <Check size={16} color={C.text} />
         <div style={{ flex: 1, minWidth: 0 }}>{render(selected)}</div>
-        <button onClick={() => setEditing(true)} style={{ border: `1px solid ${C.border}`, background: 'white', borderRadius: 6, padding: '5px 10px', fontSize: 12.5, cursor: 'pointer', fontFamily: 'inherit', color: '#374151' }}>Changer</button>
+        <button onClick={() => setEditing(true)} style={{ border: `1px solid ${C.border}`, background: 'var(--df-bg)', borderRadius: 6, padding: '5px 10px', fontSize: 12.5, cursor: 'pointer', fontFamily: 'inherit', color: 'var(--df-text-2)' }}>Changer</button>
       </div>
     );
   }
@@ -160,12 +160,12 @@ function OdooSearch({ action, initial = '', placeholder, render, onPick, selecte
       </div>
       <div style={{ marginTop: 8, maxHeight: 260, overflowY: 'auto', border: `1px solid ${C.border}`, borderRadius: 8 }}>
         {state === 'loading' && <div style={{ padding: 12, fontSize: 13, color: C.muted }}>Recherche dans Odoo…</div>}
-        {state !== 'loading' && state !== 'idle' && <div style={{ padding: 12, fontSize: 13, color: '#B91C1C' }}>{state}</div>}
+        {state !== 'loading' && state !== 'idle' && <div style={{ padding: 12, fontSize: 13, color: 'var(--df-danger-text)' }}>{state}</div>}
         {state === 'idle' && items.length === 0 && <div style={{ padding: 12, fontSize: 13, color: C.muted }}>Aucun résultat.</div>}
         {items.map((it, i) => (
           <div key={it.id} onClick={() => { onPick(it); setEditing(false); }}
             style={{ padding: '9px 12px', cursor: 'pointer', borderTop: i ? `1px solid ${C.grey}` : 'none',
-              background: selectedId === it.id ? '#F3EEF2' : 'white', display: 'flex', alignItems: 'center', gap: 10 }}>
+              background: selectedId === it.id ? 'var(--df-warm-bg-3)' : 'var(--df-bg)', display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{ flex: 1, minWidth: 0 }}>{render(it)}</div>
             {selectedId === it.id && <Check size={16} color={C.accent} />}
           </div>
@@ -312,16 +312,16 @@ function StructurePreview({ blocks }) {
     if (b.sub) sec.subs.push({ title: b.sub, total: b.total });
   }
   return (
-    <div style={{ border: `1px solid ${C.border}`, borderRadius: 10, overflow: 'hidden', background: 'white' }}>
+    <div style={{ border: `1px solid ${C.border}`, borderRadius: 10, overflow: 'hidden', background: 'var(--df-bg)' }}>
       {tree.map((sec, i) => (
         <div key={`${sec.title}_${i}`} style={{ borderTop: i ? `1px solid ${C.border}` : 'none' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', background: '#E9ECEF', padding: '7px 12px', fontSize: 13, fontWeight: 700, color: C.text }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', background: 'var(--df-slate-bg-2)', padding: '7px 12px', fontSize: 13, fontWeight: 700, color: C.text }}>
             <span>{sec.title || '(section unique)'}</span><span>{eur(sec.total)}</span>
           </div>
           {sec.subs.length
             ? sec.subs.map((sub) => (
               <React.Fragment key={sub.title}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', background: '#F7F7F5', padding: '6px 12px 6px 24px', fontSize: 12.5, fontWeight: 600, color: '#374151', borderTop: `1px solid ${C.grey}` }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', background: 'var(--df-surface-3)', padding: '6px 12px 6px 24px', fontSize: 12.5, fontWeight: 600, color: 'var(--df-text-2)', borderTop: `1px solid ${C.grey}` }}>
                   <span>{sub.title}</span><span>{eur(sub.total)}</span>
                 </div>
                 <FakeLines indent />
@@ -348,7 +348,7 @@ function StepStructure({ config, setConfig, rows, quote }) {
             const n = countFor(o.value);
             return (
               <div key={o.value} onClick={() => setConfig((c) => ({ ...c, groupBy: o.value, subGroupBy: c.subGroupBy === o.value ? 'none' : c.subGroupBy }))}
-                style={{ border: `1px solid ${on ? C.text : C.border}`, borderRadius: 10, padding: '9px 12px', cursor: 'pointer', background: on ? C.grey : 'white' }}>
+                style={{ border: `1px solid ${on ? C.text : C.border}`, borderRadius: 10, padding: '9px 12px', cursor: 'pointer', background: on ? C.grey : 'var(--df-bg)' }}>
                 <div style={{ fontSize: 13.5, fontWeight: 600, color: C.text }}>{o.label}</div>
                 <div style={{ fontSize: 12.5, color: C.muted, marginTop: 2 }}>{n} section{n > 1 ? 's' : ''}</div>
               </div>
@@ -460,7 +460,7 @@ function StepDetail({ config, setConfig, catalog, quote }) {
       const names = [...new Set(slot.cols.map((c) => resolve(slot.colProducts?.[c] || slot.product || '@col', sample, COMPONENT_BY_KEY.get(c))?.name).filter(Boolean))];
       const tags = [...new Set(slot.cols.map((c) => resolve(slot.colProducts?.[c] || slot.product || '@col', sample, COMPONENT_BY_KEY.get(c))?.cgTags || []).flat())];
       return (
-        <div key={rkey} {...dragProps} style={{ display: 'grid', gridTemplateColumns: DGRID, gap: 10, alignItems: 'center', padding: '6px 12px', borderTop: `1px solid ${C.grey}`, background: '#FCFCFB', ...(dragProps?.style || {}) }}>
+        <div key={rkey} {...dragProps} style={{ display: 'grid', gridTemplateColumns: DGRID, gap: 10, alignItems: 'center', padding: '6px 12px', borderTop: `1px solid ${C.grey}`, background: 'var(--df-x-FCFCFB)', ...(dragProps?.style || {}) }}>
           {first ? <GripVertical size={14} color={C.soft} style={{ cursor: 'grab' }} /> : <span />}
           <div style={{ fontSize: 13, color: C.soft, fontStyle: 'italic' }}>{names.join(' / ') || slot.label}</div>
           <div style={{ ...cell, color: C.soft }}>{tags.join(', ') || '—'}</div>
@@ -487,7 +487,7 @@ function StepDetail({ config, setConfig, catalog, quote }) {
             </label>
           )}
         </div>
-        <div style={{ ...cell, color: noTag ? '#B45309' : C.accent }}>{noTag ? 'aucune' : l.cgTags.join(', ')}</div>
+        <div style={{ ...cell, color: noTag ? 'var(--df-x-B45309)' : C.accent }}>{noTag ? 'aucune' : l.cgTags.join(', ')}</div>
         <div style={cell}>{l.sourceLabels.join(', ')}</div>
         <div style={{ ...cell, textAlign: 'right' }} title={l.travelHours ? `dont ${num(l.travelHours)} h de trajet` : ''}>{l.hours ? num(l.hours) : '—'}</div>
         <div style={{ ...cell, textAlign: 'right' }}>{num(l.qty)} {l.uom}</div>
@@ -504,7 +504,7 @@ function StepDetail({ config, setConfig, catalog, quote }) {
           <H sub="Pour chaque section : les lignes que Droitfil va créer dans Odoo. Change l'article dans la liste si besoin ; glisse une ligne pour changer l'ordre (commun à tous les produits du même type).">Détail du devis</H>
         </div>
         <button onClick={() => setShowUnused((v) => !v)}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, border: `1px solid ${C.border}`, background: showUnused ? C.grey : 'white', borderRadius: 8, padding: '6px 10px', fontSize: 12.5, cursor: 'pointer', fontFamily: 'inherit', color: '#374151' }}>
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, border: `1px solid ${C.border}`, background: showUnused ? C.grey : 'var(--df-bg)', borderRadius: 8, padding: '6px 10px', fontSize: 12.5, cursor: 'pointer', fontFamily: 'inherit', color: 'var(--df-text-2)' }}>
           {showUnused ? <EyeOff size={14} /> : <Eye size={14} />} {showUnused ? 'Masquer' : 'Afficher'} les articles non utilisés
         </button>
         <button onClick={() => setOpenKeys(openKeys.size === quote.sections.length ? new Set() : new Set(quote.sections.map((b) => b.key)))}
@@ -522,7 +522,7 @@ function StepDetail({ config, setConfig, catalog, quote }) {
         const newSection = bi === 0 || quote.sections[bi - 1].title !== b.title;
         return (
           <div key={b.key} style={{ border: `1px solid ${C.border}`, borderRadius: 10, overflow: 'hidden', marginTop: newSection ? 10 : 4, marginLeft: b.sub ? 18 : 0 }}>
-            <div onClick={() => toggle(b.key)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: b.sub ? '#F7F7F5' : '#E9ECEF', cursor: 'pointer' }}>
+            <div onClick={() => toggle(b.key)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: b.sub ? 'var(--df-surface-3)' : 'var(--df-slate-bg-2)', cursor: 'pointer' }}>
               <ChevronRight size={14} style={{ transform: isOpen ? 'rotate(90deg)' : 'none', transition: 'transform .15s', color: C.muted }} />
               <div style={{ flex: 1, fontSize: 13.5, fontWeight: 700, color: C.text }}>
                 {b.sub ? <><span style={{ fontWeight: 500, color: C.muted }}>{b.title} › </span>{b.sub}</> : (b.title || '(section unique)')}
@@ -549,7 +549,7 @@ function StepDetail({ config, setConfig, catalog, quote }) {
                       onDragOver: (e) => onDragOverSlot(e, type, sid),
                       onDrop: (e) => { e.preventDefault(); if (drag) commitOrder(type, drag.ids); setDrag(null); },
                       onDragEnd: () => setDrag(null),
-                      style: drag?.type === type && drag.id === sid ? { background: '#F3EEF2', outline: `2px dashed ${C.accent}`, outlineOffset: -2 } : {},
+                      style: drag?.type === type && drag.id === sid ? { background: 'var(--df-warm-bg-3)', outline: `2px dashed ${C.accent}`, outlineOffset: -2 } : {},
                     };
                     if (!ls.length) return Row({ rkey: sid, b, ghost: true, slot, sample, dragProps, first: true });
                     return <div key={sid} {...dragProps}>{ls.map((l, i) => Row({ rkey: l.key, b, l, first: i === 0 }))}</div>;
@@ -563,8 +563,8 @@ function StepDetail({ config, setConfig, catalog, quote }) {
       })}
 
       {unresolvedCharges.length > 0 && (
-        <div style={{ marginTop: 22, border: '1px solid #FCD34D', background: '#FFFBEB', borderRadius: 10, padding: '10px 14px' }}>
-          <div style={{ fontSize: 13.5, fontWeight: 600, color: '#92400E', marginBottom: 8 }}>Autres dépenses sans catégorie : à rattacher à un article (sinon leur coût ne remonte pas dans Odoo)</div>
+        <div style={{ marginTop: 22, border: '1px solid var(--df-x-FCD34D)', background: 'var(--df-chip-adv-bg)', borderRadius: 10, padding: '10px 14px' }}>
+          <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--df-warn-text)', marginBottom: 8 }}>Autres dépenses sans catégorie : à rattacher à un article (sinon leur coût ne remonte pas dans Odoo)</div>
           {unresolvedCharges.map((ch) => (
             <div key={ch.key} style={{ display: 'grid', gridTemplateColumns: '1.4fr 0.5fr 1.4fr', gap: 12, alignItems: 'center', padding: '4px 0' }}>
               <div style={{ fontSize: 13, color: C.text }}>{ch.label}{ch.details.length > 0 && <span style={{ color: C.muted }}> · {ch.details.join(' · ')}</span>}</div>
@@ -593,7 +593,7 @@ const CG_ROWS = [
 function OdooPanel({ quote, odoo, dest }) {
   if (!odoo) return null;
   if (odoo.error) {
-    return <div style={{ border: '1px solid #FCA5A5', background: '#FEF2F2', borderRadius: 10, padding: '10px 14px', marginBottom: 16, fontSize: 13, color: '#991B1B' }}>Odoo a refusé : {odoo.error}</div>;
+    return <div style={{ border: '1px solid #FCA5A5', background: 'var(--df-danger-bg)', borderRadius: 10, padding: '10px 14px', marginBottom: 16, fontSize: 13, color: 'var(--df-x-991B1B)' }}>Odoo a refusé : {odoo.error}</div>;
   }
   const r = odoo.result;
   const dfCg = { ...quote.cg, cg_commission_partenaire: quote.commissionPartenaire.amount };
@@ -607,7 +607,7 @@ function OdooPanel({ quote, odoo, dest }) {
   const corrected = (r.lines || []).filter((l) => l.corrige_apres_creation?.length);
   const created = r.action !== 'dry_run';
   return (
-    <div style={{ border: `1px solid ${created ? '#86EFAC' : C.border}`, background: created ? '#F0FDF4' : 'white', borderRadius: 10, padding: '12px 14px', marginBottom: 16 }}>
+    <div style={{ border: `1px solid ${created ? 'var(--df-x-86EFAC)' : C.border}`, background: created ? 'var(--df-chip-status-bg)' : 'var(--df-bg)', borderRadius: 10, padding: '12px 14px', marginBottom: 16 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
         <div style={{ fontSize: 14, fontWeight: 600, color: C.text, flex: 1 }}>
           {created ? `✅ Devis ${r.name} ${r.action === 'updated' ? 'mis à jour' : 'créé'} en brouillon` : 'Vérification Odoo (rien n\'a été créé)'}
@@ -640,10 +640,10 @@ function OdooPanel({ quote, odoo, dest }) {
         </div>
       )}
       {(r.warnings || []).length > 0 && (
-        <div style={{ marginTop: 10, fontSize: 12.5, color: '#92400E' }}>{r.warnings.map((w) => <div key={w}>⚠️ Odoo : {w}</div>)}</div>
+        <div style={{ marginTop: 10, fontSize: 12.5, color: 'var(--df-warn-text)' }}>{r.warnings.map((w) => <div key={w}>⚠️ Odoo : {w}</div>)}</div>
       )}
       {corrected.length > 0 && (
-        <div style={{ marginTop: 6, fontSize: 12.5, color: '#92400E' }}>Valeurs rétablies par Odoo après création : {corrected.map((l) => `${l.ref} (${l.corrige_apres_creation.join(', ')})`).join(' ; ')}</div>
+        <div style={{ marginTop: 6, fontSize: 12.5, color: 'var(--df-warn-text)' }}>Valeurs rétablies par Odoo après création : {corrected.map((l) => `${l.ref} (${l.corrige_apres_creation.join(', ')})`).join(' ; ')}</div>
       )}
     </div>
   );
@@ -669,9 +669,9 @@ function DescriptionCell({ line, onSave }) {
   }
   return (
     <div style={{ position: 'relative', paddingRight: 22 }}>
-      <div style={{ whiteSpace: 'pre-line', color: '#374151', lineHeight: 1.45 }}>
+      <div style={{ whiteSpace: 'pre-line', color: 'var(--df-text-2)', lineHeight: 1.45 }}>
         {body ? body.split('\n').map((t, k) => (
-          <div key={k} style={TODO_RE.test(t) ? { background: '#FEF3C7', borderRadius: 3, padding: '0 3px' }
+          <div key={k} style={TODO_RE.test(t) ? { background: 'var(--df-amber-bg)', borderRadius: 3, padding: '0 3px' }
             : /^Concerne :/.test(t) ? { fontSize: 11, fontStyle: 'italic', color: C.muted } : undefined}>{t || '\u00A0'}</div>
         )) : <span style={{ color: C.soft }}>—</span>}
       </div>
@@ -712,14 +712,14 @@ function StepPreview({ quote, dest, odoo, onEditText }) {
       <OdooPanel quote={quote} odoo={odoo} dest={dest} />
 
       {quote.blocking?.length > 0 && (
-        <div style={{ border: '1px solid #FCA5A5', background: '#FEF2F2', borderRadius: 8, padding: '8px 12px', marginBottom: 14, fontSize: 13, color: '#991B1B' }}>
+        <div style={{ border: '1px solid #FCA5A5', background: 'var(--df-danger-bg)', borderRadius: 8, padding: '8px 12px', marginBottom: 14, fontSize: 13, color: 'var(--df-x-991B1B)' }}>
           <b>Odoo refusera ce devis :</b>
           {quote.blocking.map((w) => <div key={w}>• {w}</div>)}
         </div>
       )}
 
       {quote.warnings.length > 0 && (
-        <div style={{ border: '1px solid #FCD34D', background: '#FFFBEB', borderRadius: 8, padding: '8px 12px', marginBottom: 14, fontSize: 13, color: '#92400E' }}>
+        <div style={{ border: '1px solid var(--df-x-FCD34D)', background: 'var(--df-chip-adv-bg)', borderRadius: 8, padding: '8px 12px', marginBottom: 14, fontSize: 13, color: 'var(--df-warn-text)' }}>
           {quote.warnings.map((w) => <div key={w} style={{ display: 'flex', gap: 6 }}><AlertTriangle size={14} style={{ marginTop: 2 }} />{w}</div>)}
         </div>
       )}
@@ -735,18 +735,18 @@ function StepPreview({ quote, dest, odoo, onEditText }) {
           return (
             <React.Fragment key={s.key}>
               {newSection && s.title && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', background: '#E9ECEF', padding: '8px 14px', fontSize: 13.5, fontWeight: 700, color: C.text }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', background: 'var(--df-slate-bg-2)', padding: '8px 14px', fontSize: 13.5, fontWeight: 700, color: C.text }}>
                   <span>{s.title}</span><span>{eur(sectionTotal)}</span>
                 </div>
               )}
               {s.sub && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', background: '#F7F7F5', padding: '6px 14px 6px 26px', fontSize: 13, fontWeight: 600, color: '#374151', borderTop: `1px solid ${C.grey}` }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', background: 'var(--df-surface-3)', padding: '6px 14px 6px 26px', fontSize: 13, fontWeight: 600, color: 'var(--df-text-2)', borderTop: `1px solid ${C.grey}` }}>
                   <span>{s.sub}</span><span>{eur(s.total)}</span>
                 </div>
               )}
               {s.lines.map((l) => (
                 <div key={l.key} style={{ display: 'grid', gridTemplateColumns: PGRID, gap: 10, padding: '9px 14px', borderTop: `1px solid ${C.grey}`, fontSize: 13, color: C.text, alignItems: 'start' }}>
-                  <div style={{ fontWeight: 600, color: l.productId ? C.text : '#B91C1C' }}>
+                  <div style={{ fontWeight: 600, color: l.productId ? C.text : 'var(--df-danger-text)' }}>
                     {l.productName}
                     {l.costOnly && <div style={{ fontSize: 11, fontWeight: 500, color: C.accent }}>coût seul</div>}
                   </div>
@@ -932,8 +932,8 @@ export default function OdooQuoteWizard({ open, onClose, minute, rows = [], depR
               <div style={{ fontSize: 13, color: C.muted, marginTop: 2 }}>{minute?.name} · {rows.length} ligne(s)
                 {catalog?.write && (
                   <span style={{ marginLeft: 8, fontSize: 12, padding: '2px 8px', borderRadius: 999, fontWeight: 600,
-                    background: !catalog.write.enabled ? C.grey : catalog.write.isProd ? '#FEE2E2' : '#FEF3C7',
-                    color: !catalog.write.enabled ? C.muted : catalog.write.isProd ? '#991B1B' : '#92400E' }}>
+                    background: !catalog.write.enabled ? C.grey : catalog.write.isProd ? 'var(--df-danger-border)' : 'var(--df-amber-bg)',
+                    color: !catalog.write.enabled ? C.muted : catalog.write.isProd ? 'var(--df-x-991B1B)' : 'var(--df-warn-text)' }}>
                     {!catalog.write.enabled ? 'Odoo · lecture seule' : catalog.write.isProd ? 'Odoo PRODUCTION · devis réels' : `Odoo PRÉPROD · ${catalog.write.target}`}
                   </span>
                 )}</div>
@@ -956,7 +956,7 @@ export default function OdooQuoteWizard({ open, onClose, minute, rows = [], depR
         {/* Contenu */}
         <div ref={contentRef} style={{ flex: 1, overflowY: 'auto', padding: 24 }}>
           {catalogError && (
-            <div style={{ border: '1px solid #FCA5A5', background: '#FEF2F2', borderRadius: 8, padding: '10px 12px', marginBottom: 16, fontSize: 13, color: '#991B1B' }}>
+            <div style={{ border: '1px solid #FCA5A5', background: 'var(--df-danger-bg)', borderRadius: 8, padding: '10px 12px', marginBottom: 16, fontSize: 13, color: 'var(--df-x-991B1B)' }}>
               Odoo injoignable : {catalogError}
             </div>
           )}
@@ -969,8 +969,8 @@ export default function OdooQuoteWizard({ open, onClose, minute, rows = [], depR
         </div>
 
         {confirmCreate && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 24px', borderTop: `1px solid ${C.border}`, background: '#FFFBEB' }}>
-            <div style={{ flex: 1, fontSize: 13, color: '#92400E' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 24px', borderTop: `1px solid ${C.border}`, background: 'var(--df-chip-adv-bg)' }}>
+            <div style={{ flex: 1, fontSize: 13, color: 'var(--df-warn-text)' }}>
               {link && link.target === write?.target ? <>Mettre à jour le devis <b>{link.name}</b></> : <>Créer le devis <b>brouillon</b></>} dans Odoo
               ({write?.isProd ? <b>PRODUCTION — devis réel, numéro CV consommé</b> : write?.target}) ? Il n'est ni confirmé ni envoyé au client.
             </div>
@@ -984,7 +984,7 @@ export default function OdooQuoteWizard({ open, onClose, minute, rows = [], depR
           <button onClick={() => setConfig(defaultConfig())} style={{ border: 'none', background: 'none', color: C.muted, fontSize: 12.5, cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}>
             Réinitialiser les réglages
           </button>
-          <div style={{ fontSize: 11.5, color: storeState === 'browser' ? '#B45309' : C.soft }}>
+          <div style={{ fontSize: 11.5, color: storeState === 'browser' ? 'var(--df-x-B45309)' : C.soft }}>
             {storeState === 'ok' && 'Réglages enregistrés dans Droitfil'}
             {storeState === 'browser' && 'Réglages gardés dans ce navigateur (migration odoo_quote à lancer)'}
           </div>

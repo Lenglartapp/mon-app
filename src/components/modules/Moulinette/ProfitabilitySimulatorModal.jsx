@@ -115,18 +115,18 @@ export default function ProfitabilitySimulatorModal({ currentData, onClose }) {
             display: 'flex', alignItems: 'center', justifyContent: 'center'
         }}>
             <div onClick={(e) => e.stopPropagation()} style={{
-                background: 'white', borderRadius: 12, width: 'min(600px, calc(100vw - 32px))', overflow: 'hidden',
+                background: 'var(--df-bg)', borderRadius: 12, width: 'min(600px, calc(100vw - 32px))', overflow: 'hidden',
                 boxShadow: '0 20px 40px rgba(17,24,39,0.18)', fontFamily: ROBOTO,
             }}>
                 {/* En-tête : titre Roboto + sous-titre, croix de fermeture */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '22px 28px 16px', borderBottom: '1px solid #E8E6E2' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '22px 28px 16px', borderBottom: '1px solid var(--df-border-soft)' }}>
                     <div>
-                        <div style={{ fontSize: 24, fontWeight: 400, color: '#111827' }}>Simulateur de rentabilité</div>
-                        <div style={{ fontSize: 13, color: '#6B7280', marginTop: 4 }}>
+                        <div style={{ fontSize: 24, fontWeight: 400, color: 'var(--df-text)' }}>Simulateur de rentabilité</div>
+                        <div style={{ fontSize: 13, color: 'var(--df-muted)', marginTop: 4 }}>
                             Modifiez un paramètre, le prix du devis ou une remise / majoration : les autres s'ajustent.
                         </div>
                     </div>
-                    <button onClick={onClose} title="Fermer" style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#9B9A97', display: 'flex', padding: 4 }}>
+                    <button onClick={onClose} title="Fermer" style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--df-faint-2)', display: 'flex', padding: 4 }}>
                         <X size={20} />
                     </button>
                 </div>
@@ -146,30 +146,30 @@ export default function ProfitabilitySimulatorModal({ currentData, onClose }) {
                     </div>
 
                     {/* Prix du devis puis remise / majoration : même grille que la ligne du dessus (cadres alignés) */}
-                    <div style={{ paddingTop: 18, borderTop: '1px solid #E8E6E2', marginBottom: 24 }}>
+                    <div style={{ paddingTop: 18, borderTop: '1px solid var(--df-border-soft)', marginBottom: 24 }}>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14 }}>
                             <InputBlock label="Prix du devis HT" suffix="€" value={Number.isFinite(targetCA) ? targetCA : 0} onChange={handleChangePrice} />
                             <InputBlock label="Remise / majoration" suffix="%" value={remisePct} onChange={handleChangeRemise} />
                         </div>
-                        <div style={{ fontSize: 12, color: '#9B9A97', marginTop: 8 }}>
+                        <div style={{ fontSize: 12, color: 'var(--df-faint-2)', marginTop: 8 }}>
                             Remise : négatif (ex. −5) ; majoration : positif (ex. 10), sur le prix actuel ({nfEur0.format(currentCA)}).
                         </div>
                     </div>
 
                     {/* Résultat : grand chiffre, sans encadré coloré */}
-                    <div style={{ fontSize: 13, color: '#9B9A97' }}>Chiffre d'affaires cible</div>
+                    <div style={{ fontSize: 13, color: 'var(--df-faint-2)' }}>Chiffre d'affaires cible</div>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: 14, flexWrap: 'wrap', marginTop: 2 }}>
-                        <div style={{ fontSize: 40, fontWeight: 300, color: '#1E2447', lineHeight: 1.1 }}>
+                        <div style={{ fontSize: 40, fontWeight: 300, color: 'var(--df-primary-text)', lineHeight: 1.1 }}>
                             {targetCA === Infinity ? 'Impossible' : nfEur0.format(targetCA)}
                         </div>
                         {targetCA !== Infinity && (
-                            <div style={{ fontSize: 14, color: '#6B7280' }}>
+                            <div style={{ fontSize: 14, color: 'var(--df-muted)' }}>
                                 {delta > 0 ? '+' : ''}{nfEur0.format(delta)} par rapport au CA actuel
                             </div>
                         )}
                     </div>
 
-                    <div style={{ fontSize: 12, color: '#6B7280', lineHeight: 1.5, marginTop: 20, paddingTop: 14, borderTop: '1px solid #E8E6E2' }}>
+                    <div style={{ fontSize: 12, color: 'var(--df-muted)', lineHeight: 1.5, marginTop: 20, paddingTop: 14, borderTop: '1px solid var(--df-border-soft)' }}>
                         Paramètres fixes : heures ({nf2.format(H)} h), coûts fixes matériel compris ({nfEur0.format(Fixed_Costs)}) et taux de commission ({(Com_Rate * 100).toFixed(1).replace('.', ',')} %).
                     </div>
                 </div>
@@ -206,7 +206,7 @@ function InputBlock({ label, suffix, value, onChange, max }) {
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <label style={{ fontSize: 13, color: '#6B7280', whiteSpace: 'nowrap' }}>{label}</label>
+            <label style={{ fontSize: 13, color: 'var(--df-muted)', whiteSpace: 'nowrap' }}>{label}</label>
             <div style={{ position: 'relative' }}>
                 <input
                     type="number"
@@ -219,11 +219,11 @@ function InputBlock({ label, suffix, value, onChange, max }) {
                         padding: '10px 12px',
                         paddingRight: 30,
                         borderRadius: 8,
-                        border: '1px solid #E0DED9',
+                        border: '1px solid var(--df-border)',
                         fontSize: 16,
                         fontWeight: 500,
                         fontFamily: 'inherit',
-                        color: '#111827',
+                        color: 'var(--df-text)',
                         outline: 'none',
                         boxSizing: 'border-box'
                     }}
@@ -235,7 +235,7 @@ function InputBlock({ label, suffix, value, onChange, max }) {
                     transform: 'translateY(-50%)',
                     fontSize: 12,
                     fontWeight: 600,
-                    color: '#9B9A97'
+                    color: 'var(--df-faint-2)'
                 }}>
                     {suffix}
                 </span>

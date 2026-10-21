@@ -19,7 +19,7 @@
 }
 
 [cmdk-dialog] > [cmdk-root] {
-  background: #ffffff;
+  background: var(--df-bg);
   border-radius: 14px;
   box-shadow: 0 30px 90px rgba(0, 0, 0, 0.22), 0 0 0 1px rgba(0, 0, 0, 0.07);
   width: 580px;
@@ -34,8 +34,8 @@
   align-items: center;
   gap: 10px;
   padding: 0 18px;
-  border-bottom: 1px solid #E5E7EB;
-  color: #9CA3AF;
+  border-bottom: 1px solid var(--df-border-2);
+  color: var(--df-faint);
 }
 
 [cmdk-input] {
@@ -45,7 +45,7 @@
   border: none;
   outline: none;
   background: transparent;
-  color: #111827;
+  color: var(--df-text);
   font-family: inherit;
 }
 
@@ -68,7 +68,7 @@
   background: transparent;
 }
 [cmdk-list]::-webkit-scrollbar-thumb {
-  background: #E5E7EB;
+  background: var(--df-border-2);
   border-radius: 4px;
 }
 
@@ -83,7 +83,7 @@
   font-weight: 700;
   letter-spacing: 0.07em;
   text-transform: uppercase;
-  color: #9CA3AF;
+  color: var(--df-faint);
   user-select: none;
 }
 
@@ -95,23 +95,23 @@
   padding: 9px 12px;
   border-radius: 8px;
   font-size: 14px;
-  color: #1F2937;
+  color: var(--df-text-1b);
   cursor: pointer;
   user-select: none;
   transition: background 60ms;
 }
 
 [cmdk-item][aria-selected='true'] {
-  background: #F0F1F5;
-  color: #1E2447;
+  background: var(--df-x-F0F1F5);
+  color: var(--df-primary-text);
 }
 
 [cmdk-item][aria-selected='true'] .cmdk-item-icon {
-  color: #1E2447;
+  color: var(--df-primary-text);
 }
 
 .cmdk-item-icon {
-  color: #6B7280;
+  color: var(--df-muted);
   flex-shrink: 0;
 }
 
@@ -124,15 +124,15 @@
 
 .cmdk-item-badge {
   font-size: 11px;
-  color: #9CA3AF;
+  color: var(--df-faint);
   flex-shrink: 0;
 }
 
 .cmdk-item-kbd {
   font-size: 11px;
   color: #B0B7C3;
-  background: #F4F4F4;
-  border: 1px solid #E5E7EB;
+  background: var(--df-surface);
+  border: 1px solid var(--df-border-2);
   border-radius: 5px;
   padding: 2px 6px;
   font-family: inherit;
@@ -149,7 +149,7 @@
 [cmdk-empty] {
   padding: 28px;
   text-align: center;
-  color: #9CA3AF;
+  color: var(--df-faint);
   font-size: 14px;
 }
 
@@ -160,14 +160,14 @@
   justify-content: flex-end;
   gap: 12px;
   padding: 10px 16px;
-  border-top: 1px solid #F3F4F6;
+  border-top: 1px solid var(--df-surface-2);
   font-size: 11px;
   color: #B0B7C3;
 }
 
 .cmdk-footer kbd {
-  background: #F3F4F6;
-  border: 1px solid #E5E7EB;
+  background: var(--df-surface-2);
+  border: 1px solid var(--df-border-2);
   border-radius: 4px;
   padding: 2px 6px;
   font-family: inherit;

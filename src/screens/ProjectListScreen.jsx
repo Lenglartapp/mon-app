@@ -182,7 +182,7 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
   }, [users]);
 
   return (
-    <div style={{ minHeight: isMobile ? '100vh' : undefined, background: '#FFFFFF', padding: isMobile ? '16px' : '24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div style={{ minHeight: isMobile ? '100vh' : undefined, background: 'var(--df-bg)', padding: isMobile ? '16px' : '24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
       {/* CSS Fallback for Responsive Toggle */}
       <style>{`
         @media (max-width: 768px) {
@@ -207,13 +207,13 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
               onClick={onBack}
               style={{
                 background: 'none', border: 'none', cursor: 'pointer',
-                color: '#6B7280', fontWeight: 600, fontSize: 13,
+                color: 'var(--df-muted)', fontWeight: 600, fontSize: 13,
                 marginBottom: 4, padding: 0, display: 'flex', alignItems: 'center', gap: 4
               }}
             >
               ← Retour
             </button>
-            <h1 style={{ fontSize: 32, fontWeight: 400, fontFamily: 'Roboto, system-ui, sans-serif', color: '#111827', margin: 0, letterSpacing: '-0.01em' }}>Projets</h1>
+            <h1 style={{ fontSize: 32, fontWeight: 400, fontFamily: 'Roboto, system-ui, sans-serif', color: 'var(--df-text)', margin: 0, letterSpacing: '-0.01em' }}>Projets</h1>
           </div>
           {canCreate && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -222,7 +222,7 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
                 onClick={() => setShowCreate(true)}
                 style={{
                   // Mêmes dimensions que les boutons d'action du chiffrage (Bibliothèque…), fond bleu nuit conservé
-                  background: '#1E2447', color: 'white', padding: '8px 14px', borderRadius: 8, border: '1px solid #1E2447',
+                  background: 'var(--df-primary)', color: 'white', padding: '8px 14px', borderRadius: 8, border: '1px solid var(--df-primary)',
                   display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap',
                   marginBottom: isMobile ? 0 : 4,
                   width: isMobile ? '100%' : 'auto', justifyContent: isMobile ? 'center' : 'flex-start'
@@ -235,8 +235,8 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
                 onClick={() => setShowImport(true)}
                 title="Importer des projets depuis Excel"
                 style={{
-                  background: 'white', color: '#374151', padding: '8px 14px', borderRadius: 8,
-                  border: '1px solid #E0DED9', display: 'flex', alignItems: 'center', gap: 8,
+                  background: 'var(--df-bg)', color: 'var(--df-text-2)', padding: '8px 14px', borderRadius: 8,
+                  border: '1px solid var(--df-border)', display: 'flex', alignItems: 'center', gap: 8,
                   cursor: 'pointer', fontWeight: 600, fontSize: 13, whiteSpace: 'nowrap', marginBottom: isMobile ? 0 : 4,
                 }}
               >
@@ -261,13 +261,13 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
             <IconButton
               onClick={() => setShowArchived(!showArchived)}
               sx={{
-                bgcolor: showArchived ? '#DBEAFE' : 'white',
-                color: showArchived ? '#1E40AF' : '#6B7280',
-                border: '1px solid #E5E7EB',
+                bgcolor: showArchived ? 'var(--df-blue-bg-2)' : 'var(--df-bg)',
+                color: showArchived ? 'var(--df-x-1E40AF)' : 'var(--df-muted)',
+                border: '1px solid var(--df-border-2)',
                 borderRadius: 2,
                 height: 38,
                 width: 38,
-                '&:hover': { bgcolor: showArchived ? '#BFDBFE' : '#F4F4F4' }
+                '&:hover': { bgcolor: showArchived ? 'var(--df-x-BFDBFE)' : 'var(--df-surface)' }
               }}
             >
               <Archive size={20} />
@@ -294,17 +294,17 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
           return (
             <button key={p.id} onClick={() => onOpenProject?.(p)} style={{
               width: '100%', textAlign: 'left', fontFamily: 'Roboto, system-ui, sans-serif', cursor: 'pointer',
-              background: 'white', borderRadius: 12, padding: '14px 16px', border: '1px solid #E0DED9',
+              background: 'var(--df-bg)', borderRadius: 12, padding: '14px 16px', border: '1px solid var(--df-border)',
               display: 'flex', alignItems: 'center', gap: 10,
             }}>
               <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-                  <div style={{ fontWeight: 600, fontSize: 15, color: '#111827', lineHeight: 1.25, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                  <div style={{ fontWeight: 600, fontSize: 15, color: 'var(--df-text)', lineHeight: 1.25, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                     {p.name || "Sans nom"}
                   </div>
                   <span style={{ flexShrink: 0 }}><TonePill tone={PROJECT_STATUS_TONE[p?.status || 'TODO']}>{statusOpt.label}</TonePill></span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', fontSize: 13, color: '#6B7280' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', fontSize: 13, color: 'var(--df-muted)' }}>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                     <Avatar sx={{ width: 20, height: 20, fontSize: 10, bgcolor: stringToColor(p?.manager || "?") }}>
                       {(p?.manager?.[0] || "?").toUpperCase()}
@@ -312,25 +312,25 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
                     {p.manager || "Non assigné"}
                   </span>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                    <Calendar size={13} color="#9B9A97" /> {dateStr}
+                    <Calendar size={13} color="var(--df-faint-2)" /> {dateStr}
                   </span>
                 </div>
                 {p.location && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#6B7280', minWidth: 0 }}>
-                    <MapPin size={13} color="#9B9A97" style={{ flexShrink: 0 }} />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--df-muted)', minWidth: 0 }}>
+                    <MapPin size={13} color="var(--df-faint-2)" style={{ flexShrink: 0 }} />
                     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.location}</span>
                   </div>
                 )}
-                <div style={{ fontSize: 12, color: '#9B9A97' }}>
+                <div style={{ fontSize: 12, color: 'var(--df-faint-2)' }}>
                   Prépa {budget.prepa || 0}h · Conf {budget.conf || 0}h · Pose {budget.pose || 0}h
                 </div>
               </div>
-              <ChevronRight size={18} color="#C9C7C2" style={{ flexShrink: 0 }} />
+              <ChevronRight size={18} color="var(--df-border-hover)" style={{ flexShrink: 0 }} />
             </button>
           );
         })}
         {filteredProjects.length === 0 && (
-          <div style={{ padding: 40, textAlign: 'center', color: '#9CA3AF', background: 'white', borderRadius: 12 }}>
+          <div style={{ padding: 40, textAlign: 'center', color: 'var(--df-faint)', background: 'var(--df-bg)', borderRadius: 12 }}>
             <FileText size={48} style={{ opacity: 0.2, marginBottom: 16 }} />
             <div>Aucun projet trouvé.</div>
           </div>
@@ -342,7 +342,7 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
         className="desktop-only"
         style={{
           maxWidth: 1440, width: '100%', margin: '0 auto',
-          background: 'white', border: '1px solid #E0DED9', borderRadius: 8, overflow: 'hidden',
+          background: 'var(--df-bg)', border: '1px solid var(--df-border)', borderRadius: 8, overflow: 'hidden',
           display: isMobile ? 'none' : 'block' // JS Toggle
         }}
       >
@@ -352,19 +352,19 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
         {/* Seul le tableau défile (page fixe, en-têtes collés, barre masquée) — comme la liste Chiffrages */}
         <div ref={listScrollRef} className="df-list-scroll" style={{ overflow: 'auto', maxHeight: listHeight ?? undefined }}>
           <table className="df-list-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-            <thead style={{ background: '#F4F4F4', borderBottom: '1px solid #E0DED9' }}>
+            <thead style={{ background: 'var(--df-surface)', borderBottom: '1px solid var(--df-border)' }}>
               <tr>
-                <th style={{ padding: '12px 10px', fontSize: 13, fontWeight: 600, color: '#374151' }}>Projet</th>
-                <th style={{ padding: '12px 10px', fontSize: 13, fontWeight: 600, color: '#374151' }}>Responsable</th>
-                <th style={{ padding: '12px 10px', fontSize: 13, fontWeight: 600, color: '#374151', textAlign: 'center' }}>Statut</th>
-                <th style={{ padding: '12px 10px', fontSize: 13, fontWeight: 600, color: '#374151' }}>Livraison</th>
-                <th style={{ padding: '12px 10px', fontSize: 13, fontWeight: 600, color: '#374151' }}>Odoo</th>
+                <th style={{ padding: '12px 10px', fontSize: 13, fontWeight: 600, color: 'var(--df-text-2)' }}>Projet</th>
+                <th style={{ padding: '12px 10px', fontSize: 13, fontWeight: 600, color: 'var(--df-text-2)' }}>Responsable</th>
+                <th style={{ padding: '12px 10px', fontSize: 13, fontWeight: 600, color: 'var(--df-text-2)', textAlign: 'center' }}>Statut</th>
+                <th style={{ padding: '12px 10px', fontSize: 13, fontWeight: 600, color: 'var(--df-text-2)' }}>Livraison</th>
+                <th style={{ padding: '12px 10px', fontSize: 13, fontWeight: 600, color: 'var(--df-text-2)' }}>Odoo</th>
 
                 {/* Creation Date */}
                 <th
                   onClick={() => handleSort('created_at')}
                   className="col-created"
-                  style={{ padding: '12px 10px', fontSize: 13, fontWeight: 600, color: '#374151', cursor: 'pointer', userSelect: 'none' }}
+                  style={{ padding: '12px 10px', fontSize: 13, fontWeight: 600, color: 'var(--df-text-2)', cursor: 'pointer', userSelect: 'none' }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                     Création
@@ -383,7 +383,7 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
                     key={key}
                     className="col-hours"
                     onClick={() => handleSort(key)}
-                    style={{ padding: '12px 8px', fontSize: 13, fontWeight: 600, color: '#374151', textAlign: 'right', cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                    style={{ padding: '12px 8px', fontSize: 13, fontWeight: 600, color: 'var(--df-text-2)', textAlign: 'right', cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
                       {label}
@@ -394,8 +394,8 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
                   </th>
                 ))}
                 {/* Écran étroit : les 3 budgets d'heures regroupés en une colonne */}
-                <th className="col-hours-merged" title="Heures budgétées : préparation / confection / pose" style={{ padding: '12px 8px', fontSize: 13, fontWeight: 600, color: '#374151', textAlign: 'right', whiteSpace: 'nowrap' }}>H. P / C / P</th>
-                <th style={{ padding: '12px 10px', width: 64, position: 'sticky', right: 0, background: '#F4F4F4' }}></th>
+                <th className="col-hours-merged" title="Heures budgétées : préparation / confection / pose" style={{ padding: '12px 8px', fontSize: 13, fontWeight: 600, color: 'var(--df-text-2)', textAlign: 'right', whiteSpace: 'nowrap' }}>H. P / C / P</th>
+                <th style={{ padding: '12px 10px', width: 64, position: 'sticky', right: 0, background: 'var(--df-surface)' }}></th>
               </tr>
             </thead>
             <tbody>
@@ -407,23 +407,23 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
                 const internal = isInternalProject(p);
 
                 return (
-                  <tr key={p?.id || idx} className="project-row" style={{ borderBottom: '1px solid #E8E6E2', transition: 'background 0.1s', background: 'white' }} onClick={() => onOpenProject?.(p)} onMouseEnter={(e) => e.currentTarget.style.background = '#F4F4F4'} onMouseLeave={(e) => e.currentTarget.style.background = 'white'}>
+                  <tr key={p?.id || idx} className="project-row" style={{ borderBottom: '1px solid var(--df-border-soft)', transition: 'background 0.1s', background: 'var(--df-bg)' }} onClick={() => onOpenProject?.(p)} onMouseEnter={(e) => e.currentTarget.style.background = 'var(--df-surface)'} onMouseLeave={(e) => e.currentTarget.style.background = 'var(--df-bg)'}>
                     {/* DOSSIER */}
                     <td style={{ padding: '12px 10px' }}>
-                      <div style={{ fontWeight: 600, color: '#111827', fontSize: 14, minWidth: 150 }}>{p?.name || "Sans nom"}</div>
-                      <div style={{ fontSize: 11, color: '#9CA3AF' }}>#{String(p?.id || "").slice(-4)}</div>
+                      <div style={{ fontWeight: 600, color: 'var(--df-text)', fontSize: 14, minWidth: 150 }}>{p?.name || "Sans nom"}</div>
+                      <div style={{ fontSize: 11, color: 'var(--df-faint)' }}>#{String(p?.id || "").slice(-4)}</div>
                     </td>
 
                     {/* RESPONSABLE */}
                     <td style={{ padding: '12px 10px' }} onClick={(e) => e.stopPropagation()}>
-                      {internal ? <span style={{ color: '#D1D5DB', fontSize: 13 }}>—</span> : (
+                      {internal ? <span style={{ color: 'var(--df-border-strong)', fontSize: 13 }}>—</span> : (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <Avatar sx={{ width: 24, height: 24, fontSize: 10, bgcolor: stringToColor(p?.manager || "?") }}>{(p?.manager?.[0] || "?").toUpperCase()}</Avatar>
                         <select
                           value={p?.manager || ""}
                           onChange={(e) => handleUpdate(p.id, { manager: e.target.value })}
                           style={{
-                            border: 'none', background: 'transparent', fontSize: 13, color: '#374151', cursor: 'pointer', outline: 'none',
+                            border: 'none', background: 'transparent', fontSize: 13, color: 'var(--df-text-2)', cursor: 'pointer', outline: 'none',
                             fontWeight: 500, maxWidth: 120, textOverflow: 'ellipsis'
                           }}
                         >
@@ -459,7 +459,7 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
 
                     {/* LIVRAISON */}
                     <td style={{ padding: '12px 10px' }} onClick={(e) => e.stopPropagation()}>
-                      {internal ? <span style={{ color: '#D1D5DB', fontSize: 13 }}>—</span> : (
+                      {internal ? <span style={{ color: 'var(--df-border-strong)', fontSize: 13 }}>—</span> : (
                       <input
                         type="date"
                         value={p?.deadline ? p.deadline.split('T')[0] : ""}
@@ -467,7 +467,7 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
                         style={{
                           border: 'none',
                           background: 'transparent',
-                          color: p?.deadline ? '#374151' : '#9CA3AF',
+                          color: p?.deadline ? 'var(--df-text-2)' : 'var(--df-faint)',
                           fontSize: 12.5, width: 112,
                           fontFamily: 'inherit',
                           cursor: 'pointer',
@@ -488,15 +488,15 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
                     </td>
 
                     {/* CREATION */}
-                    <td className="col-created" style={{ padding: '12px 10px', fontSize: 13, color: '#6B7280' }}>
+                    <td className="col-created" style={{ padding: '12px 10px', fontSize: 13, color: 'var(--df-muted)' }}>
                       {new Date(p.created_at || p.createdAt || Date.now()).toLocaleDateString("fr-FR")}
                     </td>
 
                     {/* BUDGETS */}
-                    <td className="col-hours" style={{ padding: '12px 8px', textAlign: 'right', fontSize: 13, whiteSpace: 'nowrap', color: internal ? '#D1D5DB' : '#374151' }}>{internal ? '—' : `${budget.prepa || 0} h`}</td>
-                    <td className="col-hours" style={{ padding: '12px 8px', textAlign: 'right', fontSize: 13, whiteSpace: 'nowrap', color: internal ? '#D1D5DB' : '#374151' }}>{internal ? '—' : `${budget.conf || 0} h`}</td>
-                    <td className="col-hours" style={{ padding: '12px 8px', textAlign: 'right', fontSize: 13, whiteSpace: 'nowrap', color: internal ? '#D1D5DB' : '#374151' }}>{internal ? '—' : `${budget.pose || 0} h`}</td>
-                    <td className="col-hours-merged" style={{ padding: '12px 8px', textAlign: 'right', fontSize: 13, whiteSpace: 'nowrap', color: internal ? '#D1D5DB' : '#374151' }}>{internal ? '—' : `${budget.prepa || 0} / ${budget.conf || 0} / ${budget.pose || 0} h`}</td>
+                    <td className="col-hours" style={{ padding: '12px 8px', textAlign: 'right', fontSize: 13, whiteSpace: 'nowrap', color: internal ? 'var(--df-border-strong)' : 'var(--df-text-2)' }}>{internal ? '—' : `${budget.prepa || 0} h`}</td>
+                    <td className="col-hours" style={{ padding: '12px 8px', textAlign: 'right', fontSize: 13, whiteSpace: 'nowrap', color: internal ? 'var(--df-border-strong)' : 'var(--df-text-2)' }}>{internal ? '—' : `${budget.conf || 0} h`}</td>
+                    <td className="col-hours" style={{ padding: '12px 8px', textAlign: 'right', fontSize: 13, whiteSpace: 'nowrap', color: internal ? 'var(--df-border-strong)' : 'var(--df-text-2)' }}>{internal ? '—' : `${budget.pose || 0} h`}</td>
+                    <td className="col-hours-merged" style={{ padding: '12px 8px', textAlign: 'right', fontSize: 13, whiteSpace: 'nowrap', color: internal ? 'var(--df-border-strong)' : 'var(--df-text-2)' }}>{internal ? '—' : `${budget.prepa || 0} / ${budget.conf || 0} / ${budget.pose || 0} h`}</td>
 
                     {/* ACTIONS */}
                     <td style={{ padding: '12px 10px', position: 'sticky', right: 0, background: 'inherit' }} onClick={(e) => e.stopPropagation()}>
@@ -506,7 +506,7 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
                         <Tooltip title="Supprimer">
                           <IconButton
                             size="small"
-                            sx={{ color: '#ef4444' }}
+                            sx={{ color: 'var(--df-danger)' }}
                             onClick={(e) => {
                               e.stopPropagation();
                               if (window.confirm(`Supprimer le projet "${p.name}" définitivement ?`)) {
@@ -523,7 +523,7 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
                   </tr>
                 );
               })}
-              {filteredProjects.length === 0 && (<tr><td colSpan={10} style={{ padding: 40, textAlign: 'center', color: '#9CA3AF' }}><FileText size={48} style={{ opacity: 0.2, marginBottom: 16 }} /><div>Aucun projet trouvé.</div></td></tr>)}
+              {filteredProjects.length === 0 && (<tr><td colSpan={10} style={{ padding: 40, textAlign: 'center', color: 'var(--df-faint)' }}><FileText size={48} style={{ opacity: 0.2, marginBottom: 16 }} /><div>Aucun projet trouvé.</div></td></tr>)}
             </tbody>
           </table>
         </div>

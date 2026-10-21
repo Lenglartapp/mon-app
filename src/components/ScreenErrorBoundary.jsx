@@ -22,8 +22,8 @@ export default class ScreenErrorBoundary extends React.Component {
   render() {
     if (!this.state.error) return this.props.children;
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '50vh', gap: 12, padding: 16, color: '#6B7280', fontFamily: 'system-ui' }}>
-        <div style={{ fontSize: 15, fontWeight: 600, color: '#111827' }}>Cet écran a rencontré une erreur</div>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '50vh', gap: 12, padding: 16, color: 'var(--df-muted)', fontFamily: 'system-ui' }}>
+        <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--df-text)' }}>Cet écran a rencontré une erreur</div>
         <div style={{ fontSize: 13, textAlign: 'center', maxWidth: 440 }}>
           Les données déjà enregistrées ne sont pas affectées. Vous pouvez réessayer ou revenir en arrière.
         </div>
@@ -33,9 +33,9 @@ export default class ScreenErrorBoundary extends React.Component {
         </details>
         <div style={{ display: 'flex', gap: 8 }}>
           {this.props.onBack && (
-            <button onClick={() => { this.setState({ error: null }); this.props.onBack(); }} style={{ background: '#F3F4F6', color: '#111827', border: 'none', padding: '8px 16px', borderRadius: 6, fontWeight: 600, cursor: 'pointer' }}>Retour</button>
+            <button onClick={() => { this.setState({ error: null }); this.props.onBack(); }} style={{ background: 'var(--df-surface-2)', color: 'var(--df-text)', border: 'none', padding: '8px 16px', borderRadius: 6, fontWeight: 600, cursor: 'pointer' }}>Retour</button>
           )}
-          <button onClick={() => this.setState({ error: null })} style={{ background: '#1E2447', color: 'white', border: 'none', padding: '8px 16px', borderRadius: 6, fontWeight: 600, cursor: 'pointer' }}>Réessayer</button>
+          <button onClick={() => this.setState({ error: null })} style={{ background: 'var(--df-primary)', color: 'white', border: 'none', padding: '8px 16px', borderRadius: 6, fontWeight: 600, cursor: 'pointer' }}>Réessayer</button>
         </div>
       </div>
     );

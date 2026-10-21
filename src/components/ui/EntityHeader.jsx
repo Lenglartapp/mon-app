@@ -25,7 +25,7 @@ export function HeaderCard({ left, right, stacked = false, bare = false }) {
   return (
     <div style={{
       ...(bare ? {} : {
-        background: 'white', border: '1px solid #E0DED9', borderRadius: 12,
+        background: 'var(--df-bg)', border: '1px solid var(--df-border)', borderRadius: 12,
         boxShadow: '0 1px 3px rgba(0,0,0,0.04)', padding: stacked ? 16 : '22px 26px',
       }),
       display: 'grid', gridTemplateColumns: (stacked || !right) ? 'minmax(0,1fr)' : 'minmax(0,1.3fr) minmax(0,1fr)', gap: stacked ? 16 : 28,
@@ -37,10 +37,10 @@ export function HeaderCard({ left, right, stacked = false, bare = false }) {
 }
 
 const PANEL_TONES = {
-  notes: { bg: '#FFFBEB', border: '#F3E3A3', accent: '#F59E0B', title: '#92400E' },
-  logistics: { bg: '#F5F7FB', border: '#DCE3EF', accent: '#1E2447', title: '#1E2447' },
+  notes: { bg: 'var(--df-chip-adv-bg)', border: 'var(--df-x-F3E3A3)', accent: '#F59E0B', title: 'var(--df-warn-text)' },
+  logistics: { bg: 'var(--df-x-F5F7FB)', border: 'var(--df-x-DCE3EF)', accent: 'var(--df-primary)', title: 'var(--df-primary)' },
   // Bloc discret façon Notion (même rendu que le bloc Notes du chiffrage)
-  soft: { bg: '#F4F4F4', soft: true },
+  soft: { bg: 'var(--df-surface)', soft: true },
 };
 
 export function HeaderPanel({ title, tone = 'notes', children }) {
@@ -48,7 +48,7 @@ export function HeaderPanel({ title, tone = 'notes', children }) {
   if (t.soft) {
     return (
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, background: t.bg, borderRadius: 8, padding: '10px 14px 12px' }}>
-        <div style={{ fontSize: 12, fontWeight: 500, color: '#9B9A97', marginBottom: 10 }}>{title}</div>
+        <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--df-faint-2)', marginBottom: 10 }}>{title}</div>
         {children}
       </div>
     );
@@ -94,9 +94,9 @@ export function EditableTitle({ value, onSave, canEdit, placeholder = "Sans nom"
           if (e.key === 'Escape') { setDraft(value || ""); setEditing(false); }
         }}
         style={{
-          fontSize, fontWeight, color: '#111827', fontFamily, letterSpacing: '-0.01em',
+          fontSize, fontWeight, color: 'var(--df-text)', fontFamily, letterSpacing: '-0.01em',
           border: '2px solid #3B82F6', borderRadius: 6, padding: '0 6px', marginLeft: -8,
-          outline: 'none', width: '100%', maxWidth: 900, background: 'white',
+          outline: 'none', width: '100%', maxWidth: 900, background: 'var(--df-bg)',
         }}
         placeholder={placeholder}
       />
@@ -110,14 +110,14 @@ export function EditableTitle({ value, onSave, canEdit, placeholder = "Sans nom"
       onMouseLeave={() => setHover(false)}
       title={canEdit ? "Double-cliquer pour renommer" : undefined}
       style={{
-        fontSize, fontWeight, fontFamily, color: '#111827', margin: 0, marginLeft: -6, lineHeight: 1.15,
+        fontSize, fontWeight, fontFamily, color: 'var(--df-text)', margin: 0, marginLeft: -6, lineHeight: 1.15,
         letterSpacing: '-0.01em', padding: '2px 6px', borderRadius: 6, cursor: 'default',
         display: 'inline-flex', alignItems: 'center', gap: 8, maxWidth: '100%',
-        background: canEdit && hover ? '#F3F4F6' : 'transparent',
+        background: canEdit && hover ? 'var(--df-surface-2)' : 'transparent',
       }}
     >
       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{value || placeholder}</span>
-      {canEdit && <span style={{ fontSize: 14, color: '#6B7280', opacity: hover ? 1 : 0, transition: 'opacity .15s' }}>✎</span>}
+      {canEdit && <span style={{ fontSize: 14, color: 'var(--df-muted)', opacity: hover ? 1 : 0, transition: 'opacity .15s' }}>✎</span>}
     </h1>
   );
 }
@@ -133,7 +133,7 @@ export function HeaderButton({ onClick, title, children }) {
     <button
       onClick={onClick}
       title={title}
-      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 12px', borderRadius: 8, background: 'white', border: '1px solid #E0DED9', cursor: 'pointer', color: '#374151', fontSize: 13, fontWeight: 500, fontFamily: 'inherit' }}
+      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 12px', borderRadius: 8, background: 'var(--df-bg)', border: '1px solid var(--df-border)', cursor: 'pointer', color: 'var(--df-text-2)', fontSize: 13, fontWeight: 500, fontFamily: 'inherit' }}
     >
       {children}
     </button>
@@ -143,8 +143,8 @@ export function HeaderButton({ onClick, title, children }) {
 export function MetaItem({ label, children }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
-      <span style={{ fontSize: 13, fontWeight: 400, color: '#9B9A97', fontFamily: 'Roboto, system-ui, sans-serif' }}>{label}</span>
-      <span style={{ fontSize: 13.5, fontWeight: 600, color: '#1F2937', display: 'flex', alignItems: 'center', gap: 6, minHeight: 26 }}>{children}</span>
+      <span style={{ fontSize: 13, fontWeight: 400, color: 'var(--df-faint-2)', fontFamily: 'Roboto, system-ui, sans-serif' }}>{label}</span>
+      <span style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--df-text-1b)', display: 'flex', alignItems: 'center', gap: 6, minHeight: 26 }}>{children}</span>
     </div>
   );
 }
@@ -163,7 +163,7 @@ export function OwnerPicker({ value, users = [], onChange, canEdit }) {
 
   const avatar = (name, size = 24) => (
     <span style={{
-      width: size, height: size, borderRadius: '50%', background: name ? stringToColor(name) : '#D1D5DB', color: 'white',
+      width: size, height: size, borderRadius: '50%', background: name ? stringToColor(name) : 'var(--df-border-strong)', color: 'white',
       fontSize: 10, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
     }}>{initialsOf(name)}</span>
   );
@@ -174,28 +174,28 @@ export function OwnerPicker({ value, users = [], onChange, canEdit }) {
         onClick={canEdit ? () => setOpen(o => !o) : undefined}
         title={canEdit ? "Changer de chargé d'affaires" : undefined}
         style={{
-          display: 'inline-flex', alignItems: 'center', gap: 7, border: '1px solid transparent', background: open ? 'white' : 'none',
-          borderColor: open ? '#E5E7EB' : 'transparent', padding: '2px 8px 2px 2px', borderRadius: 99,
-          cursor: canEdit ? 'pointer' : 'default', fontFamily: 'inherit', fontSize: 13.5, fontWeight: 600, color: value ? '#1F2937' : '#9CA3AF',
+          display: 'inline-flex', alignItems: 'center', gap: 7, border: '1px solid transparent', background: open ? 'var(--df-bg)' : 'none',
+          borderColor: open ? 'var(--df-border-2)' : 'transparent', padding: '2px 8px 2px 2px', borderRadius: 99,
+          cursor: canEdit ? 'pointer' : 'default', fontFamily: 'inherit', fontSize: 13.5, fontWeight: 600, color: value ? 'var(--df-text-1b)' : 'var(--df-faint)',
         }}
       >
         {avatar(value)}
         {value || "Non assigné"}
-        {canEdit && <span style={{ color: '#9CA3AF', fontSize: 10 }}>▾</span>}
+        {canEdit && <span style={{ color: 'var(--df-faint)', fontSize: 10 }}>▾</span>}
       </button>
       {open && (
         <div style={{
-          position: 'absolute', top: 'calc(100% + 4px)', left: 0, zIndex: 1000, background: 'white', border: '1px solid #E0DED9',
+          position: 'absolute', top: 'calc(100% + 4px)', left: 0, zIndex: 1000, background: 'var(--df-bg)', border: '1px solid var(--df-border)',
           borderRadius: 8, boxShadow: '0 10px 25px -5px rgba(0,0,0,0.12)', padding: 6, minWidth: 220, maxHeight: 320, overflowY: 'auto',
         }}>
-          {users.length === 0 && <div style={{ padding: '7px 8px', fontSize: 12, color: '#9CA3AF' }}>Aucun utilisateur éligible</div>}
+          {users.length === 0 && <div style={{ padding: '7px 8px', fontSize: 12, color: 'var(--df-faint)' }}>Aucun utilisateur éligible</div>}
           {users.map(u => (
             <div
               key={u.id || u.name}
               onClick={() => { setOpen(false); if (u.name !== value) onChange(u.name); }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = '#F3F4F6'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = u.name === value ? '#F4F4F4' : 'transparent'; }}
-              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 8px', borderRadius: 6, fontSize: 13, cursor: 'pointer', background: u.name === value ? '#F4F4F4' : 'transparent', fontWeight: u.name === value ? 600 : 400 }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--df-surface-2)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = u.name === value ? 'var(--df-surface)' : 'transparent'; }}
+              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 8px', borderRadius: 6, fontSize: 13, cursor: 'pointer', background: u.name === value ? 'var(--df-surface)' : 'transparent', fontWeight: u.name === value ? 600 : 400 }}
             >
               {avatar(u.name)}
               {u.name}

@@ -60,7 +60,7 @@ function LinkableCell({ value, linkValue, canEdit, rowId, linkField, onLinkUpdat
         <>
           <Tooltip title={linkValue ? "Modifier le lien" : "Ajouter un lien"} placement="top">
             <IconButton size="small" ref={anchorRef} onClick={handleOpen}>
-              <LinkIcon style={{ fontSize: 14, color: linkValue ? '#10B981' : '#9CA3AF' }} />
+              <LinkIcon style={{ fontSize: 14, color: linkValue ? '#10B981' : 'var(--df-faint)' }} />
             </IconButton>
           </Tooltip>
           <Popover
@@ -72,7 +72,7 @@ function LinkableCell({ value, linkValue, canEdit, rowId, linkField, onLinkUpdat
             onClick={(e) => e.stopPropagation()}
           >
             <div style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 10, minWidth: 340 }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--df-text-2)' }}>
                 {linkValue ? 'Modifier le lien de documentation' : 'Ajouter un lien de documentation'}
               </div>
               <input
@@ -82,7 +82,7 @@ function LinkableCell({ value, linkValue, canEdit, rowId, linkField, onLinkUpdat
                 onKeyDown={(e) => { if (e.key === 'Enter') handleSave(); if (e.key === 'Escape') handleClose(); }}
                 placeholder="https://... ou lien OneDrive"
                 style={{
-                  border: '1px solid #D1D5DB', borderRadius: 4, padding: '6px 8px',
+                  border: '1px solid var(--df-border-strong)', borderRadius: 4, padding: '6px 8px',
                   fontSize: 13, outline: 'none', width: '100%', boxSizing: 'border-box',
                   fontFamily: 'inherit',
                 }}
@@ -91,14 +91,14 @@ function LinkableCell({ value, linkValue, canEdit, rowId, linkField, onLinkUpdat
                 {linkValue && (
                   <button
                     onClick={handleDelete}
-                    style={{ fontSize: 12, color: '#EF4444', border: 'none', background: 'none', cursor: 'pointer', padding: '4px 8px', marginRight: 'auto' }}
+                    style={{ fontSize: 12, color: 'var(--df-danger)', border: 'none', background: 'none', cursor: 'pointer', padding: '4px 8px', marginRight: 'auto' }}
                   >
                     Supprimer
                   </button>
                 )}
                 <button
                   onClick={handleClose}
-                  style={{ fontSize: 12, border: '1px solid #D1D5DB', borderRadius: 4, background: 'white', cursor: 'pointer', padding: '4px 10px' }}
+                  style={{ fontSize: 12, border: '1px solid var(--df-border-strong)', borderRadius: 4, background: 'var(--df-bg)', cursor: 'pointer', padding: '4px 10px' }}
                 >
                   Annuler
                 </button>
@@ -177,7 +177,7 @@ function AgColumnHeader(props) {
   };
 
   const label = (
-    <span style={{ fontWeight: 600, color: '#374151', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', paddingTop: '2px', fontSize: '13px', flex: 1 }}>
+    <span style={{ fontWeight: 600, color: 'var(--df-text-2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', paddingTop: '2px', fontSize: '13px', flex: 1 }}>
       {displayName}
     </span>
   );
@@ -191,7 +191,7 @@ function AgColumnHeader(props) {
   const epingle = epingleVisible ? (
     <span
       title="Colonne épinglée"
-      style={{ display: 'inline-flex', alignItems: 'center', flexShrink: 0, color: '#2563eb' }}
+      style={{ display: 'inline-flex', alignItems: 'center', flexShrink: 0, color: 'var(--df-blue)' }}
     >
       <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
         <path d="M16 3a1 1 0 0 1 0 2 1 1 0 0 0-1 1v4.76a2 2 0 0 0 1.11 1.79l1.78.9A2 2 0 0 1 19 15.24V16a1 1 0 0 1-1 1h-5v5a1 1 0 0 1-2 0v-5H6a1 1 0 0 1-1-1v-.76a2 2 0 0 1 1.11-1.79l1.78-.9A2 2 0 0 0 9 10.76V6a1 1 0 0 0-1-1 1 1 0 0 1 0-2z" />
@@ -218,7 +218,7 @@ function AgColumnHeader(props) {
           onClick={openMenu}
           className="df-hdr-icon"
           title="Options de colonne (tri, épingler, regrouper…)"
-          style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', flexShrink: 0, color: '#9ca3af' }}
+          style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', flexShrink: 0, color: 'var(--df-faint)' }}
         >
           <MoreVertical size={13} />
         </span>
@@ -229,9 +229,9 @@ function AgColumnHeader(props) {
           onClick={openFilter}
           className={filterActive ? 'df-hdr-icon df-hdr-icon-active' : 'df-hdr-icon'}
           title="Filtrer cette colonne"
-          style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', flexShrink: 0, color: filterActive ? '#2563eb' : '#9ca3af' }}
+          style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', flexShrink: 0, color: filterActive ? 'var(--df-blue)' : 'var(--df-faint)' }}
         >
-          <FilterIcon size={13} fill={filterActive ? '#2563eb' : 'none'} />
+          <FilterIcon size={13} fill={filterActive ? 'var(--df-blue)' : 'none'} />
         </span>
       )}
     </div>
@@ -587,7 +587,7 @@ export function GridSelectChip({ value, colKey, gridTitle }) {
       size="small"
       style={{
         backgroundColor: getThemedColor(value, colKey, gridTitle),
-        color: '#1F2937',
+        color: 'var(--df-text-1b)',
         fontWeight: 600,
         fontSize: '0.75rem',
         border: '1px solid rgba(0,0,0,0.05)',
@@ -632,12 +632,13 @@ export function getThemedColor(value, colKey, gridTitle) {
   const lightness = 85 + (valHash % 10);
 
   if (strValue === '-' || strValue.toLowerCase() === 'aucun' || strValue.toLowerCase() === 'non') {
-    const neutral = `hsl(0, 0%, 95%)`;
+    const neutral = `hsl(0, 0%, calc(95% - var(--df-chip-shift, 0%)))`;
     _colorCache.set(cacheKey, neutral);
     return neutral;
   }
 
-  const result = `hsl(${finalHue}, ${saturation}%, ${lightness}%)`;
+  // Mode sombre : même teinte, assombrie (--df-chip-shift vaut 0 % en clair → couleur inchangée)
+  const result = `hsl(${finalHue}, ${saturation}%, calc(${lightness}% - var(--df-chip-shift, 0%)))`;
   _colorCache.set(cacheKey, result);
   return result;
 }

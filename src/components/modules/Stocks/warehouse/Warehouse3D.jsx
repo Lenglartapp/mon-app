@@ -5,23 +5,42 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, Html, Edges } from '@react-three/drei';
 import { BUILDING, RACKS, FLOOR_ZONES, DECOR, DOORS } from '../../../../lib/warehouse/layout';
 import { occupancyColor } from '../../../../lib/warehouse/occupancy';
+import { useThemeMode } from '../../../../theme/themeContext';
 
-const NAVY = '#1E2447';
-const FLOOR = '#FBFCFE';
-const WALL = '#FFFFFF';
+// Couleurs de la scène (Three.js ne lit pas les variables CSS : deux jeux explicites).
+const LIGHT = {
+    posts: '#1E2447', hit: '#1E2447', door: '#1E2447', floor: '#FBFCFE', wall: '#FFFFFF',
+    shelf: '#EDF0F6', shelfSel: '#C7D7F2', zone: '#DCE6F7', rails: '#EEF0F4', railBar: '#B9BFCC',
+    room: '#F4F6FA', roomTop: '#DDE2EC', aisle: '#E3EBF8',
+    bg: 'linear-gradient(180deg, #F7F9FD 0%, #EEF2F9 100%)', hemi: ['#FFFFFF', '#DCE3F0', 1.6],
+    labelBg: 'rgba(255,255,255,0.92)', labelBorder: '#E0DED9', labelText: '#1E2447', aisleBg: '#1E2447',
+    muted: '#6B7280', muted2: '#4B5563',
+};
+const DARK = {
+    posts: '#7D8BB5', hit: '#9AAEE8', door: '#5A78D8', floor: '#2A2C31', wall: '#3B3E46',
+    shelf: '#454952', shelfSel: '#4F6CA8', zone: '#2F3A52', rails: '#2E3137', railBar: '#5E6470',
+    room: '#353840', roomTop: '#43474F', aisle: '#323A4C',
+    bg: 'linear-gradient(180deg, #1D1E22 0%, #17181B 100%)', hemi: ['#FFFFFF', '#5A606C', 1.35],
+    labelBg: 'rgba(31,31,31,0.92)', labelBorder: '#3A3A3A', labelText: '#E3E6EE', aisleBg: '#2F3F73',
+    muted: '#A0A09C', muted2: '#B8B8B4',
+};
+let C = LIGHT; // fixé à chaque rendu de Warehouse3D, comme labelStyle
 const CX = BUILDING.width / 2;
 const CZ = BUILDING.depth / 2;
 // Coordonnées du plan → scène centrée
 const sx = (x) => x - CX;
 const sz = (z) => z - CZ;
 
-let labelStyle = {
-    fontFamily: 'Roboto, system-ui, sans-serif', fontSize: 12, fontWeight: 600, color: NAVY, background: 'rgba(255,255,255,0.92)',
-    border: '1px solid #E0DED9', borderRadius: 99, padding: '2px 8px', whiteSpace: 'nowrap', pointerEvents: 'none', boxShadow: '0 2px 6px rgba(17,24,39,0.08)',
+const makeLabel = (c) => ({
+    fontFamily: 'Roboto, system-ui, sans-serif', fontSize: 12, fontWeight: 600, color: c.labelText, background: c.labelBg,
+    border: `1px solid ${c.labelBorder}`, borderRadius: 99, padding: '2px 8px', whiteSpace: 'nowrap', pointerEvents: 'none', boxShadow: '0 2px 6px rgba(17,24,39,0.08)',
+});
+const LABELS = {
+    light: { base: makeLabel(LIGHT), compact: { ...makeLabel(LIGHT), fontSize: 10, padding: '1px 6px' } },
+    dark: { base: makeLabel(DARK), compact: { ...makeLabel(DARK), fontSize: 10, padding: '1px 6px' } },
 };
-
-const BASE_LABEL = labelStyle;
-const COMPACT_LABEL = { ...labelStyle, fontSize: 10, padding: '1px 6px' };
+let labelStyle = LABELS.light.base;
+let isCompactLabel = false;
 
 function Box({ position, size, color, opacity = 1, ...rest }) {
     return (
@@ -67,7 +86,7 @@ function Level({ code, base, height, rect, along, occ, selected, highlighted, ho
     return (
         <group>
             {/* tablette */}
-            <Box position={[cx, base + 0.015, cz]} size={[w, 0.03, d]} color={selected ? '#C7D7F2' : '#EDF0F6'} />
+            <Box position={[cx, base + 0.015, cz]} size={[w, 0.03, d]} color={selected ? C.shelfSel : C.shelf} />
             {blocks}
             {highlighted && <Pulse position={hitPos} size={hitSize} />}
             <mesh
@@ -77,8 +96,8 @@ function Level({ code, base, height, rect, along, occ, selected, highlighted, ho
                 onClick={(e) => { e.stopPropagation(); onSelect(code, [cx, base + height + 0.05, cz]); }}
             >
                 <boxGeometry args={hitSize} />
-                <meshBasicMaterial transparent opacity={selected ? 0.12 : hovered ? 0.08 : 0} color={NAVY} depthWrite={false} />
-                {(selected || hovered) && <Edges color={NAVY} threshold={15} />}
+                <meshBasicMaterial transparent opacity={selected ? 0.12 : hovered ? 0.08 : 0} color={C.hit} depthWrite={false} />
+                {(selected || hovered) && <Edges color={C.hit} threshold={15} />}
             </mesh>
         </group>
     );
@@ -99,7 +118,7 @@ function Rack({ rack, ...p }) {
     return (
         <group>
             {posts.map(([px, pz], i) => (
-                <Box key={i} position={[cx + px * 0.98, total / 2, cz + pz * 0.98]} size={[0.035, total, 0.035]} color={NAVY} />
+                <Box key={i} position={[cx + px * 0.98, total / 2, cz + pz * 0.98]} size={[0.035, total, 0.035]} color={C.posts} />
             ))}
             {rack.levels.map(l => {
                 const el = (
@@ -112,9 +131,9 @@ function Rack({ rack, ...p }) {
                 return el;
             })}
             {/* dernière traverse (rayonnage ouvert : le niveau du haut reste visible) */}
-            <Box position={[cx, total, cz]} size={[w, 0.02, d]} color="#EDF0F6" />
+            <Box position={[cx, total, cz]} size={[w, 0.02, d]} color={C.shelf} />
             <Html position={[cx, total + 0.35, cz]} center zIndexRange={[10, 0]}>
-                <div style={{ ...labelStyle, background: NAVY, color: 'white', border: 'none' }}>{rack.aisle}</div>
+                <div style={{ ...labelStyle, background: C.aisleBg, color: 'white', border: 'none' }}>{rack.aisle}</div>
             </Html>
         </group>
     );
@@ -132,7 +151,7 @@ function FloorZone({ zone, occ, selected, highlighted, hovered, onHover, onSelec
     }
     return (
         <group>
-            <Box position={[cx, 0.01, cz]} size={[zone.width, 0.02, zone.depth]} color={selected ? '#C7D7F2' : '#DCE6F7'} />
+            <Box position={[cx, 0.01, cz]} size={[zone.width, 0.02, zone.depth]} color={selected ? C.shelfSel : C.zone} />
             {cells}
             {highlighted && <Pulse position={[cx, 0.25, cz]} size={[zone.width, 0.5, zone.depth]} />}
             <mesh position={[cx, 0.25, cz]}
@@ -140,8 +159,8 @@ function FloorZone({ zone, occ, selected, highlighted, hovered, onHover, onSelec
                 onPointerOut={(e) => { e.stopPropagation(); onHover(null); }}
                 onClick={(e) => { e.stopPropagation(); onSelect(zone.code, [cx, 0.55, cz]); }}>
                 <boxGeometry args={[zone.width, 0.5, zone.depth]} />
-                <meshBasicMaterial transparent opacity={selected ? 0.12 : hovered ? 0.08 : 0} color={NAVY} depthWrite={false} />
-                {(selected || hovered) && <Edges color={NAVY} threshold={15} />}
+                <meshBasicMaterial transparent opacity={selected ? 0.12 : hovered ? 0.08 : 0} color={C.hit} depthWrite={false} />
+                {(selected || hovered) && <Edges color={C.hit} threshold={15} />}
             </mesh>
             <Html position={[cx, 0.75, cz]} center zIndexRange={[10, 0]}>
                 <div style={labelStyle}>{zone.code} · {zone.label}{o ? ` · ${fmt(o.rolls)}${o.capacity ? `/${o.capacity}` : ''}` : ''}</div>
@@ -158,19 +177,19 @@ function Decor() {
                 if (d.kind === 'rails') {
                     return (
                         <group key={d.key}>
-                            <Box position={[cx, 0.01, cz]} size={[d.width, 0.02, d.depth]} color="#EEF0F4" />
+                            <Box position={[cx, 0.01, cz]} size={[d.width, 0.02, d.depth]} color={C.rails} />
                             {[0, 1, 2, 3, 4, 5].map(i => (
-                                <Box key={i} position={[cx, 0.06 + (i % 2) * 0.05, cz - d.depth / 2 + 0.35 + i * 0.4]} size={[d.width * 0.86, 0.04, 0.06]} color="#B9BFCC" />
+                                <Box key={i} position={[cx, 0.06 + (i % 2) * 0.05, cz - d.depth / 2 + 0.35 + i * 0.4]} size={[d.width * 0.86, 0.04, 0.06]} color={C.railBar} />
                             ))}
-                            <Html position={[cx, 0.45, cz]} center zIndexRange={[10, 0]}><div style={{ ...labelStyle, color: '#6B7280' }}>{d.label}{labelStyle === COMPACT_LABEL ? '' : ' · non inventorié'}</div></Html>
+                            <Html position={[cx, 0.45, cz]} center zIndexRange={[10, 0]}><div style={{ ...labelStyle, color: C.muted }}>{d.label}{isCompactLabel ? '' : ' · non inventorié'}</div></Html>
                         </group>
                     );
                 }
                 return (
                     <group key={d.key}>
-                        <Box position={[cx, d.height / 2, cz]} size={[d.width, d.height, d.depth]} color="#F4F6FA" />
-                        <Box position={[cx, d.height + 0.02, cz]} size={[d.width, 0.04, d.depth]} color="#DDE2EC" />
-                        <Html position={[cx, d.height + 0.3, cz]} center zIndexRange={[10, 0]}><div style={{ ...labelStyle, color: '#6B7280' }}>{d.label}</div></Html>
+                        <Box position={[cx, d.height / 2, cz]} size={[d.width, d.height, d.depth]} color={C.room} />
+                        <Box position={[cx, d.height + 0.02, cz]} size={[d.width, 0.04, d.depth]} color={C.roomTop} />
+                        <Html position={[cx, d.height + 0.3, cz]} center zIndexRange={[10, 0]}><div style={{ ...labelStyle, color: C.muted }}>{d.label}</div></Html>
                     </group>
                 );
             })}
@@ -192,18 +211,18 @@ function Walls({ compact }) {
     };
     return (
         <group>
-            {segments('north', W).map(([a, b], i) => <Box key={`n${i}`} position={[sx((a + b) / 2), back / 2, sz(-t / 2)]} size={[b - a, back, t]} color={WALL} />)}
-            {segments('south', W).map(([a, b], i) => <Box key={`s${i}`} position={[sx((a + b) / 2), front / 2, sz(D + t / 2)]} size={[b - a, front, t]} color={WALL} />)}
-            <Box position={[sx(-t / 2), back / 2, 0]} size={[t, back, D + 2 * t]} color={WALL} />
-            <Box position={[sx(W + t / 2), front / 2, 0]} size={[t, front, D + 2 * t]} color={WALL} />
+            {segments('north', W).map(([a, b], i) => <Box key={`n${i}`} position={[sx((a + b) / 2), back / 2, sz(-t / 2)]} size={[b - a, back, t]} color={C.wall} />)}
+            {segments('south', W).map(([a, b], i) => <Box key={`s${i}`} position={[sx((a + b) / 2), front / 2, sz(D + t / 2)]} size={[b - a, front, t]} color={C.wall} />)}
+            <Box position={[sx(-t / 2), back / 2, 0]} size={[t, back, D + 2 * t]} color={C.wall} />
+            <Box position={[sx(W + t / 2), front / 2, 0]} size={[t, front, D + 2 * t]} color={C.wall} />
             {DOORS.map(d => {
                 const z = d.wall === 'north' ? sz(0.18) : sz(D - 0.18);
                 return (
                     <group key={d.key}>
-                        <Box position={[sx((d.from + d.to) / 2), 0.012, z]} size={[d.to - d.from, 0.024, 0.36]} color={NAVY} />
+                        <Box position={[sx((d.from + d.to) / 2), 0.012, z]} size={[d.to - d.from, 0.024, 0.36]} color={C.door} />
                         {!compact && (
                             <Html position={[sx((d.from + d.to) / 2), 0.25, d.wall === 'north' ? sz(-0.5) : sz(D + 0.55)]} center zIndexRange={[10, 0]}>
-                                <div style={{ ...labelStyle, fontWeight: 500, fontSize: 11, color: '#4B5563' }}>{d.label}</div>
+                                <div style={{ ...labelStyle, fontWeight: 500, fontSize: 11, color: C.muted2 }}>{d.label}</div>
                             </Html>
                         )}
                     </group>
@@ -236,7 +255,10 @@ function FitZoom({ resetKey, controls }) {
  * @param {Set<string>} highlight  emplacements à faire clignoter (recherche, carte)
  */
 export default function Warehouse3D({ occ, selected, onSelect, highlight = new Set(), height = 520, compact = false, resetKey = 0 }) {
-    labelStyle = compact ? COMPACT_LABEL : BASE_LABEL;
+    const { resolved } = useThemeMode();
+    C = resolved === 'dark' ? DARK : LIGHT;
+    labelStyle = LABELS[resolved === 'dark' ? 'dark' : 'light'][compact ? 'compact' : 'base'];
+    isCompactLabel = compact;
     const [hover, setHover] = useState(null); // { code, pos }
     const [selPos, setSelPos] = useState(null);
     const controls = useRef();
@@ -251,17 +273,17 @@ export default function Warehouse3D({ occ, selected, onSelect, highlight = new S
     const tipOcc = tipCode ? occ.get(tipCode) : null;
     const camera = useMemo(() => ({ position: [9, 13, 15], zoom: 46, near: -100, far: 200 }), []);
     return (
-        <div style={{ height, borderRadius: 12, overflow: 'hidden', background: 'linear-gradient(180deg, #F7F9FD 0%, #EEF2F9 100%)', cursor: hovered ? 'pointer' : 'grab', touchAction: 'none' }}>
+        <div style={{ height, borderRadius: 12, overflow: 'hidden', background: C.bg, cursor: hovered ? 'pointer' : 'grab', touchAction: 'none' }}>
             {/* flat : sans traitement tonal, les couleurs restent celles de la DA (blancs francs) */}
             <Canvas flat orthographic camera={camera} dpr={[1, 2]} onPointerMissed={() => select(null)}>
                 <FitZoom resetKey={resetKey} controls={controls} />
-                <hemisphereLight args={['#FFFFFF', '#DCE3F0', 1.6]} />
+                <hemisphereLight args={C.hemi} />
                 <directionalLight position={[8, 14, 6]} intensity={1.2} />
                 <directionalLight position={[-10, 6, -8]} intensity={0.3} />
                 {/* sol */}
-                <Box position={[0, -0.03, 0]} size={[BUILDING.width + 0.24, 0.06, BUILDING.depth + 0.24]} color={FLOOR} />
+                <Box position={[0, -0.03, 0]} size={[BUILDING.width + 0.24, 0.06, BUILDING.depth + 0.24]} color={C.floor} />
                 {/* allée centrale (repère au sol) */}
-                <Box position={[sx(7.2), 0.002, sz(3.4)]} size={[13.5, 0.004, 1.1]} color="#E3EBF8" />
+                <Box position={[sx(7.2), 0.002, sz(3.4)]} size={[13.5, 0.004, 1.1]} color={C.aisle} />
                 <Walls compact={compact} />
                 <Decor />
                 {RACKS.map(r => <Rack key={r.aisle} rack={r} {...common} />)}

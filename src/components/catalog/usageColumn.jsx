@@ -19,12 +19,12 @@ export function usageColumn(usage, onOpen, where = 'du chiffrage') {
         valueGetter: (_v, row) => usage.get(row?.name)?.length || 0,
         renderCell: (params) => {
             const n = params.value || 0;
-            if (!n) return <span style={{ color: '#D1D5DB' }}>—</span>;
+            if (!n) return <span style={{ color: 'var(--df-border-strong)' }}>—</span>;
             return (
                 <button
                     type="button"
                     onClick={(e) => { e.stopPropagation(); onOpen({ el: e.currentTarget, name: params.row.name }); }}
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: 4, height: 24, padding: '0 8px', borderRadius: 99, border: 'none', background: '#E8EAF2', color: '#1E2447', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 4, height: 24, padding: '0 8px', borderRadius: 99, border: 'none', background: 'var(--df-navy-bg)', color: 'var(--df-primary-text)', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
                 >
                     {n} <ChevronDown size={12} />
                 </button>

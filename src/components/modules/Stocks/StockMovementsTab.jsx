@@ -48,7 +48,7 @@ const COLUMNS = [
         // Flux dans le nuancier bleu : entrée (bleu nuit) → édition (bleu ciel)
         renderCell: (params) => {
             const f = FLUX[params.value] || FLUX.OUT;
-            if (f.tone == null) return <span style={{ display: 'inline-flex', alignItems: 'center', height: 22, padding: '0 10px', borderRadius: 99, background: '#F4F4F4', color: '#374151', fontSize: 12, fontWeight: 600 }}>{f.label}</span>;
+            if (f.tone == null) return <span style={{ display: 'inline-flex', alignItems: 'center', height: 22, padding: '0 10px', borderRadius: 99, background: 'var(--df-surface)', color: 'var(--df-text-2)', fontSize: 12, fontWeight: 600 }}>{f.label}</span>;
             return <TonePill tone={f.tone}>{f.label}</TonePill>;
         }
     },
@@ -61,7 +61,7 @@ const COLUMNS = [
         headerAlign: 'right',
         renderCell: (params) => (
             <span style={{ fontWeight: 600 }}>
-                {params.value} <span style={{ fontSize: 11, fontWeight: 400, color: '#6B7280' }}>{params.row.unit}</span>
+                {params.value} <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--df-muted)' }}>{params.row.unit}</span>
             </span>
         )
     },
@@ -72,8 +72,8 @@ const COLUMNS = [
         flex: 0.8,
         minWidth: 130,
         renderCell: (params) => params.value
-            ? <span title={params.value} style={{ color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis' }}>{params.value}</span>
-            : <span style={{ color: '#9CA3AF' }}>Stock libre</span>
+            ? <span title={params.value} style={{ color: 'var(--df-text)', overflow: 'hidden', textOverflow: 'ellipsis' }}>{params.value}</span>
+            : <span style={{ color: 'var(--df-faint)' }}>Stock libre</span>
     },
     {
         field: 'reason',
@@ -89,7 +89,7 @@ const COLUMNS = [
             return piece && !reason.includes(piece) ? [reason, piece].filter(Boolean).join(' — ') : reason;
         },
         renderCell: (params) => (
-            <span title={params.value || ''} style={{ fontSize: 13, color: '#4B5563', overflow: 'hidden', textOverflow: 'ellipsis' }}>{params.value || '-'}</span>
+            <span title={params.value || ''} style={{ fontSize: 13, color: 'var(--df-text-3)', overflow: 'hidden', textOverflow: 'ellipsis' }}>{params.value || '-'}</span>
         )
     },
     {

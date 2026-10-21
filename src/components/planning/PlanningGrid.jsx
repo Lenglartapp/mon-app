@@ -25,18 +25,18 @@ const nightRange = (e) => {
 
 // --- STICKY CELLS ---
 const ROBOTO = 'Roboto, system-ui, sans-serif';
-const StickyLeftCell = ({ children, bg = 'white', borderBottom = true, onClick, style }) => (
-    <div onClick={onClick} style={{ position: 'sticky', left: 0, zIndex: 50, background: bg, borderRight: '2px solid #E5E7EB', borderBottom: borderBottom ? '1px solid #E5E7EB' : 'none', display: 'flex', alignItems: 'center', padding: '0 16px', fontSize: 13, fontWeight: 600, color: '#374151', cursor: onClick ? 'pointer' : 'default', height: style?.height ?? ROW_HEIGHT, minWidth: 260, maxWidth: 260, ...style }}>
+const StickyLeftCell = ({ children, bg = 'var(--df-bg)', borderBottom = true, onClick, style }) => (
+    <div onClick={onClick} style={{ position: 'sticky', left: 0, zIndex: 50, background: bg, borderRight: '2px solid var(--df-border-2)', borderBottom: borderBottom ? '1px solid var(--df-border-2)' : 'none', display: 'flex', alignItems: 'center', padding: '0 16px', fontSize: 13, fontWeight: 600, color: 'var(--df-text-2)', cursor: onClick ? 'pointer' : 'default', height: style?.height ?? ROW_HEIGHT, minWidth: 260, maxWidth: 260, ...style }}>
         {children}
     </div>
 );
-const StickyTopCell = ({ children, bg = 'white', style }) => (
-    <div style={{ position: 'sticky', top: 0, zIndex: 40, background: bg, borderBottom: '1px solid #E5E7EB', borderRight: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: ROBOTO, fontSize: 13, fontWeight: 500, color: '#4B5563', ...style }}>
+const StickyTopCell = ({ children, bg = 'var(--df-bg)', style }) => (
+    <div style={{ position: 'sticky', top: 0, zIndex: 40, background: bg, borderBottom: '1px solid var(--df-border-2)', borderRight: '1px solid var(--df-border-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: ROBOTO, fontSize: 13, fontWeight: 500, color: 'var(--df-text-3)', ...style }}>
         {children}
     </div>
 );
 const StickyCorner = ({ children, style }) => (
-    <div style={{ position: 'sticky', left: 0, top: 0, zIndex: 60, background: 'white', borderRight: '2px solid #E5E7EB', borderBottom: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', paddingLeft: 16, fontWeight: 700, fontSize: 13, color: '#111827', minWidth: 260, maxWidth: 260, ...style }}>
+    <div style={{ position: 'sticky', left: 0, top: 0, zIndex: 60, background: 'var(--df-bg)', borderRight: '2px solid var(--df-border-2)', borderBottom: '1px solid var(--df-border-2)', display: 'flex', alignItems: 'center', paddingLeft: 16, fontWeight: 700, fontSize: 13, color: 'var(--df-text)', minWidth: 260, maxWidth: 260, ...style }}>
         {children}
     </div>
 );
@@ -174,7 +174,7 @@ const PlanningGrid = ({
                                     cursor: 'grab',
                                     opacity: isDragged(evt) ? 0.3 : (isHighlighted ? 1 : (isValidated ? 1 : 0.9)),
                                     transition: 'opacity .15s ease',
-                                    outline: isHighlighted ? '2px solid #111827' : 'none',
+                                    outline: isHighlighted ? '2px solid var(--df-text)' : 'none',
                                     outlineOffset: isHighlighted ? '1px' : 0,
                                     zIndex: isHighlighted ? 5 : 'auto',
                                     boxShadow: isHighlighted ? '0 0 0 3px rgba(17,24,39,0.15)' : '0 1px 2px rgba(0,0,0,0.1)',
@@ -340,12 +340,12 @@ const PlanningGrid = ({
                 <div style={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'center' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
                         <span style={{ fontWeight: 800, fontSize: 11 }}>{evt.title}</span>
-                        <span style={{ fontSize: 10, background: 'rgba(255,255,255,0.8)', padding: '1px 4px', borderRadius: 4, color: cardPct > 100 ? '#B91C1C' : undefined }}>
+                        <span style={{ fontSize: 10, background: 'rgba(255,255,255,0.8)', padding: '1px 4px', borderRadius: 4, color: cardPct > 100 ? 'var(--df-danger-text)' : undefined }}>
                             {cardConsumed}h / {cardBudget}h
                         </span>
                     </div>
                     <div style={{ width: '100%', height: 6, background: 'rgba(0,0,0,0.1)', borderRadius: 3, overflow: 'hidden' }}>
-                        <div style={{ width: `${Math.min(cardPct, 100)}%`, background: cardPct > 100 ? '#EF4444' : '#10B981', height: '100%' }} />
+                        <div style={{ width: `${Math.min(cardPct, 100)}%`, background: cardPct > 100 ? 'var(--df-danger)' : '#10B981', height: '100%' }} />
                     </div>
                 </div>
             );
@@ -368,11 +368,11 @@ const PlanningGrid = ({
                         height: `calc(${100 / laneCount}% - 6px)`,
                         left: `${leftPercent}%`,
                         width: `${widthPercent}%`,
-                        backgroundColor: isBacklog ? '#FFF1F2' : style.bg,
-                        borderTop: `1px ${!isBacklog && !isValidated ? 'dashed' : 'solid'} ${isBacklog ? '#BE123C' : style.border}`,
-                        borderRight: `1px ${!isBacklog && !isValidated ? 'dashed' : 'solid'} ${isBacklog ? '#BE123C' : style.border}`,
-                        borderBottom: `1px ${!isBacklog && !isValidated ? 'dashed' : 'solid'} ${isBacklog ? '#BE123C' : style.border}`,
-                        borderLeft: `4px solid ${isBacklog ? '#BE123C' : style.border}`,
+                        backgroundColor: isBacklog ? 'var(--df-rose-soft)' : style.bg,
+                        borderTop: `1px ${!isBacklog && !isValidated ? 'dashed' : 'solid'} ${isBacklog ? 'var(--df-rose-text)' : style.border}`,
+                        borderRight: `1px ${!isBacklog && !isValidated ? 'dashed' : 'solid'} ${isBacklog ? 'var(--df-rose-text)' : style.border}`,
+                        borderBottom: `1px ${!isBacklog && !isValidated ? 'dashed' : 'solid'} ${isBacklog ? 'var(--df-rose-text)' : style.border}`,
+                        borderLeft: `4px solid ${isBacklog ? 'var(--df-rose-text)' : style.border}`,
                         borderRadius: 8,
                         zIndex: isHighlighted ? 30 : (evt.meta?.seriesId ? 20 : 10),
                         padding: '2px 4px',
@@ -380,7 +380,7 @@ const PlanningGrid = ({
                         cursor: 'grab',
                         opacity: isDragged(evt) ? 0.3 : (isHighlighted ? 1 : opacity),
                         transition: 'opacity .15s ease',
-                        outline: isHighlighted ? '2px solid #111827' : 'none',
+                        outline: isHighlighted ? '2px solid var(--df-text)' : 'none',
                         outlineOffset: isHighlighted ? '1px' : 0,
                         boxShadow: isHighlighted ? '0 0 0 3px rgba(17,24,39,0.15)' : '0 1px 2px rgba(0,0,0,0.1)',
                         backgroundImage: isBacklog
@@ -428,11 +428,11 @@ const PlanningGrid = ({
         const totalHeight = (V_END - V_START) * 60;
 
         return (
-            <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', background: 'white' }}>
+            <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', background: 'var(--df-bg)' }}>
                 {/* Header Dates */}
-                <div style={{ display: 'flex', borderBottom: '1px solid #E5E7EB', paddingLeft: 60 }}>
+                <div style={{ display: 'flex', borderBottom: '1px solid var(--df-border-2)', paddingLeft: 60 }}>
                     {gridCols.map(col => (
-                        <div key={col.toString()} style={{ flex: 1, textAlign: 'center', padding: '12px', fontFamily: ROBOTO, fontWeight: 500, fontSize: 14, color: '#374151', textTransform: 'capitalize' }}>
+                        <div key={col.toString()} style={{ flex: 1, textAlign: 'center', padding: '12px', fontFamily: ROBOTO, fontWeight: 500, fontSize: 14, color: 'var(--df-text-2)', textTransform: 'capitalize' }}>
                             {format(col, 'EEEE d', { locale: fr })}
                         </div>
                     ))}
@@ -441,10 +441,10 @@ const PlanningGrid = ({
                 {/* Body */}
                 <div className="df-noscrollbar" style={{ flex: 1, overflowY: 'auto', display: 'flex', position: 'relative' }}>
                     {/* Time Sidebar */}
-                    <div style={{ width: 60, flexShrink: 0, borderRight: '1px solid #E5E7EB', background: '#F4F4F4' }}>
+                    <div style={{ width: 60, flexShrink: 0, borderRight: '1px solid var(--df-border-2)', background: 'var(--df-surface)' }}>
                         {Array.from({ length: V_END - V_START + 1 }).map((_, i) => (
-                            <div key={i} style={{ height: hourHeight, borderBottom: '1px solid #E5E7EB', position: 'relative', overflow: 'visible' }}>
-                                <span style={{ position: 'absolute', top: -10, right: 8, fontSize: 11, color: '#9CA3AF', background: '#F4F4F4', padding: '0 4px', zIndex: 10 }}>
+                            <div key={i} style={{ height: hourHeight, borderBottom: '1px solid var(--df-border-2)', position: 'relative', overflow: 'visible' }}>
+                                <span style={{ position: 'absolute', top: -10, right: 8, fontSize: 11, color: 'var(--df-faint)', background: 'var(--df-surface)', padding: '0 4px', zIndex: 10 }}>
                                     {V_START + i}:00
                                 </span>
                             </div>
@@ -453,10 +453,10 @@ const PlanningGrid = ({
 
                     {/* Day Columns */}
                     {gridCols.map(col => (
-                        <div key={col.toString()} style={{ flex: 1, borderRight: '1px solid #E5E7EB', position: 'relative', height: totalHeight, minHeight: totalHeight }}>
+                        <div key={col.toString()} style={{ flex: 1, borderRight: '1px solid var(--df-border-2)', position: 'relative', height: totalHeight, minHeight: totalHeight }}>
                             {/* Grid Lines */}
                             {Array.from({ length: V_END - V_START }).map((_, i) => (
-                                <div key={i} style={{ position: 'absolute', top: (i + 1) * hourHeight, left: 0, right: 0, borderTop: '1px solid #F3F4F6', pointerEvents: 'none' }} />
+                                <div key={i} style={{ position: 'absolute', top: (i + 1) * hourHeight, left: 0, right: 0, borderTop: '1px solid var(--df-surface-2)', pointerEvents: 'none' }} />
                             ))}
 
                             {/* Events */}
@@ -571,7 +571,7 @@ const PlanningGrid = ({
         while (colIndex + span < gridCols.length && closureOfCol(gridCols[colIndex + span])?.id === closure.id) span++;
         return { closure, span };
     };
-    const CLOSED_BG = 'repeating-linear-gradient(135deg, rgba(17,24,39,0.06) 0 1px, transparent 1px 8px), #F4F4F4';
+    const CLOSED_BG = 'repeating-linear-gradient(135deg, rgba(17,24,39,0.06) 0 1px, transparent 1px 8px), var(--df-surface)';
     // Capacité d'un jour : heures contractuelles des membres sous contrat ce jour-là,
     // 0 le week-end et les jours de fermeture (alignée sur la vue Capacité).
     const dayCapacity = (memberIds, day) => {
@@ -682,12 +682,12 @@ const PlanningGrid = ({
     const renderGaugeCell = (load, cap, percent, keyPrefix) => {
         let barColor = '#10B981';
         if (percent >= 80) barColor = '#F59E0B';
-        if (percent > 100) barColor = '#EF4444';
+        if (percent > 100) barColor = 'var(--df-danger)';
 
         return (
             <div key={keyPrefix} style={{
-                borderRight: '1px solid #E5E7EB',
-                borderBottom: '1px solid #E5E7EB',
+                borderRight: '1px solid var(--df-border-2)',
+                borderBottom: '1px solid var(--df-border-2)',
                 background: 'transparent',
                 height: ROW_HEIGHT,
                 display: 'flex',
@@ -695,8 +695,8 @@ const PlanningGrid = ({
                 justifyContent: 'center',
                 padding: '0 8px'
             }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: '#374151', marginBottom: 4, display: 'flex', justifyContent: 'space-between' }}>
-                    <span>{fmtHours(load)}h <span style={{ color: '#9CA3AF', fontWeight: 400 }}>/ {fmtHours(cap)}h</span></span>
+                <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--df-text-2)', marginBottom: 4, display: 'flex', justifyContent: 'space-between' }}>
+                    <span>{fmtHours(load)}h <span style={{ color: 'var(--df-faint)', fontWeight: 400 }}>/ {fmtHours(cap)}h</span></span>
                 </div>
                 <div style={{ width: '100%', height: 6, background: 'rgba(0,0,0,0.05)', borderRadius: 3, overflow: 'hidden' }}>
                     <div style={{ width: `${Math.min(percent, 100)}%`, height: '100%', background: barColor, transition: 'width 0.3s ease' }} />
@@ -711,8 +711,8 @@ const PlanningGrid = ({
             <div className="df-noscrollbar" style={embedded
                 // overflow « clip » : coupe les cases aux coins arrondis sans créer de zone de défilement
                 // (les en-têtes restent collants dans la zone de défilement commune).
-                ? { background: 'white', border: '1px solid #E0DED9', borderRadius: 12, position: 'relative', overflow: 'clip' }
-                : { height: 'fit-content', maxHeight: '100%', overflow: 'auto', background: 'white', border: '1px solid #E0DED9', borderRadius: 12, position: 'relative' }}>
+                ? { background: 'var(--df-bg)', border: '1px solid var(--df-border)', borderRadius: 12, position: 'relative', overflow: 'clip' }
+                : { height: 'fit-content', maxHeight: '100%', overflow: 'auto', background: 'var(--df-bg)', border: '1px solid var(--df-border)', borderRadius: 12, position: 'relative' }}>
                 <style>{`
                     @keyframes dfLand { 0% { transform: scale(0.88); box-shadow: 0 12px 26px rgba(17,24,39,0.24); } 60% { transform: scale(1.04); } 100% { transform: scale(1); } }
                     .df-landed { animation: dfLand .38s cubic-bezier(.2,.8,.3,1.2); }
@@ -723,19 +723,19 @@ const PlanningGrid = ({
                 )}
                 <div style={{ display: 'grid', gridTemplateColumns: `260px repeat(${gridCols.length}, minmax(${MIN_WIDTH}px, 1fr))`, gridAutoRows: 'max-content', width: (view === 'year' || view === 'quarter' || view === 'month') ? 'max-content' : '100%', minWidth: '100%' }}>
                     {!cornerLabel && <StickyCorner style={{ top: stickyTop, height: HEADER_HEIGHT_1, borderBottom: 'none' }} />}
-                    {!cornerLabel && superHeaders.map((header, i) => (<div key={i} style={{ gridColumn: `span ${header.span}`, position: 'sticky', top: stickyTop, zIndex: 40, background: 'white', borderBottom: '1px solid #E5E7EB', borderRight: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: ROBOTO, fontSize: 13, fontWeight: 500, color: '#6B7280' }}>{header.label}</div>))}
-                    <StickyCorner style={{ top: cornerLabel ? stickyTop : stickyTop + HEADER_HEIGHT_1, height: HEADER_HEIGHT_2, fontFamily: ROBOTO, fontWeight: 500, fontSize: 14, ...(cornerLabel && { background: '#F4F4F4' }) }}>
+                    {!cornerLabel && superHeaders.map((header, i) => (<div key={i} style={{ gridColumn: `span ${header.span}`, position: 'sticky', top: stickyTop, zIndex: 40, background: 'var(--df-bg)', borderBottom: '1px solid var(--df-border-2)', borderRight: '1px solid var(--df-border-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: ROBOTO, fontSize: 13, fontWeight: 500, color: 'var(--df-muted)' }}>{header.label}</div>))}
+                    <StickyCorner style={{ top: cornerLabel ? stickyTop : stickyTop + HEADER_HEIGHT_1, height: HEADER_HEIGHT_2, fontFamily: ROBOTO, fontWeight: 500, fontSize: 14, ...(cornerLabel && { background: 'var(--df-surface)' }) }}>
                         {cornerLabel}
-                        {cornerLabel && isPast && <span style={{ marginLeft: 8, fontSize: 12, fontWeight: 400, color: '#9CA3AF' }}>passée</span>}
+                        {cornerLabel && isPast && <span style={{ marginLeft: 8, fontSize: 12, fontWeight: 400, color: 'var(--df-faint)' }}>passée</span>}
                     </StickyCorner>
                     {gridCols.map(col => {
                         // Jour actuel : pastille bleu nuit de la charte autour du libellé.
                         const today = view !== 'year' && isSameDay(col, new Date());
                         const closure = closureOfCol(col);
                         return (
-                            <StickyTopCell key={col.toString()} style={{ top: cornerLabel ? stickyTop : stickyTop + HEADER_HEIGHT_1, height: HEADER_HEIGHT_2, background: cornerLabel ? '#F4F4F4' : 'white', color: closure ? '#9CA3AF' : '#4B5563' }}>
+                            <StickyTopCell key={col.toString()} style={{ top: cornerLabel ? stickyTop : stickyTop + HEADER_HEIGHT_1, height: HEADER_HEIGHT_2, background: cornerLabel ? 'var(--df-surface)' : 'var(--df-bg)', color: closure ? 'var(--df-faint)' : 'var(--df-text-3)' }}>
                                 {today
-                                    ? <span style={{ background: '#1E2447', color: 'white', borderRadius: 99, padding: '4px 12px', fontWeight: 600 }}>{getCellContent(col)}</span>
+                                    ? <span style={{ background: 'var(--df-primary)', color: 'white', borderRadius: 99, padding: '4px 12px', fontWeight: 600 }}>{getCellContent(col)}</span>
                                     : getCellContent(col)}
                             </StickyTopCell>
                         );
@@ -750,9 +750,9 @@ const PlanningGrid = ({
                             <React.Fragment key={key}>
                                 {hideGroupLabel ? (showGauges && (
                                     <>
-                                        <StickyLeftCell style={{ fontFamily: ROBOTO, fontWeight: 500, fontSize: 13, color: '#6B7280', paddingLeft: 42 }}>
+                                        <StickyLeftCell style={{ fontFamily: ROBOTO, fontWeight: 500, fontSize: 13, color: 'var(--df-muted)', paddingLeft: 42 }}>
                                             <div style={{ flex: 1 }}>Charge</div>
-                                            <div style={{ fontSize: 11, fontWeight: 600, color: groupStats.percent > 100 ? '#EF4444' : '#6B7280', background: '#F4F4F4', padding: '2px 6px', borderRadius: 4 }}>
+                                            <div style={{ fontSize: 11, fontWeight: 600, color: groupStats.percent > 100 ? 'var(--df-danger)' : 'var(--df-muted)', background: 'var(--df-surface)', padding: '2px 6px', borderRadius: 4 }}>
                                                 {Math.round(groupStats.percent)}%
                                             </div>
                                         </StickyLeftCell>
@@ -762,13 +762,13 @@ const PlanningGrid = ({
                                         })}
                                     </>
                                 )) : (<>
-                                <StickyLeftCell onClick={() => onToggleGroup(key)} bg={group.bg} style={{ fontFamily: ROBOTO, fontWeight: 500, fontSize: 17, color: '#111827' }}>
+                                <StickyLeftCell onClick={() => onToggleGroup(key)} bg={group.bg} style={{ fontFamily: ROBOTO, fontWeight: 500, fontSize: 17, color: 'var(--df-text)' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
                                         {expandedGroups[key] > 0 ? <ChevronDown size={14} style={{ marginRight: 8 }} /> : <ChevronRightIcon size={14} style={{ marginRight: 8 }} />}
                                         {group.label}
                                     </div>
                                     {showGauges && (
-                                        <div style={{ fontSize: 11, fontWeight: 600, color: groupStats.percent > 100 ? '#EF4444' : '#6B7280', background: 'rgba(255,255,255,0.5)', padding: '2px 6px', borderRadius: 4 }}>
+                                        <div style={{ fontSize: 11, fontWeight: 600, color: groupStats.percent > 100 ? 'var(--df-danger)' : 'var(--df-muted)', background: 'rgba(255,255,255,0.5)', padding: '2px 6px', borderRadius: 4 }}>
                                             {Math.round(groupStats.percent)}%
                                         </div>
                                     )}
@@ -779,8 +779,8 @@ const PlanningGrid = ({
                                     if (!showGauges) {
                                         return (
                                             <div key={col.toString()} style={{
-                                                borderRight: '1px solid #E5E7EB',
-                                                borderBottom: '1px solid #E5E7EB',
+                                                borderRight: '1px solid var(--df-border-2)',
+                                                borderBottom: '1px solid var(--df-border-2)',
                                                 background: group.bg,
                                                 height: ROW_HEIGHT
                                             }} />
@@ -800,7 +800,7 @@ const PlanningGrid = ({
                                 .filter(member => expandedGroups[key] >= 2 || member.id === 'backlog_confection')
                                 .map((member, _i, shown) => (
                                     <React.Fragment key={member.id}>
-                                        <StickyLeftCell style={{ paddingLeft: 42, color: member.id === 'backlog_confection' ? '#BE123C' : '#4B5563', fontWeight: 500, display: 'flex', ...(member.id === 'backlog_confection'
+                                        <StickyLeftCell style={{ paddingLeft: 42, color: member.id === 'backlog_confection' ? 'var(--df-rose-text)' : 'var(--df-text-3)', fontWeight: 500, display: 'flex', ...(member.id === 'backlog_confection'
                                             ? { flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'center', gap: 4, fontFamily: ROBOTO, minHeight: PROGRAMME_ROW_HEIGHT, height: 'auto', alignSelf: 'stretch' }
                                             : { justifyContent: 'space-between', alignItems: 'center', height: ROW_HEIGHT }) }}>
                                             {member.id === 'backlog_confection' ? (
@@ -816,7 +816,7 @@ const PlanningGrid = ({
                                                         </span>
                                                         Programme
                                                     </span>
-                                                    <span style={{ fontSize: 13, color: '#6B7280' }}>
+                                                    <span style={{ fontSize: 13, color: 'var(--df-muted)' }}>
                                                         {(() => {
                                                             const weeks = [...new Set(gridCols.map(c => getISOWeek(c)))];
                                                             return weeks.length > 1 ? `Semaines ${weeks[0]} – ${weeks[weeks.length - 1]}` : `Semaine ${weeks[0]}`;
@@ -864,7 +864,7 @@ const PlanningGrid = ({
                                                 const cHours = Math.round(groupStats.cap); // Group Capacity
 
                                                 return (
-                                                    <span style={{ fontSize: 12, fontWeight: 600, background: '#FFE4E6', color: '#BE123C', padding: '2px 8px', borderRadius: 4, whiteSpace: 'nowrap', marginTop: 10 }}>
+                                                    <span style={{ fontSize: 12, fontWeight: 600, background: 'var(--df-rose-bg)', color: 'var(--df-rose-text)', padding: '2px 8px', borderRadius: 4, whiteSpace: 'nowrap', marginTop: 10 }}>
                                                         {bHours}h / {cHours}h
                                                     </span>
                                                 );
@@ -939,24 +939,24 @@ const PlanningGrid = ({
                                                                     minHeight: PROGRAMME_ROW_HEIGHT,
                                                                     display: 'flex',
                                                                     flexDirection: 'column',
-                                                                    background: 'white', // sans fond : les cartes suffisent
-                                                                    borderBottom: '1px solid #E5E7EB',
-                                                                    borderRight: '1px solid #E5E7EB',
+                                                                    background: 'var(--df-bg)', // sans fond : les cartes suffisent
+                                                                    borderBottom: '1px solid var(--df-border-2)',
+                                                                    borderRight: '1px solid var(--df-border-2)',
                                                                     position: 'relative',
                                                                     overflow: 'hidden'
                                                                 }}
                                                                 onDragOver={(e) => {
                                                                     e.preventDefault();
                                                                     e.dataTransfer.dropEffect = 'move';
-                                                                    e.currentTarget.style.background = '#FCE7F3';
+                                                                    e.currentTarget.style.background = 'var(--df-rose-hover)';
                                                                 }}
                                                                 onDragLeave={(e) => {
-                                                                    e.currentTarget.style.background = 'white';
+                                                                    e.currentTarget.style.background = 'var(--df-bg)';
                                                                 }}
                                                                 onDrop={(e) => {
                                                                     e.preventDefault();
                                                                     e.stopPropagation();
-                                                                    e.currentTarget.style.background = 'white';
+                                                                    e.currentTarget.style.background = 'var(--df-bg)';
 
                                                                     const type = e.dataTransfer.getData('type');
                                                                     if (type !== 'backlog-sort') return;
@@ -988,11 +988,11 @@ const PlanningGrid = ({
                                                                     (sinon il répète l'en-tête et la charge de la colonne de gauche). */}
                                                                 {weeklyBins.length > 1 && <div style={{
                                                                     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                                                                    padding: '3px 10px', background: 'rgba(255,255,255,0.5)', borderBottom: '1px dashed #FECDD3',
-                                                                    fontSize: 11, fontWeight: 700, color: '#9F1239', height: 24
+                                                                    padding: '3px 10px', background: 'rgba(255,255,255,0.5)', borderBottom: '1px dashed var(--df-rose-border)',
+                                                                    fontSize: 11, fontWeight: 700, color: 'var(--df-rose-strong)', height: 24
                                                                 }}>
                                                                     <span style={{ fontFamily: ROBOTO, fontWeight: 500 }}>Semaine {weekNum}</span>
-                                                                    <span style={{ color: isOverloaded ? '#EF4444' : '#9F1239' }}>
+                                                                    <span style={{ color: isOverloaded ? 'var(--df-danger)' : 'var(--df-rose-strong)' }}>
                                                                         {binLoadHours}h / {binCapHours}h
                                                                     </span>
                                                                 </div>}
@@ -1138,8 +1138,8 @@ const PlanningGrid = ({
                                                                                 style={{
                                                                                     minWidth: 0,
                                                                                     height: 124,
-                                                                                    background: 'white',
-                                                                                    border: '1px solid #FECDD3',
+                                                                                    background: 'var(--df-card)',
+                                                                                    border: '1px solid var(--df-rose-border)',
                                                                                     borderRadius: 4,
                                                                                     padding: 6,
                                                                                     display: 'flex',
@@ -1165,21 +1165,21 @@ const PlanningGrid = ({
                                                                                         pointerEvents: 'none'
                                                                                     }} />
                                                                                 )}
-                                                                                <div style={{ fontSize: 12.5, fontWeight: 700, color: '#9F1239', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                                                <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--df-rose-strong)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                                                                     {evt.title}
                                                                                 </div>
                                                                                 {evt.meta?.description && (
-                                                                                    <div style={{ fontSize: 10.5, fontStyle: 'italic', color: '#9F1239', opacity: 0.75, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: 2 }}>
+                                                                                    <div style={{ fontSize: 10.5, fontStyle: 'italic', color: 'var(--df-rose-strong)', opacity: 0.75, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: 2 }}>
                                                                                         {stripMarks(evt.meta.description.split('\n')[0])}
                                                                                     </div>
                                                                                 )}
-                                                                                <div style={{ height: 4, background: '#F3F4F6', borderRadius: 2, marginTop: 4, overflow: 'hidden' }}>
-                                                                                    <div style={{ width: `${Math.min(binPct, 100)}%`, height: '100%', background: binPct > 100 ? '#EF4444' : '#10B981' }} />
+                                                                                <div style={{ height: 4, background: 'var(--df-surface-2)', borderRadius: 2, marginTop: 4, overflow: 'hidden' }}>
+                                                                                    <div style={{ width: `${Math.min(binPct, 100)}%`, height: '100%', background: binPct > 100 ? 'var(--df-danger)' : '#10B981' }} />
                                                                                 </div>
-                                                                                <div style={{ fontSize: 9, color: binPct > 100 ? '#B91C1C' : '#6B7280', textAlign: 'right', marginTop: 2 }}>
+                                                                                <div style={{ fontSize: 9, color: binPct > 100 ? 'var(--df-danger-text)' : 'var(--df-muted)', textAlign: 'right', marginTop: 2 }}>
                                                                                     {binConsumed}/{binBudget}h
                                                                                 </div>
-                                                                                <div style={{ fontSize: 10, fontWeight: 600, color: '#9F1239', marginTop: 3 }}>
+                                                                                <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--df-rose-strong)', marginTop: 3 }}>
                                                                                     Planifié cette semaine : {fmtHours(binWeekPlanned)}h
                                                                                 </div>
                                                                             </div>
@@ -1189,9 +1189,9 @@ const PlanningGrid = ({
                                                                     <div
                                                                         onClick={() => onCellClick(member.id, binStart)}
                                                                         style={{
-                                                                            minWidth: 30, height: 30, borderRadius: '50%', background: 'white',
-                                                                            border: '1px dashed #FECDD3', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                                            cursor: 'pointer', color: '#FDA4AF', marginLeft: 4, width: 30, justifySelf: 'start'
+                                                                            minWidth: 30, height: 30, borderRadius: '50%', background: 'var(--df-bg)',
+                                                                            border: '1px dashed var(--df-rose-border)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                                            cursor: 'pointer', color: 'var(--df-rose-faint)', marginLeft: 4, width: 30, justifySelf: 'start'
                                                                         }}
                                                                     >
                                                                         <PlusIcon size={16} />
@@ -1217,7 +1217,7 @@ const PlanningGrid = ({
                                                     onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setDropCell(null); }}
                                                     onDrop={(e) => { setDropCell(null); onDrop(e, member.id, col); }}
                                                     style={{
-                                                        borderBottom: '1px solid #E5E7EB', borderRight: '1px solid #F3F4F6', height: ROW_HEIGHT, position: 'relative',
+                                                        borderBottom: '1px solid var(--df-border-2)', borderRight: '1px solid var(--df-surface-2)', height: ROW_HEIGHT, position: 'relative',
                                                         transition: 'background-color .12s ease, box-shadow .12s ease',
                                                         ...(dropCell === `${member.id}|${col}`
                                                             ? { background: 'rgba(30,36,71,0.06)', boxShadow: 'inset 0 0 0 2px rgba(30,36,71,0.35)', borderRadius: 6 }
@@ -1233,7 +1233,7 @@ const PlanningGrid = ({
                                                         if (!lbl) return null;
                                                         return (
                                                             <div style={{ position: 'absolute', top: 0, bottom: 0, left: 0, width: `${lbl.span * 100}%`, zIndex: 2, pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                                                <span style={{ fontFamily: ROBOTO, fontSize: 13, fontWeight: 500, color: '#6B7280', background: '#F4F4F4', padding: '3px 10px', borderRadius: 4, whiteSpace: 'nowrap' }}>
+                                                                <span style={{ fontFamily: ROBOTO, fontSize: 13, fontWeight: 500, color: 'var(--df-muted)', background: 'var(--df-surface)', padding: '3px 10px', borderRadius: 4, whiteSpace: 'nowrap' }}>
                                                                     Fermeture · {lbl.closure.title}
                                                                 </span>
                                                             </div>
@@ -1261,12 +1261,12 @@ const PlanningGrid = ({
                             <>
                                 <StickyLeftCell
                                     bg="#FFF"
-                                    style={{ fontFamily: ROBOTO, fontWeight: 500, color: '#111827', borderTop: '2px solid #E5E7EB' }}
+                                    style={{ fontFamily: ROBOTO, fontWeight: 500, color: 'var(--df-text)', borderTop: '2px solid var(--df-border-2)' }}
                                 >
                                     <div style={{ display: 'flex', alignItems: 'center', flex: 1, fontSize: 17 }}>
                                         Total
                                     </div>
-                                    <div style={{ fontSize: 12, fontWeight: 700, color: globalStats.percent > 100 ? '#EF4444' : '#374151', background: '#F3F4F6', padding: '2px 8px', borderRadius: 4 }}>
+                                    <div style={{ fontSize: 12, fontWeight: 700, color: globalStats.percent > 100 ? 'var(--df-danger)' : 'var(--df-text-2)', background: 'var(--df-surface-2)', padding: '2px 8px', borderRadius: 4 }}>
                                         {Math.round(globalStats.percent)}%
                                     </div>
                                 </StickyLeftCell>
@@ -1274,7 +1274,7 @@ const PlanningGrid = ({
                                 {gridCols.map(col => {
                                     const cellStats = getStats(allMemberIds, [col], events);
                                     return (
-                                        <div key={`total-${col.toString()}`} style={{ borderTop: '2px solid #E5E7EB' }}>
+                                        <div key={`total-${col.toString()}`} style={{ borderTop: '2px solid var(--df-border-2)' }}>
                                             {renderGaugeCell(cellStats.load, cellStats.cap, cellStats.percent, `total-${col.toString()}`)}
                                         </div>
                                     );

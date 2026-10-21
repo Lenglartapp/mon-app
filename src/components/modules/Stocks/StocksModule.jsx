@@ -62,7 +62,7 @@ export default function StocksModule({
     ];
 
     return (
-        <Box sx={{ bgcolor: '#FFFFFF', p: 3, display: 'flex', flexDirection: 'column', width: '100%' }}>
+        <Box sx={{ bgcolor: 'var(--df-bg)', p: 3, display: 'flex', flexDirection: 'column', width: '100%' }}>
             {/* Contenu centré (1600 px max), comme Logistique / Performance */}
             <div style={{ width: '100%', maxWidth: 1600, margin: '0 auto', display: 'flex', flexDirection: 'column', flex: 1 }}>
 
@@ -75,14 +75,14 @@ export default function StocksModule({
                                 onClick={onBack}
                                 style={{
                                     background: 'none', border: 'none', cursor: 'pointer',
-                                    color: '#6B7280', fontWeight: 600, fontSize: 13,
+                                    color: 'var(--df-muted)', fontWeight: 600, fontSize: 13,
                                     marginBottom: 4, padding: 0, display: 'flex', alignItems: 'center', gap: 4
                                 }}
                             >
                                 ← Retour
                             </button>
                         )}
-                        <h1 style={{ fontSize: 32, fontWeight: 400, fontFamily: 'Roboto, system-ui, sans-serif', color: '#111827', margin: 0, letterSpacing: '-0.01em' }}>Inventaire</h1>
+                        <h1 style={{ fontSize: 32, fontWeight: 400, fontFamily: 'Roboto, system-ui, sans-serif', color: 'var(--df-text)', margin: 0, letterSpacing: '-0.01em' }}>Inventaire</h1>
                     </div>
                     <div style={{ display: 'flex', gap: 2, paddingBottom: 2 }}>
                         {TABS.map(t => (
@@ -97,8 +97,8 @@ export default function StocksModule({
                                     fontWeight: 500,
                                     border: 'none',
                                     cursor: 'pointer',
-                                    background: tabIndex === t.key ? '#1E2447' : 'transparent',
-                                    color: tabIndex === t.key ? '#FFFFFF' : '#4B5563',
+                                    background: tabIndex === t.key ? 'var(--df-primary)' : 'transparent',
+                                    color: tabIndex === t.key ? '#FFFFFF' : 'var(--df-text-3)',
                                     transition: 'all 0.2s cubic-bezier(0.25, 1, 0.5, 1)',
                                     boxShadow: tabIndex === t.key ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
                                     outline: 'none'

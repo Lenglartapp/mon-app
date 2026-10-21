@@ -8,10 +8,10 @@ const SERVICE_LABELS = { conf: 'Confection', prepa: 'Préparation', pose: 'Pose'
 function Row({ icon: Icon, label, value }) {
   if (!value) return null;
   return (
-    <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '8px 0', borderBottom: '1px solid #F3F4F6' }}>
-      <Icon size={14} color="#9CA3AF" style={{ marginTop: 2, flexShrink: 0 }} />
-      <span style={{ fontSize: 12, color: '#6B7280', fontWeight: 600, minWidth: 90, flexShrink: 0 }}>{label}</span>
-      <span style={{ fontSize: 13, color: '#374151', flex: 1 }}>{value}</span>
+    <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '8px 0', borderBottom: '1px solid var(--df-surface-2)' }}>
+      <Icon size={14} color="var(--df-faint)" style={{ marginTop: 2, flexShrink: 0 }} />
+      <span style={{ fontSize: 12, color: 'var(--df-muted)', fontWeight: 600, minWidth: 90, flexShrink: 0 }}>{label}</span>
+      <span style={{ fontSize: 13, color: 'var(--df-text-2)', flex: 1 }}>{value}</span>
     </div>
   );
 }
@@ -31,20 +31,20 @@ export default function PerformanceHistoriqueModal({ project, service, entry, on
       display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000,
     }} onClick={e => e.target === e.currentTarget && onClose()}>
       <div style={{
-        background: '#fff', borderRadius: 16, width: 'min(480px, 95vw)',
+        background: 'var(--df-bg)', borderRadius: 16, width: 'min(480px, 95vw)',
         boxShadow: '0 8px 40px rgba(0,0,0,0.15)', display: 'flex', flexDirection: 'column',
       }}>
         {/* Header */}
-        <div style={{ padding: '18px 24px 14px', borderBottom: '1px solid #F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ padding: '18px 24px 14px', borderBottom: '1px solid var(--df-surface-2)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
-            <div style={{ fontWeight: 700, fontSize: 15, color: '#111827', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--df-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
               <Clock size={16} color="#6366F1" /> Historique de saisie
             </div>
-            <div style={{ fontSize: 12, color: '#9CA3AF', marginTop: 3 }}>
+            <div style={{ fontSize: 12, color: 'var(--df-faint)', marginTop: 3 }}>
               {project?.name} — <span style={{ fontWeight: 600, color: '#6366F1' }}>{serviceLabel}</span>
             </div>
           </div>
-          <button onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#9CA3AF' }}>
+          <button onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--df-faint)' }}>
             <X size={18} />
           </button>
         </div>
@@ -52,20 +52,20 @@ export default function PerformanceHistoriqueModal({ project, service, entry, on
         {/* Corps */}
         <div style={{ padding: '16px 24px 20px' }}>
           {!entry ? (
-            <div style={{ textAlign: 'center', padding: '24px 0', color: '#9CA3AF', fontSize: 13 }}>
+            <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--df-faint)', fontSize: 13 }}>
               Aucune donnée saisie pour ce service.
             </div>
           ) : (
             <>
               {/* Méta */}
-              <div style={{ background: '#F8F9FF', borderRadius: 10, padding: '10px 14px', marginBottom: 16, border: '1px solid #E0E7FF' }}>
+              <div style={{ background: 'var(--df-navy-bg-3)', borderRadius: 10, padding: '10px 14px', marginBottom: 16, border: '1px solid var(--df-blue-bg-3)' }}>
                 <Row icon={User} label="Saisi par" value={entry.updated_by || 'Inconnu'} />
                 <Row icon={Clock} label="Dernière modif." value={formatDate(entry.updated_at)} />
                 <Row icon={Clock} label="Créé le" value={formatDate(entry.created_at)} />
               </div>
 
               {/* Contenu saisi */}
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--df-faint)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8 }}>
                 Données enregistrées
               </div>
 
@@ -91,10 +91,10 @@ export default function PerformanceHistoriqueModal({ project, service, entry, on
         </div>
 
         {/* Footer */}
-        <div style={{ padding: '12px 24px', borderTop: '1px solid #F3F4F6', display: 'flex', justifyContent: 'flex-end' }}>
+        <div style={{ padding: '12px 24px', borderTop: '1px solid var(--df-surface-2)', display: 'flex', justifyContent: 'flex-end' }}>
           <button onClick={onClose} style={{
-            background: '#F3F4F6', border: 'none', borderRadius: 8,
-            padding: '8px 20px', fontSize: 14, cursor: 'pointer', color: '#374151', fontWeight: 500,
+            background: 'var(--df-surface-2)', border: 'none', borderRadius: 8,
+            padding: '8px 20px', fontSize: 14, cursor: 'pointer', color: 'var(--df-text-2)', fontWeight: 500,
           }}>Fermer</button>
         </div>
       </div>

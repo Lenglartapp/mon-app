@@ -35,14 +35,14 @@ const fmtDate = (d) => (d ? new Date(d).toLocaleDateString("fr-FR") : "—");
 function StatutBadge({ statut }) {
   const s = STATUT[statut];
   if (!s) return <TonePill tone={null}>{statut || "—"}</TonePill>;
-  if (s.alert) return <span style={{ display: "inline-flex", alignItems: "center", height: 22, padding: "0 10px", borderRadius: 99, background: "#FEE2E2", color: "#B91C1C", fontSize: 12, fontWeight: 600, whiteSpace: "nowrap" }}>{s.label}</span>;
+  if (s.alert) return <span style={{ display: "inline-flex", alignItems: "center", height: 22, padding: "0 10px", borderRadius: 99, background: "var(--df-danger-border)", color: "var(--df-danger-text)", fontSize: 12, fontWeight: 600, whiteSpace: "nowrap" }}>{s.label}</span>;
   return <TonePill tone={s.tone}>{s.label}</TonePill>;
 }
 
 // Type en texte simple (comme l'état du stock)
 function TypeBadge({ type }) {
-  if (!type) return <span style={{ color: "#9CA3AF" }}>—</span>;
-  return <span style={{ color: "#374151" }}>{TYPE[type] || type}</span>;
+  if (!type) return <span style={{ color: "var(--df-faint)" }}>—</span>;
+  return <span style={{ color: "var(--df-text-2)" }}>{TYPE[type] || type}</span>;
 }
 
 const td = { padding: "10px 12px", verticalAlign: "middle" };
@@ -86,7 +86,7 @@ export default function ProjectCourseListPanel({ droitfilProjectId, odooProjectI
 
   if (!odooProjectId) {
     return (
-      <div style={{ padding: 16, display: "flex", alignItems: "center", gap: 10, color: "#6B7280", fontSize: 14 }}>
+      <div style={{ padding: 16, display: "flex", alignItems: "center", gap: 10, color: "var(--df-muted)", fontSize: 14 }}>
         <ShoppingCart size={18} />
         <span>Relie ce dossier à Odoo (encart « Consommation Temps ») pour afficher sa liste de courses.</span>
       </div>
@@ -101,11 +101,11 @@ export default function ProjectCourseListPanel({ droitfilProjectId, odooProjectI
   return (
     <div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
-        <div style={{ fontFamily: "Roboto, system-ui, sans-serif", fontSize: 20, fontWeight: 500, color: "#111827" }}>
-          Liste de courses <span style={{ fontWeight: 400, color: "#9B9A97", fontSize: 13 }}>{active.length} {active.length > 1 ? "lignes" : "ligne"}</span>
+        <div style={{ fontFamily: "Roboto, system-ui, sans-serif", fontSize: 20, fontWeight: 500, color: "var(--df-text)" }}>
+          Liste de courses <span style={{ fontWeight: 400, color: "var(--df-faint-2)", fontSize: 13 }}>{active.length} {active.length > 1 ? "lignes" : "ligne"}</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10, opacity: refreshing ? 0.6 : 1 }}>
-          {lastSync && <span style={{ fontSize: 12, color: "#9CA3AF" }}>synchro {new Date(lastSync).toLocaleString("fr-FR")}</span>}
+          {lastSync && <span style={{ fontSize: 12, color: "var(--df-faint)" }}>synchro {new Date(lastSync).toLocaleString("fr-FR")}</span>}
           <ToolbarButton icon={<RefreshCw size={14} className={refreshing ? "spin" : undefined} />} onClick={refreshing ? undefined : refresh}>
             Rafraîchir depuis Odoo
           </ToolbarButton>
@@ -113,35 +113,35 @@ export default function ProjectCourseListPanel({ droitfilProjectId, odooProjectI
       </div>
 
       {error && (
-        <div style={{ display: "flex", gap: 8, alignItems: "center", background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", borderRadius: 10, padding: "8px 12px", marginBottom: 10, fontSize: 13 }}>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", background: "var(--df-danger-bg)", border: "1px solid var(--df-x-FECACA)", color: "var(--df-x-991B1B)", borderRadius: 10, padding: "8px 12px", marginBottom: 10, fontSize: 13 }}>
           <AlertTriangle size={16} /> {error}
         </div>
       )}
 
       {notice && (
-        <div style={{ display: "flex", gap: 8, alignItems: "center", background: "#ECFDF5", border: "1px solid #A7F3D0", color: "#065F46", borderRadius: 10, padding: "8px 12px", marginBottom: 10, fontSize: 13 }}>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", background: "var(--df-success-bg)", border: "1px solid var(--df-green-bg-3)", color: "var(--df-x-065F46)", borderRadius: 10, padding: "8px 12px", marginBottom: 10, fontSize: 13 }}>
           <ShoppingCart size={16} /> {notice}
         </div>
       )}
 
-      <div style={{ overflowX: "auto", border: "1px solid #E0DED9", borderRadius: 8 }}>
+      <div style={{ overflowX: "auto", border: "1px solid var(--df-border)", borderRadius: 8 }}>
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
           <thead>
-            <tr style={{ background: "#F4F4F4" }}>
+            <tr style={{ background: "var(--df-surface)" }}>
               {COLS.map((h) => (
-                <th key={h} style={{ textAlign: "left", padding: "10px 12px", borderBottom: "1px solid #E0DED9", fontWeight: 600, color: "#374151", whiteSpace: "nowrap" }}>{h}</th>
+                <th key={h} style={{ textAlign: "left", padding: "10px 12px", borderBottom: "1px solid var(--df-border)", fontWeight: 600, color: "var(--df-text-2)", whiteSpace: "nowrap" }}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {loading && (
-              <tr><td colSpan={COLS.length} style={{ padding: 14, color: "#9CA3AF" }}>Chargement…</td></tr>
+              <tr><td colSpan={COLS.length} style={{ padding: 14, color: "var(--df-faint)" }}>Chargement…</td></tr>
             )}
             {!loading && active.length === 0 && removed.length === 0 && (
-              <tr><td colSpan={COLS.length} style={{ padding: 14, color: "#9CA3AF" }}>Aucune ligne. Clique « Rafraîchir depuis Odoo ».</td></tr>
+              <tr><td colSpan={COLS.length} style={{ padding: 14, color: "var(--df-faint)" }}>Aucune ligne. Clique « Rafraîchir depuis Odoo ».</td></tr>
             )}
             {active.map((l) => (
-              <tr key={l.odoo_id} style={{ borderBottom: "1px solid #E8E6E2" }}>
+              <tr key={l.odoo_id} style={{ borderBottom: "1px solid var(--df-border-soft)" }}>
                 <td style={td}>{l.fournisseur || "—"}</td>
                 <td style={{ ...td, fontWeight: 500 }}>{l.reference || "—"}</td>
                 <td style={td}><TypeBadge type={l.type_produit} /></td>
@@ -156,7 +156,7 @@ export default function ProjectCourseListPanel({ droitfilProjectId, odooProjectI
               </tr>
             ))}
             {removed.map((l) => (
-              <tr key={l.odoo_id} style={{ borderBottom: "1px solid #E8E6E2", opacity: 0.55, color: "#9CA3AF" }} title="Cette ligne n'existe plus dans Odoo (gardée ici).">
+              <tr key={l.odoo_id} style={{ borderBottom: "1px solid var(--df-border-soft)", opacity: 0.55, color: "var(--df-faint)" }} title="Cette ligne n'existe plus dans Odoo (gardée ici).">
                 <td style={td}>{l.fournisseur || "—"}</td>
                 <td style={{ ...td, textDecoration: "line-through" }}>{l.reference || "—"}</td>
                 <td style={td}><TypeBadge type={l.type_produit} /></td>

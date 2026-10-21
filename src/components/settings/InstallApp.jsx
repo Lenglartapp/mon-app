@@ -51,11 +51,11 @@ function InstallHelp({ onClose }) {
             footer={<><span style={{ flex: 1 }} /><ToolbarButton primary onClick={onClose}>Compris</ToolbarButton></>}>
             <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
                 <img src="/icon-192.png" alt="" width={48} height={48} style={{ borderRadius: 10, flexShrink: 0 }} />
-                <ol style={{ margin: 0, paddingLeft: 18, fontSize: 14, color: '#374151', lineHeight: 1.6 }}>
+                <ol style={{ margin: 0, paddingLeft: 18, fontSize: 14, color: 'var(--df-text-2)', lineHeight: 1.6 }}>
                     {help.steps.map((s) => <li key={s}>{s}</li>)}
                 </ol>
             </div>
-            <div style={{ fontSize: 13, color: '#6B7280', marginTop: 14 }}>Une fois installé, Droitfil se met à jour tout seul.</div>
+            <div style={{ fontSize: 13, color: 'var(--df-muted)', marginTop: 14 }}>Une fois installé, Droitfil se met à jour tout seul.</div>
         </DaDialog>
     );
 }
@@ -70,7 +70,7 @@ export default function InstallApp() {
 
     if (installed) {
         return (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#374151' }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--df-text-2)' }}>
                 <Check size={15} color="#16A34A" /> Installé sur cet appareil
             </span>
         );

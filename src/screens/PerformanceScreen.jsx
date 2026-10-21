@@ -23,7 +23,7 @@ export default function PerformanceScreen({ projects, events, onBack }) {
   const { actions, addAction, updateAction, deleteAction } = usePerformanceActions();
 
   return (
-    <div style={{ minHeight: '100vh', background: '#FFFFFF', padding: 24, display: 'flex', flexDirection: 'column' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--df-bg)', padding: 24, display: 'flex', flexDirection: 'column' }}>
       <div style={{ maxWidth: 1600, width: '100%', margin: '0 auto', display: 'flex', flexDirection: 'column', flex: 1 }}>
 
         {/* Header */}
@@ -31,13 +31,13 @@ export default function PerformanceScreen({ projects, events, onBack }) {
           {onBack && (
             <button onClick={onBack} style={{
               background: 'none', border: 'none', cursor: 'pointer',
-              color: '#6B7280', fontWeight: 600, fontSize: 13,
+              color: 'var(--df-muted)', fontWeight: 600, fontSize: 13,
               marginBottom: 4, padding: 0, display: 'flex', alignItems: 'center', gap: 4,
             }}>
               ← Retour
             </button>
           )}
-          <h1 style={{ fontSize: 32, fontWeight: 400, fontFamily: 'Roboto, system-ui, sans-serif', color: '#111827', margin: 0, letterSpacing: '-0.01em' }}>
+          <h1 style={{ fontSize: 32, fontWeight: 400, fontFamily: 'Roboto, system-ui, sans-serif', color: 'var(--df-text)', margin: 0, letterSpacing: '-0.01em' }}>
             Performance
           </h1>
         </div>
@@ -45,7 +45,7 @@ export default function PerformanceScreen({ projects, events, onBack }) {
         {/* Navigation onglets (centré, style Inventaire) */}
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 24 }}>
           <div style={{
-            background: 'white', borderRadius: 9999, padding: 4, display: 'flex', gap: 4,
+            background: 'var(--df-bg)', borderRadius: 9999, padding: 4, display: 'flex', gap: 4,
             boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03)',
             border: '1px solid rgba(0,0,0,0.05)',
           }}>
@@ -53,8 +53,8 @@ export default function PerformanceScreen({ projects, events, onBack }) {
               <button key={t.key} className="df-pill-tab" data-active={tabIndex === i} onClick={() => setTabIndex(i)} style={{
                 padding: '8px 24px', borderRadius: 9999, fontSize: 14, fontWeight: 500,
                 border: 'none', cursor: 'pointer',
-                background: tabIndex === i ? '#1E2447' : 'transparent',
-                color: tabIndex === i ? 'white' : '#4B5563',
+                background: tabIndex === i ? 'var(--df-primary)' : 'transparent',
+                color: tabIndex === i ? 'white' : 'var(--df-text-3)',
                 transition: 'all 0.2s',
                 boxShadow: tabIndex === i ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
                 outline: 'none',

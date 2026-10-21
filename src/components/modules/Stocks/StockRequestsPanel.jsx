@@ -34,10 +34,10 @@ const todayISO = () => new Date().toISOString().slice(0, 10);
 const round2 = (n) => Math.round(Number(n) * 100) / 100;
 
 const STATUS = {
-    open: { label: 'À faire', bg: '#FEF3C7', color: '#92400E' },
-    in_progress: { label: 'En cours', bg: '#DBEAFE', color: '#1E40AF' },
-    done: { label: 'Mise à disposition', bg: '#D1FAE5', color: '#065F46' },
-    cancelled: { label: 'Annulée', bg: '#F3F4F6', color: '#6B7280' },
+    open: { label: 'À faire', bg: 'var(--df-amber-bg)', color: 'var(--df-warn-text)' },
+    in_progress: { label: 'En cours', bg: 'var(--df-blue-bg-2)', color: 'var(--df-x-1E40AF)' },
+    done: { label: 'Mise à disposition', bg: 'var(--df-green-bg)', color: 'var(--df-x-065F46)' },
+    cancelled: { label: 'Annulée', bg: 'var(--df-surface-2)', color: 'var(--df-muted)' },
 };
 // Délai après lequel une demande faite passe dans les archives.
 const ARCHIVE_AFTER_DAYS = 14;
@@ -152,7 +152,7 @@ export default function StockRequestsPanel({ inventory = [], project = null, onS
             )}
             {loading && <Box sx={{ textAlign: 'center', py: 6 }}><CircularProgress size={28} /></Box>}
             {!loading && !error && visible.length === 0 && (
-                <Box sx={{ textAlign: 'center', py: 8, color: '#9CA3AF' }}>
+                <Box sx={{ textAlign: 'center', py: 8, color: 'var(--df-faint)' }}>
                     <Truck size={32} />
                     <Typography sx={{ mt: 1 }}>{filter.every(f => f === 'todo' || f === 'in_progress') ? 'Aucune demande en attente.' : 'Aucune demande.'}</Typography>
                 </Box>
@@ -213,38 +213,38 @@ function RequestCard({ request: r, showProject, onConfirm, onCancel, onEdit }) {
     const st = STATUS[statusKey] || STATUS.open;
     const pendingCount = r.lines.filter(l => l.status === 'pending').length;
     return (
-        <Box sx={{ p: 2.5, borderRadius: '8px', border: '1px solid #E0DED9', bgcolor: 'white' }}>
+        <Box sx={{ p: 2.5, borderRadius: '8px', border: '1px solid var(--df-border)', bgcolor: 'var(--df-bg)' }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap', mb: 0.5 }}>
-                <Typography sx={{ fontFamily: ROBOTO, fontSize: 16, fontWeight: 600, color: '#1E2447' }}>{requestLabel(r)}</Typography>
-                <Typography sx={{ fontFamily: ROBOTO, fontSize: 16, fontWeight: 400, color: late ? '#DC2626' : '#111827' }}>
+                <Typography sx={{ fontFamily: ROBOTO, fontSize: 16, fontWeight: 600, color: 'var(--df-primary-text)' }}>{requestLabel(r)}</Typography>
+                <Typography sx={{ fontFamily: ROBOTO, fontSize: 16, fontWeight: 400, color: late ? '#DC2626' : 'var(--df-text)' }}>
                     {r.requested_for ? `Pour le ${fmtDate(r.requested_for)}` : 'Sans date'}{late ? ' — en retard' : ''}
                 </Typography>
-                {showProject && r.project && <Typography sx={{ fontSize: 13, color: '#6B7280' }}>· {r.project}</Typography>}
+                {showProject && r.project && <Typography sx={{ fontSize: 13, color: 'var(--df-muted)' }}>· {r.project}</Typography>}
                 <Box sx={{ flexGrow: 1 }} />
                 {r.status === 'open' && r.lines.length > 1 && (
-                    <Typography sx={{ fontSize: 12, color: '#6B7280' }}>{r.lines.length - pendingCount}/{r.lines.length} livrée(s)</Typography>
+                    <Typography sx={{ fontSize: 12, color: 'var(--df-muted)' }}>{r.lines.length - pendingCount}/{r.lines.length} livrée(s)</Typography>
                 )}
                 {r.status === 'open' && (
                     <Button size="small" onClick={onEdit} startIcon={<Pencil size={14} />}
-                        sx={{ color: '#374151', textTransform: 'none', fontWeight: 600, border: '1px solid #E0DED9', borderRadius: '8px', px: 1.5, height: 30, bgcolor: 'white' }}>
+                        sx={{ color: 'var(--df-text-2)', textTransform: 'none', fontWeight: 600, border: '1px solid var(--df-border)', borderRadius: '8px', px: 1.5, height: 30, bgcolor: 'var(--df-bg)' }}>
                         Modifier
                     </Button>
                 )}
                 {STATUS_TONE[statusKey] != null
                     ? <TonePill tone={STATUS_TONE[statusKey]}>{st.label}</TonePill>
-                    : <span style={{ display: 'inline-flex', alignItems: 'center', height: 22, padding: '0 10px', borderRadius: 99, background: '#F4F4F4', color: '#374151', fontSize: 12, fontWeight: 600 }}>{st.label}</span>}
+                    : <span style={{ display: 'inline-flex', alignItems: 'center', height: 22, padding: '0 10px', borderRadius: 99, background: 'var(--df-surface)', color: 'var(--df-text-2)', fontSize: 12, fontWeight: 600 }}>{st.label}</span>}
             </Box>
-            <Typography sx={{ fontSize: 13, color: '#6B7280', mb: r.comment ? 0.5 : 1.5 }}>
-                Demandé par <b style={{ color: '#374151', fontWeight: 600 }}>{r.requested_by}</b> le {fmtDateTime(r.created_at)}
+            <Typography sx={{ fontSize: 13, color: 'var(--df-muted)', mb: r.comment ? 0.5 : 1.5 }}>
+                Demandé par <b style={{ color: 'var(--df-text-2)', fontWeight: 600 }}>{r.requested_by}</b> le {fmtDateTime(r.created_at)}
             </Typography>
-            {r.comment && <Typography sx={{ fontSize: 13, mb: 1.5, color: '#374151' }}>« {r.comment} »</Typography>}
+            {r.comment && <Typography sx={{ fontSize: 13, mb: 1.5, color: 'var(--df-text-2)' }}>« {r.comment} »</Typography>}
 
             <Stack spacing={1}>
                 {r.lines.map(l => (
-                    <Box key={l.id} sx={{ display: 'flex', alignItems: 'center', gap: 2, px: 1.5, py: 1.25, borderRadius: '8px', bgcolor: l.status === 'pending' ? '#F7F7F5' : 'white', border: '1px solid #E8E6E2', flexWrap: 'wrap', opacity: l.status === 'cancelled' ? 0.55 : 1 }}>
+                    <Box key={l.id} sx={{ display: 'flex', alignItems: 'center', gap: 2, px: 1.5, py: 1.25, borderRadius: '8px', bgcolor: l.status === 'pending' ? 'var(--df-surface-3)' : 'var(--df-bg)', border: '1px solid var(--df-border-soft)', flexWrap: 'wrap', opacity: l.status === 'cancelled' ? 0.55 : 1 }}>
                         <Box sx={{ flex: '1 1 260px', minWidth: 0 }}>
-                            <Typography sx={{ fontFamily: ROBOTO, fontWeight: 500, fontSize: 14, color: '#111827' }}>{itemTitle(l)}</Typography>
-                            <Typography sx={{ fontSize: 12, color: '#6B7280' }}>
+                            <Typography sx={{ fontFamily: ROBOTO, fontWeight: 500, fontSize: 14, color: 'var(--df-text)' }}>{itemTitle(l)}</Typography>
+                            <Typography sx={{ fontSize: 12, color: 'var(--df-muted)' }}>
                                 {showProject && l.project && !r.project ? `${l.project} · ` : ''}{l.laize ? `Laize ${l.laize} · ` : ''}depuis {splitLocations(l.from_location).join(', ') || '—'}
                             </Typography>
                         </Box>
@@ -256,16 +256,16 @@ function RequestCard({ request: r, showProject, onConfirm, onCancel, onEdit }) {
                         <Box sx={{ minWidth: 200, textAlign: 'right' }}>
                             {l.status === 'pending' && (
                                 <Stack direction="row" spacing={1} justifyContent="flex-end">
-                                    <Button size="small" onClick={() => onCancel(l)} sx={{ color: '#374151', textTransform: 'none', fontWeight: 600, border: '1px solid #E5E7EB', borderRadius: '8px', px: 1.5, bgcolor: 'white' }}>Annuler</Button>
-                                    <Button size="small" variant="contained" disableElevation onClick={() => onConfirm(l)} sx={{ textTransform: 'none', fontWeight: 600, borderRadius: '8px', px: 1.5, bgcolor: '#5B7FC4', '&:hover': { bgcolor: '#4A6DB0' } }}>
+                                    <Button size="small" onClick={() => onCancel(l)} sx={{ color: 'var(--df-text-2)', textTransform: 'none', fontWeight: 600, border: '1px solid var(--df-border-2)', borderRadius: '8px', px: 1.5, bgcolor: 'var(--df-bg)' }}>Annuler</Button>
+                                    <Button size="small" variant="contained" disableElevation onClick={() => onConfirm(l)} sx={{ textTransform: 'none', fontWeight: 600, borderRadius: '8px', px: 1.5, bgcolor: 'var(--df-tone-2)', '&:hover': { bgcolor: '#4A6DB0' } }}>
                                         Confirmer la mise à dispo
                                     </Button>
                                 </Stack>
                             )}
                             {l.status === 'done' && (
-                                <Typography sx={{ fontSize: 13, color: '#374151' }}><span style={{ color: '#1E2447', fontWeight: 700 }}>✓</span> En atelier — {l.done_by}, {fmtDateTime(l.done_at)}</Typography>
+                                <Typography sx={{ fontSize: 13, color: 'var(--df-text-2)' }}><span style={{ color: 'var(--df-primary-text)', fontWeight: 700 }}>✓</span> En atelier — {l.done_by}, {fmtDateTime(l.done_at)}</Typography>
                             )}
-                            {l.status === 'cancelled' && <Typography sx={{ fontSize: 13, color: '#6B7280' }}>Annulée</Typography>}
+                            {l.status === 'cancelled' && <Typography sx={{ fontSize: 13, color: 'var(--df-muted)' }}>Annulée</Typography>}
                         </Box>
                     </Box>
                 ))}
@@ -275,9 +275,9 @@ function RequestCard({ request: r, showProject, onConfirm, onCancel, onEdit }) {
 }
 
 // Boutons du pied de fenêtre (DA).
-const BTN_GHOST = { color: '#374151', textTransform: 'none', fontWeight: 600, border: '1px solid #E0DED9', borderRadius: '8px', px: 2, height: 38 };
-const BTN_PRIMARY = { bgcolor: '#1E2447', textTransform: 'none', fontWeight: 600, px: 3, borderRadius: '8px', height: 38, '&:hover': { bgcolor: '#2A3260' } };
-const MENU_PAPER_SX = { mt: 0.5, borderRadius: '8px', border: '1px solid #E0DED9', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' };
+const BTN_GHOST = { color: 'var(--df-text-2)', textTransform: 'none', fontWeight: 600, border: '1px solid var(--df-border)', borderRadius: '8px', px: 2, height: 38 };
+const BTN_PRIMARY = { bgcolor: 'var(--df-primary)', textTransform: 'none', fontWeight: 600, px: 3, borderRadius: '8px', height: 38, '&:hover': { bgcolor: 'var(--df-navy-2)' } };
+const MENU_PAPER_SX = { mt: 0.5, borderRadius: '8px', border: '1px solid var(--df-border)', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' };
 const hasPieces = (it) => Array.isArray(it?.pieces) && it.pieces.length > 0;
 
 // Création OU modification d'une demande (`request` fourni = modification, sans historique :
@@ -390,8 +390,8 @@ function RequestDialog({ request = null, inventory, project, reserved, onClose, 
                     <DaField label="Déjà mis à disposition (non modifiable)">
                         <Stack spacing={0.75}>
                             {doneLines.map(l => (
-                                <Box key={l.id} sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', fontSize: 13, color: '#6B7280', bgcolor: '#F4F4F4', borderRadius: '8px', px: 1.5, py: 1 }}>
-                                    <span style={{ color: '#111827', fontWeight: 500 }}>{itemTitle(l)}</span>
+                                <Box key={l.id} sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', fontSize: 13, color: 'var(--df-muted)', bgcolor: 'var(--df-surface)', borderRadius: '8px', px: 1.5, py: 1 }}>
+                                    <span style={{ color: 'var(--df-text)', fontWeight: 500 }}>{itemTitle(l)}</span>
                                     <span>· {(l.pieces || []).length ? l.pieces.map(p => p.name).join(', ') : `${l.qty} ${l.unit || 'ml'}`} · en atelier</span>
                                 </Box>
                             ))}
@@ -413,8 +413,8 @@ function RequestDialog({ request = null, inventory, project, reserved, onClose, 
                             return (
                                 <li key={it.id ?? key} {...rest} style={{ ...rest.style, borderRadius: 6, padding: '8px 10px', alignItems: 'center', gap: 12 }}>
                                     <Box sx={{ flex: 1, minWidth: 0 }}>
-                                        <div style={{ fontSize: 14, fontWeight: 500, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{itemTitle(it)}</div>
-                                        <div style={{ fontSize: 12, color: '#6B7280', marginTop: 2 }}>
+                                        <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--df-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{itemTitle(it)}</div>
+                                        <div style={{ fontSize: 12, color: 'var(--df-muted)', marginTop: 2 }}>
                                             {it.project || 'Stock libre'} · {splitLocations(it.location).join(', ') || 'sans emplacement'}{hasPieces(it) ? ` · ${it.pieces.length} pièce${it.pieces.length > 1 ? 's' : ''}` : ''}
                                         </div>
                                     </Box>
@@ -424,14 +424,14 @@ function RequestDialog({ request = null, inventory, project, reserved, onClose, 
                         }}
                         renderInput={(params) => (
                             <TextField {...params} size="small" placeholder="Fournisseur, référence, coloris…" sx={DA_FIELD_SX}
-                                InputProps={{ ...params.InputProps, startAdornment: <InputAdornment position="start"><Search size={16} color="#9CA3AF" /></InputAdornment> }} />
+                                InputProps={{ ...params.InputProps, startAdornment: <InputAdornment position="start"><Search size={16} color="var(--df-faint)" /></InputAdornment> }} />
                         )}
                         noOptionsText={project ? 'Aucun article de ce dossier disponible en stock.' : 'Aucun article disponible en stock.'}
                     />
                 </DaField>
 
                 {lines.length === 0 && doneLines.length === 0 && (
-                    <Typography sx={{ fontSize: 13, color: '#9B9A97', textAlign: 'center', py: 1 }}>
+                    <Typography sx={{ fontSize: 13, color: 'var(--df-faint-2)', textAlign: 'center', py: 1 }}>
                         Ajoute les tissus voulus, puis choisis les pièces qu’il te faut.
                     </Typography>
                 )}
@@ -439,16 +439,16 @@ function RequestDialog({ request = null, inventory, project, reserved, onClose, 
                 {lines.map(l => {
                     const it = l.item;
                     return (
-                        <Box key={it.id} sx={{ p: 2, border: '1px solid #E0DED9', borderRadius: '8px' }}>
+                        <Box key={it.id} sx={{ p: 2, border: '1px solid var(--df-border)', borderRadius: '8px' }}>
                             <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
                                 <Box sx={{ flex: 1, minWidth: 0 }}>
-                                    <Typography sx={{ fontFamily: ROBOTO, fontWeight: 500, fontSize: 15, color: '#111827' }}>{itemTitle(it)}</Typography>
+                                    <Typography sx={{ fontFamily: ROBOTO, fontWeight: 500, fontSize: 15, color: 'var(--df-text)' }}>{itemTitle(it)}</Typography>
                                     <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 0.5 }} useFlexGap flexWrap="wrap">
-                                        <Typography sx={{ fontSize: 12, color: '#6B7280' }}>{it.project || 'Stock libre'}{it.laize ? ` · Laize ${it.laize}` : ''} · stock {it.qty} {it.unit}</Typography>
+                                        <Typography sx={{ fontSize: 12, color: 'var(--df-muted)' }}>{it.project || 'Stock libre'}{it.laize ? ` · Laize ${it.laize}` : ''} · stock {it.qty} {it.unit}</Typography>
                                         <LocationChips value={it.location} />
                                     </Stack>
                                 </Box>
-                                <IconButton size="small" onClick={() => removeLine(it.id)} title="Retirer ce tissu de la demande" sx={{ color: '#9B9A97' }}><X size={16} /></IconButton>
+                                <IconButton size="small" onClick={() => removeLine(it.id)} title="Retirer ce tissu de la demande" sx={{ color: 'var(--df-faint-2)' }}><X size={16} /></IconButton>
                             </Box>
                             {hasPieces(it) ? (
                                 <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 1.5 }}>
@@ -469,13 +469,13 @@ function RequestDialog({ request = null, inventory, project, reserved, onClose, 
                                             onChange={(e) => setQty(it.id, e.target.value)}
                                             error={Number(l.qty) > Number(it.qty)}
                                             sx={DA_FIELD_SX}
-                                            InputProps={{ endAdornment: <InputAdornment position="end"><span style={{ color: '#6B7280', fontSize: 13 }}>{it.unit || 'ml'}</span></InputAdornment> }}
+                                            InputProps={{ endAdornment: <InputAdornment position="end"><span style={{ color: 'var(--df-muted)', fontSize: 13 }}>{it.unit || 'ml'}</span></InputAdornment> }}
                                         />
                                     </DaField>
                                 </Box>
                             )}
                             {hasPieces(it) && lineQty(l) > 0 && (
-                                <Typography sx={{ mt: 1.25, fontSize: 13, color: '#6B7280' }}>Demandé : <b style={{ color: '#111827' }}>{lineQty(l)} {it.unit || 'ml'}</b></Typography>
+                                <Typography sx={{ mt: 1.25, fontSize: 13, color: 'var(--df-muted)' }}>Demandé : <b style={{ color: 'var(--df-text)' }}>{lineQty(l)} {it.unit || 'ml'}</b></Typography>
                             )}
                         </Box>
                     );
@@ -518,12 +518,12 @@ function ConfirmDialog({ request, line, onClose, onDone }) {
         >
             <Stack spacing={2}>
                 <Box>
-                    <Typography sx={{ fontFamily: ROBOTO, fontWeight: 500, fontSize: 15, color: '#111827' }}>{itemTitle(line)}</Typography>
-                    <Typography sx={{ fontSize: 13, color: '#6B7280', mt: 0.5 }}>
+                    <Typography sx={{ fontFamily: ROBOTO, fontWeight: 500, fontSize: 15, color: 'var(--df-text)' }}>{itemTitle(line)}</Typography>
+                    <Typography sx={{ fontSize: 13, color: 'var(--df-muted)', mt: 0.5 }}>
                         {(line.pieces || []).length ? line.pieces.map(p => `${p.name} (${p.qty} ${line.unit || 'ml'})`).join(', ') : `${line.qty} ${line.unit || 'ml'}`}
                     </Typography>
                 </Box>
-                <Typography sx={{ fontSize: 13, color: '#374151', bgcolor: '#EEF4FD', borderRadius: '8px', px: 1.5, py: 1 }}>
+                <Typography sx={{ fontSize: 13, color: 'var(--df-text-2)', bgcolor: 'var(--df-selected)', borderRadius: '8px', px: 1.5, py: 1 }}>
                     Emplacement : <b>{splitLocations(line.from_location).join(', ') || '—'}</b> → <b>{LOC_ATELIER}</b>
                 </Typography>
                 <DaField label="Déposé par">

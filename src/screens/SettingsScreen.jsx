@@ -16,14 +16,31 @@ import { useAppSettings } from "../hooks/useSupabase";
 import UsersAdmin from "../components/settings/UsersAdmin";
 import InstallApp from "../components/settings/InstallApp";
 import { roleOf } from "../lib/constants/roleLabels";
+import { useThemeMode } from "../theme/themeContext";
 
 const ROBOTO = "Roboto, system-ui, sans-serif";
-const sectionTitle = { fontSize: 20, fontWeight: 500, fontFamily: ROBOTO, color: "#111827", margin: "0 0 14px" };
+const sectionTitle = { fontSize: 20, fontWeight: 500, fontFamily: ROBOTO, color: "var(--df-text)", margin: "0 0 14px" };
+
+// Apparence : clair (défaut), sombre ou automatique (réglage de l'appareil). Choix par appareil.
+function ThemeChoice() {
+  const { mode, setMode } = useThemeMode();
+  const opts = [["light", "Clair"], ["dark", "Sombre"], ["auto", "Automatique"]];
+  return (
+    <div style={{ display: "flex", gap: 4, background: "var(--df-surface)", borderRadius: 999, padding: 3 }}>
+      {opts.map(([k, label]) => (
+        <button key={k} onClick={() => setMode(k)} style={{
+          padding: "6px 14px", borderRadius: 999, fontSize: 13, fontWeight: 600, fontFamily: ROBOTO,
+          background: mode === k ? "var(--df-primary)" : "transparent", color: mode === k ? "#FFFFFF" : "var(--df-text-3)",
+        }}>{label}</button>
+      ))}
+    </div>
+  );
+}
 
 function SoonRow({ title }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 0", borderBottom: "1px solid #E8E6E2" }}>
-      <span style={{ fontSize: 14, color: "#374151" }}>{title}</span>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 0", borderBottom: "1px solid var(--df-border-soft)" }}>
+      <span style={{ fontSize: 14, color: "var(--df-text-2)" }}>{title}</span>
       <TonePill tone={null}>Bientôt disponible</TonePill>
     </div>
   );
@@ -110,17 +127,17 @@ export default function SettingsScreen({ onBack }) {
   const tabs = [{ key: "profile", label: "Mon profil" }, ...(isAdmin ? [{ key: "users", label: "Utilisateurs" }] : [])];
 
   return (
-    <div style={{ minHeight: "100vh", background: "#FFFFFF", padding: 24, fontFamily: ROBOTO }}>
+    <div style={{ minHeight: "100vh", background: "var(--df-bg)", padding: 24, fontFamily: ROBOTO }}>
       <div style={{ maxWidth: 1600, margin: "0 auto" }}>
         {/* Titre + onglets sur la même ligne (comme Planning / Inventaire) */}
         <div className="df-title-tabs" style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "end", columnGap: 16, marginBottom: 32 }}>
           <div>
             {onBack && (
-              <button onClick={onBack} style={{ background: "none", border: "none", cursor: "pointer", color: "#6B7280", fontWeight: 600, fontSize: 13, marginBottom: 4, padding: 0 }}>
+              <button onClick={onBack} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--df-muted)", fontWeight: 600, fontSize: 13, marginBottom: 4, padding: 0 }}>
                 ← Retour
               </button>
             )}
-            <h1 style={{ fontSize: 32, fontWeight: 400, color: "#111827", margin: 0, letterSpacing: "-0.01em" }}>Paramètres</h1>
+            <h1 style={{ fontSize: 32, fontWeight: 400, color: "var(--df-text)", margin: 0, letterSpacing: "-0.01em" }}>Paramètres</h1>
           </div>
           {tabs.length > 1 ? (
             <div style={{ display: "flex", gap: 2, paddingBottom: 2 }}>
@@ -131,7 +148,7 @@ export default function SettingsScreen({ onBack }) {
                   onClick={() => setTab(t.key)}
                   style={{
                     padding: "8px 20px", borderRadius: 99, fontSize: 14, fontWeight: 500, border: "none", cursor: "pointer", outline: "none",
-                    background: tab === t.key ? "#1E2447" : "transparent", color: tab === t.key ? "#FFFFFF" : "#4B5563",
+                    background: tab === t.key ? "var(--df-primary)" : "transparent", color: tab === t.key ? "#FFFFFF" : "var(--df-text-3)",
                     boxShadow: tab === t.key ? "0 1px 3px rgba(0,0,0,0.1)" : "none", transition: "all 0.2s cubic-bezier(0.25, 1, 0.5, 1)",
                   }}
                 >
@@ -147,20 +164,20 @@ export default function SettingsScreen({ onBack }) {
         {tab === "profile" && (
           <div style={{ maxWidth: 1040, margin: "0 auto", display: "grid", gridTemplateColumns: "minmax(220px, 280px) minmax(0, 1fr)", gap: 48, alignItems: "start" }} className="df-settings-profile">
             {/* Identité */}
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", padding: "28px 20px", background: "#F7F7F5", borderRadius: 12 }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", padding: "28px 20px", background: "var(--df-surface-3)", borderRadius: 12 }}>
               <div style={{ position: "relative" }}>
-                <Avatar src={avatarUrl} sx={{ width: 104, height: 104, bgcolor: "white", color: "#6B7280", fontSize: 34, fontWeight: 400, fontFamily: ROBOTO, border: "1px solid #E0DED9" }}>
+                <Avatar src={avatarUrl} sx={{ width: 104, height: 104, bgcolor: "var(--df-bg)", color: "var(--df-muted)", fontSize: 34, fontWeight: 400, fontFamily: ROBOTO, border: "1px solid var(--df-border)" }}>
                   {name ? name.substring(0, 2).toUpperCase() : "U"}
                 </Avatar>
-                <label title="Changer la photo" style={{ position: "absolute", right: 0, bottom: 0, width: 32, height: 32, borderRadius: 99, background: "#1E2447", color: "white", display: "flex", alignItems: "center", justifyContent: "center", border: "2px solid #F7F7F5", cursor: avatarUploading ? "wait" : "pointer" }}>
+                <label title="Changer la photo" style={{ position: "absolute", right: 0, bottom: 0, width: 32, height: 32, borderRadius: 99, background: "var(--df-primary)", color: "white", display: "flex", alignItems: "center", justifyContent: "center", border: "2px solid var(--df-surface-3)", cursor: avatarUploading ? "wait" : "pointer" }}>
                   <Camera size={15} />
                   <input hidden accept="image/*" type="file" disabled={avatarUploading} onChange={handleAvatarFile} />
                 </label>
               </div>
-              <div style={{ fontSize: 22, fontWeight: 400, color: "#111827", marginTop: 16 }}>{name || "Nouvel utilisateur"}</div>
+              <div style={{ fontSize: 22, fontWeight: 400, color: "var(--df-text)", marginTop: 16 }}>{name || "Nouvel utilisateur"}</div>
               <div style={{ marginTop: 8 }}><TonePill tone={role.tone}>{role.label}</TonePill></div>
-              <div style={{ fontSize: 13, color: "#6B7280", marginTop: 10, wordBreak: "break-all" }}>{email || "Aucun e-mail"}</div>
-              {avatarUploading && <div style={{ fontSize: 12, color: "#6B7280", marginTop: 8 }}>Envoi de la photo…</div>}
+              <div style={{ fontSize: 13, color: "var(--df-muted)", marginTop: 10, wordBreak: "break-all" }}>{email || "Aucun e-mail"}</div>
+              {avatarUploading && <div style={{ fontSize: 12, color: "var(--df-muted)", marginTop: 8 }}>Envoi de la photo…</div>}
             </div>
 
             {/* Réglages */}
@@ -176,17 +193,24 @@ export default function SettingsScreen({ onBack }) {
               </div>
 
               <h2 style={sectionTitle}>Sécurité et notifications</h2>
-              <div style={{ borderTop: "1px solid #E8E6E2", marginBottom: 32 }}>
+              <div style={{ borderTop: "1px solid var(--df-border-soft)", marginBottom: 32 }}>
                 <SoonRow title="Modification du mot de passe" />
                 <SoonRow title="Préférences de notifications" />
               </div>
 
               <h2 style={sectionTitle}>Application</h2>
-              <div style={{ borderTop: "1px solid #E8E6E2", marginBottom: 32 }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, padding: "12px 0", borderBottom: "1px solid #E8E6E2" }}>
+              <div style={{ borderTop: "1px solid var(--df-border-soft)", marginBottom: 32 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, padding: "12px 0", borderBottom: "1px solid var(--df-border-soft)" }}>
                   <div>
-                    <div style={{ fontSize: 14, color: "#374151" }}>Installer Droitfil sur cet appareil</div>
-                    <div style={{ fontSize: 12, color: "#6B7280", marginTop: 2 }}>Dans le Dock (Mac), le menu Démarrer (Windows) ou sur l'écran d'accueil, dans sa propre fenêtre. Mises à jour automatiques.</div>
+                    <div style={{ fontSize: 14, color: "var(--df-text-2)" }}>Apparence</div>
+                    <div style={{ fontSize: 12, color: "var(--df-muted)", marginTop: 2 }}>Mode sombre en essai. Automatique : suit le réglage de cet appareil.</div>
+                  </div>
+                  <ThemeChoice />
+                </div>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, padding: "12px 0", borderBottom: "1px solid var(--df-border-soft)" }}>
+                  <div>
+                    <div style={{ fontSize: 14, color: "var(--df-text-2)" }}>Installer Droitfil sur cet appareil</div>
+                    <div style={{ fontSize: 12, color: "var(--df-muted)", marginTop: 2 }}>Dans le Dock (Mac), le menu Démarrer (Windows) ou sur l'écran d'accueil, dans sa propre fenêtre. Mises à jour automatiques.</div>
                   </div>
                   <InstallApp />
                 </div>

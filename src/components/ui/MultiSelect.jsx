@@ -30,12 +30,12 @@ export default function MultiSelect({ options, value, onChange, allLabel = 'Tout
                 onClick={(e) => setAnchor(e.currentTarget)}
                 style={{
                     width: width || '100%', height: 38, display: 'flex', alignItems: 'center', gap: 8, padding: '0 12px', boxSizing: 'border-box',
-                    border: `1px solid ${anchor ? '#1E2447' : '#E0DED9'}`, borderRadius: 8, background: 'white', cursor: 'pointer',
-                    fontFamily: 'inherit', fontSize: 14, color: '#111827', textAlign: 'left',
+                    border: `1px solid ${anchor ? 'var(--df-primary)' : 'var(--df-border)'}`, borderRadius: 8, background: 'var(--df-bg)', cursor: 'pointer',
+                    fontFamily: 'inherit', fontSize: 14, color: 'var(--df-text)', textAlign: 'left',
                 }}
             >
                 <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{summary}</span>
-                <ChevronDown size={16} color="#6B7280" />
+                <ChevronDown size={16} color="var(--df-muted)" />
             </button>
             <Popover
                 open={!!anchor}
@@ -43,7 +43,7 @@ export default function MultiSelect({ options, value, onChange, allLabel = 'Tout
                 onClose={() => { setAnchor(null); setQ(''); }}
                 anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
                 transformOrigin={{ vertical: 'top', horizontal: 'left' }}
-                PaperProps={{ sx: { mt: 0.5, borderRadius: '8px', border: '1px solid #E0DED9', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', minWidth: anchor?.offsetWidth || 220, maxHeight: 360, p: 0.5 } }}
+                PaperProps={{ sx: { mt: 0.5, borderRadius: '8px', border: '1px solid var(--df-border)', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', minWidth: anchor?.offsetWidth || 220, maxHeight: 360, p: 0.5 } }}
             >
                 {searchable && (
                     <input
@@ -51,13 +51,13 @@ export default function MultiSelect({ options, value, onChange, allLabel = 'Tout
                         value={q}
                         onChange={(e) => setQ(e.target.value)}
                         placeholder="Rechercher…"
-                        style={{ width: '100%', boxSizing: 'border-box', height: 32, margin: '2px 0 4px', padding: '0 10px', border: '1px solid #E0DED9', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', outline: 'none' }}
+                        style={{ width: '100%', boxSizing: 'border-box', height: 32, margin: '2px 0 4px', padding: '0 10px', border: '1px solid var(--df-border)', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', outline: 'none' }}
                     />
                 )}
                 {!single && options.length > 3 && (
-                    <div style={{ display: 'flex', gap: 12, padding: '6px 10px 8px', borderBottom: '1px solid #E8E6E2', marginBottom: 4 }}>
+                    <div style={{ display: 'flex', gap: 12, padding: '6px 10px 8px', borderBottom: '1px solid var(--df-border-soft)', marginBottom: 4 }}>
                         {[['Tout', options.map(o => o.value)], ['Aucun', options.filter(o => o.locked).map(o => o.value)]].map(([t, v]) => (
-                            <button key={t} type="button" onClick={() => onChange(v)} style={{ border: 'none', background: 'none', padding: 0, color: '#1E2447', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>{t}</button>
+                            <button key={t} type="button" onClick={() => onChange(v)} style={{ border: 'none', background: 'none', padding: 0, color: 'var(--df-primary-text)', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>{t}</button>
                         ))}
                     </div>
                 )}
@@ -65,16 +65,16 @@ export default function MultiSelect({ options, value, onChange, allLabel = 'Tout
                     const checked = on(o.value) || o.locked;
                     return (
                         <div key={o.value} onClick={() => toggle(o)} title={o.locked ? 'Nécessaire pour réimporter le fichier' : undefined}
-                            style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 10px', borderRadius: 6, fontSize: 13, color: '#111827', cursor: o.locked ? 'default' : 'pointer', background: checked && !single ? '#EEF4FD' : 'transparent' }}>
+                            style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 10px', borderRadius: 6, fontSize: 13, color: 'var(--df-text)', cursor: o.locked ? 'default' : 'pointer', background: checked && !single ? 'var(--df-selected)' : 'transparent' }}>
                             {!single && (
-                                <span style={{ width: 16, height: 16, borderRadius: 4, flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', border: `1.5px solid ${checked ? '#1E2447' : '#C9C7C2'}`, background: checked ? '#1E2447' : 'white', opacity: o.locked ? 0.6 : 1 }}>
+                                <span style={{ width: 16, height: 16, borderRadius: 4, flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', border: `1.5px solid ${checked ? 'var(--df-primary)' : 'var(--df-border-hover)'}`, background: checked ? 'var(--df-primary)' : 'var(--df-bg)', opacity: o.locked ? 0.6 : 1 }}>
                                     {checked && <CheckIcon size={11} color="white" strokeWidth={3} />}
                                 </span>
                             )}
                             <span style={{ flex: 1 }}>{o.label}</span>
-                            {o.locked && <Lock size={12} color="#9CA3AF" />}
-                            {o.count != null && <span style={{ color: '#9CA3AF', fontSize: 12 }}>{o.count}</span>}
-                            {single && checked && <CheckIcon size={14} color="#1E2447" />}
+                            {o.locked && <Lock size={12} color="var(--df-faint)" />}
+                            {o.count != null && <span style={{ color: 'var(--df-faint)', fontSize: 12 }}>{o.count}</span>}
+                            {single && checked && <CheckIcon size={14} color="var(--df-primary-text)" />}
                         </div>
                     );
                 })}

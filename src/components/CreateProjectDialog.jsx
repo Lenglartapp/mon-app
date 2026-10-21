@@ -177,7 +177,7 @@ export default function CreateProjectDialog({
                                 <li {...props}>
                                     <div style={{ display: 'flex', flexDirection: 'column' }}>
                                         <span style={{ fontWeight: 500, fontSize: 14 }}>{option.name || "Sans nom"}</span>
-                                        <span style={{ fontSize: 12, color: '#6B7280' }}>
+                                        <span style={{ fontSize: 12, color: 'var(--df-muted)' }}>
                                             {option.client || "Client inconnu"} — {new Date(option.ts || Date.now()).toLocaleDateString()}
                                         </span>
                                     </div>
@@ -189,12 +189,12 @@ export default function CreateProjectDialog({
                         <TextField type="date" value={deliveryDate} onChange={(e) => setDeliveryDate(e.target.value)} fullWidth size="small" sx={DA_FIELD_SX} />
                     </DaField>
                     {selectedMinute && (
-                        <div style={{ padding: '12px 14px', background: '#F7F7F5', borderRadius: 8, fontSize: 13, color: '#374151', display: 'flex', flexDirection: 'column', gap: 4 }}>
-                            <div style={{ fontWeight: 600, color: '#111827' }}>Résumé</div>
+                        <div style={{ padding: '12px 14px', background: 'var(--df-surface-3)', borderRadius: 8, fontSize: 13, color: 'var(--df-text-2)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            <div style={{ fontWeight: 600, color: 'var(--df-text)' }}>Résumé</div>
                             <div>Client : {selectedMinute.client || "—"}</div>
                             <div>Lignes : {loadingMinute ? "chargement…" : minuteLoadFailed ? "non chargées" : `${((selectedFull || selectedMinute).lines || []).length} ouvrages`}</div>
                             {minuteLoadFailed && !loadingMinute && (
-                                <div style={{ color: '#B91C1C', marginTop: 2 }}>
+                                <div style={{ color: 'var(--df-danger-text)', marginTop: 2 }}>
                                     Le chiffrage n'a pas pu être chargé (serveur lent ou connexion interrompue). Cliquez sur « Importer le projet » pour réessayer.
                                 </div>
                             )}
@@ -229,14 +229,14 @@ export default function CreateProjectDialog({
                 </>)}
 
                 {/* Emplacement & logistique (commun aux deux onglets) */}
-                <div style={{ marginTop: 4, paddingTop: 16, borderTop: '1px solid #E8E6E2', display: 'flex', flexDirection: 'column', gap: 16 }}>
-                    <div style={{ fontFamily: ROBOTO, fontSize: 18, fontWeight: 500, color: '#111827' }}>Emplacement et logistique</div>
+                <div style={{ marginTop: 4, paddingTop: 16, borderTop: '1px solid var(--df-border-soft)', display: 'flex', flexDirection: 'column', gap: 16 }}>
+                    <div style={{ fontFamily: ROBOTO, fontSize: 18, fontWeight: 500, color: 'var(--df-text)' }}>Emplacement et logistique</div>
                     <DaField label="Emplacement du projet">
                         <AddressAutocomplete
                             value={location}
                             onChange={setLocation}
                             placeholder="Ex : 20 rue du Renard, Paris…"
-                            inputStyle={{ border: '1px solid #E0DED9', borderRadius: 8, padding: '0 12px', height: 38, fontSize: 14, width: '100%', background: '#fff', boxSizing: 'border-box' }}
+                            inputStyle={{ border: '1px solid var(--df-border)', borderRadius: 8, padding: '0 12px', height: 38, fontSize: 14, width: '100%', background: 'var(--df-bg)', boxSizing: 'border-box' }}
                         />
                     </DaField>
                     <DaField label="Type d'intervention">

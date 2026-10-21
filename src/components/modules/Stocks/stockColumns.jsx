@@ -3,7 +3,7 @@ import React from 'react';
 // Colonnes partagées État du stock / Journal : Fournisseur | Référence | Coloris | Laize.
 // Référence retombe sur le nom du produit pour les articles saisis à la main (sans réf).
 
-const dash = <span style={{ color: '#9CA3AF' }}>—</span>;
+const dash = <span style={{ color: 'var(--df-faint)' }}>—</span>;
 
 /** Libellé secondaire : le nom produit quand il n'est pas déjà « réf — coloris ». */
 const productSubtitle = (row) => {
@@ -19,7 +19,7 @@ export const itemMetaColumns = ({ compact = false } = {}) => [
         headerName: 'Fournisseur',
         width: compact ? 120 : 150,
         renderCell: (params) => params.value
-            ? <span style={{ fontWeight: 600, color: '#374151' }}>{params.value}</span>
+            ? <span style={{ fontWeight: 600, color: 'var(--df-text-2)' }}>{params.value}</span>
             : dash,
     },
     {
@@ -32,8 +32,8 @@ export const itemMetaColumns = ({ compact = false } = {}) => [
             const sub = productSubtitle(params.row);
             return (
                 <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', height: '100%', lineHeight: 1.2 }}>
-                    <span style={{ fontWeight: 600, color: '#111827' }}>{params.value || '—'}</span>
-                    {sub && <span style={{ fontSize: 11, color: '#6B7280' }}>{sub}</span>}
+                    <span style={{ fontWeight: 600, color: 'var(--df-text)' }}>{params.value || '—'}</span>
+                    {sub && <span style={{ fontSize: 11, color: 'var(--df-muted)' }}>{sub}</span>}
                 </div>
             );
         },

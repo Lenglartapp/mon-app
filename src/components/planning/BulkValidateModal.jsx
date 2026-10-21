@@ -6,10 +6,10 @@ import DaDialog from '../ui/DaDialog';
 import { DaField, ChoicePill } from '../ui/DaForm';
 import { DA_INPUT_STYLE } from '../../lib/constants/daStyles';
 
-const NAVY = '#1E2447';
-const BTN = { height: 38, padding: '0 16px', borderRadius: 8, border: '1px solid #E0DED9', background: 'white', color: '#374151', fontWeight: 600, fontSize: 13, fontFamily: 'inherit', cursor: 'pointer' };
+const NAVY = 'var(--df-primary)';
+const BTN = { height: 38, padding: '0 16px', borderRadius: 8, border: '1px solid var(--df-border)', background: 'var(--df-bg)', color: 'var(--df-text-2)', fontWeight: 600, fontSize: 13, fontFamily: 'inherit', cursor: 'pointer' };
 const BTN_PRIMARY = { ...BTN, border: 'none', background: NAVY, color: 'white' };
-const chk = (checked) => ({ width: 18, height: 18, borderRadius: 5, border: `1.5px solid ${checked ? NAVY : '#C9C7C2'}`, background: checked ? NAVY : 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 });
+const chk = (checked) => ({ width: 18, height: 18, borderRadius: 5, border: `1.5px solid ${checked ? NAVY : 'var(--df-border-hover)'}`, background: checked ? NAVY : 'var(--df-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 });
 
 const SERVICES = [
     { key: 'prepa', label: 'Préparation' },
@@ -112,10 +112,10 @@ export default function BulkValidateModal({ isOpen, onClose, membersByService = 
             <DaDialog open={isOpen} onClose={onClose} title="Temps validés" maxWidth="xs"
                 footer={<button onClick={onClose} style={{ ...BTN_PRIMARY, marginLeft: 'auto' }}>Fermer</button>}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '6px 0' }}>
-                    <div style={{ width: 44, height: 44, borderRadius: '50%', background: '#EEF4FD', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <Check size={24} color={NAVY} />
+                    <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'var(--df-selected)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <Check size={24} color="var(--df-primary-text)" />
                     </div>
-                    <div style={{ fontSize: 14, color: '#374151' }}>
+                    <div style={{ fontSize: 14, color: 'var(--df-text-2)' }}>
                         {doneCount} créneau{doneCount > 1 ? 'x' : ''} {doneCount > 1 ? 'ont' : 'a'} bien été validé{doneCount > 1 ? 's' : ''}.
                     </div>
                 </div>
@@ -153,12 +153,12 @@ export default function BulkValidateModal({ isOpen, onClose, membersByService = 
                                 const members = membersByService[svc.key] || [];
                                 const activeCount = members.filter(u => !excluded.has(u.id)).length;
                                 return (
-                                    <div key={svc.key} style={{ border: `1px solid ${isOn ? '#A8C2EC' : '#E0DED9'}`, borderRadius: 8, overflow: 'hidden' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', padding: '10px 12px', background: isOn ? '#EEF4FD' : 'white' }}>
+                                    <div key={svc.key} style={{ border: `1px solid ${isOn ? 'var(--df-tone-3)' : 'var(--df-border)'}`, borderRadius: 8, overflow: 'hidden' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', padding: '10px 12px', background: isOn ? 'var(--df-selected)' : 'var(--df-bg)' }}>
                                             <div onClick={() => toggleService(svc.key)} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', flex: 1, minWidth: 0 }}>
                                                 <div style={chk(isOn)}>{isOn && <Check size={12} color="white" strokeWidth={3} />}</div>
-                                                <span style={{ fontSize: 14, fontWeight: 500, color: '#111827' }}>{svc.label}</span>
-                                                <span style={{ fontSize: 12, color: '#9B9A97' }}>
+                                                <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--df-text)' }}>{svc.label}</span>
+                                                <span style={{ fontSize: 12, color: 'var(--df-faint-2)' }}>
                                                     · {isOn && activeCount !== members.length ? `${activeCount}/${members.length}` : members.length} pers.
                                                 </span>
                                             </div>
@@ -166,19 +166,19 @@ export default function BulkValidateModal({ isOpen, onClose, membersByService = 
                                                 onClick={() => toggleExpand(svc.key)}
                                                 disabled={members.length === 0}
                                                 title="Choisir certaines personnes"
-                                                style={{ border: 'none', background: 'transparent', cursor: members.length ? 'pointer' : 'default', color: '#6B7280', display: 'flex', alignItems: 'center', opacity: members.length ? 1 : 0.3 }}
+                                                style={{ border: 'none', background: 'transparent', cursor: members.length ? 'pointer' : 'default', color: 'var(--df-muted)', display: 'flex', alignItems: 'center', opacity: members.length ? 1 : 0.3 }}
                                             >
                                                 {isExp ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
                                             </button>
                                         </div>
                                         {isExp && members.length > 0 && (
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: 2, padding: '6px 12px 10px 40px', background: 'white', borderTop: '1px solid #E8E6E2' }}>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: 2, padding: '6px 12px 10px 40px', background: 'var(--df-bg)', borderTop: '1px solid var(--df-border-soft)' }}>
                                                 {members.map(u => {
                                                     const on = !excluded.has(u.id);
                                                     return (
                                                         <div key={u.id} onClick={() => toggleMember(u.id)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', cursor: 'pointer' }}>
                                                             <div style={chk(on)}>{on && <Check size={12} color="white" strokeWidth={3} />}</div>
-                                                            <span style={{ fontSize: 13, color: on ? '#374151' : '#9CA3AF' }}>{memberName(u)}</span>
+                                                            <span style={{ fontSize: 13, color: on ? 'var(--df-text-2)' : 'var(--df-faint)' }}>{memberName(u)}</span>
                                                         </div>
                                                     );
                                                 })}
@@ -207,10 +207,10 @@ export default function BulkValidateModal({ isOpen, onClose, membersByService = 
                             </select>
                         ) : (
                             <div style={{ display: 'flex', gap: 10 }}>
-                                <label style={{ flex: 1, fontSize: 12, color: '#9B9A97' }}>Du
+                                <label style={{ flex: 1, fontSize: 12, color: 'var(--df-faint-2)' }}>Du
                                     <input type="date" value={rangeStart} onChange={(e) => { reset(); setRangeStart(e.target.value); }} style={{ ...DA_INPUT_STYLE, marginTop: 4 }} />
                                 </label>
-                                <label style={{ flex: 1, fontSize: 12, color: '#9B9A97' }}>Au
+                                <label style={{ flex: 1, fontSize: 12, color: 'var(--df-faint-2)' }}>Au
                                     <input type="date" value={rangeEnd} min={rangeStart} onChange={(e) => { reset(); setRangeEnd(e.target.value); }} style={{ ...DA_INPUT_STYLE, marginTop: 4 }} />
                                 </label>
                             </div>
@@ -218,35 +218,35 @@ export default function BulkValidateModal({ isOpen, onClose, membersByService = 
                     </DaField>
 
                     {/* Aperçu + détail dépliable */}
-                    <div style={{ borderRadius: 8, background: matching.length ? '#EEF4FD' : '#F4F4F4', overflow: 'hidden' }}>
+                    <div style={{ borderRadius: 8, background: matching.length ? 'var(--df-selected)' : 'var(--df-surface)', overflow: 'hidden' }}>
                         <div
                             onClick={() => matching.length && setShowDetail(v => !v)}
                             style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '12px 14px', cursor: matching.length ? 'pointer' : 'default' }}
                         >
                             {matching.length > 0 ? (
-                                <span style={{ fontSize: 14, color: '#111827' }}>
+                                <span style={{ fontSize: 14, color: 'var(--df-text)' }}>
                                     <b>{matching.length}</b> créneau{plural ? 'x' : ''} · <b>{totalHours} h</b> à valider
                                 </span>
                             ) : (
-                                <span style={{ fontSize: 14, color: '#6B7280' }}>Aucun créneau à valider pour cette sélection.</span>
+                                <span style={{ fontSize: 14, color: 'var(--df-muted)' }}>Aucun créneau à valider pour cette sélection.</span>
                             )}
                             {matching.length > 0 && (
-                                <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 12, fontWeight: 600, color: NAVY }}>
+                                <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 12, fontWeight: 600, color: 'var(--df-primary-text)' }}>
                                     {showDetail ? 'Masquer' : 'Détail'} {showDetail ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
                                 </span>
                             )}
                         </div>
                         {showDetail && matching.length > 0 && (
-                            <div style={{ maxHeight: 220, overflowY: 'auto', background: 'white', border: '1px solid #E0DED9', borderRadius: '0 0 8px 8px' }}>
+                            <div style={{ maxHeight: 220, overflowY: 'auto', background: 'var(--df-bg)', border: '1px solid var(--df-border)', borderRadius: '0 0 8px 8px' }}>
                                 {matching.map(e => (
-                                    <div key={e.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '8px 14px', borderBottom: '1px solid #E8E6E2' }}>
+                                    <div key={e.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '8px 14px', borderBottom: '1px solid var(--df-border-soft)' }}>
                                         <div style={{ minWidth: 0 }}>
-                                            <div style={{ fontSize: 13, fontWeight: 500, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                            <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--df-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                                 {memberName(userMap.get(e.resourceId))} · {e.title || '(sans dossier)'}
                                             </div>
-                                            <div style={{ fontSize: 12, color: '#6B7280' }}>{format(parseISO(e.date), 'EEEE d MMM', { locale: fr })}</div>
+                                            <div style={{ fontSize: 12, color: 'var(--df-muted)' }}>{format(parseISO(e.date), 'EEEE d MMM', { locale: fr })}</div>
                                         </div>
-                                        <span style={{ flexShrink: 0, fontSize: 12, fontWeight: 600, color: '#374151' }}>{eventHours(e)} h</span>
+                                        <span style={{ flexShrink: 0, fontSize: 12, fontWeight: 600, color: 'var(--df-text-2)' }}>{eventHours(e)} h</span>
                                     </div>
                                 ))}
                             </div>
@@ -273,7 +273,7 @@ export default function BulkValidateModal({ isOpen, onClose, membersByService = 
                     </>
                 )}
             >
-                <div style={{ fontSize: 14, color: '#4B5563' }}>
+                <div style={{ fontSize: 14, color: 'var(--df-text-3)' }}>
                     Voulez-vous vraiment valider <b>{matching.length}</b> créneau{plural ? 'x' : ''} ({totalHours} h) ? Tous ces temps passeront en <b>validé</b>.
                 </div>
             </DaDialog>

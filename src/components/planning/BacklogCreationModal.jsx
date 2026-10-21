@@ -31,33 +31,33 @@ const S = {
         backgroundColor: 'rgba(0, 0, 0, 0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
     },
     modal: {
-        backgroundColor: 'white', borderRadius: 12, padding: 24, width: 620, maxWidth: '92%',
+        backgroundColor: 'var(--df-bg)', borderRadius: 12, padding: 24, width: 620, maxWidth: '92%',
         maxHeight: '90vh', overflowY: 'auto',
         boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
     },
     header: {
         display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20
     },
-    title: { fontSize: 18, fontWeight: 700, color: '#111827' },
-    closeBtn: { background: 'none', border: 'none', cursor: 'pointer', color: '#6B7280' },
+    title: { fontSize: 18, fontWeight: 700, color: 'var(--df-text)' },
+    closeBtn: { background: 'none', border: 'none', cursor: 'pointer', color: 'var(--df-muted)' },
     section: { marginBottom: 16 },
-    label: { display: 'block', fontSize: 13, fontWeight: 500, color: '#374151', marginBottom: 4 },
+    label: { display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--df-text-2)', marginBottom: 4 },
     input: {
-        width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid #D1D5DB', fontSize: 14,
+        width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid var(--df-border-strong)', fontSize: 14,
         outline: 'none', transition: 'border-color 0.2s'
     },
     statsBox: {
-        backgroundColor: '#F3F4F6', borderRadius: 8, padding: 12, marginTop: 8, fontSize: 13, color: '#4B5563',
-        border: '1px solid #E0DED9'
+        backgroundColor: 'var(--df-surface-2)', borderRadius: 8, padding: 12, marginTop: 8, fontSize: 13, color: 'var(--df-text-3)',
+        border: '1px solid var(--df-border)'
     },
     statRow: { display: 'flex', justifyContent: 'space-between', marginBottom: 4 },
-    statValue: { fontWeight: 600, color: '#111827' },
+    statValue: { fontWeight: 600, color: 'var(--df-text)' },
     footer: { display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 24 },
     btnParams: {
         padding: '8px 16px', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 14, fontWeight: 500
     },
-    btnCancel: { backgroundColor: '#F3F4F6', color: '#374151' },
-    btnSubmit: { backgroundColor: '#BE123C', color: 'white' } // Pink/Red for Backlog
+    btnCancel: { backgroundColor: 'var(--df-surface-2)', color: 'var(--df-text-2)' },
+    btnSubmit: { backgroundColor: 'var(--df-rose-text)', color: 'white' } // Pink/Red for Backlog
 };
 
 const BacklogCreationModal = ({ isOpen, onClose, onSave, onDelete, projects, events, currentWeekStart, eventToEdit }) => {
@@ -200,7 +200,7 @@ const BacklogCreationModal = ({ isOpen, onClose, onSave, onDelete, projects, eve
             <div style={S.modal} onClick={e => e.stopPropagation()}>
                 <div style={S.header}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <Briefcase size={20} color="#BE123C" />
+                        <Briefcase size={20} color="var(--df-rose-text)" />
                         <span style={S.title}>{eventToEdit ? 'Modifier le programme' : 'Ajouter au programme semaine'}</span>
                     </div>
                     <button style={S.closeBtn} onClick={onClose}><X size={20} /></button>
@@ -225,7 +225,7 @@ const BacklogCreationModal = ({ isOpen, onClose, onSave, onDelete, projects, eve
                         {showSuggestions && (filteredProjects.length > 0 || showInternalOption) && (
                             <div style={{
                                 position: 'absolute', top: '100%', left: 0, right: 0,
-                                backgroundColor: 'white', border: '1px solid #E0DED9',
+                                backgroundColor: 'var(--df-bg)', border: '1px solid var(--df-border)',
                                 borderRadius: 6, zIndex: 50, maxHeight: 200, overflowY: 'auto',
                                 boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)'
                             }}>
@@ -238,21 +238,21 @@ const BacklogCreationModal = ({ isOpen, onClose, onSave, onDelete, projects, eve
                                             setShowSuggestions(false);
                                             setCustomLabel(p.name); // Default label
                                         }}
-                                        style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: '1px solid #F3F4F6' }}
-                                        onMouseEnter={e => e.target.style.backgroundColor = '#F4F4F4'}
-                                        onMouseLeave={e => e.target.style.backgroundColor = 'white'}
+                                        style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: '1px solid var(--df-surface-2)' }}
+                                        onMouseEnter={e => e.target.style.backgroundColor = 'var(--df-surface)'}
+                                        onMouseLeave={e => e.target.style.backgroundColor = 'var(--df-bg)'}
                                     >
                                         <div style={{ fontWeight: 500, fontSize: 14 }}>{p.name}</div>
-                                        <div style={{ fontSize: 12, color: '#6B7280' }}>{p.code}</div>
+                                        <div style={{ fontSize: 12, color: 'var(--df-muted)' }}>{p.code}</div>
                                     </div>
                                 ))}
                                 {showInternalOption && (
                                     <div
                                         onClick={selectInternal}
-                                        style={{ padding: '8px 12px', cursor: 'pointer', borderTop: '1px solid #E5E7EB', background: '#FEFCE8' }}
+                                        style={{ padding: '8px 12px', cursor: 'pointer', borderTop: '1px solid var(--df-border-2)', background: 'var(--df-warn-bg)' }}
                                     >
-                                        <div style={{ fontWeight: 600, color: '#111827' }}>{INTERNAL_PROJECT_NAME}</div>
-                                        <div style={{ fontSize: 12, color: '#6B7280' }}>Prototype, étude… — temps hors dossier</div>
+                                        <div style={{ fontWeight: 600, color: 'var(--df-text)' }}>{INTERNAL_PROJECT_NAME}</div>
+                                        <div style={{ fontSize: 12, color: 'var(--df-muted)' }}>Prototype, étude… — temps hors dossier</div>
                                     </div>
                                 )}
                             </div>
@@ -272,11 +272,11 @@ const BacklogCreationModal = ({ isOpen, onClose, onSave, onDelete, projects, eve
                             </div>
                             <div style={S.statRow}>
                                 <span>Déjà Consommé (réalisé) :</span>
-                                <span style={{ ...S.statValue, color: projectStats.consumed > projectStats.sold ? '#EF4444' : '#6B7280' }}>{fmtH(projectStats.consumed)}h</span>
+                                <span style={{ ...S.statValue, color: projectStats.consumed > projectStats.sold ? 'var(--df-danger)' : 'var(--df-muted)' }}>{fmtH(projectStats.consumed)}h</span>
                             </div>
-                            <div style={{ ...S.statRow, marginTop: 8, paddingTop: 8, borderTop: '1px dashed #D1D5DB' }}>
+                            <div style={{ ...S.statRow, marginTop: 8, paddingTop: 8, borderTop: '1px dashed var(--df-border-strong)' }}>
                                 <span>Reste à Planifier :</span>
-                                <span style={{ ...S.statValue, color: projectStats.remaining < 0 ? '#EF4444' : '#10B981' }}>
+                                <span style={{ ...S.statValue, color: projectStats.remaining < 0 ? 'var(--df-danger)' : '#10B981' }}>
                                     {fmtH(projectStats.remaining)}h
                                 </span>
                             </div>
@@ -343,7 +343,7 @@ const BacklogCreationModal = ({ isOpen, onClose, onSave, onDelete, projects, eve
                     <div>
                         {eventToEdit && (
                             <button
-                                style={{ ...S.btnParams, backgroundColor: '#FEF2F2', color: '#EF4444', border: '1px solid #FECACA' }}
+                                style={{ ...S.btnParams, backgroundColor: 'var(--df-danger-bg)', color: 'var(--df-danger)', border: '1px solid var(--df-x-FECACA)' }}
                                 onClick={handleDelete}
                             >
                                 Supprimer

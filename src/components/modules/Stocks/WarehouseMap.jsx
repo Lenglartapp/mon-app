@@ -9,15 +9,15 @@ import { splitLocations } from '../../../lib/inventory/stockFields';
 
 const Warehouse3D = lazy(() => import('./warehouse/Warehouse3D'));
 
-const NAVY = '#1E2447';
-const MUTED = '#6B7280';
-const card = { background: 'white', border: '1px solid #E0DED9', borderRadius: 12, padding: '14px 16px' };
+const NAVY = 'var(--df-primary)';
+const MUTED = 'var(--df-muted)';
+const card = { background: 'var(--df-bg)', border: '1px solid var(--df-border)', borderRadius: 12, padding: '14px 16px' };
 const fmt = (n) => Number(n || 0).toLocaleString('fr-FR', { maximumFractionDigits: 1 });
 const fold = (t) => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
 function Bar({ pct }) {
     return (
-        <div style={{ height: 6, borderRadius: 99, background: '#EEF0F5', overflow: 'hidden' }}>
+        <div style={{ height: 6, borderRadius: 99, background: 'var(--df-navy-bg-2)', overflow: 'hidden' }}>
             <div style={{ width: `${Math.round(Math.min(1, pct) * 100)}%`, height: '100%', background: occupancyColor(Math.max(pct, 0.35)), borderRadius: 99 }} />
         </div>
     );
@@ -27,7 +27,7 @@ function Kpi({ label, value, sub }) {
     return (
         <div style={{ ...card, flex: 1, minWidth: 150, padding: '12px 14px' }}>
             <div style={{ fontSize: 12, color: MUTED }}>{label}</div>
-            <div style={{ fontSize: 22, fontWeight: 500, color: '#111827', marginTop: 2 }}>{value}</div>
+            <div style={{ fontSize: 22, fontWeight: 500, color: 'var(--df-text)', marginTop: 2 }}>{value}</div>
             {sub && <div style={{ fontSize: 12, color: MUTED, marginTop: 2 }}>{sub}</div>}
         </div>
     );
@@ -42,29 +42,29 @@ function LocationPanel({ o, onClose, maxHeight = 520 }) {
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
                 <span style={{ width: 34, height: 34, borderRadius: 8, background: NAVY, color: 'white', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, fontSize: 13, flexShrink: 0 }}>{o.code}</span>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 15, fontWeight: 500, color: '#111827' }}>Emplacement {o.code}</div>
+                    <div style={{ fontSize: 15, fontWeight: 500, color: 'var(--df-text)' }}>Emplacement {o.code}</div>
                     <div style={{ fontSize: 12, color: MUTED }}>{zone?.description || zone?.type || '—'}</div>
                 </div>
-                <button type="button" onClick={onClose} title="Fermer" style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#9CA3AF', padding: 2 }}><X size={16} /></button>
+                <button type="button" onClick={onClose} title="Fermer" style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--df-faint)', padding: 2 }}><X size={16} /></button>
             </div>
             <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: '#374151', marginBottom: 6 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: 'var(--df-text-2)', marginBottom: 6 }}>
                     <span>{fmt(o.rolls)} rouleau{o.rolls > 1 ? 'x' : ''}{o.capacity ? ` / ${o.capacity}` : ''}</span>
                     {o.capacity ? <span style={{ fontWeight: 600 }}>{Math.round(o.pct * 100)} %</span> : <span style={{ color: MUTED }}>capacité non définie</span>}
                 </div>
                 {o.capacity ? <Bar pct={o.pct} /> : null}
                 {zone?.type === 'palettes' && <div style={{ fontSize: 11.5, color: MUTED, marginTop: 4 }}>{zone.capacite} palette{zone.capacite > 1 ? 's' : ''} (≈ 10 rouleaux chacune)</div>}
             </div>
-            <div style={{ fontSize: 12, color: MUTED, borderTop: '1px solid #E8E6E2', paddingTop: 8 }}>{items.length} article{items.length > 1 ? 's' : ''}</div>
+            <div style={{ fontSize: 12, color: MUTED, borderTop: '1px solid var(--df-border-soft)', paddingTop: 8 }}>{items.length} article{items.length > 1 ? 's' : ''}</div>
             <div style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6, paddingRight: 2 }}>
-                {items.length === 0 && <div style={{ fontSize: 13, color: '#9CA3AF' }}>Emplacement vide.</div>}
+                {items.length === 0 && <div style={{ fontSize: 13, color: 'var(--df-faint)' }}>Emplacement vide.</div>}
                 {items.map(it => (
-                    <div key={it.id} style={{ border: '1px solid #EEF0F5', borderRadius: 8, padding: '8px 10px' }}>
-                        <div style={{ fontSize: 13, color: '#111827', fontWeight: 500 }}>{[it.ref || it.product, it.coloris].filter(Boolean).join(' · ')}</div>
+                    <div key={it.id} style={{ border: '1px solid var(--df-navy-bg-2)', borderRadius: 8, padding: '8px 10px' }}>
+                        <div style={{ fontSize: 13, color: 'var(--df-text)', fontWeight: 500 }}>{[it.ref || it.product, it.coloris].filter(Boolean).join(' · ')}</div>
                         <div style={{ fontSize: 12, color: MUTED, marginTop: 2 }}>
                             {[it.fournisseur, `${fmt(it.qty)} ${it.unit || ''}`.trim(), Array.isArray(it.pieces) && it.pieces.length > 1 ? `${it.pieces.length} pièces` : null].filter(Boolean).join(' · ')}
                         </div>
-                        <div style={{ fontSize: 12, color: it.project ? NAVY : '#9CA3AF', marginTop: 2 }}>{it.project || 'Stock libre'}</div>
+                        <div style={{ fontSize: 12, color: it.project ? NAVY : 'var(--df-faint)', marginTop: 2 }}>{it.project || 'Stock libre'}</div>
                     </div>
                 ))}
             </div>
@@ -126,14 +126,14 @@ export default function WarehouseMap({ zones = [], inventory = [] }) {
 
             {/* Recherche + légende */}
             <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 8, height: 38, padding: '0 12px', border: '1px solid #E0DED9', borderRadius: 8, background: 'white', flex: '1 1 260px', maxWidth: 420 }}>
-                    <Search size={16} color="#9CA3AF" />
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, height: 38, padding: '0 12px', border: '1px solid var(--df-border)', borderRadius: 8, background: 'var(--df-bg)', flex: '1 1 260px', maxWidth: 420 }}>
+                    <Search size={16} color="var(--df-faint)" />
                     <input value={search} onChange={(e) => { setSearch(e.target.value); setFocusGroup(null); }} placeholder="Où est… (fournisseur, référence, coloris, dossier)"
                         style={{ border: 'none', outline: 'none', flex: 1, fontSize: 14, fontFamily: 'inherit', background: 'transparent', minWidth: 0 }} />
-                    {search && <button type="button" onClick={() => setSearch('')} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#9CA3AF', padding: 0 }}><X size={15} /></button>}
+                    {search && <button type="button" onClick={() => setSearch('')} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--df-faint)', padding: 0 }}><X size={15} /></button>}
                 </label>
                 {found && (
-                    <span style={{ fontSize: 13, color: '#374151' }}>
+                    <span style={{ fontSize: 13, color: 'var(--df-text-2)' }}>
                         {found.items.length ? <>
                             {found.items.length} article{found.items.length > 1 ? 's' : ''}
                             {found.mapped.length ? <> — <b>{found.mapped.join(', ')}</b></> : ''}
@@ -144,21 +144,21 @@ export default function WarehouseMap({ zones = [], inventory = [] }) {
                 <span style={{ flex: 1 }} />
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: MUTED }}>
                     Vide
-                    <span style={{ width: 120, height: 8, borderRadius: 99, background: `linear-gradient(90deg, ${occupancyColor(0)}, ${occupancyColor(0.5)}, ${occupancyColor(1)})`, border: '1px solid #E0DED9' }} />
+                    <span style={{ width: 120, height: 8, borderRadius: 99, background: `linear-gradient(90deg, ${occupancyColor(0)}, ${occupancyColor(0.5)}, ${occupancyColor(1)})`, border: '1px solid var(--df-border)' }} />
                     Plein
                 </div>
-                <button type="button" onClick={() => setViewKey(k => k + 1)} title="Recentrer la vue" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 34, padding: '0 10px', border: '1px solid #E0DED9', borderRadius: 8, background: 'white', cursor: 'pointer', fontSize: 12, color: '#374151', fontFamily: 'inherit' }}>
+                <button type="button" onClick={() => setViewKey(k => k + 1)} title="Recentrer la vue" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 34, padding: '0 10px', border: '1px solid var(--df-border)', borderRadius: 8, background: 'var(--df-bg)', cursor: 'pointer', fontSize: 12, color: 'var(--df-text-2)', fontFamily: 'inherit' }}>
                     <RotateCcw size={14} /> Recentrer
                 </button>
             </div>
 
             {/* Vue 3D + détail */}
             <div style={{ display: 'flex', gap: 14, flexDirection: isMobile ? 'column' : 'row', alignItems: 'stretch' }}>
-                <div style={{ flex: 1, minWidth: 0, border: '1px solid #E0DED9', borderRadius: 12, overflow: 'hidden', position: 'relative' }}>
+                <div style={{ flex: 1, minWidth: 0, border: '1px solid var(--df-border)', borderRadius: 12, overflow: 'hidden', position: 'relative' }}>
                     <Suspense fallback={<div style={{ height: canvasH, display: 'flex', alignItems: 'center', justifyContent: 'center', color: MUTED, fontSize: 13 }}>Chargement de la vue 3D…</div>}>
                         <Warehouse3D resetKey={viewKey} compact={isMobile} occ={occ} selected={selected} onSelect={setSelected} highlight={highlight} height={canvasH} />
                     </Suspense>
-                    <div style={{ position: 'absolute', left: 12, bottom: 10, fontSize: 11.5, color: '#9CA3AF', pointerEvents: 'none' }}>
+                    <div style={{ position: 'absolute', left: 12, bottom: 10, fontSize: 11.5, color: 'var(--df-faint)', pointerEvents: 'none' }}>
                         {isMobile ? 'Glisser pour tourner · pincer pour zoomer · toucher un niveau' : 'Glisser pour tourner · molette pour zoomer · clic droit pour déplacer · cliquer un niveau'}
                     </div>
                     {/* Ordinateur : détail posé sur la vue (elle ne change pas de taille, rien ne saute) */}
@@ -178,20 +178,20 @@ export default function WarehouseMap({ zones = [], inventory = [] }) {
                     const pct = g.capacity ? g.rolls / g.capacity : 0;
                     return (
                         <button key={g.key} type="button" onClick={() => { setFocusGroup(on ? null : g.key); setSearch(''); }}
-                            style={{ ...card, textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit', border: `1px solid ${on ? NAVY : '#E0DED9'}`, background: on ? '#EEF4FD' : 'white', display: 'flex', flexDirection: 'column', gap: 6 }}>
-                            <span style={{ fontSize: 14, fontWeight: 500, color: '#111827' }}>{g.label}</span>
+                            style={{ ...card, textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit', border: `1px solid ${on ? NAVY : 'var(--df-border)'}`, background: on ? 'var(--df-selected)' : 'var(--df-bg)', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--df-text)' }}>{g.label}</span>
                             <span style={{ fontSize: 12, color: MUTED }}>{g.hint}</span>
                             {g.capacity ? <Bar pct={pct} /> : null}
-                            <span style={{ fontSize: 12, color: '#374151' }}>
+                            <span style={{ fontSize: 12, color: 'var(--df-text-2)' }}>
                                 {g.capacity ? `${fmt(g.rolls)} / ${fmt(g.capacity)} rouleaux · ${Math.round(Math.min(1, pct) * 100)} %` : `${g.items} article${g.items > 1 ? 's' : ''}`}
                             </span>
                         </button>
                     );
                 })}
                 {offMap.length > 0 && (
-                    <div style={{ ...card, display: 'flex', flexDirection: 'column', gap: 6, background: '#FFFBEB', borderColor: '#FDE68A' }}>
-                        <span style={{ fontSize: 14, fontWeight: 500, color: '#92400E', display: 'inline-flex', alignItems: 'center', gap: 6 }}><MapPin size={14} /> Hors rayonnages</span>
-                        {offMap.map(o => <span key={o.code} style={{ fontSize: 12, color: '#92400E' }}>{o.code === TO_COMPLETE ? 'À compléter' : o.code} : {o.items.length} article{o.items.length > 1 ? 's' : ''}</span>)}
+                    <div style={{ ...card, display: 'flex', flexDirection: 'column', gap: 6, background: 'var(--df-chip-adv-bg)', borderColor: 'var(--df-amber-bg-2)' }}>
+                        <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--df-warn-text)', display: 'inline-flex', alignItems: 'center', gap: 6 }}><MapPin size={14} /> Hors rayonnages</span>
+                        {offMap.map(o => <span key={o.code} style={{ fontSize: 12, color: 'var(--df-warn-text)' }}>{o.code === TO_COMPLETE ? 'À compléter' : o.code} : {o.items.length} article{o.items.length > 1 ? 's' : ''}</span>)}
                     </div>
                 )}
             </div>

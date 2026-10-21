@@ -147,7 +147,7 @@ export default function SupabaseMigration({ projects, events, minutes }) {
             <button
                 onClick={handleMigration}
                 disabled={loading}
-                style={{ padding: '10px 20px', background: loading ? '#999' : '#b91c1c', color: 'white', fontWeight: 'bold' }}
+                style={{ padding: '10px 20px', background: loading ? '#999' : 'var(--df-danger-text)', color: 'white', fontWeight: 'bold' }}
             >
                 {loading ? 'Migration en cours...' : 'Lancer la Migration (Projets, Events, Devis, Stock)'}
             </button>

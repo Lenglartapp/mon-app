@@ -64,12 +64,12 @@ function SectionPanel({ title, count, expanded, onToggle, children }) {
   return (
     <div style={{ marginBottom: 28 }}>
       {/* Titre collant : reste en haut de l'écran tant qu'on défile dans ce tableau */}
-      <div className="df-section-head" style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 4px', height: STICKY_TITLE_HEIGHT, position: 'sticky', top: 0, zIndex: 6, background: '#ffffff' }}>
-        <IconButton size="small" onClick={onToggle} title={expanded ? 'Replier' : 'Déplier'} sx={{ color: '#9B9A97', ml: -0.5 }}>
+      <div className="df-section-head" style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 4px', height: STICKY_TITLE_HEIGHT, position: 'sticky', top: 0, zIndex: 6, background: 'var(--df-bg)' }}>
+        <IconButton size="small" onClick={onToggle} title={expanded ? 'Replier' : 'Déplier'} sx={{ color: 'var(--df-faint-2)', ml: -0.5 }}>
           <ExpandMoreIcon sx={{ fontSize: 20, transform: expanded ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.2s ease' }} />
         </IconButton>
-        <h3 onClick={onToggle} style={{ margin: 0, fontSize: 20, color: '#111827', fontWeight: 500, fontFamily: 'Roboto, system-ui, sans-serif', cursor: 'pointer' }}>{title}</h3>
-        <span style={{ color: '#9B9A97', fontSize: 13, fontFamily: 'Roboto, system-ui, sans-serif', marginLeft: 4, alignSelf: 'flex-end', paddingBottom: 13 }}>{count} {count > 1 ? 'articles' : 'article'}</span>
+        <h3 onClick={onToggle} style={{ margin: 0, fontSize: 20, color: 'var(--df-text)', fontWeight: 500, fontFamily: 'Roboto, system-ui, sans-serif', cursor: 'pointer' }}>{title}</h3>
+        <span style={{ color: 'var(--df-faint-2)', fontSize: 13, fontFamily: 'Roboto, system-ui, sans-serif', marginLeft: 4, alignSelf: 'flex-end', paddingBottom: 13 }}>{count} {count > 1 ? 'articles' : 'article'}</span>
       </div>
       <Collapse in={expanded} timeout="auto" unmountOnExit>
         {children}
@@ -902,13 +902,13 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
   const cardHeaderStyle = {
     padding: '0 4px',
     height: STICKY_TITLE_HEIGHT,
-    position: 'sticky', top: 0, zIndex: 6, background: '#ffffff', // titre collant
+    position: 'sticky', top: 0, zIndex: 6, background: 'var(--df-bg)', // titre collant
     display: 'flex',
     alignItems: 'center',
     fontWeight: 500,
     fontSize: 20,
     fontFamily: 'Roboto, system-ui, sans-serif',
-    color: '#111827',
+    color: 'var(--df-text)',
   };
 
   // Conteneur de section : sans cadre (le tableau garde son propre contour)
@@ -926,8 +926,8 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
     fontWeight: 500,
     transition: 'all 0.2s cubic-bezier(0.25, 1, 0.5, 1)',
     outline: 'none',
-    background: isActive ? '#1E2447' : 'transparent', // Navy Active
-    color: isActive ? '#FFFFFF' : '#4B5563', // White Text Active, Gray Text Inactive
+    background: isActive ? 'var(--df-primary)' : 'transparent', // Navy Active
+    color: isActive ? '#FFFFFF' : 'var(--df-text-3)', // White Text Active, Gray Text Inactive
     boxShadow: isActive ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
     whiteSpace: 'nowrap' // Ensure text doesn't wrap in scroll mode
   });
@@ -940,7 +940,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
   }
 
   return (
-    <div style={isMobile ? { padding: '16px', background: '#FFFFFF', minHeight: '100vh' } : S.contentWide}>
+    <div style={isMobile ? { padding: '16px', background: 'var(--df-bg)', minHeight: '100vh' } : S.contentWide}>
       {/* CSS Fallback for Island Nav Scroll */}
       <style>{`
         .island-nav-container::-webkit-scrollbar { display: none; }
@@ -953,7 +953,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
           onClick={onBack}
           style={{
             background: "none", border: "none", cursor: "pointer",
-            color: "#6B7280", fontWeight: 500, fontSize: 13,
+            color: "var(--df-muted)", fontWeight: 500, fontSize: 13,
             display: "flex", alignItems: "center", gap: 4, marginBottom: 12, padding: 0
           }}
         >
@@ -1000,7 +1000,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                   onCommit={(v) => { if (v !== (project?.location || "")) onUpdateProject(project.id, { location: v }); }}
                   placeholder="Saisir une adresse…"
                   style={{ width: 300 }}
-                  inputStyle={{ border: '1px solid #E0DED9', borderRadius: 6, padding: '4px 8px', background: 'white', color: '#1F2937' }}
+                  inputStyle={{ border: '1px solid var(--df-border)', borderRadius: 6, padding: '4px 8px', background: 'var(--df-bg)', color: 'var(--df-text-1b)' }}
                 />
                 </MetaItem>
                 <MetaItem label="Type">
@@ -1008,18 +1008,18 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                   <select
                     value={project?.intervention_type || "livraison"}
                     onChange={e => onUpdateProject(project.id, { intervention_type: e.target.value, expedition_type: e.target.value === 'livraison' ? null : project?.expedition_type })}
-                    style={{ border: 'none', background: 'transparent', color: '#1F2937', fontWeight: 600, fontSize: 13, fontFamily: 'inherit', outline: 'none', cursor: 'pointer', padding: 0 }}
+                    style={{ border: 'none', background: 'transparent', color: 'var(--df-text-1b)', fontWeight: 600, fontSize: 13, fontFamily: 'inherit', outline: 'none', cursor: 'pointer', padding: 0 }}
                   >
                     <option value="livraison">Livraison</option>
                     <option value="installation">Installation</option>
                   </select>
                   {project?.intervention_type === 'installation' && (
                     <>
-                      <span style={{ color: '#d1d5db' }}>·</span>
+                      <span style={{ color: 'var(--df-border-strong)' }}>·</span>
                       <select
                         value={project?.expedition_type || "depart_nantes"}
                         onChange={e => onUpdateProject(project.id, { expedition_type: e.target.value })}
-                        style={{ border: 'none', background: 'transparent', color: '#1F2937', fontWeight: 600, fontSize: 13, fontFamily: 'inherit', outline: 'none', cursor: 'pointer', padding: 0 }}
+                        style={{ border: 'none', background: 'transparent', color: 'var(--df-text-1b)', fontWeight: 600, fontSize: 13, fontFamily: 'inherit', outline: 'none', cursor: 'pointer', padding: 0 }}
                       >
                         <option value="depart_nantes">Départ depuis Nantes</option>
                         <option value="expedition">Expédition transporteur</option>
@@ -1034,49 +1034,49 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                     type="date"
                     value={project?.deadline ? project.deadline.split('T')[0] : ''}
                     onChange={(e) => onUpdateProject(project.id, { deadline: e.target.value || null })}
-                    style={{ border: '1px solid #E0DED9', borderRadius: 6, padding: '3px 6px', fontSize: 13, color: '#374151', background: 'white', outline: 'none', fontFamily: 'inherit' }}
+                    style={{ border: '1px solid var(--df-border)', borderRadius: 6, padding: '3px 6px', fontSize: 13, color: 'var(--df-text-2)', background: 'var(--df-bg)', outline: 'none', fontFamily: 'inherit' }}
                   />
                   {(project?.delivery_phases || []).filter(ph => ph.label || ph.date).map((ph, i) => (
-                    <span key={ph.id || i} style={{ background: 'white', border: '1px solid #E0DED9', borderRadius: 99, padding: '2px 9px', fontSize: 12, color: '#374151', whiteSpace: 'nowrap' }}>
-                      {ph.label || `Phase ${i + 1}`}{ph.date && <> · <b style={{ color: '#2563EB', fontWeight: 600 }}>{new Date(ph.date).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })}</b></>}
+                    <span key={ph.id || i} style={{ background: 'var(--df-bg)', border: '1px solid var(--df-border)', borderRadius: 99, padding: '2px 9px', fontSize: 12, color: 'var(--df-text-2)', whiteSpace: 'nowrap' }}>
+                      {ph.label || `Phase ${i + 1}`}{ph.date && <> · <b style={{ color: 'var(--df-blue)', fontWeight: 600 }}>{new Date(ph.date).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })}</b></>}
                     </span>
                   ))}
                   <div ref={deliveryRef} style={{ position: 'relative' }}>
                     <button
                       onClick={() => setDeliveryOpen(o => !o)}
-                      style={{ color: '#2563EB', fontSize: 12, fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}
+                      style={{ color: 'var(--df-blue)', fontSize: 12, fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}
                     >
                       {project?.delivery_phases?.length > 0 ? 'Gérer les phases' : '+ Phase'}
                     </button>
                     {deliveryOpen && (
                       <div style={{
                         position: 'absolute', top: 'calc(100% + 6px)', left: 0,
-                        background: 'white', border: '1px solid #E0DED9', borderRadius: 12,
+                        background: 'var(--df-bg)', border: '1px solid var(--df-border)', borderRadius: 12,
                         boxShadow: '0 4px 16px rgba(0,0,0,0.1)', padding: 16, minWidth: 290, zIndex: 1000
                       }}>
                         {/* Date globale */}
                         <div style={{ marginBottom: 14 }}>
-                          <label style={{ fontSize: 11, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 6 }}>
+                          <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--df-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 6 }}>
                             Date de livraison souhaitée
                           </label>
                           <input
                             type="date"
                             value={project?.deadline ? project.deadline.split('T')[0] : ''}
                             onChange={(e) => onUpdateProject(project.id, { deadline: e.target.value })}
-                            style={{ width: '100%', border: '1px solid #E0DED9', borderRadius: 8, padding: '6px 10px', fontSize: 13, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
+                            style={{ width: '100%', border: '1px solid var(--df-border)', borderRadius: 8, padding: '6px 10px', fontSize: 13, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
                           />
                         </div>
 
                         {/* Phases */}
                         <div>
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                            <span style={{ fontSize: 11, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Phases</span>
+                            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--df-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Phases</span>
                             <button
                               onClick={() => {
                                 const phases = [...(project?.delivery_phases || []), { id: uid(), label: '', date: '' }];
                                 onUpdateProject(project.id, { delivery_phases: phases });
                               }}
-                              style={{ fontSize: 12, color: '#2563EB', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500, padding: 0 }}
+                              style={{ fontSize: 12, color: 'var(--df-blue)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500, padding: 0 }}
                             >
                               + Phase
                             </button>
@@ -1091,7 +1091,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                                   const phases = (project.delivery_phases || []).map((p, i) => i === idx ? { ...p, label: e.target.value } : p);
                                   onUpdateProject(project.id, { delivery_phases: phases });
                                 }}
-                                style={{ flex: 1, border: '1px solid #E0DED9', borderRadius: 8, padding: '5px 8px', fontSize: 12, fontFamily: 'inherit', outline: 'none', minWidth: 0 }}
+                                style={{ flex: 1, border: '1px solid var(--df-border)', borderRadius: 8, padding: '5px 8px', fontSize: 12, fontFamily: 'inherit', outline: 'none', minWidth: 0 }}
                               />
                               <input
                                 type="date"
@@ -1100,14 +1100,14 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                                   const phases = (project.delivery_phases || []).map((p, i) => i === idx ? { ...p, date: e.target.value } : p);
                                   onUpdateProject(project.id, { delivery_phases: phases });
                                 }}
-                                style={{ border: '1px solid #E0DED9', borderRadius: 8, padding: '5px 8px', fontSize: 12, fontFamily: 'inherit', outline: 'none', width: 130 }}
+                                style={{ border: '1px solid var(--df-border)', borderRadius: 8, padding: '5px 8px', fontSize: 12, fontFamily: 'inherit', outline: 'none', width: 130 }}
                               />
                               <button
                                 onClick={() => {
                                   const phases = (project.delivery_phases || []).filter((_, i) => i !== idx);
                                   onUpdateProject(project.id, { delivery_phases: phases });
                                 }}
-                                style={{ color: '#9CA3AF', background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '0 2px' }}
+                                style={{ color: 'var(--df-faint)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '0 2px' }}
                               >
                                 ×
                               </button>
@@ -1115,7 +1115,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                           ))}
 
                           {(!project?.delivery_phases || project.delivery_phases.length === 0) && (
-                            <p style={{ fontSize: 12, color: '#9CA3AF', margin: 0, textAlign: 'center', padding: '8px 0' }}>Aucune phase</p>
+                            <p style={{ fontSize: 12, color: 'var(--df-faint)', margin: 0, textAlign: 'center', padding: '8px 0' }}>Aucune phase</p>
                           )}
                         </div>
                       </div>
@@ -1152,13 +1152,13 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
               onClick={() => setShowMaterials(true)}
               style={{
                 display: 'flex', alignItems: 'center', gap: 8,
-                background: 'white',
-                border: '1px solid #E0DED9',
+                background: 'var(--df-bg)',
+                border: '1px solid var(--df-border)',
                 borderRadius: 8,
                 padding: '8px 14px',
                 cursor: 'pointer',
                 fontSize: 13,
-                color: '#374151',
+                color: 'var(--df-text-2)',
                 fontWeight: 600,
                 outline: 'none',
                 flex: 'initial', justifyContent: 'center'
@@ -1174,13 +1174,13 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                 onClick={() => setStockOpen(true)}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 8,
-                  background: 'white',
-                  border: '1px solid #E0DED9',
+                  background: 'var(--df-bg)',
+                  border: '1px solid var(--df-border)',
                   borderRadius: 8,
                   padding: '8px 14px',
                   cursor: 'pointer',
                   fontSize: 13,
-                  color: '#374151',
+                  color: 'var(--df-text-2)',
                   fontWeight: 600,
                   outline: 'none',
                   flex: 'initial', justifyContent: 'center'
@@ -1212,13 +1212,13 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
               onClick={() => setShowDocs(true)}
               style={{
                 display: 'flex', alignItems: 'center', gap: 8,
-                background: 'white',
-                border: '1px solid #E0DED9',
+                background: 'var(--df-bg)',
+                border: '1px solid var(--df-border)',
                 borderRadius: 8,
                 padding: '8px 14px',
                 cursor: 'pointer',
                 fontSize: 13,
-                color: '#374151',
+                color: 'var(--df-text-2)',
                 fontWeight: 600,
                 outline: 'none',
                 flex: 'initial', justifyContent: 'center'
@@ -1234,13 +1234,13 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                 title={stage === 'etiquettes' ? 'Imprimer des étiquettes' : `Imprimer le ${stage.toUpperCase()} (A3)`}
                 style={{
                 display: 'flex', alignItems: 'center', gap: 8,
-                background: 'white',
-                border: '1px solid #E0DED9',
+                background: 'var(--df-bg)',
+                border: '1px solid var(--df-border)',
                 borderRadius: 8,
                 padding: '8px 14px',
                 cursor: 'pointer',
                 fontSize: 13,
-                color: '#374151',
+                color: 'var(--df-text-2)',
                 fontWeight: 600,
                 outline: 'none',
                 flex: 'initial', justifyContent: 'center'
@@ -1265,7 +1265,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
               subtitle="Heures réalisées / budget"
               actions={<>
                 {canEditProd && (
-                  <button onClick={handleOpenBudget} title="Ajuster le budget" style={{ border: 'none', background: 'white', cursor: 'pointer', color: '#5B616B', width: 28, height: 28, borderRadius: 8, display: 'grid', placeItems: 'center' }}>
+                  <button onClick={handleOpenBudget} title="Ajuster le budget" style={{ border: 'none', background: 'var(--df-bg)', cursor: 'pointer', color: 'var(--df-x-5B616B)', width: 28, height: 28, borderRadius: 8, display: 'grid', placeItems: 'center' }}>
                     <Edit2 size={14} />
                   </button>
                 )}
@@ -1316,8 +1316,8 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
               composer={
                 /* Écrire au mur du projet : une ligne qui s'agrandit avec le texte ; ⌘/Ctrl+Entrée publie */
                 <div>
-                  <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, border: '1px solid #E0DED9', borderRadius: 8, padding: '6px 6px 6px 10px', background: 'white' }}>
-                    <label title={wallUploading ? 'Envoi…' : 'Ajouter une photo'} style={{ cursor: wallUploading ? 'wait' : 'pointer', color: '#9B9A97', display: 'grid', placeItems: 'center', height: 30, opacity: wallUploading ? 0.5 : 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, border: '1px solid var(--df-border)', borderRadius: 8, padding: '6px 6px 6px 10px', background: 'var(--df-bg)' }}>
+                    <label title={wallUploading ? 'Envoi…' : 'Ajouter une photo'} style={{ cursor: wallUploading ? 'wait' : 'pointer', color: 'var(--df-faint-2)', display: 'grid', placeItems: 'center', height: 30, opacity: wallUploading ? 0.5 : 1 }}>
                       <ImageIcon size={17} />
                       <input type="file" accept="image/*" hidden disabled={wallUploading} onChange={handleImageSelect} />
                     </label>
@@ -1327,21 +1327,21 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                       rows={Math.min(8, Math.max(1, (wallMsg || '').split('\n').length))}
                       onChange={(e) => setWallMsg(e.target.value)}
                       onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); if (!wallUploading) handlePostMessage(); } }}
-                      style={{ flex: 1, border: 'none', outline: 'none', resize: 'none', padding: '6px 0', fontSize: 14, lineHeight: 1.45, fontFamily: 'Roboto, system-ui, sans-serif', color: '#37352F', background: 'transparent' }}
+                      style={{ flex: 1, border: 'none', outline: 'none', resize: 'none', padding: '6px 0', fontSize: 14, lineHeight: 1.45, fontFamily: 'Roboto, system-ui, sans-serif', color: 'var(--df-ink-2)', background: 'transparent' }}
                     />
                     <button
                       onClick={handlePostMessage}
                       disabled={wallUploading}
                       title="Publier (⌘ + Entrée)"
-                      style={{ background: (wallMsg || wallImg) ? '#1E2447' : '#EDEDEB', color: (wallMsg || wallImg) ? 'white' : '#9B9A97', border: 'none', padding: '7px 14px', borderRadius: 6, fontSize: 13, fontWeight: 500, cursor: wallUploading ? 'wait' : 'pointer', transition: 'background .15s, color .15s' }}
+                      style={{ background: (wallMsg || wallImg) ? 'var(--df-primary)' : 'var(--df-gray-bg)', color: (wallMsg || wallImg) ? 'white' : 'var(--df-faint-2)', border: 'none', padding: '7px 14px', borderRadius: 6, fontSize: 13, fontWeight: 500, cursor: wallUploading ? 'wait' : 'pointer', transition: 'background .15s, color .15s' }}
                     >
                       Publier
                     </button>
                   </div>
                   {wallImg && (
                     <div style={{ marginTop: 8, position: 'relative', display: 'inline-block' }}>
-                      <img src={wallImg} alt="Aperçu" style={{ height: 72, borderRadius: 6, border: '1px solid #E0DED9' }} />
-                      <button onClick={() => setWallImg(null)} title="Retirer la photo" style={{ position: 'absolute', top: -6, right: -6, background: '#37352F', color: 'white', borderRadius: '50%', width: 18, height: 18, border: 'none', cursor: 'pointer', fontSize: 11, lineHeight: '18px', padding: 0 }}>×</button>
+                      <img src={wallImg} alt="Aperçu" style={{ height: 72, borderRadius: 6, border: '1px solid var(--df-border)' }} />
+                      <button onClick={() => setWallImg(null)} title="Retirer la photo" style={{ position: 'absolute', top: -6, right: -6, background: 'var(--df-ink-2)', color: 'white', borderRadius: '50%', width: 18, height: 18, border: 'none', cursor: 'pointer', fontSize: 11, lineHeight: '18px', padding: 0 }}>×</button>
                     </div>
                   )}
                 </div>
@@ -1403,9 +1403,9 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
               onClick={() => setShowAllPrise(v => !v)}
               style={{
                 display: 'flex', alignItems: 'center', gap: 6,
-                background: showAllPrise ? '#1D4ED8' : 'white',
-                color: showAllPrise ? 'white' : '#374151',
-                border: `1px solid ${showAllPrise ? '#1D4ED8' : '#E0DED9'}`,
+                background: showAllPrise ? 'var(--df-x-1D4ED8)' : 'var(--df-bg)',
+                color: showAllPrise ? 'white' : 'var(--df-text-2)',
+                border: `1px solid ${showAllPrise ? 'var(--df-x-1D4ED8)' : 'var(--df-border)'}`,
                 borderRadius: 20, padding: '6px 14px', fontSize: 13, fontWeight: 600,
                 fontFamily: 'inherit', cursor: 'pointer',
                 boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
@@ -1972,29 +1972,29 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
         const allChecked = available.length > 0 && available.every(s => bppSelected.includes(s.tableKey));
         return (
           <div onClick={() => setBppPickerOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(17,24,39,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: 16 }}>
-            <div onClick={(e) => e.stopPropagation()} style={{ background: 'white', borderRadius: 14, width: 'min(480px, 100%)', boxShadow: '0 20px 50px rgba(0,0,0,0.3)', overflow: 'hidden' }}>
-              <div style={{ padding: '16px 18px', borderBottom: '1px solid #E5E7EB', fontWeight: 800, fontSize: 16, color: '#111827' }}>
+            <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--df-bg)', borderRadius: 14, width: 'min(480px, 100%)', boxShadow: '0 20px 50px rgba(0,0,0,0.3)', overflow: 'hidden' }}>
+              <div style={{ padding: '16px 18px', borderBottom: '1px solid var(--df-border-2)', fontWeight: 800, fontSize: 16, color: 'var(--df-text)' }}>
                 Imprimer le {tablePrintKind === 'bpf' ? 'BPF' : 'BPP'} — choisir les tableaux
               </div>
               <div style={{ padding: '6px 8px 4px', maxHeight: '55vh', overflowY: 'auto' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', cursor: 'pointer', fontSize: 12, color: '#6B7280' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', cursor: 'pointer', fontSize: 12, color: 'var(--df-muted)' }}>
                   <input type="checkbox" checked={allChecked} onChange={() => setBppSelected(allChecked ? [] : available.map(s => s.tableKey))} />
                   {allChecked ? 'Tout décocher' : 'Tout cocher'}
                 </label>
                 {available.map(s => {
                   const checked = bppSelected.includes(s.tableKey);
                   return (
-                    <label key={s.tableKey} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 10px', borderTop: '1px solid #F3F4F6', cursor: 'pointer', fontSize: 14 }}>
+                    <label key={s.tableKey} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 10px', borderTop: '1px solid var(--df-surface-2)', cursor: 'pointer', fontSize: 14 }}>
                       <input type="checkbox" checked={checked} onChange={() => toggleBppModule(s.tableKey)} style={{ width: 16, height: 16 }} />
-                      <span style={{ flex: 1, color: '#111827', fontWeight: 600 }}>{s.title}</span>
-                      <span style={{ fontSize: 12, color: '#9CA3AF' }}>{s.rows.length} ligne{s.rows.length > 1 ? 's' : ''}</span>
+                      <span style={{ flex: 1, color: 'var(--df-text)', fontWeight: 600 }}>{s.title}</span>
+                      <span style={{ fontSize: 12, color: 'var(--df-faint)' }}>{s.rows.length} ligne{s.rows.length > 1 ? 's' : ''}</span>
                     </label>
                   );
                 })}
               </div>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, padding: '12px 16px', borderTop: '1px solid #E5E7EB' }}>
-                <button onClick={() => setBppPickerOpen(false)} style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid #E0DED9', background: 'white', cursor: 'pointer', fontSize: 13 }}>Annuler</button>
-                <button onClick={runBppPrint} disabled={bppSelected.length === 0} style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: bppSelected.length ? '#1E2447' : '#E5E7EB', color: bppSelected.length ? '#fff' : '#9CA3AF', cursor: bppSelected.length ? 'pointer' : 'not-allowed', fontSize: 13, fontWeight: 600 }}>Imprimer</button>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, padding: '12px 16px', borderTop: '1px solid var(--df-border-2)' }}>
+                <button onClick={() => setBppPickerOpen(false)} style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid var(--df-border)', background: 'var(--df-bg)', cursor: 'pointer', fontSize: 13 }}>Annuler</button>
+                <button onClick={runBppPrint} disabled={bppSelected.length === 0} style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: bppSelected.length ? 'var(--df-primary)' : 'var(--df-border-2)', color: bppSelected.length ? '#fff' : 'var(--df-faint)', cursor: bppSelected.length ? 'pointer' : 'not-allowed', fontSize: 13, fontWeight: 600 }}>Imprimer</button>
               </div>
             </div>
           </div>
@@ -2003,19 +2003,19 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
 
       {etqPickerOpen && (
         <div onClick={() => setEtqPickerOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(17,24,39,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: 16 }}>
-          <div onClick={(e) => e.stopPropagation()} style={{ background: 'white', borderRadius: 14, width: 'min(420px, 100%)', boxShadow: '0 20px 50px rgba(0,0,0,0.3)', overflow: 'hidden', fontFamily: 'Roboto, system-ui, sans-serif' }}>
-            <div style={{ padding: '16px 18px 6px', fontWeight: 500, fontSize: 17, color: '#111827' }}>Imprimer des étiquettes</div>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--df-bg)', borderRadius: 14, width: 'min(420px, 100%)', boxShadow: '0 20px 50px rgba(0,0,0,0.3)', overflow: 'hidden', fontFamily: 'Roboto, system-ui, sans-serif' }}>
+            <div style={{ padding: '16px 18px 6px', fontWeight: 500, fontSize: 17, color: 'var(--df-text)' }}>Imprimer des étiquettes</div>
             <div style={{ padding: '0 18px 10px', fontSize: 13, color: '#8A8F98' }}>Choisis le tableau : l'impression reprend ses réglages (champs, couleurs).</div>
             {etqTablesCfg().map(t => (
-              <button key={t.key} onClick={() => printEtiquettes(t.key)} style={{ display: 'flex', width: '100%', alignItems: 'center', gap: 10, padding: '12px 18px', border: 'none', borderTop: '1px solid #F3F4F6', background: 'white', cursor: 'pointer', fontSize: 14, fontFamily: 'inherit', textAlign: 'left' }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = '#F4F4F4'; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'white'; }}>
-                <Printer size={16} color="#5B616B" />
-                <span style={{ flex: 1, color: '#111827' }}>{t.title}</span>
-                <span style={{ fontSize: 12, color: '#9CA3AF' }}>{t.rows.length} ligne{t.rows.length > 1 ? 's' : ''}</span>
+              <button key={t.key} onClick={() => printEtiquettes(t.key)} style={{ display: 'flex', width: '100%', alignItems: 'center', gap: 10, padding: '12px 18px', border: 'none', borderTop: '1px solid var(--df-surface-2)', background: 'var(--df-bg)', cursor: 'pointer', fontSize: 14, fontFamily: 'inherit', textAlign: 'left' }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--df-surface)'; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--df-bg)'; }}>
+                <Printer size={16} color="var(--df-x-5B616B)" />
+                <span style={{ flex: 1, color: 'var(--df-text)' }}>{t.title}</span>
+                <span style={{ fontSize: 12, color: 'var(--df-faint)' }}>{t.rows.length} ligne{t.rows.length > 1 ? 's' : ''}</span>
               </button>
             ))}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '10px 16px', borderTop: '1px solid #E5E7EB' }}>
-              <button onClick={() => setEtqPickerOpen(false)} style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid #E0DED9', background: 'white', cursor: 'pointer', fontSize: 13 }}>Annuler</button>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '10px 16px', borderTop: '1px solid var(--df-border-2)' }}>
+              <button onClick={() => setEtqPickerOpen(false)} style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid var(--df-border)', background: 'var(--df-bg)', cursor: 'pointer', fontSize: 13 }}>Annuler</button>
             </div>
           </div>
         </div>
@@ -2038,7 +2038,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
           fullScreen={isMobile}
           maxWidth="lg"
           fullWidth
-          PaperProps={{ sx: { bgcolor: '#F4F4F4' } }}
+          PaperProps={{ sx: { bgcolor: 'var(--df-surface)' } }}
         >
           {/* We wrap LineDetailPanel in a Dialog for better mobile/desktop handling if LineDetailPanel is just the content 
                  Wait, LineDetailPanel might already contain a Dialog. Let's checkLineDetailPanel.

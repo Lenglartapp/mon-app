@@ -22,10 +22,10 @@ export default function Require({ perm, action, children, fallback = null, style
         <div
           style={{
             padding: 16,
-            color: "#b91c1c",
+            color: "var(--df-danger-text)",
             fontWeight: 600,
-            border: "1px solid #fee2e2",
-            background: "#fef2f2",
+            border: "1px solid var(--df-danger-border)",
+            background: "var(--df-danger-bg)",
             borderRadius: 8,
             ...style,
           }}

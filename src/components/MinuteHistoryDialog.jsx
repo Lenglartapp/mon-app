@@ -54,20 +54,20 @@ const haystack = (item) => norm([
     item.text, item.content,
 ].filter(Boolean).join(' '));
 
-const MUTED = '#6B7280';
+const MUTED = 'var(--df-muted)';
 const ST_ROW = { display: 'flex', gap: 12, marginBottom: 18 };
 const ST_AVATAR = {
     width: 28, height: 28, borderRadius: 99, flexShrink: 0, display: 'grid', placeItems: 'center',
-    background: '#E8EAF2', color: '#1E2447', fontSize: 11, fontWeight: 500,
+    background: 'var(--df-navy-bg)', color: 'var(--df-primary-text)', fontSize: 11, fontWeight: 500,
 };
 const ST_HEAD = { display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 6 };
-const ST_AUTHOR = { fontSize: 13, fontWeight: 500, color: '#111827' };
-const ST_TIME = { fontSize: 12, color: '#9CA3AF' };
-const ST_CARD = { background: 'white', border: '1px solid #E8E6E2', borderRadius: 8, padding: '10px 12px' };
+const ST_AUTHOR = { fontSize: 13, fontWeight: 500, color: 'var(--df-text)' };
+const ST_TIME = { fontSize: 12, color: 'var(--df-faint)' };
+const ST_CARD = { background: 'var(--df-bg)', border: '1px solid var(--df-border-soft)', borderRadius: 8, padding: '10px 12px' };
 const ST_FIELD = { fontSize: 12, color: MUTED, margin: '0 0 4px' };
 const ST_DIFF = { display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, flexWrap: 'wrap' };
-const ST_FROM = { color: '#9CA3AF', textDecoration: 'line-through' };
-const ST_TO = { color: '#111827', fontWeight: 500 };
+const ST_FROM = { color: 'var(--df-faint)', textDecoration: 'line-through' };
+const ST_TO = { color: 'var(--df-text)', fontWeight: 500 };
 
 // Nombre d'entrées rendues à l'ouverture, puis par clic sur « Afficher plus ».
 // Rendre la liste entière d'un coup est ce qui retardait l'apparition de la pop-up.
@@ -96,12 +96,12 @@ const HistoryItem = React.memo(({ item }) => {
                             <div style={ST_FIELD}>{item.type === 'status' ? 'Changement de statut' : (item.field || 'Modification')}</div>
                             <div style={ST_DIFF}>
                                 <span style={ST_FROM}>{formatValue(item.from, item.type)}</span>
-                                <ArrowRight size={13} color="#9CA3AF" />
+                                <ArrowRight size={13} color="var(--df-faint)" />
                                 <span style={ST_TO}>{formatValue(item.to, item.type)}</span>
                             </div>
                         </>
                     ) : (
-                        <div style={{ fontSize: 13, color: '#374151', whiteSpace: 'pre-wrap' }}>{item.text || item.content}</div>
+                        <div style={{ fontSize: 13, color: 'var(--df-text-2)', whiteSpace: 'pre-wrap' }}>{item.text || item.content}</div>
                     )}
                 </div>
             </div>
@@ -146,10 +146,10 @@ function VersionsPanel({ minuteId, canEdit, onRestoreInPlace, onRestoreAsVariant
 
     return (
         <div style={{ padding: '18px 28px' }}>
-            {loading && <div style={{ color: '#9CA3AF', fontSize: 13 }}>Chargement des versions…</div>}
-            {error && <div style={{ color: '#B91C1C', fontSize: 13, marginBottom: 8 }}>{error}</div>}
+            {loading && <div style={{ color: 'var(--df-faint)', fontSize: 13 }}>Chargement des versions…</div>}
+            {error && <div style={{ color: 'var(--df-danger-text)', fontSize: 13, marginBottom: 8 }}>{error}</div>}
             {!loading && !error && versions.length === 0 && (
-                <div style={{ textAlign: 'center', color: '#9CA3AF', padding: '48px 0', fontSize: 13 }}>
+                <div style={{ textAlign: 'center', color: 'var(--df-faint)', padding: '48px 0', fontSize: 13 }}>
                     Aucune version enregistrée pour l'instant.<br />Les versions se créent automatiquement au fil des modifications.
                 </div>
             )}
@@ -157,11 +157,11 @@ function VersionsPanel({ minuteId, canEdit, onRestoreInPlace, onRestoreAsVariant
                 const r = REASON_LABELS[v.reason] || REASON_LABELS.auto;
                 const isSel = selected?.id === v.id;
                 return (
-                    <div key={v.id} style={{ border: `1px solid ${isSel ? '#1E2447' : '#E8E6E2'}`, borderRadius: 8, marginBottom: 8, background: 'white', overflow: 'hidden' }}>
+                    <div key={v.id} style={{ border: `1px solid ${isSel ? 'var(--df-primary)' : 'var(--df-border-soft)'}`, borderRadius: 8, marginBottom: 8, background: 'var(--df-bg)', overflow: 'hidden' }}>
                         <div onClick={() => canEdit && setSelected(isSel ? null : v)}
                              style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', cursor: canEdit ? 'pointer' : 'default' }}>
                             <div style={{ flex: 1, minWidth: 0 }}>
-                                <div style={{ fontSize: 13, fontWeight: 500, color: '#111827' }}>{formatRelativeTime(v.captured_at)}</div>
+                                <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--df-text)' }}>{formatRelativeTime(v.captured_at)}</div>
                                 <div style={{ fontSize: 12, color: MUTED, marginTop: 2 }}>
                                     {new Date(v.captured_at).toLocaleString('fr-FR')} · {v.nb_lignes ?? '—'} ligne(s) · {fmtEur(v.ca_total)}
                                 </div>
@@ -169,7 +169,7 @@ function VersionsPanel({ minuteId, canEdit, onRestoreInPlace, onRestoreAsVariant
                             <TonePill tone={r.tone}>{r.label}</TonePill>
                         </div>
                         {isSel && canEdit && (
-                            <div style={{ borderTop: '1px solid #E8E6E2', padding: 12, background: '#F4F4F4', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                            <div style={{ borderTop: '1px solid var(--df-border-soft)', padding: 12, background: 'var(--df-surface)', display: 'flex', flexDirection: 'column', gap: 10 }}>
                                 <div style={{ fontSize: 12, color: MUTED }}>
                                     « Revenir » remplace le contenu actuel (l'état actuel est sauvegardé au passage → réversible). « Variante » crée un nouveau devis et garde l'actuel intact.
                                 </div>
@@ -184,7 +184,7 @@ function VersionsPanel({ minuteId, canEdit, onRestoreInPlace, onRestoreAsVariant
                 );
             })}
             {!canEdit && versions.length > 0 && (
-                <div style={{ fontSize: 12, color: '#9CA3AF' }}>Lecture seule — la restauration nécessite les droits d'édition.</div>
+                <div style={{ fontSize: 12, color: 'var(--df-faint)' }}>Lecture seule — la restauration nécessite les droits d'édition.</div>
             )}
         </div>
     );
@@ -289,7 +289,7 @@ export default function MinuteHistoryDialog({ open, onClose, minute, canEdit = f
             ) : (
                 <>
                     {/* Barre de recherche : collée en haut, elle reste visible pendant le défilement. */}
-                    <div style={{ position: 'sticky', top: 0, zIndex: 1, background: 'white', padding: '14px 28px 12px', borderBottom: '1px solid #E8E6E2' }}>
+                    <div style={{ position: 'sticky', top: 0, zIndex: 1, background: 'var(--df-bg)', padding: '14px 28px 12px', borderBottom: '1px solid var(--df-border-soft)' }}>
                         <ToolbarSearch value={query} onChange={setQuery} placeholder="Rechercher : un auteur, un champ, une valeur, un statut…" width="100%" />
                         {(query || archivedLoading) && (
                             <div style={{ marginTop: 6, fontSize: 12, color: MUTED }}>
@@ -300,11 +300,11 @@ export default function MinuteHistoryDialog({ open, onClose, minute, canEdit = f
 
                     <div style={{ padding: '18px 28px' }}>
                         {sortedActivities.length === 0 ? (
-                            <div style={{ textAlign: 'center', padding: '48px 0', color: '#9CA3AF', fontSize: 13 }}>
+                            <div style={{ textAlign: 'center', padding: '48px 0', color: 'var(--df-faint)', fontSize: 13 }}>
                                 Aucune activité enregistrée pour cette minute.
                             </div>
                         ) : filteredActivities.length === 0 ? (
-                            <div style={{ textAlign: 'center', padding: '48px 0', color: '#9CA3AF', fontSize: 13 }}>
+                            <div style={{ textAlign: 'center', padding: '48px 0', color: 'var(--df-faint)', fontSize: 13 }}>
                                 Aucune activité ne correspond à « {query} ».
                             </div>
                         ) : (

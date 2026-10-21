@@ -100,7 +100,7 @@ export default function ShoppingListScreen({ minutes = [], catalog = [] }) {
             {/* Barre du haut : filtre à conditions (tous chapitres) et export, comme les autres listes */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
                 {hasTableFilters && (
-                    <button type="button" onClick={() => setTableFilters({})} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, border: 'none', background: 'none', color: '#1E2447', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', marginRight: 'auto' }}>
+                    <button type="button" onClick={() => setTableFilters({})} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, border: 'none', background: 'none', color: 'var(--df-primary-text)', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', marginRight: 'auto' }}>
                         <X size={14} /> Effacer les filtres des tableaux
                     </button>
                 )}
@@ -133,8 +133,8 @@ export default function ShoppingListScreen({ minutes = [], catalog = [] }) {
 }
 
 const ROBOTO = 'Roboto, system-ui, sans-serif';
-const TH = { padding: '10px 12px', fontSize: 13, fontWeight: 600, color: '#374151', background: '#F4F4F4', borderBottom: '1px solid #E0DED9', textAlign: 'left', whiteSpace: 'nowrap' };
-const TD = { padding: '10px 12px', fontSize: 13, color: '#111827', borderBottom: '1px solid #E8E6E2', verticalAlign: 'middle', overflowWrap: 'anywhere' };
+const TH = { padding: '10px 12px', fontSize: 13, fontWeight: 600, color: 'var(--df-text-2)', background: 'var(--df-surface)', borderBottom: '1px solid var(--df-border)', textAlign: 'left', whiteSpace: 'nowrap' };
+const TD = { padding: '10px 12px', fontSize: 13, color: 'var(--df-text)', borderBottom: '1px solid var(--df-border-soft)', verticalAlign: 'middle', overflowWrap: 'anywhere' };
 
 const COL_WIDTHS = { fournisseur: '22%', reference: '34%' }; // coloris : le reste
 
@@ -148,21 +148,21 @@ function Section({ title, items: filtered, allItems = filtered, filters = {}, on
     return (
         <div style={{ marginTop: 20 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, height: 44 }}>
-                <button onClick={() => setOpen(o => !o)} title={open ? 'Replier' : 'Déplier'} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#9B9A97', display: 'flex', padding: 4, marginLeft: -4 }}>
+                <button onClick={() => setOpen(o => !o)} title={open ? 'Replier' : 'Déplier'} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--df-faint-2)', display: 'flex', padding: 4, marginLeft: -4 }}>
                     <ChevronDown size={20} style={{ transform: open ? 'none' : 'rotate(-90deg)', transition: 'transform .2s ease' }} />
                 </button>
-                <h3 onClick={() => setOpen(o => !o)} style={{ margin: 0, fontSize: 20, fontWeight: 500, color: '#111827', fontFamily: ROBOTO, cursor: 'pointer' }}>{title}</h3>
-                <span style={{ color: '#9B9A97', fontSize: 13, fontFamily: ROBOTO, marginLeft: 4, alignSelf: 'flex-end', paddingBottom: 13 }}>
+                <h3 onClick={() => setOpen(o => !o)} style={{ margin: 0, fontSize: 20, fontWeight: 500, color: 'var(--df-text)', fontFamily: ROBOTO, cursor: 'pointer' }}>{title}</h3>
+                <span style={{ color: 'var(--df-faint-2)', fontSize: 13, fontFamily: ROBOTO, marginLeft: 4, alignSelf: 'flex-end', paddingBottom: 13 }}>
                     {items.length} {items.length > 1 ? 'articles' : 'article'}{items.length !== allItems.length ? ` sur ${allItems.length}` : ''}
                 </span>
                 <span style={{ marginLeft: 'auto' }} />
                 {copyable && items.length > 0 && <CopyTableButton items={items} />}
-                <span style={{ fontFamily: ROBOTO, fontSize: 18, fontWeight: 500, color: '#111827' }}>{formatPrice(sumPA(items))}</span>
+                <span style={{ fontFamily: ROBOTO, fontSize: 18, fontWeight: 500, color: 'var(--df-text)' }}>{formatPrice(sumPA(items))}</span>
             </div>
             {open && (
-                <div style={{ border: '1px solid #E0DED9', borderRadius: 8, overflow: 'hidden', background: 'white' }}>
+                <div style={{ border: '1px solid var(--df-border)', borderRadius: 8, overflow: 'hidden', background: 'var(--df-bg)' }}>
                     {allItems.length === 0 ? (
-                        <div style={{ padding: '14px 12px', fontSize: 13, color: '#9CA3AF' }}>Aucun article dans ce chapitre.</div>
+                        <div style={{ padding: '14px 12px', fontSize: 13, color: 'var(--df-faint)' }}>Aucun article dans ce chapitre.</div>
                     ) : (
                         // Sélectionnable à la souris (glisser puis Cmd+C) pour coller dans un e-mail.
                         // Largeurs fixes : les colonnes tombent au même endroit d'un tableau à l'autre.
@@ -193,7 +193,7 @@ function Section({ title, items: filtered, allItems = filtered, filters = {}, on
                             <tbody>
                                 {items.map((item, idx) => <ItemRows key={`${item.label}-${idx}`} item={item} last={idx === items.length - 1} />)}
                                 {items.length === 0 && (
-                                    <tr><td colSpan={7} style={{ ...TD, borderBottom: 'none', color: '#9CA3AF' }}>Aucun article ne correspond aux filtres.</td></tr>
+                                    <tr><td colSpan={7} style={{ ...TD, borderBottom: 'none', color: 'var(--df-faint)' }}>Aucun article ne correspond aux filtres.</td></tr>
                                 )}
                             </tbody>
                         </table>
@@ -212,43 +212,43 @@ function ItemRows({ item, last }) {
     const onRowClick = () => { if (!String(window.getSelection?.() || '').trim()) setOpen(o => !o); };
     return (
         <>
-            <tr onClick={onRowClick} style={{ cursor: 'pointer', background: open ? '#F7F7F5' : 'white' }}>
-                <td style={{ ...TD, ...lastBorder, color: '#9B9A97', textAlign: 'center' }}>{open ? <ChevronDown size={16} /> : <ChevronRight size={16} />}</td>
-                <td style={{ ...TD, ...lastBorder, fontWeight: 500 }}>{item.fournisseur || <span style={{ color: '#D1D5DB' }}>—</span>}</td>
+            <tr onClick={onRowClick} style={{ cursor: 'pointer', background: open ? 'var(--df-surface-3)' : 'var(--df-bg)' }}>
+                <td style={{ ...TD, ...lastBorder, color: 'var(--df-faint-2)', textAlign: 'center' }}>{open ? <ChevronDown size={16} /> : <ChevronRight size={16} />}</td>
+                <td style={{ ...TD, ...lastBorder, fontWeight: 500 }}>{item.fournisseur || <span style={{ color: 'var(--df-border-strong)' }}>—</span>}</td>
                 <td style={{ ...TD, ...lastBorder }}>{item.reference}</td>
                 <td style={{ ...TD, ...lastBorder }}>{item.coloris}</td>
-                <td style={{ ...TD, ...lastBorder, textAlign: 'right', color: '#6B7280' }}>{item.laize || ''}</td>
+                <td style={{ ...TD, ...lastBorder, textAlign: 'right', color: 'var(--df-muted)' }}>{item.laize || ''}</td>
                 {/* L'unité est portée par la ligne, pas par le chapitre : un même
                     chapitre mélange des articles au mètre et à l'unité. */}
                 <td style={{ ...TD, ...lastBorder, textAlign: 'right' }} title={item.arrondiStores ? 'Métrage des stores arrondi au demi-mètre supérieur (une fois pour ce tissu)' : undefined}>
-                    {formatQty(item.qty)} <span style={{ color: '#6B7280' }}>{item.unit}</span>
-                    {item.arrondiStores && <div style={{ fontSize: 11, color: '#9B9A97' }}>stores arrondis au ½ m</div>}
+                    {formatQty(item.qty)} <span style={{ color: 'var(--df-muted)' }}>{item.unit}</span>
+                    {item.arrondiStores && <div style={{ fontSize: 11, color: 'var(--df-faint-2)' }}>stores arrondis au ½ m</div>}
                 </td>
                 <td style={{ ...TD, ...lastBorder, textAlign: 'right', fontWeight: 600 }}>{formatPrice(item.pa)}</td>
             </tr>
             {open && (
                 <tr>
-                    <td colSpan={7} style={{ ...TD, padding: '4px 12px 12px 48px', background: '#F7F7F5', ...(last ? { borderBottom: 'none' } : null) }}>
+                    <td colSpan={7} style={{ ...TD, padding: '4px 12px 12px 48px', background: 'var(--df-surface-3)', ...(last ? { borderBottom: 'none' } : null) }}>
                         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                             <thead>
                                 <tr>
                                     {['Minute', 'Zone', 'Pièce', 'Produit', 'Détail / dimensions'].map(h => (
-                                        <th key={h} style={{ ...TH, background: 'transparent', fontSize: 12, color: '#6B7280', padding: '8px 8px' }}>{h}</th>
+                                        <th key={h} style={{ ...TH, background: 'transparent', fontSize: 12, color: 'var(--df-muted)', padding: '8px 8px' }}>{h}</th>
                                     ))}
-                                    <th style={{ ...TH, background: 'transparent', fontSize: 12, color: '#6B7280', padding: '8px 8px', textAlign: 'right' }}>Qté ({item.unit})</th>
-                                    <th style={{ ...TH, background: 'transparent', fontSize: 12, color: '#6B7280', padding: '8px 8px', textAlign: 'right' }}>Coût</th>
+                                    <th style={{ ...TH, background: 'transparent', fontSize: 12, color: 'var(--df-muted)', padding: '8px 8px', textAlign: 'right' }}>Qté ({item.unit})</th>
+                                    <th style={{ ...TH, background: 'transparent', fontSize: 12, color: 'var(--df-muted)', padding: '8px 8px', textAlign: 'right' }}>Coût</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {item.sources.map((src, i) => {
-                                    const cell = { padding: '7px 8px', fontSize: 13, color: '#374151', borderBottom: i === item.sources.length - 1 ? 'none' : '1px solid #E8E6E2' };
+                                    const cell = { padding: '7px 8px', fontSize: 13, color: 'var(--df-text-2)', borderBottom: i === item.sources.length - 1 ? 'none' : '1px solid var(--df-border-soft)' };
                                     return (
                                         <tr key={i}>
-                                            <td style={{ ...cell, color: '#6B7280' }}>{src.minute}</td>
+                                            <td style={{ ...cell, color: 'var(--df-muted)' }}>{src.minute}</td>
                                             <td style={cell}>{src.zone}</td>
                                             <td style={cell}>{src.piece}</td>
                                             <td style={cell}>{src.produit}</td>
-                                            <td style={{ ...cell, color: '#6B7280' }}>{src.detail}</td>
+                                            <td style={{ ...cell, color: 'var(--df-muted)' }}>{src.detail}</td>
                                             <td style={{ ...cell, textAlign: 'right' }}>{formatQty(src.qty)}</td>
                                             <td style={{ ...cell, textAlign: 'right', fontWeight: 500 }}>{formatPrice(src.pa)}</td>
                                         </tr>

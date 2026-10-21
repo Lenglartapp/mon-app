@@ -7,9 +7,9 @@ import {
 import { X } from 'lucide-react';
 
 const STATUT_STYLE = {
-  'Brouillon':      { bg: '#F3F4F6', color: '#6B7280' },
-  'En préparation': { bg: '#FEF3C7', color: '#92400E' },
-  'Expédiée':       { bg: '#D1FAE5', color: '#065F46' },
+  'Brouillon':      { bg: 'var(--df-surface-2)', color: 'var(--df-muted)' },
+  'En préparation': { bg: 'var(--df-amber-bg)', color: 'var(--df-warn-text)' },
+  'Expédiée':       { bg: 'var(--df-green-bg)', color: 'var(--df-x-065F46)' },
 };
 
 function getWeekInfo(dateStr) {
@@ -41,10 +41,10 @@ function WeekTooltip({ active, payload }) {
   if (!active || !payload?.[0]) return null;
   const d = payload[0].payload;
   return (
-    <div style={{ background: 'white', border: '1px solid #E0DED9', borderRadius: 8, padding: '10px 14px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', fontSize: 12 }}>
+    <div style={{ background: 'var(--df-bg)', border: '1px solid var(--df-border)', borderRadius: 8, padding: '10px 14px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', fontSize: 12 }}>
       <div style={{ fontWeight: 700, marginBottom: 4 }}>{d.fullLabel}</div>
-      <div style={{ color: '#6B7280' }}>{d.count} expédition{d.count > 1 ? 's' : ''}</div>
-      <div style={{ marginTop: 6, color: '#9CA3AF', fontSize: 11 }}>Clic pour le détail</div>
+      <div style={{ color: 'var(--df-muted)' }}>{d.count} expédition{d.count > 1 ? 's' : ''}</div>
+      <div style={{ marginTop: 6, color: 'var(--df-faint)', fontSize: 11 }}>Clic pour le détail</div>
     </div>
   );
 }
@@ -53,15 +53,15 @@ function WeekTooltip({ active, payload }) {
 function ScatterTooltip({ active, payload }) {
   if (!active || !payload?.[0]) return null;
   const d = payload[0].payload;
-  const signalColor = d.ratio === null ? '#9CA3AF'
-    : d.ratio > 1   ? '#EF4444'
+  const signalColor = d.ratio === null ? 'var(--df-faint)'
+    : d.ratio > 1   ? 'var(--df-danger)'
     : d.ratio > 0.5 ? '#F59E0B'
     : '#10B981';
   return (
-    <div style={{ background: 'white', border: '1px solid #E0DED9', borderRadius: 8, padding: '10px 14px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', fontSize: 12, maxWidth: 220 }}>
-      <div style={{ fontWeight: 700, color: '#111827', marginBottom: 6 }}>{d.name}</div>
-      <div style={{ color: '#6B7280' }}>{d.y} expédition{d.y > 1 ? 's' : ''}</div>
-      <div style={{ color: '#6B7280' }}>{d.allocHours > 0 ? `${d.allocHours}h allouées` : 'Budget non renseigné'}</div>
+    <div style={{ background: 'var(--df-bg)', border: '1px solid var(--df-border)', borderRadius: 8, padding: '10px 14px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', fontSize: 12, maxWidth: 220 }}>
+      <div style={{ fontWeight: 700, color: 'var(--df-text)', marginBottom: 6 }}>{d.name}</div>
+      <div style={{ color: 'var(--df-muted)' }}>{d.y} expédition{d.y > 1 ? 's' : ''}</div>
+      <div style={{ color: 'var(--df-muted)' }}>{d.allocHours > 0 ? `${d.allocHours}h allouées` : 'Budget non renseigné'}</div>
       {d.ratio !== null && (
         <div style={{ marginTop: 4, fontWeight: 700, color: signalColor }}>
           {d.ratio} expéd. / 100h
@@ -78,7 +78,7 @@ function ScatterDot(props) {
   return (
     <g>
       <circle cx={cx} cy={cy} r={7} fill={fill} stroke="white" strokeWidth={2} style={{ cursor: 'default' }} />
-      <text x={cx} y={cy - 12} textAnchor="middle" fontSize={10} fill="#374151">{name}</text>
+      <text x={cx} y={cy - 12} textAnchor="middle" fontSize={10} fill="var(--df-text-2)">{name}</text>
     </g>
   );
 }
@@ -145,36 +145,36 @@ export default function LogistiqueAnalyseView({ shipments, items, projects, onBa
     setSelectedWeek(prev => prev === item.key ? null : item.key);
   };
 
-  const CARD = { background: 'white', borderRadius: 12, border: '1px solid #E0DED9', padding: 20 };
+  const CARD = { background: 'var(--df-bg)', borderRadius: 12, border: '1px solid var(--df-border)', padding: 20 };
 
   // ── Panneau latéral ──────────────────────────────────────────────────────────
   const sidePanel = selectedWeekData && (
     <div style={{
       width: 300, flexShrink: 0,
       ...(embedded
-        ? { border: '1px solid #E0DED9', borderRadius: 12, background: 'white', overflow: 'hidden', alignSelf: 'flex-start' }
-        : { borderLeft: '1px solid #E5E7EB', background: 'white', display: 'flex', flexDirection: 'column', overflow: 'hidden' }
+        ? { border: '1px solid var(--df-border)', borderRadius: 12, background: 'var(--df-bg)', overflow: 'hidden', alignSelf: 'flex-start' }
+        : { borderLeft: '1px solid var(--df-border-2)', background: 'var(--df-bg)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }
       ),
     }}>
-      <div style={{ padding: '16px 20px', borderBottom: '1px solid #E5E7EB', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+      <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--df-border-2)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
-          <div style={{ fontWeight: 700, fontSize: 14, color: '#111827' }}>{selectedWeekData.fullLabel}</div>
-          <div style={{ fontSize: 12, color: '#6B7280', marginTop: 3 }}>
+          <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--df-text)' }}>{selectedWeekData.fullLabel}</div>
+          <div style={{ fontSize: 12, color: 'var(--df-muted)', marginTop: 3 }}>
             {selectedWeekData.count} expédition{selectedWeekData.count > 1 ? 's' : ''}
             {selectedWeekData.count > avgCount && (
-              <span style={{ marginLeft: 6, fontWeight: 700, color: '#EF4444' }}>
+              <span style={{ marginLeft: 6, fontWeight: 700, color: 'var(--df-danger)' }}>
                 +{Math.round((selectedWeekData.count - avgCount) * 10) / 10} vs moy.
               </span>
             )}
           </div>
         </div>
         <button onClick={() => setSelectedWeek(null)}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', padding: 4, marginTop: -2 }}>
+          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--df-faint)', padding: 4, marginTop: -2 }}>
           <X size={16} />
         </button>
       </div>
       <div style={{ overflowY: 'auto', padding: '12px 20px', maxHeight: embedded ? 400 : undefined, flex: embedded ? undefined : 1 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 10 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--df-muted)', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 10 }}>
           Expéditions ({selectedWeekData.shipmentList.length})
         </div>
         {selectedWeekData.shipmentList.map(s => {
@@ -184,14 +184,14 @@ export default function LogistiqueAnalyseView({ shipments, items, projects, onBa
             .filter(Boolean).join(', ') || null;
           const st = STATUT_STYLE[s.statut] || {};
           return (
-            <div key={s.id} style={{ padding: '10px 0', borderBottom: '1px solid #F3F4F6' }}>
+            <div key={s.id} style={{ padding: '10px 0', borderBottom: '1px solid var(--df-surface-2)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-                <div style={{ fontWeight: 600, fontSize: 13, color: '#111827', minWidth: 0 }}>{s.label || s.reference}</div>
+                <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--df-text)', minWidth: 0 }}>{s.label || s.reference}</div>
                 <span style={{ background: st.bg, color: st.color, borderRadius: 99, padding: '2px 8px', fontSize: 10, fontWeight: 700, whiteSpace: 'nowrap', flexShrink: 0 }}>{s.statut}</span>
               </div>
-              <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2 }}>{s.reference}</div>
-              {projectNames && <div style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>{projectNames}</div>}
-              {s.destination && <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 1 }}>{s.destination}</div>}
+              <div style={{ fontSize: 11, color: 'var(--df-faint)', marginTop: 2 }}>{s.reference}</div>
+              {projectNames && <div style={{ fontSize: 11, color: 'var(--df-muted)', marginTop: 2 }}>{projectNames}</div>}
+              {s.destination && <div style={{ fontSize: 11, color: 'var(--df-faint)', marginTop: 1 }}>{s.destination}</div>}
             </div>
           );
         })}
@@ -205,23 +205,23 @@ export default function LogistiqueAnalyseView({ shipments, items, projects, onBa
 
       {/* Section 1 : Courbe par semaine */}
       <div>
-        <div style={{ fontSize: 15, fontWeight: 700, color: '#111827', marginBottom: 2 }}>Rythme d'expédition par semaine</div>
-        <div style={{ fontSize: 12, color: '#9CA3AF', marginBottom: 14 }}>
+        <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--df-text)', marginBottom: 2 }}>Rythme d'expédition par semaine</div>
+        <div style={{ fontSize: 12, color: 'var(--df-faint)', marginBottom: 14 }}>
           Cliquez sur un point pour voir le détail de la semaine. Moyenne : <strong>{avgCount}</strong> expédition{avgCount > 1 ? 's' : ''}/semaine.
         </div>
         <div style={CARD}>
           {weekData.length === 0 ? (
-            <div style={{ padding: 40, textAlign: 'center', color: '#9CA3AF', fontSize: 13 }}>Aucune expédition avec date renseignée.</div>
+            <div style={{ padding: 40, textAlign: 'center', color: 'var(--df-faint)', fontSize: 13 }}>Aucune expédition avec date renseignée.</div>
           ) : (
             <ResponsiveContainer width="100%" height={260}>
               <ComposedChart data={weekData} margin={{ top: 16, right: 16, bottom: 40, left: 0 }}
                 onClick={handleChartClick} style={{ cursor: 'pointer' }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
-                <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#9CA3AF' }} angle={-35} textAnchor="end" interval={0} height={50} />
-                <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} width={28} />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--df-surface-2)" />
+                <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'var(--df-faint)' }} angle={-35} textAnchor="end" interval={0} height={50} />
+                <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: 'var(--df-faint)' }} axisLine={false} tickLine={false} width={28} />
                 <Tooltip content={<WeekTooltip />} />
-                <ReferenceLine y={avgCount} stroke="#E5E7EB" strokeDasharray="4 4"
-                  label={{ value: `Moy. ${avgCount}`, position: 'insideTopRight', fontSize: 10, fill: '#9CA3AF' }}
+                <ReferenceLine y={avgCount} stroke="var(--df-border-2)" strokeDasharray="4 4"
+                  label={{ value: `Moy. ${avgCount}`, position: 'insideTopRight', fontSize: 10, fill: 'var(--df-faint)' }}
                 />
                 <Line
                   type="monotone" dataKey="count" name="Expéditions"
@@ -235,7 +235,7 @@ export default function LogistiqueAnalyseView({ shipments, items, projects, onBa
                     const isSelected = payload.key === selectedWeek;
                     return (
                       <circle key={`dot-${cx}`} cx={cx} cy={cy} r={isSelected ? 7 : 4}
-                        fill={isSelected ? '#1E2447' : '#6366F1'}
+                        fill={isSelected ? 'var(--df-primary)' : '#6366F1'}
                         stroke="white" strokeWidth={2}
                       />
                     );
@@ -249,31 +249,31 @@ export default function LogistiqueAnalyseView({ shipments, items, projects, onBa
 
       {/* Section 2 : Scatter par projet */}
       <div>
-        <div style={{ fontSize: 15, fontWeight: 700, color: '#111827', marginBottom: 2 }}>Expéditions par projet</div>
-        <div style={{ fontSize: 12, color: '#9CA3AF', marginBottom: 14 }}>
+        <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--df-text)', marginBottom: 2 }}>Expéditions par projet</div>
+        <div style={{ fontSize: 12, color: 'var(--df-faint)', marginBottom: 14 }}>
           Axe horizontal : heures allouées. Axe vertical : nombre d'expéditions. Un projet en haut à gauche génère beaucoup d'expéditions pour peu d'heures allouées — signal d'alerte.
         </div>
         {scatterData.length === 0 ? (
-          <div style={{ ...CARD, padding: 40, textAlign: 'center', color: '#9CA3AF', fontSize: 13 }}>Aucune expédition liée à un projet.</div>
+          <div style={{ ...CARD, padding: 40, textAlign: 'center', color: 'var(--df-faint)', fontSize: 13 }}>Aucune expédition liée à un projet.</div>
         ) : (
           <div style={CARD}>
             <ResponsiveContainer width="100%" height={Math.max(320, scatterData.length * 18)}>
               <ScatterChart margin={{ top: 24, right: 24, bottom: 24, left: 8 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--df-surface-2)" />
                 <XAxis type="number" dataKey="x" name="Heures allouées"
-                  label={{ value: 'Heures allouées', position: 'insideBottom', offset: -12, fontSize: 11, fill: '#9CA3AF' }}
-                  tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false}
+                  label={{ value: 'Heures allouées', position: 'insideBottom', offset: -12, fontSize: 11, fill: 'var(--df-faint)' }}
+                  tick={{ fontSize: 11, fill: 'var(--df-faint)' }} axisLine={false} tickLine={false}
                 />
                 <YAxis type="number" dataKey="y" name="Expéditions" allowDecimals={false}
-                  label={{ value: 'Expéditions', angle: -90, position: 'insideLeft', offset: 10, fontSize: 11, fill: '#9CA3AF' }}
-                  tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false}
+                  label={{ value: 'Expéditions', angle: -90, position: 'insideLeft', offset: 10, fontSize: 11, fill: 'var(--df-faint)' }}
+                  tick={{ fontSize: 11, fill: 'var(--df-faint)' }} axisLine={false} tickLine={false}
                 />
                 <ZAxis range={[80, 80]} />
                 <Tooltip content={<ScatterTooltip />} />
                 <Scatter data={scatterData} shape={<ScatterDot />}>
                   {scatterData.map(d => {
-                    const fill = d.ratio === null ? '#C7D2FE'
-                      : d.ratio > 1   ? '#EF4444'
+                    const fill = d.ratio === null ? 'var(--df-x-C7D2FE)'
+                      : d.ratio > 1   ? 'var(--df-danger)'
                       : d.ratio > 0.5 ? '#F59E0B'
                       : '#10B981';
                     return <Cell key={d.projectId} fill={fill} />;
@@ -285,10 +285,10 @@ export default function LogistiqueAnalyseView({ shipments, items, projects, onBa
               {[
                 ['#10B981', 'OK',     '≤ 0.5 expéd./100h'],
                 ['#F59E0B', 'Modéré', '0.5 – 1 expéd./100h'],
-                ['#EF4444', 'Élevé',  '> 1 expéd./100h'],
-                ['#C7D2FE', '',       'Budget non renseigné'],
+                ['var(--df-danger)', 'Élevé',  '> 1 expéd./100h'],
+                ['var(--df-x-C7D2FE)', '',       'Budget non renseigné'],
               ].map(([color, level, label]) => (
-                <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#6B7280' }}>
+                <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--df-muted)' }}>
                   <div style={{ width: 10, height: 10, borderRadius: '50%', background: color, flexShrink: 0 }} />
                   {level && <span style={{ fontWeight: 700, color }}>{level}</span>}
                   <span>{label}</span>
@@ -314,14 +314,14 @@ export default function LogistiqueAnalyseView({ shipments, items, projects, onBa
 
   // ── Mode standalone (accès direct) ──────────────────────────────────────────
   return (
-    <div style={{ minHeight: '100vh', background: '#FFFFFF', display: 'flex', overflow: 'hidden' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--df-bg)', display: 'flex', overflow: 'hidden' }}>
       <div style={{ flex: 1, overflowY: 'auto', padding: 24, display: 'flex', flexDirection: 'column', gap: 24, minWidth: 0 }}>
         <div>
-          <button onClick={onBack} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6B7280', fontWeight: 600, fontSize: 13, marginBottom: 4, padding: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
+          <button onClick={onBack} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--df-muted)', fontWeight: 600, fontSize: 13, marginBottom: 4, padding: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
             ← Retour
           </button>
-          <h1 style={{ fontSize: 28, fontWeight: 700, color: '#1F2937', margin: 0, letterSpacing: '-0.5px' }}>Analyse logistique</h1>
-          <p style={{ fontSize: 13, color: '#9CA3AF', margin: '4px 0 0' }}>{shipments.length} expédition{shipments.length > 1 ? 's' : ''} au total</p>
+          <h1 style={{ fontSize: 28, fontWeight: 700, color: 'var(--df-text-1b)', margin: 0, letterSpacing: '-0.5px' }}>Analyse logistique</h1>
+          <p style={{ fontSize: 13, color: 'var(--df-faint)', margin: '4px 0 0' }}>{shipments.length} expédition{shipments.length > 1 ? 's' : ''} au total</p>
         </div>
         {sections}
       </div>

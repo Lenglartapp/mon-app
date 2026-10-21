@@ -58,7 +58,7 @@ export default function FormulaAssist({ query, options, onPick, preview }) {
         right: 0,
         top: "100%",
         marginTop: 6,
-        background: "#fff",
+        background: "var(--df-bg)",
         border: `1px solid ${COLORS.border}`,
         borderRadius: 8,
         boxShadow: "0 10px 24px rgba(0,0,0,.12)",
@@ -89,7 +89,7 @@ export default function FormulaAssist({ query, options, onPick, preview }) {
               justifyContent: "space-between",
               padding: "8px 10px",
               cursor: "pointer",
-              background: i === active ? "#f3f4f6" : "#fff",
+              background: i === active ? "var(--df-surface-2)" : "var(--df-bg)",
               borderBottom: `1px solid ${COLORS.border}`,
               fontSize: 13,
             }}
@@ -111,14 +111,14 @@ export default function FormulaAssist({ query, options, onPick, preview }) {
             padding: 8,
             borderTop: `1px solid ${COLORS.border}`,
             fontSize: 12,
-            background: "#fafafa",
+            background: "var(--df-surface-5)",
           }}
         >
           <b>Aperçu</b> :{" "}
           {preview.ok ? (
             String(preview.value)
           ) : (
-            <span style={{ color: "#b91c1c" }}>—</span>
+            <span style={{ color: "var(--df-danger-text)" }}>—</span>
           )}
         </div>
       )}

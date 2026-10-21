@@ -66,24 +66,24 @@ export default function StatusChangeDialog({ to, minuteName, figures = {}, reque
         </>
       )}
     >
-      <div style={{ fontSize: 13, color: '#6B7280', lineHeight: 1.5 }}>{cfg.text}</div>
+      <div style={{ fontSize: 13, color: 'var(--df-muted)', lineHeight: 1.5 }}>{cfg.text}</div>
       <div style={{ marginTop: 16, display: 'grid', gap: 0 }}>
         {rows.map(([label, value, strong]) => (
-          <div key={label} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '8px 0', borderTop: '1px solid #E8E6E2', fontSize: 13 }}>
-            <span style={{ color: '#374151' }}>{label}</span>
-            <span style={{ color: '#111827', fontWeight: strong ? 500 : 400 }}>{value}</span>
+          <div key={label} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '8px 0', borderTop: '1px solid var(--df-border-soft)', fontSize: 13 }}>
+            <span style={{ color: 'var(--df-text-2)' }}>{label}</span>
+            <span style={{ color: 'var(--df-text)', fontWeight: strong ? 500 : 400 }}>{value}</span>
           </div>
         ))}
       </div>
       <div style={{ marginTop: 16 }}>
-        <div style={{ fontSize: 13, color: '#6B7280', marginBottom: 6 }}>{cfg.label}</div>
+        <div style={{ fontSize: 13, color: 'var(--df-muted)', marginBottom: 6 }}>{cfg.label}</div>
         <textarea
           autoFocus={!!cfg.required}
           value={comment}
           onChange={(e) => setComment(e.target.value)}
           placeholder={cfg.placeholder}
           rows={3}
-          style={{ width: '100%', boxSizing: 'border-box', borderRadius: 8, border: '1px solid #E0DED9', padding: '8px 10px', fontSize: 13, fontFamily: 'inherit', resize: 'vertical', outline: 'none' }}
+          style={{ width: '100%', boxSizing: 'border-box', borderRadius: 8, border: '1px solid var(--df-border)', padding: '8px 10px', fontSize: 13, fontFamily: 'inherit', resize: 'vertical', outline: 'none' }}
         />
       </div>
     </DaDialog>

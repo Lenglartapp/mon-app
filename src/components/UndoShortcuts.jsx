@@ -51,7 +51,7 @@ export default function UndoShortcuts() {
       role="status"
       style={{
         position: 'fixed', left: '50%', bottom: 24, transform: 'translateX(-50%)', zIndex: 2000,
-        background: '#1E2447', color: 'white', borderRadius: 8, padding: '9px 16px',
+        background: 'var(--df-primary)', color: 'white', borderRadius: 8, padding: '9px 16px',
         fontSize: 13, fontFamily: 'Roboto, system-ui, sans-serif', boxShadow: '0 10px 25px rgba(17,24,39,0.25)',
         maxWidth: 'calc(100vw - 32px)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
       }}

@@ -4,7 +4,7 @@ import React from "react";
 // Kpi : petit libellé gris, grand chiffre fin (Roboto 300), total en gris, barre fine et pastille %.
 
 const FONT = "Roboto, system-ui, sans-serif";
-const SOFT_BG = "#F4F4F4";
+const SOFT_BG = "var(--df-surface)";
 
 export function SoftBlock({ title, subtitle, actions, children, style }) {
   return (
@@ -13,7 +13,7 @@ export function SoftBlock({ title, subtitle, actions, children, style }) {
         // Sur téléphone, les actions passent sous le titre au lieu de l'écraser.
         <header style={{ display: "flex", alignItems: "flex-start", flexWrap: "wrap", gap: 8, marginBottom: 20 }}>
           <div style={{ minWidth: 0, flex: "1 1 170px" }}>
-            {title && <h3 style={{ margin: 0, fontSize: 17, fontWeight: 500, color: "#1F2A37" }}>{title}</h3>}
+            {title && <h3 style={{ margin: 0, fontSize: 17, fontWeight: 500, color: "var(--df-ink-3)" }}>{title}</h3>}
             {subtitle && <div style={{ fontSize: 13, color: "#8A8F98", marginTop: 2 }}>{subtitle}</div>}
           </div>
           {actions && <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8 }}>{actions}</div>}
@@ -24,11 +24,11 @@ export function SoftBlock({ title, subtitle, actions, children, style }) {
   );
 }
 
-const BAR = { over: "#E5484D", done: "#30A46C", normal: "#1E2447" };
+const BAR = { over: "#E5484D", done: "#30A46C", normal: "var(--df-primary)" };
 const PILL = {
-  over: { bg: "#FDECEC", color: "#B42318" },
-  done: { bg: "#E6F4EC", color: "#1B7A4B" },
-  normal: { bg: "#E9EBEE", color: "#5B616B" },
+  over: { bg: "var(--df-x-FDECEC)", color: "var(--df-x-B42318)" },
+  done: { bg: "var(--df-x-E6F4EC)", color: "#1B7A4B" },
+  normal: { bg: "var(--df-x-E9EBEE)", color: "var(--df-x-5B616B)" },
 };
 
 function toneOf(pct, doneIsGreen) {
@@ -64,12 +64,12 @@ export function Kpi({ label, value, unit, total, pct, note, sub, doneIsGreen = f
       ) : (
         <>
           <div style={{ marginTop: 6, display: "flex", alignItems: "baseline", gap: 6, fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>
-            <span style={{ fontSize: 34, fontWeight: 300, color: "#1F2A37", letterSpacing: "-0.02em", lineHeight: 1.05 }}>{value}</span>
-            {unit && <span style={{ fontSize: 16, fontWeight: 300, color: "#5B616B" }}>{unit}</span>}
+            <span style={{ fontSize: 34, fontWeight: 300, color: "var(--df-ink-3)", letterSpacing: "-0.02em", lineHeight: 1.05 }}>{value}</span>
+            {unit && <span style={{ fontSize: 16, fontWeight: 300, color: "var(--df-x-5B616B)" }}>{unit}</span>}
             {total != null && <span style={{ fontSize: 14, color: "#A0A5AD" }}>/ {total}</span>}
           </div>
           {pct != null && (
-            <div style={{ height: 3, borderRadius: 2, background: "#E4E4E4", marginTop: 12, overflow: "hidden" }}>
+            <div style={{ height: 3, borderRadius: 2, background: "var(--df-x-E4E4E4)", marginTop: 12, overflow: "hidden" }}>
               <div style={{ width: `${Math.max(0, Math.min(pct, 100))}%`, height: "100%", borderRadius: 2, background: BAR[t], transition: "width .4s ease" }} />
             </div>
           )}

@@ -34,8 +34,8 @@ const renderMentions = (text, keyPrefix) => {
                     sx={{
                         height: 20,
                         fontSize: 11,
-                        bgcolor: '#DBEAFE',
-                        color: '#1E40AF',
+                        bgcolor: 'var(--df-blue-bg-2)',
+                        color: 'var(--df-x-1E40AF)',
                         fontWeight: 600,
                         mx: 0.2,
                         '& .MuiChip-label': { px: 0.5 }

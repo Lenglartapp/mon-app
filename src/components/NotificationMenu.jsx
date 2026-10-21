@@ -41,14 +41,14 @@ export default function NotificationMenu({ anchorEl, open, onClose, onAction }) 
             PaperProps={{ sx: { width: 380, borderRadius: '12px', mt: 1, boxShadow: '0 20px 40px rgba(17,24,39,0.18)', fontFamily: 'Roboto, system-ui, sans-serif' } }}
         >
             {/* En-tête */}
-            <div style={{ padding: '16px 18px 12px', borderBottom: '1px solid #E8E6E2' }}>
+            <div style={{ padding: '16px 18px 12px', borderBottom: '1px solid var(--df-border-soft)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                    <span style={{ fontSize: 18, fontWeight: 400, color: '#111827' }}>Notifications</span>
+                    <span style={{ fontSize: 18, fontWeight: 400, color: 'var(--df-text)' }}>Notifications</span>
                     {unread.length > 0 && (
                         <button
                             type="button"
                             onClick={markAllAsRead}
-                            style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', fontSize: 12, fontWeight: 500, color: '#1E2447', fontFamily: 'inherit' }}
+                            style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', fontSize: 12, fontWeight: 500, color: 'var(--df-primary-text)', fontFamily: 'inherit' }}
                         >
                             Tout marquer comme lu
                         </button>
@@ -77,27 +77,27 @@ export default function NotificationMenu({ anchorEl, open, onClose, onAction }) 
                         }}
                         style={{
                             display: 'flex', gap: 12, alignItems: 'flex-start', padding: '12px 18px', cursor: 'pointer',
-                            background: n.read ? 'white' : '#EEF4FD', borderBottom: '1px solid #F0EFEC',
+                            background: n.read ? 'var(--df-bg)' : 'var(--df-selected)', borderBottom: '1px solid var(--df-x-F0EFEC)',
                         }}
-                        onMouseEnter={(e) => { e.currentTarget.style.background = '#F4F4F4'; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.background = n.read ? 'white' : '#EEF4FD'; }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--df-surface)'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = n.read ? 'var(--df-bg)' : 'var(--df-selected)'; }}
                     >
-                        <div style={{ width: 30, height: 30, borderRadius: 99, flexShrink: 0, display: 'grid', placeItems: 'center', background: '#E8EAF2', color: '#1E2447', fontSize: 11, fontWeight: 500 }}>
+                        <div style={{ width: 30, height: 30, borderRadius: 99, flexShrink: 0, display: 'grid', placeItems: 'center', background: 'var(--df-navy-bg)', color: 'var(--df-primary-text)', fontSize: 11, fontWeight: 500 }}>
                             {initials(n.sender_name)}
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: 13, fontWeight: 500, color: '#111827' }}>
+                            <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--df-text)' }}>
                                 {n.title === 'Mention' ? `${n.sender_name} vous a mentionné` : n.title}
                             </div>
-                            <div style={{ fontSize: 13, color: '#4B5563', marginTop: 2, lineHeight: 1.45 }}>{n.message}</div>
-                            <div style={{ fontSize: 12, color: '#9CA3AF', marginTop: 4 }}>{formatTimeAgo(n.created_at)}</div>
+                            <div style={{ fontSize: 13, color: 'var(--df-text-3)', marginTop: 2, lineHeight: 1.45 }}>{n.message}</div>
+                            <div style={{ fontSize: 12, color: 'var(--df-faint)', marginTop: 4 }}>{formatTimeAgo(n.created_at)}</div>
                         </div>
-                        {!n.read && <span style={{ width: 8, height: 8, borderRadius: 99, background: '#1E2447', marginTop: 6, flexShrink: 0 }} />}
+                        {!n.read && <span style={{ width: 8, height: 8, borderRadius: 99, background: 'var(--df-primary)', marginTop: 6, flexShrink: 0 }} />}
                     </div>
                 ))}
 
                 {displayList.length === 0 && (
-                    <div style={{ padding: '40px 18px', textAlign: 'center', color: '#9CA3AF', fontSize: 13 }}>Aucune notification.</div>
+                    <div style={{ padding: '40px 18px', textAlign: 'center', color: 'var(--df-faint)', fontSize: 13 }}>Aucune notification.</div>
                 )}
             </div>
         </Popover>

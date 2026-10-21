@@ -3,9 +3,9 @@ import { Plus, Edit2, Trash2, CheckCircle, Clock, Circle, CalendarDays, Link, Ta
 import ActionFicheModal from './ActionFicheModal';
 
 const STATUT_CONFIG = {
-  A_FAIRE: { label: 'À faire', color: '#6B7280', bg: '#F3F4F6', Icon: Circle },
-  EN_COURS: { label: 'En cours', color: '#2563EB', bg: '#DBEAFE', Icon: Clock },
-  TERMINE: { label: 'Terminé', color: '#059669', bg: '#D1FAE5', Icon: CheckCircle },
+  A_FAIRE: { label: 'À faire', color: 'var(--df-muted)', bg: 'var(--df-surface-2)', Icon: Circle },
+  EN_COURS: { label: 'En cours', color: 'var(--df-blue)', bg: 'var(--df-blue-bg-2)', Icon: Clock },
+  TERMINE: { label: 'Terminé', color: '#059669', bg: 'var(--df-green-bg)', Icon: CheckCircle },
 };
 
 function StatutPill({ statut }) {
@@ -28,21 +28,21 @@ function ActionCard({ action, projects, onEdit, onDelete, canEdit }) {
 
   return (
     <div style={{
-      background: 'white', borderRadius: 12, border: '1px solid #E0DED9',
+      background: 'var(--df-bg)', borderRadius: 12, border: '1px solid var(--df-border)',
       padding: 16, display: 'flex', flexDirection: 'column', gap: 10,
-      borderLeft: `4px solid ${STATUT_CONFIG[action.statut]?.color || '#E5E7EB'}`,
+      borderLeft: `4px solid ${STATUT_CONFIG[action.statut]?.color || 'var(--df-border-2)'}`,
     }}>
       {/* Header carte */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-        <span style={{ fontWeight: 700, fontSize: 15, color: '#111827', flex: 1 }}>{action.titre}</span>
+        <span style={{ fontWeight: 700, fontSize: 15, color: 'var(--df-text)', flex: 1 }}>{action.titre}</span>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
           <StatutPill statut={action.statut} />
           {canEdit && (
             <>
-              <button onClick={() => onEdit(action)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#9CA3AF', padding: 4 }}>
+              <button onClick={() => onEdit(action)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--df-faint)', padding: 4 }}>
                 <Edit2 size={14} />
               </button>
-              <button onClick={() => onDelete(action.id)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#EF4444', padding: 4 }}>
+              <button onClick={() => onDelete(action.id)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--df-danger)', padding: 4 }}>
                 <Trash2 size={14} />
               </button>
             </>
@@ -52,18 +52,18 @@ function ActionCard({ action, projects, onEdit, onDelete, canEdit }) {
 
       {/* Description */}
       {action.description && (
-        <p style={{ fontSize: 13, color: '#6B7280', margin: 0, lineHeight: 1.5 }}>{action.description}</p>
+        <p style={{ fontSize: 13, color: 'var(--df-muted)', margin: 0, lineHeight: 1.5 }}>{action.description}</p>
       )}
 
       {/* Tags : projet + raison */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
         {linkedProject && (
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#EFF6FF', color: '#1D4ED8', borderRadius: 6, padding: '2px 8px', fontSize: 12 }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'var(--df-blue-bg)', color: 'var(--df-x-1D4ED8)', borderRadius: 6, padding: '2px 8px', fontSize: 12 }}>
             <Link size={11} /> {linkedProject.name}
           </span>
         )}
         {action.linked_raison && action.linked_raison !== '__custom__' && (
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#FFFBEB', color: '#92400E', borderRadius: 6, padding: '2px 8px', fontSize: 12 }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'var(--df-chip-adv-bg)', color: 'var(--df-warn-text)', borderRadius: 6, padding: '2px 8px', fontSize: 12 }}>
             <Tag size={11} /> {action.linked_raison}
           </span>
         )}
@@ -71,10 +71,10 @@ function ActionCard({ action, projects, onEdit, onDelete, canEdit }) {
 
       {/* Pied de carte */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 12, color: '#6B7280' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 12, color: 'var(--df-muted)' }}>
           {action.responsable && <span>👤 {action.responsable}</span>}
           {action.date_cible && (
-            <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: isOverdue ? '#EF4444' : '#6B7280', fontWeight: isOverdue ? 600 : 400 }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: isOverdue ? 'var(--df-danger)' : 'var(--df-muted)', fontWeight: isOverdue ? 600 : 400 }}>
               <CalendarDays size={12} />
               {new Date(action.date_cible).toLocaleDateString('fr-FR')}
               {isOverdue && ' ⚠️'}
@@ -85,7 +85,7 @@ function ActionCard({ action, projects, onEdit, onDelete, canEdit }) {
 
       {/* Notes */}
       {action.notes && (
-        <div style={{ background: '#F4F4F4', borderRadius: 8, padding: '8px 12px', fontSize: 12, color: '#6B7280', borderLeft: '3px solid #E5E7EB' }}>
+        <div style={{ background: 'var(--df-surface)', borderRadius: 8, padding: '8px 12px', fontSize: 12, color: 'var(--df-muted)', borderLeft: '3px solid var(--df-border-2)' }}>
           {action.notes}
         </div>
       )}
@@ -142,13 +142,13 @@ export default function PerformanceActionsTab({ actions, projects, onAdd, onUpda
     <div>
       {/* Barre de contrôles */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
-        <div style={{ display: 'flex', background: 'white', borderRadius: 9999, padding: 3, gap: 3, border: '1px solid #E0DED9' }}>
+        <div style={{ display: 'flex', background: 'var(--df-bg)', borderRadius: 9999, padding: 3, gap: 3, border: '1px solid var(--df-border)' }}>
           {STATUT_TABS.map(t => (
             <button key={t.key} className="df-pill-tab" data-active={statutFilter === t.key} onClick={() => setStatutFilter(t.key)} style={{
               padding: '6px 14px', borderRadius: 9999, fontSize: 13, fontWeight: 500,
               border: 'none', cursor: 'pointer',
-              background: statutFilter === t.key ? '#1E2447' : 'transparent',
-              color: statutFilter === t.key ? 'white' : '#4B5563',
+              background: statutFilter === t.key ? 'var(--df-primary)' : 'transparent',
+              color: statutFilter === t.key ? 'white' : 'var(--df-text-3)',
               transition: 'all 0.15s',
             }}>{t.label}</button>
           ))}
@@ -158,12 +158,12 @@ export default function PerformanceActionsTab({ actions, projects, onAdd, onUpda
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Rechercher..."
-            style={{ border: '1px solid #E0DED9', borderRadius: 8, padding: '6px 12px', fontSize: 13, outline: 'none', width: 180 }}
+            style={{ border: '1px solid var(--df-border)', borderRadius: 8, padding: '6px 12px', fontSize: 13, outline: 'none', width: 180 }}
           />
           {canEdit && (
             <button onClick={() => setModal('new')} style={{
               display: 'flex', alignItems: 'center', gap: 6,
-              background: '#1E2447', color: 'white', border: 'none',
+              background: 'var(--df-primary)', color: 'white', border: 'none',
               borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer',
             }}>
               <Plus size={16} /> Nouvelle fiche
@@ -174,7 +174,7 @@ export default function PerformanceActionsTab({ actions, projects, onAdd, onUpda
 
       {/* Grille de fiches */}
       {filtered.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: 60, color: '#9CA3AF', fontSize: 14 }}>
+        <div style={{ textAlign: 'center', padding: 60, color: 'var(--df-faint)', fontSize: 14 }}>
           {actions.length === 0
             ? 'Aucune fiche d\'action. Créez-en une pour suivre vos plans d\'amélioration.'
             : 'Aucune fiche correspondant aux filtres.'}

@@ -260,7 +260,7 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
         border: 'none',
         background: 'transparent',
         fontSize: 13,
-        color: '#111827',
+        color: 'var(--df-text)',
         outline: 'none',
         fontFamily: 'inherit', // Hériter la police de l'app (pas de monospace)
         cursor: 'pointer',
@@ -271,12 +271,12 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
         <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }} />
 
-            <div style={{ position: 'relative', width: 720, background: 'white', borderRadius: 12, boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', padding: 0, overflow: 'hidden', animation: 'fadeIn 0.2s ease-out' }}>
+            <div style={{ position: 'relative', width: 720, background: 'var(--df-bg)', borderRadius: 12, boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', padding: 0, overflow: 'hidden', animation: 'fadeIn 0.2s ease-out' }}>
 
                 {/* Header */}
-                <div style={{ padding: '20px 24px', borderBottom: '1px solid #F3F4F6', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#FAFAFA' }}>
-                    <h3 style={{ fontSize: 18, fontWeight: 700, margin: 0, color: '#111827' }}>Planifier une activité</h3>
-                    <button onClick={onClose} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#6B7280' }}><X size={20} /></button>
+                <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--df-surface-2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--df-surface-5)' }}>
+                    <h3 style={{ fontSize: 18, fontWeight: 700, margin: 0, color: 'var(--df-text)' }}>Planifier une activité</h3>
+                    <button onClick={onClose} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--df-muted)' }}><X size={20} /></button>
                 </div>
 
                 <fieldset disabled={readOnly} style={{ border: 'none', padding: 0, margin: 0, minInlineSize: 'auto', display: 'contents' }}>
@@ -284,50 +284,50 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
 
                         {/* 1. PROJET (ou type d'absence si on édite un congé/RTT/maladie) */}
                         <div>
-                            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 8, color: '#374151' }}>
+                            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 8, color: 'var(--df-text-2)' }}>
                                 {isAbsence ? "Type d'absence" : 'Projet / Client'}
                             </label>
                             {isAbsence ? (
-                                <div style={{ display: 'flex', alignItems: 'center', border: '1px solid #E0DED9', borderRadius: 8, padding: '10px 12px', background: '#F4F4F4', color: '#374151', fontSize: 14 }}>
-                                    <Briefcase size={18} color="#9CA3AF" style={{ marginRight: 10 }} />
+                                <div style={{ display: 'flex', alignItems: 'center', border: '1px solid var(--df-border)', borderRadius: 8, padding: '10px 12px', background: 'var(--df-surface)', color: 'var(--df-text-2)', fontSize: 14 }}>
+                                    <Briefcase size={18} color="var(--df-faint)" style={{ marginRight: 10 }} />
                                     {eventToEdit?.title || eventToEdit?.meta?.type || 'Absence'}
                                 </div>
                             ) : (
-                            <div style={{ position: 'relative', display: 'flex', alignItems: 'center', border: '1px solid #E0DED9', borderRadius: 8, padding: '10px 12px', background: 'white', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
-                                <Briefcase size={18} color="#9CA3AF" style={{ marginRight: 10 }} />
+                            <div style={{ position: 'relative', display: 'flex', alignItems: 'center', border: '1px solid var(--df-border)', borderRadius: 8, padding: '10px 12px', background: 'var(--df-bg)', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+                                <Briefcase size={18} color="var(--df-faint)" style={{ marginRight: 10 }} />
                                 <input
                                     autoFocus
                                     value={projectSearch}
                                     onChange={e => { setProjectSearch(e.target.value); setShowProjectList(true); setSelectedProject(null); }}
                                     onFocus={() => setShowProjectList(true)}
                                     placeholder="Rechercher un dossier..."
-                                    style={{ border: 'none', outline: 'none', width: '100%', fontSize: 14, color: '#111827', fontFamily: 'inherit' }}
+                                    style={{ border: 'none', outline: 'none', width: '100%', fontSize: 14, color: 'var(--df-text)', fontFamily: 'inherit', background: 'transparent' }}
                                 />
                                 {selectedProject && <Check size={18} color="#10B981" />}
                             </div>
                             )}
                             {showProjectList && projectSearch.length > 0 && !selectedProject && (
-                                <div style={{ position: 'absolute', width: '100%', maxHeight: 200, overflowY: 'auto', background: 'white', border: '1px solid #E0DED9', borderRadius: 8, marginTop: 4, zIndex: 20, boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}>
+                                <div style={{ position: 'absolute', width: '100%', maxHeight: 200, overflowY: 'auto', background: 'var(--df-bg)', border: '1px solid var(--df-border)', borderRadius: 8, marginTop: 4, zIndex: 20, boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}>
                                     {filteredProjects.length > 0 ? filteredProjects.map(p => (
                                         <div
                                             key={p.id}
                                             onClick={() => { setSelectedProject(p); setProjectSearch(p.name); setShowProjectList(false); }}
-                                            style={{ padding: '10px 12px', fontSize: 14, cursor: 'pointer', borderBottom: '1px solid #F9FAFB', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                                            style={{ padding: '10px 12px', fontSize: 14, cursor: 'pointer', borderBottom: '1px solid var(--df-surface-4)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
                                         >
-                                            <span style={{ fontWeight: 500, color: '#111827' }}>{p.name}</span>
-                                            <span style={{ fontSize: 12, color: '#9CA3AF', background: '#F3F4F6', padding: '2px 6px', borderRadius: 4 }}>#{p.id.toString().slice(-4)}</span>
+                                            <span style={{ fontWeight: 500, color: 'var(--df-text)' }}>{p.name}</span>
+                                            <span style={{ fontSize: 12, color: 'var(--df-faint)', background: 'var(--df-surface-2)', padding: '2px 6px', borderRadius: 4 }}>#{p.id.toString().slice(-4)}</span>
                                         </div>
                                     )) : (
-                                        <div style={{ padding: 12, fontSize: 13, color: '#9CA3AF' }}>Aucun dossier à ce nom.</div>
+                                        <div style={{ padding: 12, fontSize: 13, color: 'var(--df-faint)' }}>Aucun dossier à ce nom.</div>
                                     )}
                                     {/* Repli : temps qui n'appartient à aucun dossier client */}
                                     {showInternalOption && (
                                         <div
                                             onClick={selectInternal}
-                                            style={{ padding: '10px 12px', fontSize: 14, cursor: 'pointer', borderTop: '1px solid #E5E7EB', background: '#FEFCE8' }}
+                                            style={{ padding: '10px 12px', fontSize: 14, cursor: 'pointer', borderTop: '1px solid var(--df-border-2)', background: 'var(--df-warn-bg)' }}
                                         >
-                                            <div style={{ fontWeight: 600, color: '#111827' }}>{INTERNAL_PROJECT_NAME}</div>
-                                            <div style={{ fontSize: 12, color: '#6B7280', marginTop: 2 }}>
+                                            <div style={{ fontWeight: 600, color: 'var(--df-text)' }}>{INTERNAL_PROJECT_NAME}</div>
+                                            <div style={{ fontSize: 12, color: 'var(--df-muted)', marginTop: 2 }}>
                                                 Prototype, étude, cotes anticipées… — temps hors dossier
                                             </div>
                                         </div>
@@ -338,8 +338,8 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
                             {/* CHAPITRE — obligatoire sur le dossier interne, c'est lui qui porte le suivi */}
                             {isInternalSelected && (
                                 <div style={{ marginTop: 12, position: 'relative' }}>
-                                    <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 8, color: '#374151' }}>
-                                        Chapitre <span style={{ color: '#9CA3AF', fontWeight: 400 }}>— ex. prototype bambou, Fab Lab</span>
+                                    <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 8, color: 'var(--df-text-2)' }}>
+                                        Chapitre <span style={{ color: 'var(--df-faint)', fontWeight: 400 }}>— ex. prototype bambou, Fab Lab</span>
                                     </label>
                                     <input
                                         value={chapter}
@@ -347,15 +347,15 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
                                         onFocus={() => setShowChapterList(true)}
                                         onBlur={() => setTimeout(() => setShowChapterList(false), 150)}
                                         placeholder="Nom du chapitre"
-                                        style={{ width: '100%', border: '1px solid #E0DED9', borderRadius: 8, padding: '10px 12px', fontSize: 14, color: '#111827', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }}
+                                        style={{ width: '100%', border: '1px solid var(--df-border)', borderRadius: 8, padding: '10px 12px', fontSize: 14, color: 'var(--df-text)', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }}
                                     />
                                     {showChapterList && chapterSuggestions.length > 0 && (
-                                        <div style={{ position: 'absolute', width: '100%', maxHeight: 180, overflowY: 'auto', background: 'white', border: '1px solid #E0DED9', borderRadius: 8, marginTop: 4, zIndex: 20, boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}>
+                                        <div style={{ position: 'absolute', width: '100%', maxHeight: 180, overflowY: 'auto', background: 'var(--df-bg)', border: '1px solid var(--df-border)', borderRadius: 8, marginTop: 4, zIndex: 20, boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}>
                                             {chapterSuggestions.map(c => (
                                                 <div
                                                     key={c.name}
                                                     onMouseDown={() => { setChapter(c.name); setShowChapterList(false); }}
-                                                    style={{ padding: '9px 12px', fontSize: 14, cursor: 'pointer', borderBottom: '1px solid #F9FAFB', color: '#111827' }}
+                                                    style={{ padding: '9px 12px', fontSize: 14, cursor: 'pointer', borderBottom: '1px solid var(--df-surface-4)', color: 'var(--df-text)' }}
                                                 >
                                                     {c.name}
                                                 </div>
@@ -367,10 +367,10 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
 
                             {/* SYNTHÈSE BUDGET POSE */}
                             {poseStats && (
-                                <div style={{ backgroundColor: '#F3F4F6', borderRadius: 8, padding: 12, marginTop: 12, fontSize: 13, color: '#4B5563', border: '1px solid #E0DED9' }}>
+                                <div style={{ backgroundColor: 'var(--df-surface-2)', borderRadius: 8, padding: 12, marginTop: 12, fontSize: 13, color: 'var(--df-text-3)', border: '1px solid var(--df-border)' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
                                         <span>Budget Vendu (Pose) :</span>
-                                        <span style={{ fontWeight: 600, color: '#111827' }}>{fmtH(poseStats.sold)}h</span>
+                                        <span style={{ fontWeight: 600, color: 'var(--df-text)' }}>{fmtH(poseStats.sold)}h</span>
                                     </div>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
                                         <span>Déjà Planifié (à faire) :</span>
@@ -378,18 +378,18 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
                                     </div>
                                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                                         <span>Déjà Consommé (réalisé) :</span>
-                                        <span style={{ fontWeight: 600, color: '#6B7280' }}>{fmtH(poseStats.consumed)}h</span>
+                                        <span style={{ fontWeight: 600, color: 'var(--df-muted)' }}>{fmtH(poseStats.consumed)}h</span>
                                     </div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, paddingTop: 8, borderTop: '1px dashed #D1D5DB' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, paddingTop: 8, borderTop: '1px dashed var(--df-border-strong)' }}>
                                         <span>Reste à Planifier :</span>
-                                        <span style={{ fontWeight: 600, color: poseStats.remaining < 0 ? '#EF4444' : '#10B981' }}>{fmtH(poseStats.remaining)}h</span>
+                                        <span style={{ fontWeight: 600, color: poseStats.remaining < 0 ? 'var(--df-danger)' : '#10B981' }}>{fmtH(poseStats.remaining)}h</span>
                                     </div>
                                 </div>
                             )}
 
                             {/* DÉCOUCHÉ (pose uniquement) : l'équipe dort sur place */}
                             {selectedGroup === 'pose' && (
-                                <label style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 12, padding: '10px 12px', borderRadius: 8, border: `1px solid ${decouche ? '#6366F1' : '#E0DED9'}`, background: decouche ? '#EEF2FF' : '#fff', cursor: readOnly ? 'default' : 'pointer' }}>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 12, padding: '10px 12px', borderRadius: 8, border: `1px solid ${decouche ? '#6366F1' : 'var(--df-border)'}`, background: decouche ? 'var(--df-indigo-bg)' : 'var(--df-bg)', cursor: readOnly ? 'default' : 'pointer' }}>
                                     <input
                                         type="checkbox"
                                         checked={decouche}
@@ -397,14 +397,14 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
                                         onChange={(e) => setDecouche(e.target.checked)}
                                         style={{ width: 16, height: 16, cursor: readOnly ? 'default' : 'pointer', accentColor: '#6366F1' }}
                                     />
-                                    <BedDouble size={18} color={decouche ? '#4338CA' : '#6B7280'} />
-                                    <span style={{ fontSize: 13, fontWeight: 600, color: decouche ? '#3730A3' : '#374151' }}>Découché — nuit sur place</span>
+                                    <BedDouble size={18} color={decouche ? 'var(--df-x-4338CA)' : 'var(--df-muted)'} />
+                                    <span style={{ fontSize: 13, fontWeight: 600, color: decouche ? 'var(--df-chip-name)' : 'var(--df-text-2)' }}>Découché — nuit sur place</span>
                                 </label>
                             )}
 
                             {/* INTERVENTION DE NUIT (pose uniquement) : 18h → 8h par défaut, fin le lendemain */}
                             {selectedGroup === 'pose' && (
-                                <label style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 8, padding: '10px 12px', borderRadius: 8, border: `1px solid ${night ? '#1E2447' : '#E0DED9'}`, background: night ? '#EEF0F8' : '#fff', cursor: readOnly ? 'default' : 'pointer' }}>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 8, padding: '10px 12px', borderRadius: 8, border: `1px solid ${night ? 'var(--df-primary)' : 'var(--df-border)'}`, background: night ? 'var(--df-indigo-bg-2)' : 'var(--df-bg)', cursor: readOnly ? 'default' : 'pointer' }}>
                                     <input
                                         type="checkbox"
                                         checked={night}
@@ -415,17 +415,17 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
                                             if (on && startTime === '08:00' && endTime === '17:00') { setStartTime('18:00'); setEndTime('08:00'); }
                                             if (!on && startTime === '18:00' && endTime === '08:00') { setStartTime('08:00'); setEndTime('17:00'); }
                                         }}
-                                        style={{ width: 16, height: 16, cursor: readOnly ? 'default' : 'pointer', accentColor: '#1E2447' }}
+                                        style={{ width: 16, height: 16, cursor: readOnly ? 'default' : 'pointer', accentColor: 'var(--df-primary)' }}
                                     />
-                                    <Moon size={18} color={night ? '#1E2447' : '#6B7280'} />
-                                    <span style={{ fontSize: 13, fontWeight: 600, color: night ? '#1E2447' : '#374151' }}>Intervention de nuit — fin le lendemain matin</span>
+                                    <Moon size={18} color={night ? 'var(--df-primary)' : 'var(--df-muted)'} />
+                                    <span style={{ fontSize: 13, fontWeight: 600, color: night ? 'var(--df-primary)' : 'var(--df-text-2)' }}>Intervention de nuit — fin le lendemain matin</span>
                                 </label>
                             )}
                         </div>
 
                         {/* 2. DATES & HEURES / DURÉE */}
                         <div>
-                            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 8, color: '#374151' }}>
+                            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 8, color: 'var(--df-text-2)' }}>
                                 {isHourMode ? 'Période et durée journalière' : 'Période d\'intervention'}
                             </label>
 
@@ -433,8 +433,8 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
                                 /* MODE DURÉE — conf & prepa */
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                                     {/* Date début */}
-                                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', border: '1px solid #E0DED9', borderRadius: 8, padding: '10px 12px', background: '#F4F4F4' }}>
-                                        <CalendarIcon size={16} color="#6B7280" style={{ marginRight: 8, flexShrink: 0 }} />
+                                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', border: '1px solid var(--df-border)', borderRadius: 8, padding: '10px 12px', background: 'var(--df-surface)' }}>
+                                        <CalendarIcon size={16} color="var(--df-muted)" style={{ marginRight: 8, flexShrink: 0 }} />
                                         <input
                                             type="date" value={startDate} onChange={e => {
                                                 setStartDate(e.target.value);
@@ -444,11 +444,11 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
                                         />
                                     </div>
 
-                                    <ArrowRight size={18} color="#9CA3AF" />
+                                    <ArrowRight size={18} color="var(--df-faint)" />
 
                                     {/* Date fin */}
-                                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', border: '1px solid #E0DED9', borderRadius: 8, padding: '10px 12px', background: '#F4F4F4' }}>
-                                        <CalendarIcon size={16} color="#6B7280" style={{ marginRight: 8, flexShrink: 0 }} />
+                                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', border: '1px solid var(--df-border)', borderRadius: 8, padding: '10px 12px', background: 'var(--df-surface)' }}>
+                                        <CalendarIcon size={16} color="var(--df-muted)" style={{ marginRight: 8, flexShrink: 0 }} />
                                         <input
                                             type="date" value={endDate} min={startDate} onChange={e => setEndDate(e.target.value)}
                                             style={{ ...dateTimeInputStyle, flex: 1, minWidth: 0 }}
@@ -456,8 +456,8 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
                                     </div>
 
                                     {/* Durée par jour */}
-                                    <div style={{ display: 'flex', alignItems: 'center', border: '1px solid #E0DED9', borderRadius: 8, padding: '10px 12px', background: '#F4F4F4', gap: 8 }}>
-                                        <Clock size={16} color="#6B7280" style={{ flexShrink: 0 }} />
+                                    <div style={{ display: 'flex', alignItems: 'center', border: '1px solid var(--df-border)', borderRadius: 8, padding: '10px 12px', background: 'var(--df-surface)', gap: 8 }}>
+                                        <Clock size={16} color="var(--df-muted)" style={{ flexShrink: 0 }} />
                                         <input
                                             type="number"
                                             min="0.5" max="8" step="0.1"
@@ -465,38 +465,38 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
                                             onChange={e => setDurationHours(e.target.value)}
                                             style={{ ...dateTimeInputStyle, width: 48, textAlign: 'center' }}
                                         />
-                                        <span style={{ fontSize: 13, color: '#6B7280', fontWeight: 500 }}>h/j</span>
+                                        <span style={{ fontSize: 13, color: 'var(--df-muted)', fontWeight: 500 }}>h/j</span>
                                     </div>
                                 </div>
                             ) : (
                                 /* MODE CRÉNEAU — pose */
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                                     {/* Début */}
-                                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', border: '1px solid #E0DED9', borderRadius: 8, padding: '10px 12px', background: '#F4F4F4', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.02)' }}>
-                                        <CalendarIcon size={16} color="#6B7280" style={{ marginRight: 8, flexShrink: 0 }} />
+                                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', border: '1px solid var(--df-border)', borderRadius: 8, padding: '10px 12px', background: 'var(--df-surface)', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.02)' }}>
+                                        <CalendarIcon size={16} color="var(--df-muted)" style={{ marginRight: 8, flexShrink: 0 }} />
                                         <input
                                             type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
                                             style={{ ...dateTimeInputStyle, flex: 1, minWidth: 0 }}
                                         />
-                                        <div style={{ width: 1, height: 18, background: '#D1D5DB', margin: '0 10px' }} />
-                                        <Clock size={16} color="#6B7280" style={{ marginRight: 8, flexShrink: 0 }} />
+                                        <div style={{ width: 1, height: 18, background: 'var(--df-border-strong)', margin: '0 10px' }} />
+                                        <Clock size={16} color="var(--df-muted)" style={{ marginRight: 8, flexShrink: 0 }} />
                                         <input
                                             type="time" value={startTime} onChange={e => setStartTime(e.target.value)}
                                             style={{ ...dateTimeInputStyle, width: 80 }}
                                         />
                                     </div>
 
-                                    <ArrowRight size={18} color="#9CA3AF" />
+                                    <ArrowRight size={18} color="var(--df-faint)" />
 
                                     {/* Fin */}
-                                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', border: '1px solid #E0DED9', borderRadius: 8, padding: '10px 12px', background: '#F4F4F4', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.02)' }}>
-                                        <CalendarIcon size={16} color="#6B7280" style={{ marginRight: 8, flexShrink: 0 }} />
+                                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', border: '1px solid var(--df-border)', borderRadius: 8, padding: '10px 12px', background: 'var(--df-surface)', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.02)' }}>
+                                        <CalendarIcon size={16} color="var(--df-muted)" style={{ marginRight: 8, flexShrink: 0 }} />
                                         <input
                                             type="date" value={endDate} onChange={e => setEndDate(e.target.value)}
                                             style={{ ...dateTimeInputStyle, flex: 1, minWidth: 0 }}
                                         />
-                                        <div style={{ width: 1, height: 18, background: '#D1D5DB', margin: '0 10px' }} />
-                                        <Clock size={16} color="#6B7280" style={{ marginRight: 8, flexShrink: 0 }} />
+                                        <div style={{ width: 1, height: 18, background: 'var(--df-border-strong)', margin: '0 10px' }} />
+                                        <Clock size={16} color="var(--df-muted)" style={{ marginRight: 8, flexShrink: 0 }} />
                                         <input
                                             type="time" value={endTime} onChange={e => setEndTime(e.target.value)}
                                             style={{ ...dateTimeInputStyle, width: 80 }}
@@ -508,38 +508,38 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
 
                         {/* 3. RESSOURCES */}
                         <div>
-                            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 8, color: '#374151' }}>Ressources affectées</label>
+                            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 8, color: 'var(--df-text-2)' }}>Ressources affectées</label>
                             <div
                                 onClick={() => setShowResourceList(!showResourceList)}
-                                style={{ display: 'flex', alignItems: 'center', border: '1px solid #E0DED9', borderRadius: 8, padding: '12px 14px', cursor: 'pointer', justifyContent: 'space-between', background: 'white', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}
+                                style={{ display: 'flex', alignItems: 'center', border: '1px solid var(--df-border)', borderRadius: 8, padding: '12px 14px', cursor: 'pointer', justifyContent: 'space-between', background: 'var(--df-bg)', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}
                             >
                                 <div style={{ display: 'flex', alignItems: 'center', overflow: 'hidden' }}>
-                                    <User size={18} color="#9CA3AF" style={{ marginRight: 10, flexShrink: 0 }} />
-                                    <span style={{ fontSize: 14, color: selectedResources.length ? '#111827' : '#9CA3AF', fontWeight: selectedResources.length ? 500 : 400 }}>
+                                    <User size={18} color="var(--df-faint)" style={{ marginRight: 10, flexShrink: 0 }} />
+                                    <span style={{ fontSize: 14, color: selectedResources.length ? 'var(--df-text)' : 'var(--df-faint)', fontWeight: selectedResources.length ? 500 : 400 }}>
                                         {selectedResources.length === 0 ? "Qui doit intervenir ?" :
                                             `${selectedResources.length} ressource(s) sélectionnée(s)`}
                                     </span>
                                 </div>
-                                <ChevronDown size={16} color="#6B7280" />
+                                <ChevronDown size={16} color="var(--df-muted)" />
                             </div>
 
                             {showResourceList && (
-                                <div style={{ maxHeight: 200, overflowY: 'auto', background: 'white', border: '1px solid #E0DED9', borderRadius: 8, marginTop: 8, padding: 4, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}>
+                                <div style={{ maxHeight: 200, overflowY: 'auto', background: 'var(--df-bg)', border: '1px solid var(--df-border)', borderRadius: 8, marginTop: 8, padding: 4, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}>
                                     {['prepa', 'conf', 'pose'].map(grpKey => (
                                         <div key={grpKey}>
-                                            <div style={{ padding: '8px 12px', background: '#F3F4F6', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#6B7280', borderRadius: 4, margin: 4 }}>
+                                            <div style={{ padding: '8px 12px', background: 'var(--df-surface-2)', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--df-muted)', borderRadius: 4, margin: 4 }}>
                                                 {groupsConfig[grpKey].label}
                                             </div>
                                             {groupsConfig[grpKey].members.filter(m => m.id !== 'backlog_confection').map(member => (
                                                 <div
                                                     key={member.id}
                                                     onClick={() => toggleResource(member.id)}
-                                                    style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', cursor: 'pointer', margin: '0 4px', borderRadius: 6, background: selectedResources.includes(member.id) ? '#EFF6FF' : 'transparent' }}
+                                                    style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', cursor: 'pointer', margin: '0 4px', borderRadius: 6, background: selectedResources.includes(member.id) ? 'var(--df-blue-bg)' : 'transparent' }}
                                                 >
-                                                    <div style={{ width: 18, height: 18, border: selectedResources.includes(member.id) ? '1px solid #2563EB' : '1px solid #D1D5DB', borderRadius: 4, marginRight: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', background: selectedResources.includes(member.id) ? '#2563EB' : 'white', transition: 'all 0.2s' }}>
+                                                    <div style={{ width: 18, height: 18, border: selectedResources.includes(member.id) ? '1px solid var(--df-blue)' : '1px solid var(--df-border-strong)', borderRadius: 4, marginRight: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', background: selectedResources.includes(member.id) ? 'var(--df-blue)' : 'var(--df-bg)', transition: 'all 0.2s' }}>
                                                         {selectedResources.includes(member.id) && <Check size={12} color="white" />}
                                                     </div>
-                                                    <span style={{ fontSize: 13, fontWeight: selectedResources.includes(member.id) ? 600 : 400, color: '#374151' }}>{member.first_name} {member.last_name}</span>
+                                                    <span style={{ fontSize: 13, fontWeight: selectedResources.includes(member.id) ? 600 : 400, color: 'var(--df-text-2)' }}>{member.first_name} {member.last_name}</span>
                                                 </div>
                                             ))}
                                         </div>
@@ -550,12 +550,12 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
                         {/* 4. INSTRUCTIONS */}
                         <div>
 
-                            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 8, color: '#374151' }}>Instructions / Notes</label>
+                            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 8, color: 'var(--df-text-2)' }}>Instructions / Notes</label>
                             <textarea
                                 value={description}
                                 onChange={e => setDescription(e.target.value)}
                                 placeholder="Détails de l'intervention..."
-                                style={{ width: '100%', minHeight: 80, border: '1px solid #E0DED9', borderRadius: 8, padding: '10px 12px', fontSize: 14, fontFamily: 'inherit', resize: 'vertical' }}
+                                style={{ width: '100%', minHeight: 80, border: '1px solid var(--df-border)', borderRadius: 8, padding: '10px 12px', fontSize: 14, fontFamily: 'inherit', resize: 'vertical' }}
                             />
                         </div>
 
@@ -564,7 +564,7 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
                 </fieldset>
 
                 {/* Footer */}
-                <div style={{ padding: '20px 24px', background: '#F4F4F4', borderTop: '1px solid #F3F4F6', display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+                <div style={{ padding: '20px 24px', background: 'var(--df-surface)', borderTop: '1px solid var(--df-surface-2)', display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
                     {/* Une absence est toujours « validée » par nature : le garde-fou
                         « seul l'admin supprime un créneau validé » (pensé pour le travail
                         confirmé) ne doit pas empêcher l'ordo de retirer un congé/RTT/maladie. */}
@@ -573,7 +573,7 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
                     {eventToEdit && onDelete && canDelete && (isAbsence || eventToEdit.meta?.status !== 'validated' || currentUser?.role === 'admin' || (new Date(eventToEdit.meta?.start || eventToEdit.date) > new Date())) && !readOnly && (
                         <button
                             onClick={() => { onClose(); onDelete(eventToEdit); }}
-                            style={{ marginRight: 'auto', padding: '10px 16px', borderRadius: 8, border: '1px solid #fee2e2', background: '#fef2f2', color: '#ef4444', fontWeight: 600, cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}
+                            style={{ marginRight: 'auto', padding: '10px 16px', borderRadius: 8, border: '1px solid var(--df-danger-border)', background: 'var(--df-danger-bg)', color: 'var(--df-danger)', fontWeight: 600, cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}
                         >
                             <Trash2 size={16} /> Supprimer
                         </button>
@@ -588,13 +588,13 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
                         </button>
                     )}
 
-                    <button onClick={onClose} style={{ padding: '10px 20px', borderRadius: 8, border: '1px solid #D1D5DB', background: 'white', fontWeight: 600, color: '#374151', cursor: 'pointer', fontSize: 14 }}>{readOnly ? 'Fermer' : 'Annuler'}</button>
+                    <button onClick={onClose} style={{ padding: '10px 20px', borderRadius: 8, border: '1px solid var(--df-border-strong)', background: 'var(--df-bg)', fontWeight: 600, color: 'var(--df-text-2)', cursor: 'pointer', fontSize: 14 }}>{readOnly ? 'Fermer' : 'Annuler'}</button>
                     {!readOnly && (
                         <button
                             onClick={handleSubmit}
                             disabled={!canSubmit}
                             title={!canSubmit ? (isInternalSelected ? 'Renseignez le chapitre' : 'Choisissez un dossier et une ressource') : undefined}
-                            style={{ padding: '10px 24px', borderRadius: 8, border: 'none', background: '#111827', color: 'white', fontWeight: 600, cursor: canSubmit ? 'pointer' : 'not-allowed', opacity: canSubmit ? 1 : 0.45, fontSize: 14, boxShadow: '0 1px 2px rgba(0,0,0,0.1)' }}
+                            style={{ padding: '10px 24px', borderRadius: 8, border: 'none', background: 'var(--df-ink)', color: 'white', fontWeight: 600, cursor: canSubmit ? 'pointer' : 'not-allowed', opacity: canSubmit ? 1 : 0.45, fontSize: 14, boxShadow: '0 1px 2px rgba(0,0,0,0.1)' }}
                         >
                             {eventToEdit ? 'Enregistrer' : 'Planifier'}
                         </button>

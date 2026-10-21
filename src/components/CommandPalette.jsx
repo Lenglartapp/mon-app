@@ -27,12 +27,12 @@ const STATUS_LABEL = {
 };
 
 const STATUS_DOT = {
-  TODO:      '#9CA3AF',
+  TODO:      'var(--df-faint)',
   IN_PROGRESS: '#3B82F6',
   DONE:      '#10B981',
   SAV:       '#F59E0B',
-  ARCHIVED:  '#D1D5DB',
-  DRAFT:     '#9CA3AF',
+  ARCHIVED:  'var(--df-border-strong)',
+  DRAFT:     'var(--df-faint)',
   VALIDATED: '#10B981',
 };
 
@@ -161,7 +161,7 @@ const CommandPalette = React.forwardRef(function CommandPalette(
                   <span className="cmdk-item-badge" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                     <span style={{
                       width: 6, height: 6, borderRadius: '50%',
-                      background: STATUS_DOT[item.status] || '#9CA3AF',
+                      background: STATUS_DOT[item.status] || 'var(--df-faint)',
                       flexShrink: 0,
                     }} />
                     {STATUS_LABEL[item.status] || item.status}
