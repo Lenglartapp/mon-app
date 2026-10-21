@@ -6,9 +6,9 @@ import { fetchOdooPreview, syncOdoo, odooProjectUrl } from "../lib/odoo/odooPrev
 import { getConfig, setConfig } from "../lib/appConfig";
 
 const STATUS = {
-  linked:        { label: "Relié",      dot: "#10B981", bg: "#ECFDF5", text: "#065F46" },
-  pending_tasks: { label: "En attente", dot: "#F59E0B", bg: "#FFFBEB", text: "#92400E" },
-  not_found:     { label: "ID introuvable", dot: "#EF4444", bg: "#FEF2F2", text: "#991B1B" },
+  linked:        { label: "Relié",      dot: "#10B981", bg: "var(--df-success-bg)", text: "var(--df-x-065F46)" },
+  pending_tasks: { label: "En attente", dot: "#F59E0B", bg: "var(--df-chip-adv-bg)", text: "var(--df-warn-text)" },
+  not_found:     { label: "ID introuvable", dot: "var(--df-danger)", bg: "var(--df-danger-bg)", text: "var(--df-x-991B1B)" },
 };
 
 const fmtH = (n) => `${Math.round((n || 0) * 10) / 10}`.replace(".", ",") + " h";
@@ -122,7 +122,7 @@ export default function OdooSyncScreen({ events = [], projects = [], onBack }) {
           )}
           <div>
             <div style={{ fontWeight: 900, fontSize: 20, color: COLORS.text }}>Aperçu Odoo — remontée des temps</div>
-            <div style={{ fontSize: 13, color: "#6B7280" }}>
+            <div style={{ fontSize: 13, color: "var(--df-muted)" }}>
               Consommé validé, agrégé par projet et catégorie. Mode aperçu : rien n'est écrit dans Odoo.
             </div>
           </div>
@@ -130,7 +130,7 @@ export default function OdooSyncScreen({ events = [], projects = [], onBack }) {
       </div>
 
       <div style={S.contentWrap}>
-        <div style={{ display: "flex", gap: 10, alignItems: "flex-start", background: "#EFF6FF", border: "1px solid #BFDBFE", color: "#1E3A8A", borderRadius: 12, padding: "10px 14px", marginBottom: 14 }}>
+        <div style={{ display: "flex", gap: 10, alignItems: "flex-start", background: "var(--df-blue-bg)", border: "1px solid var(--df-x-BFDBFE)", color: "var(--df-blue-strong)", borderRadius: 12, padding: "10px 14px", marginBottom: 14 }}>
           <Info size={18} style={{ flexShrink: 0, marginTop: 1 }} />
           <div style={{ fontSize: 13 }}>
             Un projet remonte ses temps une fois <b>relié</b> : ouvre le dossier et colle son <b>ID projet Odoo</b> (encart « Consommation Temps »).
@@ -144,7 +144,7 @@ export default function OdooSyncScreen({ events = [], projects = [], onBack }) {
             {cutoffLoaded ? (
               <input type="date" value={cutoffDate || ""} onChange={(e) => changeCutoff(e.target.value)} style={{ ...S.smallBtn, cursor: "text" }} />
             ) : (
-              <span style={{ fontSize: 13, color: "#6B7280" }}>Chargement…</span>
+              <span style={{ fontSize: 13, color: "var(--df-muted)" }}>Chargement…</span>
             )}
           </label>
           <button onClick={runPreview} disabled={loading || rows.length === 0} style={{ ...S.smallBtn, background: COLORS.tile, color: "#fff", display: "flex", alignItems: "center", gap: 8, opacity: loading || rows.length === 0 ? 0.6 : 1 }}>
@@ -155,7 +155,7 @@ export default function OdooSyncScreen({ events = [], projects = [], onBack }) {
             <Upload size={16} className={syncing ? "spin" : undefined} />
             {syncing ? "Synchronisation…" : "Synchroniser vers Odoo"}
           </button>
-          <div style={{ fontSize: 13, color: "#6B7280" }}>
+          <div style={{ fontSize: 13, color: "var(--df-muted)" }}>
             {rows.length} projet{rows.length > 1 ? "s" : ""} avec du temps · {fmtH(totalHours)} · {linkedRows.length} relié{linkedRows.length > 1 ? "s" : ""}
           </div>
         </div>
@@ -169,14 +169,14 @@ export default function OdooSyncScreen({ events = [], projects = [], onBack }) {
         )}
 
         {syncMsg && (
-          <div style={{ display: "flex", gap: 10, alignItems: "flex-start", background: "#ECFDF5", border: "1px solid #A7F3D0", color: "#065F46", borderRadius: 12, padding: "10px 14px", marginBottom: 14 }}>
+          <div style={{ display: "flex", gap: 10, alignItems: "flex-start", background: "var(--df-success-bg)", border: "1px solid var(--df-green-bg-3)", color: "var(--df-x-065F46)", borderRadius: 12, padding: "10px 14px", marginBottom: 14 }}>
             <CheckCircle size={18} style={{ flexShrink: 0, marginTop: 1 }} />
             <div style={{ fontSize: 13 }}>{syncMsg}</div>
           </div>
         )}
 
         {error && (
-          <div style={{ display: "flex", gap: 10, alignItems: "flex-start", background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", borderRadius: 12, padding: "10px 14px", marginBottom: 14 }}>
+          <div style={{ display: "flex", gap: 10, alignItems: "flex-start", background: "var(--df-danger-bg)", border: "1px solid var(--df-x-FECACA)", color: "var(--df-x-991B1B)", borderRadius: 12, padding: "10px 14px", marginBottom: 14 }}>
             <AlertTriangle size={18} style={{ flexShrink: 0, marginTop: 1 }} />
             <div style={{ fontSize: 13 }}>{error}</div>
           </div>
@@ -205,11 +205,11 @@ export default function OdooSyncScreen({ events = [], projects = [], onBack }) {
               </thead>
               <tbody>
                 {rows.length === 0 && (
-                  <tr><td style={{ ...S.td, color: "#6B7280" }} colSpan={6}>Aucun temps validé à partir de cette date de bascule.</td></tr>
+                  <tr><td style={{ ...S.td, color: "var(--df-muted)" }} colSpan={6}>Aucun temps validé à partir de cette date de bascule.</td></tr>
                 )}
                 {rows.map((r, i) => (
                   <tr key={r.id} style={i % 2 ? S.trAlt : undefined}>
-                    <td style={{ ...S.td, fontWeight: 600 }}>{r.name || <em style={{ color: "#9CA3AF" }}>#{r.id}</em>}</td>
+                    <td style={{ ...S.td, fontWeight: 600 }}>{r.name || <em style={{ color: "var(--df-faint)" }}>#{r.id}</em>}</td>
                     <td style={{ ...S.td, textAlign: "right" }}>{r.hours.conf ? fmtH(r.hours.conf) : "—"}</td>
                     <td style={{ ...S.td, textAlign: "right" }}>{r.hours.prepa ? fmtH(r.hours.prepa) : "—"}</td>
                     <td style={{ ...S.td, textAlign: "right" }}>{r.hours.pose ? fmtH(r.hours.pose) : "—"}</td>
@@ -234,17 +234,17 @@ function Tile({ label, value, dot }) {
       <span style={{ width: 10, height: 10, borderRadius: "50%", background: dot }} />
       <div>
         <div style={{ fontSize: 22, fontWeight: 800, color: COLORS.text, lineHeight: 1 }}>{value}</div>
-        <div style={{ fontSize: 12, color: "#6B7280" }}>{label}</div>
+        <div style={{ fontSize: 12, color: "var(--df-muted)" }}>{label}</div>
       </div>
     </div>
   );
 }
 
 function StatusCell({ line, hasPreview, hasOdooId }) {
-  if (!hasOdooId) return <span style={{ color: "#9CA3AF", fontSize: 13 }}>Non relié — ID à saisir dans le dossier</span>;
-  if (!hasPreview) return <span style={{ color: "#9CA3AF", fontSize: 13 }}>— cliquer « Comparer »</span>;
-  if (!line) return <span style={{ color: "#9CA3AF" }}>—</span>;
-  const st = STATUS[line.status] || { label: line.status, dot: "#9CA3AF", bg: "#F4F4F4", text: "#374151" };
+  if (!hasOdooId) return <span style={{ color: "var(--df-faint)", fontSize: 13 }}>Non relié — ID à saisir dans le dossier</span>;
+  if (!hasPreview) return <span style={{ color: "var(--df-faint)", fontSize: 13 }}>— cliquer « Comparer »</span>;
+  if (!line) return <span style={{ color: "var(--df-faint)" }}>—</span>;
+  const st = STATUS[line.status] || { label: line.status, dot: "var(--df-faint)", bg: "var(--df-surface)", text: "var(--df-text-2)" };
 
   const chip = (
     <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "3px 10px", borderRadius: 999, background: st.bg, color: st.text, fontSize: 12, fontWeight: 600 }}>
@@ -257,10 +257,10 @@ function StatusCell({ line, hasPreview, hasOdooId }) {
     return (
       <span style={{ display: "inline-flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
         {chip}
-        <a href={odooProjectUrl(line.odooProject.id)} target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 4, color: "#2563EB", fontSize: 12 }}>
+        <a href={odooProjectUrl(line.odooProject.id)} target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 4, color: "var(--df-blue)", fontSize: 12 }}>
           #{line.odooProject.id} <ExternalLink size={12} />
         </a>
-        {line.status === "pending_tasks" && <span style={{ fontSize: 12, color: "#6B7280" }}>tâches non créées</span>}
+        {line.status === "pending_tasks" && <span style={{ fontSize: 12, color: "var(--df-muted)" }}>tâches non créées</span>}
       </span>
     );
   }

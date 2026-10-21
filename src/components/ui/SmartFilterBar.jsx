@@ -3,13 +3,13 @@ import { Search, X } from 'lucide-react';
 import Chip from '@mui/material/Chip';
 
 const FIELD_COLORS = {
-  name:     { bg: '#EEF2FF', text: '#3730A3' },
-  client:   { bg: '#FDF4FF', text: '#6B21A8' },
-  owner:    { bg: '#FFF7ED', text: '#9A3412' },
-  status:   { bg: '#F0FDF4', text: '#166534' },
-  all:      { bg: '#F3F4F6', text: '#374151' },
-  advanced: { bg: '#FFFBEB', text: '#92400E' },
-  default:  { bg: '#EDF7ED', text: '#1E4620' },
+  name:     { bg: 'var(--df-chip-name-bg)', text: 'var(--df-chip-name)' },
+  client:   { bg: 'var(--df-chip-client-bg)', text: 'var(--df-chip-client)' },
+  owner:    { bg: 'var(--df-chip-owner-bg)', text: 'var(--df-chip-owner)' },
+  status:   { bg: 'var(--df-chip-status-bg)', text: 'var(--df-chip-status)' },
+  all:      { bg: 'var(--df-surface-2)', text: 'var(--df-text-2)' },
+  advanced: { bg: 'var(--df-chip-adv-bg)', text: 'var(--df-warn-text)' },
+  default:  { bg: 'var(--df-chip-default-bg)', text: 'var(--df-chip-default)' },
 };
 
 export function SmartFilterBar({ activeFilters = [], onAddFilter, onRemoveFilter, fields = [], placeholder }) {
@@ -61,11 +61,11 @@ export function SmartFilterBar({ activeFilters = [], onAddFilter, onRemoveFilter
   return (
     <div ref={containerRef} style={{ position: 'relative', flex: 1, maxWidth: 600 }}>
       <div style={{
-        display: 'flex', alignItems: 'center', background: 'white', flexWrap: 'wrap', gap: 6,
-        border: `1px solid ${open ? '#6366F1' : '#E0DED9'}`, borderRadius: 8,
+        display: 'flex', alignItems: 'center', background: 'var(--df-bg)', flexWrap: 'wrap', gap: 6,
+        border: `1px solid ${open ? '#6366F1' : 'var(--df-border)'}`, borderRadius: 8,
         padding: '4px 10px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)', transition: 'border-color 0.15s',
       }}>
-        <Search size={16} color="#9CA3AF" style={{ flexShrink: 0 }} />
+        <Search size={16} color="var(--df-faint)" style={{ flexShrink: 0 }} />
 
         {activeFilters.map(filter => {
           const colors = FIELD_COLORS[filter.field] || FIELD_COLORS.default;
@@ -78,7 +78,7 @@ export function SmartFilterBar({ activeFilters = [], onAddFilter, onRemoveFilter
               sx={{
                 backgroundColor: colors.bg, color: colors.text,
                 fontWeight: 600, borderRadius: 1, fontSize: 12,
-                '& .MuiChip-deleteIcon': { color: colors.text, '&:hover': { color: '#000' } },
+                '& .MuiChip-deleteIcon': { color: colors.text, '&:hover': { color: 'var(--df-chip-del-hover)' } },
               }}
             />
           );
@@ -103,7 +103,7 @@ export function SmartFilterBar({ activeFilters = [], onAddFilter, onRemoveFilter
         {text && (
           <button
             onClick={() => { setText(''); setOpen(false); }}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, color: '#9CA3AF', display: 'flex', alignItems: 'center' }}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, color: 'var(--df-faint)', display: 'flex', alignItems: 'center' }}
           >
             <X size={14} />
           </button>
@@ -113,9 +113,9 @@ export function SmartFilterBar({ activeFilters = [], onAddFilter, onRemoveFilter
       {open && suggestions.length > 0 && (
         <div style={{
           position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0,
-          background: 'white', borderRadius: 8,
+          background: 'var(--df-bg)', borderRadius: 8,
           boxShadow: '0 10px 25px -5px rgba(0,0,0,0.15), 0 4px 6px -2px rgba(0,0,0,0.05)',
-          border: '1px solid #E0DED9', zIndex: 1000, overflow: 'hidden',
+          border: '1px solid var(--df-border)', zIndex: 1000, overflow: 'hidden',
         }}>
           {suggestions.map((field, i) => {
             const isAllFields = field.id === 'all';
@@ -127,15 +127,15 @@ export function SmartFilterBar({ activeFilters = [], onAddFilter, onRemoveFilter
                 onMouseLeave={() => setHovered(null)}
                 style={{
                   width: '100%', display: 'flex', alignItems: 'center', gap: 10,
-                  padding: '9px 14px', background: hovered === field.id ? '#F4F4F4' : 'white',
-                  border: 'none', borderTop: isAllFields ? '1px solid #F3F4F6' : 'none',
+                  padding: '9px 14px', background: hovered === field.id ? 'var(--df-surface)' : 'var(--df-bg)',
+                  border: 'none', borderTop: isAllFields ? '1px solid var(--df-surface-2)' : 'none',
                   cursor: 'pointer', textAlign: 'left', fontSize: 14,
                 }}
               >
-                <Search size={13} color="#9CA3AF" style={{ flexShrink: 0 }} />
-                <span style={{ color: '#6B7280' }}>
+                <Search size={13} color="var(--df-faint)" style={{ flexShrink: 0 }} />
+                <span style={{ color: 'var(--df-muted)' }}>
                   Rechercher{' '}
-                  <strong style={{ color: '#111827' }}>{field.label}</strong>
+                  <strong style={{ color: 'var(--df-text)' }}>{field.label}</strong>
                   {' '}pour :{' '}
                   <span style={{ color: '#6366F1', fontWeight: 600 }}>{trimmed}</span>
                 </span>

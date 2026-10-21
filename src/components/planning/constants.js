@@ -2,13 +2,13 @@ export const INITIAL_GROUPS_CONFIG = {
     prepa: {
         id: 'prepa',
         label: 'Préparation',
-        bg: '#F4F4F4',
+        bg: 'var(--df-surface)',
         members: [] // Sera rempli dynamiquement
     },
     conf: {
         id: 'conf',
         label: 'Confection',
-        bg: '#F4F4F4',
+        bg: 'var(--df-surface)',
         members: [
             { id: 'backlog_confection', first_name: 'BACKLOG', last_name: 'SEMAINE' } // Ressource Virtuelle
         ]
@@ -16,29 +16,29 @@ export const INITIAL_GROUPS_CONFIG = {
     pose: {
         id: 'pose',
         label: 'Pose',
-        bg: '#F4F4F4',
+        bg: 'var(--df-surface)',
         members: []
     }
 };
 
 // Palette de couleurs distinctes assignées par projet (via hash du projectId)
 const PROJECT_COLOR_PALETTE = [
-    { bg: '#DBEAFE', border: '#3B82F6', text: '#1E40AF' }, // Bleu
-    { bg: '#DCFCE7', border: '#16A34A', text: '#166534' }, // Vert
-    { bg: '#FEF9C3', border: '#CA8A04', text: '#854D0E' }, // Jaune
-    { bg: '#FCE7F3', border: '#DB2777', text: '#9D174D' }, // Rose
-    { bg: '#EDE9FE', border: '#7C3AED', text: '#5B21B6' }, // Violet
-    { bg: '#FFEDD5', border: '#EA580C', text: '#9A3412' }, // Orange
-    { bg: '#CFFAFE', border: '#0891B2', text: '#155E75' }, // Cyan
-    { bg: '#ECFDF5', border: '#059669', text: '#064E3B' }, // Émeraude
-    { bg: '#FEF2F2', border: '#DC2626', text: '#7F1D1D' }, // Rouge vif
-    { bg: '#F5F3FF', border: '#6D28D9', text: '#4C1D95' }, // Indigo
-    { bg: '#FFF7ED', border: '#C2410C', text: '#7C2D12' }, // Ambre
-    { bg: '#F0FDF4', border: '#15803D', text: '#14532D' }, // Vert foncé
-    { bg: '#EFF6FF', border: '#1D4ED8', text: '#1E3A8A' }, // Bleu roi
-    { bg: '#FDF2F8', border: '#A21CAF', text: '#701A75' }, // Fuchsia
-    { bg: '#F0FDFA', border: '#0D9488', text: '#134E4A' }, // Teal
-    { bg: '#FFFBEB', border: '#D97706', text: '#78350F' }, // Miel
+    { bg: 'var(--df-blue-bg-2)', border: '#3B82F6', text: 'var(--df-x-1E40AF)' }, // Bleu
+    { bg: 'var(--df-green-bg-2)', border: '#16A34A', text: 'var(--df-chip-status)' }, // Vert
+    { bg: 'var(--df-yellow-bg)', border: '#CA8A04', text: 'var(--df-x-854D0E)' }, // Jaune
+    { bg: 'var(--df-rose-hover)', border: '#DB2777', text: 'var(--df-x-9D174D)' }, // Rose
+    { bg: 'var(--df-violet-bg-2)', border: '#7C3AED', text: 'var(--df-x-5B21B6)' }, // Violet
+    { bg: 'var(--df-orange-bg)', border: '#EA580C', text: 'var(--df-chip-owner)' }, // Orange
+    { bg: 'var(--df-x-CFFAFE)', border: '#0891B2', text: 'var(--df-x-155E75)' }, // Cyan
+    { bg: 'var(--df-success-bg)', border: '#059669', text: 'var(--df-green-strong)' }, // Émeraude
+    { bg: 'var(--df-danger-bg)', border: '#DC2626', text: 'var(--df-x-7F1D1D)' }, // Rouge vif
+    { bg: 'var(--df-violet-bg)', border: '#6D28D9', text: 'var(--df-x-4C1D95)' }, // Indigo
+    { bg: 'var(--df-chip-owner-bg)', border: 'var(--df-x-C2410C)', text: 'var(--df-x-7C2D12)' }, // Ambre
+    { bg: 'var(--df-chip-status-bg)', border: 'var(--df-x-15803D)', text: 'var(--df-x-14532D)' }, // Vert foncé
+    { bg: 'var(--df-blue-bg)', border: 'var(--df-x-1D4ED8)', text: 'var(--df-blue-strong)' }, // Bleu roi
+    { bg: 'var(--df-x-FDF2F8)', border: '#A21CAF', text: 'var(--df-x-701A75)' }, // Fuchsia
+    { bg: 'var(--df-x-F0FDFA)', border: '#0D9488', text: 'var(--df-x-134E4A)' }, // Teal
+    { bg: 'var(--df-chip-adv-bg)', border: '#D97706', text: 'var(--df-x-78350F)' }, // Miel
 ];
 
 function _hashProjectId(projectId) {
@@ -57,11 +57,11 @@ export function getProjectColor(projectId) {
 }
 
 export const PLANNING_COLORS = {
-    pose: { bg: '#DCFCE7', border: '#4ADE80', text: '#166534' },  // Vert
-    conf: { bg: '#DBEAFE', border: "#60A5FA", text: "#1E40AF" },  // Bleu
-    prepa: { bg: '#FEF9C3', border: "#FACC15", text: "#854D0E" }, // Jaune
-    absence: { bg: "#FEE2E2", border: "#EF4444", text: "#991B1B", pattern: true }, // Rouge
-    default: { bg: '#F3F4F6', border: "#9CA3AF", text: "#374151" } // Gris
+    pose: { bg: 'var(--df-green-bg-2)', border: '#4ADE80', text: 'var(--df-chip-status)' },  // Vert
+    conf: { bg: 'var(--df-blue-bg-2)', border: "#60A5FA", text: "var(--df-x-1E40AF)" },  // Bleu
+    prepa: { bg: 'var(--df-yellow-bg)', border: "#FACC15", text: "var(--df-x-854D0E)" }, // Jaune
+    absence: { bg: "var(--df-danger-border)", border: "var(--df-danger)", text: "var(--df-x-991B1B)", pattern: true }, // Rouge
+    default: { bg: 'var(--df-surface-2)', border: "var(--df-faint)", text: "var(--df-text-2)" } // Gris
 };
 
 // CONSTANTES DIMENSION

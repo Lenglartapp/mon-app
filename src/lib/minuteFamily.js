@@ -38,11 +38,13 @@ export function buildFamilyTabs(minutes, current) {
   return tabs;
 }
 
-// Couleur d'intercalaire : dégradé bleu nuit (#1E2447, l'original) → bleu clair (dernier).
-const NAVY = [30, 36, 71];
-const LIGHT = [168, 182, 218];
+// Couleur d'intercalaire : dégradé bleu nuit (l'original) → bleu clair (dernier).
+// Mélange de couleurs nommées : identique en clair, adapté en mode sombre.
 export function variantShade(index, count) {
   const t = count <= 1 ? 0 : index / (count - 1);
-  const c = NAVY.map((v, k) => Math.round(v + (LIGHT[k] - v) * t));
-  return { bg: `rgb(${c.join(",")})`, fg: t > 0.55 ? "#1E2447" : "#FFFFFF" };
+  const pct = Math.round((1 - t) * 1000) / 10;
+  return {
+    bg: `color-mix(in srgb, var(--df-primary) ${pct}%, var(--df-variant-light))`,
+    fg: t > 0.55 ? "var(--df-variant-fg)" : "#FFFFFF",
+  };
 }

@@ -98,18 +98,18 @@ export default function HistoryPanel({ isOpen, onClose, projects = [], events = 
                         style={{
                             display: 'flex', alignItems: 'center', gap: 8,
                             padding: '8px 10px', borderRadius: 8, cursor: 'pointer',
-                            background: '#FAFAFA', border: '1px solid #F3F4F6',
+                            background: 'var(--df-surface-5)', border: '1px solid var(--df-surface-2)',
                             borderLeft: `3px solid ${col.border}`,
                         }}
-                        onMouseEnter={e => e.currentTarget.style.background = '#F3F4F6'}
-                        onMouseLeave={e => e.currentTarget.style.background = '#FAFAFA'}
+                        onMouseEnter={e => e.currentTarget.style.background = 'var(--df-surface-2)'}
+                        onMouseLeave={e => e.currentTarget.style.background = 'var(--df-surface-5)'}
                     >
                         <div style={{ minWidth: 0, flex: 1 }}>
-                            <div style={{ fontSize: 13, fontWeight: 600, color: '#111827' }}>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--df-text)' }}>
                                 {format(d, 'EEE d MMM yyyy', { locale: fr })}
-                                <span style={{ fontSize: 11, fontWeight: 500, color: '#9CA3AF', marginLeft: 6 }}>sem. {getISOWeek(d)}</span>
+                                <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--df-faint)', marginLeft: 6 }}>sem. {getISOWeek(d)}</span>
                             </div>
-                            <div style={{ fontSize: 12, color: '#6B7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            <div style={{ fontSize: 12, color: 'var(--df-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                 {userName(evt.resourceId)}
                             </div>
                         </div>
@@ -132,64 +132,64 @@ export default function HistoryPanel({ isOpen, onClose, projects = [], events = 
     return (
         <div style={{
             position: 'fixed', top: 0, right: 0, bottom: 0, width: 400, maxWidth: '92vw',
-            background: 'white', borderLeft: '1px solid #E5E7EB',
+            background: 'var(--df-bg)', borderLeft: '1px solid var(--df-border-2)',
             boxShadow: '-8px 0 24px rgba(0,0,0,0.08)', zIndex: 1200,
             display: 'flex', flexDirection: 'column',
         }}>
             {/* En-tête */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 18px', borderBottom: '1px solid #F3F4F6' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 18px', borderBottom: '1px solid var(--df-surface-2)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <Clock size={18} color="#111827" />
-                    <span style={{ fontSize: 16, fontWeight: 700, color: '#111827' }}>Historique</span>
+                    <Clock size={18} color="var(--df-text)" />
+                    <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--df-text)' }}>Historique</span>
                 </div>
-                <button onClick={onClose} title="Fermer" style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#6B7280', display: 'flex' }}>
+                <button onClick={onClose} title="Fermer" style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--df-muted)', display: 'flex' }}>
                     <X size={20} />
                 </button>
             </div>
 
             {/* Recherche projet */}
-            <div style={{ padding: '14px 18px', borderBottom: '1px solid #F3F4F6' }}>
+            <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--df-surface-2)' }}>
                 {!selected ? (
                     <div style={{ position: 'relative' }}>
                         <div style={{ position: 'relative' }}>
-                            <Search size={15} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#9CA3AF' }} />
+                            <Search size={15} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--df-faint)' }} />
                             <input
                                 autoFocus
                                 value={query}
                                 onChange={(e) => setQuery(e.target.value)}
                                 placeholder="Rechercher un dossier…"
-                                style={{ width: '100%', boxSizing: 'border-box', padding: '9px 10px 9px 32px', fontSize: 14, border: '1px solid #E0DED9', borderRadius: 8, outline: 'none' }}
+                                style={{ width: '100%', boxSizing: 'border-box', padding: '9px 10px 9px 32px', fontSize: 14, border: '1px solid var(--df-border)', borderRadius: 8, outline: 'none' }}
                             />
                         </div>
                         {suggestions.length > 0 && (
-                            <div style={{ marginTop: 6, border: '1px solid #E0DED9', borderRadius: 8, overflow: 'hidden', maxHeight: 260, overflowY: 'auto' }}>
+                            <div style={{ marginTop: 6, border: '1px solid var(--df-border)', borderRadius: 8, overflow: 'hidden', maxHeight: 260, overflowY: 'auto' }}>
                                 {suggestions.map(p => (
                                     <div
                                         key={p.id}
                                         onClick={() => pick(p)}
-                                        style={{ padding: '9px 12px', fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, borderBottom: '1px solid #F9FAFB' }}
-                                        onMouseEnter={e => e.currentTarget.style.background = '#F4F4F4'}
-                                        onMouseLeave={e => e.currentTarget.style.background = 'white'}
+                                        style={{ padding: '9px 12px', fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, borderBottom: '1px solid var(--df-surface-4)' }}
+                                        onMouseEnter={e => e.currentTarget.style.background = 'var(--df-surface)'}
+                                        onMouseLeave={e => e.currentTarget.style.background = 'var(--df-bg)'}
                                     >
-                                        <span style={{ color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
+                                        <span style={{ color: 'var(--df-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
                                         {p.status === 'ARCHIVED' && (
-                                            <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 700, color: '#6B7280', background: '#F3F4F6', borderRadius: 4, padding: '2px 6px' }}>Archivé</span>
+                                            <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 700, color: 'var(--df-muted)', background: 'var(--df-surface-2)', borderRadius: 4, padding: '2px 6px' }}>Archivé</span>
                                         )}
                                     </div>
                                 ))}
                             </div>
                         )}
                         {query.trim() && suggestions.length === 0 && (
-                            <div style={{ marginTop: 8, fontSize: 12, color: '#9CA3AF' }}>Aucun dossier trouvé.</div>
+                            <div style={{ marginTop: 8, fontSize: 12, color: 'var(--df-faint)' }}>Aucun dossier trouvé.</div>
                         )}
                     </div>
                 ) : (
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                         <div style={{ minWidth: 0 }}>
-                            <div style={{ fontSize: 14, fontWeight: 700, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selected.name}</div>
-                            <div style={{ fontSize: 12, color: '#6B7280' }}>{totalCount} créneau{totalCount > 1 ? 'x' : ''} · {totalHours}h au total</div>
+                            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--df-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selected.name}</div>
+                            <div style={{ fontSize: 12, color: 'var(--df-muted)' }}>{totalCount} créneau{totalCount > 1 ? 'x' : ''} · {totalHours}h au total</div>
                         </div>
-                        <button onClick={reset} style={{ flexShrink: 0, fontSize: 12, fontWeight: 600, color: '#2563EB', background: 'transparent', border: 'none', cursor: 'pointer' }}>Changer</button>
+                        <button onClick={reset} style={{ flexShrink: 0, fontSize: 12, fontWeight: 600, color: 'var(--df-blue)', background: 'transparent', border: 'none', cursor: 'pointer' }}>Changer</button>
                     </div>
                 )}
             </div>
@@ -197,13 +197,13 @@ export default function HistoryPanel({ isOpen, onClose, projects = [], events = 
             {/* Liste des créneaux */}
             <div style={{ flex: 1, overflowY: 'auto', padding: '8px 12px 24px' }}>
                 {!selected && (
-                    <div style={{ padding: '40px 20px', textAlign: 'center', color: '#9CA3AF', fontSize: 13 }}>
+                    <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--df-faint)', fontSize: 13 }}>
                         Tapez le nom d'un dossier pour voir tous ses créneaux passés, puis double-cliquez sur l'un d'eux pour revenir à sa semaine.
                     </div>
                 )}
 
                 {selected && totalCount === 0 && (
-                    <div style={{ padding: '40px 20px', textAlign: 'center', color: '#9CA3AF', fontSize: 13 }}>
+                    <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--df-faint)', fontSize: 13 }}>
                         Aucun créneau planning pour ce dossier.
                     </div>
                 )}
@@ -226,17 +226,17 @@ export default function HistoryPanel({ isOpen, onClose, projects = [], events = 
                                 onClick={() => setCollapsed(prev => ({ ...prev, [svc.key]: !prev[svc.key] }))}
                                 style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 6px', cursor: 'pointer', userSelect: 'none' }}
                             >
-                                {isCollapsed ? <ChevronRight size={15} color="#6B7280" /> : <ChevronDown size={15} color="#6B7280" />}
+                                {isCollapsed ? <ChevronRight size={15} color="var(--df-muted)" /> : <ChevronDown size={15} color="var(--df-muted)" />}
                                 <span style={{ width: 10, height: 10, borderRadius: 3, background: col.bg, border: `1.5px solid ${col.border}` }} />
-                                <span style={{ fontSize: 13, fontWeight: 700, color: '#374151' }}>{svc.label}</span>
-                                <span style={{ fontSize: 12, color: '#9CA3AF' }}>· {list.length}</span>
+                                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--df-text-2)' }}>{svc.label}</span>
+                                <span style={{ fontSize: 12, color: 'var(--df-faint)' }}>· {list.length}</span>
                                 <span style={{ marginLeft: 'auto', fontSize: 12, fontWeight: 700, color: col.text, background: col.bg, border: `1px solid ${col.border}`, borderRadius: 6, padding: '2px 8px' }}>{sumHours(list)}h</span>
                             </div>
 
                             {!isCollapsed && (
                                 confSubs ? (
                                     // Sous-chapitres imbriqués (Confection uniquement)
-                                    <div style={{ marginLeft: 14, borderLeft: '1px solid #F0F0F0', paddingLeft: 8, marginTop: 2 }}>
+                                    <div style={{ marginLeft: 14, borderLeft: '1px solid var(--df-x-F0F0F0)', paddingLeft: 8, marginTop: 2 }}>
                                         {confSubs.map(sub => {
                                             if (sub.items.length === 0) return null;
                                             const subCollapsed = collapsed[sub.key];
@@ -246,9 +246,9 @@ export default function HistoryPanel({ isOpen, onClose, projects = [], events = 
                                                         onClick={() => setCollapsed(prev => ({ ...prev, [sub.key]: !prev[sub.key] }))}
                                                         style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 6px', cursor: 'pointer', userSelect: 'none' }}
                                                     >
-                                                        {subCollapsed ? <ChevronRight size={13} color="#9CA3AF" /> : <ChevronDown size={13} color="#9CA3AF" />}
-                                                        <span style={{ fontSize: 12, fontWeight: 600, color: '#4B5563' }}>{sub.label}</span>
-                                                        <span style={{ fontSize: 11, color: '#9CA3AF' }}>· {sub.items.length}</span>
+                                                        {subCollapsed ? <ChevronRight size={13} color="var(--df-faint)" /> : <ChevronDown size={13} color="var(--df-faint)" />}
+                                                        <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--df-text-3)' }}>{sub.label}</span>
+                                                        <span style={{ fontSize: 11, color: 'var(--df-faint)' }}>· {sub.items.length}</span>
                                                         <span style={{ marginLeft: 'auto', fontSize: 11, fontWeight: 700, color: col.text, background: col.bg, border: `1px solid ${col.border}`, borderRadius: 6, padding: '1px 7px' }}>{sumHours(sub.items)}h</span>
                                                     </div>
                                                     {!subCollapsed && renderEvents(sub.items, col)}

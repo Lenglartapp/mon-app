@@ -15,7 +15,7 @@ export default function OdooLinkCell({ idProjetOdoo = null, internal = false, on
   const [checking, setChecking] = useState(false);
   const [check, setCheck] = useState(null); // { ok, id, name } | { error }
 
-  if (internal) return <span style={{ color: "#D1D5DB", fontSize: 13 }}>—</span>;
+  if (internal) return <span style={{ color: "var(--df-border-strong)", fontSize: 13 }}>—</span>;
 
   const openEditor = () => { setInput(idProjetOdoo ? String(idProjetOdoo) : ""); setCheck(null); setEditing(true); };
   const cancel = () => { setEditing(false); setCheck(null); };
@@ -48,24 +48,24 @@ export default function OdooLinkCell({ idProjetOdoo = null, internal = false, on
             onChange={(e) => { setInput(e.target.value.replace(/[^0-9]/g, "")); setCheck(null); }}
             onKeyDown={(e) => e.key === "Enter" && verify()}
             placeholder="ID Odoo"
-            style={{ width: 90, padding: "4px 8px", border: "1px solid #D1D5DB", borderRadius: 8, fontSize: 13 }}
+            style={{ width: 90, padding: "4px 8px", border: "1px solid var(--df-border-strong)", borderRadius: 8, fontSize: 13 }}
           />
-          <button onClick={verify} disabled={checking} style={{ padding: "4px 10px", borderRadius: 8, border: "1px solid #D1D5DB", background: "#fff", cursor: "pointer", fontSize: 12 }}>
+          <button onClick={verify} disabled={checking} style={{ padding: "4px 10px", borderRadius: 8, border: "1px solid var(--df-border-strong)", background: "var(--df-bg)", cursor: "pointer", fontSize: 12 }}>
             {checking ? "…" : "Vérifier"}
           </button>
-          <button onClick={cancel} title="Annuler" style={{ border: "none", background: "none", cursor: "pointer", color: "#9CA3AF", display: "inline-flex" }}><X size={16} /></button>
+          <button onClick={cancel} title="Annuler" style={{ border: "none", background: "none", cursor: "pointer", color: "var(--df-faint)", display: "inline-flex" }}><X size={16} /></button>
         </div>
-        {check?.error && <span style={{ fontSize: 12, color: "#B91C1C" }}>{check.error}</span>}
+        {check?.error && <span style={{ fontSize: 12, color: "var(--df-danger-text)" }}>{check.error}</span>}
         {check?.ok && (
           <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, flexWrap: "wrap" }}>
-            <span style={{ color: "#374151" }}>#{check.id} → <b>{check.name}</b></span>
-            <button onClick={confirmLink} style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "3px 10px", borderRadius: 8, border: "none", background: "#047857", color: "#fff", cursor: "pointer", fontSize: 12 }}>
+            <span style={{ color: "var(--df-text-2)" }}>#{check.id} → <b>{check.name}</b></span>
+            <button onClick={confirmLink} style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "3px 10px", borderRadius: 8, border: "none", background: "var(--df-success-text)", color: "#fff", cursor: "pointer", fontSize: 12 }}>
               <Check size={13} /> Relier
             </button>
           </div>
         )}
         {idProjetOdoo && (
-          <button onClick={unlink} style={{ border: "none", background: "none", color: "#9CA3AF", fontSize: 11, cursor: "pointer", textDecoration: "underline", padding: 0 }}>délier</button>
+          <button onClick={unlink} style={{ border: "none", background: "none", color: "var(--df-faint)", fontSize: 11, cursor: "pointer", textDecoration: "underline", padding: 0 }}>délier</button>
         )}
       </div>
     );
@@ -80,16 +80,16 @@ export default function OdooLinkCell({ idProjetOdoo = null, internal = false, on
           target="_blank"
           rel="noreferrer"
           title={`Ouvrir le projet #${idProjetOdoo} dans Odoo`}
-          style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "3px 10px", borderRadius: 999, background: "#ECFDF5", color: "#047857", fontSize: 12, fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap" }}
+          style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "3px 10px", borderRadius: 999, background: "var(--df-success-bg)", color: "var(--df-success-text)", fontSize: 12, fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap" }}
         >
           <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#10B981" }} />
           {!dense && "Connecté "}<span style={{ color: "#059669", fontWeight: 500 }}>#{idProjetOdoo}</span>
           <ExternalLink size={11} />
         </a>
         {!compact && (dense ? (
-          <button onClick={openEditor} title="Modifier le lien Odoo" style={{ border: "none", background: "none", color: "#9CA3AF", cursor: "pointer", padding: 2, display: "inline-flex" }}><Pencil size={13} /></button>
+          <button onClick={openEditor} title="Modifier le lien Odoo" style={{ border: "none", background: "none", color: "var(--df-faint)", cursor: "pointer", padding: 2, display: "inline-flex" }}><Pencil size={13} /></button>
         ) : (
-          <button onClick={openEditor} style={{ border: "none", background: "none", color: "#9CA3AF", fontSize: 11, cursor: "pointer", textDecoration: "underline", padding: 0 }}>modifier</button>
+          <button onClick={openEditor} style={{ border: "none", background: "none", color: "var(--df-faint)", fontSize: 11, cursor: "pointer", textDecoration: "underline", padding: 0 }}>modifier</button>
         ))}
       </span>
     );
@@ -97,7 +97,7 @@ export default function OdooLinkCell({ idProjetOdoo = null, internal = false, on
 
   // ---- Non relié ----
   return (
-    <button onClick={openEditor} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 10px", borderRadius: 8, border: "1px dashed #D1D5DB", background: "#fff", cursor: "pointer", fontSize: 12, color: "#6B7280", fontWeight: 600, whiteSpace: "nowrap" }}>
+    <button onClick={openEditor} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 10px", borderRadius: 8, border: "1px dashed var(--df-border-strong)", background: "var(--df-bg)", cursor: "pointer", fontSize: 12, color: "var(--df-muted)", fontWeight: 600, whiteSpace: "nowrap" }}>
       <Link2 size={13} /> Relier
     </button>
   );

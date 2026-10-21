@@ -3,7 +3,7 @@ import DaDialog from '../ui/DaDialog';
 import { ToolbarButton, TonePill } from '../ui/ToolbarControls';
 import { readProjectVersions } from '../../lib/projectVersions';
 
-const MUTED = '#6B7280';
+const MUTED = 'var(--df-muted)';
 const REASONS = {
   auto: { label: 'Auto', tone: null },
   'shrink-guard': { label: 'Sécurité (chute)', tone: 2 },
@@ -67,10 +67,10 @@ export default function ProjectVersionsDialog({ project, currentCount, onClose, 
         Revenir à une version remplace les lignes du projet ; le journal et les infos du dossier ne changent pas.
         Chaque retour en arrière est inscrit au journal du projet, et l'état d'avant reste dans cette liste.
       </div>
-      {loading && <div style={{ color: '#9CA3AF', fontSize: 13 }}>Chargement des versions…</div>}
-      {error && <div style={{ color: '#B91C1C', fontSize: 13, marginBottom: 10 }}>{error}</div>}
+      {loading && <div style={{ color: 'var(--df-faint)', fontSize: 13 }}>Chargement des versions…</div>}
+      {error && <div style={{ color: 'var(--df-danger-text)', fontSize: 13, marginBottom: 10 }}>{error}</div>}
       {!loading && !error && versions.length === 0 && (
-        <div style={{ textAlign: 'center', color: '#9CA3AF', padding: '40px 0', fontSize: 13 }}>
+        <div style={{ textAlign: 'center', color: 'var(--df-faint)', padding: '40px 0', fontSize: 13 }}>
           Aucune version pour l'instant.<br />Les versions se créent automatiquement au fil des modifications.
         </div>
       )}
@@ -79,10 +79,10 @@ export default function ProjectVersionsDialog({ project, currentCount, onClose, 
         const isSel = selected === v.id;
         const who = v.reason === 'pre-restore' ? (v.author ? `restauration par ${v.author}` : null) : (v.changed_by ? `modifié ensuite par ${v.changed_by}` : null);
         return (
-          <div key={v.id} style={{ border: `1px solid ${isSel ? '#1E2447' : '#E8E6E2'}`, borderRadius: 8, marginBottom: 8, background: 'white', overflow: 'hidden' }}>
+          <div key={v.id} style={{ border: `1px solid ${isSel ? 'var(--df-primary)' : 'var(--df-border-soft)'}`, borderRadius: 8, marginBottom: 8, background: 'var(--df-bg)', overflow: 'hidden' }}>
             <div onClick={() => setSelected(isSel ? null : v.id)} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', cursor: 'pointer' }}>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 500, color: '#111827' }}>{relative(v.captured_at)}</div>
+                <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--df-text)' }}>{relative(v.captured_at)}</div>
                 <div style={{ fontSize: 12, color: MUTED, marginTop: 2 }}>
                   {new Date(v.captured_at).toLocaleString('fr-FR')} · {v.nb_lignes ?? '—'} ligne(s){who ? ` · ${who}` : ''}
                 </div>
@@ -90,7 +90,7 @@ export default function ProjectVersionsDialog({ project, currentCount, onClose, 
               <TonePill tone={r.tone}>{r.label}</TonePill>
             </div>
             {isSel && (
-              <div style={{ borderTop: '1px solid #E8E6E2', padding: 12, background: '#F4F4F4', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <div style={{ borderTop: '1px solid var(--df-border-soft)', padding: 12, background: 'var(--df-surface)', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                 <span style={{ fontSize: 12, color: MUTED, flex: 1, minWidth: 200 }}>
                   {`Les lignes reviennent à cet état (${v.nb_lignes ?? '—'} ligne(s)). L'état actuel est gardé dans cette liste.`}
                 </span>

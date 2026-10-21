@@ -120,7 +120,7 @@ export default function StockInventoryTab({ inventory, projects = [], movements 
             field: 'category',
             headerName: 'Type',
             width: 120,
-            renderCell: (params) => <span style={{ color: '#374151' }}>{params.value || 'Divers'}</span>
+            renderCell: (params) => <span style={{ color: 'var(--df-text-2)' }}>{params.value || 'Divers'}</span>
         },
         {
             field: 'location',
@@ -133,8 +133,8 @@ export default function StockInventoryTab({ inventory, projects = [], movements 
             headerName: 'Affectation',
             width: 180,
             renderCell: (params) => params.value
-                ? <span title={params.value} style={{ color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis' }}>{params.value}</span>
-                : <span style={{ color: '#9CA3AF' }}>Stock libre</span>
+                ? <span title={params.value} style={{ color: 'var(--df-text)', overflow: 'hidden', textOverflow: 'ellipsis' }}>{params.value}</span>
+                : <span style={{ color: 'var(--df-faint)' }}>Stock libre</span>
         },
         {
             field: 'stockStatus',
@@ -155,8 +155,8 @@ export default function StockInventoryTab({ inventory, projects = [], movements 
                 const piecesCount = Array.isArray(params.row.pieces) ? params.row.pieces.length : 0;
                 return (
                     <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontWeight: 700, fontSize: 15, color: params.value > 0 ? '#059669' : '#EF4444' }}>
-                            {params.value} <span style={{ fontSize: 11, fontWeight: 400, color: '#6B7280' }}>{params.row.unit}</span>
+                        <div style={{ fontWeight: 700, fontSize: 15, color: params.value > 0 ? '#059669' : 'var(--df-danger)' }}>
+                            {params.value} <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--df-muted)' }}>{params.row.unit}</span>
                         </div>
                         {piecesCount > 0 && (
                             <div style={{ fontSize: 10, color: '#6366F1', fontWeight: 600 }}>
@@ -281,7 +281,7 @@ export default function StockInventoryTab({ inventory, projects = [], movements 
                 {(search || activeConditions.length > 0 || onlyToComplete) && (
                     <button
                         onClick={() => { setSearch(''); setFilterConditions([]); setOnlyToComplete(false); }}
-                        style={{ border: 'none', background: 'none', color: '#6B7280', fontSize: 13, fontWeight: 600, cursor: 'pointer', textDecoration: 'underline', padding: '0 4px', fontFamily: 'inherit' }}
+                        style={{ border: 'none', background: 'none', color: 'var(--df-muted)', fontSize: 13, fontWeight: 600, cursor: 'pointer', textDecoration: 'underline', padding: '0 4px', fontFamily: 'inherit' }}
                     >
                         Réinitialiser
                     </button>
@@ -330,8 +330,8 @@ export default function StockInventoryTab({ inventory, projects = [], movements 
                     // En bas à GAUCHE : la pagination du tableau occupe le bas à droite.
                     // Dans une fenêtre (stock d'un dossier) : posée dans le flux, au-dessus du tableau.
                     ...(embedded ? { display: 'inline-block', marginBottom: 12 } : { position: 'fixed', bottom: 24, left: 24, zIndex: 1200 }),
-                    background: '#FEF3C7', border: '1px solid #F59E0B', borderRadius: 10,
-                    fontSize: 13, color: '#92400E', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', maxWidth: 360,
+                    background: 'var(--df-amber-bg)', border: '1px solid #F59E0B', borderRadius: 10,
+                    fontSize: 13, color: 'var(--df-warn-text)', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', maxWidth: 360,
                 }}>
                     <button
                         onClick={() => setToCompleteOpen(o => !o)}
@@ -345,13 +345,13 @@ export default function StockInventoryTab({ inventory, projects = [], movements 
                         <ChevronDown size={16} style={{ transform: toCompleteOpen ? 'rotate(180deg)' : 'none', transition: 'transform .15s ease', flexShrink: 0, opacity: .8 }} />
                     </button>
                     {toCompleteOpen && (
-                        <div style={{ borderTop: '1px solid #FCD34D', padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        <div style={{ borderTop: '1px solid var(--df-x-FCD34D)', padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
                             <div style={{ fontSize: 12, opacity: 0.9 }}>
                                 Articles reçus via Odoo dont l'emplacement de rangement n'est pas encore renseigné.
                             </div>
                             <button
                                 onClick={() => setOnlyToComplete(v => !v)}
-                                style={{ alignSelf: 'flex-start', border: '1px solid #F59E0B', background: onlyToComplete ? '#92400E' : 'white', color: onlyToComplete ? 'white' : '#92400E', borderRadius: 8, padding: '6px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+                                style={{ alignSelf: 'flex-start', border: '1px solid #F59E0B', background: onlyToComplete ? 'var(--df-warn-text)' : 'var(--df-bg)', color: onlyToComplete ? 'white' : 'var(--df-warn-text)', borderRadius: 8, padding: '6px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
                             >
                                 {onlyToComplete ? 'Afficher tout le stock' : 'Afficher uniquement ces réceptions'}
                             </button>
@@ -392,7 +392,7 @@ export default function StockInventoryTab({ inventory, projects = [], movements 
                                 <ListItemText
                                     primary={`${it.qty} ${it.unit || ''} — ${it.project || 'Stock libre'}`}
                                     secondary={splitLocations(it.location).join(', ') || 'Sans emplacement'}
-                                    secondaryTypographyProps={splitLocations(it.location).includes(LOC_A_COMPLETER) ? { sx: { color: '#9A3412', fontWeight: 700 } } : undefined}
+                                    secondaryTypographyProps={splitLocations(it.location).includes(LOC_A_COMPLETER) ? { sx: { color: 'var(--df-chip-owner)', fontWeight: 700 } } : undefined}
                                 />
                             </ListItemButton>
                         ))}

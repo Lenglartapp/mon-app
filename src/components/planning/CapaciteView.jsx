@@ -17,27 +17,27 @@ import { DA_INPUT_STYLE } from '../../lib/constants/daStyles';
 
 // DA : nuancier bleu de la charte ; le rouge est réservé aux dépassements.
 const ROBOTO = 'Roboto, system-ui, sans-serif';
-const NAVY = '#1E2447';
-const COLOR_CAPA     = '#A8C2EC'; // Capacité → bleu ciel (aire)
-const COLOR_PLANIFIE = NAVY;      // Planifié → bleu nuit
-const COLOR_CHARGE   = '#5B7FC4'; // Consommé → bleu moyen
-const COLOR_INTERNE  = '#9B9A97'; // Interne Lenglart (non vendu) → gris
+const NAVY = 'var(--df-primary)';
+const COLOR_CAPA     = 'var(--df-chart-capa)'; // Capacité → bleu ciel (aire)
+const COLOR_PLANIFIE = 'var(--df-chart-plan)';      // Planifié → bleu nuit
+const COLOR_CHARGE   = 'var(--df-chart-charge)'; // Consommé → bleu moyen
+const COLOR_INTERNE  = 'var(--df-faint-2)'; // Interne Lenglart (non vendu) → gris
 const COLOR_OVER     = '#DC2626'; // Dépassement
 
 const WORKSHOP_CONFIG = {
-    conf:  { label: 'Confection',   color: NAVY },
-    pose:  { label: 'Pose',         color: '#5B7FC4' },
-    prepa: { label: 'Préparation',  color: '#A8C2EC' },
+    conf:  { label: 'Confection',   color: 'var(--df-primary-text)' },
+    pose:  { label: 'Pose',         color: 'var(--df-tone-2)' },
+    prepa: { label: 'Préparation',  color: 'var(--df-tone-3)' },
 };
 
 // Contrôles de barre : même gabarit que la barre du Planning (36 px, coins 8, trait #E0DED9).
 const BTN = {
     display: 'inline-flex', alignItems: 'center', gap: 8, height: 36, padding: '0 14px', borderRadius: 8,
-    background: 'white', border: '1px solid #E0DED9', color: '#374151', fontSize: 13, fontWeight: 600,
+    background: 'var(--df-bg)', border: '1px solid var(--df-border)', color: 'var(--df-text-2)', fontSize: 13, fontWeight: 600,
     fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap', boxSizing: 'border-box',
 };
-const MENU = { position: 'absolute', top: '100%', marginTop: 4, background: 'white', border: '1px solid #E0DED9', borderRadius: 8, boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', zIndex: 41, padding: 4 };
-const menuItem = (on) => ({ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '8px 12px', borderRadius: 6, cursor: 'pointer', fontSize: 13, color: '#111827', background: on ? '#EEF4FD' : 'transparent', fontWeight: on ? 600 : 400 });
+const MENU = { position: 'absolute', top: '100%', marginTop: 4, background: 'var(--df-bg)', border: '1px solid var(--df-border)', borderRadius: 8, boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', zIndex: 41, padding: 4 };
+const menuItem = (on) => ({ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '8px 12px', borderRadius: 6, cursor: 'pointer', fontSize: 13, color: 'var(--df-text)', background: on ? 'var(--df-selected)' : 'transparent', fontWeight: on ? 600 : 400 });
 const ALL_WS = ['conf', 'pose', 'prepa'];
 
 // Sélecteur d'ateliers : menu déroulant à cases à cocher (conf / pose / prépa).
@@ -54,13 +54,13 @@ function WorkshopSelect({ selected, onChange, disabled }) {
         onChange(ALL_WS.filter(w => next.includes(w)));
     };
     if (disabled) {
-        return <div style={{ ...BTN, cursor: 'default' }}><span style={{ color: '#9B9A97', fontWeight: 400 }}>Ateliers</span> {summary}</div>;
+        return <div style={{ ...BTN, cursor: 'default' }}><span style={{ color: 'var(--df-faint-2)', fontWeight: 400 }}>Ateliers</span> {summary}</div>;
     }
     return (
         <div style={{ position: 'relative' }}>
             <button onClick={() => setOpen(o => !o)} style={BTN}>
-                <span style={{ color: '#9B9A97', fontWeight: 400 }}>Ateliers</span> {summary}
-                <ChevronDown size={14} color="#6B7280" />
+                <span style={{ color: 'var(--df-faint-2)', fontWeight: 400 }}>Ateliers</span> {summary}
+                <ChevronDown size={14} color="var(--df-muted)" />
             </button>
             {open && (
                 <>
@@ -71,7 +71,7 @@ function WorkshopSelect({ selected, onChange, disabled }) {
                             const checked = selected.includes(k);
                             return (
                                 <div key={k} onClick={() => toggle(k)} style={{ ...menuItem(checked), justifyContent: 'flex-start' }}>
-                                    <span style={{ width: 16, height: 16, borderRadius: 4, flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', border: `1.5px solid ${checked ? NAVY : '#C9C7C2'}`, background: checked ? NAVY : 'white' }}>
+                                    <span style={{ width: 16, height: 16, borderRadius: 4, flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', border: `1.5px solid ${checked ? NAVY : 'var(--df-border-hover)'}`, background: checked ? NAVY : 'var(--df-bg)' }}>
                                         {checked && <Check size={11} color="white" strokeWidth={3} />}
                                     </span>
                                     {cfg.label}
@@ -100,21 +100,21 @@ const PERIODE_PRESETS = [
 
 // Tuile de synthèse : titre Roboto sans majuscules (comme les tuiles de l'Inventaire),
 // grand chiffre, pastille de couleur de la série, ligne d'aide en gris.
-const Tile = ({ label, value, sub, color = '#111827', dot, onClick }) => (
+const Tile = ({ label, value, sub, color = 'var(--df-text)', dot, onClick }) => (
     <div
         onClick={onClick}
         title={onClick ? 'Voir les projets concernés' : undefined}
-        style={{ background: 'white', border: '1px solid #E0DED9', borderRadius: 12, padding: '16px 18px', cursor: onClick ? 'pointer' : 'default', transition: 'border-color .15s', fontFamily: ROBOTO }}
-        onMouseEnter={onClick ? (e) => { e.currentTarget.style.borderColor = '#A8C2EC'; } : undefined}
-        onMouseLeave={onClick ? (e) => { e.currentTarget.style.borderColor = '#E0DED9'; } : undefined}
+        style={{ background: 'var(--df-bg)', border: '1px solid var(--df-border)', borderRadius: 12, padding: '16px 18px', cursor: onClick ? 'pointer' : 'default', transition: 'border-color .15s', fontFamily: ROBOTO }}
+        onMouseEnter={onClick ? (e) => { e.currentTarget.style.borderColor = 'var(--df-tone-3)'; } : undefined}
+        onMouseLeave={onClick ? (e) => { e.currentTarget.style.borderColor = 'var(--df-border)'; } : undefined}
     >
-        <div style={{ fontSize: 15, fontWeight: 500, color: '#374151', display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ fontSize: 15, fontWeight: 500, color: 'var(--df-text-2)', display: 'flex', alignItems: 'center', gap: 8 }}>
             {dot && <span style={{ width: 10, height: 10, borderRadius: 3, background: dot, flexShrink: 0 }} />}
             {label}
-            {onClick && <ChevronRight size={15} color="#9B9A97" style={{ marginLeft: 'auto' }} />}
+            {onClick && <ChevronRight size={15} color="var(--df-faint-2)" style={{ marginLeft: 'auto' }} />}
         </div>
         <div style={{ fontSize: 30, fontWeight: 400, color, marginTop: 10, lineHeight: 1 }}>{value}</div>
-        {sub && <div style={{ fontSize: 12, color: '#9B9A97', marginTop: 8 }}>{sub}</div>}
+        {sub && <div style={{ fontSize: 12, color: 'var(--df-faint-2)', marginTop: 8 }}>{sub}</div>}
     </div>
 );
 
@@ -127,9 +127,9 @@ const OverModal = ({ type, rows, onClose }) => {
     const title = isPlan ? 'Surplanification — projets concernés' : 'Surconsommation — projets concernés';
     const suffix = isPlan ? 'au-delà du budget restant' : 'au-delà du budget vendu';
     const totalOver = rows.reduce((s, r) => s + r.over, 0);
-    const dth = { textAlign: 'right', padding: '4px 8px', fontSize: 12, fontWeight: 600, color: '#6B7280' };
-    const dtd = { textAlign: 'right', padding: '4px 8px', color: '#4B5563' };
-    const hth = (align) => ({ textAlign: align, padding: '9px 10px', fontSize: 13, fontWeight: 600, color: '#374151', background: '#F4F4F4' });
+    const dth = { textAlign: 'right', padding: '4px 8px', fontSize: 12, fontWeight: 600, color: 'var(--df-muted)' };
+    const dtd = { textAlign: 'right', padding: '4px 8px', color: 'var(--df-text-3)' };
+    const hth = (align) => ({ textAlign: align, padding: '9px 10px', fontSize: 13, fontWeight: 600, color: 'var(--df-text-2)', background: 'var(--df-surface)' });
     return (
         <DaDialog
             open
@@ -139,10 +139,10 @@ const OverModal = ({ type, rows, onClose }) => {
             maxWidth="md"
             bodyPadding="16px 28px 24px"
         >
-                <div style={{ border: '1px solid #E0DED9', borderRadius: 8, overflow: 'hidden' }}>
+                <div style={{ border: '1px solid var(--df-border)', borderRadius: 8, overflow: 'hidden' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                         <thead>
-                            <tr style={{ borderBottom: '1px solid #E0DED9' }}>
+                            <tr style={{ borderBottom: '1px solid var(--df-border)' }}>
                                 <th style={hth('left')}>Projet</th>
                                 <th style={hth('right')}>{isPlan ? 'Planifié futur' : 'Consommé'}</th>
                                 <th style={hth('right')}>{isPlan ? 'Budget restant' : 'Budget vendu'}</th>
@@ -154,19 +154,19 @@ const OverModal = ({ type, rows, onClose }) => {
                                 const open = expanded.has(r.id);
                                 return (
                                     <React.Fragment key={r.id}>
-                                        <tr onClick={() => toggle(r.id)} style={{ borderTop: '1px solid #E8E6E2', cursor: 'pointer', background: open ? '#EEF4FD' : 'transparent' }}>
-                                            <td style={{ padding: '9px 10px', fontWeight: 500, color: '#111827' }}>
+                                        <tr onClick={() => toggle(r.id)} style={{ borderTop: '1px solid var(--df-border-soft)', cursor: 'pointer', background: open ? 'var(--df-selected)' : 'transparent' }}>
+                                            <td style={{ padding: '9px 10px', fontWeight: 500, color: 'var(--df-text)' }}>
                                                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                                                    {open ? <ChevronDown size={14} color="#9CA3AF" /> : <ChevronRight size={14} color="#9CA3AF" />}
+                                                    {open ? <ChevronDown size={14} color="var(--df-faint)" /> : <ChevronRight size={14} color="var(--df-faint)" />}
                                                     {r.name}
                                                 </span>
                                             </td>
-                                            <td style={{ padding: '8px 10px', textAlign: 'right', color: '#374151' }}>{r1(r.a)}h</td>
-                                            <td style={{ padding: '8px 10px', textAlign: 'right', color: '#374151' }}>{r1(r.b)}h</td>
+                                            <td style={{ padding: '8px 10px', textAlign: 'right', color: 'var(--df-text-2)' }}>{r1(r.a)}h</td>
+                                            <td style={{ padding: '8px 10px', textAlign: 'right', color: 'var(--df-text-2)' }}>{r1(r.b)}h</td>
                                             <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 600, color: COLOR_OVER }}>+{r1(r.over)}h</td>
                                         </tr>
                                         {open && (
-                                            <tr style={{ background: '#EEF4FD' }}>
+                                            <tr style={{ background: 'var(--df-selected)' }}>
                                                 <td colSpan={4} style={{ padding: '2px 10px 12px 28px' }}>
                                                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                                                         <thead>
@@ -183,11 +183,11 @@ const OverModal = ({ type, rows, onClose }) => {
                                                                 const bWs = isPlan ? s.remaining : s.budget;
                                                                 const overWs = Math.max(0, aWs - bWs);
                                                                 return (
-                                                                    <tr key={s.key} style={{ borderTop: '1px solid #D6E4F8' }}>
-                                                                        <td style={{ textAlign: 'left', padding: '4px 8px', color: '#374151', fontWeight: 500 }}>{s.label}</td>
+                                                                    <tr key={s.key} style={{ borderTop: '1px solid var(--df-tone-4)' }}>
+                                                                        <td style={{ textAlign: 'left', padding: '4px 8px', color: 'var(--df-text-2)', fontWeight: 500 }}>{s.label}</td>
                                                                         <td style={dtd}>{r1(aWs)}h</td>
                                                                         <td style={dtd}>{r1(bWs)}h</td>
-                                                                        <td style={{ ...dtd, fontWeight: 600, color: overWs > 0 ? COLOR_OVER : '#9CA3AF' }}>{overWs > 0 ? `+${r1(overWs)}h` : '—'}</td>
+                                                                        <td style={{ ...dtd, fontWeight: 600, color: overWs > 0 ? COLOR_OVER : 'var(--df-faint)' }}>{overWs > 0 ? `+${r1(overWs)}h` : '—'}</td>
                                                                     </tr>
                                                                 );
                                                             })}
@@ -199,7 +199,7 @@ const OverModal = ({ type, rows, onClose }) => {
                                     </React.Fragment>
                                 );
                             })}
-                            {rows.length === 0 && <tr><td colSpan={4} style={{ padding: 16, textAlign: 'center', color: '#9CA3AF' }}>Aucun projet concerné.</td></tr>}
+                            {rows.length === 0 && <tr><td colSpan={4} style={{ padding: 16, textAlign: 'center', color: 'var(--df-faint)' }}>Aucun projet concerné.</td></tr>}
                         </tbody>
                     </table>
                 </div>
@@ -212,25 +212,25 @@ const OverModal = ({ type, rows, onClose }) => {
 const ProjectBreakdown = ({ title, items, total, barColor, emptyText, overFn, overLabel = 'dépassement', overSuffix = 'au-delà du budget' }) => (
     <div style={{ marginBottom: 20 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
-            <span style={{ fontSize: 15, fontWeight: 500, color: '#111827', fontFamily: ROBOTO }}>{title} <span style={{ fontSize: 13, fontWeight: 400, color: '#9B9A97' }}>{items.length}</span></span>
-            <span style={{ fontSize: 13, fontWeight: 600, color: '#111827' }}>{Math.round(total * 10) / 10}h</span>
+            <span style={{ fontSize: 15, fontWeight: 500, color: 'var(--df-text)', fontFamily: ROBOTO }}>{title} <span style={{ fontSize: 13, fontWeight: 400, color: 'var(--df-faint-2)' }}>{items.length}</span></span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--df-text)' }}>{Math.round(total * 10) / 10}h</span>
         </div>
         {items.length === 0 ? (
-            <div style={{ color: '#9CA3AF', fontSize: 12, textAlign: 'center', margin: '8px 0 14px' }}>{emptyText}</div>
+            <div style={{ color: 'var(--df-faint)', fontSize: 12, textAlign: 'center', margin: '8px 0 14px' }}>{emptyText}</div>
         ) : items.map((p, i) => {
             const pct = total > 0 ? Math.round(p.hours / total * 100) : 0;
             const over = overFn ? overFn(p) : 0;
             return (
-                <div key={i} style={{ padding: '9px 0', borderBottom: '1px solid #E8E6E2' }}>
+                <div key={i} style={{ padding: '9px 0', borderBottom: '1px solid var(--df-border-soft)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
-                        <span style={{ fontWeight: 500, fontSize: 13, color: p.internal ? COLOR_INTERNE : (over > 0 ? COLOR_OVER : '#111827') }}>{p.name}</span>
-                        <span style={{ fontWeight: 600, fontSize: 13, color: '#374151' }}>{Math.round(p.hours * 10) / 10}h</span>
+                        <span style={{ fontWeight: 500, fontSize: 13, color: p.internal ? COLOR_INTERNE : (over > 0 ? COLOR_OVER : 'var(--df-text)') }}>{p.name}</span>
+                        <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--df-text-2)' }}>{Math.round(p.hours * 10) / 10}h</span>
                     </div>
-                    <div style={{ height: 4, background: '#F4F4F4', borderRadius: 2 }}>
+                    <div style={{ height: 4, background: 'var(--df-surface)', borderRadius: 2 }}>
                         <div style={{ height: 4, width: `${Math.min(pct, 100)}%`, background: p.internal ? COLOR_INTERNE : (over > 0 ? COLOR_OVER : barColor), borderRadius: 2 }} />
                     </div>
                     <div style={{ fontSize: 11, marginTop: 3 }}>
-                        <span style={{ color: '#9B9A97' }}>{pct}%</span>
+                        <span style={{ color: 'var(--df-faint-2)' }}>{pct}%</span>
                         {p.internal && <span style={{ color: COLOR_INTERNE, fontWeight: 600, marginLeft: 6 }}>· interne (non vendu)</span>}
                         {over > 0 && <span style={{ color: COLOR_OVER, fontWeight: 600, marginLeft: 6 }}>· {overLabel} +{over}h {overSuffix}</span>}
                     </div>
@@ -524,9 +524,9 @@ const CapaciteView = ({ localUsers, localEvents, projects = [] }) => {
     const curveColor = direction === 'future' ? COLOR_PLANIFIE : COLOR_CHARGE;
 
     // Style d'en-tête de tableau (aligné, compact).
-    const th = (align = 'right', extra = {}) => ({ padding: '9px 14px', textAlign: align, fontSize: 13, fontWeight: 600, color: '#374151', whiteSpace: 'nowrap', ...extra });
+    const th = (align = 'right', extra = {}) => ({ padding: '9px 14px', textAlign: align, fontSize: 13, fontWeight: 600, color: 'var(--df-text-2)', whiteSpace: 'nowrap', ...extra });
     // Taux : bleu nuit dans la cible, rouge seulement au-delà de 100 % (dépassement).
-    const rateColor = (r) => r > 100 ? COLOR_OVER : '#111827';
+    const rateColor = (r) => r > 100 ? COLOR_OVER : 'var(--df-text)';
 
     // Synthèse (tuiles) : conglomérat sur toute la période affichée.
     const totals = useMemo(() => {
@@ -572,9 +572,9 @@ const CapaciteView = ({ localUsers, localEvents, projects = [] }) => {
         const item = chartData.find(d => d.weekLabel === payload.value);
         return (
             <g transform={`translate(${x},${y})`}>
-                <text x={0} y={0} dy={12} textAnchor="middle" fontSize={11} fill="#6B7280">{payload.value}</text>
+                <text x={0} y={0} dy={12} textAnchor="middle" fontSize={11} fill="var(--df-chart-axis)">{payload.value}</text>
                 {item?.monthLabel && (
-                    <text x={0} y={0} dy={26} textAnchor="middle" fontSize={11} fill="#374151" fontWeight={500}
+                    <text x={0} y={0} dy={26} textAnchor="middle" fontSize={11} fill="var(--df-chart-axis-2)" fontWeight={500}
                         style={{ textTransform: 'capitalize' }}>
                         {item.monthLabel.charAt(0).toUpperCase() + item.monthLabel.slice(1)}
                     </text>
@@ -590,14 +590,14 @@ const CapaciteView = ({ localUsers, localEvents, projects = [] }) => {
         const chg  = includeInternal ? d.chargeTotal   : d.charge;
         const over = plan > d.capa;
         return (
-            <div style={{ background: 'white', border: '1px solid #E0DED9', borderRadius: 8, padding: '10px 14px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', fontSize: 12, fontFamily: ROBOTO }}>
+            <div style={{ background: 'var(--df-bg)', border: '1px solid var(--df-border)', borderRadius: 8, padding: '10px 14px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', fontSize: 12, fontFamily: ROBOTO }}>
                 <div style={{ fontWeight: 500, fontSize: 13, marginBottom: 6 }}>{d.weekFullLabel}</div>
-                <div style={{ color: '#6B7280', marginBottom: 2 }}>Capacité : <strong>{d.capa}h</strong></div>
+                <div style={{ color: 'var(--df-muted)', marginBottom: 2 }}>Capacité : <strong>{d.capa}h</strong></div>
                 <div style={{ fontWeight: 600, color: over ? COLOR_OVER : COLOR_PLANIFIE }}>
                     Planifié : {plan}h{over ? ` (+${Math.round((plan - d.capa) * 10) / 10}h)` : ''}
                 </div>
                 <div style={{ marginTop: 2, color: COLOR_CHARGE }}>Charge : {chg}h</div>
-                <div style={{ marginTop: 6, color: '#9CA3AF', fontSize: 11 }}>Clic pour le détail</div>
+                <div style={{ marginTop: 6, color: 'var(--df-faint)', fontSize: 11 }}>Clic pour le détail</div>
             </div>
         );
     };
@@ -640,7 +640,7 @@ const CapaciteView = ({ localUsers, localEvents, projects = [] }) => {
                             <>
                                 <input type="date" value={rangeStart} onChange={e => { setPeriode('custom'); setRangeStart(e.target.value); }}
                                     style={{ ...DA_INPUT_STYLE, width: 'auto', height: 36, fontSize: 13 }} />
-                                <span style={{ color: '#9B9A97', fontSize: 13 }}>→</span>
+                                <span style={{ color: 'var(--df-faint-2)', fontSize: 13 }}>→</span>
                                 <input type="date" value={rangeEnd} onChange={e => { setPeriode('custom'); setRangeEnd(e.target.value); }}
                                     style={{ ...DA_INPUT_STYLE, width: 'auto', height: 36, fontSize: 13 }} />
                             </>
@@ -658,7 +658,7 @@ const CapaciteView = ({ localUsers, localEvents, projects = [] }) => {
                             <Tile label="Taux de planification" value={`${totals.ratePlan}%`} color={rateColor(totals.ratePlan)}
                                 sub={`écart ${totals.ecartPlan >= 0 ? '+' : ''}${totals.ecartPlan}h`} />
                             <Tile label="Surplanification" value={`${totals.surplanif}h`}
-                                color={totals.surplanif > 0 ? COLOR_OVER : '#111827'}
+                                color={totals.surplanif > 0 ? COLOR_OVER : 'var(--df-text)'}
                                 onClick={totals.surplanif > 0 ? () => setOverModal('surplanif') : undefined}
                                 sub={totals.surplanif > 0 ? `${totals.nbOver} projet${totals.nbOver > 1 ? 's' : ''} au-delà du budget · ${totals.pctSurplanif}% du planifié` : 'aucun dépassement de budget'} />
                         </>
@@ -669,7 +669,7 @@ const CapaciteView = ({ localUsers, localEvents, projects = [] }) => {
                             <Tile label="Taux d'occupation" value={`${totals.rateOcc}%`} color={rateColor(totals.rateOcc)}
                                 sub={`écart ${totals.ecartOcc >= 0 ? '+' : ''}${totals.ecartOcc}h`} />
                             <Tile label="Surconsommation" value={`${totals.suroccup}h`}
-                                color={totals.suroccup > 0 ? COLOR_OVER : '#111827'}
+                                color={totals.suroccup > 0 ? COLOR_OVER : 'var(--df-text)'}
                                 onClick={totals.suroccup > 0 ? () => setOverModal('surocc') : undefined}
                                 sub={totals.suroccup > 0 ? `${totals.nbOverOcc} projet${totals.nbOverOcc > 1 ? 's' : ''} au-delà du budget · ${totals.pctSuroccup}% du consommé` : 'aucun dépassement de budget'} />
                         </>
@@ -677,21 +677,21 @@ const CapaciteView = ({ localUsers, localEvents, projects = [] }) => {
                 </div>
 
                 {/* Courbe */}
-                <div style={{ background: 'white', borderRadius: 12, border: '1px solid #E0DED9', padding: '20px 16px 8px', fontFamily: ROBOTO }}>
+                <div style={{ background: 'var(--df-bg)', borderRadius: 12, border: '1px solid var(--df-border)', padding: '20px 16px 8px', fontFamily: ROBOTO }}>
                     <ResponsiveContainer width="100%" height={420}>
                         <ComposedChart data={chartData} onClick={(d) => {
                             if (!d) return;
                             const item = d.activePayload?.[0]?.payload ?? chartData.find(w => w.weekLabel === d.activeLabel);
                             if (item) setSelectedWeekData(item);
                         }} style={{ cursor: 'pointer' }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#E8E6E2" vertical={false} />
+                            <CartesianGrid strokeDasharray="3 3" stroke="var(--df-chart-grid)" vertical={false} />
                             <XAxis dataKey="weekLabel" tick={<CustomXAxisTick />} height={45} />
-                            <YAxis tick={{ fontSize: 11, fill: '#6B7280' }} unit="h" width={50} axisLine={false} tickLine={false} />
+                            <YAxis tick={{ fontSize: 11, fill: 'var(--df-muted)' }} unit="h" width={50} axisLine={false} tickLine={false} />
                             <Tooltip content={<CustomTooltip />} />
-                            <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 13, paddingTop: 8, color: '#374151' }} />
+                            <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 13, paddingTop: 8, color: 'var(--df-text-2)' }} />
                             <Area
                                 type="monotone" dataKey="capa" name="Capacité"
-                                fill="#EEF4FD" stroke={COLOR_CAPA} strokeWidth={2} dot={false}
+                                fill="var(--df-chart-capa-fill)" stroke={COLOR_CAPA} strokeWidth={2} dot={false}
                             />
                             {/* Une seule ligne : planifié (période à venir) ou consommé (période passée) */}
                             <Line
@@ -703,34 +703,34 @@ const CapaciteView = ({ localUsers, localEvents, projects = [] }) => {
                                     const val = payload[curveKey];
                                     return <circle key={`cv-${cx}`} cx={cx} cy={cy} r={4}
                                         fill={val > payload.capa ? COLOR_OVER : curveColor}
-                                        stroke="white" strokeWidth={1.5} />;
+                                        stroke="var(--df-bg)" strokeWidth={1.5} />;
                                 }}
                             />
                             <ReferenceLine
-                                x={todayWeekLabel} stroke="#9B9A97" strokeDasharray="4 4"
-                                label={{ value: "Aujourd'hui", position: 'insideTopLeft', fontSize: 11, fill: '#6B7280' }}
+                                x={todayWeekLabel} stroke="var(--df-faint-2)" strokeDasharray="4 4"
+                                label={{ value: "Aujourd'hui", position: 'insideTopLeft', fontSize: 11, fill: 'var(--df-muted)' }}
                             />
                         </ComposedChart>
                     </ResponsiveContainer>
                 </div>
 
                 {/* Tableau */}
-                <div className="df-list-scroll" style={{ background: 'white', borderRadius: 12, border: '1px solid #E0DED9', overflow: 'auto', maxHeight: 380, fontFamily: ROBOTO }}>
+                <div className="df-list-scroll" style={{ background: 'var(--df-bg)', borderRadius: 12, border: '1px solid var(--df-border)', overflow: 'auto', maxHeight: 380, fontFamily: ROBOTO }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                        <thead style={{ background: '#F4F4F4', position: 'sticky', top: 0, zIndex: 1, boxShadow: '0 1px 0 #E0DED9' }}>
+                        <thead style={{ background: 'var(--df-surface)', position: 'sticky', top: 0, zIndex: 1, boxShadow: '0 1px 0 var(--df-border)' }}>
                             <tr>
                                 <th rowSpan={2} style={th('left')}>Semaine</th>
                                 <th rowSpan={2} style={th('right')}>Capacité (h)</th>
                                 <th rowSpan={2} style={th('right')}>Planifié (h)</th>
                                 <th rowSpan={2} style={th('right')}>Consommé (h)</th>
-                                <th colSpan={2} style={th('center', { borderLeft: '1px solid #E0DED9' })}>Planification</th>
-                                <th colSpan={2} style={th('center', { borderLeft: '1px solid #E0DED9' })}>Occupation</th>
+                                <th colSpan={2} style={th('center', { borderLeft: '1px solid var(--df-border)' })}>Planification</th>
+                                <th colSpan={2} style={th('center', { borderLeft: '1px solid var(--df-border)' })}>Occupation</th>
                             </tr>
                             <tr>
-                                <th style={th('right', { borderLeft: '1px solid #E0DED9', fontWeight: 500, color: '#6B7280' })}>Taux</th>
-                                <th style={th('right', { fontWeight: 500, color: '#6B7280' })}>Écart</th>
-                                <th style={th('right', { borderLeft: '1px solid #E0DED9', fontWeight: 500, color: '#6B7280' })}>Taux</th>
-                                <th style={th('right', { fontWeight: 500, color: '#6B7280' })}>Écart</th>
+                                <th style={th('right', { borderLeft: '1px solid var(--df-border)', fontWeight: 500, color: 'var(--df-muted)' })}>Taux</th>
+                                <th style={th('right', { fontWeight: 500, color: 'var(--df-muted)' })}>Écart</th>
+                                <th style={th('right', { borderLeft: '1px solid var(--df-border)', fontWeight: 500, color: 'var(--df-muted)' })}>Taux</th>
+                                <th style={th('right', { fontWeight: 500, color: 'var(--df-muted)' })}>Écart</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -748,37 +748,37 @@ const CapaciteView = ({ localUsers, localEvents, projects = [] }) => {
                                 const isSel   = selectedWeekData?.weekLabel === row.weekLabel;
                                 return (
                                     <tr key={i} onClick={() => setSelectedWeekData(row)} style={{
-                                        borderBottom: '1px solid #E8E6E2', cursor: 'pointer',
-                                        background: isSel ? '#EEF4FD' : 'white',
+                                        borderBottom: '1px solid var(--df-border-soft)', cursor: 'pointer',
+                                        background: isSel ? 'var(--df-selected)' : 'var(--df-bg)',
                                     }}>
-                                        <td style={{ padding: '9px 14px', fontSize: 13, fontWeight: isCurr ? 600 : 400, color: '#111827' }}>
+                                        <td style={{ padding: '9px 14px', fontSize: 13, fontWeight: isCurr ? 600 : 400, color: 'var(--df-text)' }}>
                                             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                                                 {row.weekFullLabel}
                                                 {isCurr && <TonePill tone={0}>Actuelle</TonePill>}
                                             </span>
                                         </td>
-                                        <td style={{ padding: '9px 14px', textAlign: 'right', fontSize: 13, color: '#374151' }}>{row.capa}h</td>
-                                        <td style={{ padding: '9px 14px', textAlign: 'right', fontSize: 13, fontWeight: 600, color: overPlan ? COLOR_OVER : '#111827' }}>
+                                        <td style={{ padding: '9px 14px', textAlign: 'right', fontSize: 13, color: 'var(--df-text-2)' }}>{row.capa}h</td>
+                                        <td style={{ padding: '9px 14px', textAlign: 'right', fontSize: 13, fontWeight: 600, color: overPlan ? COLOR_OVER : 'var(--df-text)' }}>
                                             {plan}h
                                             {includeInternal && row.internalPlanifie > 0 && <div style={{ fontSize: 11, fontWeight: 400, color: COLOR_INTERNE }}>dont {row.internalPlanifie}h interne</div>}
                                         </td>
-                                        <td style={{ padding: '9px 14px', textAlign: 'right', fontSize: 13, fontWeight: 600, color: '#111827' }}>
+                                        <td style={{ padding: '9px 14px', textAlign: 'right', fontSize: 13, fontWeight: 600, color: 'var(--df-text)' }}>
                                             {chg}h
                                             {includeInternal && row.internalCharge > 0 && <div style={{ fontSize: 11, fontWeight: 400, color: COLOR_INTERNE }}>dont {row.internalCharge}h interne</div>}
                                         </td>
-                                        <td style={{ padding: '9px 14px', textAlign: 'right', fontSize: 13, borderLeft: '1px solid #E8E6E2' }}>
+                                        <td style={{ padding: '9px 14px', textAlign: 'right', fontSize: 13, borderLeft: '1px solid var(--df-border-soft)' }}>
                                             <span style={{ fontWeight: 600, color: rateColor(ratePlan) }}>{ratePlan}%</span>
                                         </td>
-                                        <td style={{ padding: '9px 14px', textAlign: 'right', fontSize: 13, color: overPlan ? COLOR_OVER : '#6B7280' }}>{overPlan ? `+${ecartPlan}` : ecartPlan}h</td>
-                                        <td style={{ padding: '9px 14px', textAlign: 'right', fontSize: 13, borderLeft: '1px solid #E8E6E2' }}>
+                                        <td style={{ padding: '9px 14px', textAlign: 'right', fontSize: 13, color: overPlan ? COLOR_OVER : 'var(--df-muted)' }}>{overPlan ? `+${ecartPlan}` : ecartPlan}h</td>
+                                        <td style={{ padding: '9px 14px', textAlign: 'right', fontSize: 13, borderLeft: '1px solid var(--df-border-soft)' }}>
                                             <span style={{ fontWeight: 600, color: rateColor(rateChg) }}>{rateChg}%</span>
                                         </td>
-                                        <td style={{ padding: '9px 14px', textAlign: 'right', fontSize: 13, color: overChg ? COLOR_OVER : '#6B7280' }}>{overChg ? `+${ecartChg}` : ecartChg}h</td>
+                                        <td style={{ padding: '9px 14px', textAlign: 'right', fontSize: 13, color: overChg ? COLOR_OVER : 'var(--df-muted)' }}>{overChg ? `+${ecartChg}` : ecartChg}h</td>
                                     </tr>
                                 );
                             })}
                             {chartData.length === 0 && (
-                                <tr><td colSpan={8} style={{ padding: 24, textAlign: 'center', color: '#9B9A97', fontSize: 13 }}>Aucune donnée sur cette période.</td></tr>
+                                <tr><td colSpan={8} style={{ padding: 24, textAlign: 'center', color: 'var(--df-faint-2)', fontSize: 13 }}>Aucune donnée sur cette période.</td></tr>
                             )}
                         </tbody>
                     </table>
@@ -787,11 +787,11 @@ const CapaciteView = ({ localUsers, localEvents, projects = [] }) => {
 
             {/* ── Panneau latéral détail semaine ── */}
             {selectedWeekData && (
-                <div style={{ width: 340, borderLeft: '1px solid #E0DED9', background: 'white', display: 'flex', flexDirection: 'column', overflow: 'hidden', flexShrink: 0, fontFamily: ROBOTO }}>
-                    <div style={{ padding: '20px 20px 16px', borderBottom: '1px solid #E8E6E2', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div style={{ width: 340, borderLeft: '1px solid var(--df-border)', background: 'var(--df-bg)', display: 'flex', flexDirection: 'column', overflow: 'hidden', flexShrink: 0, fontFamily: ROBOTO }}>
+                    <div style={{ padding: '20px 20px 16px', borderBottom: '1px solid var(--df-border-soft)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                         <div>
-                            <div style={{ fontWeight: 400, fontSize: 20, color: '#111827' }}>{selectedWeekData.weekFullLabel}</div>
-                            <div style={{ fontSize: 12, color: '#6B7280', marginTop: 4 }}>
+                            <div style={{ fontWeight: 400, fontSize: 20, color: 'var(--df-text)' }}>{selectedWeekData.weekFullLabel}</div>
+                            <div style={{ fontSize: 12, color: 'var(--df-muted)', marginTop: 4 }}>
                                 Capa {selectedWeekData.capa}h &nbsp;·&nbsp; Planifié {includeInternal ? selectedWeekData.planifieTotal : selectedWeekData.planifie}h &nbsp;·&nbsp; Consommé {includeInternal ? selectedWeekData.chargeTotal : selectedWeekData.charge}h
                             </div>
                             {(includeInternal ? selectedWeekData.planifieTotal : selectedWeekData.planifie) > selectedWeekData.capa && (
@@ -801,7 +801,7 @@ const CapaciteView = ({ localUsers, localEvents, projects = [] }) => {
                             )}
                         </div>
                         <button onClick={() => setSelectedWeekData(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2 }}>
-                            <X size={18} color="#9B9A97" />
+                            <X size={18} color="var(--df-faint-2)" />
                         </button>
                     </div>
 

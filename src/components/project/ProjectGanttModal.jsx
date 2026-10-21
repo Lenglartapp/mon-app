@@ -15,10 +15,10 @@ import { ChoicePill } from "../ui/DaForm";
 import { serviceOfEventType, netHoursOfEvent } from "../../lib/projectMetrics";
 import { readCourseLines } from "../../lib/odoo/courseLinesClient";
 
-const NAVY = "#1E2447";
-const PLAN = "#A8C2EC";
-const LINE = "#E8E6E2";
-const MUTED = "#6B7280";
+const NAVY = "var(--df-primary)";
+const PLAN = "var(--df-tone-3)";
+const LINE = "var(--df-border-soft)";
+const MUTED = "var(--df-muted)";
 const LABEL_W = 260;
 const SERVICES = [
   { key: "prepa", label: "Préparation", expandable: true },
@@ -68,7 +68,7 @@ function Cell({ done, planned, width, showText }) {
   const bg = done && planned ? `linear-gradient(90deg, ${NAVY} ${(done / total) * 100}%, ${PLAN} 0)` : done ? NAVY : PLAN;
   return (
     <div style={{ width, flexShrink: 0, padding: "0 1px", boxSizing: "border-box" }} title={`${done ? `Réalisé ${fmtH(done)}` : ""}${done && planned ? " · " : ""}${planned ? `Prévu ${fmtH(planned)}` : ""}`}>
-      <div style={{ height: 22, borderRadius: 4, background: bg, color: done ? "white" : "#111827", fontSize: 10, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", whiteSpace: "nowrap" }}>
+      <div style={{ height: 22, borderRadius: 4, background: bg, color: done ? "white" : "var(--df-text)", fontSize: 10, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", whiteSpace: "nowrap" }}>
         {showText ? Math.round(total) : ""}
       </div>
     </div>
@@ -169,22 +169,22 @@ export default function ProjectGanttModal({ open, onClose, project, events = [],
   const toReceive = fabricsAll.filter((f) => !f.received)
     .sort((a, b) => (a.date ? a.date.getTime() : Infinity) - (b.date ? b.date.getTime() : Infinity));
   const fabricStatus = (f) => (f.received ? { text: `Reçu le ${format(f.date || today0, "dd/MM/yyyy")}`, color: MUTED }
-    : !f.date ? { text: "DLE manquante", color: "#B45309" }
+    : !f.date ? { text: "DLE manquante", color: "var(--df-x-B45309)" }
       : f.date < today0 ? { text: `En retard — DLE ${format(f.date, "dd/MM/yyyy")}`, color: "#DC2626" }
         : { text: `DLE ${format(f.date, "dd/MM/yyyy")}`, color: MUTED });
   const markers = [
     { date: new Date(), label: "Aujourd'hui", color: "#DC2626" },
-    ...(project?.deadline ? [{ date: new Date(project.deadline), label: "Livraison", color: NAVY }] : []),
-    ...(project?.delivery_phases || []).filter((p) => p.date).map((p, i) => ({ date: new Date(p.date), label: p.label || `Phase ${i + 1}`, color: "#5B7FC4" })),
+    ...(project?.deadline ? [{ date: new Date(project.deadline), label: "Livraison", color: 'var(--df-primary-text)' }] : []),
+    ...(project?.delivery_phases || []).filter((p) => p.date).map((p, i) => ({ date: new Date(p.date), label: p.label || `Phase ${i + 1}`, color: "var(--df-tone-2)" })),
   ];
 
   // Colonne de gauche : la place de la flèche est TOUJOURS réservée, pour que tous les libellés
   // s'alignent (avec ou sans menu déroulant) ; les sous-lignes sont décalées d'un cran.
   const labelCell = ({ label, sub, child, onToggle, open, minH }) => (
-    <div style={{ position: "sticky", left: 0, zIndex: 6, width: LABEL_W, flexShrink: 0, alignSelf: "stretch", display: "flex", alignItems: "center", gap: 6, padding: child ? "6px 12px 6px 33px" : "8px 12px", minHeight: minH, boxSizing: "border-box", background: child ? "#FAFAF9" : "white", borderRight: `1px solid ${LINE}`, cursor: onToggle ? "pointer" : "default" }} onClick={onToggle}>
+    <div style={{ position: "sticky", left: 0, zIndex: 6, width: LABEL_W, flexShrink: 0, alignSelf: "stretch", display: "flex", alignItems: "center", gap: 6, padding: child ? "6px 12px 6px 33px" : "8px 12px", minHeight: minH, boxSizing: "border-box", background: child ? "var(--df-surface-6)" : "var(--df-bg)", borderRight: `1px solid ${LINE}`, cursor: onToggle ? "pointer" : "default" }} onClick={onToggle}>
       {!child && <span style={{ width: 15, flexShrink: 0, display: "flex", alignSelf: "flex-start", marginTop: 2 }}>{onToggle && (open ? <ChevronDown size={15} color={MUTED} /> : <ChevronRight size={15} color={MUTED} />)}</span>}
       <div style={{ minWidth: 0, flex: 1 }}>
-        <div style={{ fontSize: child ? 13 : 14, fontWeight: child ? 400 : 500, color: "#111827", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{label}</div>
+        <div style={{ fontSize: child ? 13 : 14, fontWeight: child ? 400 : 500, color: "var(--df-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{label}</div>
         {sub && <div style={{ fontSize: 11, color: MUTED, lineHeight: 1.35, marginTop: 2 }}>{sub}</div>}
       </div>
     </div>
@@ -194,16 +194,16 @@ export default function ProjectGanttModal({ open, onClose, project, events = [],
   const budgetSub = (done, planned, b) => (
     <div>
       {b > 0 && (
-        <div style={{ height: 5, borderRadius: 99, background: "#EFEEEA", overflow: "hidden", margin: "3px 0 4px", width: "100%" }}>
+        <div style={{ height: 5, borderRadius: 99, background: "var(--df-x-EFEEEA)", overflow: "hidden", margin: "3px 0 4px", width: "100%" }}>
           <div style={{ width: `${Math.min(100, (done / b) * 100)}%`, height: "100%", background: done > b ? "#DC2626" : NAVY }} />
         </div>
       )}
-      <span style={{ color: "#111827", fontWeight: 500 }}>{fmtH(done)}</span>{b > 0 ? ` / ${fmtH(b)} consommées` : " consommées"} · prévu {fmtH(planned)}
+      <span style={{ color: "var(--df-text)", fontWeight: 500 }}>{fmtH(done)}</span>{b > 0 ? ` / ${fmtH(b)} consommées` : " consommées"} · prévu {fmtH(planned)}
     </div>
   );
 
   const row = (key, label, sub, days, opts = {}) => (
-    <div key={key} style={{ display: "flex", borderBottom: `1px solid ${LINE}`, minHeight: opts.child ? 34 : opts.weeks ? 64 : 52, alignItems: "center", background: opts.child ? "#FAFAF9" : "white" }}>
+    <div key={key} style={{ display: "flex", borderBottom: `1px solid ${LINE}`, minHeight: opts.child ? 34 : opts.weeks ? 64 : 52, alignItems: "center", background: opts.child ? "var(--df-surface-6)" : "var(--df-bg)" }}>
       {labelCell({ label, sub, child: opts.child, onToggle: opts.onToggle, open: opts.open })}
       {/* Confection : 2 voies — en haut le réalisé (créneaux validés), en bas le Programme semaine (prévu). */}
       <div style={{ position: "relative", display: "flex", width: gridW, alignSelf: opts.weeks ? "stretch" : "center", alignItems: opts.weeks ? "flex-start" : "center", paddingTop: opts.weeks ? 6 : 0 }}>
@@ -212,7 +212,7 @@ export default function ProjectGanttModal({ open, onClose, project, events = [],
           const x = xOf(w.start);
           const wpx = scale === "day" ? 5 * colW : colW;
           return (
-            <div key={`w${i}`} title={`Programme semaine : ${fmtH(w.hours)} prévues`} style={{ position: "absolute", left: x + 1, width: wpx - 2, top: 34, height: 20, borderRadius: 4, background: PLAN, fontSize: 10, fontWeight: 600, color: "#111827", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", whiteSpace: "nowrap" }}>
+            <div key={`w${i}`} title={`Programme semaine : ${fmtH(w.hours)} prévues`} style={{ position: "absolute", left: x + 1, width: wpx - 2, top: 34, height: 20, borderRadius: 4, background: PLAN, fontSize: 10, fontWeight: 600, color: "var(--df-text)", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", whiteSpace: "nowrap" }}>
               {scale === "day" ? `Prévu ${fmtH(w.hours)}` : Math.round(w.hours)}
             </div>
           );
@@ -243,17 +243,17 @@ export default function ProjectGanttModal({ open, onClose, project, events = [],
         <div ref={scrollRef} style={{ height: "100%", overflow: "auto", fontFamily: "Roboto, system-ui, sans-serif" }}>
           <div style={{ position: "relative", width: LABEL_W + gridW, minWidth: "100%" }}>
             {/* En-têtes : mois puis jours / semaines */}
-            <div style={{ position: "sticky", top: 0, zIndex: 8, background: "#F4F4F4", borderBottom: "1px solid #E0DED9" }}>
+            <div style={{ position: "sticky", top: 0, zIndex: 8, background: "var(--df-surface)", borderBottom: "1px solid var(--df-border)" }}>
               <div style={{ display: "flex" }}>
-                <div style={{ position: "sticky", left: 0, zIndex: 9, width: LABEL_W, flexShrink: 0, background: "#F4F4F4", borderRight: `1px solid ${LINE}` }} />
+                <div style={{ position: "sticky", left: 0, zIndex: 9, width: LABEL_W, flexShrink: 0, background: "var(--df-surface)", borderRight: `1px solid ${LINE}` }} />
                 {months.map((m) => (
-                  <div key={m.label + m.from} style={{ width: m.n * colW, flexShrink: 0, padding: "6px 8px", fontSize: 12, fontWeight: 600, color: "#374151", borderLeft: `1px solid ${LINE}`, boxSizing: "border-box", textTransform: "capitalize", whiteSpace: "nowrap", overflow: "hidden" }}>{m.label}</div>
+                  <div key={m.label + m.from} style={{ width: m.n * colW, flexShrink: 0, padding: "6px 8px", fontSize: 12, fontWeight: 600, color: "var(--df-text-2)", borderLeft: `1px solid ${LINE}`, boxSizing: "border-box", textTransform: "capitalize", whiteSpace: "nowrap", overflow: "hidden" }}>{m.label}</div>
                 ))}
               </div>
               <div style={{ display: "flex" }}>
-                <div style={{ position: "sticky", left: 0, zIndex: 9, width: LABEL_W, flexShrink: 0, background: "#F4F4F4", borderRight: `1px solid ${LINE}`, padding: "4px 12px", fontSize: 12, color: MUTED, boxSizing: "border-box" }}>Service</div>
+                <div style={{ position: "sticky", left: 0, zIndex: 9, width: LABEL_W, flexShrink: 0, background: "var(--df-surface)", borderRight: `1px solid ${LINE}`, padding: "4px 12px", fontSize: 12, color: MUTED, boxSizing: "border-box" }}>Service</div>
                 {cols.map((c, i) => (
-                  <div key={i} style={{ width: colW, flexShrink: 0, textAlign: "center", fontSize: 10.5, color: c.weekend ? "#9B9A97" : "#374151", padding: "4px 0", boxSizing: "border-box" }}>
+                  <div key={i} style={{ width: colW, flexShrink: 0, textAlign: "center", fontSize: 10.5, color: c.weekend ? "var(--df-faint-2)" : "var(--df-text-2)", padding: "4px 0", boxSizing: "border-box" }}>
                     {scale === "day" ? <>{format(c.d, "EEEEE", { locale: fr })}<br />{format(c.d, "d")}</> : <>S{format(c.d, "I")}<br />{format(c.d, "d/MM")}</>}
                   </div>
                 ))}
@@ -272,7 +272,7 @@ export default function ProjectGanttModal({ open, onClose, project, events = [],
                 const allIn = fs.every((f) => f.received);
                 const late = fs.some((f) => !f.received && f.date < today0);
                 return (
-                  <div key={key} style={{ minWidth: 22, height: 22, padding: "0 5px", boxSizing: "border-box", borderRadius: 99, background: allIn ? NAVY : PLAN, color: allIn ? "white" : "#111827", border: late ? "2px solid #DC2626" : "none", fontSize: 10.5, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", cursor: "default" }}
+                  <div key={key} style={{ minWidth: 22, height: 22, padding: "0 5px", boxSizing: "border-box", borderRadius: 99, background: allIn ? NAVY : PLAN, color: allIn ? "white" : "var(--df-text)", border: late ? "2px solid #DC2626" : "none", fontSize: 10.5, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", cursor: "default" }}
                     onMouseEnter={(e) => { const r = e.currentTarget.getBoundingClientRect(); setTip({ x: r.left + r.width / 2, y: r.bottom + 6, items: fs }); }}
                     onMouseLeave={() => setTip(null)}>
                     {fs.length}
@@ -292,14 +292,14 @@ export default function ProjectGanttModal({ open, onClose, project, events = [],
                 <>
                   {/* Tissus : pastille = nombre de tissus à la date (reçus en bleu nuit, attendus en bleu clair,
                       DLE dépassée cerclée de rouge) ; détail au survol. Dépliable : tissus encore à recevoir. */}
-                  <div style={{ display: "flex", borderBottom: `1px solid ${LINE}`, minHeight: 52, alignItems: "center", background: "white" }}>
+                  <div style={{ display: "flex", borderBottom: `1px solid ${LINE}`, minHeight: 52, alignItems: "center", background: "var(--df-bg)" }}>
                     {labelCell({ label: "Tissus", sub, onToggle: toReceive.length ? () => setExpanded((x) => ({ ...x, tissus: !x.tissus })) : null, open: expanded.tissus })}
                     {gridRow(fabrics)}
                   </div>
                   {expanded.tissus && toReceive.map((f, i) => {
                     const st = fabricStatus(f);
                     return (
-                      <div key={`t${i}`} style={{ display: "flex", borderBottom: `1px solid ${LINE}`, minHeight: 34, alignItems: "center", background: "#FAFAF9" }}>
+                      <div key={`t${i}`} style={{ display: "flex", borderBottom: `1px solid ${LINE}`, minHeight: 34, alignItems: "center", background: "var(--df-surface-6)" }}>
                         {labelCell({ label: fabricLabel(f.line), sub: <span style={{ color: st.color, fontWeight: st.color === MUTED ? 400 : 600 }}>{st.text}</span>, child: true })}
                         {gridRow([f])}
                       </div>
@@ -333,7 +333,7 @@ export default function ProjectGanttModal({ open, onClose, project, events = [],
               if (x < 0 || x > gridW) return null;
               return (
                 <div key={`m${i}`} style={{ position: "absolute", top: 0, bottom: 0, left: LABEL_W + x + (scale === "day" ? colW / 2 : 0), width: 0, borderLeft: `2px ${m.label === "Aujourd'hui" ? "solid" : "dashed"} ${m.color}`, zIndex: 3, pointerEvents: "none" }}>
-                  <span style={{ position: "absolute", bottom: 6, left: 4, fontSize: 10, fontWeight: 600, color: m.color, background: "white", padding: "0 4px", borderRadius: 4, whiteSpace: "nowrap" }}>{m.label}</span>
+                  <span style={{ position: "absolute", bottom: 6, left: 4, fontSize: 10, fontWeight: 600, color: m.color, background: "var(--df-bg)", padding: "0 4px", borderRadius: 4, whiteSpace: "nowrap" }}>{m.label}</span>
                 </div>
               );
             })}
@@ -341,11 +341,11 @@ export default function ProjectGanttModal({ open, onClose, project, events = [],
         </div>
       )}
       {tip && (
-        <div style={{ position: "fixed", left: Math.min(tip.x, window.innerWidth - 180), top: tip.y, transform: "translateX(-50%)", zIndex: 2000, background: "#111827", color: "white", borderRadius: 8, padding: "8px 10px", fontSize: 12, lineHeight: 1.5, boxShadow: "0 8px 20px rgba(0,0,0,.2)", maxWidth: 340, pointerEvents: "none", fontFamily: "Roboto, system-ui, sans-serif" }}>
+        <div style={{ position: "fixed", left: Math.min(tip.x, window.innerWidth - 180), top: tip.y, transform: "translateX(-50%)", zIndex: 2000, background: "var(--df-text)", color: "white", borderRadius: 8, padding: "8px 10px", fontSize: 12, lineHeight: 1.5, boxShadow: "0 8px 20px rgba(0,0,0,.2)", maxWidth: 340, pointerEvents: "none", fontFamily: "Roboto, system-ui, sans-serif" }}>
           {tip.items.map((f, i) => (
             <div key={i} style={{ display: "flex", gap: 8, justifyContent: "space-between" }}>
               <span style={{ fontWeight: 500 }}>{fabricLabel(f.line)}</span>
-              <span style={{ color: f.received ? "#A8C2EC" : f.date < today0 ? "#FCA5A5" : "#D1D5DB", whiteSpace: "nowrap" }}>{f.received ? `reçu ${format(f.date, "dd/MM")}` : `DLE ${format(f.date, "dd/MM")}`}</span>
+              <span style={{ color: f.received ? "var(--df-tone-3)" : f.date < today0 ? "#FCA5A5" : "var(--df-border-strong)", whiteSpace: "nowrap" }}>{f.received ? `reçu ${format(f.date, "dd/MM")}` : `DLE ${format(f.date, "dd/MM")}`}</span>
             </div>
           ))}
         </div>

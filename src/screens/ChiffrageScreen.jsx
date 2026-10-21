@@ -55,14 +55,14 @@ const toNum = (v) => {
 
 // Statuts du chiffrage (mêmes couleurs que la liste ChiffrageRoot)
 const CHIFFRAGE_STATUS = {
-  DRAFT: { label: "À faire", color: "#9CA3AF" },
+  DRAFT: { label: "À faire", color: "var(--df-faint)" },
   IN_PROGRESS: { label: "En cours", color: "#3B82F6" },
   PENDING_APPROVAL: { label: "À valider", color: "#F59E0B" },
-  REVISE: { label: "À reprendre", color: "#EF4444" },
+  REVISE: { label: "À reprendre", color: "var(--df-danger)" },
   VALIDATED: { label: "Validée", color: "#10B981" },
   ORDERED: { label: "Commande", color: "#8B5CF6" },
   ORDER_COMPLETED: { label: "Commande terminée", color: "#059669" },
-  LOST: { label: "Perdu", color: "#EF4444" },
+  LOST: { label: "Perdu", color: "var(--df-danger)" },
 };
 
 // Memoize External Components for better performance
@@ -678,8 +678,8 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onDelete, onLo
     fontWeight: 500,
     transition: 'all 0.2s cubic-bezier(0.25, 1, 0.5, 1)',
     outline: 'none',
-    background: isActive ? '#1E2447' : 'transparent',
-    color: isActive ? '#FFFFFF' : '#4B5563',
+    background: isActive ? 'var(--df-primary)' : 'transparent',
+    color: isActive ? '#FFFFFF' : 'var(--df-text-3)',
     boxShadow: isActive ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
   });
 
@@ -749,20 +749,20 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onDelete, onLo
   if (!detailReady) {
     return (
       <div style={S.contentWide}>
-        <button onClick={onBack} style={{ background: 'none', border: 'none', color: '#6B7280', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, padding: 0, fontSize: 13, fontWeight: 500, marginTop: 8 }}>← Retour</button>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '50vh', gap: 12, color: '#6B7280' }}>
+        <button onClick={onBack} style={{ background: 'none', border: 'none', color: 'var(--df-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, padding: 0, fontSize: 13, fontWeight: 500, marginTop: 8 }}>← Retour</button>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '50vh', gap: 12, color: 'var(--df-muted)' }}>
           {detailErrorId !== minute?.id && (
-            <div style={{ width: 28, height: 28, border: '3px solid #E5E7EB', borderTopColor: '#1E2447', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+            <div style={{ width: 28, height: 28, border: '3px solid var(--df-border-2)', borderTopColor: 'var(--df-primary)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
           )}
-          <div style={{ fontSize: 15, fontWeight: 600, color: '#111827' }}>{minute?.name || 'Chiffrage'}</div>
+          <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--df-text)' }}>{minute?.name || 'Chiffrage'}</div>
           {detailErrorId === minute?.id ? (
             <>
-              <div style={{ fontSize: 13, color: '#B91C1C', textAlign: 'center', maxWidth: 420 }}>
+              <div style={{ fontSize: 13, color: 'var(--df-danger-text)', textAlign: 'center', maxWidth: 420 }}>
                 Le chiffrage n'a pas pu être chargé (serveur lent ou connexion interrompue). Aucune donnée n'a été modifiée.
               </div>
               <button
                 onClick={() => { setDetailErrorId(null); setDetailRetry((n) => n + 1); }}
-                style={{ background: '#1E2447', color: 'white', border: 'none', padding: '8px 16px', borderRadius: 6, fontWeight: 600, cursor: 'pointer' }}
+                style={{ background: 'var(--df-primary)', color: 'white', border: 'none', padding: '8px 16px', borderRadius: 6, fontWeight: 600, cursor: 'pointer' }}
               >
                 Réessayer
               </button>
@@ -779,7 +779,7 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onDelete, onLo
     <div style={S.contentWide}>
       {/* Header : fiche d'identité (gauche) + notes (droite), actions en dessous */}
       <div style={{ marginTop: 8, marginBottom: 28 }}>
-        <button onClick={onBack} style={{ background: 'none', border: 'none', color: '#6B7280', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, padding: 0, fontSize: 13, fontWeight: 500, marginBottom: 12 }}>← Retour</button>
+        <button onClick={onBack} style={{ background: 'none', border: 'none', color: 'var(--df-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, padding: 0, fontSize: 13, fontWeight: 500, marginBottom: 12 }}>← Retour</button>
         {/* En-tête sans cadre : titre + client, puis infos (gauche) et notes (droite, même hauteur) */}
         <EditableTitle
           value={name}
@@ -790,7 +790,7 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onDelete, onLo
           fontFamily="Roboto, system-ui, sans-serif"
           onSave={(v) => { setName(v); updateMinute({ name: v }); }}
         />
-        <div style={{ fontSize: 15, color: '#6B7280', marginTop: 2 }}>{minute?.client || "Client non spécifié"}</div>
+        <div style={{ fontSize: 15, color: 'var(--df-muted)', marginTop: 2 }}>{minute?.client || "Client non spécifié"}</div>
         <div className="df-chf-head" style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1.3fr) minmax(0,1fr)', gap: 28, marginTop: 14, alignItems: 'start' }}>
           {/* Une seule ligne : chargé d'affaires · créé le · livraison · historique · statut */}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px 28px', alignItems: 'flex-end', minWidth: 0 }}>
@@ -809,7 +809,7 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onDelete, onLo
                   type="date"
                   value={minute?.delivery_date || minute?.deliveryDate || ""}
                   onChange={(e) => updateMinute({ delivery_date: e.target.value || null })}
-                  style={{ border: '1px solid #E0DED9', borderRadius: 6, padding: '3px 6px', fontSize: 13, color: '#374151', background: 'white', outline: 'none', fontFamily: 'inherit' }}
+                  style={{ border: '1px solid var(--df-border)', borderRadius: 6, padding: '3px 6px', fontSize: 13, color: 'var(--df-text-2)', background: 'var(--df-bg)', outline: 'none', fontFamily: 'inherit' }}
                 />
               ) : formatAnyDateFR(minute?.delivery_date || minute?.deliveryDate)}
             </MetaItem>
@@ -827,7 +827,7 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onDelete, onLo
                 title={frozen ? 'Devis en commande : figé' : 'Changer le statut'}
               />
               {validationCaption && (
-                <span style={{ fontSize: 12, fontWeight: 400, color: '#6B7280', whiteSpace: 'nowrap' }}>{validationCaption}</span>
+                <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--df-muted)', whiteSpace: 'nowrap' }}>{validationCaption}</span>
               )}
             </MetaItem>
           </div>
@@ -842,7 +842,7 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onDelete, onLo
         </div>
 
         {/* Intercalaires de variantes (gauche) + actions (droite) */}
-        <div className="df-chf-nav" style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) auto minmax(0,1fr)', alignItems: 'flex-end', gap: 16, marginTop: 32, borderBottom: '1px solid #E0DED9' }}>
+        <div className="df-chf-nav" style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) auto minmax(0,1fr)', alignItems: 'flex-end', gap: 16, marginTop: 32, borderBottom: '1px solid var(--df-border)' }}>
           <div className="df-chf-tabs" style={{ minWidth: 0 }}>
             <VariantTabs
               tabs={familyTabs}
@@ -861,7 +861,7 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onDelete, onLo
         </div>
         <div className="df-chf-actions" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10, flexWrap: 'wrap', marginBottom: 8 }}>
           {canEdit && (
-            <button onClick={() => setExcelImportOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', borderRadius: 8, background: 'white', border: '1px solid #E0DED9', cursor: 'pointer', color: '#374151', fontSize: 13, fontWeight: 600 }}>
+            <button onClick={() => setExcelImportOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', borderRadius: 8, background: 'var(--df-bg)', border: '1px solid var(--df-border)', cursor: 'pointer', color: 'var(--df-text-2)', fontSize: 13, fontWeight: 600 }}>
               <FileUp size={16} /> Importer Excel
             </button>
           )}
@@ -878,19 +878,19 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onDelete, onLo
           {canEdit && (
             <button
               onClick={() => setShowRecalibration(true)}
-              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', borderRadius: 8, background: 'white', border: '1px solid #E0DED9', cursor: 'pointer', color: '#374151', fontSize: 13, fontWeight: 600 }}
+              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', borderRadius: 8, background: 'var(--df-bg)', border: '1px solid var(--df-border)', cursor: 'pointer', color: 'var(--df-text-2)', fontSize: 13, fontWeight: 600 }}
               title="Recalibrer le devis vers un montant cible"
             >
               <SlidersHorizontal size={16} /> Recalibrer
             </button>
           )}
-          <button onClick={() => setShowCatalog(true)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', borderRadius: 8, background: 'white', border: '1px solid #E0DED9', cursor: 'pointer', color: '#374151', fontSize: 13, fontWeight: 600 }}>
+          <button onClick={() => setShowCatalog(true)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', borderRadius: 8, background: 'var(--df-bg)', border: '1px solid var(--df-border)', cursor: 'pointer', color: 'var(--df-text-2)', fontSize: 13, fontWeight: 600 }}>
             <BookOpen size={16} /> Bibliothèque
           </button>
           {canUseOdooQuote(currentUser?.id) && (
             <button
               onClick={() => setShowOdooQuote(true)}
-              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', borderRadius: 8, background: 'white', border: '1px solid #E0DED9', cursor: 'pointer', color: '#374151', fontSize: 13, fontWeight: 600 }}
+              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', borderRadius: 8, background: 'var(--df-bg)', border: '1px solid var(--df-border)', cursor: 'pointer', color: 'var(--df-text-2)', fontSize: 13, fontWeight: 600 }}
               title="Préparer le devis Odoo à partir de cette minute"
             >
               <FileOutput size={16} /> Devis Odoo
@@ -900,7 +900,7 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onDelete, onLo
             const otherBase = odooOrder && odooOrder.target && odooLink.target && odooOrder.target !== odooLink.target;
             const gone = odooOrder && odooOrder.exists === false;
             const label = gone || otherBase ? 'introuvable dans cette base' : (odooOrder?.stateLabel || '…');
-            const color = gone || otherBase ? '#9B9A97' : odooOrder?.state === 'sale' ? '#15803D' : odooOrder?.state === 'cancel' ? '#B91C1C' : '#714B67';
+            const color = gone || otherBase ? 'var(--df-faint-2)' : odooOrder?.state === 'sale' ? 'var(--df-x-15803D)' : odooOrder?.state === 'cancel' ? 'var(--df-danger-text)' : '#714B67';
             // Écart de montant Droitfil ↔ Odoo (minute modifiée après le devis, ou devis retouché dans Odoo).
             const odooHt = Number(odooOrder?.amountUntaxed);
             const drift = !gone && !otherBase && odooOrder?.exists && odooOrder.state !== 'cancel'
@@ -912,16 +912,16 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onDelete, onLo
                 <span title={odooOrder.state === 'sale'
                   ? 'Commande confirmée : pour changer le chiffrage, dupliquer la minute (variante) puis générer un nouveau devis.'
                   : 'Relancer « Devis Odoo » pour mettre à jour le devis brouillon.'}
-                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 999, background: '#FEF3C7', color: '#92400E', fontSize: 13, fontWeight: 600, border: '1px solid #FCD34D' }}>
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 999, background: 'var(--df-amber-bg)', color: 'var(--df-warn-text)', fontSize: 13, fontWeight: 600, border: '1px solid var(--df-x-FCD34D)' }}>
                   ⚠ Écart avec Odoo : {eur(liveCa)} ici, {eur(odooHt)} dans Odoo
                 </span>
               )}
               <a href={odooLink.url} target="_blank" rel="noreferrer"
                 title={`Créé le ${new Date(odooLink.at).toLocaleString('fr-FR')}${odooLink.by ? ` par ${odooLink.by}` : ''} · ${odooLink.target || ''}`}
-                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 999, background: '#F4F4F4', color: '#1F2937', fontSize: 13, fontWeight: 600, textDecoration: 'none', border: '1px solid #E0DED9' }}>
+                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 999, background: 'var(--df-surface)', color: 'var(--df-text-1b)', fontSize: 13, fontWeight: 600, textDecoration: 'none', border: '1px solid var(--df-border)' }}>
                 Devis Odoo {odooLink.name}
                 <span style={{ fontWeight: 500, color }}>· {label}</span>
-                <span style={{ color: '#9B9A97' }}>↗</span>
+                <span style={{ color: 'var(--df-faint-2)' }}>↗</span>
               </a>
               </>
             );
@@ -967,14 +967,14 @@ function ChiffrageScreen({ minuteId, minutes, onUpdate, onCreate, onDelete, onLo
                 type="button"
                 onClick={confirmDeleteTab}
                 disabled={deleting}
-                style={{ height: 38, padding: '0 14px', borderRadius: 8, border: '1px solid #B91C1C', background: '#B91C1C', color: 'white', fontSize: 13, fontWeight: 600, fontFamily: 'inherit', cursor: deleting ? 'wait' : 'pointer', opacity: deleting ? 0.6 : 1 }}
+                style={{ height: 38, padding: '0 14px', borderRadius: 8, border: '1px solid var(--df-danger-text)', background: 'var(--df-danger-text)', color: 'white', fontSize: 13, fontWeight: 600, fontFamily: 'inherit', cursor: deleting ? 'wait' : 'pointer', opacity: deleting ? 0.6 : 1 }}
               >
                 {deleting ? 'Suppression…' : 'Supprimer'}
               </button>
             </>
           )}
         >
-          <div style={{ fontSize: 13, color: '#374151', lineHeight: 1.5 }}>
+          <div style={{ fontSize: 13, color: 'var(--df-text-2)', lineHeight: 1.5 }}>
             {deleteTab.isRoot ? 'Ce chiffrage' : 'Cette variante'} sera supprimé{deleteTab.isRoot ? '' : 'e'} définitivement, avec son historique de versions.
             {heirOf(deleteTab)
               ? <> La variante <b style={{ fontWeight: 500 }}>{heirOf(deleteTab).code} « {heirOf(deleteTab).name} »</b> deviendra l'original (V1) ; les autres variantes sont conservées.</>

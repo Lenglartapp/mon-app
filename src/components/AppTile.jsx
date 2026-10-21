@@ -1,8 +1,8 @@
 // src/components/AppTile.jsx
 import React from "react";
 
-const NAVY = "#1E2447";
-const NAVY_HOVER = "#26306B";
+const NAVY = "var(--df-primary)";
+const NAVY_HOVER = "var(--df-navy-3)";
 
 export default function AppTile({ label, Icon, size = 160, onClick }) {
   const [hov, setHov] = React.useState(false);

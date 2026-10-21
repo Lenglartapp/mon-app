@@ -9,14 +9,14 @@ const GROUP_LABELS = { prepa: 'Préparation', conf: 'Confection', pose: 'Pose' }
 
 // Styles DA : Roboto, champs 34 px à trait #E0DED9, boutons 8 px, bleu nuit pour l'action principale.
 const ROBOTO = 'Roboto, system-ui, sans-serif';
-const NAVY = '#1E2447';
+const NAVY = 'var(--df-primary)';
 const IN = { ...DA_INPUT_STYLE, height: 34, fontSize: 13, padding: '0 10px' };
-const LBL = { display: 'block', fontSize: 12, color: '#6B7280', marginBottom: 4 };
-const BTN = { flex: 1, height: 34, border: '1px solid #E0DED9', borderRadius: 8, background: 'white', color: '#374151', fontWeight: 600, fontSize: 13, fontFamily: 'inherit', cursor: 'pointer' };
-const BTN_PRIMARY = (on = true) => ({ ...BTN, border: 'none', background: on ? NAVY : '#E8E6E2', color: on ? 'white' : '#9B9A97', cursor: on ? 'pointer' : 'not-allowed' });
-const ICON_BTN = { width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8, border: '1px solid #E0DED9', background: 'white', cursor: 'pointer', color: '#6B7280' };
-const pill = (on) => ({ flex: 1, height: 32, borderRadius: 99, fontSize: 13, fontWeight: 500, fontFamily: 'inherit', cursor: 'pointer', border: `1px solid ${on ? NAVY : '#E0DED9'}`, background: on ? NAVY : 'white', color: on ? 'white' : '#374151' });
-const SUBPANEL = { background: '#F4F4F4', borderRadius: 8, padding: 14 };
+const LBL = { display: 'block', fontSize: 12, color: 'var(--df-muted)', marginBottom: 4 };
+const BTN = { flex: 1, height: 34, border: '1px solid var(--df-border)', borderRadius: 8, background: 'var(--df-bg)', color: 'var(--df-text-2)', fontWeight: 600, fontSize: 13, fontFamily: 'inherit', cursor: 'pointer' };
+const BTN_PRIMARY = (on = true) => ({ ...BTN, border: 'none', background: on ? NAVY : 'var(--df-border-soft)', color: on ? 'white' : 'var(--df-faint-2)', cursor: on ? 'pointer' : 'not-allowed' });
+const ICON_BTN = { width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8, border: '1px solid var(--df-border)', background: 'var(--df-bg)', cursor: 'pointer', color: 'var(--df-muted)' };
+const pill = (on) => ({ flex: 1, height: 32, borderRadius: 99, fontSize: 13, fontWeight: 500, fontFamily: 'inherit', cursor: 'pointer', border: `1px solid ${on ? NAVY : 'var(--df-border)'}`, background: on ? NAVY : 'var(--df-bg)', color: on ? 'white' : 'var(--df-text-2)' });
+const SUBPANEL = { background: 'var(--df-surface)', borderRadius: 8, padding: 14 };
 
 // Contrats dans le nuancier bleu de la charte.
 const CONTRACT_BADGE = {
@@ -169,14 +169,14 @@ const ResourcePanel = ({
     const renderAbsenceForm = () => (
         <div style={{ ...SUBPANEL, marginBottom: 20 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                <span style={{ fontSize: 14, fontWeight: 500, color: '#111827', display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <CalendarIcon size={14} color={NAVY} />
+                <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--df-text)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <CalendarIcon size={14} color="var(--df-primary-text)" />
                     Absence · {absenceTargetLabel}
                 </span>
                 <button
                     onClick={() => { setSelectedUserForAbsence(null); setSelectedGroupForAbsence(null); }}
                     title="Fermer"
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9B9A97', display: 'flex' }}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--df-faint-2)', display: 'flex' }}
                 >
                     <X size={16} />
                 </button>
@@ -239,7 +239,7 @@ const ResourcePanel = ({
 
         return (
             <div key={user.id} style={{
-                background: 'white', border: '1px solid #E0DED9', borderRadius: 8,
+                background: 'var(--df-bg)', border: '1px solid var(--df-border)', borderRadius: 8,
                 padding: '10px 12px', marginBottom: 8,
             }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -253,7 +253,7 @@ const ResourcePanel = ({
                         </div>
                         <div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
-                                <span style={{ fontWeight: 500, fontSize: 14, color: '#111827' }}>{displayName}</span>
+                                <span style={{ fontWeight: 500, fontSize: 14, color: 'var(--df-text)' }}>{displayName}</span>
                                 <span style={{
                                     fontSize: 11, padding: '2px 8px', borderRadius: 99, fontWeight: 600,
                                     background: badge.bg, color: badge.color,
@@ -263,14 +263,14 @@ const ResourcePanel = ({
                                 {hasContractEnd && (
                                     <span style={{
                                         fontSize: 11, padding: '2px 8px', borderRadius: 99, fontWeight: 600,
-                                        background: '#F4F4F4', color: '#374151',
+                                        background: 'var(--df-surface)', color: 'var(--df-text-2)',
                                     }}>
                                         fin {fmtD(user.contract_end_date)}
                                     </span>
                                 )}
                             </div>
                             {(user.contract_start_date || user.contract_end_date) && (
-                                <div style={{ fontSize: 12, color: '#9B9A97', marginTop: 2 }}>
+                                <div style={{ fontSize: 12, color: 'var(--df-faint-2)', marginTop: 2 }}>
                                     {user.contract_start_date ? `du ${fmtD(user.contract_start_date)}` : ''}
                                     {user.contract_end_date ? ` au ${fmtD(user.contract_end_date)}` : (user.contract_start_date ? ' → en cours' : '')}
                                 </div>
@@ -311,7 +311,7 @@ const ResourcePanel = ({
                 {/* Paramètres contrat : type + dates */}
                 {isContractSettings && (
                     <div style={{ ...SUBPANEL, marginTop: 10, padding: 12 }}>
-                        <div style={{ fontSize: 13, fontWeight: 500, color: '#111827', marginBottom: 8 }}>Contrat</div>
+                        <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--df-text)', marginBottom: 8 }}>Contrat</div>
                         <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
                             {CONTRACT_TYPES.map(ct => (
                                 <button key={ct} type="button" onClick={() => setEditType(ct)} style={pill(editType === ct)}>
@@ -348,15 +348,15 @@ const ResourcePanel = ({
     return (
         <div style={{ position: 'fixed', inset: 0, zIndex: 120, display: 'flex', justifyContent: 'flex-end' }}>
             <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(17,24,39,0.4)' }} />
-            <div style={{ position: 'relative', width: 'min(460px, 100vw)', background: 'white', height: '100%', boxShadow: '-5px 0 25px rgba(0,0,0,0.12)', display: 'flex', flexDirection: 'column', fontFamily: ROBOTO }}>
+            <div style={{ position: 'relative', width: 'min(460px, 100vw)', background: 'var(--df-panel)', height: '100%', boxShadow: '-5px 0 25px rgba(0,0,0,0.12)', display: 'flex', flexDirection: 'column', fontFamily: ROBOTO }}>
 
                 {/* Header */}
-                <div style={{ padding: '22px 24px 16px', borderBottom: '1px solid #E8E6E2', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+                <div style={{ padding: '22px 24px 16px', borderBottom: '1px solid var(--df-border-soft)', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
                     <div>
-                        <div style={{ fontSize: 24, fontWeight: 400, color: '#111827', lineHeight: 1.2 }}>Gérer l'équipe</div>
-                        <div style={{ fontSize: 13, color: '#6B7280', marginTop: 4 }}>Membres, contrats, absences et fermetures.</div>
+                        <div style={{ fontSize: 24, fontWeight: 400, color: 'var(--df-text)', lineHeight: 1.2 }}>Gérer l'équipe</div>
+                        <div style={{ fontSize: 13, color: 'var(--df-muted)', marginTop: 4 }}>Membres, contrats, absences et fermetures.</div>
                     </div>
-                    <button onClick={onClose} title="Fermer" style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#9B9A97', display: 'flex', padding: 4 }}>
+                    <button onClick={onClose} title="Fermer" style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--df-faint-2)', display: 'flex', padding: 4 }}>
                         <X size={20} />
                     </button>
                 </div>
@@ -371,15 +371,15 @@ const ResourcePanel = ({
                     {Object.entries(groupedUsers).map(([role, members]) => (
                         <div key={role} style={{ marginBottom: 24 }}>
                             <div style={{
-                                marginBottom: 10, paddingBottom: 8, borderBottom: '1px solid #E8E6E2',
+                                marginBottom: 10, paddingBottom: 8, borderBottom: '1px solid var(--df-border-soft)',
                                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                             }}>
-                                <span style={{ fontSize: 17, fontWeight: 500, color: '#111827' }}>
-                                    {GROUP_LABELS[role]} <span style={{ fontSize: 13, color: '#9B9A97', fontWeight: 400 }}>{members.length}</span>
+                                <span style={{ fontSize: 17, fontWeight: 500, color: 'var(--df-text)' }}>
+                                    {GROUP_LABELS[role]} <span style={{ fontSize: 13, color: 'var(--df-faint-2)', fontWeight: 400 }}>{members.length}</span>
                                 </span>
                                 <button
                                     onClick={() => { setSelectedGroupForAbsence(role); setSelectedUserForAbsence(null); }}
-                                    style={{ height: 30, background: 'white', border: '1px solid #E0DED9', borderRadius: 8, padding: '0 10px', color: '#374151', fontSize: 12, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}
+                                    style={{ height: 30, background: 'var(--df-bg)', border: '1px solid var(--df-border)', borderRadius: 8, padding: '0 10px', color: 'var(--df-text-2)', fontSize: 12, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}
                                 >
                                     <CalendarIcon size={13} /> Absence groupe
                                 </button>
@@ -390,7 +390,7 @@ const ResourcePanel = ({
                             {/* Ajouter un membre */}
                             {addingMemberFor === role ? (
                                 <div style={{ ...SUBPANEL, marginTop: 4 }}>
-                                    <div style={{ fontSize: 14, fontWeight: 500, color: '#111827', marginBottom: 10 }}>
+                                    <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--df-text)', marginBottom: 10 }}>
                                         Nouveau membre — {GROUP_LABELS[role]}
                                     </div>
 
@@ -474,7 +474,7 @@ const ResourcePanel = ({
                             ) : (
                                 <button
                                     onClick={() => { resetAddMember(); setAddingMemberFor(role); }}
-                                    style={{ width: '100%', height: 34, border: '1px dashed #C9C7C2', borderRadius: 8, background: 'transparent', color: '#6B7280', fontSize: 13, fontWeight: 500, fontFamily: 'inherit', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+                                    style={{ width: '100%', height: 34, border: '1px dashed var(--df-border-hover)', borderRadius: 8, background: 'transparent', color: 'var(--df-muted)', fontSize: 13, fontWeight: 500, fontFamily: 'inherit', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
                                 >
                                     <UserPlus size={14} /> Ajouter un membre
                                 </button>
@@ -484,8 +484,8 @@ const ResourcePanel = ({
 
                     {/* Fermetures annuelles */}
                     <div style={{ paddingTop: 4, marginTop: 8 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, paddingBottom: 8, borderBottom: '1px solid #E8E6E2' }}>
-                            <span style={{ fontSize: 17, fontWeight: 500, color: '#111827' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, paddingBottom: 8, borderBottom: '1px solid var(--df-border-soft)' }}>
+                            <span style={{ fontSize: 17, fontWeight: 500, color: 'var(--df-text)' }}>
                                 Fermetures annuelles
                             </span>
                             {!showClosureForm && (
@@ -497,7 +497,7 @@ const ResourcePanel = ({
                         </div>
 
                         {closures.length === 0 && !showClosureForm && (
-                            <div style={{ fontSize: 12, color: '#9CA3AF', textAlign: 'center', padding: '10px 0' }}>
+                            <div style={{ fontSize: 12, color: 'var(--df-faint)', textAlign: 'center', padding: '10px 0' }}>
                                 Aucune fermeture configurée
                             </div>
                         )}
@@ -505,12 +505,12 @@ const ResourcePanel = ({
                         {closures.filter(c => c.id !== editingClosureId).map(c => (
                             <div key={c.id} style={{
                                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                                padding: '10px 12px', background: 'white', border: '1px solid #E0DED9',
+                                padding: '10px 12px', background: 'var(--df-bg)', border: '1px solid var(--df-border)',
                                 borderRadius: 8, marginBottom: 8,
                             }}>
                                 <div>
-                                    <div style={{ fontSize: 14, fontWeight: 500, color: '#111827' }}>{c.title}</div>
-                                    <div style={{ fontSize: 12, color: '#9B9A97' }}>
+                                    <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--df-text)' }}>{c.title}</div>
+                                    <div style={{ fontSize: 12, color: 'var(--df-faint-2)' }}>
                                         {c.meta?.start ? format(new Date(c.meta.start), 'dd/MM/yyyy') : '—'}
                                         {' → '}
                                         {c.meta?.end ? format(new Date(c.meta.end), 'dd/MM/yyyy') : '—'}
@@ -518,11 +518,11 @@ const ResourcePanel = ({
                                 </div>
                                 <div style={{ display: 'flex', gap: 2 }}>
                                     <button onClick={() => startEditClosure(c)} title="Modifier la fermeture"
-                                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', padding: 4 }}>
+                                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--df-faint)', padding: 4 }}>
                                         <Pencil size={13} />
                                     </button>
                                     <button onClick={() => onDeleteClosure(c.id)} title="Supprimer la fermeture"
-                                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', padding: 4 }}>
+                                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--df-faint)', padding: 4 }}>
                                         <X size={13} />
                                     </button>
                                 </div>
@@ -552,7 +552,7 @@ const ResourcePanel = ({
                                         </div>
                                     </div>
                                     {closureEnd && closureStart && closureEnd < closureStart && (
-                                        <div style={{ fontSize: 12, color: '#B91C1C' }}>La fin doit être après le début.</div>
+                                        <div style={{ fontSize: 12, color: 'var(--df-danger-text)' }}>La fin doit être après le début.</div>
                                     )}
                                     <div style={{ display: 'flex', gap: 7 }}>
                                         <button onClick={() => { setShowClosureForm(false); setEditingClosureId(null); setClosureLabel(''); }} style={BTN}>

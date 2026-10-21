@@ -40,7 +40,7 @@ const filterStock = (options, { inputValue }) => {
     if (!words.length) return options;
     return options.filter((it) => { const t = searchText(it); return words.every((w) => t.includes(w)); });
 };
-const MENU_PAPER_SX = { mt: 0.5, borderRadius: '8px', border: '1px solid #E0DED9', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' };
+const MENU_PAPER_SX = { mt: 0.5, borderRadius: '8px', border: '1px solid var(--df-border)', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' };
 
 const EMPTY_FORM = { product: '', ref: '', coloris: '', laize: '', fournisseur: '', qty: '', unit: 'ml', project: '', customReason: '' };
 
@@ -246,17 +246,17 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
     // DA : libellés gris AU-DESSUS des champs (DaField), champs fins sans titre intégré,
     // bleu nuit pour la sélection et la validation, intitulés en Roboto.
     const FONT = 'Roboto, system-ui, sans-serif';
-    const sectionSx = { p: 2, border: '1px solid #E0DED9', borderRadius: '8px' };
-    const sectionTitle = (t) => <Typography sx={{ fontSize: 15, fontWeight: 500, color: '#111827', fontFamily: FONT, mb: 1.5 }}>{t}</Typography>;
-    const unitAdornment = (u) => (u ? { endAdornment: <InputAdornment position="end"><span style={{ color: '#6B7280', fontSize: 13 }}>{u}</span></InputAdornment> } : {});
+    const sectionSx = { p: 2, border: '1px solid var(--df-border)', borderRadius: '8px' };
+    const sectionTitle = (t) => <Typography sx={{ fontSize: 15, fontWeight: 500, color: 'var(--df-text)', fontFamily: FONT, mb: 1.5 }}>{t}</Typography>;
+    const unitAdornment = (u) => (u ? { endAdornment: <InputAdornment position="end"><span style={{ color: 'var(--df-muted)', fontSize: 13 }}>{u}</span></InputAdornment> } : {});
 
     return (
         <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: '12px', overflow: 'hidden', fontFamily: FONT } }}>
-            <Box sx={{ px: 4, pt: 3, pb: 2, borderBottom: '1px solid #E8E6E2' }}>
-                <Typography sx={{ fontSize: 24, fontWeight: 400, color: '#111827', fontFamily: FONT }}>
+            <Box sx={{ px: 4, pt: 3, pb: 2, borderBottom: '1px solid var(--df-border-soft)' }}>
+                <Typography sx={{ fontSize: 24, fontWeight: 400, color: 'var(--df-text)', fontFamily: FONT }}>
                     {isIN ? 'Réception de marchandise' : isMOVE ? "Changement d'emplacement" : 'Sortie de stock'}
                 </Typography>
-                <Typography sx={{ fontSize: 13, color: '#6B7280', mt: 0.5 }}>
+                <Typography sx={{ fontSize: 13, color: 'var(--df-muted)', mt: 0.5 }}>
                     {isIN ? 'Entrée en stock d’un article reçu' : isMOVE ? 'Déplacer un article vers un autre emplacement' : 'Retirer une quantité du stock'}
                 </Typography>
             </Box>
@@ -282,7 +282,7 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
                                     <ChoicePill active={catalogued} onClick={() => handleCataloguedChange(true)}>Répertorié</ChoicePill>
                                     <ChoicePill active={!catalogued} onClick={() => handleCataloguedChange(false)}>Non répertorié</ChoicePill>
                                 </Stack>
-                                <Typography sx={{ fontSize: 12, color: '#9B9A97', mt: 1 }}>
+                                <Typography sx={{ fontSize: 12, color: 'var(--df-faint-2)', mt: 1 }}>
                                     {catalogued
                                         ? 'Article de la liste de courses Odoo d’un dossier : fournisseur, référence, coloris, laize et dossier se remplissent tout seuls.'
                                         : 'Pièce ajoutée au stock sans lien avec une commande ni un dossier.'}
@@ -303,8 +303,8 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
                                                 return (
                                                     <li key={o.key ?? key} {...rest} style={{ ...rest.style, borderRadius: 6, padding: '8px 10px', alignItems: 'center', gap: 12 }}>
                                                         <Box sx={{ flex: 1, minWidth: 0 }}>
-                                                            <div style={{ fontSize: 14, fontWeight: 500, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.title}</div>
-                                                            <div style={{ fontSize: 12, color: '#6B7280', marginTop: 2 }}>
+                                                            <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--df-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.title}</div>
+                                                            <div style={{ fontSize: 12, color: 'var(--df-muted)', marginTop: 2 }}>
                                                                 {o.project || 'Stock libre'}
                                                                 {o.laize && <> · laize {o.laize}</>}
                                                                 {o.received && <> · déjà réceptionné (Odoo)</>}
@@ -316,7 +316,7 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
                                             }}
                                             renderInput={(params) => (
                                                 <TextField {...params} size="small" placeholder="Fournisseur, référence, coloris, dossier…" sx={DA_FIELD_SX}
-                                                    InputProps={{ ...params.InputProps, startAdornment: <InputAdornment position="start"><Search size={16} color="#9CA3AF" /></InputAdornment> }} />
+                                                    InputProps={{ ...params.InputProps, startAdornment: <InputAdornment position="start"><Search size={16} color="var(--df-faint)" /></InputAdornment> }} />
                                             )}
                                             noOptionsText="Aucun article de liste de courses ne correspond — passe en « Non répertorié »."
                                         />
@@ -354,8 +354,8 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
                                     return (
                                         <li key={it.id ?? key} {...rest} style={{ ...rest.style, borderRadius: 6, padding: '8px 10px', alignItems: 'center', gap: 12 }}>
                                             <Box sx={{ flex: 1, minWidth: 0 }}>
-                                                <div style={{ fontSize: 14, fontWeight: 500, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{itemTitle(it)}</div>
-                                                <div style={{ fontSize: 12, color: '#6B7280', marginTop: 2 }}>
+                                                <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--df-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{itemTitle(it)}</div>
+                                                <div style={{ fontSize: 12, color: 'var(--df-muted)', marginTop: 2 }}>
                                                     {it.project || 'Stock libre'}
                                                     {locs.length > 0 && <> · {locs.join(', ')}</>}
                                                     {it.laize && <> · laize {it.laize}</>}
@@ -368,12 +368,12 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
                                 }}
                                 renderInput={(params) => (
                                     <TextField {...params} size="small" placeholder="Fournisseur, référence, coloris, dossier, emplacement…" sx={DA_FIELD_SX}
-                                        InputProps={{ ...params.InputProps, startAdornment: <InputAdornment position="start"><Search size={16} color="#9CA3AF" /></InputAdornment> }} />
+                                        InputProps={{ ...params.InputProps, startAdornment: <InputAdornment position="start"><Search size={16} color="var(--df-faint)" /></InputAdornment> }} />
                                 )}
                                 noOptionsText="Aucun article en stock ne correspond."
                             />
                             {selectedItem && (
-                                <Box sx={{ mt: 1.5, p: 1.5, bgcolor: '#F4F4F4', borderRadius: '8px' }}>
+                                <Box sx={{ mt: 1.5, p: 1.5, bgcolor: 'var(--df-surface)', borderRadius: '8px' }}>
                                     <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
                                         <TonePill tone={0}>Stock : {selectedItem.qty} {selectedItem.unit || ''}</TonePill>
                                         {Array.isArray(selectedItem.pieces) && selectedItem.pieces.length > 0 && (
@@ -384,7 +384,7 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
                                         <LocationChips value={selectedItem.location} />
                                     </Stack>
                                     {selectedIsToComplete && (
-                                        <Typography sx={{ display: 'block', mt: 1, fontSize: 12, color: '#374151', fontWeight: 500 }}>
+                                        <Typography sx={{ display: 'block', mt: 1, fontSize: 12, color: 'var(--df-text-2)', fontWeight: 500 }}>
                                             Réception pas encore rangée (pièces et emplacement à compléter dans l’État du stock).
                                         </Typography>
                                     )}
@@ -397,20 +397,20 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
                     {usesInPieces && (
                         <Box sx={sectionSx}>
                             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
-                                <Typography sx={{ fontSize: 15, fontWeight: 500, color: '#111827', fontFamily: FONT }}>Composition par pièce</Typography>
-                                <Button size="small" startIcon={<Plus size={14} />} onClick={addPiece} sx={{ textTransform: 'none', fontWeight: 600, color: '#1E2447' }}>Ajouter une pièce</Button>
+                                <Typography sx={{ fontSize: 15, fontWeight: 500, color: 'var(--df-text)', fontFamily: FONT }}>Composition par pièce</Typography>
+                                <Button size="small" startIcon={<Plus size={14} />} onClick={addPiece} sx={{ textTransform: 'none', fontWeight: 600, color: 'var(--df-primary-text)' }}>Ajouter une pièce</Button>
                             </Box>
                             <Stack spacing={1}>
                                 {pieces.map((p, idx) => (
                                     <Box key={p.id} sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
-                                        <Typography sx={{ color: '#374151', fontSize: 13, fontWeight: 500, minWidth: 80 }}>Pièce {existingPiecesCount + idx + 1}</Typography>
+                                        <Typography sx={{ color: 'var(--df-text-2)', fontSize: 13, fontWeight: 500, minWidth: 80 }}>Pièce {existingPiecesCount + idx + 1}</Typography>
                                         <TextField size="small" type="number" value={p.qty} onChange={(e) => setPieceQty(p.id, e.target.value)} sx={{ ...DA_FIELD_SX, width: 130 }} InputProps={unitAdornment('ml')} />
                                         <Box sx={{ flex: 1 }} />
-                                        <IconButton size="small" onClick={() => removePiece(p.id)} disabled={pieces.length <= 1} sx={{ color: '#6B7280' }}><Minus size={16} /></IconButton>
+                                        <IconButton size="small" onClick={() => removePiece(p.id)} disabled={pieces.length <= 1} sx={{ color: 'var(--df-muted)' }}><Minus size={16} /></IconButton>
                                     </Box>
                                 ))}
                             </Stack>
-                            <Typography sx={{ mt: 1.5, fontSize: 13, color: '#6B7280' }}>Total : <b style={{ color: '#111827' }}>{inPiecesTotal}</b> ml</Typography>
+                            <Typography sx={{ mt: 1.5, fontSize: 13, color: 'var(--df-muted)' }}>Total : <b style={{ color: 'var(--df-text)' }}>{inPiecesTotal}</b> ml</Typography>
                         </Box>
                     )}
 
@@ -447,14 +447,14 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
                                 {pieces.map(p => {
                                     const changed = Number(p.p_qty) !== Number(p.qty);
                                     return (
-                                        <Box key={p.id} sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 1, pl: 1.5, bgcolor: changed ? '#EEF4FD' : 'white', borderRadius: '8px', border: '1px solid #E8E6E2' }}>
-                                            <Typography sx={{ flex: 1, fontSize: 13, fontWeight: 500, color: '#111827' }}>{p.name}</Typography>
+                                        <Box key={p.id} sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 1, pl: 1.5, bgcolor: changed ? 'var(--df-selected)' : 'var(--df-bg)', borderRadius: '8px', border: '1px solid var(--df-border-soft)' }}>
+                                            <Typography sx={{ flex: 1, fontSize: 13, fontWeight: 500, color: 'var(--df-text)' }}>{p.name}</Typography>
                                             <Box sx={{ textAlign: 'right', minWidth: 70 }}>
-                                                <Typography sx={{ fontSize: 11, color: '#9B9A97' }}>Initial</Typography>
+                                                <Typography sx={{ fontSize: 11, color: 'var(--df-faint-2)' }}>Initial</Typography>
                                                 <Typography sx={{ fontSize: 13, fontWeight: 500 }}>{p.qty} {selectedItem.unit || 'ml'}</Typography>
                                             </Box>
                                             <Box sx={{ width: 120 }}>
-                                                <Typography sx={{ fontSize: 11, color: '#9B9A97', mb: 0.25 }}>Reste</Typography>
+                                                <Typography sx={{ fontSize: 11, color: 'var(--df-faint-2)', mb: 0.25 }}>Reste</Typography>
                                                 <TextField
                                                     size="small" type="number" value={p.p_qty}
                                                     onChange={(e) => setPieceRemaining(p.id, e.target.value)}
@@ -466,8 +466,8 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
                                     );
                                 })}
                             </Stack>
-                            <Typography sx={{ mt: 1.5, fontSize: 13, color: '#6B7280' }}>
-                                Consommation : <b style={{ color: '#111827' }}>{outConsumed}</b> {selectedItem.unit || 'ml'} — saisis ce qu’il reste sur chaque pièce (0 = pièce terminée).
+                            <Typography sx={{ mt: 1.5, fontSize: 13, color: 'var(--df-muted)' }}>
+                                Consommation : <b style={{ color: 'var(--df-text)' }}>{outConsumed}</b> {selectedItem.unit || 'ml'} — saisis ce qu’il reste sur chaque pièce (0 = pièce terminée).
                             </Typography>
                         </Box>
                     )}
@@ -501,7 +501,7 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
                     )}
 
                     {isOUT && selectedItem && (
-                        <Typography sx={{ fontSize: 13, color: '#374151', bgcolor: '#EEF4FD', borderRadius: '8px', px: 1.5, py: 1 }}>
+                        <Typography sx={{ fontSize: 13, color: 'var(--df-text-2)', bgcolor: 'var(--df-selected)', borderRadius: '8px', px: 1.5, py: 1 }}>
                             Sortie depuis <b>{splitLocations(selectedItem.location).filter(l => l !== LOC_A_COMPLETER).join(', ') || 'sans emplacement'}</b> — {selectedItem.project || 'Stock libre'}
                         </Typography>
                     )}
@@ -523,16 +523,16 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
                 </Stack>
             </DialogContent>
 
-            <DialogActions sx={{ px: 4, py: 2.5, borderTop: '1px solid #E8E6E2', bgcolor: 'white', justifyContent: 'flex-end', gap: 1 }}>
-                <Button onClick={onClose} sx={{ color: '#374151', textTransform: 'none', fontWeight: 600, border: '1px solid #E0DED9', borderRadius: '8px', px: 2, height: 38 }}>Annuler</Button>
+            <DialogActions sx={{ px: 4, py: 2.5, borderTop: '1px solid var(--df-border-soft)', bgcolor: 'var(--df-bg)', justifyContent: 'flex-end', gap: 1 }}>
+                <Button onClick={onClose} sx={{ color: 'var(--df-text-2)', textTransform: 'none', fontWeight: 600, border: '1px solid var(--df-border)', borderRadius: '8px', px: 2, height: 38 }}>Annuler</Button>
                 <Button
                     variant="contained"
                     onClick={handleSubmit}
                     disabled={!canSubmit}
                     disableElevation
                     sx={{
-                        bgcolor: '#1E2447', textTransform: 'none', fontWeight: 600, px: 3, borderRadius: '8px', height: 38,
-                        '&:hover': { bgcolor: '#2A3260' }
+                        bgcolor: 'var(--df-primary)', textTransform: 'none', fontWeight: 600, px: 3, borderRadius: '8px', height: 38,
+                        '&:hover': { bgcolor: 'var(--df-navy-2)' }
                     }}
                 >
                     {isIN ? "Valider l'entrée" : isMOVE ? 'Valider le transfert' : 'Confirmer la sortie'}

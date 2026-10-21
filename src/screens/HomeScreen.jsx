@@ -112,10 +112,10 @@ export default function HomeScreen({
 
       {/* Salutation */}
       <div style={{ marginBottom: 64, textAlign: "center" }}>
-        <div style={{ fontFamily: "Roboto, system-ui, sans-serif", fontWeight: 300, fontSize: "clamp(30px, 3.2vw, 46px)", color: "#191919", letterSpacing: -0.5 }}>
+        <div style={{ fontFamily: "Roboto, system-ui, sans-serif", fontWeight: 300, fontSize: "clamp(30px, 3.2vw, 46px)", color: "var(--df-ink-1)", letterSpacing: -0.5 }}>
           {greetingText}
         </div>
-        <div style={{ fontFamily: "Roboto, system-ui, sans-serif", fontWeight: 300, fontStyle: "italic", fontSize: "clamp(14px, 1.3vw, 17px)", color: "#9B8E82", marginTop: 8 }}>
+        <div style={{ fontFamily: "Roboto, system-ui, sans-serif", fontWeight: 300, fontStyle: "italic", fontSize: "clamp(14px, 1.3vw, 17px)", color: "var(--df-beige-text)", marginTop: 8 }}>
           {dateStr.charAt(0).toUpperCase() + dateStr.slice(1)}
           {getFete() && `, ${getFete()}`}
         </div>

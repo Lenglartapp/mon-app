@@ -6,15 +6,15 @@ import DaDialog from '../../ui/DaDialog';
 import { ToolbarButton } from '../../ui/ToolbarControls';
 import { EXPORT_COLUMNS, EXPORT_USAGES, aisleOf, compareLocations, exportStock, groupByArticle, AISLE_TO_COMPLETE, AISLE_NONE } from '../../../lib/inventory/stockImport';
 
-const MUTED = '#6B7280';
-const label = { fontSize: 13, fontWeight: 600, color: '#111827', margin: '0 0 8px' };
+const MUTED = 'var(--df-muted)';
+const label = { fontSize: 13, fontWeight: 600, color: 'var(--df-text)', margin: '0 0 8px' };
 const USAGE_ICONS = { update: <RefreshCw size={16} />, count: <ClipboardList size={16} />, view: <FileText size={16} /> };
 // Colonnes imposées : sans elles, le fichier ne se réimporte pas correctement.
 const LOCKED = { update: ['qty', 'unit'], count: ['location', 'qty', 'unit'], view: [] };
 
 function Check({ checked, onChange, children }) {
     return (
-        <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#374151', cursor: 'pointer' }}>
+        <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--df-text-2)', cursor: 'pointer' }}>
             <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} /> {children}
         </label>
     );
@@ -108,9 +108,9 @@ export default function StockExportDialog({ onClose, allItems = [], shownItems =
                             return (
                                 <button key={k} type="button" onClick={() => pickUsage(k)} style={{
                                     textAlign: 'left', padding: 14, borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit',
-                                    border: `1.5px solid ${on ? '#1E2447' : '#E0DED9'}`, background: on ? '#EEF4FD' : 'white',
+                                    border: `1.5px solid ${on ? 'var(--df-primary)' : 'var(--df-border)'}`, background: on ? 'var(--df-selected)' : 'var(--df-bg)',
                                 }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 600, color: '#111827' }}>{USAGE_ICONS[k]} {u.label}</div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 600, color: 'var(--df-text)' }}>{USAGE_ICONS[k]} {u.label}</div>
                                     <div style={{ fontSize: 12, color: MUTED, marginTop: 6, lineHeight: 1.45 }}>{u.hint}</div>
                                 </button>
                             );

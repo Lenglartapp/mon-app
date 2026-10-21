@@ -44,13 +44,13 @@ function ecartPct(alloc, real) {
 }
 
 const CHART_STYLE = {
-  background: 'white',
+  background: 'var(--df-bg)',
   borderRadius: 12,
-  border: '1px solid #E0DED9',
+  border: '1px solid var(--df-border)',
   padding: 20,
 };
 
-const SECTION_TITLE = { fontSize: 14, fontWeight: 700, color: '#111827', marginBottom: 16 };
+const SECTION_TITLE = { fontSize: 14, fontWeight: 700, color: 'var(--df-text)', marginBottom: 16 };
 
 function FilterBar({ value, onChange }) {
   const tabs = [
@@ -60,13 +60,13 @@ function FilterBar({ value, onChange }) {
     { key: 'pose', label: 'Pose' },
   ];
   return (
-    <div style={{ display: 'flex', background: 'white', borderRadius: 9999, padding: 3, gap: 3, border: '1px solid #E0DED9', width: 'fit-content' }}>
+    <div style={{ display: 'flex', background: 'var(--df-bg)', borderRadius: 9999, padding: 3, gap: 3, border: '1px solid var(--df-border)', width: 'fit-content' }}>
       {tabs.map(t => (
         <button key={t.key} className="df-pill-tab" data-active={value === t.key} onClick={() => onChange(t.key)} style={{
           padding: '7px 16px', borderRadius: 9999, fontSize: 13, fontWeight: 500,
           border: 'none', cursor: 'pointer',
-          background: value === t.key ? '#1E2447' : 'transparent',
-          color: value === t.key ? 'white' : '#4B5563',
+          background: value === t.key ? 'var(--df-primary)' : 'transparent',
+          color: value === t.key ? 'white' : 'var(--df-text-3)',
           transition: 'all 0.15s',
         }}>{t.label}</button>
       ))}
@@ -78,10 +78,10 @@ function FilterBar({ value, onChange }) {
 function CustomTooltip({ active, payload, label, suffix = '%' }) {
   if (!active || !payload?.length) return null;
   return (
-    <div style={{ background: 'white', border: '1px solid #E0DED9', borderRadius: 8, padding: '10px 14px', fontSize: 13, boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}>
-      <div style={{ fontWeight: 600, marginBottom: 4, color: '#111827' }}>{label}</div>
+    <div style={{ background: 'var(--df-bg)', border: '1px solid var(--df-border)', borderRadius: 8, padding: '10px 14px', fontSize: 13, boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}>
+      <div style={{ fontWeight: 600, marginBottom: 4, color: 'var(--df-text)' }}>{label}</div>
       {payload.map(p => (
-        <div key={p.dataKey} style={{ color: p.fill || p.stroke || '#374151' }}>
+        <div key={p.dataKey} style={{ color: p.fill || p.stroke || 'var(--df-text-2)' }}>
           {p.name} : {typeof p.value === 'number' ? p.value.toFixed(1) : p.value}{suffix}
         </div>
       ))}
@@ -197,7 +197,7 @@ export default function PerformanceAnalyseTab({ projects, events, entries }) {
     return Object.entries(buckets).map(([tranche, count]) => ({ tranche, count }));
   }, [projectData, services]);
 
-  const bucketColors = ['#10B981', '#34D399', '#FCD34D', '#FB923C', '#EF4444'];
+  const bucketColors = ['#10B981', '#34D399', 'var(--df-x-FCD34D)', '#FB923C', 'var(--df-danger)'];
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -221,7 +221,7 @@ export default function PerformanceAnalyseTab({ projects, events, entries }) {
                 <XAxis type="number" unit="%" tick={{ fontSize: 11 }} />
                 <YAxis type="category" dataKey="name" width={90} tick={{ fontSize: 12 }} />
                 <Tooltip content={<CustomTooltip suffix="%" />} />
-                <ReferenceLine x={0} stroke="#E5E7EB" />
+                <ReferenceLine x={0} stroke="var(--df-border-2)" />
                 <Bar dataKey="ecartMoyen" name="Écart moyen" radius={[0, 4, 4, 0]}
                   fill="#6366F1"
                   label={{ position: 'right', fontSize: 11, formatter: v => `${v > 0 ? '+' : ''}${v}%` }}
@@ -267,7 +267,7 @@ export default function PerformanceAnalyseTab({ projects, events, entries }) {
                 <XAxis dataKey="mois" tick={{ fontSize: 11 }} />
                 <YAxis unit="%" tick={{ fontSize: 11 }} />
                 <Tooltip content={<CustomTooltip suffix="%" />} />
-                <ReferenceLine y={0} stroke="#E5E7EB" strokeDasharray="4 4" />
+                <ReferenceLine y={0} stroke="var(--df-border-2)" strokeDasharray="4 4" />
                 <Line
                   type="monotone"
                   dataKey="ecartMoyen"
@@ -305,7 +305,7 @@ export default function PerformanceAnalyseTab({ projects, events, entries }) {
           {/* Légende manuelle colorée */}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
             {dataDistribution.map((d, i) => (
-              <span key={d.tranche} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#374151' }}>
+              <span key={d.tranche} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--df-text-2)' }}>
                 <span style={{ width: 10, height: 10, borderRadius: 2, background: bucketColors[i], display: 'inline-block' }} />
                 {d.tranche}
               </span>
@@ -319,7 +319,7 @@ export default function PerformanceAnalyseTab({ projects, events, entries }) {
 
 function Empty({ message = 'Pas encore de données' }) {
   return (
-    <div style={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9CA3AF', fontSize: 13 }}>
+    <div style={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--df-faint)', fontSize: 13 }}>
       {message}
     </div>
   );

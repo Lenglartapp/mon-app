@@ -12,7 +12,7 @@ const writeOpen = (v) => { try { localStorage.setItem(OPEN_KEY, v ? '1' : '0'); 
 
 const FONT = 'Roboto, system-ui, sans-serif';
 const LABEL = { fontSize: 14, color: '#787774' };
-const BIG = { fontWeight: 400, color: '#111827', fontVariantNumeric: 'tabular-nums', lineHeight: 1.1, letterSpacing: '-0.01em' };
+const BIG = { fontWeight: 400, color: 'var(--df-text)', fontVariantNumeric: 'tabular-nums', lineHeight: 1.1, letterSpacing: '-0.01em' };
 
 const PRODUCTS = [
     { key: 'caRideaux', label: 'Rideaux' },
@@ -45,9 +45,9 @@ function Amount({ label, value, share, muted }) {
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4, whiteSpace: 'nowrap' }}>
             <span style={LABEL}>{label}</span>
-            <span style={{ ...BIG, fontSize: 22, color: muted ? '#9B9A97' : '#111827' }}>
+            <span style={{ ...BIG, fontSize: 22, color: muted ? 'var(--df-faint-2)' : 'var(--df-text)' }}>
                 {value}
-                {share && <span style={{ marginLeft: 8, fontSize: 14, color: '#9B9A97', letterSpacing: 0 }}>{share}</span>}
+                {share && <span style={{ marginLeft: 8, fontSize: 14, color: 'var(--df-faint-2)', letterSpacing: 0 }}>{share}</span>}
             </span>
         </div>
     );
@@ -73,7 +73,7 @@ export default React.memo(function DashboardSummary({ recap, nf }) {
                     aria-expanded={open}
                     style={{ display: 'inline-flex', alignItems: 'center', gap: 8, border: 'none', background: 'transparent', cursor: 'pointer', padding: '2px 6px 2px 0', borderRadius: 6, fontFamily: FONT }}
                 >
-                    <ChevronRight size={20} color="#9B9A97" style={{ transform: open ? 'rotate(90deg)' : 'none', transition: 'transform .2s ease' }} />
+                    <ChevronRight size={20} color="var(--df-faint-2)" style={{ transform: open ? 'rotate(90deg)' : 'none', transition: 'transform .2s ease' }} />
                     <span style={{ ...BIG, fontSize: 40 }}>{nf.format(total)}</span>
                 </button>
                 <div style={{ display: 'flex', gap: 32, alignItems: 'flex-end' }}>
@@ -97,7 +97,7 @@ export default React.memo(function DashboardSummary({ recap, nf }) {
                         {products.map((p) => (
                             <Amount key={p.label} label={p.label} value={nf.format(p.value)} share={pct(p.value, total)} />
                         ))}
-                        <div style={{ width: 1, alignSelf: 'stretch', background: '#EDEDEB' }} />
+                        <div style={{ width: 1, alignSelf: 'stretch', background: 'var(--df-gray-bg)' }} />
                         <Amount label="Logistique" value={nf.format(recap.depTotal || 0)} share={pct(recap.depTotal, total)} />
                         <Amount label="Frais" value={nf.format(recap.extrasTotal || 0)} muted />
                     </div>

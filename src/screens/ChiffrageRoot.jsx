@@ -40,14 +40,14 @@ const SEARCH_FIELDS = [
 
 
 const STATUS_OPTIONS = {
-  DRAFT: { label: "À faire", color: "#9CA3AF", bg: "#F3F4F6", text: "#374151" }, // Gray
-  IN_PROGRESS: { label: "En cours", color: "#3B82F6", bg: "#EFF6FF", text: "#1E3A8A" }, // Blue
-  PENDING_APPROVAL: { label: "À valider", color: "#F59E0B", bg: "#FFFBEB", text: "#92400E" }, // Orange
-  REVISE: { label: 'À reprendre', color: '#EF4444', bg: '#FEF2F2', text: '#991B1B' },
-  VALIDATED: { label: 'Validée', color: '#10B981', bg: '#ECFDF5', text: '#065F46' },
-  ORDERED: { label: 'Commande', color: '#8B5CF6', bg: '#F5F3FF', text: '#5B21B6' },
-  ORDER_COMPLETED: { label: 'Commande terminée', color: '#059669', bg: '#ECFDF5', text: '#064E3B' },
-  LOST: { label: 'Perdu', color: '#EF4444', bg: '#FEF2F2', text: '#991B1B' }
+  DRAFT: { label: "À faire", color: "var(--df-faint)", bg: "var(--df-surface-2)", text: "var(--df-text-2)" }, // Gray
+  IN_PROGRESS: { label: "En cours", color: "#3B82F6", bg: "var(--df-blue-bg)", text: "var(--df-blue-strong)" }, // Blue
+  PENDING_APPROVAL: { label: "À valider", color: "#F59E0B", bg: "var(--df-chip-adv-bg)", text: "var(--df-warn-text)" }, // Orange
+  REVISE: { label: 'À reprendre', color: 'var(--df-danger)', bg: 'var(--df-danger-bg)', text: 'var(--df-x-991B1B)' },
+  VALIDATED: { label: 'Validée', color: '#10B981', bg: 'var(--df-success-bg)', text: 'var(--df-x-065F46)' },
+  ORDERED: { label: 'Commande', color: '#8B5CF6', bg: 'var(--df-violet-bg)', text: 'var(--df-x-5B21B6)' },
+  ORDER_COMPLETED: { label: 'Commande terminée', color: '#059669', bg: 'var(--df-success-bg)', text: 'var(--df-green-strong)' },
+  LOST: { label: 'Perdu', color: 'var(--df-danger)', bg: 'var(--df-danger-bg)', text: 'var(--df-x-991B1B)' }
 };
 
 // Helper for numeric conversion (same as ChiffrageScreen)
@@ -448,7 +448,7 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
   };
 
   return (
-    <div style={{ background: '#FFFFFF', padding: '24px', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ background: 'var(--df-bg)', padding: '24px', display: 'flex', flexDirection: 'column' }}>
       <div style={{ maxWidth: 1440, width: '100%', margin: '0 auto 24px auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
           <div>
@@ -456,17 +456,17 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
               onClick={onBack}
               style={{
                 background: 'none', border: 'none', cursor: 'pointer',
-                color: '#6B7280', fontWeight: 600, fontSize: 13,
+                color: 'var(--df-muted)', fontWeight: 600, fontSize: 13,
                 marginBottom: 4, padding: 0, display: 'flex', alignItems: 'center', gap: 4
               }}
             >
               ← Retour
             </button>
-            <h1 style={{ fontSize: 32, fontWeight: 400, fontFamily: 'Roboto, system-ui, sans-serif', color: '#111827', margin: 0, letterSpacing: '-0.01em' }}>Chiffrages</h1>
+            <h1 style={{ fontSize: 32, fontWeight: 400, fontFamily: 'Roboto, system-ui, sans-serif', color: 'var(--df-text)', margin: 0, letterSpacing: '-0.01em' }}>Chiffrages</h1>
           </div>
           <div style={{ display: 'flex', gap: 12 }}>
             {/* Mêmes dimensions que les boutons d'action du chiffrage (Bibliothèque…), fond bleu nuit conservé */}
-            <button onClick={() => setNewMinOpen(true)} style={{ background: '#1E2447', color: 'white', padding: '8px 14px', borderRadius: 8, border: '1px solid #1E2447', display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap', marginBottom: 4 }}>
+            <button onClick={() => setNewMinOpen(true)} style={{ background: 'var(--df-primary)', color: 'white', padding: '8px 14px', borderRadius: 8, border: '1px solid var(--df-primary)', display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap', marginBottom: 4 }}>
               <Plus size={16} /> Nouveau Chiffrage
             </button>
           </div>
@@ -488,11 +488,11 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
             <IconButton
               onClick={() => setShowArchived(!showArchived)}
               sx={{
-                bgcolor: showArchived ? '#DBEAFE' : 'white',
-                color: showArchived ? '#1E40AF' : '#6B7280',
-                border: '1px solid #E5E7EB',
+                bgcolor: showArchived ? 'var(--df-blue-bg-2)' : 'var(--df-bg)',
+                color: showArchived ? 'var(--df-x-1E40AF)' : 'var(--df-muted)',
+                border: '1px solid var(--df-border-2)',
                 borderRadius: 2, height: 38, width: 38,
-                '&:hover': { bgcolor: showArchived ? '#BFDBFE' : '#F4F4F4' },
+                '&:hover': { bgcolor: showArchived ? 'var(--df-x-BFDBFE)' : 'var(--df-surface)' },
               }}
             >
               <Archive size={20} />
@@ -505,17 +505,17 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
       {/* Seul le tableau défile (la page reste fixe) : hauteur MAX = place restante à l'écran
           (avec peu de lignes, le cadre se referme juste sous la dernière),
           en-têtes de colonnes collés en haut, « Charger plus » au bas de la liste. */}
-      <div style={{ maxWidth: 1440, width: '100%', margin: '0 auto', background: 'white', border: '1px solid #E0DED9', borderRadius: 8, overflow: 'hidden' }}>
+      <div style={{ maxWidth: 1440, width: '100%', margin: '0 auto', background: 'var(--df-bg)', border: '1px solid var(--df-border)', borderRadius: 8, overflow: 'hidden' }}>
         <div ref={listScrollRef} className="df-list-scroll" style={{ overflow: 'auto', maxHeight: listHeight ?? undefined }}>
           <table className="df-list-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-            <thead style={{ background: '#F4F4F4', borderBottom: '1px solid #E0DED9' }}>
+            <thead style={{ background: 'var(--df-surface)', borderBottom: '1px solid var(--df-border)' }}>
               <tr>
-                <th style={{ padding: '12px 8px', fontSize: 13, fontWeight: 600, color: '#374151' }}>Nom Chiffrage</th>
-                <th style={{ padding: '12px 8px', fontSize: 13, fontWeight: 600, color: '#374151' }}>Client</th>
-                <th style={{ padding: '12px 8px', fontSize: 13, fontWeight: 600, color: '#374151' }}>
+                <th style={{ padding: '12px 8px', fontSize: 13, fontWeight: 600, color: 'var(--df-text-2)' }}>Nom Chiffrage</th>
+                <th style={{ padding: '12px 8px', fontSize: 13, fontWeight: 600, color: 'var(--df-text-2)' }}>Client</th>
+                <th style={{ padding: '12px 8px', fontSize: 13, fontWeight: 600, color: 'var(--df-text-2)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     Statut
-                    <IconButton size="small" onClick={(e) => setStatusFilterAnchor(e.currentTarget)} sx={{ p: 0.5, color: activeFilters.some(f => f.field === 'status') ? '#1E2447' : '#9CA3AF' }}>
+                    <IconButton size="small" onClick={(e) => setStatusFilterAnchor(e.currentTarget)} sx={{ p: 0.5, color: activeFilters.some(f => f.field === 'status') ? 'var(--df-primary)' : 'var(--df-faint)' }}>
                       <Filter size={14} />
                     </IconButton>
                   </div>
@@ -535,7 +535,7 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
                     title={title}
                     className={key === 'marge_eur' || key === 'renta_hh' ? 'df-col-tab-hide' : undefined}
                     onClick={() => handleSort(key)}
-                    style={{ padding: '12px 8px', fontSize: 13, fontWeight: 600, color: '#374151', textAlign: 'right', cursor: 'pointer', userSelect: 'none' }}
+                    style={{ padding: '12px 8px', fontSize: 13, fontWeight: 600, color: 'var(--df-text-2)', textAlign: 'right', cursor: 'pointer', userSelect: 'none' }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
                       {label}
@@ -546,16 +546,16 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
                   </th>
                 ))}
 
-                <th className="df-col-tab-hide" style={{ padding: '12px 8px', fontSize: 13, fontWeight: 600, color: '#374151' }}>Mise à jour</th>
-                <th style={{ padding: '12px 8px', fontSize: 13, fontWeight: 600, color: '#374151' }}>
+                <th className="df-col-tab-hide" style={{ padding: '12px 8px', fontSize: 13, fontWeight: 600, color: 'var(--df-text-2)' }}>Mise à jour</th>
+                <th style={{ padding: '12px 8px', fontSize: 13, fontWeight: 600, color: 'var(--df-text-2)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <span title="Chargé d'affaires">Chargé d'aff.</span>
-                    <IconButton size="small" onClick={(e) => setOwnerFilterAnchor(e.currentTarget)} sx={{ p: 0.5, color: activeFilters.some(f => f.field === 'owner') ? '#1E2447' : '#9CA3AF' }}>
+                    <IconButton size="small" onClick={(e) => setOwnerFilterAnchor(e.currentTarget)} sx={{ p: 0.5, color: activeFilters.some(f => f.field === 'owner') ? 'var(--df-primary)' : 'var(--df-faint)' }}>
                       <Filter size={14} />
                     </IconButton>
                   </div>
                 </th>
-                <th style={{ padding: '12px 8px', width: 80, position: 'sticky', right: 0, background: '#F4F4F4' }}></th>
+                <th style={{ padding: '12px 8px', width: 80, position: 'sticky', right: 0, background: 'var(--df-surface)' }}></th>
               </tr>
             </thead>
             <tbody>
@@ -578,7 +578,7 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
                   const mpct = m.marge_pct || 0;
                   let mColor = '#F59E0B';
                   if (mpct > 60) mColor = '#10B981';
-                  else if (mpct < 45) mColor = '#EF4444';
+                  else if (mpct < 45) mColor = 'var(--df-danger)';
                   const children = childrenMap[m.id] || [];
                   const hasChildren = children.length > 0;
                   const isExpanded = expandedGroups.has(m.id);
@@ -588,50 +588,50 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
                       <tr
                         className="minute-row"
                         style={{
-                          borderBottom: '1px solid #E8E6E2',
+                          borderBottom: '1px solid var(--df-border-soft)',
                           cursor: 'pointer',
                           transition: 'background 0.1s',
-                          background: isChild ? '#FAFAFA' : 'white',
+                          background: isChild ? 'var(--df-surface-5)' : 'var(--df-bg)',
                         }}
                         onClick={() => onOpenMinute?.(m.id)}
-                        onMouseEnter={(e) => e.currentTarget.style.background = isChild ? '#F3F4F6' : '#F4F4F4'}
-                        onMouseLeave={(e) => e.currentTarget.style.background = isChild ? '#FAFAFA' : 'white'}
+                        onMouseEnter={(e) => e.currentTarget.style.background = isChild ? 'var(--df-surface-2)' : 'var(--df-surface)'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = isChild ? 'var(--df-surface-5)' : 'var(--df-bg)'}
                       >
                         <td style={{ padding: '12px 8px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                             {/* Indentation enfant */}
-                            {isChild && <div style={{ width: 20, height: 1, borderLeft: '2px solid #E5E7EB', borderBottom: '2px solid #E5E7EB', marginLeft: 8, marginBottom: -8 }} />}
+                            {isChild && <div style={{ width: 20, height: 1, borderLeft: '2px solid var(--df-border-2)', borderBottom: '2px solid var(--df-border-2)', marginLeft: 8, marginBottom: -8 }} />}
                             {/* Toggle groupe */}
                             {hasChildren && !isChild && (
                               <button
                                 onClick={(e) => { e.stopPropagation(); toggleGroup(m.id); }}
-                                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, color: '#6B7280', display: 'flex', alignItems: 'center' }}
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, color: 'var(--df-muted)', display: 'flex', alignItems: 'center' }}
                               >
                                 {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                               </button>
                             )}
                             {!hasChildren && !isChild && <div style={{ width: 20 }} />}
                             <div>
-                              <div style={{ fontWeight: 600, color: '#111827', fontSize: 15, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                              <div style={{ fontWeight: 600, color: 'var(--df-text)', fontSize: 15, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                                 {m.name || "Minute sans nom"}
                                 {isChild && (
-                                  <span style={{ fontSize: 10, background: '#EFF6FF', color: '#1D4ED8', padding: '1px 6px', borderRadius: 4, fontWeight: 600, whiteSpace: 'nowrap' }}>
+                                  <span style={{ fontSize: 10, background: 'var(--df-blue-bg)', color: 'var(--df-x-1D4ED8)', padding: '1px 6px', borderRadius: 4, fontWeight: 600, whiteSpace: 'nowrap' }}>
                                     Variante
                                   </span>
                                 )}
                                 {hasChildren && (
-                                  <span style={{ fontSize: 10, background: '#F3F4F6', color: '#6B7280', padding: '1px 6px', borderRadius: 4, fontWeight: 600, whiteSpace: 'nowrap' }}>
+                                  <span style={{ fontSize: 10, background: 'var(--df-surface-2)', color: 'var(--df-muted)', padding: '1px 6px', borderRadius: 4, fontWeight: 600, whiteSpace: 'nowrap' }}>
                                     {children.length} variante{children.length > 1 ? 's' : ''}
                                   </span>
                                 )}
                               </div>
-                              <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2 }}>
+                              <div style={{ fontSize: 11, color: 'var(--df-faint)', marginTop: 2 }}>
                                 v{m.version} • #{String(m.id || "").slice(-4)}
                               </div>
                             </div>
                           </div>
                         </td>
-                        <td style={{ padding: '12px 8px', fontSize: 14, color: '#374151', fontWeight: 500 }}>
+                        <td style={{ padding: '12px 8px', fontSize: 14, color: 'var(--df-text-2)', fontWeight: 500 }}>
                           {m.client || "Client inconnu"}
                         </td>
                         <td style={{ padding: '12px 8px' }}>
@@ -645,7 +645,7 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
                           />
                         </td>
                         <td style={{ padding: '12px 8px', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                          <div style={{ fontWeight: 700, color: '#111827', fontSize: 14 }}>
+                          <div style={{ fontWeight: 700, color: 'var(--df-text)', fontSize: 14 }}>
                             {Math.round(m.ca_ht).toLocaleString("fr-FR")} €
                           </div>
                         </td>
@@ -655,22 +655,22 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
                               <div style={{ fontWeight: 700, color: mColor, fontSize: 14 }}>{Math.round(m.marge_pct)} %</div>
                             </td>
                             <td className="df-col-tab-hide" style={{ padding: '12px 8px', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                              <div style={{ fontSize: 14, color: '#4B5563' }}>{Math.round(m.marge_eur).toLocaleString("fr-FR")} €</div>
+                              <div style={{ fontSize: 14, color: 'var(--df-text-3)' }}>{Math.round(m.marge_eur).toLocaleString("fr-FR")} €</div>
                             </td>
                             <td className="df-col-tab-hide" style={{ padding: '12px 8px', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                              <div style={{ fontWeight: 700, color: '#1E3A8A', fontSize: 14 }}>
-                                {Math.round(m.renta_hh).toLocaleString("fr-FR")} <small style={{ fontSize: 10, color: '#9CA3AF' }}>€/h</small>
+                              <div style={{ fontWeight: 700, color: 'var(--df-blue-strong)', fontSize: 14 }}>
+                                {Math.round(m.renta_hh).toLocaleString("fr-FR")} <small style={{ fontSize: 10, color: 'var(--df-faint)' }}>€/h</small>
                               </div>
                             </td>
                           </>
                         )}
-                        <td className="df-col-tab-hide" style={{ padding: '12px 8px', color: '#6B7280', fontSize: 13 }}>
+                        <td className="df-col-tab-hide" style={{ padding: '12px 8px', color: 'var(--df-muted)', fontSize: 13 }}>
                           {new Date(m.updatedAt || m.createdAt).toLocaleDateString("fr-FR")} <small>{new Date(m.updatedAt || m.createdAt).toLocaleTimeString("fr-FR", { hour: '2-digit', minute: '2-digit' })}</small>
                         </td>
                         <td style={{ padding: '12px 8px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }} onClick={(e) => handleOwnerClick(e, m.id)}>
                             <Avatar sx={{ width: 26, height: 26, fontSize: 11, bgcolor: stringToColor(m.owner || "?") }}>{(m.owner?.[0] || "?").toUpperCase()}</Avatar>
-                            <span className="df-col-tab-hide" style={{ fontSize: 13, color: '#374151', fontWeight: 500 }}>{m.owner || "—"}</span>
+                            <span className="df-col-tab-hide" style={{ fontSize: 13, color: 'var(--df-text-2)', fontWeight: 500 }}>{m.owner || "—"}</span>
                           </div>
                         </td>
                         <td style={{ padding: '12px 8px', textAlign: 'right', whiteSpace: 'nowrap', position: 'sticky', right: 0, background: 'inherit' }} onClick={(e) => e.stopPropagation()}>
@@ -701,7 +701,7 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
 
                 return rows.length > 0 ? rows : (
                   <tr>
-                    <td colSpan={showKPIs ? 10 : 7} style={{ padding: 40, textAlign: 'center', color: '#9CA3AF' }}>
+                    <td colSpan={showKPIs ? 10 : 7} style={{ padding: 40, textAlign: 'center', color: 'var(--df-faint)' }}>
                       <FileText size={48} style={{ opacity: 0.2, marginBottom: 16 }} />
                       <div>Aucun chiffrage trouvé.</div>
                     </td>
@@ -716,14 +716,14 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
               <button
                 onClick={() => setVisibleCount(c => c + 50)}
                 style={{
-                  background: 'white',
-                  border: '1px solid #E0DED9',
+                  background: 'var(--df-bg)',
+                  border: '1px solid var(--df-border)',
                   borderRadius: 8,
                   padding: '10px 24px',
                   cursor: 'pointer',
                   fontWeight: 600,
                   fontSize: 14,
-                  color: '#374151',
+                  color: 'var(--df-text-2)',
                   display: 'flex',
                   alignItems: 'center',
                   gap: 8,
@@ -810,11 +810,11 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <Avatar sx={{ width: 24, height: 24, fontSize: 10, bgcolor: stringToColor(u.name) }}>{u.initials}</Avatar>
               <span style={{ fontSize: 13, fontWeight: 500 }}>{u.name}</span>
-              <span style={{ fontSize: 10, color: '#9CA3AF' }}>({u.role})</span>
+              <span style={{ fontSize: 10, color: 'var(--df-faint)' }}>({u.role})</span>
             </div>
           </MenuItem>
         )) : (
-          <MenuItem disabled><span style={{ fontSize: 12, color: '#9CA3AF' }}>Aucun utilisateur éligible (Admin/Sales)</span></MenuItem>
+          <MenuItem disabled><span style={{ fontSize: 12, color: 'var(--df-faint)' }}>Aucun utilisateur éligible (Admin/Sales)</span></MenuItem>
         )}
       </Menu>
 

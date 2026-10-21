@@ -77,11 +77,11 @@ function getPeriodeCutoffs(filters) {
 }
 
 function EcartBadge({ alloc, real, small }) {
-  if (!alloc) return <span style={{ color: '#9CA3AF', fontSize: 12 }}>—</span>;
+  if (!alloc) return <span style={{ color: 'var(--df-faint)', fontSize: 12 }}>—</span>;
   const ecart = real - alloc;
   const pct = Math.round((ecart / alloc) * 100);
-  const color = pct > 20 ? '#EF4444' : pct > 0 ? '#F59E0B' : '#10B981';
-  const bg   = pct > 20 ? '#FEF2F2' : pct > 0 ? '#FFFBEB' : '#F0FDF4';
+  const color = pct > 20 ? 'var(--df-danger)' : pct > 0 ? '#F59E0B' : '#10B981';
+  const bg   = pct > 20 ? 'var(--df-danger-bg)' : pct > 0 ? 'var(--df-chip-adv-bg)' : 'var(--df-chip-status-bg)';
   const sign = ecart >= 0 ? '+' : '';
   return (
     <span style={{ background: bg, color, borderRadius: 99, padding: small ? '1px 6px' : '2px 8px', fontSize: small ? 11 : 12, fontWeight: 700 }}>
@@ -132,30 +132,30 @@ function RaisonsCell({ raisons, onSave }) {
         ref={triggerRef}
         onClick={handleOpen}
         style={{ cursor: 'pointer', display: 'flex', flexWrap: 'wrap', gap: 4, minWidth: 80, padding: '3px 6px', borderRadius: 6, border: '1px solid transparent', transition: 'border 0.15s' }}
-        onMouseEnter={e => e.currentTarget.style.border = '1px solid #E5E7EB'}
+        onMouseEnter={e => e.currentTarget.style.border = '1px solid var(--df-border-2)'}
         onMouseLeave={e => !open && (e.currentTarget.style.border = '1px solid transparent')}
       >
         {displayed.length === 0
-          ? <span style={{ color: '#D1D5DB', fontSize: 12 }}>—</span>
-          : displayed.map(r => <span key={r} style={{ background: '#F3F4F6', color: '#374151', borderRadius: 4, padding: '2px 6px', fontSize: 11 }}>{r}</span>)}
+          ? <span style={{ color: 'var(--df-border-strong)', fontSize: 12 }}>—</span>
+          : displayed.map(r => <span key={r} style={{ background: 'var(--df-surface-2)', color: 'var(--df-text-2)', borderRadius: 4, padding: '2px 6px', fontSize: 11 }}>{r}</span>)}
       </div>
       {open && (
-        <div ref={ref} style={{ position: 'fixed', top: pos.top, left: pos.left, zIndex: 9999, background: 'white', border: '1px solid #E0DED9', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', padding: 12, minWidth: 260 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', marginBottom: 8 }}>Raisons</div>
+        <div ref={ref} style={{ position: 'fixed', top: pos.top, left: pos.left, zIndex: 9999, background: 'var(--df-bg)', border: '1px solid var(--df-border)', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', padding: 12, minWidth: 260 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--df-faint)', textTransform: 'uppercase', marginBottom: 8 }}>Raisons</div>
           {RAISONS_CATALOGUE.map(r => (
-            <label key={r} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 4px', cursor: 'pointer', fontSize: 13, color: '#374151', borderRadius: 4 }}
-              onMouseEnter={e => e.currentTarget.style.background = '#F4F4F4'}
+            <label key={r} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 4px', cursor: 'pointer', fontSize: 13, color: 'var(--df-text-2)', borderRadius: 4 }}
+              onMouseEnter={e => e.currentTarget.style.background = 'var(--df-surface)'}
               onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
             >
-              <input type="checkbox" checked={draft.includes(r)} onChange={() => toggle(r)} style={{ accentColor: '#1E2447' }} />
+              <input type="checkbox" checked={draft.includes(r)} onChange={() => toggle(r)} style={{ accentColor: 'var(--df-primary)' }} />
               {r}
             </label>
           ))}
           {draft.includes('Autre') && (
             <input autoFocus value={autre} onChange={e => setAutre(e.target.value)} placeholder="Précisez..."
-              style={{ marginTop: 6, width: '100%', boxSizing: 'border-box', border: '1px solid #E0DED9', borderRadius: 6, padding: '6px 8px', fontSize: 13, outline: 'none' }} />
+              style={{ marginTop: 6, width: '100%', boxSizing: 'border-box', border: '1px solid var(--df-border)', borderRadius: 6, padding: '6px 8px', fontSize: 13, outline: 'none' }} />
           )}
-          <button onClick={commit} style={{ marginTop: 10, width: '100%', background: '#1E2447', color: 'white', border: 'none', borderRadius: 6, padding: '7px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Valider</button>
+          <button onClick={commit} style={{ marginTop: 10, width: '100%', background: 'var(--df-primary)', color: 'white', border: 'none', borderRadius: 6, padding: '7px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Valider</button>
         </div>
       )}
     </div>
@@ -175,8 +175,8 @@ function CommentaireCell({ value, onSave }) {
   );
   return (
     <div onClick={() => { setDraft(value || ''); setEditing(true); }}
-      style={{ cursor: 'pointer', fontSize: 13, color: value ? '#374151' : '#D1D5DB', padding: '3px 6px', borderRadius: 6, border: '1px solid transparent', transition: 'border 0.15s', minWidth: 80 }}
-      onMouseEnter={e => e.currentTarget.style.border = '1px solid #E5E7EB'}
+      style={{ cursor: 'pointer', fontSize: 13, color: value ? 'var(--df-text-2)' : 'var(--df-border-strong)', padding: '3px 6px', borderRadius: 6, border: '1px solid transparent', transition: 'border 0.15s', minWidth: 80 }}
+      onMouseEnter={e => e.currentTarget.style.border = '1px solid var(--df-border-2)'}
       onMouseLeave={e => e.currentTarget.style.border = '1px solid transparent'}
     >{value || '—'}</div>
   );
@@ -188,15 +188,15 @@ function SavCell({ hasSav, onToggle }) {
     <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 12, userSelect: 'none' }}>
       <input type="checkbox" checked={hasSav} onChange={e => onToggle(e.target.checked)} style={{ accentColor: '#EA580C', width: 15, height: 15 }} />
       {hasSav
-        ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, background: '#FFF7ED', color: '#EA580C', borderRadius: 99, padding: '1px 7px', fontSize: 11, fontWeight: 700 }}><Wrench size={10} /> SAV</span>
-        : <span style={{ color: '#D1D5DB' }}>Non</span>}
+        ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, background: 'var(--df-chip-owner-bg)', color: '#EA580C', borderRadius: 99, padding: '1px 7px', fontSize: 11, fontWeight: 700 }}><Wrench size={10} /> SAV</span>
+        : <span style={{ color: 'var(--df-border-strong)' }}>Non</span>}
     </label>
   );
 }
 
 // ── Icône tri ─────────────────────────────────────────────────────────────────
 function SortIcon({ col, sortKey, sortDir }) {
-  if (sortKey !== col) return <ArrowUpDown size={12} color="#D1D5DB" />;
+  if (sortKey !== col) return <ArrowUpDown size={12} color="var(--df-border-strong)" />;
   return sortDir === 'asc' ? <ArrowUp size={12} color="#6366F1" /> : <ArrowDown size={12} color="#6366F1" />;
 }
 
@@ -237,34 +237,34 @@ function PeriodeDropdown({ filters, onChange }) {
   return (
     <div ref={ref} style={{ position: 'relative' }}>
       <button onClick={() => setOpen(v => !v)} style={{
-        background: 'white', border: '1px solid #E0DED9', borderRadius: 8,
+        background: 'var(--df-bg)', border: '1px solid var(--df-border)', borderRadius: 8,
         padding: '6px 12px', fontSize: 13, fontWeight: 500, cursor: 'pointer',
-        display: 'flex', alignItems: 'center', gap: 8, color: '#374151',
-        boxShadow: open ? '0 0 0 2px #E0E7FF' : 'none',
+        display: 'flex', alignItems: 'center', gap: 8, color: 'var(--df-text-2)',
+        boxShadow: open ? '0 0 0 2px var(--df-blue-bg-3)' : 'none',
       }}>
-        {currentLabel} <ChevronDown size={14} color="#9CA3AF" />
+        {currentLabel} <ChevronDown size={14} color="var(--df-faint)" />
       </button>
       {open && (
-        <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, zIndex: 90, background: 'white', border: '1px solid #E0DED9', borderRadius: 8, boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', width: 220, padding: 4 }}>
-          <div style={{ paddingBottom: 4, borderBottom: '1px solid #F3F4F6' }}>
+        <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, zIndex: 90, background: 'var(--df-bg)', border: '1px solid var(--df-border)', borderRadius: 8, boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', width: 220, padding: 4 }}>
+          <div style={{ paddingBottom: 4, borderBottom: '1px solid var(--df-surface-2)' }}>
             {PERIODE_PRESETS.map(o => (
               <div key={o.key} onClick={() => { onChange('periode', o.key); setOpen(false); }} style={{
                 padding: '8px 12px', fontSize: 13, cursor: 'pointer', borderRadius: 4,
-                background: filters.periode === o.key ? '#EFF6FF' : 'transparent',
-                color: filters.periode === o.key ? '#2563EB' : '#374151',
+                background: filters.periode === o.key ? 'var(--df-blue-bg)' : 'transparent',
+                color: filters.periode === o.key ? 'var(--df-blue)' : 'var(--df-text-2)',
                 fontWeight: filters.periode === o.key ? 600 : 400,
               }}>{o.label}</div>
             ))}
           </div>
           <div style={{ padding: 12 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 8 }}>Période personnalisée</div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--df-faint)', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 8 }}>Période personnalisée</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 8 }}>
               <input type="date" value={tempFrom} onChange={e => setTempFrom(e.target.value)}
-                style={{ width: '100%', boxSizing: 'border-box', border: '1px solid #E0DED9', borderRadius: 6, padding: '5px 8px', fontSize: 12, outline: 'none' }} />
+                style={{ width: '100%', boxSizing: 'border-box', border: '1px solid var(--df-border)', borderRadius: 6, padding: '5px 8px', fontSize: 12, outline: 'none' }} />
               <input type="date" value={tempTo} onChange={e => setTempTo(e.target.value)}
-                style={{ width: '100%', boxSizing: 'border-box', border: '1px solid #E0DED9', borderRadius: 6, padding: '5px 8px', fontSize: 12, outline: 'none' }} />
+                style={{ width: '100%', boxSizing: 'border-box', border: '1px solid var(--df-border)', borderRadius: 6, padding: '5px 8px', fontSize: 12, outline: 'none' }} />
             </div>
-            <button onClick={applyCustom} style={{ width: '100%', background: '#1E2447', color: 'white', border: 'none', borderRadius: 6, padding: '6px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Appliquer</button>
+            <button onClick={applyCustom} style={{ width: '100%', background: 'var(--df-primary)', color: 'white', border: 'none', borderRadius: 6, padding: '6px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Appliquer</button>
           </div>
         </div>
       )}
@@ -274,11 +274,11 @@ function PeriodeDropdown({ filters, onChange }) {
 
 // ── Panneau de filtres (toujours visible) ─────────────────────────────────────
 function FilterPanel({ filters, onChange, managers, allRaisons, onReset }) {
-  const selectStyle = { border: '1px solid #E0DED9', borderRadius: 8, padding: '6px 10px', fontSize: 13, outline: 'none', background: 'white', color: '#374151' };
-  const labelStyle  = { fontSize: 11, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 4, display: 'block' };
+  const selectStyle = { border: '1px solid var(--df-border)', borderRadius: 8, padding: '6px 10px', fontSize: 13, outline: 'none', background: 'var(--df-bg)', color: 'var(--df-text-2)' };
+  const labelStyle  = { fontSize: 11, fontWeight: 700, color: 'var(--df-muted)', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 4, display: 'block' };
 
   return (
-    <div style={{ background: 'white', border: '1px solid #E0DED9', borderRadius: 10, padding: '14px 18px', marginBottom: 16, display: 'flex', flexWrap: 'wrap', gap: 20, alignItems: 'flex-end' }}>
+    <div style={{ background: 'var(--df-bg)', border: '1px solid var(--df-border)', borderRadius: 10, padding: '14px 18px', marginBottom: 16, display: 'flex', flexWrap: 'wrap', gap: 20, alignItems: 'flex-end' }}>
 
       {/* Période */}
       <div>
@@ -326,7 +326,7 @@ function FilterPanel({ filters, onChange, managers, allRaisons, onReset }) {
       </div>
 
       {/* Reset */}
-      <button onClick={onReset} style={{ display: 'flex', alignItems: 'center', gap: 4, border: '1px solid #E0DED9', background: 'white', borderRadius: 8, padding: '6px 12px', fontSize: 12, cursor: 'pointer', color: '#9CA3AF' }}>
+      <button onClick={onReset} style={{ display: 'flex', alignItems: 'center', gap: 4, border: '1px solid var(--df-border)', background: 'var(--df-bg)', borderRadius: 8, padding: '6px 12px', fontSize: 12, cursor: 'pointer', color: 'var(--df-faint)' }}>
         <X size={12} /> Réinitialiser
       </button>
     </div>
@@ -447,7 +447,7 @@ export default function PerformanceDataTab({ projects, events, entries, onUpsert
   };
 
   const thBtn = (col, label) => (
-    <button onClick={() => cycleSort(col)} style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 700, color: sortKey === col ? '#6366F1' : '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.5px', padding: 0 }}>
+    <button onClick={() => cycleSort(col)} style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 700, color: sortKey === col ? '#6366F1' : 'var(--df-faint)', textTransform: 'uppercase', letterSpacing: '0.5px', padding: 0 }}>
       {label} <SortIcon col={col} sortKey={sortKey} sortDir={sortDir} />
     </button>
   );
@@ -459,17 +459,17 @@ export default function PerformanceDataTab({ projects, events, entries, onUpsert
 
       {/* Barre supérieure */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, gap: 12 }}>
-        <span style={{ fontSize: 12, color: '#9CA3AF' }}>{filtered.length} projet{filtered.length > 1 ? 's' : ''} archivé{filtered.length > 1 ? 's' : ''}</span>
+        <span style={{ fontSize: 12, color: 'var(--df-faint)' }}>{filtered.length} projet{filtered.length > 1 ? 's' : ''} archivé{filtered.length > 1 ? 's' : ''}</span>
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher..."
-          style={{ border: '1px solid #E0DED9', borderRadius: 8, padding: '7px 12px', fontSize: 13, outline: 'none', width: 240, background: 'white' }}
+          style={{ border: '1px solid var(--df-border)', borderRadius: 8, padding: '7px 12px', fontSize: 13, outline: 'none', width: 240, background: 'var(--df-bg)' }}
         />
       </div>
 
       {/* Tableau */}
-      <div style={{ background: 'white', borderRadius: 12, border: '1px solid #E0DED9', overflow: 'hidden' }}>
+      <div style={{ background: 'var(--df-bg)', borderRadius: 12, border: '1px solid var(--df-border)', overflow: 'hidden' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
-            <tr style={{ background: '#F4F4F4', borderBottom: '2px solid #E5E7EB' }}>
+            <tr style={{ background: 'var(--df-surface)', borderBottom: '2px solid var(--df-border-2)' }}>
               <th style={{ ...TH, width: 32 }} />
               <th style={TH}>{thBtn('name', 'Projet')}</th>
               <th style={TH}>{thBtn('manager', 'Responsable')}</th>
@@ -485,7 +485,7 @@ export default function PerformanceDataTab({ projects, events, entries, onUpsert
           </thead>
           <tbody>
             {filtered.length === 0 && (
-              <tr><td colSpan={11} style={{ padding: 48, textAlign: 'center', color: '#9CA3AF', fontSize: 14 }}>
+              <tr><td colSpan={11} style={{ padding: 48, textAlign: 'center', color: 'var(--df-faint)', fontSize: 14 }}>
                 {projects.filter(p => p.status === 'ARCHIVED').length === 0
                   ? 'Aucun projet archivé pour l\'instant.'
                   : 'Aucun projet ne correspond aux filtres.'}
@@ -505,31 +505,31 @@ export default function PerformanceDataTab({ projects, events, entries, onUpsert
               return (
                 <React.Fragment key={project.id}>
                   {/* Ligne projet */}
-                  <tr style={{ borderBottom: isExpanded ? 'none' : '1px solid #F3F4F6', background: isExpanded ? '#F8F9FF' : 'white', cursor: 'pointer' }}
+                  <tr style={{ borderBottom: isExpanded ? 'none' : '1px solid var(--df-surface-2)', background: isExpanded ? 'var(--df-navy-bg-3)' : 'var(--df-bg)', cursor: 'pointer' }}
                     onClick={() => toggleExpand(project.id)}>
-                    <td style={{ padding: '12px 8px 12px 16px', color: '#9CA3AF' }}>
+                    <td style={{ padding: '12px 8px 12px 16px', color: 'var(--df-faint)' }}>
                       {isExpanded ? <ChevronDown size={16} color="#6366F1" /> : <ChevronRight size={16} />}
                     </td>
                     <td style={{ padding: '12px 4px' }}>
-                      <div style={{ fontWeight: 700, fontSize: 14, color: '#111827' }}>{project.name || 'Sans nom'}</div>
-                      {project.client && <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 1 }}>{project.client}</div>}
+                      <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--df-text)' }}>{project.name || 'Sans nom'}</div>
+                      {project.client && <div style={{ fontSize: 11, color: 'var(--df-faint)', marginTop: 1 }}>{project.client}</div>}
                     </td>
-                    <td style={{ padding: '12px 16px', fontSize: 13, color: '#6B7280' }}>
-                      {project.manager || <span style={{ color: '#D1D5DB' }}>—</span>}
+                    <td style={{ padding: '12px 16px', fontSize: 13, color: 'var(--df-muted)' }}>
+                      {project.manager || <span style={{ color: 'var(--df-border-strong)' }}>—</span>}
                     </td>
-                    <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 14, fontWeight: 600, color: '#374151' }}>
-                      {dispAlloc > 0 ? `${dispAlloc.toFixed(1)}h` : <span style={{ color: '#D1D5DB' }}>—</span>}
+                    <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 14, fontWeight: 600, color: 'var(--df-text-2)' }}>
+                      {dispAlloc > 0 ? `${dispAlloc.toFixed(1)}h` : <span style={{ color: 'var(--df-border-strong)' }}>—</span>}
                     </td>
-                    <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 14, fontWeight: 600, color: '#374151' }}>
-                      {dispAlloc > 0 ? `${dispReal.toFixed(1)}h` : <span style={{ color: '#D1D5DB' }}>—</span>}
+                    <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 14, fontWeight: 600, color: 'var(--df-text-2)' }}>
+                      {dispAlloc > 0 ? `${dispReal.toFixed(1)}h` : <span style={{ color: 'var(--df-border-strong)' }}>—</span>}
                     </td>
                     <td style={{ padding: '12px 16px', textAlign: 'center' }}>
-                      {dispAlloc > 0 ? <EcartBadge alloc={dispAlloc} real={dispReal} /> : <span style={{ color: '#D1D5DB', fontSize: 12 }}>—</span>}
+                      {dispAlloc > 0 ? <EcartBadge alloc={dispAlloc} real={dispReal} /> : <span style={{ color: 'var(--df-border-strong)', fontSize: 12 }}>—</span>}
                     </td>
-                    <td colSpan={3} style={{ padding: '12px 16px', fontSize: 12, color: '#9CA3AF', fontStyle: 'italic' }}>
+                    <td colSpan={3} style={{ padding: '12px 16px', fontSize: 12, color: 'var(--df-faint)', fontStyle: 'italic' }}>
                       {isExpanded ? 'Replier' : 'Voir le détail par service →'}
                     </td>
-                    <td style={{ padding: '12px 16px', textAlign: 'center', fontSize: 11, color: '#9CA3AF' }}>
+                    <td style={{ padding: '12px 16px', textAlign: 'center', fontSize: 11, color: 'var(--df-faint)' }}>
                       {archivedAt ? archivedAt.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '—'}
                     </td>
                     <td />
@@ -543,18 +543,18 @@ export default function PerformanceDataTab({ projects, events, entries, onUpsert
                     const isLast = i === visibleServices.length - 1;
 
                     return (
-                      <tr key={`${project.id}_${svc}`} style={{ borderBottom: isLast ? '2px solid #E5E7EB' : '1px solid #F3F4F6', background: '#FAFBFF' }}>
+                      <tr key={`${project.id}_${svc}`} style={{ borderBottom: isLast ? '2px solid var(--df-border-2)' : '1px solid var(--df-surface-2)', background: 'var(--df-x-FAFBFF)' }}>
                         <td style={{ padding: '9px 8px 9px 24px', color: '#C4B5FD', fontSize: 16 }}>└</td>
-                        <td style={{ padding: '9px 4px', fontSize: 13, color: '#6B7280', fontWeight: 500 }}>{SERVICE_LABELS[svc]}</td>
+                        <td style={{ padding: '9px 4px', fontSize: 13, color: 'var(--df-muted)', fontWeight: 500 }}>{SERVICE_LABELS[svc]}</td>
                         <td style={{ padding: '9px 16px' }} />
-                        <td style={{ padding: '9px 16px', textAlign: 'right', fontSize: 13, color: '#374151' }}>
-                          {alloc > 0 ? `${alloc}h` : <span style={{ color: '#E5E7EB' }}>—</span>}
+                        <td style={{ padding: '9px 16px', textAlign: 'right', fontSize: 13, color: 'var(--df-text-2)' }}>
+                          {alloc > 0 ? `${alloc}h` : <span style={{ color: 'var(--df-border-2)' }}>—</span>}
                         </td>
-                        <td style={{ padding: '9px 16px', textAlign: 'right', fontSize: 13, color: '#374151' }}>
-                          {alloc > 0 ? `${real.toFixed(1)}h` : <span style={{ color: '#E5E7EB' }}>—</span>}
+                        <td style={{ padding: '9px 16px', textAlign: 'right', fontSize: 13, color: 'var(--df-text-2)' }}>
+                          {alloc > 0 ? `${real.toFixed(1)}h` : <span style={{ color: 'var(--df-border-2)' }}>—</span>}
                         </td>
                         <td style={{ padding: '9px 16px', textAlign: 'center' }}>
-                          {alloc > 0 ? <EcartBadge alloc={alloc} real={real} small /> : <span style={{ color: '#E5E7EB', fontSize: 12 }}>—</span>}
+                          {alloc > 0 ? <EcartBadge alloc={alloc} real={real} small /> : <span style={{ color: 'var(--df-border-2)', fontSize: 12 }}>—</span>}
                         </td>
                         <td style={{ padding: '9px 16px' }} onClick={e => e.stopPropagation()}>
                           {alloc > 0 && <SavCell hasSav={entry?.has_sav || false} onToggle={val => saveField(project, svc, 'has_sav', val)} />}
@@ -572,7 +572,7 @@ export default function PerformanceDataTab({ projects, events, entries, onUpsert
                             <button
                               onClick={() => setHistoModal({ project, service: svc, entry })}
                               title="Voir l'historique de saisie"
-                              style={{ display: 'inline-flex', alignItems: 'center', gap: 4, border: '1px solid #E0DED9', background: 'white', borderRadius: 6, padding: '4px 8px', fontSize: 12, cursor: 'pointer', color: '#6B7280' }}
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: 4, border: '1px solid var(--df-border)', background: 'var(--df-bg)', borderRadius: 6, padding: '4px 8px', fontSize: 12, cursor: 'pointer', color: 'var(--df-muted)' }}
                             >
                               <Clock size={13} />
                             </button>
@@ -602,6 +602,6 @@ export default function PerformanceDataTab({ projects, events, entries, onUpsert
 const TH = {
   padding: '10px 16px',
   fontSize: 11, fontWeight: 700,
-  color: '#9CA3AF', textTransform: 'uppercase',
+  color: 'var(--df-faint)', textTransform: 'uppercase',
   letterSpacing: '0.5px', textAlign: 'left',
 };

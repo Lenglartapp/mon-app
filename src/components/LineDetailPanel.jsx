@@ -31,7 +31,7 @@ const FIELD_SX = DA_FIELD_SX;
 function PropRow({ label, children, top = false }) {
     return (
         <div className="df-prop-row" style={{ display: 'grid', gridTemplateColumns: '200px minmax(0, 1fr)', gap: 16, alignItems: top ? 'start' : 'center', padding: '7px 0' }}>
-            <div className="df-prop-label" style={{ fontFamily: ROBOTO, fontSize: 13, color: '#6B7280', paddingTop: top ? 10 : 0, overflow: 'hidden', textOverflow: 'ellipsis' }} title={label}>{label}</div>
+            <div className="df-prop-label" style={{ fontFamily: ROBOTO, fontSize: 13, color: 'var(--df-muted)', paddingTop: top ? 10 : 0, overflow: 'hidden', textOverflow: 'ellipsis' }} title={label}>{label}</div>
             <div style={{ minWidth: 0 }}>{children}</div>
         </div>
     );
@@ -229,12 +229,12 @@ export default function LineDetailPanel({ open, onClose, row, schema, onRowChang
             }}
         >
             {/* En-tête à la DA : titre Roboto + référence de ligne, bouton Activité, croix */}
-            <Box sx={{ p: fullScreen ? '14px 16px 12px' : '20px 28px 16px', borderBottom: '1px solid #E8E6E2', display: 'flex', alignItems: 'flex-start', gap: 1.5, bgcolor: 'white' }}>
+            <Box sx={{ p: fullScreen ? '14px 16px 12px' : '20px 28px 16px', borderBottom: '1px solid var(--df-border-soft)', display: 'flex', alignItems: 'flex-start', gap: 1.5, bgcolor: 'var(--df-bg)' }}>
                 <Box sx={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontFamily: ROBOTO, fontSize: fullScreen ? 19 : 24, fontWeight: 400, color: '#111827', lineHeight: 1.25, overflow: 'hidden', ...(fullScreen ? { display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' } : { textOverflow: 'ellipsis', whiteSpace: 'nowrap' }) }}>
+                    <div style={{ fontFamily: ROBOTO, fontSize: fullScreen ? 19 : 24, fontWeight: 400, color: 'var(--df-text)', lineHeight: 1.25, overflow: 'hidden', ...(fullScreen ? { display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' } : { textOverflow: 'ellipsis', whiteSpace: 'nowrap' }) }}>
                         {[row.zone, row.piece, row.produit].filter(Boolean).join(' · ') || 'Détail de la ligne'}
                     </div>
-                    <div style={{ fontSize: 13, color: '#6B7280', marginTop: 4 }}>Détail de la ligne · #{String(row.id).slice(-4)}</div>
+                    <div style={{ fontSize: 13, color: 'var(--df-muted)', marginTop: 4 }}>Détail de la ligne · #{String(row.id).slice(-4)}</div>
                 </Box>
                 <ToolbarButton
                     icon={<MessageSquare size={16} />}
@@ -244,7 +244,7 @@ export default function LineDetailPanel({ open, onClose, row, schema, onRowChang
                 >
                     {fullScreen ? (activityCount > 0 ? activityCount : null) : `Activité${activityCount > 0 ? ` (${activityCount})` : ''}`}
                 </ToolbarButton>
-                <button onClick={onClose} title="Fermer" style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#9B9A97', display: 'flex', padding: 4, marginTop: 6 }}>
+                <button onClick={onClose} title="Fermer" style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--df-faint-2)', display: 'flex', padding: 4, marginTop: 6 }}>
                     <X size={20} />
                 </button>
             </Box>
@@ -258,7 +258,7 @@ export default function LineDetailPanel({ open, onClose, row, schema, onRowChang
                     flex: 1,
                     p: fullScreen ? '8px 16px 24px' : '20px 28px',
                     overflowY: 'auto',
-                    bgcolor: 'white',
+                    bgcolor: 'var(--df-bg)',
                     display: fullScreen && isSidebarOpen ? 'none' : 'block',
                 }}>
                     {/* Fiche façon Notion : libellé gris à gauche, valeur à droite */}
@@ -279,7 +279,7 @@ export default function LineDetailPanel({ open, onClose, row, schema, onRowChang
                                 return (
                                     <PropRow key={col.key} label={col.label || col.key} top>
                                         <div style={{
-                                            border: '1px solid #E0DED9',
+                                            border: '1px solid var(--df-border)',
                                             borderRadius: 8,
                                             padding: 12,
                                             minHeight: 80,
@@ -301,7 +301,7 @@ export default function LineDetailPanel({ open, onClose, row, schema, onRowChang
                                 return (
                                     <PropRow key={col.key} label={col.label || col.key} top>
                                         <div style={{
-                                            border: '1px solid #E0DED9',
+                                            border: '1px solid var(--df-border)',
                                             borderRadius: 8,
                                             padding: 12,
                                             minHeight: 80,

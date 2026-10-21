@@ -75,25 +75,25 @@ function CatalogSearch({ globalCatalog, projectMaterials, activeTab, onAdd }) {
     <div style={{ width: 420, padding: 12 }}>
       <ToolbarSearch value={search} onChange={setSearch} placeholder={`Rechercher (${activeTab.label.toLowerCase()})…`} width="100%" />
       {filtered.length > 0 && (
-        <div style={{ marginTop: 6, border: '1px solid #E0DED9', borderRadius: 8, overflow: 'hidden' }}>
+        <div style={{ marginTop: 6, border: '1px solid var(--df-border)', borderRadius: 8, overflow: 'hidden' }}>
           {filtered.map((article, i) => (
             <div
               key={article.id || i}
               onClick={() => pick(article)}
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', cursor: 'pointer', fontSize: 13, background: '#fff', borderBottom: i < filtered.length - 1 ? '1px solid #E8E6E2' : 'none' }}
-              onMouseEnter={e => { e.currentTarget.style.background = '#F7F7F5'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = '#fff'; }}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', cursor: 'pointer', fontSize: 13, background: 'var(--df-bg)', borderBottom: i < filtered.length - 1 ? '1px solid var(--df-border-soft)' : 'none' }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'var(--df-surface-3)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'var(--df-bg)'; }}
             >
               <div style={{ flex: 1, minWidth: 0 }}>
-                <span style={{ fontWeight: 600, color: '#111827' }}>{article.name}</span>
-                {article.width > 0 && <span style={{ marginLeft: 8, color: '#6B7280', fontSize: 12 }}>{article.width} cm</span>}
+                <span style={{ fontWeight: 600, color: 'var(--df-text)' }}>{article.name}</span>
+                {article.width > 0 && <span style={{ marginLeft: 8, color: 'var(--df-muted)', fontSize: 12 }}>{article.width} cm</span>}
               </div>
-              <Plus size={14} color="#1E2447" style={{ flexShrink: 0, marginLeft: 8 }} />
+              <Plus size={14} color="var(--df-primary-text)" style={{ flexShrink: 0, marginLeft: 8 }} />
             </div>
           ))}
         </div>
       )}
-      <div style={{ fontSize: 12, color: '#9CA3AF', padding: '6px 2px 0' }}>
+      <div style={{ fontSize: 12, color: 'var(--df-faint)', padding: '6px 2px 0' }}>
         {search.trim() && filtered.length === 0 ? 'Aucun résultat dans le catalogue général.' : 'Cliquer un article pour l\'ajouter au projet.'}
       </div>
     </div>
@@ -281,7 +281,7 @@ export default function ProjectMaterialsPanel({ open, onClose, materials = [], o
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: '16px 28px 20px', boxSizing: 'border-box', gap: 14 }}>
         {/* Barre : familles à gauche, actions à droite (comme la Bibliothèque du chiffrage) */}
         {laizeAlert && fabricsWithoutLaize.length > 0 && (
-          <div role="alert" style={{ background: '#FEF2F2', border: '1px solid #FCA5A5', color: '#B91C1C', borderRadius: 8, padding: '10px 14px', fontSize: 13, lineHeight: 1.5 }}>
+          <div role="alert" style={{ background: 'var(--df-danger-bg)', border: '1px solid #FCA5A5', color: 'var(--df-danger-text)', borderRadius: 8, padding: '10px 14px', fontSize: 13, lineHeight: 1.5 }}>
             <strong>Laize manquante</strong> : un tissu sans laize ne permet aucun métrage. Renseignez-la (case en rouge)
             ou supprimez l'article avant de fermer — {fabricsWithoutLaize.map(m => clean(m.name) || 'article sans nom').join(', ')}.
           </div>
@@ -309,10 +309,10 @@ export default function ProjectMaterialsPanel({ open, onClose, materials = [], o
             rowHeight={40}
             columnHeaderHeight={42}
             sx={{ ...DATAGRID_DA_SX, ...FOCUS_ROW_SX, height: '100%', '& .MuiDataGrid-menuIcon': { overflow: 'hidden' },
-              '& .laize-manquante': { backgroundColor: '#FEF2F2', boxShadow: 'inset 0 0 0 1px #FCA5A5' } }}
+              '& .laize-manquante': { backgroundColor: 'var(--df-danger-bg)', boxShadow: 'inset 0 0 0 1px #FCA5A5' } }}
           />
         </div>
-        <div style={{ fontSize: 13, color: '#6B7280' }}>
+        <div style={{ fontSize: 13, color: 'var(--df-muted)' }}>
           {materials.length} article{materials.length !== 1 ? 's' : ''} au total
         </div>
         <UsagePopover anchor={usageAnchor} list={usageList} onClose={() => setUsageAnchor(null)} where="du projet" />
@@ -322,7 +322,7 @@ export default function ProjectMaterialsPanel({ open, onClose, materials = [], o
           onClose={() => setCatalogAnchor(null)}
           anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
           transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-          PaperProps={{ sx: { borderRadius: '8px', border: '1px solid #E0DED9', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' } }}
+          PaperProps={{ sx: { borderRadius: '8px', border: '1px solid var(--df-border)', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' } }}
         >
           <CatalogSearch globalCatalog={allGlobal} projectMaterials={materials} activeTab={activeTab} onAdd={handleAdd} />
         </Popover>

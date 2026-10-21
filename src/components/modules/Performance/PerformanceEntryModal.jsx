@@ -21,9 +21,9 @@ const SERVICE_LABELS = {
 
 function Checkbox({ checked, onChange, label }) {
   return (
-    <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14, color: '#374151' }}>
+    <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14, color: 'var(--df-text-2)' }}>
       <input type="checkbox" checked={checked} onChange={e => onChange(e.target.checked)}
-        style={{ width: 16, height: 16, cursor: 'pointer', accentColor: '#1E2447' }} />
+        style={{ width: 16, height: 16, cursor: 'pointer', accentColor: 'var(--df-primary)' }} />
       {label}
     </label>
   );
@@ -79,19 +79,19 @@ export default function PerformanceEntryModal({ project, service, existingEntry,
       display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000,
     }} onClick={e => e.target === e.currentTarget && onClose()}>
       <div style={{
-        background: '#fff', borderRadius: 16, width: 'min(560px, 95vw)',
+        background: 'var(--df-bg)', borderRadius: 16, width: 'min(560px, 95vw)',
         maxHeight: '90vh', display: 'flex', flexDirection: 'column',
         boxShadow: '0 8px 40px rgba(0,0,0,0.15)',
       }}>
         {/* Header */}
-        <div style={{ padding: '20px 24px 16px', borderBottom: '1px solid #F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ padding: '20px 24px 16px', borderBottom: '1px solid var(--df-surface-2)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
-            <div style={{ fontWeight: 700, fontSize: 16, color: '#111827' }}>Bilan performance</div>
-            <div style={{ fontSize: 13, color: '#6B7280', marginTop: 2 }}>
-              {project?.name} — <span style={{ fontWeight: 600, color: '#1E2447' }}>{serviceLabel}</span>
+            <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--df-text)' }}>Bilan performance</div>
+            <div style={{ fontSize: 13, color: 'var(--df-muted)', marginTop: 2 }}>
+              {project?.name} — <span style={{ fontWeight: 600, color: 'var(--df-primary-text)' }}>{serviceLabel}</span>
             </div>
           </div>
-          <button onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#9CA3AF' }}>
+          <button onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--df-faint)' }}>
             <X size={18} />
           </button>
         </div>
@@ -101,7 +101,7 @@ export default function PerformanceEntryModal({ project, service, existingEntry,
 
           {/* Raisons */}
           <div>
-            <div style={{ fontWeight: 600, fontSize: 14, color: '#111827', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--df-text)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
               <AlertTriangle size={15} color="#F59E0B" />
               Raisons du dépassement
             </div>
@@ -118,8 +118,8 @@ export default function PerformanceEntryModal({ project, service, existingEntry,
                 placeholder="Précisez la raison..."
                 style={{
                   marginTop: 8, width: '100%', boxSizing: 'border-box',
-                  border: '1px solid #E0DED9', borderRadius: 8, padding: '8px 12px',
-                  fontSize: 14, color: '#374151', outline: 'none',
+                  border: '1px solid var(--df-border)', borderRadius: 8, padding: '8px 12px',
+                  fontSize: 14, color: 'var(--df-text-2)', outline: 'none',
                 }}
               />
             )}
@@ -127,7 +127,7 @@ export default function PerformanceEntryModal({ project, service, existingEntry,
 
           {/* Commentaire */}
           <div>
-            <div style={{ fontWeight: 600, fontSize: 14, color: '#111827', marginBottom: 8 }}>Commentaire</div>
+            <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--df-text)', marginBottom: 8 }}>Commentaire</div>
             <textarea
               value={commentaire}
               onChange={e => setCommentaire(e.target.value)}
@@ -135,22 +135,22 @@ export default function PerformanceEntryModal({ project, service, existingEntry,
               rows={4}
               style={{
                 width: '100%', boxSizing: 'border-box',
-                border: '1px solid #E0DED9', borderRadius: 8, padding: '10px 12px',
-                fontSize: 14, color: '#374151', resize: 'vertical',
+                border: '1px solid var(--df-border)', borderRadius: 8, padding: '10px 12px',
+                fontSize: 14, color: 'var(--df-text-2)', resize: 'vertical',
                 fontFamily: 'inherit', outline: 'none',
               }}
             />
           </div>
 
           {/* SAV */}
-          <div style={{ background: '#FFF7ED', borderRadius: 10, padding: '14px 16px', border: '1px solid #FED7AA' }}>
+          <div style={{ background: 'var(--df-chip-owner-bg)', borderRadius: 10, padding: '14px 16px', border: '1px solid var(--df-x-FED7AA)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: hasSav ? 12 : 0 }}>
               <Wrench size={15} color="#EA580C" />
               <Checkbox checked={hasSav} onChange={setHasSav} label="SAV sur ce service" />
             </div>
             {hasSav && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4 }}>
-                <span style={{ fontSize: 13, color: '#92400E' }}>Heures SAV :</span>
+                <span style={{ fontSize: 13, color: 'var(--df-warn-text)' }}>Heures SAV :</span>
                 <input
                   type="number"
                   min="0"
@@ -158,25 +158,25 @@ export default function PerformanceEntryModal({ project, service, existingEntry,
                   value={heuresSav}
                   onChange={e => setHeuresSav(e.target.value)}
                   style={{
-                    width: 80, border: '1px solid #FED7AA', borderRadius: 6,
-                    padding: '4px 8px', fontSize: 14, color: '#374151', outline: 'none',
-                    background: 'white',
+                    width: 80, border: '1px solid var(--df-x-FED7AA)', borderRadius: 6,
+                    padding: '4px 8px', fontSize: 14, color: 'var(--df-text-2)', outline: 'none',
+                    background: 'var(--df-bg)',
                   }}
                 />
-                <span style={{ fontSize: 13, color: '#92400E' }}>h</span>
+                <span style={{ fontSize: 13, color: 'var(--df-warn-text)' }}>h</span>
               </div>
             )}
           </div>
         </div>
 
         {/* Footer */}
-        <div style={{ padding: '16px 24px', borderTop: '1px solid #F3F4F6', display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+        <div style={{ padding: '16px 24px', borderTop: '1px solid var(--df-surface-2)', display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
           <button onClick={onClose} style={{
-            border: '1px solid #E0DED9', background: 'white', borderRadius: 8,
-            padding: '8px 18px', fontSize: 14, cursor: 'pointer', color: '#374151', fontWeight: 500,
+            border: '1px solid var(--df-border)', background: 'var(--df-bg)', borderRadius: 8,
+            padding: '8px 18px', fontSize: 14, cursor: 'pointer', color: 'var(--df-text-2)', fontWeight: 500,
           }}>Annuler</button>
           <button onClick={handleSave} disabled={saving} style={{
-            background: '#1E2447', color: 'white', border: 'none', borderRadius: 8,
+            background: 'var(--df-primary)', color: 'white', border: 'none', borderRadius: 8,
             padding: '8px 20px', fontSize: 14, fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer',
             opacity: saving ? 0.7 : 1,
           }}>{saving ? 'Enregistrement...' : 'Enregistrer'}</button>

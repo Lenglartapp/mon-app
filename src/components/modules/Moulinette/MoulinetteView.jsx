@@ -27,7 +27,7 @@ export default function MoulinetteView({ rows, depRows, extraRows, catalog = [],
                 position: 'sticky',
                 top: 0,
                 zIndex: 10,
-                background: '#FFFFFF',
+                background: 'var(--df-bg)',
                 padding: '16px 0',
                 marginBottom: 8,
             }}>
@@ -95,7 +95,7 @@ function Dashboard({ data, onOpenSimulator }) {
                 <KPI label="Contribution" value={nfEur0.format(kpis.contribution)} />
                 <KPI label="% contribution" value={pct(kpis.contribution_pct)} />
                 <KPI label="Total heures" value={nf0.format(kpis.total_heures) + ' h'} />
-                <KPI label="Contribution horaire" value={<>{nfEur0.format(kpis.contribution_horaire)}<span style={{ fontSize: 16, color: '#6B7280' }}> /h</span></>} highlight />
+                <KPI label="Contribution horaire" value={<>{nfEur0.format(kpis.contribution_horaire)}<span style={{ fontSize: 16, color: 'var(--df-muted)' }}> /h</span></>} highlight />
             </div>
             <div style={{ paddingBottom: 2, marginLeft: 16 }}>
                 <ToolbarButton primary icon={<Target size={16} />} onClick={onOpenSimulator} title="Simuler un objectif de rentabilité">
@@ -111,8 +111,8 @@ function Dashboard({ data, onOpenSimulator }) {
 function KPI({ label, value, alert, highlight }) {
     return (
         <div style={{ whiteSpace: 'nowrap' }}>
-            <div style={{ fontSize: 13, color: '#9B9A97', fontFamily: ROBOTO, marginBottom: 2 }}>{label}</div>
-            <div style={{ fontFamily: ROBOTO, fontSize: 28, fontWeight: 300, lineHeight: 1.15, color: alert ? '#DC2626' : highlight ? '#1E2447' : '#111827' }}>
+            <div style={{ fontSize: 13, color: 'var(--df-faint-2)', fontFamily: ROBOTO, marginBottom: 2 }}>{label}</div>
+            <div style={{ fontFamily: ROBOTO, fontSize: 28, fontWeight: 300, lineHeight: 1.15, color: alert ? '#DC2626' : highlight ? 'var(--df-primary)' : 'var(--df-text)' }}>
                 {value}
             </div>
         </div>
@@ -126,15 +126,15 @@ function ExpandableCard({ title, amount, amountSuffix = "", children, defaultOpe
     return (
         <div style={{ marginTop: 20 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, height: 44 }}>
-                <button onClick={() => setIsOpen(!isOpen)} title={isOpen ? 'Replier' : 'Déplier'} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#9B9A97', display: 'flex', padding: 4, marginLeft: -4 }}>
+                <button onClick={() => setIsOpen(!isOpen)} title={isOpen ? 'Replier' : 'Déplier'} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--df-faint-2)', display: 'flex', padding: 4, marginLeft: -4 }}>
                     <ChevronDown size={20} style={{ transform: isOpen ? 'none' : 'rotate(-90deg)', transition: 'transform .2s ease' }} />
                 </button>
-                <h3 onClick={() => setIsOpen(!isOpen)} style={{ margin: 0, fontSize: 20, fontWeight: 500, color: '#111827', fontFamily: ROBOTO, cursor: 'pointer' }}>{title}</h3>
-                <span style={{ marginLeft: 'auto', fontFamily: ROBOTO, fontSize: 18, fontWeight: 500, color: '#111827' }}>
+                <h3 onClick={() => setIsOpen(!isOpen)} style={{ margin: 0, fontSize: 20, fontWeight: 500, color: 'var(--df-text)', fontFamily: ROBOTO, cursor: 'pointer' }}>{title}</h3>
+                <span style={{ marginLeft: 'auto', fontFamily: ROBOTO, fontSize: 18, fontWeight: 500, color: 'var(--df-text)' }}>
                     {nfEur0.format(amount).replace('€', amountSuffix || '€')}
                 </span>
             </div>
-            {isOpen && <div style={{ border: '1px solid #E0DED9', borderRadius: 8, background: 'white', padding: '0 16px', overflow: 'hidden' }}>{children}</div>}
+            {isOpen && <div style={{ border: '1px solid var(--df-border)', borderRadius: 8, background: 'var(--df-bg)', padding: '0 16px', overflow: 'hidden' }}>{children}</div>}
         </div>
     );
 }
@@ -147,31 +147,31 @@ function DrillDownRow({ label, mainValue, subValue, sources, type = 'price' }) {
     const [open, setOpen] = useState(false);
 
     return (
-        <div className="df-moul-row" style={{ borderBottom: '1px solid #E8E6E2' }}>
+        <div className="df-moul-row" style={{ borderBottom: '1px solid var(--df-border-soft)' }}>
             <div
                 style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', cursor: 'pointer', alignItems: 'center', fontSize: 14 }}
                 onClick={() => setOpen(!open)}
             >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ color: '#9B9A97', display: 'flex' }}>{open ? <ChevronDown size={15} /> : <ChevronRight size={15} />}</span>
-                    <span style={{ fontWeight: 500, color: '#111827' }}>{label}</span>
+                    <span style={{ color: 'var(--df-faint-2)', display: 'flex' }}>{open ? <ChevronDown size={15} /> : <ChevronRight size={15} />}</span>
+                    <span style={{ fontWeight: 500, color: 'var(--df-text)' }}>{label}</span>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontWeight: 600, color: '#111827' }}>{mainValue}</div>
-                    {subValue && <div style={{ fontSize: 12, color: '#6B7280' }}>{subValue}</div>}
+                    <div style={{ fontWeight: 600, color: 'var(--df-text)' }}>{mainValue}</div>
+                    {subValue && <div style={{ fontSize: 12, color: 'var(--df-muted)' }}>{subValue}</div>}
                 </div>
             </div>
 
             {open && sources && sources.length > 0 && (
-                <div style={{ background: '#F7F7F5', padding: '8px 12px', borderRadius: 8, marginBottom: 10, fontSize: 13 }}>
+                <div style={{ background: 'var(--df-surface-3)', padding: '8px 12px', borderRadius: 8, marginBottom: 10, fontSize: 13 }}>
                     <table style={{ width: '100%' }}>
                         <tbody>
                             {sources.map((src, i) => (
                                 <tr key={i}>
-                                    <td style={{ padding: '2px 0', color: '#4b5563' }}>
+                                    <td style={{ padding: '2px 0', color: 'var(--df-text-3)' }}>
                                         {src.minute} <span style={{ opacity: 0.5 }}>({src.piece || '-'}/{src.zone || '-'})</span>
                                     </td>
-                                    <td style={{ textAlign: 'right', padding: '2px 0', color: '#6b7280' }}>
+                                    <td style={{ textAlign: 'right', padding: '2px 0', color: 'var(--df-muted)' }}>
                                         {/* Achats : quantité dans l'unité de la ligne (ml ou u). Heures : brut. */}
                                         {src.unit ? `${nf0.format(src.qty)} ${src.unit}` : null}
                                         {src.hours && `${src.hours}h`}
@@ -201,21 +201,21 @@ function PurchaseGroup({ title, items = [] }) {
     const [sort, setSort] = useState(DEFAULT_SORT);
     const setFilter = (key) => (v) => setFilters(prev => ({ ...prev, [key]: v }));
     const shown = sortItems(items.filter(it => passes(it, filters)), sort);
-    const head = { fontSize: 12, fontWeight: 500, color: '#6B7280', fontFamily: ROBOTO };
+    const head = { fontSize: 12, fontWeight: 500, color: 'var(--df-muted)', fontFamily: ROBOTO };
     return (
         <div>
-            <div className="df-moul-chapter" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '0 -16px', padding: '10px 16px', background: '#F4F4F4', borderBottom: '1px solid #E0DED9' }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: '#374151', fontFamily: ROBOTO }}>
+            <div className="df-moul-chapter" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '0 -16px', padding: '10px 16px', background: 'var(--df-surface)', borderBottom: '1px solid var(--df-border)' }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--df-text-2)', fontFamily: ROBOTO }}>
                     {title}
-                    {shown.length !== items.length && <span style={{ fontWeight: 400, color: '#6B7280' }}> · {shown.length} sur {items.length}</span>}
+                    {shown.length !== items.length && <span style={{ fontWeight: 400, color: 'var(--df-muted)' }}> · {shown.length} sur {items.length}</span>}
                 </div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: '#374151', fontFamily: ROBOTO }}>{nfEur0.format(sumPA(shown))}</div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--df-text-2)', fontFamily: ROBOTO }}>{nfEur0.format(sumPA(shown))}</div>
             </div>
             {items.length === 0 ? (
-                <div style={{ fontSize: 13, color: '#9CA3AF', padding: '8px 0' }}>Aucun achat dans ce chapitre.</div>
+                <div style={{ fontSize: 13, color: 'var(--df-faint)', padding: '8px 0' }}>Aucun achat dans ce chapitre.</div>
             ) : (
                 <>
-                    <div style={{ display: 'grid', gridTemplateColumns: PURCHASE_GRID, gap: 10, alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #E8E6E2' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: PURCHASE_GRID, gap: 10, alignItems: 'center', padding: '8px 0', borderBottom: '1px solid var(--df-border-soft)' }}>
                         <span />
                         {FILTER_FIELDS.map(f => (
                             <span key={f.key} style={{ ...head, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
@@ -231,7 +231,7 @@ function PurchaseGroup({ title, items = [] }) {
                         <span style={{ ...head, textAlign: 'right' }}>Coût</span>
                     </div>
                     {shown.map((item, idx) => <PurchaseRow key={`${item.label}-${idx}`} item={item} />)}
-                    {shown.length === 0 && <div style={{ fontSize: 13, color: '#9CA3AF', padding: '8px 0' }}>Aucun achat ne correspond aux filtres.</div>}
+                    {shown.length === 0 && <div style={{ fontSize: 13, color: 'var(--df-faint)', padding: '8px 0' }}>Aucun achat ne correspond aux filtres.</div>}
                 </>
             )}
         </div>
@@ -240,28 +240,28 @@ function PurchaseGroup({ title, items = [] }) {
 
 function PurchaseRow({ item }) {
     const [open, setOpen] = useState(false);
-    const cell = { fontSize: 14, color: '#111827', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' };
+    const cell = { fontSize: 14, color: 'var(--df-text)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' };
     return (
-        <div className="df-moul-row" style={{ borderBottom: '1px solid #E8E6E2' }}>
+        <div className="df-moul-row" style={{ borderBottom: '1px solid var(--df-border-soft)' }}>
             <div onClick={() => setOpen(o => !o)} style={{ display: 'grid', gridTemplateColumns: PURCHASE_GRID, gap: 10, alignItems: 'center', padding: '10px 0', cursor: 'pointer' }}>
-                <span style={{ color: '#9B9A97', display: 'flex' }}>{open ? <ChevronDown size={15} /> : <ChevronRight size={15} />}</span>
-                <span style={{ ...cell, fontWeight: 500 }} title={item.fournisseur}>{item.fournisseur || <span style={{ color: '#D1D5DB' }}>—</span>}</span>
+                <span style={{ color: 'var(--df-faint-2)', display: 'flex' }}>{open ? <ChevronDown size={15} /> : <ChevronRight size={15} />}</span>
+                <span style={{ ...cell, fontWeight: 500 }} title={item.fournisseur}>{item.fournisseur || <span style={{ color: 'var(--df-border-strong)' }}>—</span>}</span>
                 <span style={cell} title={item.reference}>{item.reference}</span>
                 <span style={cell} title={item.coloris}>{item.coloris}</span>
-                <span style={{ ...cell, textAlign: 'right', color: '#6B7280' }}>{item.laize || ''}</span>
-                <span style={{ ...cell, textAlign: 'right', color: '#6B7280' }}>{nf0.format(item.qty)} {item.unit}</span>
+                <span style={{ ...cell, textAlign: 'right', color: 'var(--df-muted)' }}>{item.laize || ''}</span>
+                <span style={{ ...cell, textAlign: 'right', color: 'var(--df-muted)' }}>{nf0.format(item.qty)} {item.unit}</span>
                 <span style={{ ...cell, textAlign: 'right', fontWeight: 600 }}>{nfEur0.format(item.pa)}</span>
             </div>
             {open && item.sources?.length > 0 && (
-                <div style={{ background: '#F7F7F5', padding: '8px 12px', borderRadius: 8, marginBottom: 10, fontSize: 13 }}>
+                <div style={{ background: 'var(--df-surface-3)', padding: '8px 12px', borderRadius: 8, marginBottom: 10, fontSize: 13 }}>
                     <table style={{ width: '100%' }}>
                         <tbody>
                             {item.sources.map((src, i) => (
                                 <tr key={i}>
-                                    <td style={{ padding: '2px 0', color: '#4b5563' }}>
+                                    <td style={{ padding: '2px 0', color: 'var(--df-text-3)' }}>
                                         {src.minute} <span style={{ opacity: 0.5 }}>({src.piece || '-'}/{src.zone || '-'})</span>
                                     </td>
-                                    <td style={{ textAlign: 'right', padding: '2px 0', color: '#6b7280' }}>{src.unit ? `${nf0.format(src.qty)} ${src.unit}` : null}</td>
+                                    <td style={{ textAlign: 'right', padding: '2px 0', color: 'var(--df-muted)' }}>{src.unit ? `${nf0.format(src.qty)} ${src.unit}` : null}</td>
                                     <td style={{ textAlign: 'right', padding: '2px 0', fontWeight: 500 }}>{src.pa !== undefined && nfEur0.format(src.pa)}</td>
                                 </tr>
                             ))}
@@ -310,8 +310,8 @@ function ChargesTable({ details, commissionRate, commissionOwner, onUpdateCommis
                 );
             })}
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', fontFamily: ROBOTO, fontSize: 15 }}>
-                <div style={{ fontWeight: 600, color: '#111827' }}>Total</div>
-                <div style={{ fontWeight: 600, color: '#111827' }}>{nfEur0.format(details.total)}</div>
+                <div style={{ fontWeight: 600, color: 'var(--df-text)' }}>Total</div>
+                <div style={{ fontWeight: 600, color: 'var(--df-text)' }}>{nfEur0.format(details.total)}</div>
             </div>
         </div>
     );
@@ -342,32 +342,32 @@ function CommissionDrillDownRow({ label, mainValue, rate, owner, onUpdate }) {
     };
 
     return (
-        <div style={{ borderBottom: '1px solid #E8E6E2' }}>
+        <div style={{ borderBottom: '1px solid var(--df-border-soft)' }}>
             <div
                 style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', cursor: 'pointer', alignItems: 'center', fontSize: 14 }}
                 onClick={() => setOpen(!open)}
             >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ color: '#9B9A97', display: 'flex' }}>{open ? <ChevronDown size={15} /> : <ChevronRight size={15} />}</span>
-                    <span style={{ fontWeight: 500, color: '#111827' }}>{label} <span style={{ color: '#6B7280', fontWeight: 400 }}>· {String(rate).replace('.', ',')} % + {COMMISSION_EMPLOYER_CHARGES * 100} % de charges patronales</span></span>
+                    <span style={{ color: 'var(--df-faint-2)', display: 'flex' }}>{open ? <ChevronDown size={15} /> : <ChevronRight size={15} />}</span>
+                    <span style={{ fontWeight: 500, color: 'var(--df-text)' }}>{label} <span style={{ color: 'var(--df-muted)', fontWeight: 400 }}>· {String(rate).replace('.', ',')} % + {COMMISSION_EMPLOYER_CHARGES * 100} % de charges patronales</span></span>
                 </div>
-                <div style={{ textAlign: 'right', fontWeight: 600, color: '#111827' }}>
+                <div style={{ textAlign: 'right', fontWeight: 600, color: 'var(--df-text)' }}>
                     {mainValue}
                 </div>
             </div>
 
             {open && !onUpdate && (
-                <div style={{ background: '#F7F7F5', padding: '10px 14px', borderRadius: 8, marginBottom: 10, fontSize: 13, color: '#374151', lineHeight: 1.5 }}>
+                <div style={{ background: 'var(--df-surface-3)', padding: '10px 14px', borderRadius: 8, marginBottom: 10, fontSize: 13, color: 'var(--df-text-2)', lineHeight: 1.5 }}>
                     Taux fixé par le chargé d'affaires{owner ? <> (<b>{owner}</b>)</> : ''} : <b>{String(rate).replace('.', ',')} %</b> du CA,
                     majoré de {COMMISSION_EMPLOYER_CHARGES * 100} % de charges patronales.
-                    <div style={{ fontSize: 12, color: '#6B7280', marginTop: 2 }}>1 % pour la direction et l'ADV (Adrien, Aristide, Muriel, Emmanuel), 3,5 % pour les chargés d'affaires — comme dans Odoo.</div>
+                    <div style={{ fontSize: 12, color: 'var(--df-muted)', marginTop: 2 }}>1 % pour la direction et l'ADV (Adrien, Aristide, Muriel, Emmanuel), 3,5 % pour les chargés d'affaires — comme dans Odoo.</div>
                 </div>
             )}
             {open && onUpdate && (
-                <div style={{ background: '#F7F7F5', padding: '10px 14px', borderRadius: 8, marginBottom: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div style={{ fontSize: 13, color: '#374151', fontWeight: 500 }}>
+                <div style={{ background: 'var(--df-surface-3)', padding: '10px 14px', borderRadius: 8, marginBottom: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ fontSize: 13, color: 'var(--df-text-2)', fontWeight: 500 }}>
                         Taux de commission
-                        <div style={{ fontSize: 12, color: '#6B7280', fontWeight: 400 }}>majoré de {COMMISSION_EMPLOYER_CHARGES * 100} % de charges patronales (comme dans Odoo)</div>
+                        <div style={{ fontSize: 12, color: 'var(--df-muted)', fontWeight: 400 }}>majoré de {COMMISSION_EMPLOYER_CHARGES * 100} % de charges patronales (comme dans Odoo)</div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <input
@@ -383,12 +383,12 @@ function CommissionDrillDownRow({ label, mainValue, rate, owner, onUpdate }) {
                                 textAlign: 'right',
                                 padding: '6px 8px',
                                 borderRadius: 6,
-                                border: '1px solid #E0DED9',
+                                border: '1px solid var(--df-border)',
                                 fontSize: 14,
                                 fontWeight: 600
                             }}
                         />
-                        <span style={{ color: '#6b7280', fontSize: 14, fontWeight: 600 }}>%</span>
+                        <span style={{ color: 'var(--df-muted)', fontSize: 14, fontWeight: 600 }}>%</span>
                     </div>
                 </div>
             )}
@@ -404,7 +404,7 @@ function HoursTable({ details }) {
         { label: 'Déplacements (Trajet)', ...details.deplacements },
     ].filter(r => r.total > 0);
 
-    if (items.length === 0) return <div style={{ color: '#9CA3AF', fontSize: 13, padding: '10px 0' }}>Aucune heure saisie.</div>;
+    if (items.length === 0) return <div style={{ color: 'var(--df-faint)', fontSize: 13, padding: '10px 0' }}>Aucune heure saisie.</div>;
 
     return (
         <div>

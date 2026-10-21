@@ -6,9 +6,9 @@ const ROBOTO = 'Roboto, system-ui, sans-serif';
 export function DaField({ label, hint, children }) {
   return (
     <div>
-      <div style={{ fontFamily: ROBOTO, fontSize: 13, color: '#6B7280', marginBottom: 6 }}>{label}</div>
+      <div style={{ fontFamily: ROBOTO, fontSize: 13, color: 'var(--df-muted)', marginBottom: 6 }}>{label}</div>
       {children}
-      {hint && <div style={{ fontSize: 12, color: '#9CA3AF', marginTop: 6 }}>{hint}</div>}
+      {hint && <div style={{ fontSize: 12, color: 'var(--df-faint)', marginTop: 6 }}>{hint}</div>}
     </div>
   );
 }
@@ -21,8 +21,8 @@ export function ChoicePill({ active, onClick, children }) {
       onClick={onClick}
       style={{
         height: 34, padding: '0 14px', borderRadius: 99, cursor: 'pointer', fontSize: 13, fontWeight: 500, fontFamily: 'inherit',
-        background: active ? '#1E2447' : 'white', color: active ? 'white' : '#374151',
-        border: `1px solid ${active ? '#1E2447' : '#E0DED9'}`,
+        background: active ? 'var(--df-primary)' : 'var(--df-bg)', color: active ? 'white' : 'var(--df-text-2)',
+        border: `1px solid ${active ? 'var(--df-primary)' : 'var(--df-border)'}`,
       }}
     >
       {children}

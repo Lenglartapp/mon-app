@@ -25,17 +25,17 @@ const S = {
     page: { padding: 'clamp(16px, 3vw, 24px) clamp(16px, 4vw, 32px)', maxWidth: 1100, margin: '0 auto', fontFamily: 'Roboto, system-ui, sans-serif',
         // Élément flex : sans minWidth 0, la page s'élargirait au tableau et déborderait sur téléphone.
         width: '100%', minWidth: 0, boxSizing: 'border-box' },
-    card: { background: 'white', border: '1px solid #E0DED9', borderRadius: 12 },
-    th: { textAlign: 'left', fontSize: 13, fontWeight: 600, color: '#374151', padding: '10px 16px', borderBottom: '1px solid #E0DED9' },
-    td: { padding: '12px 16px', fontSize: 14, color: '#111827', borderBottom: '1px solid #E8E6E2' },
-    btn: { padding: '7px 14px', borderRadius: 8, border: '1px solid #D1D5DB', background: 'white', fontSize: 13, cursor: 'pointer', fontWeight: 500, color: '#374151' },
-    input: { padding: '8px 10px', border: '1px solid #D1D5DB', borderRadius: 8, fontSize: 13, outline: 'none', fontFamily: 'inherit' },
-    select: { border: '1px solid #E0DED9', borderRadius: 8, padding: '6px 10px', fontSize: 13, outline: 'none', background: 'white', color: '#374151', fontFamily: 'inherit', cursor: 'pointer' },
-    filterLabel: { fontSize: 12, color: '#6B7280', marginBottom: 6, display: 'block' },
-    statLabel: { fontSize: 15, color: '#374151', fontWeight: 500 },
-    statValue: { fontSize: 30, fontWeight: 400, color: '#111827', marginTop: 8, lineHeight: 1 },
-    subTh: { textAlign: 'left', fontSize: 12, fontWeight: 500, color: '#6B7280', padding: '4px 8px' },
-    subTd: { padding: '4px 8px', fontSize: 13, color: '#4B5563' },
+    card: { background: 'var(--df-bg)', border: '1px solid var(--df-border)', borderRadius: 12 },
+    th: { textAlign: 'left', fontSize: 13, fontWeight: 600, color: 'var(--df-text-2)', padding: '10px 16px', borderBottom: '1px solid var(--df-border)' },
+    td: { padding: '12px 16px', fontSize: 14, color: 'var(--df-text)', borderBottom: '1px solid var(--df-border-soft)' },
+    btn: { padding: '7px 14px', borderRadius: 8, border: '1px solid var(--df-border-strong)', background: 'var(--df-bg)', fontSize: 13, cursor: 'pointer', fontWeight: 500, color: 'var(--df-text-2)' },
+    input: { padding: '8px 10px', border: '1px solid var(--df-border-strong)', borderRadius: 8, fontSize: 13, outline: 'none', fontFamily: 'inherit' },
+    select: { border: '1px solid var(--df-border)', borderRadius: 8, padding: '6px 10px', fontSize: 13, outline: 'none', background: 'var(--df-bg)', color: 'var(--df-text-2)', fontFamily: 'inherit', cursor: 'pointer' },
+    filterLabel: { fontSize: 12, color: 'var(--df-muted)', marginBottom: 6, display: 'block' },
+    statLabel: { fontSize: 15, color: 'var(--df-text-2)', fontWeight: 500 },
+    statValue: { fontSize: 30, fontWeight: 400, color: 'var(--df-text)', marginTop: 8, lineHeight: 1 },
+    subTh: { textAlign: 'left', fontSize: 12, fontWeight: 500, color: 'var(--df-muted)', padding: '4px 8px' },
+    subTd: { padding: '4px 8px', fontSize: 13, color: 'var(--df-text-3)' },
 };
 
 // Ventilation prépa / conf / pose sous un total — répond à « ces heures, c'est quoi ? »
@@ -46,8 +46,8 @@ function ServiceBreakdown({ value }) {
     return (
         <div style={{ display: 'flex', gap: 12, marginTop: 8, flexWrap: 'wrap' }}>
             {parts.map(sv => (
-                <span key={sv.key} style={{ fontSize: 12, color: '#6B7280' }}>
-                    {sv.label} <b style={{ color: '#374151' }}>{fmtH(value[sv.key])}h</b>
+                <span key={sv.key} style={{ fontSize: 12, color: 'var(--df-muted)' }}>
+                    {sv.label} <b style={{ color: 'var(--df-text-2)' }}>{fmtH(value[sv.key])}h</b>
                 </span>
             ))}
         </div>
@@ -78,34 +78,34 @@ function PeriodeDropdown({ preset, custom, onPreset, onCustom }) {
     return (
         <div ref={ref} style={{ position: 'relative' }}>
             <button onClick={() => setOpen(v => !v)} style={{
-                background: 'white', border: '1px solid #E0DED9', borderRadius: 8,
+                background: 'var(--df-bg)', border: '1px solid var(--df-border)', borderRadius: 8,
                 padding: '6px 12px', fontSize: 13, fontWeight: 500, cursor: 'pointer',
-                display: 'flex', alignItems: 'center', gap: 8, color: '#374151',
-                borderColor: open ? '#1E2447' : '#E0DED9',
+                display: 'flex', alignItems: 'center', gap: 8, color: 'var(--df-text-2)',
+                borderColor: open ? 'var(--df-primary)' : 'var(--df-border)',
             }}>
-                {currentLabel} <ChevronDown size={14} color="#9CA3AF" />
+                {currentLabel} <ChevronDown size={14} color="var(--df-faint)" />
             </button>
             {open && (
-                <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, zIndex: 90, background: 'white', border: '1px solid #E0DED9', borderRadius: 8, boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', width: 220, padding: 4 }}>
-                    <div style={{ paddingBottom: 4, borderBottom: '1px solid #F3F4F6' }}>
+                <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, zIndex: 90, background: 'var(--df-bg)', border: '1px solid var(--df-border)', borderRadius: 8, boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', width: 220, padding: 4 }}>
+                    <div style={{ paddingBottom: 4, borderBottom: '1px solid var(--df-surface-2)' }}>
                         {PERIODE_PRESETS.map(o => (
                             <div key={o.key} onClick={() => { onPreset(o.key); setOpen(false); }} style={{
                                 padding: '8px 12px', fontSize: 13, cursor: 'pointer', borderRadius: 4,
-                                background: preset === o.key ? '#EEF4FD' : 'transparent',
-                                color: '#111827',
+                                background: preset === o.key ? 'var(--df-selected)' : 'transparent',
+                                color: 'var(--df-text)',
                                 fontWeight: preset === o.key ? 600 : 400,
                             }}>{o.label}</div>
                         ))}
                     </div>
                     <div style={{ padding: 12 }}>
-                        <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 8 }}>Période personnalisée</div>
+                        <div style={{ fontSize: 12, color: 'var(--df-muted)', marginBottom: 8 }}>Période personnalisée</div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 8 }}>
                             <input type="date" value={tempFrom} onChange={e => setTempFrom(e.target.value)}
-                                style={{ width: '100%', boxSizing: 'border-box', border: '1px solid #E0DED9', borderRadius: 6, padding: '5px 8px', fontSize: 12, outline: 'none' }} />
+                                style={{ width: '100%', boxSizing: 'border-box', border: '1px solid var(--df-border)', borderRadius: 6, padding: '5px 8px', fontSize: 12, outline: 'none' }} />
                             <input type="date" value={tempTo} onChange={e => setTempTo(e.target.value)}
-                                style={{ width: '100%', boxSizing: 'border-box', border: '1px solid #E0DED9', borderRadius: 6, padding: '5px 8px', fontSize: 12, outline: 'none' }} />
+                                style={{ width: '100%', boxSizing: 'border-box', border: '1px solid var(--df-border)', borderRadius: 6, padding: '5px 8px', fontSize: 12, outline: 'none' }} />
                         </div>
-                        <button onClick={applyCustom} style={{ width: '100%', background: '#1E2447', color: 'white', border: 'none', borderRadius: 6, padding: '6px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Appliquer</button>
+                        <button onClick={applyCustom} style={{ width: '100%', background: 'var(--df-primary)', color: 'white', border: 'none', borderRadius: 6, padding: '6px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Appliquer</button>
                     </div>
                 </div>
             )}
@@ -198,12 +198,12 @@ export default function InternalProjectScreen({ project, projects = [], events =
 
     return (
         <div style={S.page}>
-            <button onClick={onBack} style={{ ...S.btn, border: 'none', background: 'transparent', padding: 0, marginBottom: 16, color: '#6B7280', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <button onClick={onBack} style={{ ...S.btn, border: 'none', background: 'transparent', padding: 0, marginBottom: 16, color: 'var(--df-muted)', display: 'flex', alignItems: 'center', gap: 6 }}>
                 <ArrowLeft size={16} /> Retour
             </button>
 
-            <h1 style={{ fontSize: 32, fontWeight: 400, color: '#111827', margin: 0 }}>{project.name}</h1>
-            <p style={{ color: '#6B7280', fontSize: 14, marginTop: 6, marginBottom: 24, maxWidth: 720 }}>
+            <h1 style={{ fontSize: 32, fontWeight: 400, color: 'var(--df-text)', margin: 0 }}>{project.name}</h1>
+            <p style={{ color: 'var(--df-muted)', fontSize: 14, marginTop: 6, marginBottom: 24, maxWidth: 720 }}>
                 Recueil du temps passé hors dossier client — prototypes, études, ouvrages caritatifs,
                 cotes anticipées. Pas d'heures vendues : ce dossier ne se compare à aucun budget.
             </p>
@@ -246,7 +246,7 @@ export default function InternalProjectScreen({ project, projects = [], events =
             <div className="df-noscrollbar" style={{ ...S.card, overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
-                        <tr style={{ background: '#F4F4F4' }}>
+                        <tr style={{ background: 'var(--df-surface)' }}>
                             <th style={{ ...S.th, width: 36 }} />
                             <th style={S.th}>Chapitre</th>
                             <th style={S.th}>Statut</th>
@@ -258,7 +258,7 @@ export default function InternalProjectScreen({ project, projects = [], events =
                     </thead>
                     <tbody>
                         {chapters.length === 0 && (
-                            <tr><td style={{ ...S.td, color: '#9CA3AF', textAlign: 'center', padding: 32 }} colSpan={7}>
+                            <tr><td style={{ ...S.td, color: 'var(--df-faint)', textAlign: 'center', padding: 32 }} colSpan={7}>
                                 Aucune heure interne sur cette période.
                             </td></tr>
                         )}
@@ -269,9 +269,9 @@ export default function InternalProjectScreen({ project, projects = [], events =
                                 <React.Fragment key={row.name}>
                                     <tr
                                         onClick={() => setExpanded(e => ({ ...e, [row.name]: !isOpen }))}
-                                        style={{ cursor: 'pointer', background: isOpen ? '#F4F4F4' : 'white' }}
+                                        style={{ cursor: 'pointer', background: isOpen ? 'var(--df-surface)' : 'var(--df-bg)' }}
                                     >
-                                        <td style={{ ...S.td, paddingRight: 0, color: '#9CA3AF' }}>
+                                        <td style={{ ...S.td, paddingRight: 0, color: 'var(--df-faint)' }}>
                                             {isOpen ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
                                         </td>
                                         <td style={{ ...S.td, fontWeight: 500 }}>{row.name}</td>
@@ -286,8 +286,8 @@ export default function InternalProjectScreen({ project, projects = [], events =
                                             />
                                         </td>
                                         <td style={{ ...S.td, textAlign: 'right', fontWeight: 600 }}>{fmtH(row.done.total)}h</td>
-                                        <td style={{ ...S.td, textAlign: 'right', color: '#374151' }}>{fmtH(row.planned.total)}h</td>
-                                        {!isMobile && <td style={{ ...S.td, textAlign: 'right', color: '#6B7280' }}>{row.count}</td>}
+                                        <td style={{ ...S.td, textAlign: 'right', color: 'var(--df-text-2)' }}>{fmtH(row.planned.total)}h</td>
+                                        {!isMobile && <td style={{ ...S.td, textAlign: 'right', color: 'var(--df-muted)' }}>{row.count}</td>}
                                         {!isMobile && <td style={{ ...S.td, textAlign: 'right' }} onClick={e => e.stopPropagation()}>
                                             {canTransfer && row.count > 0 && (
                                                 <button onClick={() => setTransferChapter({ ...row, moved: totalsOfEvents(eventsOfChapter(project, events, row.name)) })} style={{ ...S.btn, fontSize: 12 }}>
@@ -298,7 +298,7 @@ export default function InternalProjectScreen({ project, projects = [], events =
                                     </tr>
                                     {isOpen && (
                                         <tr>
-                                            <td colSpan={isMobile ? 5 : 7} style={{ background: '#F4F4F4', borderBottom: '1px solid #E8E6E2', padding: isMobile ? '4px 12px 12px 28px' : '4px 16px 14px 52px' }}>
+                                            <td colSpan={isMobile ? 5 : 7} style={{ background: 'var(--df-surface)', borderBottom: '1px solid var(--df-border-soft)', padding: isMobile ? '4px 12px 12px 28px' : '4px 16px 14px 52px' }}>
                                                 <table style={{ width: '100%', maxWidth: 520, borderCollapse: 'collapse' }}>
                                                     <thead>
                                                         <tr>
@@ -327,7 +327,7 @@ export default function InternalProjectScreen({ project, projects = [], events =
                 </table>
             </div>
 
-            <p style={{ fontSize: 12, color: '#9CA3AF', marginTop: 12 }}>
+            <p style={{ fontSize: 12, color: 'var(--df-faint)', marginTop: 12 }}>
                 Seuls les chapitres ayant des heures sur la période et le service filtrés sont listés.
                 Un chapitre terminé n'est plus proposé à la saisie, mais ses heures restent comptées ici.
             </p>
@@ -360,27 +360,27 @@ function TransferDialog({ chapter, projects, onCancel, onConfirm }) {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(17,24,39,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
             <div style={{ ...S.card, width: 520, padding: 24 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-                    <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#111827' }}>Transférer les heures</h3>
-                    <button onClick={onCancel} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#6B7280' }}><X size={18} /></button>
+                    <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'var(--df-text)' }}>Transférer les heures</h3>
+                    <button onClick={onCancel} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--df-muted)' }}><X size={18} /></button>
                 </div>
 
-                <div style={{ background: '#F4F4F4', border: '1px solid #E0DED9', borderRadius: 8, padding: 12, fontSize: 13, color: '#374151', marginBottom: 16 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, color: '#111827' }}>
+                <div style={{ background: 'var(--df-surface)', border: '1px solid var(--df-border)', borderRadius: 8, padding: 12, fontSize: 13, color: 'var(--df-text-2)', marginBottom: 16 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, color: 'var(--df-text)' }}>
                         <Clock size={14} /> {chapter.name}
                     </div>
                     <div style={{ marginTop: 6 }}>
                         {chapter.moved.count} créneau(x) — {fmtH(chapter.moved.done)}h réalisées, {fmtH(chapter.moved.planned)}h programmées
                     </div>
-                    <div style={{ marginTop: 8, color: '#6B7280' }}>
+                    <div style={{ marginTop: 8, color: 'var(--df-muted)' }}>
                         Les créneaux ne bougent pas : même personne, même date, mêmes heures.
                         Seul le dossier rattaché change. Le total interne des périodes passées
                         diminuera d'autant.
                     </div>
                 </div>
 
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Dossier de destination</label>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, border: '1px solid #D1D5DB', borderRadius: 8, padding: '8px 10px' }}>
-                    <Search size={16} color="#9CA3AF" />
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--df-text-2)', marginBottom: 6 }}>Dossier de destination</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, border: '1px solid var(--df-border-strong)', borderRadius: 8, padding: '8px 10px' }}>
+                    <Search size={16} color="var(--df-faint)" />
                     <input
                         autoFocus
                         value={target ? target.name : search}
@@ -388,13 +388,13 @@ function TransferDialog({ chapter, projects, onCancel, onConfirm }) {
                         placeholder="Rechercher un dossier..."
                         style={{ border: 'none', outline: 'none', width: '100%', fontSize: 14, fontFamily: 'inherit' }}
                     />
-                    {target && <Check size={16} color="#1E2447" />}
+                    {target && <Check size={16} color="var(--df-primary-text)" />}
                 </div>
                 {!target && results.length > 0 && (
-                    <div style={{ border: '1px solid #E0DED9', borderRadius: 8, marginTop: 4, maxHeight: 180, overflowY: 'auto' }}>
+                    <div style={{ border: '1px solid var(--df-border)', borderRadius: 8, marginTop: 4, maxHeight: 180, overflowY: 'auto' }}>
                         {results.map(p => (
                             <div key={p.id} onClick={() => { setTarget(p); setSearch(p.name); }}
-                                style={{ padding: '9px 12px', fontSize: 14, cursor: 'pointer', borderBottom: '1px solid #F9FAFB' }}>
+                                style={{ padding: '9px 12px', fontSize: 14, cursor: 'pointer', borderBottom: '1px solid var(--df-surface-4)' }}>
                                 {p.name}
                             </div>
                         ))}
@@ -406,7 +406,7 @@ function TransferDialog({ chapter, projects, onCancel, onConfirm }) {
                     <button
                         onClick={() => target && onConfirm(target)}
                         disabled={!target}
-                        style={{ ...S.btn, background: '#111827', color: 'white', borderColor: '#111827', opacity: target ? 1 : 0.45, cursor: target ? 'pointer' : 'not-allowed' }}
+                        style={{ ...S.btn, background: 'var(--df-text)', color: 'white', borderColor: 'var(--df-text)', opacity: target ? 1 : 0.45, cursor: target ? 'pointer' : 'not-allowed' }}
                     >
                         Transférer
                     </button>

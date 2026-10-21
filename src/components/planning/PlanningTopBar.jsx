@@ -12,10 +12,10 @@ const PLANNING_SEARCH_FIELDS = [
 // Boutons de la barre : même gabarit que ceux du Chiffrage (Importer Excel, Recalibrer…).
 const BTN = {
     display: 'flex', alignItems: 'center', gap: 8, height: 36, padding: '0 14px', borderRadius: 8,
-    background: 'white', border: '1px solid #E0DED9', color: '#374151', fontSize: 13, fontWeight: 600,
+    background: 'var(--df-bg)', border: '1px solid var(--df-border)', color: 'var(--df-text-2)', fontSize: 13, fontWeight: 600,
     fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap', boxSizing: 'border-box',
 };
-const NAVY = '#1E2447';
+const NAVY = 'var(--df-primary)';
 const btn = (on = false) => (on ? { ...BTN, background: NAVY, borderColor: NAVY, color: 'white' } : BTN);
 
 const ViewSelector = ({ view, onViewChange, customRange, onCustomRangeChange, showWeekends, onToggleWeekends }) => {
@@ -27,27 +27,27 @@ const ViewSelector = ({ view, onViewChange, customRange, onCustomRangeChange, sh
     return (
         <div style={{ position: 'relative' }}>
             <button onClick={() => setIsOpen(!isOpen)} style={BTN}>
-                {view === 'custom' ? 'Période' : options.find(o => o.id === view)?.label || 'Vue'} <ChevronDown size={14} color="#6B7280" />
+                {view === 'custom' ? 'Période' : options.find(o => o.id === view)?.label || 'Vue'} <ChevronDown size={14} color="var(--df-muted)" />
             </button>
             {isOpen && (
                 <>
                     <div style={{ position: 'fixed', inset: 0, zIndex: 80 }} onClick={() => setIsOpen(false)} />
-                    <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 4, width: 280, background: 'white', borderRadius: 8, boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', border: '1px solid #E0DED9', zIndex: 90, padding: 4 }}>
-                        <div style={{ paddingBottom: 4, borderBottom: '1px solid #F3F4F6' }}>
-                            {options.map(opt => (<div key={opt.id} onClick={() => { onViewChange(opt.id); setIsOpen(false); }} style={{ padding: '8px 12px', fontSize: 13, cursor: 'pointer', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: view === opt.id ? '#EEF4FD' : 'transparent', color: '#111827', fontWeight: view === opt.id ? 600 : 400 }}>{opt.label}{view === opt.id && <Check size={14} color={NAVY} />}</div>))}
-                            <div onClick={() => onToggleWeekends(!showWeekends)} style={{ padding: '8px 12px', fontSize: 13, cursor: 'pointer', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: '#111827' }}>
+                    <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 4, width: 280, background: 'var(--df-bg)', borderRadius: 8, boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', border: '1px solid var(--df-border)', zIndex: 90, padding: 4 }}>
+                        <div style={{ paddingBottom: 4, borderBottom: '1px solid var(--df-surface-2)' }}>
+                            {options.map(opt => (<div key={opt.id} onClick={() => { onViewChange(opt.id); setIsOpen(false); }} style={{ padding: '8px 12px', fontSize: 13, cursor: 'pointer', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: view === opt.id ? 'var(--df-selected)' : 'transparent', color: 'var(--df-text)', fontWeight: view === opt.id ? 600 : 400 }}>{opt.label}{view === opt.id && <Check size={14} color="var(--df-primary-text)" />}</div>))}
+                            <div onClick={() => onToggleWeekends(!showWeekends)} style={{ padding: '8px 12px', fontSize: 13, cursor: 'pointer', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: 'var(--df-text)' }}>
                                 Afficher les week-ends
-                                {showWeekends && <Check size={14} color={NAVY} />}
+                                {showWeekends && <Check size={14} color="var(--df-primary-text)" />}
                             </div>
                         </div>
                         {/* Période libre : mêmes champs que le reste de l'appli (Roboto, 34 px, coins 8 px) */}
                         <div style={{ padding: '10px 8px 8px' }}>
-                            <div style={{ fontSize: 13, color: '#6B7280', margin: '0 4px 8px' }}>Période personnalisée</div>
+                            <div style={{ fontSize: 13, color: 'var(--df-muted)', margin: '0 4px 8px' }}>Période personnalisée</div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 10 }}>
-                                <label style={{ display: 'block', fontSize: 12, color: '#9B9A97', margin: '0 4px' }}>Du
+                                <label style={{ display: 'block', fontSize: 12, color: 'var(--df-faint-2)', margin: '0 4px' }}>Du
                                     <input type="date" style={{ ...DA_INPUT_STYLE, height: 34, padding: '0 8px', fontSize: 13, marginTop: 4 }} onChange={e => setTempStart(e.target.value)} />
                                 </label>
-                                <label style={{ display: 'block', fontSize: 12, color: '#9B9A97', margin: '0 4px' }}>Au
+                                <label style={{ display: 'block', fontSize: 12, color: 'var(--df-faint-2)', margin: '0 4px' }}>Au
                                     <input type="date" style={{ ...DA_INPUT_STYLE, height: 34, padding: '0 8px', fontSize: 13, marginTop: 4 }} onChange={e => setTempEnd(e.target.value)} />
                                 </label>
                             </div>
@@ -119,11 +119,11 @@ const PlanningTopBar = ({
     const hasExcel = !!onImport || !!onDownloadTemplate;
     const menuItemStyle = {
         display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '11px 14px',
-        textAlign: 'left', border: 'none', background: 'white', fontSize: 13, fontWeight: 500,
-        color: '#374151', cursor: 'pointer',
+        textAlign: 'left', border: 'none', background: 'var(--df-bg)', fontSize: 13, fontWeight: 500,
+        color: 'var(--df-text-2)', cursor: 'pointer',
     };
     return (
-        <div ref={barRef} style={{ display: 'flex', alignItems: 'center', flexWrap: stacked ? 'wrap' : 'nowrap', rowGap: 10, padding: '16px 24px', background: '#FFFFFF' }}>
+        <div ref={barRef} style={{ display: 'flex', alignItems: 'center', flexWrap: stacked ? 'wrap' : 'nowrap', rowGap: 10, padding: '16px 24px', background: 'var(--df-bg)' }}>
             {/* GAUCHE (flex:1 pour centrer la recherche) */}
             <div ref={leftRef} style={{ flex: '1 1 auto', display: 'flex', gap: 12, alignItems: 'center', minWidth: 'max-content', order: 1 }}>
                 <button onClick={onNew} style={btn(true)}>Nouveau</button>
@@ -139,18 +139,18 @@ const PlanningTopBar = ({
                             onClick={() => setShowImportMenu(v => !v)}
                             style={BTN}
                         >
-                            <FileSpreadsheet size={16} /> Import <ChevronDown size={14} color="#6B7280" />
+                            <FileSpreadsheet size={16} /> Import <ChevronDown size={14} color="var(--df-muted)" />
                         </button>
                         {showImportMenu && (
                             <>
                                 <div onClick={() => setShowImportMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 99 }} />
-                                <div style={{ position: 'absolute', top: '110%', left: 0, zIndex: 100, background: 'white', border: '1px solid #E0DED9', borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,0.1)', minWidth: 220, overflow: 'hidden' }}>
+                                <div style={{ position: 'absolute', top: '110%', left: 0, zIndex: 100, background: 'var(--df-bg)', border: '1px solid var(--df-border)', borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,0.1)', minWidth: 220, overflow: 'hidden' }}>
                                     {onImport && (
                                         <button
                                             onClick={() => { setShowImportMenu(false); fileInputRef.current?.click(); }}
                                             style={menuItemStyle}
-                                            onMouseEnter={e => e.currentTarget.style.background = '#F4F4F4'}
-                                            onMouseLeave={e => e.currentTarget.style.background = 'white'}
+                                            onMouseEnter={e => e.currentTarget.style.background = 'var(--df-surface)'}
+                                            onMouseLeave={e => e.currentTarget.style.background = 'var(--df-bg)'}
                                         >
                                             <Upload size={15} /> Importer des données
                                         </button>
@@ -159,8 +159,8 @@ const PlanningTopBar = ({
                                         <button
                                             onClick={() => { setShowImportMenu(false); onDownloadTemplate(); }}
                                             style={menuItemStyle}
-                                            onMouseEnter={e => e.currentTarget.style.background = '#F4F4F4'}
-                                            onMouseLeave={e => e.currentTarget.style.background = 'white'}
+                                            onMouseEnter={e => e.currentTarget.style.background = 'var(--df-surface)'}
+                                            onMouseLeave={e => e.currentTarget.style.background = 'var(--df-bg)'}
                                         >
                                             <Download size={15} /> Télécharger le modèle Excel
                                         </button>
@@ -211,9 +211,9 @@ const PlanningTopBar = ({
 
             {/* DROITE (flex:1) */}
             <div ref={rightRef} style={{ flex: '1 1 auto', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 12, minWidth: 'max-content', order: stacked ? 2 : 3 }}>
-                <div style={{ display: 'flex', alignItems: 'center', height: 36, boxSizing: 'border-box', background: '#fff', borderRadius: 8, border: '1px solid #E0DED9', padding: '0 2px' }}>
-                    <button onClick={onPrev} title="Précédent" style={{ border: 'none', background: 'transparent', padding: '6px 8px', cursor: 'pointer', display: 'flex', color: '#374151' }}><ChevronLeft size={16} /></button>
-                    <button onClick={onNext} title="Suivant" style={{ border: 'none', background: 'transparent', padding: '6px 8px', cursor: 'pointer', display: 'flex', color: '#374151' }}><ChevronRight size={16} /></button>
+                <div style={{ display: 'flex', alignItems: 'center', height: 36, boxSizing: 'border-box', background: 'var(--df-bg)', borderRadius: 8, border: '1px solid var(--df-border)', padding: '0 2px' }}>
+                    <button onClick={onPrev} title="Précédent" style={{ border: 'none', background: 'transparent', padding: '6px 8px', cursor: 'pointer', display: 'flex', color: 'var(--df-text-2)' }}><ChevronLeft size={16} /></button>
+                    <button onClick={onNext} title="Suivant" style={{ border: 'none', background: 'transparent', padding: '6px 8px', cursor: 'pointer', display: 'flex', color: 'var(--df-text-2)' }}><ChevronRight size={16} /></button>
                 </div>
 
                 <button

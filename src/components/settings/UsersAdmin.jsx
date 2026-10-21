@@ -16,9 +16,9 @@ import {
 const ROLE_TONES = Object.fromEntries(Object.entries(ROLE_INFO).map(([k, v]) => [k, v.tone]));
 
 const ROBOTO = "Roboto, system-ui, sans-serif";
-const th = { padding: "10px 14px", textAlign: "left", fontSize: 13, fontWeight: 600, color: "#374151", background: "#F4F4F4", borderBottom: "1px solid #E0DED9", whiteSpace: "nowrap" };
-const td = { padding: "10px 14px", borderBottom: "1px solid #E8E6E2", fontSize: 14, color: "#111827", verticalAlign: "middle" };
-const iconBtn = { width: 32, height: 32, display: "inline-flex", alignItems: "center", justifyContent: "center", border: "1px solid #E5E7EB", borderRadius: 8, background: "white", color: "#374151", cursor: "pointer" };
+const th = { padding: "10px 14px", textAlign: "left", fontSize: 13, fontWeight: 600, color: "var(--df-text-2)", background: "var(--df-surface)", borderBottom: "1px solid var(--df-border)", whiteSpace: "nowrap" };
+const td = { padding: "10px 14px", borderBottom: "1px solid var(--df-border-soft)", fontSize: 14, color: "var(--df-text)", verticalAlign: "middle" };
+const iconBtn = { width: 32, height: 32, display: "inline-flex", alignItems: "center", justifyContent: "center", border: "1px solid var(--df-border-2)", borderRadius: 8, background: "var(--df-bg)", color: "var(--df-text-2)", cursor: "pointer" };
 
 const fmtDate = (d) => (d ? new Date(d).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" }) : "");
 const genPassword = () => {
@@ -55,8 +55,8 @@ function PasswordDialog({ user, onClose, onDone }) {
             <button type="button" title="Copier" style={{ ...iconBtn, width: 40, height: 40 }} onClick={() => navigator.clipboard?.writeText(pwd)}><Copy size={16} /></button>
           </div>
         </DaField>
-        {done && <div style={{ fontSize: 13, color: "#1E2447", fontWeight: 600 }}>Mot de passe enregistré.</div>}
-        {error && <div style={{ fontSize: 13, color: "#B42318" }}>{error}</div>}
+        {done && <div style={{ fontSize: 13, color: "var(--df-primary-text)", fontWeight: 600 }}>Mot de passe enregistré.</div>}
+        {error && <div style={{ fontSize: 13, color: "var(--df-x-B42318)" }}>{error}</div>}
       </div>
     </DaDialog>
   );
@@ -93,7 +93,7 @@ function InviteDialog({ onClose, onDone }) {
             {Object.entries(ROLE_INFO).map(([k, v]) => <ChoicePill key={k} active={role === k} onClick={() => setRole(k)}>{v.label}</ChoicePill>)}
           </div>
         </DaField>
-        {error && <div style={{ fontSize: 13, color: "#B42318" }}>{error}</div>}
+        {error && <div style={{ fontSize: 13, color: "var(--df-x-B42318)" }}>{error}</div>}
       </div>
     </DaDialog>
   );
@@ -141,13 +141,13 @@ export default function UsersAdmin({ users = [], currentUserId }) {
   const nArchived = list.length - nActive;
 
   const accountCell = (u) => {
-    if (!accounts) return <span style={{ color: "#9B9A97" }}>{accountsError ? "—" : "…"}</span>;
+    if (!accounts) return <span style={{ color: "var(--df-faint-2)" }}>{accountsError ? "—" : "…"}</span>;
     const a = accounts[u.id];
-    if (!a) return <span style={{ color: "#9B9A97" }}>Sans compte</span>;
+    if (!a) return <span style={{ color: "var(--df-faint-2)" }}>Sans compte</span>;
     return (
       <div style={{ minWidth: 0 }}>
-        <div style={{ color: "#111827", overflow: "hidden", textOverflow: "ellipsis" }}>{a.email}</div>
-        <div style={{ fontSize: 12, color: "#9B9A97" }}>
+        <div style={{ color: "var(--df-text)", overflow: "hidden", textOverflow: "ellipsis" }}>{a.email}</div>
+        <div style={{ fontSize: 12, color: "var(--df-faint-2)" }}>
           {a.lastSignInAt ? `Dernière connexion le ${fmtDate(a.lastSignInAt)}` : a.invitedAt && !a.confirmed ? `Invité le ${fmtDate(a.invitedAt)} — en attente` : "Jamais connecté"}
         </div>
       </div>
@@ -160,7 +160,7 @@ export default function UsersAdmin({ users = [], currentUserId }) {
         <ToolbarSearch value={search} onChange={setSearch} placeholder="Nom, e-mail, rôle…" width={320} grow />
         <ChoicePill active={show === "active"} onClick={() => setShow("active")}>Actifs ({nActive})</ChoicePill>
         <ChoicePill active={show === "archived"} onClick={() => setShow("archived")}>Désactivés ({nArchived})</ChoicePill>
-        <span style={{ fontSize: 13, color: flash ? "#1E2447" : "#B42318", fontWeight: 600 }}>{flash || accountsError}</span>
+        <span style={{ fontSize: 13, color: flash ? "var(--df-primary)" : "var(--df-x-B42318)", fontWeight: 600 }}>{flash || accountsError}</span>
         <div style={{ marginLeft: "auto" }}>
           <ToolbarButton primary icon={<UserPlus size={16} />} onClick={() => setInviting(true)}>Inviter un utilisateur</ToolbarButton>
         </div>
@@ -181,7 +181,7 @@ export default function UsersAdmin({ users = [], currentUserId }) {
                 <tr key={u.id} style={{ opacity: busyId === u.id ? 0.5 : 1 }}>
                   <td style={{ ...td, ...last }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-                      <Avatar src={u.avatar_url || u.avatarUrl} sx={{ width: 28, height: 28, fontSize: 12, bgcolor: "#F4F4F4", color: "#6B7280", fontFamily: ROBOTO }}>
+                      <Avatar src={u.avatar_url || u.avatarUrl} sx={{ width: 28, height: 28, fontSize: 12, bgcolor: "var(--df-surface)", color: "var(--df-muted)", fontFamily: ROBOTO }}>
                         {(u.name || "?").substring(0, 2).toUpperCase()}
                       </Avatar>
                       <span style={{ fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.name}</span>
@@ -211,7 +211,7 @@ export default function UsersAdmin({ users = [], currentUserId }) {
               );
             })}
             {rows.length === 0 && (
-              <tr><td colSpan={4} style={{ ...td, borderBottom: "none", textAlign: "center", color: "#9B9A97", padding: 28 }}>Aucun utilisateur.</td></tr>
+              <tr><td colSpan={4} style={{ ...td, borderBottom: "none", textAlign: "center", color: "var(--df-faint-2)", padding: 28 }}>Aucun utilisateur.</td></tr>
             )}
           </tbody>
         </table>

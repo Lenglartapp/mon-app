@@ -41,7 +41,7 @@ export default function LoginScreen() {
         <Box sx={{
             minHeight: '100vh',
             width: '100%',
-            bgcolor: '#F3F4F6', // Fond gris clair
+            bgcolor: 'var(--df-surface-2)', // Fond gris clair
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -64,7 +64,7 @@ export default function LoginScreen() {
                 <Box sx={{
                     flex: 1.1, // Un peu plus large que le form
                     position: 'relative',
-                    bgcolor: '#111827',
+                    bgcolor: 'var(--df-text)',
                     display: { xs: 'none', md: 'block' } // Masqué sur mobile comme demandé
                 }}>
                     <Box
@@ -111,7 +111,7 @@ export default function LoginScreen() {
                     display: 'flex',
                     flexDirection: 'column',
                     justifyContent: 'center',
-                    bgcolor: 'white'
+                    bgcolor: 'var(--df-bg)'
                 }}>
                     <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 4, width: '100%' }}>
                         <img
@@ -119,10 +119,10 @@ export default function LoginScreen() {
                             alt="LENGLART"
                             style={{ height: 48, marginBottom: 24 }}
                         />
-                        <Typography variant="h5" sx={{ fontWeight: 800, color: '#111827', mb: 1 }}>
+                        <Typography variant="h5" sx={{ fontWeight: 800, color: 'var(--df-text)', mb: 1 }}>
                             Connexion
                         </Typography>
-                        <Typography variant="body2" sx={{ color: '#6B7280', fontWeight: 500 }}>
+                        <Typography variant="body2" sx={{ color: 'var(--df-muted)', fontWeight: 500 }}>
                             Accédez à votre espace production
                         </Typography>
                     </Box>
@@ -146,7 +146,7 @@ export default function LoginScreen() {
                                 InputProps={{
                                     startAdornment: (
                                         <InputAdornment position="start">
-                                            <Mail size={20} color="#9CA3AF" />
+                                            <Mail size={20} color="var(--df-faint)" />
                                         </InputAdornment>
                                     ),
                                     sx: { borderRadius: 3 }
@@ -164,7 +164,7 @@ export default function LoginScreen() {
                                 InputProps={{
                                     startAdornment: (
                                         <InputAdornment position="start">
-                                            <Lock size={20} color="#9CA3AF" />
+                                            <Lock size={20} color="var(--df-faint)" />
                                         </InputAdornment>
                                     ),
                                     endAdornment: (
@@ -191,7 +191,7 @@ export default function LoginScreen() {
                                     py: 1.5,
                                     borderRadius: 3,
                                     fontWeight: 700,
-                                    bgcolor: '#111827',
+                                    bgcolor: 'var(--df-text)',
                                     fontSize: 15,
                                     textTransform: 'none',
                                     boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
@@ -204,7 +204,7 @@ export default function LoginScreen() {
                     </form>
 
                     <Box sx={{ mt: 4, textAlign: 'center' }}>
-                        <Typography variant="caption" sx={{ color: '#9CA3AF' }}>
+                        <Typography variant="caption" sx={{ color: 'var(--df-faint)' }}>
                             © 2024 Lenglart - Production 1.0
                         </Typography>
                     </Box>

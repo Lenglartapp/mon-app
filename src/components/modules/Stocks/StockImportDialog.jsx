@@ -8,9 +8,9 @@ import {
     exportStockForUpdate, readAllSheets,
 } from '../../../lib/inventory/stockImport';
 
-const MUTED = '#6B7280';
-const th = { padding: '8px 10px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: '#374151', borderBottom: '1px solid #E0DED9', background: '#F4F4F4', whiteSpace: 'nowrap', position: 'sticky', top: 0, zIndex: 1 };
-const td = { padding: '7px 10px', fontSize: 13, color: '#111827', borderBottom: '1px solid #E8E6E2', verticalAlign: 'top' };
+const MUTED = 'var(--df-muted)';
+const th = { padding: '8px 10px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: 'var(--df-text-2)', borderBottom: '1px solid var(--df-border)', background: 'var(--df-surface)', whiteSpace: 'nowrap', position: 'sticky', top: 0, zIndex: 1 };
+const td = { padding: '7px 10px', fontSize: 13, color: 'var(--df-text)', borderBottom: '1px solid var(--df-border-soft)', verticalAlign: 'top' };
 const fmt = (n) => (n === null || n === undefined || n === '' ? '—' : Number(n).toLocaleString('fr-FR', { maximumFractionDigits: 2 }));
 
 // Les avertissements qui méritent une décision : ligne décochée par défaut.
@@ -18,29 +18,29 @@ const UNCHECK_BY_DEFAULT = /^Doublon/;
 
 function Card({ icon, title, children, actions }) {
     return (
-        <div style={{ flex: 1, minWidth: 280, border: '1px solid #E0DED9', borderRadius: 10, padding: 20, display: 'flex', flexDirection: 'column', gap: 12, background: 'white' }}>
+        <div style={{ flex: 1, minWidth: 280, border: '1px solid var(--df-border)', borderRadius: 10, padding: 20, display: 'flex', flexDirection: 'column', gap: 12, background: 'var(--df-bg)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span style={{ width: 36, height: 36, borderRadius: 8, background: '#EEF4FD', color: '#1E2447', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{icon}</span>
-                <span style={{ fontSize: 16, fontWeight: 500, color: '#111827' }}>{title}</span>
+                <span style={{ width: 36, height: 36, borderRadius: 8, background: 'var(--df-selected)', color: 'var(--df-primary-text)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{icon}</span>
+                <span style={{ fontSize: 16, fontWeight: 500, color: 'var(--df-text)' }}>{title}</span>
             </div>
-            <div style={{ fontSize: 13, color: '#374151', lineHeight: 1.55, flex: 1 }}>{children}</div>
+            <div style={{ fontSize: 13, color: 'var(--df-text-2)', lineHeight: 1.55, flex: 1 }}>{children}</div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>{actions}</div>
         </div>
     );
 }
 
 function Status({ line }) {
-    if (line.errors.length) return <span style={{ display: 'inline-flex', gap: 4, alignItems: 'center', color: '#B91C1C', fontWeight: 600, fontSize: 12 }}><XCircle size={14} /> Erreur</span>;
-    if (line.warnings.length) return <span style={{ display: 'inline-flex', gap: 4, alignItems: 'center', color: '#B45309', fontWeight: 600, fontSize: 12 }}><AlertTriangle size={14} /> À vérifier</span>;
-    return <span style={{ display: 'inline-flex', gap: 4, alignItems: 'center', color: '#15803D', fontWeight: 600, fontSize: 12 }}><CheckCircle2 size={14} /> OK</span>;
+    if (line.errors.length) return <span style={{ display: 'inline-flex', gap: 4, alignItems: 'center', color: 'var(--df-danger-text)', fontWeight: 600, fontSize: 12 }}><XCircle size={14} /> Erreur</span>;
+    if (line.warnings.length) return <span style={{ display: 'inline-flex', gap: 4, alignItems: 'center', color: 'var(--df-x-B45309)', fontWeight: 600, fontSize: 12 }}><AlertTriangle size={14} /> À vérifier</span>;
+    return <span style={{ display: 'inline-flex', gap: 4, alignItems: 'center', color: 'var(--df-x-15803D)', fontWeight: 600, fontSize: 12 }}><CheckCircle2 size={14} /> OK</span>;
 }
 
 function Messages({ line }) {
     if (!line.errors.length && !line.warnings.length) return null;
     return (
         <div style={{ marginTop: 3, fontSize: 12, lineHeight: 1.45 }}>
-            {line.errors.map(m => <div key={m} style={{ color: '#B91C1C' }}>{m}</div>)}
-            {line.warnings.map(m => <div key={m} style={{ color: '#B45309' }}>{m}</div>)}
+            {line.errors.map(m => <div key={m} style={{ color: 'var(--df-danger-text)' }}>{m}</div>)}
+            {line.warnings.map(m => <div key={m} style={{ color: 'var(--df-x-B45309)' }}>{m}</div>)}
         </div>
     );
 }
@@ -171,8 +171,8 @@ export default function StockImportDialog({ onClose, inventory = [], exportItems
             footer={footer}
         >
             <input ref={fileRef} type="file" accept=".xlsx" style={{ display: 'none' }} onChange={onFile} />
-            {error && <div role="alert" style={{ background: '#FEF2F2', border: '1px solid #FCA5A5', color: '#B91C1C', borderRadius: 8, padding: '10px 14px', fontSize: 13, marginBottom: 14 }}>{error}</div>}
-            {info && step === 'preview' && <div style={{ background: '#EEF4FD', border: '1px solid #C7D7F2', color: '#1E2447', borderRadius: 8, padding: '8px 14px', fontSize: 13, marginBottom: 14 }}>{info}</div>}
+            {error && <div role="alert" style={{ background: 'var(--df-danger-bg)', border: '1px solid #FCA5A5', color: 'var(--df-danger-text)', borderRadius: 8, padding: '10px 14px', fontSize: 13, marginBottom: 14 }}>{error}</div>}
+            {info && step === 'preview' && <div style={{ background: 'var(--df-selected)', border: '1px solid var(--df-x-C7D7F2)', color: 'var(--df-primary-text)', borderRadius: 8, padding: '8px 14px', fontSize: 13, marginBottom: 14 }}>{info}</div>}
 
             {step === 'choose' && (
                 <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
@@ -210,16 +210,16 @@ export default function StockImportDialog({ onClose, inventory = [], exportItems
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12, height: '100%', minHeight: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                         <TonePill tone={1}>{counts.ok} prête{counts.ok > 1 ? 's' : ''}</TonePill>
-                        {counts.warn > 0 && <span style={{ background: '#FEF3C7', color: '#92400E', borderRadius: 99, padding: '2px 10px', fontSize: 12, fontWeight: 600 }}>{counts.warn} à vérifier</span>}
-                        {counts.err > 0 && <span style={{ background: '#FEE2E2', color: '#B91C1C', borderRadius: 99, padding: '2px 10px', fontSize: 12, fontWeight: 600 }}>{counts.err} en erreur (non importée{counts.err > 1 ? 's' : ''})</span>}
+                        {counts.warn > 0 && <span style={{ background: 'var(--df-amber-bg)', color: 'var(--df-warn-text)', borderRadius: 99, padding: '2px 10px', fontSize: 12, fontWeight: 600 }}>{counts.warn} à vérifier</span>}
+                        {counts.err > 0 && <span style={{ background: 'var(--df-danger-border)', color: 'var(--df-danger-text)', borderRadius: 99, padding: '2px 10px', fontSize: 12, fontWeight: 600 }}>{counts.err} en erreur (non importée{counts.err > 1 ? 's' : ''})</span>}
                         <span style={{ flex: 1 }} />
                         {(counts.warn > 0 || counts.err > 0) && (
-                            <label style={{ fontSize: 13, color: '#374151', display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                            <label style={{ fontSize: 13, color: 'var(--df-text-2)', display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
                                 <input type="checkbox" checked={onlyIssues} onChange={(e) => setOnlyIssues(e.target.checked)} /> Seulement les lignes à vérifier
                             </label>
                         )}
                     </div>
-                    <div style={{ flex: 1, minHeight: 0, overflow: 'auto', border: '1px solid #E0DED9', borderRadius: 8 }}>
+                    <div style={{ flex: 1, minHeight: 0, overflow: 'auto', border: '1px solid var(--df-border)', borderRadius: 8 }}>
                         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                             <thead>
                                 <tr>
@@ -237,31 +237,31 @@ export default function StockImportDialog({ onClose, inventory = [], exportItems
                             <tbody>
                                 {shown.map(l => {
                                     const bad = l.errors.length > 0;
-                                    const rowStyle = bad ? { background: '#FEF2F2' } : !checked.has(l.key) ? { opacity: 0.55 } : undefined;
+                                    const rowStyle = bad ? { background: 'var(--df-danger-bg)' } : !checked.has(l.key) ? { opacity: 0.55 } : undefined;
                                     return (
                                         <tr key={l.key} style={rowStyle}>
                                             <td style={td}><input type="checkbox" disabled={bad} checked={!bad && checked.has(l.key)} onChange={() => toggle(l.key)} /></td>
                                             <td style={{ ...td, color: MUTED, whiteSpace: 'nowrap' }}>{l.where || l.row}</td>
                                             {kind === 'add' ? <>
                                                 <td style={td}>{l.data.category}</td>
-                                                <td style={td}>{l.data.fournisseur || <span style={{ color: '#D1D5DB' }}>—</span>}</td>
-                                                <td style={td}>{l.data.ref || <span style={{ color: '#D1D5DB' }}>—</span>}</td>
-                                                <td style={td}>{l.data.coloris || <span style={{ color: '#D1D5DB' }}>—</span>}</td>
+                                                <td style={td}>{l.data.fournisseur || <span style={{ color: 'var(--df-border-strong)' }}>—</span>}</td>
+                                                <td style={td}>{l.data.ref || <span style={{ color: 'var(--df-border-strong)' }}>—</span>}</td>
+                                                <td style={td}>{l.data.coloris || <span style={{ color: 'var(--df-border-strong)' }}>—</span>}</td>
                                                 <td style={{ ...td, textAlign: 'right' }}>{fmt(l.data.laize)}</td>
                                                 <td style={{ ...td, textAlign: 'right', whiteSpace: 'nowrap' }}>
                                                     {fmt(l.data.qty)} {l.data.unit || ''}
                                                     {l.data.pieces?.length > 0 && <div style={{ fontSize: 11, color: MUTED }}>{l.data.pieces.length} pièce{l.data.pieces.length > 1 ? 's' : ''}</div>}
                                                 </td>
-                                                <td style={td}>{l.data.location || <span style={{ color: '#D1D5DB' }}>—</span>}</td>
+                                                <td style={td}>{l.data.location || <span style={{ color: 'var(--df-border-strong)' }}>—</span>}</td>
                                             </> : <>
                                                 <td style={td}>
                                                     {[l.item.fournisseur, l.item.ref || l.item.product, l.item.coloris].filter(Boolean).join(' · ') || l.item.product || l.item.id}
                                                 </td>
-                                                <td style={{ ...td, color: l.item.project ? '#111827' : MUTED }}>{l.item.project || 'Stock libre'}</td>
+                                                <td style={{ ...td, color: l.item.project ? 'var(--df-text)' : MUTED }}>{l.item.project || 'Stock libre'}</td>
                                                 <td style={{ ...td, textAlign: 'right', whiteSpace: 'nowrap' }}>
                                                     {l.delta ? <>
                                                         {fmt(l.item.qty)} → <b>{fmt(l.newQty)}</b> {l.item.unit || ''}
-                                                        <div style={{ fontSize: 11, color: l.delta < 0 ? '#B91C1C' : '#15803D' }}>{l.delta > 0 ? '+' : ''}{fmt(l.delta)} ({l.delta < 0 ? 'sortie' : 'ajustement +'})</div>
+                                                        <div style={{ fontSize: 11, color: l.delta < 0 ? 'var(--df-danger-text)' : 'var(--df-x-15803D)' }}>{l.delta > 0 ? '+' : ''}{fmt(l.delta)} ({l.delta < 0 ? 'sortie' : 'ajustement +'})</div>
                                                     </> : <span style={{ color: MUTED }}>{fmt(l.item.qty)} {l.item.unit || ''}</span>}
                                                 </td>
                                                 <td style={td}>
@@ -279,16 +279,16 @@ export default function StockImportDialog({ onClose, inventory = [], exportItems
             )}
 
             {step === 'done' && result && (
-                <div style={{ fontSize: 14, color: '#374151', lineHeight: 1.6 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 16, color: '#111827', marginBottom: 8 }}>
-                        {result.failed?.length ? <AlertTriangle size={20} color="#B45309" /> : <CheckCircle2 size={20} color="#15803D" />}
+                <div style={{ fontSize: 14, color: 'var(--df-text-2)', lineHeight: 1.6 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 16, color: 'var(--df-text)', marginBottom: 8 }}>
+                        {result.failed?.length ? <AlertTriangle size={20} color="var(--df-x-B45309)" /> : <CheckCircle2 size={20} color="var(--df-x-15803D)" />}
                         {kind === 'add'
                             ? `${result.done} article${result.done > 1 ? 's' : ''} ajouté${result.done > 1 ? 's' : ''} au stock (stock libre).`
                             : `${result.done} changement${result.done > 1 ? 's' : ''} appliqué${result.done > 1 ? 's' : ''}.`}
                     </div>
                     {kind === 'add' && <div style={{ color: MUTED }}>Chaque article figure au journal avec le motif « {ANCIEN_STOCK_REASON} ».</div>}
                     {result.failed?.length > 0 && (
-                        <div style={{ marginTop: 12, background: '#FEF2F2', border: '1px solid #FCA5A5', color: '#B91C1C', borderRadius: 8, padding: '10px 14px', fontSize: 13 }}>
+                        <div style={{ marginTop: 12, background: 'var(--df-danger-bg)', border: '1px solid #FCA5A5', color: 'var(--df-danger-text)', borderRadius: 8, padding: '10px 14px', fontSize: 13 }}>
                             {result.failed.length} échec{result.failed.length > 1 ? 's' : ''} :
                             <ul style={{ margin: '6px 0 0', paddingLeft: 18 }}>
                                 {result.failed.slice(0, 20).map((f, i) => (

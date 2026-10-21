@@ -219,15 +219,15 @@ const AG_CUSTOM_CSS = `
 /* Style épuré (façon Notion / ClickUp) : fond blanc, en-têtes gris clair #F4F4F4,
    cadre #E0DED9, traits intérieurs #E8E6E2 */
 .ag-theme-alpine {
-  --ag-background-color: #FFFFFF;
-  --ag-odd-row-background-color: #FFFFFF;
-  --ag-border-color: #E0DED9;
-  --ag-secondary-border-color: #E8E6E2;
-  --ag-row-border-color: #E8E6E2;
-  --ag-header-background-color: #F4F4F4;
+  --ag-background-color: var(--df-bg);
+  --ag-odd-row-background-color: var(--df-bg);
+  --ag-border-color: var(--df-border);
+  --ag-secondary-border-color: var(--df-border-soft);
+  --ag-row-border-color: var(--df-border-soft);
+  --ag-header-background-color: var(--df-surface);
 }
 /* Cadre complet du tableau (gauche, droite, haut, bas) */
-.ag-theme-alpine .ag-root-wrapper { border: 1px solid #E0DED9; border-radius: 8px; }
+.ag-theme-alpine .ag-root-wrapper { border: 1px solid var(--df-border); border-radius: 8px; }
 /* Hauteur auto : AG Grid impose ~150px mini à la zone des lignes, d'où un grand vide
    sous une table d'une seule ligne. On ramène le minimum à une ligne. */
 .ag-theme-alpine .ag-layout-auto-height .ag-center-cols-viewport,
@@ -249,7 +249,7 @@ const AG_CUSTOM_CSS = `
   border-radius: 8px 8px 0 0;
   /* Le trait du haut du cadre défile avec le tableau : la barre collante porte le sien (haut + côtés),
      superposé exactement au cadre quand elle n'est pas collée. */
-  box-shadow: 0 -1px 0 0 #E0DED9, -1px 0 0 0 #E0DED9, 1px 0 0 0 #E0DED9, -1px -1px 0 0 #E0DED9, 1px -1px 0 0 #E0DED9;
+  box-shadow: 0 -1px 0 0 var(--df-border), -1px 0 0 0 var(--df-border), 1px 0 0 0 var(--df-border), -1px -1px 0 0 var(--df-border), 1px -1px 0 0 var(--df-border);
 }
 /* Listes déroulantes, menus et filtres d'AG Grid (z-index 5 par défaut) : au-dessus de la barre
    de regroupement collante (z 7) et du titre de section collant (z 6), sinon le haut de la liste
@@ -263,8 +263,8 @@ const AG_CUSTOM_CSS = `
 .df-grid-toolbar > * { pointer-events: auto; }
 /* Barre de regroupement : même gris que la ligne des en-têtes */
 .ag-theme-alpine .ag-column-drop-horizontal {
-  background: #F4F4F4;
-  border-bottom: 1px solid #E0DED9;
+  background: var(--df-surface);
+  border-bottom: 1px solid var(--df-border);
   min-height: ${GROUP_PANEL_HEIGHT}px;
   height: ${GROUP_PANEL_HEIGHT}px;
 }
@@ -276,45 +276,45 @@ const AG_CUSTOM_CSS = `
 .ag-theme-alpine .ag-header-cell-label {
   font-size: 13px;
   font-weight: 600;
-  color: #374151;
+  color: var(--df-text-2);
 }
 .ag-theme-alpine .ag-header {
-  background-color: #F4F4F4;
-  border-bottom: 1px solid #E0DED9;
+  background-color: var(--df-surface);
+  border-bottom: 1px solid var(--df-border);
 }
 .ag-theme-alpine .ag-header-cell {
-  border-right: 1px solid #E8E6E2;
+  border-right: 1px solid var(--df-border-soft);
 }
 .ag-theme-alpine .ag-cell {
   font-size: 13px;
-  color: #111827;
-  border-right: 1px solid #E8E6E2;
+  color: var(--df-text);
+  border-right: 1px solid var(--df-border-soft);
   display: flex;
   align-items: center;
 }
 .ag-theme-alpine .ag-row-even {
-  background-color: #ffffff;
+  background-color: var(--df-bg);
 }
 .ag-theme-alpine .ag-row-odd {
-  background-color: #ffffff;
+  background-color: var(--df-bg);
 }
 /* Pas de surbrillance au survol (trop chargé) : seule la ligne de la case cliquée
    est surlignée, et l'effet disparaît en cliquant hors du tableau. */
 .ag-theme-alpine .ag-row-focus {
-  background-color: #EEF4FD !important; /* bleu ciel du nuancier : ne pas confondre avec le gris des en-têtes */
+  background-color: var(--df-selected) !important; /* bleu ciel du nuancier : ne pas confondre avec le gris des en-têtes */
 }
 .ag-theme-alpine .ag-row-selected {
-  background-color: #dbeafe !important;
+  background-color: var(--df-blue-bg-2) !important;
 }
 .ag-theme-alpine .ag-row-pinned .ag-cell {
   cursor: pointer;
   font-weight: 600;
-  color: #111827;
+  color: var(--df-text);
 }
-.ag-theme-alpine .ag-floating-bottom { background: #ffffff; border-top: none; }
+.ag-theme-alpine .ag-floating-bottom { background: var(--df-bg); border-top: none; }
 .ag-cell-read-only {
-  background-color: #F4F4F4 !important; /* même gris que les en-têtes */
-  color: #9ca3af !important;
+  background-color: var(--df-surface) !important; /* même gris que les en-têtes */
+  color: var(--df-faint) !important;
   cursor: not-allowed;
 }
 .ag-theme-alpine .ag-checkbox-cell {
@@ -323,13 +323,13 @@ const AG_CUSTOM_CSS = `
   justify-content: center;
 }
 .ag-theme-alpine .ag-header-cell.filter-col-active {
-  background-color: #dbeafe !important;
+  background-color: var(--df-blue-bg-2) !important;
   border-bottom: 2px solid #3b82f6 !important;
 }
 /* Surlignage temporaire quand on « saute » sur une colonne depuis le panneau Colonnes */
 @keyframes ag-col-jump-flash {
   0%, 100% { background-color: transparent; }
-  15%, 55% { background-color: #fde68a; }
+  15%, 55% { background-color: var(--df-amber-bg-2); }
 }
 .ag-theme-alpine .ag-header-cell.col-jump-flash {
   animation: ag-col-jump-flash 1s ease-in-out 2;
@@ -512,14 +512,14 @@ function MinuteGrid({
             return React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 6 } },
                 React.createElement('span', {
                     onClick: (e) => { e.stopPropagation(); toggleDecentreeRef.current(row.pair_id); },
-                    style: { cursor: 'pointer', userSelect: 'none', fontSize: 11, color: '#6b7280', width: 12, textAlign: 'center', display: 'inline-block' },
+                    style: { cursor: 'pointer', userSelect: 'none', fontSize: 11, color: 'var(--df-muted)', width: 12, textAlign: 'center', display: 'inline-block' },
                     title: collapsed ? 'Déplier la paire' : 'Replier la paire',
                 }, collapsed ? '▶' : '▼'),
                 React.createElement('span', { style: { fontWeight: 600 } }, val),
             );
         }
         if (row.pair_role === 'left' || row.pair_role === 'right') {
-            return React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 6, paddingLeft: 16, color: '#6b7280' } },
+            return React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 6, paddingLeft: 16, color: 'var(--df-muted)' } },
                 React.createElement('span', { style: { fontSize: 10 } }, row.pair_role === 'left' ? '↳ Gauche' : '↳ Droite'),
                 React.createElement('span', null, val),
             );
@@ -532,7 +532,7 @@ function MinuteGrid({
         const role = params.data?.pair_role;
         if (role === 'left' || role === 'right') {
             return React.createElement('span', {
-                style: { color: '#9ca3af', fontStyle: 'italic', fontSize: 11 },
+                style: { color: 'var(--df-faint)', fontStyle: 'italic', fontSize: 11 },
                 title: 'Donnée portée par la ligne parent',
             }, 'voir parent');
         }
@@ -2024,26 +2024,26 @@ function MinuteGrid({
             const exp = EXP_LABEL[row.statut_expedition];
             const dim = (v) => (v === undefined || v === null || v === '' ? '—' : v);
             return (
-                <div onClick={() => handleOpenDetail(row)} style={{ background: 'white', borderRadius: 12, padding: '12px 14px', marginBottom: 8, border: '1px solid #E0DED9', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontFamily: 'Roboto, system-ui, sans-serif' }}>
+                <div onClick={() => handleOpenDetail(row)} style={{ background: 'var(--df-bg)', borderRadius: 12, padding: '12px 14px', marginBottom: 8, border: '1px solid var(--df-border)', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontFamily: 'Roboto, system-ui, sans-serif' }}>
                     <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
                             <div style={{ minWidth: 0 }}>
-                                <div style={{ fontSize: 15, fontWeight: 600, color: '#111827', lineHeight: 1.25 }}>{row.piece || 'Sans pièce'}</div>
-                                <div style={{ fontSize: 13, color: '#6B7280', marginTop: 2 }}>{row.produit || '—'}</div>
+                                <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--df-text)', lineHeight: 1.25 }}>{row.piece || 'Sans pièce'}</div>
+                                <div style={{ fontSize: 13, color: 'var(--df-muted)', marginTop: 2 }}>{row.produit || '—'}</div>
                             </div>
                             {status && <span style={{ flexShrink: 0 }}><TonePill tone={status.tone}>{status.label}</TonePill></span>}
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', fontSize: 13, color: '#6B7280' }}>
-                            <span>Largeur <strong style={{ color: '#111827', fontWeight: 600 }}>{dim(row.largeur)}</strong></span>
-                            <span>Hauteur <strong style={{ color: '#111827', fontWeight: 600 }}>{dim(row.hauteur)}</strong></span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', fontSize: 13, color: 'var(--df-muted)' }}>
+                            <span>Largeur <strong style={{ color: 'var(--df-text)', fontWeight: 600 }}>{dim(row.largeur)}</strong></span>
+                            <span>Hauteur <strong style={{ color: 'var(--df-text)', fontWeight: 600 }}>{dim(row.hauteur)}</strong></span>
                             {exp && (
-                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, height: 22, padding: '0 8px', borderRadius: 99, background: '#F4F4F4', color: '#374151', fontSize: 12, fontWeight: 600 }}>
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, height: 22, padding: '0 8px', borderRadius: 99, background: 'var(--df-surface)', color: 'var(--df-text-2)', fontSize: 12, fontWeight: 600 }}>
                                     <Truck size={12} /> {exp}
                                 </span>
                             )}
                         </div>
                     </div>
-                    <ChevronRight size={18} color="#C9C7C2" style={{ flexShrink: 0 }} />
+                    <ChevronRight size={18} color="var(--df-border-hover)" style={{ flexShrink: 0 }} />
                 </div>
             );
         };
@@ -2052,13 +2052,13 @@ function MinuteGrid({
                 <div className="mobile-grid-cards">
                     {!readOnly && (
                         <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
-                            <button onClick={() => handleAddRow(1)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 34, padding: '0 14px', borderRadius: 8, border: '1px solid #E0DED9', background: 'white', color: '#374151', fontSize: 13, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>
+                            <button onClick={() => handleAddRow(1)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 34, padding: '0 14px', borderRadius: 8, border: '1px solid var(--df-border)', background: 'var(--df-bg)', color: 'var(--df-text-2)', fontSize: 13, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>
                                 <Plus size={14} /> Ajouter une ligne
                             </button>
                         </div>
                     )}
                     {rows.length === 0 ? (
-                        <div style={{ padding: 30, textAlign: 'center', color: '#9B9A97', borderRadius: 12, border: '1px dashed #E0DED9' }}>Aucune ligne</div>
+                        <div style={{ padding: 30, textAlign: 'center', color: 'var(--df-faint-2)', borderRadius: 12, border: '1px dashed var(--df-border)' }}>Aucune ligne</div>
                     ) : (
                         rows.map(row => <MobileCard key={row.id} row={row} />)
                     )}
@@ -2084,7 +2084,7 @@ function MinuteGrid({
                         <button
                             onClick={() => handleAddRow(1)}
                             title="Ajouter une ligne"
-                            style={{ cursor: 'pointer', padding: '5px 10px', background: 'white', color: '#374151', border: '1px solid #d1d5db', borderRight: 'none', borderRadius: '4px 0 0 4px', display: 'flex', alignItems: 'center', gap: 5, fontSize: 12 }}
+                            style={{ cursor: 'pointer', padding: '5px 10px', background: 'var(--df-bg)', color: 'var(--df-text-2)', border: '1px solid var(--df-border-strong)', borderRight: 'none', borderRadius: '4px 0 0 4px', display: 'flex', alignItems: 'center', gap: 5, fontSize: 12 }}
                         >
                             <Plus size={14} /> Ajouter
                         </button>
@@ -2092,7 +2092,7 @@ function MinuteGrid({
                             onClick={openAddPanel}
                             title="Ajouter plusieurs lignes"
                             aria-label="Ajouter plusieurs lignes"
-                            style={{ cursor: 'pointer', padding: '5px 6px', background: 'white', color: '#374151', border: '1px solid #d1d5db', borderRadius: '0 4px 4px 0', display: 'flex', alignItems: 'center', fontSize: 12 }}
+                            style={{ cursor: 'pointer', padding: '5px 6px', background: 'var(--df-bg)', color: 'var(--df-text-2)', border: '1px solid var(--df-border-strong)', borderRadius: '0 4px 4px 0', display: 'flex', alignItems: 'center', fontSize: 12 }}
                         >
                             <ChevronDown size={14} />
                         </button>
@@ -2105,13 +2105,13 @@ function MinuteGrid({
                     <FitPanel
                         style={{
                             position: 'fixed', top: addPanelPos.top, left: addPanelPos.left,
-                            background: 'white', border: '1px solid #E0DED9', borderRadius: 8,
+                            background: 'var(--df-bg)', border: '1px solid var(--df-border)', borderRadius: 8,
                             boxShadow: '0 10px 25px rgba(0,0,0,0.12)', zIndex: 1000,
                             padding: 10, width: 232,
                         }}
                         onClick={e => e.stopPropagation()}
                     >
-                        <div style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', marginBottom: 6 }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--df-muted)', textTransform: 'uppercase', marginBottom: 6 }}>
                             Ajouter plusieurs lignes
                         </div>
                         <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
@@ -2127,12 +2127,12 @@ function MinuteGrid({
                                     if (e.key === 'Enter') { e.preventDefault(); submitAddCount(); }
                                     if (e.key === 'Escape') setAddPanelOpen(false);
                                 }}
-                                style={{ flex: 1, minWidth: 0, boxSizing: 'border-box', padding: '5px 8px', border: '1px solid #d1d5db', borderRadius: 4, fontSize: 12, outline: 'none' }}
+                                style={{ flex: 1, minWidth: 0, boxSizing: 'border-box', padding: '5px 8px', border: '1px solid var(--df-border-strong)', borderRadius: 4, fontSize: 12, outline: 'none' }}
                             />
                             <button
                                 onClick={submitAddCount}
                                 disabled={!canSubmitAddCount}
-                                style={{ cursor: canSubmitAddCount ? 'pointer' : 'not-allowed', padding: '5px 12px', background: canSubmitAddCount ? '#2563eb' : '#cbd5e1', color: 'white', border: 'none', borderRadius: 4, fontSize: 12, fontWeight: 600 }}
+                                style={{ cursor: canSubmitAddCount ? 'pointer' : 'not-allowed', padding: '5px 12px', background: canSubmitAddCount ? 'var(--df-blue)' : 'var(--df-x-CBD5E1)', color: 'white', border: 'none', borderRadius: 4, fontSize: 12, fontWeight: 600 }}
                             >
                                 Ajouter
                             </button>
@@ -2142,19 +2142,19 @@ function MinuteGrid({
                                 <button
                                     key={n}
                                     onClick={() => { setAddPanelOpen(false); handleAddRow(n); }}
-                                    style={{ flex: 1, cursor: 'pointer', padding: '4px 0', background: '#f3f4f6', color: '#374151', border: '1px solid #E0DED9', borderRadius: 4, fontSize: 11, fontWeight: 600 }}
+                                    style={{ flex: 1, cursor: 'pointer', padding: '4px 0', background: 'var(--df-surface-2)', color: 'var(--df-text-2)', border: '1px solid var(--df-border)', borderRadius: 4, fontSize: 11, fontWeight: 600 }}
                                 >
                                     +{n}
                                 </button>
                             ))}
                         </div>
-                        <div style={{ fontSize: 10, color: '#9ca3af', marginTop: 7 }}>
+                        <div style={{ fontSize: 10, color: 'var(--df-faint)', marginTop: 7 }}>
                             {MAX_ADD_ROWS} lignes maximum d'un coup.
                         </div>
                     </FitPanel>
                 )}
                 {selectedCount > 0 && !readOnly && (
-                    <button onClick={handleDeleteRows} style={{ cursor: 'pointer', padding: '5px 10px', background: '#ef4444', color: 'white', border: 'none', borderRadius: 4, display: 'flex', alignItems: 'center', gap: 5, fontSize: 12 }}>
+                    <button onClick={handleDeleteRows} style={{ cursor: 'pointer', padding: '5px 10px', background: 'var(--df-danger)', color: 'white', border: 'none', borderRadius: 4, display: 'flex', alignItems: 'center', gap: 5, fontSize: 12 }}>
                         <Trash2 size={14} /> Supprimer ({selectedCount})
                     </button>
                 )}
@@ -2167,22 +2167,22 @@ function MinuteGrid({
                     <div style={{ position: 'relative' }}>
                         <button
                             onClick={() => setShowBulkUpdate(s => !s)}
-                            style={{ cursor: 'pointer', padding: '5px 10px', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, display: 'flex', alignItems: 'center', gap: 5, fontSize: 12 }}
+                            style={{ cursor: 'pointer', padding: '5px 10px', background: 'var(--df-blue)', color: 'white', border: 'none', borderRadius: 4, display: 'flex', alignItems: 'center', gap: 5, fontSize: 12 }}
                         >
                             <Edit2 size={14} /> Mettre à jour ({selectedCount})
                         </button>
                         {showBulkUpdate && (
                             <div style={{
                                 position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 999,
-                                background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8,
+                                background: 'var(--df-bg)', border: '1px solid var(--df-slate-border)', borderRadius: 8,
                                 boxShadow: '0 4px 16px rgba(0,0,0,0.12)', padding: '14px 16px',
                                 minWidth: 260, display: 'flex', flexDirection: 'column', gap: 10,
                             }}>
-                                <div style={{ fontWeight: 600, fontSize: 13, color: '#1e293b' }}>
+                                <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--df-ink-4)' }}>
                                     Mettre à jour {selectedCount} ligne{selectedCount > 1 ? 's' : ''}
                                 </div>
                                 <select
-                                    style={{ padding: '5px 8px', border: '1px solid #d1d5db', borderRadius: 4, fontSize: 13, width: '100%' }}
+                                    style={{ padding: '5px 8px', border: '1px solid var(--df-border-strong)', borderRadius: 4, fontSize: 13, width: '100%' }}
                                     value={bulkField}
                                     onChange={e => { setBulkField(e.target.value); setBulkValue(''); }}
                                 >
@@ -2193,7 +2193,7 @@ function MinuteGrid({
                                 </select>
                                 {bulkField && (
                                     <select
-                                        style={{ padding: '5px 8px', border: '1px solid #d1d5db', borderRadius: 4, fontSize: 13, width: '100%' }}
+                                        style={{ padding: '5px 8px', border: '1px solid var(--df-border-strong)', borderRadius: 4, fontSize: 13, width: '100%' }}
                                         value={bulkValue}
                                         onChange={e => setBulkValue(e.target.value)}
                                     >
@@ -2206,14 +2206,14 @@ function MinuteGrid({
                                 <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                                     <button
                                         onClick={() => setShowBulkUpdate(false)}
-                                        style={{ padding: '5px 10px', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', fontSize: 12, background: '#fff' }}
+                                        style={{ padding: '5px 10px', border: '1px solid var(--df-border-strong)', borderRadius: 4, cursor: 'pointer', fontSize: 12, background: 'var(--df-bg)' }}
                                     >
                                         Annuler
                                     </button>
                                     <button
                                         onClick={applyBulkUpdate}
                                         disabled={!bulkField || !bulkValue}
-                                        style={{ padding: '5px 10px', background: !bulkField || !bulkValue ? '#93c5fd' : '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: !bulkField || !bulkValue ? 'not-allowed' : 'pointer', fontSize: 12 }}
+                                        style={{ padding: '5px 10px', background: !bulkField || !bulkValue ? '#93c5fd' : 'var(--df-blue)', color: 'white', border: 'none', borderRadius: 4, cursor: !bulkField || !bulkValue ? 'not-allowed' : 'pointer', fontSize: 12 }}
                                     >
                                         Appliquer
                                     </button>
@@ -2228,7 +2228,7 @@ function MinuteGrid({
                     placeholder="Rechercher..."
                     value={quickFilter}
                     onChange={e => setQuickFilter(e.target.value)}
-                    style={{ order: 99, padding: '4px 8px', border: '1px solid #d1d5db', borderRadius: 4, fontSize: 12, width: 160, outline: 'none' }}
+                    style={{ order: 99, padding: '4px 8px', border: '1px solid var(--df-border-strong)', borderRadius: 4, fontSize: 12, width: 160, outline: 'none' }}
                 />
                 {/* Bouton Filtrer */}
                 {(() => {
@@ -2244,9 +2244,9 @@ function MinuteGrid({
                                 onClick={() => { setFilterPanelOpen(o => !o); setColPanelOpen(false); setMatierePanelOpen(false); }}
                                 style={{
                                     cursor: 'pointer', padding: '5px 10px',
-                                    background: hasActive ? '#dcfce7' : (filterPanelOpen ? '#eff6ff' : 'white'),
-                                    color: hasActive ? '#15803d' : '#374151',
-                                    border: `1px solid ${hasActive ? '#86efac' : (filterPanelOpen ? '#2563eb' : '#d1d5db')}`,
+                                    background: hasActive ? 'var(--df-green-bg-2)' : (filterPanelOpen ? 'var(--df-blue-bg)' : 'var(--df-bg)'),
+                                    color: hasActive ? 'var(--df-x-15803D)' : 'var(--df-text-2)',
+                                    border: `1px solid ${hasActive ? 'var(--df-x-86EFAC)' : (filterPanelOpen ? 'var(--df-blue)' : 'var(--df-border-strong)')}`,
                                     borderRadius: 4, display: 'flex', alignItems: 'center', gap: 5, fontSize: 12,
                                     fontWeight: hasActive ? 600 : 400,
                                 }}
@@ -2277,7 +2277,7 @@ function MinuteGrid({
                         title="Remettre les colonnes épinglées à leur place dans le tableau"
                         style={{
                             cursor: 'pointer', padding: '5px 10px',
-                            background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe',
+                            background: 'var(--df-blue-bg)', color: 'var(--df-x-1D4ED8)', border: '1px solid var(--df-x-BFDBFE)',
                             borderRadius: 4, display: 'flex', alignItems: 'center', gap: 5,
                             fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap',
                         }}
@@ -2292,28 +2292,28 @@ function MinuteGrid({
                     <div style={{ position: 'relative' }}>
                         <button
                             onClick={() => { setMatierePanelOpen(prev => !prev); setColPanelOpen(false); }}
-                            style={{ cursor: 'pointer', padding: '5px 10px', background: matierePanelOpen ? '#eff6ff' : 'white', color: '#374151', border: `1px solid ${matierePanelOpen ? '#2563eb' : '#d1d5db'}`, borderRadius: 4, display: 'flex', alignItems: 'center', gap: 5, fontSize: 12 }}
+                            style={{ cursor: 'pointer', padding: '5px 10px', background: matierePanelOpen ? 'var(--df-blue-bg)' : 'var(--df-bg)', color: 'var(--df-text-2)', border: `1px solid ${matierePanelOpen ? 'var(--df-blue)' : 'var(--df-border-strong)'}`, borderRadius: 4, display: 'flex', alignItems: 'center', gap: 5, fontSize: 12 }}
                         >
                             <Layers size={14} /> Configuration
                         </button>
                         {matierePanelOpen && (
                             <FitPanel style={{
                                 position: 'absolute', left: 0, top: '100%', marginTop: 4,
-                                background: 'white', border: '1px solid #E0DED9', borderRadius: 8,
+                                background: 'var(--df-bg)', border: '1px solid var(--df-border)', borderRadius: 8,
                                 boxShadow: '0 10px 25px rgba(0,0,0,0.1)', zIndex: 1000,
                                 padding: 8, display: 'flex', gap: 0,
                             }}>
                                 {/* Colonne Matières actives */}
-                                <div style={{ minWidth: 180, paddingRight: mecaGroups.length > 0 || confGroups.length > 0 ? 12 : 0, borderRight: mecaGroups.length > 0 || confGroups.length > 0 ? '1px solid #f3f4f6' : 'none' }}>
-                                    <div style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', padding: '4px 8px 8px', borderBottom: '1px solid #f3f4f6', marginBottom: 4 }}>
+                                <div style={{ minWidth: 180, paddingRight: mecaGroups.length > 0 || confGroups.length > 0 ? 12 : 0, borderRight: mecaGroups.length > 0 || confGroups.length > 0 ? '1px solid var(--df-surface-2)' : 'none' }}>
+                                    <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--df-muted)', textTransform: 'uppercase', padding: '4px 8px 8px', borderBottom: '1px solid var(--df-surface-2)', marginBottom: 4 }}>
                                         Matières actives
                                     </div>
                                     {matiereGroups.map(group => (
                                         <label key={group.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderRadius: 4, cursor: 'pointer', fontSize: 13 }}
-                                            onMouseEnter={e => e.currentTarget.style.background = '#f3f4f6'}
+                                            onMouseEnter={e => e.currentTarget.style.background = 'var(--df-surface-2)'}
                                             onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                                         >
-                                            <input type="checkbox" checked={localMatieres[group.id] !== false} onChange={e => handleToggleMatiere(group.id, e.target.checked)} style={{ accentColor: '#2563eb', width: 14, height: 14 }} />
+                                            <input type="checkbox" checked={localMatieres[group.id] !== false} onChange={e => handleToggleMatiere(group.id, e.target.checked)} style={{ accentColor: 'var(--df-blue)', width: 14, height: 14 }} />
                                             <span>{group.label}</span>
                                         </label>
                                     ))}
@@ -2321,16 +2321,16 @@ function MinuteGrid({
 
                                 {/* Colonne Méca actifs */}
                                 {mecaGroups.length > 0 && (
-                                    <div style={{ minWidth: 150, paddingLeft: 12, paddingRight: confGroups.length > 0 ? 12 : 0, borderRight: confGroups.length > 0 ? '1px solid #f3f4f6' : 'none' }}>
-                                        <div style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', padding: '4px 8px 8px', borderBottom: '1px solid #f3f4f6', marginBottom: 4 }}>
+                                    <div style={{ minWidth: 150, paddingLeft: 12, paddingRight: confGroups.length > 0 ? 12 : 0, borderRight: confGroups.length > 0 ? '1px solid var(--df-surface-2)' : 'none' }}>
+                                        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--df-muted)', textTransform: 'uppercase', padding: '4px 8px 8px', borderBottom: '1px solid var(--df-surface-2)', marginBottom: 4 }}>
                                             Méca actifs
                                         </div>
                                         {mecaGroups.map(group => (
                                             <label key={group.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderRadius: 4, cursor: 'pointer', fontSize: 13 }}
-                                                onMouseEnter={e => e.currentTarget.style.background = '#f3f4f6'}
+                                                onMouseEnter={e => e.currentTarget.style.background = 'var(--df-surface-2)'}
                                                 onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                                             >
-                                                <input type="checkbox" checked={localMeca[group.id] !== false} onChange={e => handleToggleMeca(group.id, e.target.checked)} style={{ accentColor: '#2563eb', width: 14, height: 14 }} />
+                                                <input type="checkbox" checked={localMeca[group.id] !== false} onChange={e => handleToggleMeca(group.id, e.target.checked)} style={{ accentColor: 'var(--df-blue)', width: 14, height: 14 }} />
                                                 <span>{group.label}</span>
                                             </label>
                                         ))}
@@ -2340,15 +2340,15 @@ function MinuteGrid({
                                 {/* Colonne Conf actifs */}
                                 {confGroups.length > 0 && (
                                     <div style={{ minWidth: 150, paddingLeft: 12 }}>
-                                        <div style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', padding: '4px 8px 8px', borderBottom: '1px solid #f3f4f6', marginBottom: 4 }}>
+                                        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--df-muted)', textTransform: 'uppercase', padding: '4px 8px 8px', borderBottom: '1px solid var(--df-surface-2)', marginBottom: 4 }}>
                                             Conf actifs
                                         </div>
                                         {confGroups.map(group => (
                                             <label key={group.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderRadius: 4, cursor: 'pointer', fontSize: 13 }}
-                                                onMouseEnter={e => e.currentTarget.style.background = '#f3f4f6'}
+                                                onMouseEnter={e => e.currentTarget.style.background = 'var(--df-surface-2)'}
                                                 onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                                             >
-                                                <input type="checkbox" checked={localConf[group.id] !== false} onChange={e => handleToggleConf(group.id, e.target.checked)} style={{ accentColor: '#2563eb', width: 14, height: 14 }} />
+                                                <input type="checkbox" checked={localConf[group.id] !== false} onChange={e => handleToggleConf(group.id, e.target.checked)} style={{ accentColor: 'var(--df-blue)', width: 14, height: 14 }} />
                                                 <span>{group.label}</span>
                                             </label>
                                         ))}
@@ -2367,7 +2367,7 @@ function MinuteGrid({
                     <button
                         ref={colBtnRef}
                         onClick={handleToggleColPanel}
-                        style={{ cursor: 'pointer', padding: '5px 10px', background: 'white', color: '#374151', border: '1px solid #d1d5db', borderRadius: 4, display: 'flex', alignItems: 'center', gap: 5, fontSize: 12 }}
+                        style={{ cursor: 'pointer', padding: '5px 10px', background: 'var(--df-bg)', color: 'var(--df-text-2)', border: '1px solid var(--df-border-strong)', borderRadius: 4, display: 'flex', alignItems: 'center', gap: 5, fontSize: 12 }}
                     >
                         <Columns size={14} /> Colonnes
                     </button>
@@ -2383,7 +2383,7 @@ function MinuteGrid({
                             position: 'fixed',
                             top: colPanelPos.top,
                             right: colPanelPos.right,
-                            background: 'white', border: '1px solid #E0DED9', borderRadius: 8,
+                            background: 'var(--df-bg)', border: '1px solid var(--df-border)', borderRadius: 8,
                             boxShadow: '0 10px 25px rgba(0,0,0,0.1)', zIndex: 1000,
                             maxHeight: 'calc(100vh - ' + colPanelPos.top + 'px - 16px)',
                             display: 'flex', flexDirection: 'column',
@@ -2391,8 +2391,8 @@ function MinuteGrid({
                         }}
                     >
                         {/* En-tête fixe */}
-                        <div style={{ padding: '8px 12px 6px', borderBottom: '1px solid #e5e7eb', flexShrink: 0 }}>
-                            <div style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', padding: '0 4px 6px' }}>Afficher / Masquer</div>
+                        <div style={{ padding: '8px 12px 6px', borderBottom: '1px solid var(--df-border-2)', flexShrink: 0 }}>
+                            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--df-muted)', textTransform: 'uppercase', padding: '0 4px 6px' }}>Afficher / Masquer</div>
                             {/* Barre de recherche */}
                             <div style={{ position: 'relative', marginBottom: 6 }}>
                                 <input
@@ -2401,25 +2401,25 @@ function MinuteGrid({
                                     value={colSearch}
                                     onChange={e => setColSearch(e.target.value)}
                                     onClick={e => e.stopPropagation()}
-                                    style={{ width: '100%', boxSizing: 'border-box', padding: '5px 8px 5px 26px', border: '1px solid #d1d5db', borderRadius: 4, fontSize: 12, outline: 'none' }}
+                                    style={{ width: '100%', boxSizing: 'border-box', padding: '5px 8px 5px 26px', border: '1px solid var(--df-border-strong)', borderRadius: 4, fontSize: 12, outline: 'none' }}
                                 />
-                                <svg style={{ position: 'absolute', left: 7, top: '50%', transform: 'translateY(-50%)', color: '#9ca3af', pointerEvents: 'none' }} width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                                <svg style={{ position: 'absolute', left: 7, top: '50%', transform: 'translateY(-50%)', color: 'var(--df-faint)', pointerEvents: 'none' }} width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                             </div>
                             {/* Tout cocher / décocher */}
                             <div style={{ display: 'flex', gap: 6 }}>
                                 <button
                                     onClick={e => { e.stopPropagation(); handleToggleAllColumns(true); }}
-                                    style={{ flex: 1, padding: '4px 6px', fontSize: 11, cursor: 'pointer', background: '#f0f9ff', color: '#0369a1', border: '1px solid #bae6fd', borderRadius: 4, fontWeight: 600 }}
+                                    style={{ flex: 1, padding: '4px 6px', fontSize: 11, cursor: 'pointer', background: 'var(--df-blue-bg-4)', color: '#0369a1', border: '1px solid var(--df-x-BAE6FD)', borderRadius: 4, fontWeight: 600 }}
                                 >Tout afficher</button>
                                 <button
                                     onClick={e => { e.stopPropagation(); handleToggleAllColumns(false); }}
-                                    style={{ flex: 1, padding: '4px 6px', fontSize: 11, cursor: 'pointer', background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: 4, fontWeight: 600 }}
+                                    style={{ flex: 1, padding: '4px 6px', fontSize: 11, cursor: 'pointer', background: 'var(--df-danger-bg)', color: '#dc2626', border: '1px solid var(--df-x-FECACA)', borderRadius: 4, fontWeight: 600 }}
                                 >Tout masquer</button>
                                 {resetViewLabel && (
                                     <button
                                         onClick={e => { e.stopPropagation(); handleResetView(); }}
                                         title="Revenir à la sélection de colonnes standard de cet écran"
-                                        style={{ flex: 1, padding: '4px 6px', fontSize: 11, cursor: 'pointer', background: '#f5f3ff', color: '#6d28d9', border: '1px solid #ddd6fe', borderRadius: 4, fontWeight: 600 }}
+                                        style={{ flex: 1, padding: '4px 6px', fontSize: 11, cursor: 'pointer', background: 'var(--df-violet-bg)', color: '#6d28d9', border: '1px solid var(--df-x-DDD6FE)', borderRadius: 4, fontWeight: 600 }}
                                     >Réinitialiser {resetViewLabel}</button>
                                 )}
                             </div>
@@ -2428,14 +2428,14 @@ function MinuteGrid({
                             <button
                                 onClick={e => { e.stopPropagation(); handleResetWidths(); }}
                                 title="Remettre toutes les colonnes à la largeur qui affiche leur nom en entier"
-                                style={{ width: '100%', marginTop: 6, padding: '4px 6px', fontSize: 11, cursor: 'pointer', background: '#f8fafc', color: '#334155', border: '1px solid #e2e8f0', borderRadius: 4, fontWeight: 600 }}
+                                style={{ width: '100%', marginTop: 6, padding: '4px 6px', fontSize: 11, cursor: 'pointer', background: 'var(--df-slate-bg)', color: 'var(--df-ink-5)', border: '1px solid var(--df-slate-border)', borderRadius: 4, fontWeight: 600 }}
                             >↔ Réinitialiser les largeurs</button>
 
                             {/* Bascules par matière (production) : un clic montre/masque tout un
                                 bloc (tissu, doublure, passementerie…) d'un coup. */}
                             {matieresInPanel && matiereGroups.length > 0 && (
-                                <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid #f3f4f6' }}>
-                                    <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 6, padding: '0 2px' }}>Matières</div>
+                                <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--df-surface-2)' }}>
+                                    <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--df-faint)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 6, padding: '0 2px' }}>Matières</div>
                                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                                         {matiereGroups.map(group => {
                                             const active = localMatieres[group.id] !== false;
@@ -2445,12 +2445,12 @@ function MinuteGrid({
                                                     onClick={e => { e.stopPropagation(); handleToggleMatiere(group.id, !active); }}
                                                     style={{
                                                         display: 'flex', alignItems: 'center', gap: 5, padding: '4px 10px', fontSize: 12, cursor: 'pointer', borderRadius: 999, fontWeight: 600,
-                                                        background: active ? '#eff6ff' : 'white',
-                                                        color: active ? '#1d4ed8' : '#9ca3af',
-                                                        border: `1px solid ${active ? '#bfdbfe' : '#e5e7eb'}`,
+                                                        background: active ? 'var(--df-blue-bg)' : 'var(--df-bg)',
+                                                        color: active ? 'var(--df-x-1D4ED8)' : 'var(--df-faint)',
+                                                        border: `1px solid ${active ? 'var(--df-x-BFDBFE)' : 'var(--df-border-2)'}`,
                                                     }}
                                                 >
-                                                    <span style={{ width: 7, height: 7, borderRadius: '50%', background: active ? '#2563eb' : '#d1d5db' }} />
+                                                    <span style={{ width: 7, height: 7, borderRadius: '50%', background: active ? 'var(--df-blue)' : 'var(--df-border-strong)' }} />
                                                     {group.label}
                                                 </button>
                                             );
@@ -2464,7 +2464,7 @@ function MinuteGrid({
                             {(() => {
                                 const filtered = schemaCols.filter(col => !colSearch || col.label.toLowerCase().includes(colSearch.toLowerCase()));
                                 if (filtered.length === 0) {
-                                    return <div style={{ padding: '8px 4px', fontSize: 12, color: '#9ca3af', textAlign: 'center' }}>Aucune colonne trouvée</div>;
+                                    return <div style={{ padding: '8px 4px', fontSize: 12, color: 'var(--df-faint)', textAlign: 'center' }}>Aucune colonne trouvée</div>;
                                 }
                                 const COLS = 3;
                                 const perCol = Math.ceil(filtered.length / COLS);
@@ -2481,14 +2481,14 @@ function MinuteGrid({
                                                     // (2 réorganisations de grille = le délai constaté). D'où un <div>.
                                                     return (
                                                     <div key={col.field} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 4px', borderRadius: 4, fontSize: 13 }}
-                                                        onMouseEnter={e => e.currentTarget.style.background = '#f3f4f6'}
+                                                        onMouseEnter={e => e.currentTarget.style.background = 'var(--df-surface-2)'}
                                                         onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                                                     >
                                                         <input
                                                             type="checkbox"
                                                             checked={shown}
                                                             onChange={e => handleToggleColumn(col.field, e.target.checked)}
-                                                            style={{ accentColor: '#2563eb', flexShrink: 0, cursor: 'pointer' }}
+                                                            style={{ accentColor: 'var(--df-blue)', flexShrink: 0, cursor: 'pointer' }}
                                                             title="Afficher / masquer la colonne"
                                                         />
                                                         {/* Libellé : double-clic = aller à la colonne (si affichée). Grisé et
@@ -2496,7 +2496,7 @@ function MinuteGrid({
                                                         <span
                                                             onDoubleClick={() => { if (shown) handleJumpToColumn(col.field); }}
                                                             title={shown ? 'Double-cliquer pour aller à la colonne' : 'Cocher pour l\'afficher d\'abord'}
-                                                            style={{ flex: 1, color: shown ? '#111827' : '#9ca3af', userSelect: 'none', cursor: shown ? 'pointer' : 'default' }}
+                                                            style={{ flex: 1, color: shown ? 'var(--df-text)' : 'var(--df-faint)', userSelect: 'none', cursor: shown ? 'pointer' : 'default' }}
                                                         >{col.label}</span>
                                                     </div>
                                                     );
@@ -2513,8 +2513,8 @@ function MinuteGrid({
 
             {/* Indicateur de largeur en live pendant resize */}
             {resizeInfo && (
-                <div style={{ position: 'fixed', bottom: 24, right: 24, background: '#1f2937', color: 'white', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 600, zIndex: 9999, boxShadow: '0 4px 12px rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', gap: 10, pointerEvents: 'none' }}>
-                    <span style={{ color: '#9ca3af', fontWeight: 400 }}>{resizeInfo.name}</span>
+                <div style={{ position: 'fixed', bottom: 24, right: 24, background: 'var(--df-text-1b)', color: 'white', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 600, zIndex: 9999, boxShadow: '0 4px 12px rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', gap: 10, pointerEvents: 'none' }}>
+                    <span style={{ color: 'var(--df-faint)', fontWeight: 400 }}>{resizeInfo.name}</span>
                     <span style={{ color: '#34d399', fontSize: 16 }}>{resizeInfo.width} px</span>
                 </div>
             )}
@@ -2536,11 +2536,11 @@ function MinuteGrid({
                     return (
                     <div style={{
                         position: 'fixed', left, top,
-                        background: 'white', border: '1px solid #E0DED9', borderRadius: 6,
+                        background: 'var(--df-bg)', border: '1px solid var(--df-border)', borderRadius: 6,
                         boxShadow: '0 4px 16px rgba(0,0,0,0.15)', zIndex: 9999,
                         minWidth: 150, overflow: 'hidden',
                     }}>
-                        <div style={{ padding: '6px 12px 4px', fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', borderBottom: '1px solid #f3f4f6' }}>
+                        <div style={{ padding: '6px 12px 4px', fontSize: 10, fontWeight: 700, color: 'var(--df-faint)', textTransform: 'uppercase', borderBottom: '1px solid var(--df-surface-2)' }}>
                             {schema.find(s => s.key === aggMenu.field)?.label || aggMenu.field}
                         </div>
                         {AGG_OPTIONS.map(opt => {
@@ -2549,9 +2549,9 @@ function MinuteGrid({
                                 <div
                                     key={opt.value}
                                     onClick={() => { onAggregationChange(aggMenu.field, opt.value); setAggMenu(null); }}
-                                    style={{ padding: '8px 14px', cursor: 'pointer', fontSize: 13, background: current ? '#f0fdf4' : 'white', fontWeight: current ? 700 : 400, color: current ? '#065f46' : '#111827', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-                                    onMouseEnter={e => { if (!current) e.currentTarget.style.background = '#F4F4F4'; }}
-                                    onMouseLeave={e => { e.currentTarget.style.background = current ? '#f0fdf4' : 'white'; }}
+                                    style={{ padding: '8px 14px', cursor: 'pointer', fontSize: 13, background: current ? 'var(--df-chip-status-bg)' : 'var(--df-bg)', fontWeight: current ? 700 : 400, color: current ? 'var(--df-x-065F46)' : 'var(--df-text)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                                    onMouseEnter={e => { if (!current) e.currentTarget.style.background = 'var(--df-surface)'; }}
+                                    onMouseLeave={e => { e.currentTarget.style.background = current ? 'var(--df-chip-status-bg)' : 'var(--df-bg)'; }}
                                 >
                                     <span>{opt.label}</span>
                                     {current && <span style={{ fontSize: 10 }}>✓</span>}
@@ -2568,7 +2568,7 @@ function MinuteGrid({
             <div style={{ position: 'relative', ...(stickyTop != null ? { marginTop: -GROUP_PANEL_HEIGHT } : {}) }}>
             <div ref={gridContainerRef} className={`ag-theme-alpine${reorderBlocked ? ' reorder-blocked' : ''}`} style={{ width: '100%', height: effectiveHeight, visibility: layoutShown ? 'visible' : 'hidden' }}>
                 {!layoutShown && (
-                    <div style={{ visibility: 'visible', position: 'absolute', top: 14, left: 14, fontSize: 13, color: '#9CA3AF' }}>Chargement du tableau…</div>
+                    <div style={{ visibility: 'visible', position: 'absolute', top: 14, left: 14, fontSize: 13, color: 'var(--df-faint)' }}>Chargement du tableau…</div>
                 )}
                 {mountGrid && (
                 <AgGridReact
@@ -2587,11 +2587,11 @@ function MinuteGrid({
                     context={{ colAggregations, onAggregationChange }}
                     getRowStyle={(params) => {
                         if (params.node.rowPinned === 'bottom') {
-                            return { background: '#ffffff', borderTop: '1px solid #E5E5E3' };
+                            return { background: 'var(--df-bg)', borderTop: '1px solid var(--df-x-E5E5E3)' };
                         }
                         const role = params.data?.pair_role;
-                        if (role === 'parent') return { background: '#eef2ff', fontWeight: 600 };
-                        if (role === 'left' || role === 'right') return { background: '#f8fafc' };
+                        if (role === 'parent') return { background: 'var(--df-indigo-bg)', fontWeight: 600 };
+                        if (role === 'left' || role === 'right') return { background: 'var(--df-slate-bg)' };
                     }}
                     quickFilterText={quickFilter}
                     getRowId={(params) => String(params.data.id)}
@@ -2661,10 +2661,10 @@ function MinuteGrid({
                 alignItems: 'center',
                 justifyContent: 'center',
                 borderRadius: 4,
-                background: manualHeight != null ? '#ecfdf5' : 'transparent',
+                background: manualHeight != null ? 'var(--df-success-bg)' : 'transparent',
             }}
-            onMouseEnter={e => { e.currentTarget.style.background = '#e2e8f0'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = manualHeight != null ? '#ecfdf5' : 'transparent'; }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'var(--df-slate-border)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = manualHeight != null ? 'var(--df-success-bg)' : 'transparent'; }}
         >
             <div style={{ width: 44, height: 4, borderRadius: 2, background: '#94a3b8' }} />
         </div>

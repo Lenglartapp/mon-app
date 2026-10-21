@@ -25,20 +25,20 @@ export default function DaDialog({ open, onClose, title, subtitle, headerExtra, 
       PaperProps={{ sx: { borderRadius: '12px', overflow: 'hidden', boxShadow: '0 20px 40px rgba(17,24,39,0.18)', fontFamily: ROBOTO, ...(height ? { height } : {}) } }}
       slotProps={{ backdrop: { sx: { background: 'rgba(17,24,39,0.4)' } } }}
     >
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '22px 28px 16px', borderBottom: tabs ? 'none' : '1px solid #E8E6E2' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '22px 28px 16px', borderBottom: tabs ? 'none' : '1px solid var(--df-border-soft)' }}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 24, fontWeight: 400, color: '#111827', fontFamily: ROBOTO, lineHeight: 1.2 }}>{title}</div>
-          {subtitle && <div style={{ fontSize: 13, color: '#6B7280', marginTop: 4 }}>{subtitle}</div>}
+          <div style={{ fontSize: 24, fontWeight: 400, color: 'var(--df-text)', fontFamily: ROBOTO, lineHeight: 1.2 }}>{title}</div>
+          {subtitle && <div style={{ fontSize: 13, color: 'var(--df-muted)', marginTop: 4 }}>{subtitle}</div>}
         </div>
         {headerExtra && <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>{headerExtra}</div>}
-        <button onClick={onClose} title="Fermer" style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#9B9A97', display: 'flex', padding: 4 }}>
+        <button onClick={onClose} title="Fermer" style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--df-faint-2)', display: 'flex', padding: 4 }}>
           <X size={20} />
         </button>
       </div>
-      {tabs && <div style={{ padding: '0 28px 14px', borderBottom: '1px solid #E8E6E2' }}>{tabs}</div>}
+      {tabs && <div style={{ padding: '0 28px 14px', borderBottom: '1px solid var(--df-border-soft)' }}>{tabs}</div>}
       <div style={{ flex: 1, overflowY: 'auto', padding: bodyPadding }}>{children}</div>
       {footer && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 28px', borderTop: '1px solid #E8E6E2' }}>{footer}</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 28px', borderTop: '1px solid var(--df-border-soft)' }}>{footer}</div>
       )}
     </Dialog>
   );
@@ -61,7 +61,7 @@ export function DaTabs({ tabs, value, onChange }) {
               opacity: t.disabled ? 0.4 : 1,
               padding: '7px 16px', borderRadius: 99, border: 'none', cursor: t.disabled ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 500,
               fontFamily: 'inherit', whiteSpace: 'nowrap', transition: 'all 0.2s cubic-bezier(0.25, 1, 0.5, 1)',
-              background: active ? '#1E2447' : 'transparent', color: active ? '#FFFFFF' : '#4B5563',
+              background: active ? 'var(--df-primary)' : 'transparent', color: active ? '#FFFFFF' : 'var(--df-text-3)',
               boxShadow: active ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
             }}
           >

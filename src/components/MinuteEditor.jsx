@@ -39,18 +39,18 @@ function SectionPanel({ title, count, expanded, onToggle, onDelete, readOnly, st
   return (
     <div style={{ marginBottom: 28 }}>
       {/* Titre collant (sauf sticky=false) : reste en haut de l'écran tant qu'on défile dans ce tableau */}
-      <div className="df-section-head" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px', height: SECTION_TITLE_HEIGHT, ...(sticky ? { position: 'sticky', top: 0, zIndex: 6, background: '#ffffff' } : {}) }}>
+      <div className="df-section-head" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px', height: SECTION_TITLE_HEIGHT, ...(sticky ? { position: 'sticky', top: 0, zIndex: 6, background: 'var(--df-bg)' } : {}) }}>
         {/* Flèche à gauche du titre ; le titre lui-même replie / déplie aussi */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <IconButton size="small" onClick={onToggle} title={expanded ? 'Replier' : 'Déplier'} sx={{ color: '#9B9A97', ml: -0.5 }}>
+          <IconButton size="small" onClick={onToggle} title={expanded ? 'Replier' : 'Déplier'} sx={{ color: 'var(--df-faint-2)', ml: -0.5 }}>
             <ExpandMoreIcon sx={{ fontSize: 20, transform: expanded ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.2s ease' }} />
           </IconButton>
-          <h3 onClick={onToggle} style={{ margin: 0, fontSize: 20, color: '#111827', fontWeight: 500, fontFamily: 'Roboto, system-ui, sans-serif', cursor: 'pointer' }}>{title}</h3>
-          <span style={{ color: '#9B9A97', fontSize: 13, fontFamily: 'Roboto, system-ui, sans-serif', marginLeft: 4, alignSelf: 'flex-end', paddingBottom: 3 }}>{count} {count > 1 ? 'articles' : 'article'}</span>
+          <h3 onClick={onToggle} style={{ margin: 0, fontSize: 20, color: 'var(--df-text)', fontWeight: 500, fontFamily: 'Roboto, system-ui, sans-serif', cursor: 'pointer' }}>{title}</h3>
+          <span style={{ color: 'var(--df-faint-2)', fontSize: 13, fontFamily: 'Roboto, system-ui, sans-serif', marginLeft: 4, alignSelf: 'flex-end', paddingBottom: 3 }}>{count} {count > 1 ? 'articles' : 'article'}</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
           {onDelete && !readOnly && (
-            <IconButton size="small" onClick={onDelete} title="Supprimer le tableau" sx={{ color: '#d1d5db', '&:hover': { color: '#ef4444', bgcolor: '#fef2f2' } }}>
+            <IconButton size="small" onClick={onDelete} title="Supprimer le tableau" sx={{ color: 'var(--df-border-strong)', '&:hover': { color: 'var(--df-danger)', bgcolor: 'var(--df-danger-bg)' } }}>
               <Trash2 size={16} />
             </IconButton>
           )}
@@ -615,9 +615,9 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
   // Helper to Render Specific Module
   const renderHeaderContent = (title, rowArray) => (
     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-      <h3 style={{ margin: 0, fontSize: 18, color: '#111827', fontWeight: 700 }}>{title}</h3>
+      <h3 style={{ margin: 0, fontSize: 18, color: 'var(--df-text)', fontWeight: 700 }}>{title}</h3>
       <span style={{
-        background: '#f3f4f6', color: '#4b5563', padding: '2px 8px',
+        background: 'var(--df-surface-2)', color: 'var(--df-text-3)', padding: '2px 8px',
         borderRadius: 12, fontSize: 12, fontWeight: 600
       }}>
         {rowArray.length} {rowArray.length > 1 ? 'articles' : 'article'}
@@ -948,9 +948,9 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
       {pieceConflicts.length > 0 && (
         <div style={{
           position: 'fixed', bottom: 24, right: 24, zIndex: 9999,
-          background: '#FEF3C7', border: '1px solid #F59E0B',
+          background: 'var(--df-amber-bg)', border: '1px solid #F59E0B',
           borderRadius: 10,
-          fontSize: 13, color: '#92400E',
+          fontSize: 13, color: 'var(--df-warn-text)',
           boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
           maxWidth: 420,
         }}>
@@ -978,7 +978,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
 
           {conflictsOpen && (
             <div style={{
-              borderTop: '1px solid #FCD34D', padding: '10px 14px',
+              borderTop: '1px solid var(--df-x-FCD34D)', padding: '10px 14px',
               maxHeight: '42vh', overflowY: 'auto',
             }}>
               {pieceConflicts.map(c => (
@@ -991,7 +991,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
                   </div>
                 </div>
               ))}
-              <div style={{ fontSize: 11, opacity: 0.7, borderTop: '1px solid #FCD34D', paddingTop: 7 }}>
+              <div style={{ fontSize: 11, opacity: 0.7, borderTop: '1px solid var(--df-x-FCD34D)', paddingTop: 7 }}>
                 Renseignez la colonne « Fenêtre » ou modifiez la pièce pour distinguer ces lignes.
               </div>
             </div>
@@ -1107,10 +1107,10 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
                 borderRadius: 8,
                 textTransform: 'none',
                 fontWeight: 600,
-                borderColor: '#E5E7EB',
-                color: '#374151',
-                bgcolor: 'white',
-                '&:hover': { bgcolor: '#F4F4F4', borderColor: '#D1D5DB' }
+                borderColor: 'var(--df-border-2)',
+                color: 'var(--df-text-2)',
+                bgcolor: 'var(--df-bg)',
+                '&:hover': { bgcolor: 'var(--df-surface)', borderColor: 'var(--df-border-strong)' }
               }}
             >
               Ajouter un module

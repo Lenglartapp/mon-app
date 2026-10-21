@@ -14,6 +14,7 @@ import '@fontsource/roboto/latin-ext-700.css';
 import React from 'react';
 import './lib/install'; // tôt : capte la proposition d'installation (Paramètres › Application)
 import ReactDOM from "react-dom/client";
+import "./theme/tokens.css"; // couleurs nommées (mode clair / sombre)
 import "./index.css";
 
 // AG Grid Enterprise

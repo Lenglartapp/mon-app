@@ -140,16 +140,16 @@ function FieldSelect({ fields, value, onChange }) {
                 ref={btnRef}
                 onClick={openList}
                 style={{
-                    width: 150, padding: '4px 8px', border: '1px solid #d1d5db', borderRadius: 4,
-                    background: 'white', cursor: 'pointer', textAlign: 'left', fontSize: 13,
+                    width: 150, padding: '4px 8px', border: '1px solid var(--df-border-strong)', borderRadius: 4,
+                    background: 'var(--df-bg)', cursor: 'pointer', textAlign: 'left', fontSize: 13,
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    color: selected ? '#111827' : '#9ca3af',
+                    color: selected ? 'var(--df-text)' : 'var(--df-faint)',
                 }}
             >
                 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
                     {selected ? colLabel(selected) : '— Champ —'}
                 </span>
-                <span style={{ fontSize: 10, color: '#9ca3af', flexShrink: 0, marginLeft: 4 }}>▾</span>
+                <span style={{ fontSize: 10, color: 'var(--df-faint)', flexShrink: 0, marginLeft: 4 }}>▾</span>
             </button>
             {/* Rendue au niveau de la page (portail) : ni coupée ni décalée par le panneau Filtrer */}
             {open && createPortal(
@@ -157,19 +157,19 @@ function FieldSelect({ fields, value, onChange }) {
                     <div style={{ position: 'fixed', inset: 0, zIndex: 9998 }} onClick={() => { setOpen(false); setSearch(''); }} />
                     <div style={{
                         position: 'fixed', ...(pos || { top: 0, left: 0 }),
-                        background: 'white', border: '1px solid #E0DED9', borderRadius: 6,
+                        background: 'var(--df-bg)', border: '1px solid var(--df-border)', borderRadius: 6,
                         boxShadow: '0 4px 16px rgba(0,0,0,0.12)', zIndex: 9999,
                         minWidth: 220, overflow: 'hidden',
                         display: 'flex', flexDirection: 'column',
                     }}>
-                        <div style={{ padding: '6px 8px', borderBottom: '1px solid #f3f4f6' }}>
+                        <div style={{ padding: '6px 8px', borderBottom: '1px solid var(--df-surface-2)' }}>
                             <input
                                 ref={inputRef}
                                 type="text"
                                 placeholder="Rechercher un champ..."
                                 value={search}
                                 onChange={e => setSearch(e.target.value)}
-                                style={{ width: '100%', padding: '3px 6px', border: '1px solid #E0DED9', borderRadius: 3, fontSize: 12, outline: 'none', boxSizing: 'border-box' }}
+                                style={{ width: '100%', padding: '3px 6px', border: '1px solid var(--df-border)', borderRadius: 3, fontSize: 12, outline: 'none', boxSizing: 'border-box' }}
                             />
                         </div>
                         <div style={{ overflowY: 'auto', flex: 1 }}>
@@ -179,18 +179,18 @@ function FieldSelect({ fields, value, onChange }) {
                                     onClick={() => { onChange(f.key); setOpen(false); setSearch(''); }}
                                     style={{
                                         padding: '7px 12px', cursor: 'pointer', fontSize: 13,
-                                        background: f.key === value ? '#eff6ff' : 'white',
+                                        background: f.key === value ? 'var(--df-blue-bg)' : 'var(--df-bg)',
                                         fontWeight: f.key === value ? 600 : 400,
-                                        color: f.key === value ? '#2563eb' : '#111827',
+                                        color: f.key === value ? 'var(--df-blue)' : 'var(--df-text)',
                                     }}
-                                    onMouseEnter={e => { if (f.key !== value) e.currentTarget.style.background = '#F4F4F4'; }}
-                                    onMouseLeave={e => { e.currentTarget.style.background = f.key === value ? '#eff6ff' : 'white'; }}
+                                    onMouseEnter={e => { if (f.key !== value) e.currentTarget.style.background = 'var(--df-surface)'; }}
+                                    onMouseLeave={e => { e.currentTarget.style.background = f.key === value ? 'var(--df-blue-bg)' : 'var(--df-bg)'; }}
                                 >
                                     {colLabel(f)}
                                 </div>
                             ))}
                             {filtered.length === 0 && (
-                                <div style={{ padding: '8px 12px', fontSize: 12, color: '#9ca3af' }}>Aucun champ</div>
+                                <div style={{ padding: '8px 12px', fontSize: 12, color: 'var(--df-faint)' }}>Aucun champ</div>
                             )}
                         </div>
                     </div>
@@ -236,14 +236,14 @@ export default function FilterPanel({ schema, conditions, onChange, filters, set
 
     return (
         <div style={{
-            background: 'white', border: '1px solid #E0DED9', borderRadius: 8,
+            background: 'var(--df-bg)', border: '1px solid var(--df-border)', borderRadius: 8,
             boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
             padding: 16, minWidth: 560,
         }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#374151', marginBottom: 12 }}>Filtrer</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--df-text-2)', marginBottom: 12 }}>Filtrer</div>
 
             {conditions.length === 0 && (
-                <div style={{ fontSize: 13, color: '#9ca3af', marginBottom: 12, padding: '8px 0' }}>
+                <div style={{ fontSize: 13, color: 'var(--df-faint)', marginBottom: 12, padding: '8px 0' }}>
                     Aucun filtre actif — ajoutez une condition pour filtrer les lignes.
                 </div>
             )}
@@ -257,14 +257,14 @@ export default function FilterPanel({ schema, conditions, onChange, filters, set
                 return (
                     <div key={cond.id} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
                         {i === 0 ? (
-                            <div style={{ width: 80, fontSize: 12, color: '#6b7280', textAlign: 'right', paddingRight: 4, flexShrink: 0 }}>
+                            <div style={{ width: 80, fontSize: 12, color: 'var(--df-muted)', textAlign: 'right', paddingRight: 4, flexShrink: 0 }}>
                                 Lorsque
                             </div>
                         ) : (
                             <select
                                 value={cond.logic}
                                 onChange={e => update(cond.id, { logic: e.target.value })}
-                                style={{ width: 80, padding: '4px 6px', border: '1px solid #d1d5db', borderRadius: 4, fontSize: 13, flexShrink: 0 }}
+                                style={{ width: 80, padding: '4px 6px', border: '1px solid var(--df-border-strong)', borderRadius: 4, fontSize: 13, flexShrink: 0 }}
                             >
                                 <option value="et">et</option>
                                 <option value="ou">ou</option>
@@ -280,7 +280,7 @@ export default function FilterPanel({ schema, conditions, onChange, filters, set
                         <select
                             value={cond.operator}
                             onChange={e => update(cond.id, { operator: e.target.value, value: '' })}
-                            style={{ padding: '4px 6px', border: '1px solid #d1d5db', borderRadius: 4, fontSize: 13, minWidth: 130 }}
+                            style={{ padding: '4px 6px', border: '1px solid var(--df-border-strong)', borderRadius: 4, fontSize: 13, minWidth: 130 }}
                         >
                             {operators.map(op => (
                                 <option key={op.value} value={op.value}>{op.label}</option>
@@ -295,7 +295,7 @@ export default function FilterPanel({ schema, conditions, onChange, filters, set
                                 <select
                                     value={cond.value}
                                     onChange={e => update(cond.id, { value: e.target.value })}
-                                    style={{ flex: 1, padding: '4px 6px', border: '1px solid #d1d5db', borderRadius: 4, fontSize: 13, outline: 'none', minWidth: 80, background: 'white' }}
+                                    style={{ flex: 1, padding: '4px 6px', border: '1px solid var(--df-border-strong)', borderRadius: 4, fontSize: 13, outline: 'none', minWidth: 80, background: 'var(--df-bg)' }}
                                 >
                                     <option value="">— Choisir une valeur —</option>
                                     {colOptions.map(o => (
@@ -308,7 +308,7 @@ export default function FilterPanel({ schema, conditions, onChange, filters, set
                                     placeholder="Saisir une valeur"
                                     value={cond.value}
                                     onChange={e => update(cond.id, { value: e.target.value })}
-                                    style={{ flex: 1, padding: '4px 8px', border: '1px solid #d1d5db', borderRadius: 4, fontSize: 13, outline: 'none', minWidth: 80 }}
+                                    style={{ flex: 1, padding: '4px 8px', border: '1px solid var(--df-border-strong)', borderRadius: 4, fontSize: 13, outline: 'none', minWidth: 80 }}
                                 />
                             )
                         ) : (
@@ -317,9 +317,9 @@ export default function FilterPanel({ schema, conditions, onChange, filters, set
 
                         <button
                             onClick={() => remove(cond.id)}
-                            style={{ flexShrink: 0, padding: 4, color: '#9ca3af', borderRadius: 3, display: 'flex', alignItems: 'center', background: 'transparent', border: 'none', cursor: 'pointer' }}
-                            onMouseEnter={e => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.background = '#fee2e2'; }}
-                            onMouseLeave={e => { e.currentTarget.style.color = '#9ca3af'; e.currentTarget.style.background = 'transparent'; }}
+                            style={{ flexShrink: 0, padding: 4, color: 'var(--df-faint)', borderRadius: 3, display: 'flex', alignItems: 'center', background: 'transparent', border: 'none', cursor: 'pointer' }}
+                            onMouseEnter={e => { e.currentTarget.style.color = 'var(--df-danger)'; e.currentTarget.style.background = 'var(--df-danger-border)'; }}
+                            onMouseLeave={e => { e.currentTarget.style.color = 'var(--df-faint)'; e.currentTarget.style.background = 'transparent'; }}
                             title="Supprimer la condition"
                         >
                             <Trash2 size={14} />
@@ -332,11 +332,11 @@ export default function FilterPanel({ schema, conditions, onChange, filters, set
                 onClick={addCondition}
                 style={{
                     display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px',
-                    color: '#2563eb', fontSize: 13, borderRadius: 4, marginTop: 4,
+                    color: 'var(--df-blue)', fontSize: 13, borderRadius: 4, marginTop: 4,
                     border: '1px dashed #93c5fd', background: 'transparent', cursor: 'pointer',
                     width: '100%', justifyContent: 'center',
                 }}
-                onMouseEnter={e => e.currentTarget.style.background = '#eff6ff'}
+                onMouseEnter={e => e.currentTarget.style.background = 'var(--df-blue-bg)'}
                 onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
             >
                 <Plus size={14} /> Ajouter une condition

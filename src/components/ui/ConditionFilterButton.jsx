@@ -16,9 +16,9 @@ export default function ConditionFilterButton({ schema, conditions, onChange, al
         onClick={() => setOpen(o => !o)}
         style={{
           cursor: 'pointer', padding: '5px 12px', height: 38,
-          background: hasActive ? '#dcfce7' : (open ? '#eff6ff' : 'white'),
-          color: hasActive ? '#15803d' : '#374151',
-          border: `1px solid ${hasActive ? '#86efac' : (open ? '#2563eb' : '#d1d5db')}`,
+          background: hasActive ? 'var(--df-green-bg-2)' : (open ? 'var(--df-selected)' : 'var(--df-bg)'),
+          color: hasActive ? 'var(--df-x-15803D)' : 'var(--df-text-2)',
+          border: `1px solid ${hasActive ? 'var(--df-x-86EFAC)' : (open ? 'var(--df-blue)' : 'var(--df-border-strong)')}`,
           borderRadius: 6, display: 'flex', alignItems: 'center', gap: 6, fontSize: 13,
           fontWeight: hasActive ? 600 : 400, fontFamily: 'inherit', whiteSpace: 'nowrap',
         }}

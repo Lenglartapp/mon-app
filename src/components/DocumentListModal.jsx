@@ -37,7 +37,7 @@ function CategorySelect({ value, onChange, error }) {
             {/* Label */}
             <Typography variant="caption" sx={{
                 display: 'block', mb: 0.6, fontSize: 12, fontWeight: 600,
-                color: error ? '#EF4444' : '#6B7280',
+                color: error ? 'var(--df-danger)' : 'var(--df-muted)',
             }}>
                 Catégorie *
             </Typography>
@@ -48,9 +48,9 @@ function CategorySelect({ value, onChange, error }) {
                 sx={{
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                     px: 1.5, height: 38, borderRadius: 2, cursor: 'pointer',
-                    border: `1px solid ${error ? '#EF4444' : open ? '#1F2937' : '#D1D5DB'}`,
-                    bgcolor: 'white', transition: 'border-color 0.15s',
-                    '&:hover': { borderColor: '#1F2937' },
+                    border: `1px solid ${error ? 'var(--df-danger)' : open ? 'var(--df-text-1b)' : 'var(--df-border-strong)'}`,
+                    bgcolor: 'var(--df-bg)', transition: 'border-color 0.15s',
+                    '&:hover': { borderColor: 'var(--df-text-1b)' },
                 }}
             >
                 {selected ? (
@@ -64,18 +64,18 @@ function CategorySelect({ value, onChange, error }) {
                         {selected.label}
                     </span>
                 ) : (
-                    <Typography sx={{ fontSize: 13, color: '#9CA3AF' }}>
+                    <Typography sx={{ fontSize: 13, color: 'var(--df-faint)' }}>
                         Sélectionner une catégorie…
                     </Typography>
                 )}
                 {/* Chevron */}
-                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ color: '#9CA3AF', flexShrink: 0, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ color: 'var(--df-faint)', flexShrink: 0, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>
                     <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
             </Box>
 
             {error && (
-                <Typography variant="caption" sx={{ color: '#EF4444', mt: 0.4, display: 'block', fontSize: 11, ml: 0.5 }}>
+                <Typography variant="caption" sx={{ color: 'var(--df-danger)', mt: 0.4, display: 'block', fontSize: 11, ml: 0.5 }}>
                     {error}
                 </Typography>
             )}
@@ -90,7 +90,7 @@ function CategorySelect({ value, onChange, error }) {
                 PaperProps={{
                     sx: {
                         mt: 0.5, borderRadius: 2, boxShadow: '0 8px 24px rgba(0,0,0,0.10)',
-                        border: '1px solid #F3F4F6', minWidth: 220, py: 1,
+                        border: '1px solid var(--df-surface-2)', minWidth: 220, py: 1,
                     }
                 }}
             >
@@ -101,8 +101,8 @@ function CategorySelect({ value, onChange, error }) {
                         sx={{
                             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                             px: 2, py: 0.9, cursor: 'pointer',
-                            bgcolor: value === t.value ? '#F4F4F4' : 'transparent',
-                            '&:hover': { bgcolor: '#F4F4F4' },
+                            bgcolor: value === t.value ? 'var(--df-surface)' : 'transparent',
+                            '&:hover': { bgcolor: 'var(--df-surface)' },
                         }}
                     >
                         <span style={{
@@ -114,7 +114,7 @@ function CategorySelect({ value, onChange, error }) {
                         }}>
                             {t.label}
                         </span>
-                        {value === t.value && <Check size={14} color="#1F2937" />}
+                        {value === t.value && <Check size={14} color="var(--df-text-1b)" />}
                     </Box>
                 ))}
             </Popover>
@@ -277,42 +277,42 @@ export default function DocumentListModal({ open, onClose, documents = [], onUpd
                     {documents.length === 0 ? (
                         <Box sx={{
                             display: 'flex', flexDirection: 'column', alignItems: 'center',
-                            py: 6, gap: 1.5, color: '#9CA3AF',
+                            py: 6, gap: 1.5, color: 'var(--df-faint)',
                         }}>
                             <FolderOpen size={36} strokeWidth={1.2} />
-                            <Typography variant="body2" sx={{ color: '#9CA3AF' }}>
+                            <Typography variant="body2" sx={{ color: 'var(--df-faint)' }}>
                                 Aucun document lié à ce projet
                             </Typography>
-                            <Typography variant="caption" sx={{ color: '#D1D5DB' }}>
+                            <Typography variant="caption" sx={{ color: 'var(--df-border-strong)' }}>
                                 Cliquez sur « Ajouter un document » pour commencer
                             </Typography>
                         </Box>
                     ) : filtered.length === 0 ? (
                         <Box sx={{ py: 4, textAlign: 'center' }}>
-                            <Typography variant="body2" sx={{ color: '#9CA3AF', fontStyle: 'italic' }}>
+                            <Typography variant="body2" sx={{ color: 'var(--df-faint)', fontStyle: 'italic' }}>
                                 Aucun document ne correspond à la recherche
                             </Typography>
                         </Box>
                     ) : (
-                        <Box sx={{ border: '1px solid #E0DED9', borderRadius: '8px', overflow: 'hidden' }}>
+                        <Box sx={{ border: '1px solid var(--df-border)', borderRadius: '8px', overflow: 'hidden' }}>
                             {filtered.map((doc, i) => (
                                 <Box key={doc.id} sx={{
                                     display: 'flex', alignItems: 'center', gap: 2,
                                     px: 2, py: 1.5,
-                                    borderBottom: i < filtered.length - 1 ? '1px solid #E8E6E2' : 'none',
-                                    bgcolor: 'white',
-                                    '&:hover': { bgcolor: '#F7F7F5' },
+                                    borderBottom: i < filtered.length - 1 ? '1px solid var(--df-border-soft)' : 'none',
+                                    bgcolor: 'var(--df-bg)',
+                                    '&:hover': { bgcolor: 'var(--df-surface-3)' },
                                 }}>
                                     {/* Nom + hostname */}
                                     <Box sx={{ flex: '0 0 220px', minWidth: 0 }}>
                                         <a href={doc.url} target="_blank" rel="noopener noreferrer"
-                                            style={{ color: '#1E2447', textDecoration: 'none', fontWeight: 500, fontSize: 14, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                            style={{ color: 'var(--df-primary-text)', textDecoration: 'none', fontWeight: 500, fontSize: 14, display: 'flex', alignItems: 'center', gap: 4 }}>
                                             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                                 {doc.name}
                                             </span>
                                             <ExternalLink size={11} style={{ flexShrink: 0 }} />
                                         </a>
-                                        <Typography variant="caption" sx={{ color: '#9CA3AF', fontSize: 11 }}>
+                                        <Typography variant="caption" sx={{ color: 'var(--df-faint)', fontSize: 11 }}>
                                             {getHostname(doc.url)}
                                         </Typography>
                                     </Box>
@@ -324,10 +324,10 @@ export default function DocumentListModal({ open, onClose, documents = [], onUpd
 
                                     {/* Date */}
                                     <Box sx={{ flex: '0 0 90px' }}>
-                                        <Typography variant="caption" sx={{ color: '#6B7280', fontSize: 11 }}>
+                                        <Typography variant="caption" sx={{ color: 'var(--df-muted)', fontSize: 11 }}>
                                             Ajouté le
                                         </Typography>
-                                        <Typography variant="body2" sx={{ fontSize: 13, fontWeight: 500, color: '#374151' }}>
+                                        <Typography variant="body2" sx={{ fontSize: 13, fontWeight: 500, color: 'var(--df-text-2)' }}>
                                             {formatDate(doc.createdAt)}
                                         </Typography>
                                     </Box>
@@ -336,18 +336,18 @@ export default function DocumentListModal({ open, onClose, documents = [], onUpd
                                     <Box sx={{ flex: 1, minWidth: 0 }}>
                                         {doc.comment ? (
                                             <>
-                                                <Typography variant="caption" sx={{ color: '#6B7280', fontSize: 11 }}>
+                                                <Typography variant="caption" sx={{ color: 'var(--df-muted)', fontSize: 11 }}>
                                                     Commentaire
                                                 </Typography>
                                                 <Typography variant="body2" sx={{
-                                                    fontSize: 12, color: '#374151',
+                                                    fontSize: 12, color: 'var(--df-text-2)',
                                                     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                                                 }}>
                                                     {doc.comment}
                                                 </Typography>
                                             </>
                                         ) : (
-                                            <Typography variant="caption" sx={{ color: '#D1D5DB', fontSize: 11, fontStyle: 'italic' }}>
+                                            <Typography variant="caption" sx={{ color: 'var(--df-border-strong)', fontSize: 11, fontStyle: 'italic' }}>
                                                 —
                                             </Typography>
                                         )}
@@ -356,8 +356,8 @@ export default function DocumentListModal({ open, onClose, documents = [], onUpd
                                     {/* Delete */}
                                     <Tooltip title="Supprimer" placement="left">
                                         <IconButton size="small" onClick={() => handleDelete(doc.id)} sx={{
-                                            color: '#9CA3AF', flexShrink: 0,
-                                            '&:hover': { color: '#EF4444', bgcolor: '#FEF2F2' },
+                                            color: 'var(--df-faint)', flexShrink: 0,
+                                            '&:hover': { color: 'var(--df-danger)', bgcolor: 'var(--df-danger-bg)' },
                                         }}>
                                             <Trash2 size={15} />
                                         </IconButton>
@@ -383,18 +383,18 @@ export default function DocumentListModal({ open, onClose, documents = [], onUpd
                     <Box onClick={() => { setActiveFilter(null); setFilterAnchor(null); }} sx={{
                         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                         px: 2, py: 1, cursor: 'pointer', fontSize: 13, fontWeight: 600,
-                        color: activeFilter === null ? '#111827' : '#6B7280',
-                        bgcolor: activeFilter === null ? '#F4F4F4' : 'transparent',
-                        '&:hover': { bgcolor: '#F4F4F4' },
+                        color: activeFilter === null ? 'var(--df-text)' : 'var(--df-muted)',
+                        bgcolor: activeFilter === null ? 'var(--df-surface)' : 'transparent',
+                        '&:hover': { bgcolor: 'var(--df-surface)' },
                     }}>
                         Tous les types
-                        {activeFilter === null && <Check size={14} color="#1F2937" />}
+                        {activeFilter === null && <Check size={14} color="var(--df-text-1b)" />}
                     </Box>
                     {DOC_TYPES.map(t => (
                         <Box key={t.value} onClick={() => { setActiveFilter(t.value); setFilterAnchor(null); }} sx={{
                             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                             px: 2, py: 1, cursor: 'pointer', fontSize: 13,
-                            color: activeFilter === t.value ? t.color : '#374151',
+                            color: activeFilter === t.value ? t.color : 'var(--df-text-2)',
                             bgcolor: activeFilter === t.value ? t.bg : 'transparent',
                             fontWeight: activeFilter === t.value ? 700 : 500,
                             '&:hover': { bgcolor: t.bg },

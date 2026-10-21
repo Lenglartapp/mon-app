@@ -74,10 +74,10 @@ export default function EditStockItemModal({ item, zones = [], onClose, onSave }
   };
 
   // DA : coque DaDialog, libellés gris au-dessus des champs, sections encadrées, bleu nuit.
-  const sectionSx = { p: 2, border: '1px solid #E0DED9', borderRadius: '8px' };
+  const sectionSx = { p: 2, border: '1px solid var(--df-border)', borderRadius: '8px' };
   const sectionTitle = (t, extra) => (
     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
-      <Typography sx={{ fontSize: 15, fontWeight: 500, color: '#111827', fontFamily: 'Roboto, system-ui, sans-serif' }}>{t}</Typography>
+      <Typography sx={{ fontSize: 15, fontWeight: 500, color: 'var(--df-text)', fontFamily: 'Roboto, system-ui, sans-serif' }}>{t}</Typography>
       {extra}
     </Box>
   );
@@ -98,10 +98,10 @@ export default function EditStockItemModal({ item, zones = [], onClose, onSave }
       maxWidth="sm"
       footer={(
         <>
-          <Button onClick={onClose} sx={{ marginLeft: 'auto', color: '#374151', textTransform: 'none', fontWeight: 600, border: '1px solid #E0DED9', borderRadius: '8px', px: 2, height: 38 }}>Annuler</Button>
+          <Button onClick={onClose} sx={{ marginLeft: 'auto', color: 'var(--df-text-2)', textTransform: 'none', fontWeight: 600, border: '1px solid var(--df-border)', borderRadius: '8px', px: 2, height: 38 }}>Annuler</Button>
           <Button
             variant="contained" disableElevation onClick={save} disabled={!canSave}
-            sx={{ bgcolor: '#1E2447', textTransform: 'none', fontWeight: 600, px: 3, borderRadius: '8px', height: 38, '&:hover': { bgcolor: '#2A3260' } }}
+            sx={{ bgcolor: 'var(--df-primary)', textTransform: 'none', fontWeight: 600, px: 3, borderRadius: '8px', height: 38, '&:hover': { bgcolor: 'var(--df-navy-2)' } }}
           >
             Enregistrer
           </Button>
@@ -110,7 +110,7 @@ export default function EditStockItemModal({ item, zones = [], onClose, onSave }
     >
       <Stack spacing={3}>
         {isToComplete && (
-          <Typography sx={{ fontSize: 13, color: '#374151', bgcolor: '#EEF4FD', borderRadius: '8px', px: 1.5, py: 1 }}>
+          <Typography sx={{ fontSize: 13, color: 'var(--df-text-2)', bgcolor: 'var(--df-selected)', borderRadius: '8px', px: 1.5, py: 1 }}>
             Réception Odoo : <b>{received} {unitLabel}</b> reçus. Détaille les pièces puis indique l'emplacement.
           </Typography>
         )}
@@ -144,33 +144,33 @@ export default function EditStockItemModal({ item, zones = [], onClose, onSave }
         {/* PIÈCES / QUANTITÉ */}
         <Box sx={sectionSx}>
           {sectionTitle('Pièces / rouleaux', (
-            <Button size="small" startIcon={<Plus size={14} />} onClick={addPiece} sx={{ textTransform: 'none', fontWeight: 600, color: '#1E2447' }}>Ajouter une pièce</Button>
+            <Button size="small" startIcon={<Plus size={14} />} onClick={addPiece} sx={{ textTransform: 'none', fontWeight: 600, color: 'var(--df-primary-text)' }}>Ajouter une pièce</Button>
           ))}
           {!hasPieces && (
             <Box sx={{ width: 200 }}>
               <DaField label="Quantité totale">
                 <TextField fullWidth size="small" type="number" value={manualQty} onChange={(e) => setManualQty(e.target.value)} sx={DA_FIELD_SX}
-                  InputProps={{ endAdornment: <InputAdornment position="end"><span style={{ color: '#6B7280', fontSize: 13 }}>{unitLabel}</span></InputAdornment> }} />
+                  InputProps={{ endAdornment: <InputAdornment position="end"><span style={{ color: 'var(--df-muted)', fontSize: 13 }}>{unitLabel}</span></InputAdornment> }} />
               </DaField>
             </Box>
           )}
           <Stack spacing={1}>
             {pieces.map((p, idx) => (
               <Box key={p.id} sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
-                <Typography sx={{ color: '#374151', fontSize: 13, fontWeight: 500, minWidth: 70 }}>Pièce {idx + 1}</Typography>
+                <Typography sx={{ color: 'var(--df-text-2)', fontSize: 13, fontWeight: 500, minWidth: 70 }}>Pièce {idx + 1}</Typography>
                 <TextField
                   type="number" value={p.qty} onChange={(e) => setPieceQty(p.id, e.target.value)} size="small" sx={{ ...DA_FIELD_SX, width: 140 }}
                   autoFocus={isToComplete && idx === pieces.length - 1 && p.qty === ''}
-                  InputProps={{ endAdornment: <InputAdornment position="end"><span style={{ color: '#6B7280', fontSize: 13 }}>{unitLabel}</span></InputAdornment> }}
+                  InputProps={{ endAdornment: <InputAdornment position="end"><span style={{ color: 'var(--df-muted)', fontSize: 13 }}>{unitLabel}</span></InputAdornment> }}
                 />
                 <Box sx={{ flex: 1 }} />
-                <IconButton size="small" onClick={() => removePiece(p.id)} title="Retirer la pièce" sx={{ color: '#6B7280' }}><Minus size={16} /></IconButton>
+                <IconButton size="small" onClick={() => removePiece(p.id)} title="Retirer la pièce" sx={{ color: 'var(--df-muted)' }}><Minus size={16} /></IconButton>
               </Box>
             ))}
           </Stack>
           {hasPieces && (
-            <Box sx={{ mt: 1.5, display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', fontSize: 13, color: '#6B7280' }}>
-              <span>{filledPieces.length ? 'Total' : 'Stock actuel'} : <b style={{ color: '#111827' }}>{totalQty}</b> {unitLabel}</span>
+            <Box sx={{ mt: 1.5, display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', fontSize: 13, color: 'var(--df-muted)' }}>
+              <span>{filledPieces.length ? 'Total' : 'Stock actuel'} : <b style={{ color: 'var(--df-text)' }}>{totalQty}</b> {unitLabel}</span>
               {ecart != null && (ecart === 0
                 ? <TonePill tone={4}>Conforme à la réception ({received})</TonePill>
                 : <TonePill tone={null}>Écart de {ecart > 0 ? '+' : ''}{ecart} avec la réception ({received}) — le total des pièces fera foi</TonePill>)}

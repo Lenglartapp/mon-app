@@ -31,7 +31,7 @@ const RichArea = React.forwardRef(function RichArea({ value, editable, onCommit,
         const next = htmlToNotes(elRef.current);
         if (next !== (value || "")) onCommit(next);
       }}
-      style={{ outline: "none", fontSize: 13.5, lineHeight: 1.55, color: "#37352F", wordBreak: "break-word", ...style }}
+      style={{ outline: "none", fontSize: 13.5, lineHeight: 1.55, color: "var(--df-ink-2)", wordBreak: "break-word", ...style }}
     />
   );
 });
@@ -46,15 +46,15 @@ const TOOLS = [
 
 function Toolbar() {
   return (
-    <div style={{ display: "flex", gap: 2, padding: 4, borderBottom: "1px solid #E0DED9" }}>
+    <div style={{ display: "flex", gap: 2, padding: 4, borderBottom: "1px solid var(--df-border)" }}>
       {TOOLS.map(({ cmd, icon, title }) => (
         <button
           key={cmd}
           title={title}
           // mousedown + preventDefault : garde la sélection dans la zone d'édition
           onMouseDown={(e) => { e.preventDefault(); document.execCommand(cmd); }}
-          style={{ width: 30, height: 28, display: "grid", placeItems: "center", border: "none", borderRadius: 5, background: "transparent", color: "#37352F", cursor: "pointer" }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = "#EFEFED"; }}
+          style={{ width: 30, height: 28, display: "grid", placeItems: "center", border: "none", borderRadius: 5, background: "transparent", color: "var(--df-ink-2)", cursor: "pointer" }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = "var(--df-hover)"; }}
           onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
         >
           {React.createElement(icon, { size: 15 })}
@@ -90,10 +90,10 @@ function ExpandedEditor({ value, editable, onCommit, onClose }) {
       onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
       style={{ position: "fixed", inset: 0, background: "rgba(15,15,15,0.35)", zIndex: 1300, display: "grid", placeItems: "center", padding: 24 }}
     >
-      <div style={{ width: "min(760px, 100%)", maxHeight: "80vh", display: "flex", flexDirection: "column", background: "white", borderRadius: 10, boxShadow: "0 16px 48px rgba(15,15,15,0.2)", overflow: "hidden" }}>
+      <div style={{ width: "min(760px, 100%)", maxHeight: "80vh", display: "flex", flexDirection: "column", background: "var(--df-bg)", borderRadius: 10, boxShadow: "0 16px 48px rgba(15,15,15,0.2)", overflow: "hidden" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px 8px" }}>
-          <span style={{ fontSize: 14, fontWeight: 600, color: "#37352F" }}>Notes</span>
-          <button onClick={onClose} title="Fermer (Échap)" style={{ border: "none", background: "transparent", cursor: "pointer", color: "#9B9A97", display: "grid", placeItems: "center", padding: 4, borderRadius: 5 }}>
+          <span style={{ fontSize: 14, fontWeight: 600, color: "var(--df-ink-2)" }}>Notes</span>
+          <button onClick={onClose} title="Fermer (Échap)" style={{ border: "none", background: "transparent", cursor: "pointer", color: "var(--df-faint-2)", display: "grid", placeItems: "center", padding: 4, borderRadius: 5 }}>
             <X size={16} />
           </button>
         </div>
@@ -129,10 +129,10 @@ export default function NotesBlock({ value, onSave, editable = true, fill = fals
         style={{
           position: fill ? "absolute" : "relative", inset: fill ? 0 : undefined,
           display: "flex", flexDirection: "column", minHeight: 0,
-          background: "#F4F4F4", borderRadius: 8, padding: "10px 14px 8px",
+          background: "var(--df-surface)", borderRadius: 8, padding: "10px 14px 8px",
         }}
       >
-        <div style={{ fontSize: 12, fontWeight: 500, color: "#9B9A97", marginBottom: 4 }}>Notes</div>
+        <div style={{ fontSize: 12, fontWeight: 500, color: "var(--df-faint-2)", marginBottom: 4 }}>Notes</div>
         <div style={{ flex: 1, minHeight: 0, overflowY: "auto", paddingRight: 22 }}>
           <RichArea value={value} editable={editable} onCommit={onSave} placeholder={editable ? "Ajouter une note…" : "Aucune note"} />
         </div>
@@ -141,7 +141,7 @@ export default function NotesBlock({ value, onSave, editable = true, fill = fals
           title="Agrandir et mettre en forme"
           style={{
             position: "absolute", right: 6, bottom: 6, width: 26, height: 26, display: "grid", placeItems: "center",
-            border: "none", borderRadius: 5, background: hover ? "#EAEAE8" : "transparent", color: "#9B9A97",
+            border: "none", borderRadius: 5, background: hover ? "var(--df-x-EAEAE8)" : "transparent", color: "var(--df-faint-2)",
             cursor: "pointer", opacity: hover ? 1 : 0.6, transition: "opacity .15s, background .15s",
           }}
         >

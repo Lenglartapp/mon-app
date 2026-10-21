@@ -32,11 +32,11 @@ const FILTER_SCHEMA = [
 ];
 
 const pctColor = (pct) => {
-    if (pct === null || pct === undefined) return '#9CA3AF';
+    if (pct === null || pct === undefined) return 'var(--df-faint)';
     if (pct >= 100) return '#10B981';
     if (pct >= 50) return '#3B82F6';
     if (pct > 0) return '#F59E0B';
-    return '#9CA3AF';
+    return 'var(--df-faint)';
 };
 
 const AssistantView = ({ stats, onUpdateProject }) => {
@@ -145,25 +145,25 @@ const AssistantView = ({ stats, onUpdateProject }) => {
     // dessous. Fond opaque obligatoire (sinon les lignes défileraient au travers) et
     // z-index sous les menus déroulants des filtres (z 200).
     // En-têtes : même rendu que les listes Chiffrages / Projets (13 px, demi-gras, quasi noir, sans majuscules)
-    const th = { padding: '12px 10px', fontSize: 13, fontWeight: 600, color: '#374151', whiteSpace: 'nowrap', userSelect: 'none', position: 'sticky', top: 0, background: '#F4F4F4', zIndex: 20 };
+    const th = { padding: '12px 10px', fontSize: 13, fontWeight: 600, color: 'var(--df-text-2)', whiteSpace: 'nowrap', userSelect: 'none', position: 'sticky', top: 0, background: 'var(--df-surface)', zIndex: 20 };
     const tdNum = { padding: '8px 16px', textAlign: 'right', fontSize: 13 };
     const iconBtn = (active) => ({
         display: 'flex', alignItems: 'center', gap: 6, height: 38, padding: '0 12px', borderRadius: 8, cursor: 'pointer',
-        background: active ? '#EEF2FF' : 'white', color: active ? '#4338CA' : '#6B7280',
-        border: `1px solid ${active ? '#C7D2FE' : '#E0DED9'}`, fontSize: 13, fontWeight: 600,
+        background: active ? 'var(--df-indigo-bg)' : 'var(--df-bg)', color: active ? 'var(--df-x-4338CA)' : 'var(--df-muted)',
+        border: `1px solid ${active ? 'var(--df-x-C7D2FE)' : 'var(--df-border)'}`, fontSize: 13, fontWeight: 600,
     });
 
     const ServiceRow = ({ label, pct, svc }) => (
-        <tr style={{ background: '#FBFAF8', borderBottom: '1px solid #F3F4F6' }}>
-            <td style={{ padding: '7px 16px 7px 52px', fontSize: 13, color: '#4B5563' }}>{label}</td>
+        <tr style={{ background: 'var(--df-subrow)', borderBottom: '1px solid var(--df-surface-2)' }}>
+            <td style={{ padding: '7px 16px 7px 52px', fontSize: 13, color: 'var(--df-text-3)' }}>{label}</td>
             <td /><td />
             <td style={{ padding: '7px 16px', textAlign: 'center', fontWeight: 700, fontSize: 13, color: pctColor(pct) }}>
                 {pct === null || pct === undefined ? '—' : `${pct}%`}
             </td>
-            <td style={{ ...tdNum, color: '#374151', fontWeight: 600 }}>{svc.budget}h</td>
-            <td style={{ ...tdNum, color: '#6B7280' }}>{svc.consumed}h</td>
-            <td style={{ ...tdNum, fontWeight: 700, color: svc.remaining < 0 ? '#EF4444' : '#10B981' }}>{svc.remaining}h</td>
-            <td style={{ ...tdNum, color: '#111827' }}>{svc.planned}h</td>
+            <td style={{ ...tdNum, color: 'var(--df-text-2)', fontWeight: 600 }}>{svc.budget}h</td>
+            <td style={{ ...tdNum, color: 'var(--df-muted)' }}>{svc.consumed}h</td>
+            <td style={{ ...tdNum, fontWeight: 700, color: svc.remaining < 0 ? 'var(--df-danger)' : '#10B981' }}>{svc.remaining}h</td>
+            <td style={{ ...tdNum, color: 'var(--df-text)' }}>{svc.planned}h</td>
         </tr>
     );
 
@@ -172,7 +172,7 @@ const AssistantView = ({ stats, onUpdateProject }) => {
     return (
         <div style={{ position: 'relative' }}>
             {/* BARRE DE FILTRES (fixe : seule la liste défile en dessous) */}
-            <div ref={filterBarRef} style={{ position: 'relative', zIndex: 30, background: '#FFFFFF', padding: '24px 24px 16px' }}>
+            <div ref={filterBarRef} style={{ position: 'relative', zIndex: 30, background: 'var(--df-bg)', padding: '24px 24px 16px' }}>
             <div style={{ maxWidth: 1440, margin: '0 auto', display: 'flex', gap: 8, alignItems: 'center' }}>
                 <SmartFilterBar
                     fields={SEARCH_FIELDS}
@@ -189,11 +189,11 @@ const AssistantView = ({ stats, onUpdateProject }) => {
                             <Filter size={16} /> Statut{statusCount > 0 ? ` (${statusCount})` : ''}
                         </button>
                         {statusOpen && (
-                            <div style={{ position: 'absolute', top: 'calc(100% + 6px)', right: 0, background: 'white', borderRadius: 10, width: 220, boxShadow: '0 10px 25px -5px rgba(0,0,0,0.15)', border: '1px solid #E0DED9', zIndex: 200, padding: 6 }}>
+                            <div style={{ position: 'absolute', top: 'calc(100% + 6px)', right: 0, background: 'var(--df-bg)', borderRadius: 10, width: 220, boxShadow: '0 10px 25px -5px rgba(0,0,0,0.15)', border: '1px solid var(--df-border)', zIndex: 200, padding: 6 }}>
                                 {Object.entries(PROJECT_STATUS_OPTIONS).map(([key, opt]) => {
                                     const checked = activeFilters.some(f => f.id === `status_${key}`);
                                     return (
-                                        <button key={key} onClick={() => toggleStatusFilter(key)} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '8px 10px', border: 'none', background: 'white', cursor: 'pointer', borderRadius: 6 }}>
+                                        <button key={key} onClick={() => toggleStatusFilter(key)} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '8px 10px', border: 'none', background: 'var(--df-bg)', cursor: 'pointer', borderRadius: 6 }}>
                                             <input type="checkbox" checked={checked} readOnly />
                                             <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 12, background: opt.bg, color: opt.color }}>{opt.label}</span>
                                         </button>
@@ -215,10 +215,10 @@ const AssistantView = ({ stats, onUpdateProject }) => {
                 centré) pour que les deux soient parfaitement alignés. */}
             <div style={{ padding: '0 24px 24px' }}>
             {/* Même cadre que les listes Chiffrages / Projets ; seul le tableau défile (en-têtes collés, barre masquée) */}
-            <div style={{ maxWidth: 1440, margin: '0 auto', background: 'white', borderRadius: 8, border: '1px solid #E0DED9', overflow: 'hidden' }}>
+            <div style={{ maxWidth: 1440, margin: '0 auto', background: 'var(--df-bg)', borderRadius: 8, border: '1px solid var(--df-border)', overflow: 'hidden' }}>
                 <div ref={listScrollRef} className="df-list-scroll" style={{ overflow: 'auto', maxHeight: listHeight ?? undefined }}>
                 <table className="df-list-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
-                    <thead style={{ background: '#F4F4F4' }}>
+                    <thead style={{ background: 'var(--df-surface)' }}>
                         <tr>
                             <th style={{ ...th, textAlign: 'left' }}>Nom du Dossier</th>
                             <th style={{ ...th, textAlign: 'left' }}><SortLabel label="Deadline" sortKey="deadline" align="flex-start" /></th>
@@ -237,19 +237,19 @@ const AssistantView = ({ stats, onUpdateProject }) => {
                             const bs = proj.byService || { prepa: {}, conf: {}, pose: {} };
                             return (
                                 <React.Fragment key={proj.id}>
-                                    <tr style={{ borderBottom: '1px solid #E8E6E2', background: 'white' }}>
-                                        <td style={{ padding: '12px 10px', fontWeight: 600, color: '#111827' }}>
+                                    <tr style={{ borderBottom: '1px solid var(--df-border-soft)', background: 'var(--df-bg)' }}>
+                                        <td style={{ padding: '12px 10px', fontWeight: 600, color: 'var(--df-text)' }}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                                <button onClick={() => toggleExpand(proj.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, color: '#6B7280', display: 'flex', alignItems: 'center' }} aria-label={isOpen ? 'Replier' : 'Déplier'}>
+                                                <button onClick={() => toggleExpand(proj.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, color: 'var(--df-muted)', display: 'flex', alignItems: 'center' }} aria-label={isOpen ? 'Replier' : 'Déplier'}>
                                                     {isOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                                                 </button>
                                                 <div>
                                                     {proj.name}
-                                                    <div style={{ fontSize: 12, color: '#6B7280', fontWeight: 400 }}>{proj.manager || "Non assigné"}</div>
+                                                    <div style={{ fontSize: 12, color: 'var(--df-muted)', fontWeight: 400 }}>{proj.manager || "Non assigné"}</div>
                                                 </div>
                                             </div>
                                         </td>
-                                        <td style={{ padding: '12px 10px', fontSize: 13, color: '#374151' }}>
+                                        <td style={{ padding: '12px 10px', fontSize: 13, color: 'var(--df-text-2)' }}>
                                             {proj.deadline ? format(new Date(proj.deadline), 'dd MMM yyyy', { locale: fr }) : '-'}
                                         </td>
                                         <td style={{ padding: '12px 10px', textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
@@ -262,20 +262,20 @@ const AssistantView = ({ stats, onUpdateProject }) => {
                                             />
                                         </td>
                                         <td />
-                                        <td style={{ padding: '12px 10px', textAlign: 'right', fontWeight: 600, color: '#374151' }}>{proj.totalSold}h</td>
-                                        <td style={{ padding: '12px 10px', textAlign: 'right', color: '#6B7280' }}>{proj.totalConsumed}h</td>
-                                        <td style={{ padding: '12px 10px', textAlign: 'right', fontWeight: 700, color: proj.remainingBudget < 0 ? '#EF4444' : '#10B981' }}>{proj.remainingBudget}h</td>
-                                        <td style={{ padding: '12px 10px', textAlign: 'right', color: '#111827' }}>{proj.totalFuture}h</td>
+                                        <td style={{ padding: '12px 10px', textAlign: 'right', fontWeight: 600, color: 'var(--df-text-2)' }}>{proj.totalSold}h</td>
+                                        <td style={{ padding: '12px 10px', textAlign: 'right', color: 'var(--df-muted)' }}>{proj.totalConsumed}h</td>
+                                        <td style={{ padding: '12px 10px', textAlign: 'right', fontWeight: 700, color: proj.remainingBudget < 0 ? 'var(--df-danger)' : '#10B981' }}>{proj.remainingBudget}h</td>
+                                        <td style={{ padding: '12px 10px', textAlign: 'right', color: 'var(--df-text)' }}>{proj.totalFuture}h</td>
                                     </tr>
 
                                     {isOpen && (
                                         <>
-                                            <tr style={{ background: '#FBFAF8', borderBottom: '1px solid #F3F4F6' }}>
-                                                <td style={{ padding: '7px 16px 7px 52px', fontSize: 13, color: '#4B5563' }}>Prise de cotes</td>
+                                            <tr style={{ background: 'var(--df-subrow)', borderBottom: '1px solid var(--df-surface-2)' }}>
+                                                <td style={{ padding: '7px 16px 7px 52px', fontSize: 13, color: 'var(--df-text-3)' }}>Prise de cotes</td>
                                                 <td /><td />
                                                 <td style={{ padding: '7px 16px', textAlign: 'center', fontWeight: 700, fontSize: 13, color: pctColor(adv?.pctCotes) }}>
                                                     {adv && adv.cotesTotal > 0
-                                                        ? <>{adv.pctCotes}%<div style={{ fontSize: 10, fontWeight: 400, color: '#9CA3AF' }}>{adv.raw.cotesValidees}/{adv.cotesTotal} validées</div></>
+                                                        ? <>{adv.pctCotes}%<div style={{ fontSize: 10, fontWeight: 400, color: 'var(--df-faint)' }}>{adv.raw.cotesValidees}/{adv.cotesTotal} validées</div></>
                                                         : '—'}
                                                 </td>
                                                 <td /><td /><td /><td />
@@ -289,7 +289,7 @@ const AssistantView = ({ stats, onUpdateProject }) => {
                             );
                         })}
                         {sortedStats.length === 0 && (
-                            <tr><td colSpan={8} style={{ padding: 24, textAlign: 'center', color: '#9CA3AF' }}>Aucun projet ne correspond aux filtres.</td></tr>
+                            <tr><td colSpan={8} style={{ padding: 24, textAlign: 'center', color: 'var(--df-faint)' }}>Aucun projet ne correspond aux filtres.</td></tr>
                         )}
                     </tbody>
                 </table>

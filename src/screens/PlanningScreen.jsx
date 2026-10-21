@@ -40,8 +40,8 @@ const SERVICE_TABS = [
 ];
 const SERVICE_IDS = ['conf', 'pose', 'prepa'];
 // Intercalaires de service : gris clair écrit en noir ; l'actif en bleu nuit écrit en blanc.
-const serviceTabColor = (i, n, on) => (on ? { bg: '#1E2447', fg: '#FFFFFF' } : { bg: '#F4F4F4', fg: '#111827', stroke: '#E0DED9' });
-const SERVICE_ADD_COLOR = { bg: '#F4F4F4', fg: '#6B7280', stroke: '#E0DED9' };
+const serviceTabColor = (i, n, on) => (on ? { bg: 'var(--df-primary)', fg: '#FFFFFF' } : { bg: 'var(--df-surface)', fg: 'var(--df-text)', stroke: 'var(--df-border)' });
+const SERVICE_ADD_COLOR = { bg: 'var(--df-surface)', fg: 'var(--df-muted)', stroke: 'var(--df-border)' };
 const weekDayLabel = (d) => format(d, 'EE d MMM', { locale: fr });
 
 // Fenêtre initiale de la vue Mois : du mois précédent aux deux mois suivants.
@@ -1665,10 +1665,10 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
         // Programmation : la page reste fixe et seul son tableau défile (comme les listes Chiffrages /
         // Projets) ; Planning et Capacité gardent leur zone défilante de 100vh.
         <div ref={pageRef} style={assistantMode === 'programmation'
-            ? { display: 'flex', flexDirection: 'column', background: '#FFFFFF' }
+            ? { display: 'flex', flexDirection: 'column', background: 'var(--df-bg)' }
             : assistantMode === 'capacite'
-                ? { height: '100vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', background: '#FFFFFF' }
-                : { height: pageHeight ?? '100vh', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#FFFFFF' }}>
+                ? { height: '100vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', background: 'var(--df-bg)' }
+                : { height: pageHeight ?? '100vh', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: 'var(--df-bg)' }}>
             {/* Bandeau de titre : défile normalement et disparaît au scroll */}
             <div style={{ padding: '24px 24px 0', flexShrink: 0 }}>
                 {/* Titre aligné comme les autres modules (bloc centré 1600 px max). Les vues
@@ -1677,11 +1677,11 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                 <div className="df-title-tabs" style={{ maxWidth: 1600, width: '100%', margin: '0 auto 14px', display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'end', columnGap: 16 }}>
                     <div>
                         {onBack && (
-                            <button onClick={onBack} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6B7280', fontWeight: 600, fontSize: 13, marginBottom: 4, padding: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <button onClick={onBack} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--df-muted)', fontWeight: 600, fontSize: 13, marginBottom: 4, padding: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
                                 ← Retour
                             </button>
                         )}
-                        <h1 style={{ fontSize: 32, fontWeight: 400, fontFamily: 'Roboto, system-ui, sans-serif', color: '#111827', margin: 0, letterSpacing: '-0.01em' }}>Planning</h1>
+                        <h1 style={{ fontSize: 32, fontWeight: 400, fontFamily: 'Roboto, system-ui, sans-serif', color: 'var(--df-text)', margin: 0, letterSpacing: '-0.01em' }}>Planning</h1>
                     </div>
                     {canViewAssistant ? (
                         <div style={{ paddingBottom: 2 }}>
@@ -1700,8 +1700,8 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                                             style={{
                                                 padding: '8px 20px', borderRadius: 99, fontSize: 14, fontWeight: 500,
                                                 border: 'none', cursor: 'pointer', transition: 'all 0.2s cubic-bezier(0.25, 1, 0.5, 1)',
-                                                background: active ? '#1E2447' : 'transparent',
-                                                color: active ? 'white' : '#4B5563',
+                                                background: active ? 'var(--df-primary)' : 'transparent',
+                                                color: active ? 'white' : 'var(--df-text-3)',
                                                 boxShadow: active ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', outline: 'none',
                                             }}
                                         >
@@ -1717,7 +1717,7 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
             </div>
 
             {/* Bloc sticky : pastilles de navigation + barre d'outils, toujours visibles au scroll */}
-            <div ref={stickyHeaderRef} style={{ position: 'sticky', top: 0, zIndex: 70, background: '#FFFFFF', flexShrink: 0 }}>
+            <div ref={stickyHeaderRef} style={{ position: 'sticky', top: 0, zIndex: 70, background: 'var(--df-bg)', flexShrink: 0 }}>
 
             {/* Barre d'outils calendrier : uniquement sur la vue Planning */}
             {assistantMode === null && (
@@ -1771,27 +1771,27 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
 
             {deleteChoice && (
                 <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1400, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-                    <div style={{ background: 'white', borderRadius: 14, width: 'min(420px, 92vw)', padding: 24, boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
-                        <div style={{ fontSize: 17, fontWeight: 800, color: '#111827', marginBottom: 8 }}>Supprimer le créneau</div>
-                        <div style={{ fontSize: 14, color: '#4B5563', marginBottom: 22 }}>
+                    <div style={{ background: 'var(--df-bg)', borderRadius: 14, width: 'min(420px, 92vw)', padding: 24, boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
+                        <div style={{ fontSize: 17, fontWeight: 800, color: 'var(--df-text)', marginBottom: 8 }}>Supprimer le créneau</div>
+                        <div style={{ fontSize: 14, color: 'var(--df-text-3)', marginBottom: 22 }}>
                             Ce créneau fait partie d'une série de <b>{deleteChoice.seriesEvents.length}</b> jours. Que voulez-vous supprimer ?
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                             <button
                                 onClick={() => { handleDeleteEvent(deleteChoice.dayEvent); setDeleteChoice(null); }}
-                                style={{ padding: '11px 16px', borderRadius: 8, border: '1px solid #D1D5DB', background: 'white', color: '#111827', fontWeight: 700, fontSize: 14, cursor: 'pointer', textAlign: 'left' }}
+                                style={{ padding: '11px 16px', borderRadius: 8, border: '1px solid var(--df-border-strong)', background: 'var(--df-bg)', color: 'var(--df-text)', fontWeight: 700, fontSize: 14, cursor: 'pointer', textAlign: 'left' }}
                             >
                                 Supprimer ce jour uniquement
                             </button>
                             <button
                                 onClick={() => { handleDeleteSeries(deleteChoice.seriesEvents); setDeleteChoice(null); }}
-                                style={{ padding: '11px 16px', borderRadius: 8, border: 'none', background: '#EF4444', color: 'white', fontWeight: 700, fontSize: 14, cursor: 'pointer', textAlign: 'left' }}
+                                style={{ padding: '11px 16px', borderRadius: 8, border: 'none', background: 'var(--df-danger)', color: 'white', fontWeight: 700, fontSize: 14, cursor: 'pointer', textAlign: 'left' }}
                             >
                                 Supprimer toute la série ({deleteChoice.seriesEvents.length} jours)
                             </button>
                             <button
                                 onClick={() => setDeleteChoice(null)}
-                                style={{ padding: '10px 16px', borderRadius: 8, border: 'none', background: 'transparent', color: '#6B7280', fontWeight: 600, fontSize: 14, cursor: 'pointer' }}
+                                style={{ padding: '10px 16px', borderRadius: 8, border: 'none', background: 'transparent', color: 'var(--df-muted)', fontWeight: 600, fontSize: 14, cursor: 'pointer' }}
                             >
                                 Annuler
                             </button>
@@ -1840,28 +1840,28 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
 
             {importResultOpen && importResult && (
                 <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <div style={{ background: 'white', borderRadius: 12, padding: 28, width: 520, maxHeight: '80vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
+                    <div style={{ background: 'var(--df-bg)', borderRadius: 12, padding: 28, width: 520, maxHeight: '80vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
                         <h2 style={{ margin: '0 0 16px', fontSize: 18, fontWeight: 700 }}>Résultat de l'import</h2>
 
                         <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
-                            <span style={{ background: '#DCFCE7', color: '#166534', borderRadius: 6, padding: '6px 12px', fontSize: 13, fontWeight: 600 }}>
+                            <span style={{ background: 'var(--df-green-bg-2)', color: 'var(--df-chip-status)', borderRadius: 6, padding: '6px 12px', fontSize: 13, fontWeight: 600 }}>
                                 {importResult.toCreate.length} à créer
                             </span>
-                            <span style={{ background: '#DBEAFE', color: '#1E40AF', borderRadius: 6, padding: '6px 12px', fontSize: 13, fontWeight: 600 }}>
+                            <span style={{ background: 'var(--df-blue-bg-2)', color: 'var(--df-x-1E40AF)', borderRadius: 6, padding: '6px 12px', fontSize: 13, fontWeight: 600 }}>
                                 {importResult.toOverwrite.length} à écraser
                             </span>
                             {importResult.skipped?.length > 0 && (
-                                <span style={{ background: '#F3F4F6', color: '#374151', borderRadius: 6, padding: '6px 12px', fontSize: 13, fontWeight: 600 }}>
+                                <span style={{ background: 'var(--df-surface-2)', color: 'var(--df-text-2)', borderRadius: 6, padding: '6px 12px', fontSize: 13, fontWeight: 600 }}>
                                     {importResult.skipped.length} ignorée(s) — projet non indiqué
                                 </span>
                             )}
                             {importResult.blocked.length > 0 && (
-                                <span style={{ background: '#FEE2E2', color: '#991B1B', borderRadius: 6, padding: '6px 12px', fontSize: 13, fontWeight: 600 }}>
+                                <span style={{ background: 'var(--df-danger-border)', color: 'var(--df-x-991B1B)', borderRadius: 6, padding: '6px 12px', fontSize: 13, fontWeight: 600 }}>
                                     {importResult.blocked.length} bloqué(s) — déjà validés
                                 </span>
                             )}
                             {importResult.errors.length > 0 && (
-                                <span style={{ background: '#FEF9C3', color: '#854D0E', borderRadius: 6, padding: '6px 12px', fontSize: 13, fontWeight: 600 }}>
+                                <span style={{ background: 'var(--df-yellow-bg)', color: 'var(--df-x-854D0E)', borderRadius: 6, padding: '6px 12px', fontSize: 13, fontWeight: 600 }}>
                                     {importResult.errors.length} erreur(s)
                                 </span>
                             )}
@@ -1869,9 +1869,9 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
 
                         {importResult.blocked.length > 0 && (
                             <details style={{ marginBottom: 12 }}>
-                                <summary style={{ cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#991B1B', marginBottom: 6 }}>Créneaux bloqués (déjà validés)</summary>
+                                <summary style={{ cursor: 'pointer', fontSize: 13, fontWeight: 600, color: 'var(--df-x-991B1B)', marginBottom: 6 }}>Créneaux bloqués (déjà validés)</summary>
                                 {importResult.blocked.map((b, i) => (
-                                    <div key={i} style={{ fontSize: 12, color: '#374151', padding: '4px 0', borderBottom: '1px solid #F3F4F6' }}>
+                                    <div key={i} style={{ fontSize: 12, color: 'var(--df-text-2)', padding: '4px 0', borderBottom: '1px solid var(--df-surface-2)' }}>
                                         Ligne {b.row} — {b.personne} · {b.date} {b.duree ? `(${b.duree})` : `${b.debut}–${b.fin}`}
                                     </div>
                                 ))}
@@ -1880,9 +1880,9 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
 
                         {importResult.errors.length > 0 && (
                             <details style={{ marginBottom: 16 }}>
-                                <summary style={{ cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#854D0E', marginBottom: 6 }}>Erreurs de saisie</summary>
+                                <summary style={{ cursor: 'pointer', fontSize: 13, fontWeight: 600, color: 'var(--df-x-854D0E)', marginBottom: 6 }}>Erreurs de saisie</summary>
                                 {importResult.errors.map((e, i) => (
-                                    <div key={i} style={{ fontSize: 12, color: '#374151', padding: '4px 0', borderBottom: '1px solid #F3F4F6' }}>
+                                    <div key={i} style={{ fontSize: 12, color: 'var(--df-text-2)', padding: '4px 0', borderBottom: '1px solid var(--df-surface-2)' }}>
                                         Ligne {e.row} — {e.message}
                                     </div>
                                 ))}
@@ -1890,13 +1890,13 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                         )}
 
                         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 8 }}>
-                            <button onClick={() => { setImportResultOpen(false); setImportResult(null); }} style={{ background: 'white', color: '#374151', border: '1px solid #D1D5DB', borderRadius: 6, padding: '8px 20px', fontWeight: 600, fontSize: 14, cursor: 'pointer' }}>
+                            <button onClick={() => { setImportResultOpen(false); setImportResult(null); }} style={{ background: 'var(--df-bg)', color: 'var(--df-text-2)', border: '1px solid var(--df-border-strong)', borderRadius: 6, padding: '8px 20px', fontWeight: 600, fontSize: 14, cursor: 'pointer' }}>
                                 Annuler
                             </button>
                             <button
                                 onClick={handleConfirmImport}
                                 disabled={importResult.toCreate.length + importResult.toOverwrite.length === 0}
-                                style={{ background: importResult.toCreate.length + importResult.toOverwrite.length > 0 ? '#111827' : '#9CA3AF', color: 'white', border: 'none', borderRadius: 6, padding: '8px 20px', fontWeight: 600, fontSize: 14, cursor: importResult.toCreate.length + importResult.toOverwrite.length > 0 ? 'pointer' : 'not-allowed' }}
+                                style={{ background: importResult.toCreate.length + importResult.toOverwrite.length > 0 ? 'var(--df-text)' : 'var(--df-faint)', color: 'white', border: 'none', borderRadius: 6, padding: '8px 20px', fontWeight: 600, fontSize: 14, cursor: importResult.toCreate.length + importResult.toOverwrite.length > 0 ? 'pointer' : 'not-allowed' }}
                             >
                                 Confirmer l'import ({importResult.toCreate.length + importResult.toOverwrite.length} séances)
                             </button>
@@ -1948,16 +1948,16 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                                 shrink
                             />
                             {effectiveService === 'combined' && (
-                                <button onClick={() => setCombinedEditor(combined)} style={{ marginLeft: 12, marginBottom: 6, background: 'none', border: 'none', padding: 0, fontSize: 12, fontWeight: 600, color: '#6B7280', cursor: 'pointer', textDecoration: 'underline' }}>
+                                <button onClick={() => setCombinedEditor(combined)} style={{ marginLeft: 12, marginBottom: 6, background: 'none', border: 'none', padding: 0, fontSize: 12, fontWeight: 600, color: 'var(--df-muted)', cursor: 'pointer', textDecoration: 'underline' }}>
                                     Modifier
                                 </button>
                             )}
                             {combinedEditor && (
-                                <div style={{ position: 'absolute', top: 'calc(100% + 8px)', left: 36, zIndex: 90, width: 300, background: 'white', border: '1px solid #E5E7EB', borderRadius: 10, boxShadow: '0 12px 32px rgba(17,24,39,0.16)', padding: 16 }}>
-                                    <div style={{ fontFamily: 'Roboto, system-ui, sans-serif', fontSize: 15, fontWeight: 500, color: '#111827' }}>Planning combiné</div>
-                                    <div style={{ fontSize: 12, color: '#6B7280', margin: '4px 0 12px' }}>Choisissez les services à afficher ensemble (au moins deux).</div>
+                                <div style={{ position: 'absolute', top: 'calc(100% + 8px)', left: 36, zIndex: 90, width: 300, background: 'var(--df-bg)', border: '1px solid var(--df-border-2)', borderRadius: 10, boxShadow: '0 12px 32px rgba(17,24,39,0.16)', padding: 16 }}>
+                                    <div style={{ fontFamily: 'Roboto, system-ui, sans-serif', fontSize: 15, fontWeight: 500, color: 'var(--df-text)' }}>Planning combiné</div>
+                                    <div style={{ fontSize: 12, color: 'var(--df-muted)', margin: '4px 0 12px' }}>Choisissez les services à afficher ensemble (au moins deux).</div>
                                     {SERVICE_IDS.map(id => (
-                                        <label key={id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', fontSize: 13, color: '#111827', cursor: 'pointer' }}>
+                                        <label key={id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', fontSize: 13, color: 'var(--df-text)', cursor: 'pointer' }}>
                                             <input
                                                 type="checkbox"
                                                 checked={combinedEditor.includes(id)}
@@ -1968,18 +1968,18 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                                     ))}
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 14 }}>
                                         {combined && (
-                                            <button onClick={() => { setCombined(null); setCombinedEditor(null); setActiveService('conf'); }} style={{ background: 'none', border: 'none', padding: 0, fontSize: 12, fontWeight: 600, color: '#B91C1C', cursor: 'pointer' }}>
+                                            <button onClick={() => { setCombined(null); setCombinedEditor(null); setActiveService('conf'); }} style={{ background: 'none', border: 'none', padding: 0, fontSize: 12, fontWeight: 600, color: 'var(--df-danger-text)', cursor: 'pointer' }}>
                                                 Supprimer
                                             </button>
                                         )}
                                         <div style={{ flex: 1 }} />
-                                        <button onClick={() => setCombinedEditor(null)} style={{ height: 32, padding: '0 12px', borderRadius: 8, border: '1px solid #E5E7EB', background: 'white', fontSize: 13, fontWeight: 600, color: '#374151', cursor: 'pointer' }}>
+                                        <button onClick={() => setCombinedEditor(null)} style={{ height: 32, padding: '0 12px', borderRadius: 8, border: '1px solid var(--df-border-2)', background: 'var(--df-bg)', fontSize: 13, fontWeight: 600, color: 'var(--df-text-2)', cursor: 'pointer' }}>
                                             Annuler
                                         </button>
                                         <button
                                             disabled={combinedEditor.length < 2}
                                             onClick={() => { setCombined(combinedEditor); setCombinedEditor(null); setActiveService('combined'); }}
-                                            style={{ height: 32, padding: '0 14px', borderRadius: 8, border: 'none', background: combinedEditor.length < 2 ? '#9CA3AF' : '#1E2447', fontSize: 13, fontWeight: 600, color: 'white', cursor: combinedEditor.length < 2 ? 'not-allowed' : 'pointer' }}
+                                            style={{ height: 32, padding: '0 14px', borderRadius: 8, border: 'none', background: combinedEditor.length < 2 ? 'var(--df-faint)' : 'var(--df-primary)', fontSize: 13, fontWeight: 600, color: 'white', cursor: combinedEditor.length < 2 ? 'not-allowed' : 'pointer' }}
                                         >
                                             {combined ? 'Enregistrer' : 'Créer'}
                                         </button>
@@ -1994,7 +1994,7 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                                 arrondis comme le bord des tableaux ; le halo blanc masque ce qui passe derrière les coins. */}
                             <div aria-hidden="true" style={{
                                 position: 'sticky', top: 0, zIndex: 65, height: 12, margin: '0 24px -12px', boxSizing: 'border-box',
-                                border: '1px solid #E0DED9', borderBottom: 'none', borderRadius: '12px 12px 0 0',
+                                border: '1px solid var(--df-border)', borderBottom: 'none', borderRadius: '12px 12px 0 0',
                                 boxShadow: '0 0 0 12px #FFFFFF', clipPath: 'inset(-12px -12px 0 -12px)', pointerEvents: 'none',
                             }} />
                             {stackedWeeks.map((monday, i) => {
@@ -2006,7 +2006,7 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                                 return (
                                     <div key={key} data-week={key} style={{ paddingTop: i === 0 ? 0 : 16 }}>
                                         {newMonth && (
-                                            <div style={{ padding: '4px 24px 10px', fontFamily: 'Roboto, system-ui, sans-serif', fontSize: 20, fontWeight: 500, color: '#111827', textTransform: 'capitalize' }}>
+                                            <div style={{ padding: '4px 24px 10px', fontFamily: 'Roboto, system-ui, sans-serif', fontSize: 20, fontWeight: 500, color: 'var(--df-text)', textTransform: 'capitalize' }}>
                                                 {format(thursday, 'MMMM yyyy', { locale: fr })}
                                             </div>
                                         )}

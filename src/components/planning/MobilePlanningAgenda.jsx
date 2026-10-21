@@ -14,7 +14,7 @@ import { useFillViewportHeight } from '../../lib/hooks/useFillViewportHeight';
 //  - glisser vers la gauche / droite change de semaine.
 
 const ROBOTO = 'Roboto, system-ui, sans-serif';
-const NAVY = '#1E2447';
+const NAVY = 'var(--df-primary)';
 const STANDARD_TIME = '08:00 – 17:00';
 
 const eventTime = (e) => {
@@ -30,7 +30,7 @@ const wazeUrl = (loc) => `https://waze.com/ul?q=${encodeURIComponent(loc)}&navig
 const BTN = {
     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
     height: 38, minWidth: 38, padding: '0 10px', borderRadius: 8, boxSizing: 'border-box',
-    border: '1px solid #E0DED9', background: 'white', color: '#374151',
+    border: '1px solid var(--df-border)', background: 'var(--df-bg)', color: 'var(--df-text-2)',
     fontSize: 13, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', flexShrink: 0,
 };
 
@@ -147,9 +147,9 @@ export default function MobilePlanningAgenda({
         : focusId ? 'Aucun créneau pour vous cette semaine.' : 'Aucun créneau de pose cette semaine.';
 
     return (
-        <div ref={rootRef} style={{ height: fillHeight ?? '100dvh', display: 'flex', flexDirection: 'column', background: '#F4F4F4', fontFamily: ROBOTO }}>
+        <div ref={rootRef} style={{ height: fillHeight ?? '100dvh', display: 'flex', flexDirection: 'column', background: 'var(--df-surface)', fontFamily: ROBOTO }}>
             {/* En-tête fixe */}
-            <div style={{ flexShrink: 0, background: 'white', borderBottom: '1px solid #E0DED9', padding: '12px 16px 12px' }}>
+            <div style={{ flexShrink: 0, background: 'var(--df-bg)', borderBottom: '1px solid var(--df-border)', padding: '12px 16px 12px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
                     {onBack && (
                         <button onClick={onBack} aria-label="Retour" style={{ ...BTN, padding: 0, width: 38 }}>
@@ -157,11 +157,11 @@ export default function MobilePlanningAgenda({
                         </button>
                     )}
                     <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 24, fontWeight: 400, color: '#111827', lineHeight: 1.1 }}>Planning</div>
-                        <div style={{ fontSize: 13, color: '#6B7280', marginTop: 2 }}>Pose</div>
+                        <div style={{ fontSize: 24, fontWeight: 400, color: 'var(--df-text)', lineHeight: 1.1 }}>Planning</div>
+                        <div style={{ fontSize: 13, color: 'var(--df-muted)', marginTop: 2 }}>Pose</div>
                     </div>
                     {canViewAs ? (
-                        <label style={{ ...BTN, position: 'relative', maxWidth: 170, background: viewAsId ? NAVY : 'white', color: viewAsId ? 'white' : '#374151', borderColor: viewAsId ? NAVY : '#E0DED9' }}>
+                        <label style={{ ...BTN, position: 'relative', maxWidth: 170, background: viewAsId ? NAVY : 'var(--df-bg)', color: viewAsId ? 'white' : 'var(--df-text-2)', borderColor: viewAsId ? NAVY : 'var(--df-border)' }}>
                             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                 {viewAsId ? fullName(userMap.get(viewAsId)) : 'Équipe'}
                             </span>
@@ -177,12 +177,12 @@ export default function MobilePlanningAgenda({
                             </select>
                         </label>
                     ) : (
-                        <div style={{ display: 'flex', gap: 2, background: '#F4F4F4', borderRadius: 99, padding: 3 }}>
+                        <div style={{ display: 'flex', gap: 2, background: 'var(--df-surface)', borderRadius: 99, padding: 3 }}>
                             {[[true, 'Moi'], [false, 'Équipe']].map(([v, label]) => (
                                 <button key={label} onClick={() => setMyView(v)} style={{
                                     height: 32, padding: '0 14px', borderRadius: 99, border: 'none', cursor: 'pointer',
                                     fontSize: 13, fontWeight: 500, fontFamily: 'inherit',
-                                    background: myView === v ? NAVY : 'transparent', color: myView === v ? 'white' : '#4B5563',
+                                    background: myView === v ? NAVY : 'transparent', color: myView === v ? 'white' : 'var(--df-text-3)',
                                 }}>{label}</button>
                             ))}
                         </div>
@@ -193,8 +193,8 @@ export default function MobilePlanningAgenda({
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
                     <button onClick={() => goWeek(-1)} aria-label="Semaine précédente" style={{ ...BTN, padding: 0, width: 38 }}><ChevronLeft size={18} /></button>
                     <div style={{ flex: 1, textAlign: 'center', minWidth: 0 }}>
-                        <div style={{ fontSize: 15, fontWeight: 500, color: '#111827' }}>Semaine {format(weekStart, 'I')}</div>
-                        <div style={{ fontSize: 12, color: '#6B7280' }}>{format(weekStart, 'd MMM', { locale: fr })} – {format(weekEnd, 'd MMM', { locale: fr })}</div>
+                        <div style={{ fontSize: 15, fontWeight: 500, color: 'var(--df-text)' }}>Semaine {format(weekStart, 'I')}</div>
+                        <div style={{ fontSize: 12, color: 'var(--df-muted)' }}>{format(weekStart, 'd MMM', { locale: fr })} – {format(weekEnd, 'd MMM', { locale: fr })}</div>
                     </div>
                     <button onClick={() => goWeek(1)} aria-label="Semaine suivante" style={{ ...BTN, padding: 0, width: 38 }}><ChevronRight size={18} /></button>
                     <button onClick={goToday} style={BTN}>Aujourd'hui</button>
@@ -213,14 +213,14 @@ export default function MobilePlanningAgenda({
                                 style={{
                                     flex: 1, border: 'none', borderRadius: 10, padding: '6px 0 5px', cursor: 'pointer', fontFamily: 'inherit',
                                     background: isToday ? NAVY : 'transparent',
-                                    color: isToday ? 'white' : weekend ? '#9B9A97' : '#374151',
+                                    color: isToday ? 'white' : weekend ? 'var(--df-faint-2)' : 'var(--df-text-2)',
                                     display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
                                 }}
                             >
                                 <span style={{ fontSize: 11 }}>{format(d, 'EEE', { locale: fr }).replace('.', '')}</span>
                                 <span style={{ fontSize: 16, fontWeight: 500 }}>{format(d, 'd')}</span>
                                 {/* Point = au moins un chantier ce jour-là */}
-                                <span style={{ width: 5, height: 5, borderRadius: '50%', background: count ? (isToday ? '#A8C2EC' : NAVY) : 'transparent' }} />
+                                <span style={{ width: 5, height: 5, borderRadius: '50%', background: count ? (isToday ? 'var(--df-tone-3)' : NAVY) : 'transparent' }} />
                             </button>
                         );
                     })}
@@ -236,7 +236,7 @@ export default function MobilePlanningAgenda({
                 style={{ flex: 1, overflowY: 'auto', padding: '4px 16px 40px', position: 'relative' }}
             >
                 {total === 0 && (
-                    <div style={{ padding: '48px 20px', textAlign: 'center', color: '#9B9A97', fontSize: 14 }}>{emptyText}</div>
+                    <div style={{ padding: '48px 20px', textAlign: 'center', color: 'var(--df-faint-2)', fontSize: 14 }}>{emptyText}</div>
                 )}
 
                 {days.map((d, i) => {
@@ -246,14 +246,14 @@ export default function MobilePlanningAgenda({
                     return (
                         <div key={i} ref={(el) => { dayRefs.current[i] = el; }} style={{ paddingTop: 16 }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                                <span style={{ fontSize: 16, fontWeight: 500, color: '#111827' }}>
+                                <span style={{ fontSize: 16, fontWeight: 500, color: 'var(--df-text)' }}>
                                     {(() => { const s = format(d, 'EEEE d MMMM', { locale: fr }); return s.charAt(0).toUpperCase() + s.slice(1); })()}
                                 </span>
                                 {isToday && <TonePill tone={0}>Aujourd'hui</TonePill>}
                             </div>
 
                             {groups.length === 0 ? (
-                                <div style={{ fontSize: 13, color: '#9B9A97', padding: '0 2px 4px' }}>Rien de prévu</div>
+                                <div style={{ fontSize: 13, color: 'var(--df-faint-2)', padding: '0 2px 4px' }}>Rien de prévu</div>
                             ) : (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                                     {groups.map(g => (
@@ -287,14 +287,14 @@ function AgendaCard({ g, me, showMembers, onOpen }) {
             onClick={onOpen}
             style={{
                 width: '100%', textAlign: 'left', fontFamily: 'inherit', cursor: 'pointer',
-                background: 'white', borderRadius: 12, padding: '12px 14px',
-                border: `1px solid ${g.mine ? '#A8C2EC' : '#E0DED9'}`,
+                background: 'var(--df-bg)', borderRadius: 12, padding: '12px 14px',
+                border: `1px solid ${g.mine ? 'var(--df-tone-3)' : 'var(--df-border)'}`,
                 display: 'flex', alignItems: 'center', gap: 10,
             }}
         >
             <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
-                    <span style={{ fontSize: 15, fontWeight: 600, color: '#111827', lineHeight: 1.25, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                    <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--df-text)', lineHeight: 1.25, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                         {g.title}
                     </span>
                     {g.time && <span style={{ flexShrink: 0 }}><TonePill tone={5}>{g.time}</TonePill></span>}
@@ -309,15 +309,15 @@ function AgendaCard({ g, me, showMembers, onOpen }) {
                         ))}
                     </div>
                 ) : g.withNames.length > 0 && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#4B5563' }}>
-                        <Users size={14} color="#9B9A97" style={{ flexShrink: 0 }} />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--df-text-3)' }}>
+                        <Users size={14} color="var(--df-faint-2)" style={{ flexShrink: 0 }} />
                         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Avec {g.withNames.join(', ')}</span>
                     </div>
                 )}
 
                 {location && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#6B7280' }}>
-                        <MapPin size={14} color="#9B9A97" style={{ flexShrink: 0 }} />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--df-muted)' }}>
+                        <MapPin size={14} color="var(--df-faint-2)" style={{ flexShrink: 0 }} />
                         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{location}</span>
                     </div>
                 )}
@@ -325,20 +325,20 @@ function AgendaCard({ g, me, showMembers, onOpen }) {
                 {(g.decouche || g.notes.length > 0) && (
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
                         {g.decouche && (
-                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, height: 22, padding: '0 10px', borderRadius: 99, background: '#EEF4FD', color: '#111827', fontSize: 12, fontWeight: 600 }}>
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, height: 22, padding: '0 10px', borderRadius: 99, background: 'var(--df-selected)', color: 'var(--df-text)', fontSize: 12, fontWeight: 600 }}>
                                 <BedDouble size={13} /> Nuit sur place
                             </span>
                         )}
                         {g.notes.length > 0 && (
-                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, minWidth: 0, maxWidth: '100%', fontSize: 12, color: '#6B7280' }}>
-                                <StickyNote size={13} color="#9B9A97" style={{ flexShrink: 0 }} />
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, minWidth: 0, maxWidth: '100%', fontSize: 12, color: 'var(--df-muted)' }}>
+                                <StickyNote size={13} color="var(--df-faint-2)" style={{ flexShrink: 0 }} />
                                 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.notes[0]}</span>
                             </span>
                         )}
                     </div>
                 )}
             </div>
-            <ChevronRight size={18} color="#C9C7C2" style={{ flexShrink: 0 }} />
+            <ChevronRight size={18} color="var(--df-border-hover)" style={{ flexShrink: 0 }} />
         </button>
     );
 }
@@ -347,22 +347,22 @@ function AgendaCard({ g, me, showMembers, onOpen }) {
 function DetailSheet({ g, me, onClose, onOpenPrise, onOpenProject }) {
     const location = g.project?.location;
     const dayLabel = (() => { const s = format(g.day, 'EEEE d MMMM', { locale: fr }); return s.charAt(0).toUpperCase() + s.slice(1); })();
-    const section = { fontSize: 12, color: '#9B9A97', marginBottom: 6 };
+    const section = { fontSize: 12, color: 'var(--df-faint-2)', marginBottom: 6 };
     return (
         <div style={{ position: 'fixed', inset: 0, zIndex: 1300, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
             <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(17,24,39,0.4)' }} />
             <div style={{
-                position: 'relative', background: 'white', borderRadius: '16px 16px 0 0', maxHeight: '85dvh',
+                position: 'relative', background: 'var(--df-bg)', borderRadius: '16px 16px 0 0', maxHeight: '85dvh',
                 display: 'flex', flexDirection: 'column', fontFamily: ROBOTO, boxShadow: '0 -10px 30px rgba(17,24,39,0.15)',
                 paddingBottom: 'env(safe-area-inset-bottom)',
             }}>
-                <div style={{ width: 36, height: 4, borderRadius: 2, background: '#E0DED9', margin: '8px auto 0' }} />
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '14px 20px 12px', borderBottom: '1px solid #E8E6E2' }}>
+                <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--df-border)', margin: '8px auto 0' }} />
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '14px 20px 12px', borderBottom: '1px solid var(--df-border-soft)' }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 20, fontWeight: 400, color: '#111827', lineHeight: 1.25 }}>{g.title}</div>
-                        <div style={{ fontSize: 13, color: '#6B7280', marginTop: 4 }}>{dayLabel}</div>
+                        <div style={{ fontSize: 20, fontWeight: 400, color: 'var(--df-text)', lineHeight: 1.25 }}>{g.title}</div>
+                        <div style={{ fontSize: 13, color: 'var(--df-muted)', marginTop: 4 }}>{dayLabel}</div>
                     </div>
-                    <button onClick={onClose} aria-label="Fermer" style={{ border: 'none', background: 'none', color: '#9B9A97', padding: 4, display: 'flex', cursor: 'pointer' }}><X size={20} /></button>
+                    <button onClick={onClose} aria-label="Fermer" style={{ border: 'none', background: 'none', color: 'var(--df-faint-2)', padding: 4, display: 'flex', cursor: 'pointer' }}><X size={20} /></button>
                 </div>
 
                 <div className="df-noscrollbar" style={{ overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 18 }}>
@@ -370,13 +370,13 @@ function DetailSheet({ g, me, onClose, onOpenPrise, onOpenProject }) {
                         <div style={section}>Équipe</div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                             {g.members.map(m => (
-                                <div key={m.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 14, color: '#111827' }}>
+                                <div key={m.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 14, color: 'var(--df-text)' }}>
                                     <span>{m.name}{m.id === me ? ' (moi)' : ''}</span>
-                                    <span style={{ fontSize: 13, color: '#6B7280' }}>{m.time || ''}</span>
+                                    <span style={{ fontSize: 13, color: 'var(--df-muted)' }}>{m.time || ''}</span>
                                 </div>
                             ))}
                             {g.withNames.length > 0 && (
-                                <div style={{ fontSize: 13, color: '#6B7280' }}>Avec {g.withNames.join(', ')}</div>
+                                <div style={{ fontSize: 13, color: 'var(--df-muted)' }}>Avec {g.withNames.join(', ')}</div>
                             )}
                         </div>
                     </div>
@@ -384,7 +384,7 @@ function DetailSheet({ g, me, onClose, onOpenPrise, onOpenProject }) {
                     {location && (
                         <div>
                             <div style={section}>Adresse</div>
-                            <div style={{ fontSize: 14, color: '#111827', marginBottom: 10 }}>{location}</div>
+                            <div style={{ fontSize: 14, color: 'var(--df-text)', marginBottom: 10 }}>{location}</div>
                             <div style={{ display: 'flex', gap: 8 }}>
                                 <a href={mapsUrl(location)} target="_blank" rel="noopener noreferrer" style={{ ...BTN, flex: 1, textDecoration: 'none' }}>
                                     <Navigation size={15} /> Google Maps
@@ -397,7 +397,7 @@ function DetailSheet({ g, me, onClose, onOpenPrise, onOpenProject }) {
                     )}
 
                     {g.decouche && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: '#111827', background: '#EEF4FD', borderRadius: 8, padding: '10px 12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: 'var(--df-text)', background: 'var(--df-selected)', borderRadius: 8, padding: '10px 12px' }}>
                             <BedDouble size={16} /> Nuit sur place
                         </div>
                     )}
@@ -405,7 +405,7 @@ function DetailSheet({ g, me, onClose, onOpenPrise, onOpenProject }) {
                     {g.notes.length > 0 && (
                         <div>
                             <div style={section}>Note</div>
-                            <div style={{ fontSize: 14, color: '#111827', background: '#F4F4F4', borderRadius: 8, padding: '10px 12px', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                            <div style={{ fontSize: 14, color: 'var(--df-text)', background: 'var(--df-surface)', borderRadius: 8, padding: '10px 12px', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
                                 {g.notes.join('\n\n')}
                             </div>
                         </div>
@@ -413,7 +413,7 @@ function DetailSheet({ g, me, onClose, onOpenPrise, onOpenProject }) {
                 </div>
 
                 {g.project && (onOpenPrise || onOpenProject) && (
-                    <div style={{ display: 'flex', gap: 8, padding: '12px 20px 16px', borderTop: '1px solid #E8E6E2' }}>
+                    <div style={{ display: 'flex', gap: 8, padding: '12px 20px 16px', borderTop: '1px solid var(--df-border-soft)' }}>
                         {onOpenProject && (
                             <button onClick={() => onOpenProject(g.project)} style={{ ...BTN, flex: 1, height: 44 }}>
                                 <FolderOpen size={16} /> Fiche projet

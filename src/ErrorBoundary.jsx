@@ -18,7 +18,7 @@ export default class ErrorBoundary extends React.Component {
         <p style={{opacity:.7}}>L’app reste affichée pour débogage.</p>
         <details open style={{marginTop:8}}>
           <summary>Stack (composants)</summary>
-          <pre style={{whiteSpace:"pre-wrap", background:"#fff7ed", border:"1px solid #fed7aa", padding:12, borderRadius:8}}>
+          <pre style={{whiteSpace:"pre-wrap", background:"var(--df-chip-owner-bg)", border:"1px solid var(--df-x-FED7AA)", padding:12, borderRadius:8}}>
 {String(this.state.error?.message || this.state.error)}
 {"\n"}
 {this.state.info?.componentStack || ""}

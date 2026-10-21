@@ -32,7 +32,7 @@ const FABRIC_CATEGORIES = ['Tissu', 'Tissus', 'Doublure', 'Doublures', 'Inter', 
 const missingLaize = (r) => FABRIC_CATEGORIES.includes(r?.category) && !(Number(r?.width || r?.laize) > 0);
 const PLACEHOLDER_NAME = 'Nouvel Article (à compléter)';
 
-const SECTION_TITLE = { fontSize: 16, fontWeight: 500, color: '#111827', margin: 0 };
+const SECTION_TITLE = { fontSize: 16, fontWeight: 500, color: 'var(--df-text)', margin: 0 };
 
 // rows : lignes du chiffrage (colonne « Utilisé » + détail des lignes qui utilisent l'article).
 export default function CatalogManager({ open, onClose, catalog, onCatalogChange, rows = null, ...props }) {
@@ -226,7 +226,7 @@ export default function CatalogManager({ open, onClose, catalog, onCatalogChange
                 },
                 renderCell: (params) => {
                     if (params.row.unit === 'pce') {
-                        return <span style={{ color: '#9CA3AF', fontStyle: 'italic', fontSize: 11 }}>Voir tableau</span>;
+                        return <span style={{ color: 'var(--df-faint)', fontStyle: 'italic', fontSize: 11 }}>Voir tableau</span>;
                     }
                     if (params.value === undefined || params.value === null || params.value === '') return '';
                     return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(params.value);
@@ -255,7 +255,7 @@ export default function CatalogManager({ open, onClose, catalog, onCatalogChange
                 },
                 renderCell: (params) => {
                     if (params.row.unit === 'pce') {
-                        return <span style={{ color: '#9CA3AF', fontStyle: 'italic', fontSize: 11 }}>Voir tableau</span>;
+                        return <span style={{ color: 'var(--df-faint)', fontStyle: 'italic', fontSize: 11 }}>Voir tableau</span>;
                     }
                     if (params.value === undefined || params.value === null || params.value === '') return '';
                     return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(params.value);
@@ -342,7 +342,7 @@ export default function CatalogManager({ open, onClose, catalog, onCatalogChange
                         tabs={[{ id: 'catalog', code: "Bibliothèque d'articles", name: '' }, { id: 'settings', code: 'Paramètres globaux', name: '' }]}
                         activeId={activeTab}
                         onOpen={setActiveTab}
-                        colorFor={(_i, _n, on) => (on ? { bg: '#1E2447', fg: '#FFFFFF' } : { bg: '#E8EAF2', fg: '#1E2447' })}
+                        colorFor={(_i, _n, on) => (on ? { bg: 'var(--df-primary)', fg: '#FFFFFF' } : { bg: 'var(--df-navy-bg)', fg: 'var(--df-primary-text)' })}
                     />
                 </div>
             )}
@@ -350,7 +350,7 @@ export default function CatalogManager({ open, onClose, catalog, onCatalogChange
             {activeTab === 'catalog' ? (
                 <div style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: '16px 28px 20px', boxSizing: 'border-box', gap: 14 }}>
                     {laizeAlert && fabricsWithoutLaize.length > 0 && (
-                        <div role="alert" style={{ background: '#FEF2F2', border: '1px solid #FCA5A5', color: '#B91C1C', borderRadius: 8, padding: '10px 14px', fontSize: 13, lineHeight: 1.5 }}>
+                        <div role="alert" style={{ background: 'var(--df-danger-bg)', border: '1px solid #FCA5A5', color: 'var(--df-danger-text)', borderRadius: 8, padding: '10px 14px', fontSize: 13, lineHeight: 1.5 }}>
                             <strong>Laize manquante</strong> : sans laize, le métrage du tissu ne se calcule pas. Renseignez-la (case en rouge)
                             ou supprimez l'article avant de fermer — {fabricsWithoutLaize.map(r => r.name || 'article sans nom').join(', ')}.
                         </div>
@@ -380,7 +380,7 @@ export default function CatalogManager({ open, onClose, catalog, onCatalogChange
                             // L'icône de menu masquée de la dernière colonne dépassait de quelques px
                             // et suffisait à faire apparaître un défilement horizontal.
                             sx={{ ...DATAGRID_DA_SX, ...FOCUS_ROW_SX, height: '100%', '& .MuiDataGrid-menuIcon': { overflow: 'hidden' },
-                                '& .laize-manquante': { backgroundColor: '#FEF2F2', boxShadow: 'inset 0 0 0 1px #FCA5A5' } }}
+                                '& .laize-manquante': { backgroundColor: 'var(--df-danger-bg)', boxShadow: 'inset 0 0 0 1px #FCA5A5' } }}
                         />
                     </div>
                     <UsagePopover anchor={usageAnchor} list={usageList} onClose={() => setUsageAnchor(null)} where="du chiffrage" />
@@ -388,7 +388,7 @@ export default function CatalogManager({ open, onClose, catalog, onCatalogChange
             ) : (
                 <div style={{ padding: '24px 28px', maxWidth: 760 }}>
                     <p style={SECTION_TITLE}>Paramètres de chiffrage</p>
-                    <div style={{ fontSize: 13, color: '#6B7280', margin: '6px 0 20px' }}>
+                    <div style={{ fontSize: 13, color: 'var(--df-muted)', margin: '6px 0 20px' }}>
                         Valeurs de base des calculs automatiques de ce chiffrage (pose, confection, déplacements).
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '20px 24px' }}>

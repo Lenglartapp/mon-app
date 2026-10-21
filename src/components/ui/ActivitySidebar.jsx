@@ -226,23 +226,23 @@ const CommentInputForm = React.memo(({ onSend, onSendWithImage, users = [] }) =>
     const canSend = hasText || !!pendingFile;
 
     return (
-        <Box sx={{ p: 2, bgcolor: 'white', borderTop: '1px solid #E8E6E2' }}>
+        <Box sx={{ p: 2, bgcolor: 'var(--df-bg)', borderTop: '1px solid var(--df-border-soft)' }}>
             {/* Photo preview */}
             {pendingPreviewUrl && (
                 <Box sx={{ mb: 1, position: 'relative', display: 'inline-block' }}>
                     <Box
                         component="img"
                         src={pendingPreviewUrl}
-                        sx={{ maxHeight: 80, maxWidth: 120, borderRadius: 1.5, border: '1px solid #E5E7EB', display: 'block' }}
+                        sx={{ maxHeight: 80, maxWidth: 120, borderRadius: 1.5, border: '1px solid var(--df-border-2)', display: 'block' }}
                     />
                     <IconButton
                         size="small"
                         onClick={handleRemovePending}
                         sx={{
                             position: 'absolute', top: -8, right: -8,
-                            bgcolor: 'white', border: '1px solid #E5E7EB',
+                            bgcolor: 'var(--df-bg)', border: '1px solid var(--df-border-2)',
                             width: 18, height: 18,
-                            '&:hover': { bgcolor: '#FEF2F2' },
+                            '&:hover': { bgcolor: 'var(--df-danger-bg)' },
                             '& svg': { fontSize: 11 }
                         }}
                     >
@@ -259,7 +259,7 @@ const CommentInputForm = React.memo(({ onSend, onSendWithImage, users = [] }) =>
                             size="small"
                             onMouseDown={(e) => e.preventDefault()} // garde le focus (et la sélection) dans le champ
                             onClick={() => applyMark(btn.mark)}
-                            sx={{ width: 26, height: 26, color: '#6B7280', '&:hover': { color: '#111827', bgcolor: '#F3F4F6' } }}
+                            sx={{ width: 26, height: 26, color: 'var(--df-muted)', '&:hover': { color: 'var(--df-text)', bgcolor: 'var(--df-surface-2)' } }}
                         >
                             <btn.Icon sx={{ fontSize: 15 }} />
                         </IconButton>
@@ -267,7 +267,7 @@ const CommentInputForm = React.memo(({ onSend, onSendWithImage, users = [] }) =>
                 ))}
             </Box>
 
-            <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-end', bgcolor: '#F3F4F6', borderRadius: 2, p: '8px 12px' }}>
+            <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-end', bgcolor: 'var(--df-surface-2)', borderRadius: 2, p: '8px 12px' }}>
                 <TextField
                     id="comment-input-field"
                     inputRef={inputRef}
@@ -306,7 +306,7 @@ const CommentInputForm = React.memo(({ onSend, onSendWithImage, users = [] }) =>
                     {uploading ? (
                         <div style={{
                             width: 14, height: 14,
-                            border: '2px solid #ccc', borderTopColor: '#1d4ed8',
+                            border: '2px solid #ccc', borderTopColor: 'var(--df-x-1D4ED8)',
                             borderRadius: '50%', animation: 'spin 1s linear infinite'
                         }} />
                     ) : <SendIcon fontSize="small" />}
@@ -328,7 +328,7 @@ const CommentInputForm = React.memo(({ onSend, onSendWithImage, users = [] }) =>
                             key={user.id}
                             button
                             onClick={() => handleSelectUser(user)}
-                            sx={{ '&:hover': { bgcolor: '#F3F4F6' } }}
+                            sx={{ '&:hover': { bgcolor: 'var(--df-surface-2)' } }}
                         >
                             <Avatar sx={{ width: 24, height: 24, mr: 1, bgcolor: stringToColor(user.name) }}>{user.name.charAt(0)}</Avatar>
                             <ListItemText primary={user.name} secondary={user.role} primaryTypographyProps={{ fontSize: 13 }} />
@@ -351,45 +351,45 @@ const LogItem = React.memo(({ act }) => {
 
     return (
         <Box sx={{ display: 'flex', gap: 1.5, mb: 2, px: 1 }}>
-            <Avatar sx={{ width: 24, height: 24, bgcolor: '#E5E7EB' }}>
-                <NotificationsIcon sx={{ fontSize: 14, color: '#6B7280' }} />
+            <Avatar sx={{ width: 24, height: 24, bgcolor: 'var(--df-border-2)' }}>
+                <NotificationsIcon sx={{ fontSize: 14, color: 'var(--df-muted)' }} />
             </Avatar>
             <Box sx={{ flex: 1 }}>
                 <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, mb: 0.5 }}>
-                    <Typography variant="caption" sx={{ fontWeight: 600, color: '#374151' }}>
+                    <Typography variant="caption" sx={{ fontWeight: 600, color: 'var(--df-text-2)' }}>
                         Modification par {author}
                     </Typography>
-                    <Typography variant="caption" sx={{ color: '#9CA3AF', fontSize: 10 }}>
+                    <Typography variant="caption" sx={{ color: 'var(--df-faint)', fontSize: 10 }}>
                         {formatRelativeTime(act.createdAt || act.ts)}
                     </Typography>
                 </Box>
 
                 <Box sx={{
-                    bgcolor: '#F7F7F5',
+                    bgcolor: 'var(--df-surface-3)',
                     borderRadius: '8px',
                     p: 1.25,
                     display: 'flex',
                     flexDirection: 'column',
                     gap: 0.5
                 }}>
-                    <Typography variant="caption" sx={{ color: '#374151', fontSize: 12, fontWeight: 600 }}>
+                    <Typography variant="caption" sx={{ color: 'var(--df-text-2)', fontSize: 12, fontWeight: 600 }}>
                         {field}
                     </Typography>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, fontSize: 13 }}>
                         <Typography sx={{
                             textDecoration: 'line-through',
-                            color: '#EF4444',
-                            bgcolor: '#FEF2F2',
+                            color: 'var(--df-danger)',
+                            bgcolor: 'var(--df-danger-bg)',
                             px: 0.5,
                             borderRadius: 0.5
                         }}>
                             {from}
                         </Typography>
-                        <ArrowForwardIcon sx={{ fontSize: 12, color: '#9CA3AF' }} />
+                        <ArrowForwardIcon sx={{ fontSize: 12, color: 'var(--df-faint)' }} />
                         <Typography sx={{
                             color: '#10B981',
                             fontWeight: 500,
-                            bgcolor: '#ECFDF5',
+                            bgcolor: 'var(--df-success-bg)',
                             px: 0.5,
                             borderRadius: 0.5
                         }}>
@@ -426,7 +426,7 @@ const MessageItem = React.memo(({ act: rawAct, isMe }) => {
                 <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: isMe ? 'flex-end' : 'flex-start', maxWidth: '85%' }}>
                     <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, mb: 0.5, flexDirection: isMe ? 'row-reverse' : 'row' }}>
                         {/* Always show Name */}
-                        <Typography variant="caption" sx={{ fontWeight: 500, fontSize: 13, color: '#1F2A37' }}>
+                        <Typography variant="caption" sx={{ fontWeight: 500, fontSize: 13, color: 'var(--df-ink-3)' }}>
                             {isMe ? 'Vous' : authorName}
                         </Typography>
                         <Typography variant="caption" sx={{ color: '#A0A5AD', fontSize: 11 }}>
@@ -435,7 +435,7 @@ const MessageItem = React.memo(({ act: rawAct, isMe }) => {
                     </Box>
 
                     <Box sx={{
-                        bgcolor: isMe ? '#D6E4F8' : '#F4F4F4',
+                        bgcolor: isMe ? 'var(--df-tone-4)' : 'var(--df-surface)',
                         borderRadius: isMe ? '14px 4px 14px 14px' : '4px 14px 14px 14px',
                         p: '10px 14px',
                         // If image (without caption), transparent bg
@@ -452,7 +452,7 @@ const MessageItem = React.memo(({ act: rawAct, isMe }) => {
                                             maxWidth: 200,
                                             maxHeight: 200,
                                             borderRadius: act.caption ? 1.5 : 2,
-                                            border: `1px solid ${act.pending ? '#f59e0b' : '#E5E7EB'}`,
+                                            border: `1px solid ${act.pending ? '#f59e0b' : 'var(--df-border-2)'}`,
                                             cursor: act.pending ? 'default' : 'zoom-in',
                                             display: 'block'
                                         }}
@@ -468,7 +468,7 @@ const MessageItem = React.memo(({ act: rawAct, isMe }) => {
                                     )}
                                 </Box>
                                 {act.caption && (
-                                    <Typography variant="body2" sx={{ fontSize: 13, lineHeight: 1.6, color: '#1F2937', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                                    <Typography variant="body2" sx={{ fontSize: 13, lineHeight: 1.6, color: 'var(--df-text-1b)', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
                                         {renderRichText(act.caption)}
                                     </Typography>
                                 )}
@@ -477,7 +477,7 @@ const MessageItem = React.memo(({ act: rawAct, isMe }) => {
                             // pre-wrap : conserve les retours à la ligne, espaces et
                             // indentations tels qu'ils ont été saisis (ils étaient déjà
                             // stockés, seul l'affichage les écrasait).
-                            <Typography variant="body2" sx={{ fontSize: 13, lineHeight: 1.6, color: '#1F2937', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                            <Typography variant="body2" sx={{ fontSize: 13, lineHeight: 1.6, color: 'var(--df-text-1b)', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
                                 {renderRichText(content || act.text)}
                             </Typography>
                         )}
@@ -609,26 +609,26 @@ const ActivitySidebar = React.memo(({ activities = [], onAddComment, onAddImage,
     if (!isOpen) return null;
 
     return (
-        <Box sx={{ width: 380, display: 'flex', flexDirection: 'column', bgcolor: 'white', borderLeft: '1px solid #E8E6E2', height: '100%' }}>
+        <Box sx={{ width: 380, display: 'flex', flexDirection: 'column', bgcolor: 'var(--df-bg)', borderLeft: '1px solid var(--df-border-soft)', height: '100%' }}>
 
             {/* Header */}
             <Box sx={{
                 p: '16px 20px',
-                borderBottom: '1px solid #E8E6E2',
-                bgcolor: 'white',
+                borderBottom: '1px solid var(--df-border-soft)',
+                bgcolor: 'var(--df-bg)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between'
             }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <Typography sx={{ fontFamily: 'Roboto, system-ui, sans-serif', fontWeight: 500, fontSize: 18, color: '#111827' }}>
+                    <Typography sx={{ fontFamily: 'Roboto, system-ui, sans-serif', fontWeight: 500, fontSize: 18, color: 'var(--df-text)' }}>
                         Activité
                     </Typography>
-                    <Typography sx={{ fontSize: 13, color: '#9B9A97' }}>{filteredActivities.length}</Typography>
+                    <Typography sx={{ fontSize: 13, color: 'var(--df-faint-2)' }}>{filteredActivities.length}</Typography>
                 </Box>
 
                 <IconButton size="small" onClick={(e) => setHeaderAnchor(e.currentTarget)}>
-                    <NotificationsIcon fontSize="small" sx={{ color: '#9CA3AF' }} />
+                    <NotificationsIcon fontSize="small" sx={{ color: 'var(--df-faint)' }} />
                 </IconButton>
                 <Menu
                     anchorEl={headerAnchor}
@@ -642,7 +642,7 @@ const ActivitySidebar = React.memo(({ activities = [], onAddComment, onAddImage,
             </Box>
 
             {/* Filter tabs */}
-            <Box sx={{ display: 'flex', gap: '4px', px: 2, py: 1, borderBottom: '1px solid #E8E6E2', bgcolor: 'white' }}>
+            <Box sx={{ display: 'flex', gap: '4px', px: 2, py: 1, borderBottom: '1px solid var(--df-border-soft)', bgcolor: 'var(--df-bg)' }}>
                 {ACTIVITY_FILTERS.map(f => (
                     <button
                         key={f.key}
@@ -654,8 +654,8 @@ const ActivitySidebar = React.memo(({ activities = [], onAddComment, onAddImage,
                             fontSize: 11,
                             fontWeight: 500,
                             cursor: 'pointer',
-                            background: activityFilter === f.key ? '#374151' : '#E5E7EB',
-                            color: activityFilter === f.key ? 'white' : '#4B5563',
+                            background: activityFilter === f.key ? 'var(--df-text-2)' : 'var(--df-border-2)',
+                            color: activityFilter === f.key ? 'white' : 'var(--df-text-3)',
                         }}
                     >
                         {f.label}

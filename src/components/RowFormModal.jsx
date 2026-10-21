@@ -164,7 +164,7 @@ function toNumOrNull(v) {
                     position: "absolute",
                     top: 4,
                     right: 4,
-                    background: "#111827",
+                    background: "var(--df-text)",
                     color: "#fff",
                     border: "none",
                     borderRadius: 6,
@@ -188,10 +188,10 @@ function toNumOrNull(v) {
             <span
               style={{
                 padding: "6px 10px",
-                border: "1px dashed #cbd5e1",
+                border: "1px dashed var(--df-x-CBD5E1)",
                 borderRadius: 8,
                 cursor: "pointer",
-                background: "#f8fafc",
+                background: "var(--df-slate-bg)",
               }}
             >
               + Ajouter des photos
@@ -232,7 +232,7 @@ function toNumOrNull(v) {
         style={{
           width: "min(1100px, 96vw)",
           height: "min(82vh, 900px)",
-          background: "#fff",
+          background: "var(--df-bg)",
           borderRadius: 16,
           overflow: "hidden",
           boxShadow: "0 20px 50px rgba(0,0,0,.2)",
@@ -248,8 +248,8 @@ function toNumOrNull(v) {
             alignItems: "center",
             justifyContent: "space-between",
             padding: "12px 16px",
-            borderBottom: "1px solid #e5e7eb",
-            background: "#fff",
+            borderBottom: "1px solid var(--df-border-2)",
+            background: "var(--df-bg)",
           }}
         >
           <div style={{ fontWeight: 900 }}>Détail de la ligne</div>
@@ -259,8 +259,8 @@ function toNumOrNull(v) {
               style={{
                 padding: "8px 12px",
                 borderRadius: 8,
-                border: "1px solid #E0DED9",
-                background: "#fff",
+                border: "1px solid var(--df-border)",
+                background: "var(--df-bg)",
               }}
             >
               Annuler
@@ -271,8 +271,8 @@ function toNumOrNull(v) {
               style={{
                 padding: "8px 12px",
                 borderRadius: 8,
-                border: "1px solid #111827",
-                background: "#111827",
+                border: "1px solid var(--df-text)",
+                background: "var(--df-text)",
                 color: "#fff",
                 fontWeight: 800,
               }}

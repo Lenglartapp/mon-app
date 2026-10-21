@@ -84,20 +84,20 @@ export default function ImportProjectsDialog({ open, onClose, onCreate, users = 
       display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1300,
     }}>
       <div style={{
-        background: 'white', borderRadius: 12, width: '90%', maxWidth: 860,
+        background: 'var(--df-bg)', borderRadius: 12, width: '90%', maxWidth: 860,
         maxHeight: '85vh', display: 'flex', flexDirection: 'column',
         boxShadow: '0 20px 60px rgba(0,0,0,0.2)',
       }}>
         {/* Header */}
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '18px 24px', borderBottom: '1px solid #E5E7EB',
+          padding: '18px 24px', borderBottom: '1px solid var(--df-border-2)',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <Upload size={20} color="#1E2447" />
-            <span style={{ fontWeight: 700, fontSize: 17, color: '#1F2937' }}>Import de projets</span>
+            <Upload size={20} color="var(--df-primary-text)" />
+            <span style={{ fontWeight: 700, fontSize: 17, color: 'var(--df-text-1b)' }}>Import de projets</span>
           </div>
-          <button onClick={handleClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6B7280' }}>
+          <button onClick={handleClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--df-muted)' }}>
             <X size={20} />
           </button>
         </div>
@@ -112,11 +112,11 @@ export default function ImportProjectsDialog({ open, onClose, onCreate, users = 
               gap: 12, padding: '32px 0', color: '#10B981',
             }}>
               <CheckCircle2 size={48} />
-              <p style={{ fontSize: 16, fontWeight: 600, color: '#1F2937', margin: 0 }}>
+              <p style={{ fontSize: 16, fontWeight: 600, color: 'var(--df-text-1b)', margin: 0 }}>
                 {doneCount} projet{doneCount > 1 ? 's' : ''} créé{doneCount > 1 ? 's' : ''} avec succès
               </p>
               <button onClick={handleClose} style={{
-                marginTop: 8, background: '#1E2447', color: 'white',
+                marginTop: 8, background: 'var(--df-primary)', color: 'white',
                 border: 'none', borderRadius: 8, padding: '8px 20px', cursor: 'pointer', fontWeight: 600,
               }}>
                 Fermer
@@ -132,7 +132,7 @@ export default function ImportProjectsDialog({ open, onClose, onCreate, users = 
                   onClick={() => downloadProjectsTemplate(users)}
                   style={{
                     display: 'flex', alignItems: 'center', gap: 6,
-                    background: '#F3F4F6', color: '#374151', border: '1px solid #D1D5DB',
+                    background: 'var(--df-surface-2)', color: 'var(--df-text-2)', border: '1px solid var(--df-border-strong)',
                     borderRadius: 8, padding: '8px 14px', cursor: 'pointer', fontWeight: 500, fontSize: 13,
                   }}
                 >
@@ -144,7 +144,7 @@ export default function ImportProjectsDialog({ open, onClose, onCreate, users = 
                   disabled={loading || importing}
                   style={{
                     display: 'flex', alignItems: 'center', gap: 6,
-                    background: '#1E2447', color: 'white', border: 'none',
+                    background: 'var(--df-primary)', color: 'white', border: 'none',
                     borderRadius: 8, padding: '8px 14px', cursor: 'pointer', fontWeight: 600, fontSize: 13,
                     opacity: (loading || importing) ? 0.6 : 1,
                   }}
@@ -158,8 +158,8 @@ export default function ImportProjectsDialog({ open, onClose, onCreate, users = 
               {error && (
                 <div style={{
                   display: 'flex', alignItems: 'flex-start', gap: 8,
-                  background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8, padding: '12px 16px',
-                  color: '#B91C1C', fontSize: 13, marginBottom: 16,
+                  background: 'var(--df-danger-bg)', border: '1px solid var(--df-x-FECACA)', borderRadius: 8, padding: '12px 16px',
+                  color: 'var(--df-danger-text)', fontSize: 13, marginBottom: 16,
                 }}>
                   <AlertCircle size={16} style={{ marginTop: 1, flexShrink: 0 }} />
                   {error}
@@ -169,15 +169,15 @@ export default function ImportProjectsDialog({ open, onClose, onCreate, users = 
               {/* Prévisualisation */}
               {preview && (
                 <>
-                  <p style={{ fontSize: 13, color: '#6B7280', marginBottom: 10 }}>
-                    <strong style={{ color: '#1F2937' }}>{preview.length} projet{preview.length > 1 ? 's' : ''}</strong> à créer — vérifiez avant de confirmer :
+                  <p style={{ fontSize: 13, color: 'var(--df-muted)', marginBottom: 10 }}>
+                    <strong style={{ color: 'var(--df-text-1b)' }}>{preview.length} projet{preview.length > 1 ? 's' : ''}</strong> à créer — vérifiez avant de confirmer :
                   </p>
                   <div style={{ overflowX: 'auto' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                       <thead>
-                        <tr style={{ background: '#F4F4F4' }}>
+                        <tr style={{ background: 'var(--df-surface)' }}>
                           {['Nom', 'Responsable', 'Statut', 'Livraison', 'Budget Prépa/Conf/Pose', 'Consommé Prépa/Conf/Pose', 'Modules', 'Lieu'].map(h => (
-                            <th key={h} style={{ padding: '8px 10px', textAlign: 'left', color: '#374151', fontWeight: 600, borderBottom: '2px solid #E5E7EB', whiteSpace: 'nowrap' }}>
+                            <th key={h} style={{ padding: '8px 10px', textAlign: 'left', color: 'var(--df-text-2)', fontWeight: 600, borderBottom: '2px solid var(--df-border-2)', whiteSpace: 'nowrap' }}>
                               {h}
                             </th>
                           ))}
@@ -185,25 +185,25 @@ export default function ImportProjectsDialog({ open, onClose, onCreate, users = 
                       </thead>
                       <tbody>
                         {preview.map((p, i) => (
-                          <tr key={p.id} style={{ borderBottom: '1px solid #F3F4F6', background: i % 2 === 0 ? 'white' : '#FAFAFA' }}>
-                            <td style={{ padding: '7px 10px', fontWeight: 600, color: '#1F2937' }}>{p.name}</td>
-                            <td style={{ padding: '7px 10px', color: '#374151' }}>{p.manager || '—'}</td>
+                          <tr key={p.id} style={{ borderBottom: '1px solid var(--df-surface-2)', background: i % 2 === 0 ? 'var(--df-bg)' : 'var(--df-surface-5)' }}>
+                            <td style={{ padding: '7px 10px', fontWeight: 600, color: 'var(--df-text-1b)' }}>{p.name}</td>
+                            <td style={{ padding: '7px 10px', color: 'var(--df-text-2)' }}>{p.manager || '—'}</td>
                             <td style={{ padding: '7px 10px' }}>
-                              <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 7px', borderRadius: 4, background: '#EFF6FF', color: '#3B82F6' }}>
+                              <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 7px', borderRadius: 4, background: 'var(--df-blue-bg)', color: '#3B82F6' }}>
                                 {STATUS_LABELS[p.status] || p.status}
                               </span>
                             </td>
-                            <td style={{ padding: '7px 10px', color: '#374151', whiteSpace: 'nowrap' }}>{p.deadline || '—'}</td>
-                            <td style={{ padding: '7px 10px', color: '#374151', whiteSpace: 'nowrap' }}>
+                            <td style={{ padding: '7px 10px', color: 'var(--df-text-2)', whiteSpace: 'nowrap' }}>{p.deadline || '—'}</td>
+                            <td style={{ padding: '7px 10px', color: 'var(--df-text-2)', whiteSpace: 'nowrap' }}>
                               {p.budget.prepa}h / {p.budget.conf}h / {p.budget.pose}h
                             </td>
-                            <td style={{ padding: '7px 10px', color: '#374151', whiteSpace: 'nowrap' }}>
+                            <td style={{ padding: '7px 10px', color: 'var(--df-text-2)', whiteSpace: 'nowrap' }}>
                               {p.consumed_import.prepa}h / {p.consumed_import.conf}h / {p.consumed_import.pose}h
                             </td>
-                            <td style={{ padding: '7px 10px', color: '#374151' }}>
+                            <td style={{ padding: '7px 10px', color: 'var(--df-text-2)' }}>
                               {p.rows.map(r => r.produit).join(', ') || '—'}
                             </td>
-                            <td style={{ padding: '7px 10px', color: '#6B7280' }}>{p.location || '—'}</td>
+                            <td style={{ padding: '7px 10px', color: 'var(--df-muted)' }}>{p.location || '—'}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -219,11 +219,11 @@ export default function ImportProjectsDialog({ open, onClose, onCreate, users = 
         {preview && doneCount === null && (
           <div style={{
             display: 'flex', justifyContent: 'flex-end', gap: 10,
-            padding: '14px 24px', borderTop: '1px solid #E5E7EB',
+            padding: '14px 24px', borderTop: '1px solid var(--df-border-2)',
           }}>
             <button onClick={() => setPreview(null)} style={{
-              background: 'none', border: '1px solid #D1D5DB', borderRadius: 8,
-              padding: '8px 18px', cursor: 'pointer', color: '#374151', fontWeight: 500,
+              background: 'none', border: '1px solid var(--df-border-strong)', borderRadius: 8,
+              padding: '8px 18px', cursor: 'pointer', color: 'var(--df-text-2)', fontWeight: 500,
             }}>
               Annuler
             </button>
@@ -231,7 +231,7 @@ export default function ImportProjectsDialog({ open, onClose, onCreate, users = 
               onClick={handleConfirm}
               disabled={importing}
               style={{
-                background: '#1E2447', color: 'white', border: 'none', borderRadius: 8,
+                background: 'var(--df-primary)', color: 'white', border: 'none', borderRadius: 8,
                 padding: '8px 20px', cursor: 'pointer', fontWeight: 700, fontSize: 14,
                 opacity: importing ? 0.6 : 1,
               }}
