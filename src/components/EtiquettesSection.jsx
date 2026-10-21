@@ -12,6 +12,7 @@ import PrintableLabelsContainer from "./PrintableLabelsContainer.jsx";
 import BPFPrintPortal from "./print/BPFPrintPortal.jsx";
 import EtiquettesStoresBateauxPrintPortal from "./EtiquettesStoresBateauxPrintPortal.jsx";
 import EtiquettesV2RectoVersoPortal, { RIDEAUX_V2_FIELDS } from "./etiquettesV2/EtiquettesV2RectoVersoPortal.jsx";
+import { isDecentreeParent } from "../lib/utils/pairDecentree";
 import {
   ETIQUETTE_COLOR_PALETTE,
   DEFAULT_HEADER_COLOR,
@@ -602,11 +603,17 @@ export default function EtiquettesSection({
     (schema || []).filter(c => !["sel", "detail", "photo", "button"].includes(c.key)),
     [schema]);
 
+  // Paire décentrée : seuls les pans (lignes enfants) ont une étiquette — ce sont eux qui sont
+  // confectionnés. La ligne parent (rail commun de la paire) n'en a pas.
+  const labelRows = React.useMemo(() => (rows || []).filter(r => !isDecentreeParent(r)), [rows]);
+
   // --- FILTRAGE ---
   const filteredRows = React.useMemo(() => {
-    let res = rows || [];
-    const sel = res.filter(r => r.sel);
-    if (sel.length > 0) res = sel;
+    let res = labelRows;
+    // Sélection : une paire décentrée cochée par sa ligne parent → ses deux pans.
+    const selPairIds = new Set((rows || []).filter(r => r.sel && isDecentreeParent(r)).map(r => r.pair_id));
+    const sel = res.filter(r => r.sel || (r.pair_id && selPairIds.has(r.pair_id)));
+    if (sel.length > 0 || selPairIds.size > 0) res = sel;
 
     if (filters.length > 0) {
       res = res.filter(r =>
@@ -625,7 +632,7 @@ export default function EtiquettesSection({
     }
 
     return res;
-  }, [rows, filters, selectedOuvrages]);
+  }, [rows, labelRows, filters, selectedOuvrages]);
 
   // Champs masqués en commun sur les étiquettes filtrées (pour init du panel bulk)
   // En mode Format atelier (rideaux), on ajoute deux bascules : commentaire (en-tête)
@@ -894,7 +901,7 @@ export default function EtiquettesSection({
         {(isRideaux || isStoresBateaux) && (
           <Collapse in={showSelection}>
             <OuvrageSelectionPanel
-              rows={rows}
+              rows={labelRows}
               selected={selectedOuvrages}
               onChange={setSelectedOuvrages}
             />
@@ -918,7 +925,7 @@ export default function EtiquettesSection({
         {(isRideaux || isStoresBateaux) && (
           <Collapse in={showColors} unmountOnExit>
             <ColorPanel
-              rows={rows}
+              rows={labelRows}
               onApply={handleColorApply}
               onClose={() => setShowColors(false)}
             />
