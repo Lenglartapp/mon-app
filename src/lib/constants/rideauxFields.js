@@ -34,6 +34,12 @@ export const FINITION_OC_OPTIONS = FINITION_OURLET_OPTIONS;
 /** Finition de l'ourlet du bas (OB) : la pastille Velcro n'existe que pour le bas. */
 export const FINITION_OB_OPTIONS = [...FINITION_OURLET_OPTIONS, "Pastille Velcro"];
 
+/** Finition OB des RIDEAUX : options propres aux rideaux (la liste ci-dessus reste celle des stores bateaux). */
+export const FINITION_OB_RIDEAUX_OPTIONS = [...FINITION_OB_OPTIONS, "Assemblage finette"];
+
+/** Crochets des rideaux (tableau de production et modèle Excel). */
+export const TYPE_CROCHETS_OPTIONS = ['Crochet américain', 'Crochet américain + Ruban', 'Crochet escargot plastique', 'Crochet escargot métal', 'Agrafe à coudre', 'Crochets fourches'];
+
 // -----------------------------------------------------------------------------
 // ANCIENS LIBELLÉS D'EN-TÊTE
 // Les deux imports Excel (minuteExcelImport pour le chiffrage,

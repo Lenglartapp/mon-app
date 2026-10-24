@@ -1,6 +1,6 @@
 // src/lib/import/importProjectsFromExcel.js
 
-import { HAUTEUR_RENFORT_TETE_OPTIONS, FINITION_OB_OPTIONS, FINITION_OC_OPTIONS, LEGACY_HEADER_ALIASES } from '../constants/rideauxFields';
+import { HAUTEUR_RENFORT_TETE_OPTIONS, FINITION_OB_RIDEAUX_OPTIONS, FINITION_OC_OPTIONS, TYPE_CROCHETS_OPTIONS, LEGACY_HEADER_ALIASES } from '../constants/rideauxFields';
 import { applySchemaDefaults } from '../utils/schemaDefaults';
 import { STORES_CLASSIQUES_PRODUITS, STORE_CLASSIQUE_DEFAUT } from '../constants/productRouting';
 import readXlsxFile from 'read-excel-file';
@@ -97,7 +97,7 @@ const PRODUCT_SHEETS = [
       c('largeur',                     'Largeur (cm)',            'number',   14),
       calc('largeur_finie',            'L. Finie',                12),
       c('v_ourlets_de_cotes',          'OC',           'number',   14),
-      c('piquage_ourlet',              'Finition OB',             'select',   26, { options: FINITION_OB_OPTIONS }),
+      c('piquage_ourlet',              'Finition OB',             'select',   26, { options: FINITION_OB_RIDEAUX_OPTIONS }),
       c('finition_oc',                 'Finition OC',             'select',   26, { options: FINITION_OC_OPTIONS }),
       calc('a_plat',                   'À Plat',                  12),
       c('hspf_droite',                 'HSPF Droit',              'number',   13),
@@ -120,7 +120,7 @@ const PRODUCT_SHEETS = [
       c('poids',                       'Poids',                   'select',   10, { options: OUI_NON }),
       c('onglets',                     'Onglets',                 'select',   14, { options: ['Non', 'Régulier', 'Irrégulier'] }),
       c('bride',                       'Bride',                   'select',   10, { options: OUI_NON }),
-      c('type_crochets',               'Crochets',                'select',   18, { options: ['Crochet Américain', 'Crochet Escargot'] }),
+      c('type_crochets',               'Crochets',                'select',   18, { options: TYPE_CROCHETS_OPTIONS }),
       c('point_chausson',              'Point Chausson',          'select',   16, { options: OUI_NON }),
       calc('nombre_les',               'Nb Lés',                  11),
       c('tissu_deco1',                 'Tissu 1',                 'text',     22),
@@ -163,7 +163,7 @@ const PRODUCT_SHEETS = [
       c('support',                     'Support',                 'text',     14),
       c('equerre',                     'Équerre',                 'select',   12, { options: ['5', '8', '12', '18', 'F7,5', 'F10'] }),
       c('commentaire_confection',      'Commentaire Confection',  'text',     30),
-      c('type_pose',                   'Type Pose',               'select',   16, { options: ['Mural', 'Plafond', 'Grande hauteur', 'Suspente', 'Naissance', 'Encastrée'] }),
+      c('type_pose',                   'Type Pose',               'select',   16, { options: ['Mural', 'Plafond', 'Grande hauteur', 'Suspente', 'Naissance', 'Naissance + Murale', 'Encastrée'] }),
       c('heures_confection',           'H. Conf.',                'number',   12),
       c('quantite',                    'Qté',                     'number',    8),
     ],

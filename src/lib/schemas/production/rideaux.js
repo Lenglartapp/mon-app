@@ -1,6 +1,6 @@
 // src/lib/schemas/production/rideaux.js
 
-import { HAUTEUR_RENFORT_TETE_OPTIONS, FINITION_OB_OPTIONS, FINITION_OC_OPTIONS } from '../../constants/rideauxFields';
+import { HAUTEUR_RENFORT_TETE_OPTIONS, FINITION_OB_RIDEAUX_OPTIONS, FINITION_OC_OPTIONS, TYPE_CROCHETS_OPTIONS } from '../../constants/rideauxFields';
 import React from 'react';
 import { PAIRE_OPTIONS_BASE, paireOptionsForRow, PAIRE_DECENTREE } from '../../utils/pairDecentree';
 import { isMetrageV2Row, largeurFinieV2, parseCm } from '../../formulas/metrageVersion';
@@ -569,7 +569,7 @@ export const RIDEAUX_PROD_SCHEMA = [
         valueGetter: (v, r) => getters.nb_hauteur_a_couper(getRow(v, r))
     },
     { key: "v_ourlets_de_cotes", label: "OC", type: "number", width: 130, editable: true },
-    { key: "piquage_ourlet", label: "Finition OB", type: "select", options: FINITION_OB_OPTIONS, width: 145, editable: true },
+    { key: "piquage_ourlet", label: "Finition OB", type: "select", options: FINITION_OB_RIDEAUX_OPTIONS, width: 145, editable: true },
     { key: "finition_oc", label: "Finition OC", type: "select", options: FINITION_OC_OPTIONS, width: 145, editable: true },
     // Piquage Raccord : type de couture pour les raccords de lés (à côté de Piquage Ourlet)
     { key: "piquage_raccord", label: "Piquage Raccord", type: "select", options: ['Couture anglaise', 'Couture à la française', 'Couture ouverte', 'Surfilage', 'Couture anglaise + Surpiqûre', 'Couture bourdon', 'Plate + surfilage', 'Plate + bourdon'], width: 200, editable: true },
@@ -713,10 +713,10 @@ export const RIDEAUX_PROD_SCHEMA = [
     { key: "bride", label: "Bride", type: "select", options: ["Oui", "Non"], width: 90, editable: true },
 
     // Crochets: Américain / Escargot (plastique/métal) / Agrafe à coudre
-    { key: "type_crochets", label: "Crochets", type: "select", options: ['Crochet américain', 'Crochet américain + Ruban', 'Crochet escargot plastique', 'Crochet escargot métal', 'Agrafe à coudre'], width: 165, editable: true },
+    { key: "type_crochets", label: "Crochets", type: "select", options: TYPE_CROCHETS_OPTIONS, width: 165, editable: true },
 
     // Ruflette : système de tête cousu en atelier (visible uniquement sur le BPF)
-    { key: "ruflette", label: "Ruflette", type: "select", options: ['Wave en Y', 'Ruflette Blanche', 'Wave Forest assemblées'], width: 175, editable: true },
+    { key: "ruflette", label: "Ruflette", type: "select", options: ['Wave en Y', 'Ruflette Blanche', 'Wave Forest assemblées', 'Wave Forest apparente'], width: 175, editable: true },
 
     // Point Chausson: Oui / Non
     { key: "point_chausson", label: "Point Chausson", type: "select", options: ["Oui", "Non"], width: 140, editable: true },
@@ -1026,7 +1026,7 @@ export const RIDEAUX_PROD_SCHEMA = [
 
     // G. Suivi & Statuts
     { key: "commentaire_confection", label: "Commentaire Confection", type: "textarea", width: 260, editable: true },
-    { key: "type_pose", label: "Type Pose", type: "select", options: ["Mural", "Plafond", "Grande hauteur", "Suspente", "Naissance", "Encastrée"], width: 145, editable: true },
+    { key: "type_pose", label: "Type Pose", type: "select", options: ["Mural", "Plafond", "Grande hauteur", "Suspente", "Naissance", "Naissance + Murale", "Encastrée"], width: 145, editable: true },
     { key: "heures_confection", label: "H. Conf.", type: "number", width: 115, editable: true },
     // Heures de pose / prépa (importées du chiffrage). Masquées par défaut ; H. Prépa est
     // rendue visible dans le BPP, et les 3 heures sont activables à la demande dans le Suivi.
