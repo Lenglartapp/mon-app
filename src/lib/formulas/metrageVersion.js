@@ -6,8 +6,20 @@
 //                conservé à la mise en projet, posé sur les lignes des nouveaux projets).
 // Les getters production ne voient que la ligne : c'est donc le marqueur de ligne qui fait foi.
 export const FORMULES_METRAGE_V2 = 2;
+// v3 (oct. 2026) : v2 + marge « machine de coupe » sur la hauteur de coupe (tissu, inter).
+// Seuls les chiffrages / projets créés à partir de v3 la reçoivent : les lignes v2
+// existantes (projets en cours, devis validés ou en commande) gardent leurs valeurs.
+export const FORMULES_METRAGE_V3 = 3;
+// Version posée sur les NOUVEAUX chiffrages et projets.
+export const FORMULES_METRAGE_COURANTE = FORMULES_METRAGE_V3;
+
+// Marge « machine de coupe » (cm), partagée rideaux / stores bateaux, chiffrage / production.
+export const MARGE_MACHINE_COUPE = 10;
 
 export const isMetrageV2Row = (row) => Number(row?.formules_metrage) >= FORMULES_METRAGE_V2;
+export const isMetrageV3Row = (row) => Number(row?.formules_metrage) >= FORMULES_METRAGE_V3;
+// Marge machine de coupe sur une ligne rideaux (0 avant v3).
+export const margeMachineRideau = (row) => (isMetrageV3Row(row) ? MARGE_MACHINE_COUPE : 0);
 
 // L. Finie v2 (par rideau) — base : L/pan + 10 cm + 2,5 % × L/pan.
 //  - Wave 60 / 80 : base arrondie pour un nombre pair de vagues :

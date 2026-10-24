@@ -1,5 +1,5 @@
 import { FINITION_OB_OPTIONS, FINITION_OC_OPTIONS } from '../../constants/rideauxFields';
-import { metrageStore, isStoresMetrageRow, CAS_COUPE_LABEL } from '../../formulas/storesBateauxMetrage.js';
+import { metrageStore, isStoresMetrageRow, isStoresMargeMachineRow, CAS_COUPE_LABEL } from '../../formulas/storesBateauxMetrage.js';
 // src/lib/schemas/production/stores_bateaux.js
 // Schéma atelier pour le module "Stores" (Bateaux/Velum)
 
@@ -21,6 +21,7 @@ export function storeMetrage(row, tissu = 'toile') {
         double: String(row.doublure || '').trim() !== '',
         ourletCote: row.ourlet_de_cote, finitionOC: row.finition_oc,
         surplus: row.surplus_fourreau, intervalle: row.valeur_intervalle,
+        margeMachine: isStoresMargeMachineRow(row),
     };
     return tissu === 'doublure'
         ? metrageStore({ ...common, laize: row.laize_doublure })
@@ -112,7 +113,7 @@ const BASE_STORES_BATEAUX_SCHEMA = [
 
     // hauteur_coupe (number, readOnly) : H. Coupe
     {
-        tooltip: "H. Finie + 50 (+ 80 si H. Finie ≥ 400). Si Laize TF1 dépasse cette valeur : = À Plat (toile couchée).\nNouveau métrage : H. Finie + Surplus × Nb Tigettes + 20.",
+        tooltip: "H. Finie + 50 (+ 80 si H. Finie ≥ 400). Si Laize TF1 dépasse cette valeur : = À Plat (toile couchée).\nNouveau métrage : H. Finie + Surplus × Nb Tigettes + 20, + 10 cm de marge machine de coupe (projets créés depuis oct. 2026).",
         key: "hauteur_coupe",
         label: "H. Coupe",
         type: "number",
