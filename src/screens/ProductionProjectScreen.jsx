@@ -145,6 +145,7 @@ const isPrintableCol = (col) =>
 const toPrintCol = (col) => ({
   key: col.key,
   label: col.label || col.key,
+  type: col.type,
   valueGetter: typeof col.valueGetter === 'function' ? col.valueGetter : null,
 });
 

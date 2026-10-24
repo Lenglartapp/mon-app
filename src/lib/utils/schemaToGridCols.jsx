@@ -417,6 +417,17 @@ export function schemaToGridCols(
       }
     }
 
+    // TEXTE LONG (type « textarea ») : éditeur multi-ligne en popup. Entrée valide la saisie,
+    // Maj+Entrée insère un retour à la ligne (comportement natif de agLargeTextCellEditor).
+    // Dans la cellule : une seule ligne (retours affichés « ↵ »), texte complet en infobulle.
+    if (col.type === 'textarea') {
+      gridCol.cellEditor = 'agLargeTextCellEditor';
+      gridCol.cellEditorPopup = true;
+      gridCol.cellEditorParams = { maxLength: 2000, rows: 6, cols: 50 };
+      gridCol.valueFormatter = (params) => (params.value == null ? '' : String(params.value).replace(/\r?\n/g, ' ↵ '));
+      gridCol.tooltipValueGetter = (params) => (params.value ? String(params.value) : undefined);
+    }
+
     // PHOTO CELL
     if (col.type === 'photo') {
       gridCol.cellRenderer = (params) => (
