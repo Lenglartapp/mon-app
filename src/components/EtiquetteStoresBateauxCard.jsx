@@ -407,7 +407,7 @@ export default function EtiquetteStoresBateauxCard({ row, projectName, index, to
             }}>
               Commentaires atelier
             </div>
-            <div style={{ padding: "8px 10px", fontSize: 12, color: "#374151", lineHeight: 1.5, minHeight: 50 }}>
+            <div style={{ padding: "8px 10px", fontSize: 12, color: "#374151", lineHeight: 1.5, minHeight: 50, whiteSpace: "pre-wrap" }}>
               {v(row, "commentaire_confection", "")}
             </div>
           </div>

@@ -124,6 +124,8 @@ export default function BPPPrintPortal({ sections = [], projectName, manager, on
                         border: '0.5pt solid #999',
                         padding: '2pt 3pt',
                         verticalAlign: 'top',
+                        // Texte long (commentaire) : retours à la ligne conservés
+                        ...(col.type === 'textarea' && { whiteSpace: 'pre-wrap' }),
                       }}>
                         {fmtCell(cellValue(col, row, section.rows))}
                       </td>

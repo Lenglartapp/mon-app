@@ -388,6 +388,7 @@ export default function LineDetailPanel({ open, onClose, row, schema, onRowChang
                                         onChange={(newValue) => handleFieldChange(col.key, newValue)}
                                         disabled={isReadOnly}
                                         type={col.type === 'number' || col.type === 'formula' ? 'number' : 'text'}
+                                        {...(col.type === 'textarea' && { multiline: true, minRows: 3, maxRows: 10 })}
                                         variant="outlined"
                                         size="small"
                                         sx={FIELD_SX}

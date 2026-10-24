@@ -16,7 +16,9 @@ export default function BlurTextField({ value, onChange, ...props }) {
     };
 
     const handleKeyDown = (e) => {
-        if (e.key === 'Enter') {
+        // Champ multi-ligne : Entrée insère un retour à la ligne ; l'enregistrement se fait
+        // à la perte de focus, comme pour les autres champs.
+        if (e.key === 'Enter' && !props.multiline) {
             e.target.blur(); // Trigger blur to save
         }
     };

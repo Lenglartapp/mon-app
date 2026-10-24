@@ -250,7 +250,7 @@ function PrintLabel({ row, projectName, index, total }) {
             }}>
               Commentaires atelier
             </div>
-            <div style={{ padding: "3pt 4pt", fontSize: "8pt", color: "#374151", lineHeight: 1.4, wordBreak: "break-word", minHeight: "16mm" }}>
+            <div style={{ padding: "3pt 4pt", fontSize: "8pt", color: "#374151", lineHeight: 1.4, wordBreak: "break-word", minHeight: "16mm", whiteSpace: "pre-wrap" }}>
               {v(row, "commentaire_confection", "")}
             </div>
           </div>

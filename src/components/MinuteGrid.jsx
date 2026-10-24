@@ -216,6 +216,8 @@ const GROUP_PANEL_HEIGHT = 44;
 
 // CSS custom pour le thème AG Grid
 const AG_CUSTOM_CSS = `
+/* Infobulles (texte long) : les retours à la ligne saisis restent visibles */
+.ag-tooltip { white-space: pre-line; }
 /* Style épuré (façon Notion / ClickUp) : fond blanc, en-têtes gris clair #F4F4F4,
    cadre #E0DED9, traits intérieurs #E8E6E2 */
 .ag-theme-alpine {

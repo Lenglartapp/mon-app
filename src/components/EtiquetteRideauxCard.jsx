@@ -492,7 +492,7 @@ export default function EtiquetteRideauxCard({ row, projectName, index, total, o
             }}>
               Commentaires atelier
             </div>
-            <div style={{ flex: 1, padding: "8px 10px", fontSize: 12, color: "#374151", lineHeight: 1.5, overflow: "auto" }}>
+            <div style={{ flex: 1, padding: "8px 10px", fontSize: 12, color: "#374151", lineHeight: 1.5, overflow: "auto", whiteSpace: "pre-wrap" }}>
               {v(row, "commentaire_confection", "")}
             </div>
           </div>

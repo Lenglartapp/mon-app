@@ -285,7 +285,7 @@ function Header({ row, projectName, index, total }) {
         {hasComment && (
           <>
             <div style={{ alignSelf: "stretch", width: 1, background: boxBorder, flex: "0 0 auto" }} />
-            <div style={{ flex: 1, minWidth: 60, fontSize: 11, fontWeight: 500, lineHeight: 1.25 }}>
+            <div style={{ flex: 1, minWidth: 60, fontSize: 11, fontWeight: 500, lineHeight: 1.25, whiteSpace: "pre-wrap" }}>
               <span style={{ ...lbl, marginRight: 4 }}>COMMENTAIRE :</span>{comment}
             </div>
           </>
