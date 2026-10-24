@@ -32,6 +32,37 @@ function getColOptions(col) {
         .filter(o => o.value !== '');
 }
 
+// Options proposées par le filtre pour un champ à liste. Quand on connaît les lignes du
+// tableau : liste propre à chaque ligne (optionsFn, ex. Statut Conf selon le produit)
+// ou, à défaut, la liste fixe — plus les valeurs réellement saisies (anciennes valeurs
+// hors liste). Sans doublon, dans l'ordre de première apparition. Toutes les lignes du
+// tableau sont prises (pas seulement les filtrées) pour que les choix ne rétrécissent pas.
+// Tableau vide, ou champ sans liste : la liste fixe, comme avant.
+function getFilterOptions(col, rows) {
+    const fixed = getColOptions(col);
+    const hasFn = typeof col?.optionsFn === 'function';
+    if (!Array.isArray(rows) || rows.length === 0 || (!hasFn && fixed.length === 0)) return fixed;
+
+    const seen = new Map();
+    const add = (o) => { if (o.value !== '' && !seen.has(o.value)) seen.set(o.value, o); };
+    if (hasFn) {
+        rows.forEach(row => {
+            let opts = null;
+            try { opts = col.optionsFn(row); } catch { /* ligne atypique : ignorée */ }
+            getColOptions({ options: opts }).forEach(add);
+        });
+    } else {
+        fixed.forEach(add);
+    }
+    rows.forEach(row => {
+        const v = row?.[col.key];
+        if (v === null || v === undefined || typeof v === 'object') return;
+        const s = String(v);
+        if (s.trim() !== '') add({ value: s, label: s });
+    });
+    return seen.size > 0 ? [...seen.values()] : fixed;
+}
+
 export function getOperatorsForCol(col) {
     const type = getFieldType(col);
     if (type === 'date') return [
@@ -201,7 +232,8 @@ function FieldSelect({ fields, value, onChange }) {
     );
 }
 
-export default function FilterPanel({ schema, conditions, onChange, filters, setFilters }) {
+// rows (optionnel) : toutes les lignes du tableau, pour proposer les options réelles des champs à liste.
+export default function FilterPanel({ schema, conditions, onChange, filters, setFilters, rows }) {
     // Rétrocompatibilité avec l'ancienne API (filters/setFilters)
     conditions = conditions ?? filters ?? [];
     onChange = onChange ?? setFilters ?? (() => {});
@@ -252,7 +284,7 @@ export default function FilterPanel({ schema, conditions, onChange, filters, set
                 const col = filterableFields.find(f => f.key === cond.field);
                 const operators = getOperatorsForCol(col);
                 const showValue = needsValue(cond.operator);
-                const colOptions = getColOptions(col);
+                const colOptions = getFilterOptions(col, rows);
 
                 return (
                     <div key={cond.id} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>

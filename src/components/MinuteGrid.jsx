@@ -2259,6 +2259,7 @@ function MinuteGrid({
                                         schema={schema}
                                         conditions={filterConditions}
                                         onChange={setFilterConditions}
+                                        rows={rows}
                                     />
                                 </FitPanel>
                             )}
