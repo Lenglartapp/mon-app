@@ -459,6 +459,11 @@ function MinuteGrid({
     // `initialVisibilityModel` ne le porte pas : c'est un dictionnaire construit
     // dans l'ordre du schéma, la séquence voulue par la vue y est perdue.
     initialColumnOrder = null,
+    // false : un dossier sans mise en page propre démarre sur la vue (initialVisibilityModel
+    // + initialColumnOrder) au lieu de recopier l'ancienne mise en page globale du tableau.
+    legacyTemplate = true,
+    // true : une matière active n'affiche que ses colonnes autorisées par la vue.
+    matieresFollowView = false,
     mecaGroups = [],
     confGroups = [],
     showExpeditionCol = false,
@@ -677,13 +682,17 @@ function MinuteGrid({
 
     // Ancienne clé globale : sert de MODÈLE tant que le dossier n'a pas sa propre
     // mise en page, pour ne perdre aucun réglage existant lors de la bascule.
-    const templateGridKey = useMemo(() => gridKey || null, [gridKey]);
+    const templateGridKey = useMemo(() => (legacyTemplate ? gridKey || null : null), [gridKey, legacyTemplate]);
 
     const gridId = `${STORAGE_PREFIX}${scopedGridKey}`;
     const supabaseGridKey = scopedGridKey;
     const { data: sharedState, loaded: sharedStateLoaded, save: saveSharedState } = useSharedGridState(supabaseGridKey, templateGridKey);
     const initialVisibilityModelRef = useRef(initialVisibilityModel);
     initialVisibilityModelRef.current = initialVisibilityModel;
+    // Colonne d'une matière affichée ? Matière active, et (si demandé) colonne permise par la vue.
+    const matiereFieldShown = useCallback((field, active) =>
+        active && !(matieresFollowView && initialVisibilityModelRef.current?.[field] === false),
+    [matieresFollowView]);
     const gridMountedRef = useRef(false);
     const mountGrid = gridMountedRef.current || sharedStateLoaded || layoutWaitOver;
     gridMountedRef.current = mountGrid; // une fois créé, le tableau reste en place
@@ -806,6 +815,18 @@ function MinuteGrid({
             [...(matiereGroups || []), ...(mecaGroups || []), ...(confGroups || [])].flatMap(g => g.fields || [])
         );
 
+        // Dossier sans mise en page enregistrée : on part de l'ORDRE de la vue (la visibilité
+        // vient du préfiltre ci-dessus), comme après « Réinitialiser la vue ». Rien n'est
+        // enregistré ici : la mise en page du dossier n'est créée qu'au premier réglage.
+        if (!columnState && Array.isArray(initialColumnOrder) && initialColumnOrder.length > 0) {
+            const connues = new Set((schema || []).filter(c => c.key && !c.hidden).map(c => c.key));
+            const ordre = initialColumnOrder.filter(k => connues.has(k));
+            api.applyColumnState({
+                state: withSchemaOrderForNewCols(ordre.map(colId => ({ colId })), schema).map(({ colId }) => ({ colId })),
+                applyOrder: true,
+            });
+        }
+
         if (columnState && v === GRID_STATE_VERSION) {
             // Réglages de l'équipe par-dessus. Une colonne que la vue exclut reste
             // masquée si un ANCIEN état enregistré la disait visible. Un état enregistré
@@ -849,7 +870,7 @@ function MinuteGrid({
                 const matState = [];
                 matiereGroups.forEach(group => {
                     const isActive = nextMat[group.id] !== false;
-                    group.fields.forEach(field => matState.push({ colId: field, hide: !isActive }));
+                    group.fields.forEach(field => matState.push({ colId: field, hide: !matiereFieldShown(field, isActive) }));
                 });
                 api.applyColumnState({ state: matState });
                 if (JSON.stringify(nextMat) !== JSON.stringify(prevMat)) onMatiereChangeRef.current?.(nextMat);
@@ -884,7 +905,7 @@ function MinuteGrid({
             });
             api.applyColumnState({ state: confState });
         }
-    }, [initialVisibilityModel, matiereGroups, mecaGroups, confGroups, schema, fillField]);
+    }, [initialVisibilityModel, initialColumnOrder, matiereGroups, mecaGroups, confGroups, schema, fillField, matiereFieldShown]);
 
     const onGridReady = useCallback((params) => {
         isGridReadyRef.current = true;
@@ -899,7 +920,7 @@ function MinuteGrid({
             matiereGroups.forEach(group => {
                 const isActive = currentMatieres[group.id] !== false;
                 group.fields.forEach(field => {
-                    matiereState.push({ colId: field, hide: !isActive });
+                    matiereState.push({ colId: field, hide: !matiereFieldShown(field, isActive) });
                 });
             });
             params.api.applyColumnState({ state: matiereState });
@@ -1128,11 +1149,11 @@ function MinuteGrid({
         matiereGroups.forEach(group => {
             const isActive = activeMatieres[group.id] !== false;
             group.fields.forEach(field => {
-                matiereState.push({ colId: field, hide: !isActive });
+                matiereState.push({ colId: field, hide: !matiereFieldShown(field, isActive) });
             });
         });
         api.applyColumnState({ state: matiereState });
-    }, [activeMatieres, matiereGroups]);
+    }, [activeMatieres, matiereGroups, matiereFieldShown]);
 
     // Toggle d'un groupe matière
     const handleToggleMatiere = useCallback((groupId, active) => {
@@ -1140,14 +1161,16 @@ function MinuteGrid({
         const group = matiereGroups?.find(g => g.id === groupId);
         if (!api || !group) return;
 
-        api.setColumnsVisible(group.fields, active);
+        const shown = group.fields.filter(f => matiereFieldShown(f, active));
+        api.setColumnsVisible(shown, true);
+        api.setColumnsVisible(group.fields.filter(f => !shown.includes(f)), false);
         saveColumnState(api);
 
         // Les cases individuelles du panneau (colVisibility) doivent suivre : sans ça,
         // basculer une matière laisserait les cases de ses colonnes désynchronisées.
         setColVisibility(prev => {
             const next = { ...prev };
-            group.fields.forEach(f => { next[f] = active; });
+            group.fields.forEach(f => { next[f] = shown.includes(f); });
             return next;
         });
 
@@ -1156,7 +1179,7 @@ function MinuteGrid({
         setLocalMatieres(next);
         saveSharedState({ matieres: next }); // partagé avec la mise en page du dossier
         onMatiereChange?.(next);
-    }, [matiereGroups, saveColumnState, saveSharedState, onMatiereChange]);
+    }, [matiereGroups, saveColumnState, saveSharedState, onMatiereChange, matiereFieldShown]);
 
     const handleToggleMeca = useCallback((groupId, active) => {
         const api = gridRef.current?.api;

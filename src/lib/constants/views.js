@@ -112,53 +112,35 @@ export const DEFAULT_VIEWS = {
 
   // BPF (Bon de Fabrication)
   bpf: {
+    // Oct. 2026 : listes ORDONNÉES et EXHAUSTIVES (toute colonne absente est masquée).
     rideaux: [
-      "sel", "detail", "zone", "piece", "produit", "type_confection",
-      "hauteur_renfort_tete", "paire_ou_un_seul_pan", "ampleur",
-      "largeur_mecanisme", "largeur", "largeur_finie", "a_plat",
-      "v_ourlets_de_cotes", "hspf_droite", "hspf_milieu", "hspf_gauche", "statut_cotes",
-      "valeur_deduction", "finition_bas",
-      "hauteur_finie_droite", "hauteur_finie_milieu", "hauteur_finie_gauche",
-      "hauteur_coupe", "nb_raccords_motifs", "hauteur_coupe_motif", "hauteur_coupe_doublure",
-      "nombre_les", "piquage_ourlets_du_bas", "doublure_finition_bas", "finition_oc",
-      "finition_champs", "finition_retour", "poids", "onglets", "bride",
-      "type_crochets", "ruflette", "point_chausson", "emballage", "piquage_raccord",
-      "tissu_deco1", "laize_tissu1", "raccord_v_tissu1", "raccord_h_tissu1", "ml_tissu1",
-      "tissu_deco2", "laize_tissu2", "raccord_v_tissu2", "raccord_h_tissu2", "ml_tissu2",
-      "doublure", "laize_doublure", "ml_doublure",
-      "inter_doublure", "laize_inter", "ml_inter_doublure",
-      "passementerie1", "application_passementerie1", "ml_pass1",
-      "passementerie2", "application_passementerie2", "ml_pass2", "embrasse",
-      "croisement", "type_croisement", "retour_gauche", "retour_droit", "type_retours",
-      "hauteur_corniere_elastique",
-      "etiquette_lavage", "etiquette_lenglart", "schema",
-      "type_mecanisme", "modele_mecanisme", "couleur_mecanisme", "meca_couvert", "cache_moteur",
-      "nombre_glisseur", "nb_crochets_par_pan",
-      "heures_confection", "statut_conf",
-      "schema_principe", "photos_sur_site"
+      "sel", "detail", "zone", "photos_sur_site", "piece", "produit", "paire_ou_un_seul_pan",
+      "commentaire_confection", "type_confection", "type_crochets", "hauteur_renfort_tete",
+      "ampleur", "tissu_deco1", "doublure", "finition_bas", "piquage_ourlets_du_bas",
+      "piquage_ourlet", "onglets", "poids", "bride", "v_ourlets_de_cotes", "finition_oc",
+      "finition_champs", "finition_retour", "point_chausson", "piquage_ourlets_bas_doublure",
+      "doublure_finition_bas", "deduction_doublure", "type_mecanisme", "modele_mecanisme",
+      "meca_couvert", "cache_moteur", "valeur_deduction", "largeur_mecanisme", "largeur",
+      "croisement", "type_croisement", "largeur_finie", "retour_gauche", "retour_droit",
+      "type_retours", "hauteur_corniere_elastique", "a_plat", "laize_tissu1", "nombre_les",
+      "reste_les", "piquage_raccord", "nombre_glisseur", "nb_crochets_par_pan", "hspf_gauche",
+      "hspf_milieu", "hspf_droite", "statut_cotes", "hauteur_finie_gauche",
+      "hauteur_finie_milieu", "hauteur_finie_droite", "hauteur_coupe", "hauteur_coupe_motif",
+      "ml_tissu1", "hauteur_coupe_doublure", "ml_doublure", "embrasse", "schema_principe",
+      "etiquette_lenglart", "etiquette_lavage", "emballage"
     ],
     // stores classiques : absent du BPF
     stores_bateaux: [
-      "detail", "zone", "piece", "produit",
-      "largeur", "largeur_finie",
-      "ourlet_de_cote", "finition_oc", "a_plat",
-      "hauteur_finie", "statut_cotes",
-      "hauteur_coupe", "hauteur_coupe_motif", "hauteur_coupe_doublure",
-      "picage_bas", "piquage_ourlet", "finition_chant_et_retour",
-      "toile_finition_1", "raccord_v_toile_finition_1", "raccord_h_toile_finition_1", "laize_toile_finition_1", "ml_toile_finition_1", "cas_coupe_toile",
-      "doublure", "laize_doublure", "ml_doublure", "cas_coupe_doublure",
-      "etiquette_lavage",
-      "mecanisme_store", "couleur_mecanisme", "type_commande",
-      "type_moteur", "cote_manoeuvre", "methode_manoeuvre", "equerre_support",
-      "nombre_anneaux_largeur", "deportation_premier_anneau",
-      "valeur_velcro", "nombre_intervalles", "valeur_intervalle", "surplus_fourreau",
-      "croquis_intervalle",
-      "barre_de_charge", "longueur_barre_de_charge", "diametre_barre_de_charge",
-      "longueur_tigette", "nombre_de_tigettes", "diametre_tigettes",
-      "cable_intermediaire",
-      "type_pose",
-      "heures_confection", "statut_prepa", "statut_conf", "statut_pose",
-      "photos_sur_site", "quantite"
+      "sel", "detail", "zone", "photos_sur_site", "piece", "produit", "type_store_bateau",
+      "quantite", "toile_finition_1", "laize_toile_finition_1", "ml_toile_finition_1",
+      "cas_coupe_toile", "doublure", "laize_doublure", "ml_doublure", "cas_coupe_doublure",
+      "mecanisme_store", "largeur", "cote_manoeuvre", "largeur_finie", "ourlet_de_cote",
+      "finition_oc", "a_plat", "hauteur_finie", "hauteur_coupe", "hauteur_coupe_motif",
+      "hauteur_coupe_doublure", "finition_chant_et_retour", "barre_de_charge", "valeur_velcro",
+      "guidage", "nombre_anneaux_largeur", "deportation_premier_anneau", "nombre_intervalles",
+      "valeur_intervalle", "surplus_fourreau", "longueur_barre_de_charge",
+      "nombre_de_tigettes", "longueur_tigette", "croquis_intervalle", "commentaire_confection",
+      "etiquette_lavage"
     ],
     coussins: [
       "detail", "zone", "piece", "produit",
@@ -220,27 +202,30 @@ export const DEFAULT_VIEWS = {
 
   // BPP (Bon de Préparation)
   bpp: {
+    // Oct. 2026 : listes ORDONNÉES et EXHAUSTIVES (toute colonne absente est masquée).
     rideaux: [
-      "sel", "detail", "zone", "piece", "produit", "type_confection",
-      "paire_ou_un_seul_pan", "largeur_gorge", "profondeur_gorge", "largeur_mecanisme", "largeur",
-      "hauteur_finie_gauche", "hauteur_finie_droite",
-      "statut_cotes", "type_crochets",
-      "croisement", "type_croisement", "patte_de_croisement", "retour_gauche", "retour_droit", "type_retours",
-      "hauteur_corniere_elastique",
-      "type_mecanisme", "modele_mecanisme", "couleur_mecanisme",
-      "meca_couvert", "type_commande",
-      "nombre_glisseur", "couleur_glisseur",
-      "piton", "embout_meca", "support", "equerre",
-      "type_pose", "heures_prepa", "statut_prepa"
+      "sel", "detail", "zone", "piece", "statut_cotes", "type_mecanisme", "modele_mecanisme",
+      "largeur_mecanisme", "largeur_finie", "couleur_mecanisme", "type_confection",
+      "type_pose", "support", "equerre", "paire_ou_un_seul_pan", "nombre_glisseur",
+      "couleur_glisseur", "type_crochets", "nb_crochets_par_pan", "croisement",
+      "type_croisement", "patte_de_croisement", "retour_gauche", "retour_droit",
+      "type_retours", "hauteur_corniere_elastique", "cache_moteur", "largeur_gorge",
+      "profondeur_gorge", "type_commande", "piton", "embout_meca"
     ],
     stores: [
-      "detail", "zone", "piece", "produit",
-      "largeur", "hauteur", "tailles_lames", "largeur_gorge", "profondeur_gorge",
-      "mecanisme_store", "cote_manoeuvre", "hauteur_manoeuvre",
-      "type_pose", "guidage_coulisse",
-      "statut_cotes", "heures_prepa", "statut_prepa", "quantite"
+      "sel", "detail", "zone", "piece", "statut_cotes", "produit", "quantite",
+      "mecanisme_store", "type_commande", "cote_manoeuvre", "largeur", "hauteur",
+      "hauteur_manoeuvre", "type_pose", "guidage_coulisse", "largeur_gorge",
+      "profondeur_gorge", "photos_sur_site"
     ],
-    stores_bateaux: null, // tout visible
+    stores_bateaux: [
+      "sel", "detail", "zone", "piece", "statut_cotes", "produit", "type_store_bateau",
+      "quantite", "largeur", "hauteur_finie", "methode_manoeuvre", "cote_manoeuvre",
+      "nombre_de_tigettes", "longueur_tigette", "barre_de_charge", "longueur_barre_de_charge",
+      "nombre_anneaux_largeur", "deportation_premier_anneau", "guidage", "type_pose",
+      "equerre_support", "cable_intermediaire", "couleur_mecanisme", "largeur_gorge",
+      "profondeur_gorge", "espace_ouverture_fenetre"
+    ],
     tenture_murale: [
       "detail", "zone", "piece", "produit",
       "largeur", "hauteur",

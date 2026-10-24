@@ -1668,6 +1668,8 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                 projectId={project?.id}
                   enableDecentree={true}
                   gridKey="bpf_rideaux"
+                  legacyTemplate={false}
+                  matieresFollowView={true}
                   matiereGroups={RIDEAUX_PROD_MATIERE_GROUPS}
                   matieresInPanel={true}
                   initialColumnOrder={getViewOrder('bpf', 'rideaux')}
@@ -1691,11 +1693,15 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                   onRowsChange={(nr) => handleSubsetChange(nr, /store (bateau|velum)/i, r => /store (bateau|velum)/i.test(String(r.produit || "")) && !isSousTraite(r))}
                   schema={STORES_BATEAUX_PROD_SCHEMA}
                   enableCellFormulas={true}
+                  initialVisibilityModel={getVisibilityModel('bpf', 'stores_bateaux', STORES_BATEAUX_PROD_SCHEMA)}
+                  initialColumnOrder={getViewOrder('bpf', 'stores_bateaux')}
+                  resetViewLabel="vue BPF"
                   onAdd={(n) => handleAddRow("Store Bateau", n)}
                   onDuplicateRow={handleDuplicateRow}
                   catalog={projectMaterials}
                 projectId={project?.id}
                   gridKey="bpf_stores_bateaux"
+                  legacyTemplate={false}
                   onRowClick={(id) => setOpenedRowId(id)}
                   isMobile={isMobile}
                 />
@@ -1851,6 +1857,8 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                 projectId={project?.id}
                   enableDecentree={true}
                   gridKey="bpp_rideaux"
+                  legacyTemplate={false}
+                  matieresFollowView={true}
                   initialColumnOrder={getViewOrder('bpp', 'rideaux')}
                   resetViewLabel="vue BPP"
                   onRowClick={(id) => setOpenedRowId(id)}
@@ -1873,11 +1881,14 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                   schema={STORES_PROD_SCHEMA}
                   enableCellFormulas={true}
                   initialVisibilityModel={getVisibilityModel('bpp', 'stores', STORES_PROD_SCHEMA)}
+                  initialColumnOrder={getViewOrder('bpp', 'stores')}
+                  resetViewLabel="vue BPP"
                   onAdd={(n) => handleAddRow(STORE_CLASSIQUE_DEFAUT, n)}
                   onDuplicateRow={handleDuplicateRow}
                   catalog={projectMaterials}
                 projectId={project?.id}
                   gridKey="bpp_stores"
+                  legacyTemplate={false}
                   onRowClick={(id) => setOpenedRowId(id)}
                   isMobile={isMobile}
                 />
@@ -1898,11 +1909,14 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                   schema={STORES_BATEAUX_PROD_SCHEMA}
                   enableCellFormulas={true}
                   initialVisibilityModel={getVisibilityModel('bpp', 'stores_bateaux', STORES_BATEAUX_PROD_SCHEMA)}
+                  initialColumnOrder={getViewOrder('bpp', 'stores_bateaux')}
+                  resetViewLabel="vue BPP"
                   onAdd={(n) => handleAddRow("Store Bateau", n)}
                   onDuplicateRow={handleDuplicateRow}
                   catalog={projectMaterials}
                 projectId={project?.id}
                   gridKey="bpp_stores_bateaux"
+                  legacyTemplate={false}
                   onRowClick={(id) => setOpenedRowId(id)}
                   isMobile={isMobile}
                 />
