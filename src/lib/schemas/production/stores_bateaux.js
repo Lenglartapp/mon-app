@@ -51,6 +51,9 @@ const BASE_STORES_BATEAUX_SCHEMA = [
         width: 125
     },
 
+    // type_store_bateau (select) : Type de store bateau
+    { key: "type_store_bateau", label: "Type de store bateau", type: "select", options: ["Freel", "Standard", "Coffre"], width: 170 },
+
     // largeur (number) : Largeur
     { key: "largeur", label: "Largeur", type: "number", width: 130 },
 
@@ -70,7 +73,7 @@ const BASE_STORES_BATEAUX_SCHEMA = [
     },
 
     // ourlet_de_cote (number) : Ourlet de côté
-    { key: "ourlet_de_cote", label: "Ourlet Côté", type: "number", width: 120 },
+    { key: "ourlet_de_cote", label: "OC", type: "number", width: 120 },
 
     // Finition de l'ourlet de côté : fixe le coefficient de l'à plat (Double… / vide → × 4,
     // Surfil / Point Bourdon → × 2) sur les lignes au nouveau métrage.
@@ -226,7 +229,7 @@ const BASE_STORES_BATEAUX_SCHEMA = [
 
 
     // finition_chant_et_retour (text)
-    { key: "finition_chant_et_retour", label: "Finition Chant et Retour", type: "text", width: 200 },
+    { key: "finition_chant_et_retour", label: "Chant/Retour", type: "text", width: 200 },
 
     // TOILE 1
     { key: "toile_finition_1", label: "Toile 1", type: "catalog_item", category: "Tissu,Tissus", width: 180 },
@@ -281,7 +284,7 @@ const mapSchema = (list) => list.map(def => {
 export const STORES_BATEAUX_PROD_SCHEMA = [
     ...mapSchema([
         'detail',
-        'zone', 'piece', 'fenetre', 'produit',
+        'zone', 'piece', 'fenetre', 'produit', 'type_store_bateau',
         'largeur', 'largeur_finie', 'ourlet_de_cote', 'finition_oc',
         'a_plat',
         'hauteur_finie', 'statut_cotes', 'hauteur_coupe', 'hauteur_coupe_motif', 'hauteur_coupe_doublure',
@@ -317,7 +320,7 @@ export const STORES_BATEAUX_PROD_SCHEMA = [
     { key: "type_commande", label: "Type Commande", type: "select", options: ["Manuelle", "Télécommande", "Commande murale", "Fourni par le client"], width: 180 },
     { key: "type_moteur", label: "Type Moteur", type: "text", width: 130 },
     { key: "cote_manoeuvre", label: "Côté Manœuvre", type: "select", options: ["Droite", "Gauche"], width: 130 },
-    { key: "methode_manoeuvre", label: "Méthode Manœuvre", type: "select", options: ["Freel", "Cordon", "Chaînette"], width: 160 },
+    { key: "methode_manoeuvre", label: "Manœuvre", type: "select", options: ["Cordon", "Chaînette", "Électrique"], width: 160 },
     { key: "equerre_support", label: "Équerre Support", type: "text", width: 140 },
     {
         tooltip: "Arrondi(L. Finie ÷ 50) + 1.",
@@ -383,7 +386,7 @@ export const STORES_BATEAUX_PROD_SCHEMA = [
     { key: "espace_ouverture_fenetre", label: "Espace Ouv. Fenêtre", type: "number", width: 175 },
     { key: "guidage", label: "Guidage", type: "select", options: ["Guidé", "Pas guidé"], width: 130 },
     { key: "cable_intermediaire", label: "Câble Intermédiaire", type: "select", options: ["1", "2", "3"], width: 165, readOnly: (row) => row?.produit === 'Store Bateau' },
-    { key: "type_pose", label: "Pose", type: "select", options: ['Mural', 'Plafond', 'Grande hauteur', 'Naissance', 'Sur ouvrant', 'Encastré'], width: 145 },
+    { key: "type_pose", label: "Pose", type: "select", options: ['Mural', 'Plafond', 'Grande hauteur', 'Naissance', 'Sur Ouvrant Support', 'Sur Ouvrant Direct', 'Encastré'], width: 145 },
 
     { key: "commentaire_confection", label: "Commentaire Confection", type: "textarea", width: 260, editable: true },
 

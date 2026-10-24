@@ -53,6 +53,10 @@ export const LEGACY_HEADER_ALIASES = {
   doublure_finition_bas:        ["Doubl. Fin. Bas", "Doubl. fin. bas"],
   hauteur_renfort_tete:         ["H/Renfort Têtes", "H. Renfort Tête", "H. Renfort tête"],
   v_ourlets_de_cotes:           ["Ourlets Côtés", "Ourlets de côté"],
+  // Stores bateaux (oct. 2026) : libellés raccourcis, anciens en-têtes (tableau ET modèle Excel).
+  ourlet_de_cote:               ["Ourlet Côté"],
+  finition_chant_et_retour:     ["Finition Chant & Retour", "Finition Chant et Retour"],
+  methode_manoeuvre:            ["Méthode Manœuvre", "Méthode manœuvre"],
   // Étiquettes : les intitulés « Etiq. Lavage » / « Etiq. Lenglart » ont changé de
   // SENS (les libellés ont été remis en face du contenu réel). Les colonnes des
   // anciens fichiers doivent continuer d'atterrir dans leur clé D'ORIGINE — d'où
