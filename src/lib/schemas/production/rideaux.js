@@ -3,7 +3,7 @@
 import { HAUTEUR_RENFORT_TETE_OPTIONS, FINITION_OB_RIDEAUX_OPTIONS, FINITION_OC_OPTIONS, TYPE_CROCHETS_OPTIONS } from '../../constants/rideauxFields';
 import React from 'react';
 import { PAIRE_OPTIONS_BASE, paireOptionsForRow, PAIRE_DECENTREE } from '../../utils/pairDecentree';
-import { isMetrageV2Row, largeurFinieV2, parseCm } from '../../formulas/metrageVersion';
+import { isMetrageV2Row, largeurFinieV2, parseCm, margeMachineRideau } from '../../formulas/metrageVersion';
 
 // Helper to safely extract row from valueGetter args (MUI V5 vs V6 compat)
 const getRow = (a, b) => {
@@ -248,7 +248,7 @@ const getters = {
         if (isMetrageV2Row(row)) {
             const hTete = parseCm(row.hauteur_renfort_tete);
             const isDouble = String(row.doublure || "").trim() !== "";
-            return round1(hauteurFinieMax(row) + (isDouble ? 1 : 2) * hTete + 2 * piquageBas);
+            return round1(hauteurFinieMax(row) + (isDouble ? 1 : 2) * hTete + 2 * piquageBas + margeMachineRideau(row));
         }
         return round1(hauteurFinieMax(row) + 50 + piquageBas);
     },
@@ -320,7 +320,7 @@ const getters = {
     hauteur_coupe_inter: (row) => {
         if (!String(row.inter_doublure || "").trim() && !toNum(row.laize_inter)) return "";
         // v2 (nouveaux projets) : hauteur finie + hauteur tête.
-        if (isMetrageV2Row(row)) return round1(hauteurFinieMax(row) + parseCm(row.hauteur_renfort_tete));
+        if (isMetrageV2Row(row)) return round1(hauteurFinieMax(row) + parseCm(row.hauteur_renfort_tete) + margeMachineRideau(row));
         return round1(hauteurFinieMax(row) + 30);
     },
 
@@ -622,7 +622,7 @@ export const RIDEAUX_PROD_SCHEMA = [
         type: "number",
         width: 120,
         readOnly: true,
-        tooltip: "Nouveaux projets : hauteur finie max (D, M, G) + 2 × Renfort tête + 2 × OB si non doublé (1 × Renfort tête si doublé). Anciens projets : hauteur finie max + 50 + OB.",
+        tooltip: "Nouveaux projets : hauteur finie max (D, M, G) + 2 × Renfort tête + 2 × OB si non doublé (1 × Renfort tête si doublé), + 10 cm de marge machine de coupe (projets créés depuis oct. 2026). Anciens projets : hauteur finie max + 50 + OB.",
         valueGetter: (v, r) => getters.hauteur_coupe(getRow(v, r))
     },
     {
@@ -693,7 +693,7 @@ export const RIDEAUX_PROD_SCHEMA = [
         type: "number",
         width: 150,
         readOnly: true,
-        tooltip: "Nouveaux projets : hauteur finie max + Renfort tête. Anciens projets : hauteur finie max + 30. Vide s'il n'y a pas d'interdoublure.",
+        tooltip: "Nouveaux projets : hauteur finie max + Renfort tête, + 10 cm de marge machine de coupe (projets créés depuis oct. 2026). Anciens projets : hauteur finie max + 30. Vide s'il n'y a pas d'interdoublure.",
         valueGetter: (v, r) => getters.hauteur_coupe_inter(getRow(v, r))
     },
 

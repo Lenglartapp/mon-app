@@ -825,9 +825,9 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
       retour_d: 0,
       type_confection: "Wave 80",
       created: Date.now(),
-      // Projet créé avec les formules v2 → la ligne les suit aussi (lu par les getters).
-      ...(isMetrageV2Project && { formules_metrage: FORMULES_METRAGE_V2 }),
-      ...(isStoresV1Project && { formules_stores: FORMULES_STORES_V1 }),
+      // La ligne suit la version de formules du projet (v2, v3…) — lue par les getters.
+      ...(isMetrageV2Project && { formules_metrage: Number(project.config.formules_metrage) }),
+      ...(isStoresV1Project && { formules_stores: Number(project.config.formules_stores) }),
     });
 
     const added = Array.from({ length: n }, () => {

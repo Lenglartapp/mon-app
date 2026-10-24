@@ -8,8 +8,15 @@
 // Toutes les cotes sont en cm ; le ML renvoyé est en mètres, exact (sans arrondi :
 // l'arrondi au demi-mètre se fait une seule fois par tissu, là où les besoins sont agrégés).
 
+import { MARGE_MACHINE_COUPE } from './metrageVersion.js';
+
 export const FORMULES_STORES_V1 = 1;
+// v2 (oct. 2026) : + marge « machine de coupe » sur la hauteur de coupe. Nouveaux chiffrages /
+// projets uniquement : les lignes v1 existantes gardent leur métrage.
+export const FORMULES_STORES_V2 = 2;
+export const FORMULES_STORES_COURANTE = FORMULES_STORES_V2;
 export const isStoresMetrageRow = (row) => Number(row?.formules_stores) >= FORMULES_STORES_V1;
+export const isStoresMargeMachineRow = (row) => Number(row?.formules_stores) >= FORMULES_STORES_V2;
 
 export const isVelum = (produit) => /velum/i.test(String(produit || ''));
 
@@ -61,6 +68,7 @@ export function nbFourreaux(hauteurFinie, intervalle) {
  *  - surplus, intervalle : fourreaux (défauts 4 / 5 et 25)
  *  - laize           : laize du tissu (vide ou 0 → ML 0)
  *  - raccordV, motif : tissu à motif (case « motif » du catalogue ou raccord V > 0)
+ *  - margeMachine    : true → + MARGE_MACHINE_COUPE sur la hauteur de coupe (lignes formules_stores v2)
  * @returns {{ largeurFinie, aPlat, nbFourreaux, hauteurCoupe, hauteurCoupeMotif, cas, nbBandes, ml }}
  *  cas : 'motif' | 'couche' | 'debout' | 'bandes' | 'sans_laize'
  */
@@ -76,7 +84,8 @@ export function metrageStore(p = {}) {
 
     const fourreaux = nbFourreaux(p.hauteurFinie, p.intervalle);
     const surplus = p.surplus === '' || p.surplus == null ? surplusParDefaut(p.produit) : num(p.surplus);
-    const hauteurCoupe = num(p.hauteurFinie) + surplus * fourreaux + STORE_DEFAULTS.margeHauteur;
+    const hauteurCoupe = num(p.hauteurFinie) + surplus * fourreaux + STORE_DEFAULTS.margeHauteur
+        + (p.margeMachine ? MARGE_MACHINE_COUPE : 0);
 
     const rV = num(p.raccordV);
     const motif = !!p.motif || rV > 0;

@@ -39,6 +39,12 @@ export function budgetFromRows(rows) {
  */
 export function buildProjectFromMinute(minute, opts = {}) {
   const rows = minute?.lines || [];
+  // Le projet prend la version de formules de SON chiffrage (au minimum v2 / v1) : un ancien
+  // devis reste sans marge machine de coupe, cohérent avec le tissu chiffré et acheté.
+  const param = (name) => Number((minute?.params || []).find(p => p?.name === name)?.value) || 0;
+  const maxRow = (k) => rows.reduce((m, r) => Math.max(m, Number(r?.[k]) || 0), 0);
+  const vMetrage = Math.max(FORMULES_METRAGE_V2, param('formules_metrage'), maxRow('formules_metrage'));
+  const vStores = Math.max(FORMULES_STORES_V1, param('formules_stores'), maxRow('formules_stores'));
   return {
     id: uid(),
     name: opts.name || minute?.name || 'Nouveau Projet',
@@ -54,8 +60,8 @@ export function buildProjectFromMinute(minute, opts = {}) {
     // manuel d'une ligne ; nouveau projet → formules de métrage v2 (projet + chaque ligne).
     // Stores bateaux / velum : le projet suit le nouveau métrage (lignes ajoutées ensuite) ;
     // les lignes reprises du devis gardent le marqueur de leur chiffrage.
-    config: { formules_metrage: FORMULES_METRAGE_V2, formules_stores: FORMULES_STORES_V1 },
-    rows: computeFormulas(rows.map((r) => applySchemaDefaults({ ...withoutChiffrageMessages(r), formules_metrage: FORMULES_METRAGE_V2 }, SCHEMA_64)), SCHEMA_64),
+    config: { formules_metrage: vMetrage, formules_stores: vStores },
+    rows: computeFormulas(rows.map((r) => applySchemaDefaults({ ...withoutChiffrageMessages(r), formules_metrage: Math.max(vMetrage, Number(r.formules_metrage) || 0) }, SCHEMA_64)), SCHEMA_64),
     // Bibliothèque du chiffrage → matériauthèque : fournisseur, référence, coloris,
     // famille, laize, motif et raccords de chaque article utilisé.
     materials: extractMaterialsFromLines(rows, minute?.catalog),

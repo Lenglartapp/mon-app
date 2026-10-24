@@ -2,8 +2,8 @@
 
 import { DECOR_PRODUIT_RE } from '../constants/productRouting';
 import { evalFormula } from "./eval.js";
-import { FORMULES_METRAGE_V2, isMetrageV2Row, largeurFinieV2, parseCm } from "./metrageVersion.js";
-import { metrageStore, FORMULES_STORES_V1, isStoresMetrageRow } from './storesBateauxMetrage.js';
+import { FORMULES_METRAGE_V2, isMetrageV2Row, largeurFinieV2, parseCm, margeMachineRideau } from "./metrageVersion.js";
+import { metrageStore, FORMULES_STORES_V1, isStoresMetrageRow, isStoresMargeMachineRow } from './storesBateauxMetrage.js';
 
 const NVL = (value, fallback = 0) => {
   const n = Number(value);
@@ -182,7 +182,8 @@ export function recomputeRow(row, schema, ctx = {}) {
     // schéma font foi (voir schemas/production/rideaux.js).
     const rowV2 = Number(ctx.paramsMap?.formules_metrage) >= FORMULES_METRAGE_V2 || isMetrageV2Row(next);
     const metrageV2 = !isProduction(schema, ctx) && rowV2;
-    if (metrageV2) next.formules_metrage = FORMULES_METRAGE_V2;
+    // Marqueur de ligne = version du chiffrage (v2 ou v3), jamais rétrogradé.
+    if (metrageV2) next.formules_metrage = Math.max(FORMULES_METRAGE_V2, Number(ctx.paramsMap?.formules_metrage) || 0, Number(next.formules_metrage) || 0);
     let H_Coupe;
     if (!metrageV2) {
       H_Coupe = H + FinitionBas + 50;
@@ -201,9 +202,9 @@ export function recomputeRow(row, schema, ctx = {}) {
       const HTete = num(next.hauteur_renfort_tete);
       const OB = num(next.piquage_ourlets_du_bas);
       const isDouble = String(next.doublure || "").trim() !== "";
-      H_Coupe = Math.round((H + FinitionBas + (isDouble ? 1 : 2) * HTete + 2 * OB) * 10) / 10;
+      H_Coupe = Math.round((H + FinitionBas + (isDouble ? 1 : 2) * HTete + 2 * OB + margeMachineRideau(next)) * 10) / 10;
       // Interdoublure : hauteur finie (Hauteur + Fin. Bas) + hauteur tête.
-      H_Inter = Math.round((H + FinitionBas + HTete) * 10) / 10;
+      H_Inter = Math.round((H + FinitionBas + HTete + margeMachineRideau(next)) * 10) / 10;
 
       // CHIFFRAGE — À plat PAR RIDEAU (même pour une paire) :
       //   Non doublé              : L. Finie × Ampleur + Retour + 4 × OC
@@ -461,11 +462,11 @@ export function recomputeRow(row, schema, ctx = {}) {
     const storesCalc = isBateauVelum && !isProduction(schema, ctx)
       && (Number(ctx.paramsMap?.formules_stores) >= FORMULES_STORES_V1 || isStoresMetrageRow(next));
     if (storesCalc) {
-      next.formules_stores = FORMULES_STORES_V1;
+      next.formules_stores = Math.max(FORMULES_STORES_V1, Number(ctx.paramsMap?.formules_stores) || 0, Number(next.formules_stores) || 0);
       fillFromCatalog('doublure', { laize_doublure: 'laize' });
       const isDouble = String(next.doublure || "").trim() !== "";
       const tf1Item = catalog.find(i => i.name === next.toile_finition_1);
-      const common = { chiffrage: true, produit: next.produit, largeur: next.largeur, hauteurFinie: next.hauteur, double: isDouble };
+      const common = { chiffrage: true, produit: next.produit, largeur: next.largeur, hauteurFinie: next.hauteur, double: isDouble, margeMachine: isStoresMargeMachineRow(next) };
       next.ml_toile_finition_1 = next.toile_finition_1
         ? metrageStore({ ...common, laize: next.laize_toile_finition_1, raccordV: next.raccord_v_toile_finition_1, motif: !!tf1Item?.motif }).ml
         : 0;

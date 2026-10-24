@@ -23,8 +23,8 @@ import { buildProjectFromMinute } from "../lib/import/projectFromMinute.js";
 import { useAuth } from "../auth";
 
 import { can, role } from "../lib/authz";
-import { FORMULES_METRAGE_V2 } from "../lib/formulas/metrageVersion";
-import { FORMULES_STORES_V1 } from "../lib/formulas/storesBateauxMetrage";
+import { FORMULES_METRAGE_COURANTE } from "../lib/formulas/metrageVersion";
+import { FORMULES_STORES_COURANTE } from "../lib/formulas/storesBateauxMetrage";
 // 👇 IMPORT IMPORTANT
 import { uid } from "../lib/utils/uid";
 
@@ -599,12 +599,12 @@ export function ProjectListScreen({ projects, setProjects, onOpenProject, minute
                 name: projectName || "Nouveau Projet",
                 budget: { prepa: 0, conf: 0, pose: 0 },
                 // Nouveau projet → formules de métrage v2 (projet + chaque ligne, lue par les getters).
-                config: { ...(config || {}), formules_metrage: FORMULES_METRAGE_V2, formules_stores: FORMULES_STORES_V1 },
+                config: { ...(config || {}), formules_metrage: FORMULES_METRAGE_COURANTE, formules_stores: FORMULES_STORES_COURANTE },
                 deadline: config?.deliveryDate || null,
                 location: config?.location || null,
                 intervention_type: config?.intervention_type || null,
                 expedition_type: config?.expedition_type || null,
-                rows: createBlankProject(config, SCHEMA_64).map(r => ({ ...r, formules_metrage: FORMULES_METRAGE_V2, formules_stores: FORMULES_STORES_V1 })),
+                rows: createBlankProject(config, SCHEMA_64).map(r => ({ ...r, formules_metrage: FORMULES_METRAGE_COURANTE, formules_stores: FORMULES_STORES_COURANTE })),
                 created_at: new Date().toISOString()
               };
 
