@@ -11,6 +11,7 @@ import CatalogManager from "./CatalogManager";
 import { recomputeRow } from "../lib/formulas/recomputeRow";
 import { COLORS } from "../lib/constants/ui";
 import { uid } from "../lib/utils/uid";
+import { duplicateRowOrPair } from "../lib/utils/pairDecentree";
 
 import { Library, Plus, Trash2, ChevronDown } from 'lucide-react';
 
@@ -594,15 +595,13 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
     const baseName = source.piece ? `${source.piece} Copie` : source.piece;
     const uniquePiece = getUniquePiece(source.zone, baseName, currentRows, source.id);
 
-    const newRow = {
-      ...source,
+    // Paire décentrée : la copie porte sur toute la paire, sous un nouveau pair_id.
+    const newRows = duplicateRowOrPair(currentRows, id, (r) => ({
+      ...r,
       id: genId(),
       piece: uniquePiece,
-      comments: source.comments ? [...source.comments] : []
-    };
-
-    const newRows = [...currentRows];
-    newRows.splice(index + 1, 0, newRow);
+      comments: r.comments ? [...r.comments] : []
+    }));
 
     triggerUpdate(newRows);
   };

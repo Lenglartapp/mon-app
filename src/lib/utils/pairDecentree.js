@@ -95,17 +95,52 @@ export function createDecentreePair(sourceRow = {}, schema = []) {
     return [parent, makeChild("left", RAP_GAUCHE), makeChild("right", RAP_DROIT)];
 }
 
+// ── Duplication ──────────────────────────────────────────────────────────────
+// Dupliquer une ligne d'une paire (parent OU pan) duplique TOUTE la paire :
+// parent + 2 pans recopiés, sous un NOUVEAU pair_id (sinon deux parents
+// partageraient le même pair_id). Une ligne hors paire est copiée seule, sans
+// métadonnées de paire. `copyRow(source)` fabrique la copie (nouvel id, libellé…).
+// Renvoie le nouveau tableau de lignes, ou null si l'id est introuvable.
+export function duplicateRowOrPair(rows = [], id, copyRow) {
+    const index = rows.findIndex((r) => r.id === id);
+    if (index === -1) return null;
+    const source = rows[index];
+    const out = [...rows];
+
+    if (!isDecentreeRow(source) || !source.pair_id) {
+        const copy = copyRow(source);
+        delete copy.pair_id;
+        delete copy.pair_role;
+        out.splice(index + 1, 0, copy);
+        return out;
+    }
+
+    const members = rows.filter((r) => r.pair_id === source.pair_id);
+    // Un seul parent par copie, même si la paire en a déjà plusieurs (anciens doublons) :
+    // on prend la ligne cliquée si c'est un parent, sinon le premier parent de la paire.
+    const parent = isDecentreeParent(source) ? source : members.find(isDecentreeParent);
+    const left = members.find((r) => r.pair_role === "left");
+    const right = members.find((r) => r.pair_role === "right");
+    const block = [parent, left, right].filter(Boolean);
+
+    const newPairId = uid();
+    const copies = block.map((r) => ({ ...copyRow(r), pair_id: newPairId, pair_role: r.pair_role }));
+    const lastIndex = Math.max(...members.map((r) => rows.indexOf(r)));
+    out.splice(lastIndex + 1, 0, ...copies);
+    return out;
+}
+
 // Réordonne une liste de lignes pour que chaque enfant suive immédiatement son parent.
 // Les lignes sans appartenance à une paire gardent leur position relative.
+// Aucune ligne n'est jamais écartée : si une paire a plusieurs lignes du même rôle
+// (doublons hérités d'une ancienne duplication), elles sont toutes conservées.
 export function orderDecentreeRows(rows = []) {
     const byPair = new Map();
     rows.forEach((r) => {
         if (r?.pair_id) {
-            if (!byPair.has(r.pair_id)) byPair.set(r.pair_id, { parent: null, left: null, right: null });
+            if (!byPair.has(r.pair_id)) byPair.set(r.pair_id, { parent: [], left: [], right: [], other: [] });
             const slot = byPair.get(r.pair_id);
-            if (r.pair_role === "parent") slot.parent = r;
-            else if (r.pair_role === "left") slot.left = r;
-            else if (r.pair_role === "right") slot.right = r;
+            (slot[r.pair_role] || slot.other).push(r);
         }
     });
 
@@ -115,8 +150,8 @@ export function orderDecentreeRows(rows = []) {
         if (!r?.pair_id) { out.push(r); return; }
         if (emitted.has(r.pair_id)) return; // déjà émis le bloc complet
         emitted.add(r.pair_id);
-        const { parent, left, right } = byPair.get(r.pair_id);
-        [parent, left, right].forEach((x) => { if (x) out.push(x); });
+        const { parent, left, right, other } = byPair.get(r.pair_id);
+        out.push(...parent, ...left, ...right, ...other);
     });
     return out;
 }

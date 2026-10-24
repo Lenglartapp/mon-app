@@ -32,6 +32,7 @@ import { PLAID_PROD_SCHEMA } from "../lib/schemas/production/plaid";
 import { TENTURE_MURALE_PROD_SCHEMA } from "../lib/schemas/production/tenture_murale";
 import { MOBILIER_PROD_SCHEMA } from "../lib/schemas/production/mobilier";
 import { uid } from "../lib/utils/uid"; // Import uid
+import { duplicateRowOrPair } from "../lib/utils/pairDecentree";
 import { compressAndUpload } from "../lib/utils/imageUpload";
 
 import { Search, Filter, Layers3, Star, FlaskConical, Image as ImageIcon, Edit2, FileText, BookOpen, Printer, Package, CalendarRange, History } from "lucide-react";
@@ -848,21 +849,14 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
   // 5. handleDuplicateRow
   const handleDuplicateRow = (id) => {
     if (!canEditProd) return;
-    const index = rows.findIndex(r => r.id === id);
-    if (index === -1) return;
-
-    const source = rows[index];
-    const newRow = {
+    // Paire décentrée : la copie porte sur toute la paire, sous un nouveau pair_id.
+    const newRows = duplicateRowOrPair(rows, id, (source) => recomputeRow({
       ...source,
       id: uid(),
       piece: source.piece ? `${source.piece} (Copie)` : source.piece,
       comments: source.comments ? [...source.comments] : []
-    };
-
-    const computed = recomputeRow(newRow, schema);
-
-    const newRows = [...rows];
-    newRows.splice(index + 1, 0, computed);
+    }, schema));
+    if (!newRows) return;
 
     setRows(newRows);
     if (project?.id) {
