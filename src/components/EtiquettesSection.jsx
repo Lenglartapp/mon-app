@@ -27,7 +27,7 @@ const PAGE_SIZE = 9;
 // Mêmes clés que celles lues par le portail V2 (etiquette_hidden_fields).
 const ETQ_V2_EXTRA_FIELDS = [
   { key: "fenetre",     label: "Fenêtre (en-tête)",     section: "En-tête & verso" },
-  { key: "commentaire", label: "Commentaire (en-tête)", section: "En-tête & verso" },
+  { key: "commentaire", label: "Commentaire atelier (bas)", section: "En-tête & verso" },
   { key: "croquis",     label: "Croquis (verso)",       section: "En-tête & verso" },
 ];
 
