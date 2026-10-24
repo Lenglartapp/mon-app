@@ -138,12 +138,13 @@ const PlanningGrid = ({
 
             return (
                 <div key="hour-mode-wrapper" style={{
-                    position: 'absolute', inset: '4px 2px',
-                    display: 'flex', gap: 2, overflow: 'hidden'
+                    position: 'absolute', inset: '3px 2px',
+                    display: 'flex', flexDirection: 'column', gap: 2, overflow: 'hidden'
                 }}>
                     {sorted.map(evt => {
                         const dh = evt.meta?.durationHours ?? ATELIER_HOURS_PER_DAY;
-                        const widthPct = (dh / baseDh) * 100;
+                        // Créneaux empilés : la hauteur suit les heures (7,8 h = toute la case).
+                        const heightPct = (dh / baseDh) * 100;
                         const evtStyle = getProjectColor(evt.meta?.projectId) || PLANNING_COLORS[evt.type] || PLANNING_COLORS.default;
                         const isValidated = evt.meta?.status === 'validated';
                         const isHighlighted = highlightProjectId && evt.meta?.projectId === highlightProjectId;
@@ -160,9 +161,10 @@ const PlanningGrid = ({
                                 onClick={(e) => { e.stopPropagation(); onEventClick(evt); }}
                                 title={`${evt.title} — ${dh}h`}
                                 style={{
-                                    width: `${widthPct}%`,
+                                    height: `${heightPct}%`,
+                                    minHeight: 0,
                                     flexShrink: 0,
-                                    height: '100%',
+                                    width: '100%',
                                     backgroundColor: evtStyle.bg,
                                     borderTop: `1px ${isValidated ? 'solid' : 'dashed'} ${evtStyle.border}`,
                                     borderRight: `1px ${isValidated ? 'solid' : 'dashed'} ${evtStyle.border}`,
@@ -310,25 +312,6 @@ const PlanningGrid = ({
             const endStr = evt.meta?.end ? format(new Date(evt.meta.end || evt.date), 'HH:mm') : '17:00';
             const labelTime = `${startStr}-${endStr}`;
 
-            // Calcul Position Horizontale (mode créneau)
-            let leftPercent = 0;
-            let widthPercent = 100;
-
-            if (evt.meta?.start && evt.meta?.end && isNightEvent(evt)) {
-                const [a, b] = nightRange(evt);
-                leftPercent = (a / TOTAL_WORK_MINUTES) * 100;
-                widthPercent = ((b - a) / TOTAL_WORK_MINUTES) * 100;
-            } else if (evt.meta?.start && evt.meta?.end) {
-                const s = new Date(evt.meta.start);
-                const e = new Date(evt.meta.end);
-                const sMinutes = getHours(s) * 60 + getMinutes(s);
-                const startWorkMinutes = 8 * 60;
-                const relativeStart = Math.max(0, sMinutes - startWorkMinutes);
-                leftPercent = (relativeStart / TOTAL_WORK_MINUTES) * 100;
-                const duration = Math.min(TOTAL_WORK_MINUTES, Math.max(0, differenceInMinutes(e, s)));
-                widthPercent = (duration / TOTAL_WORK_MINUTES) * 100;
-            }
-
             // La barre de la carte = avancement de CONSOMMATION du projet sur son budget
             // vendu (consommé / budget). Rouge dès qu'on dépasse le budget.
             const cardProg = projectHoursById[evt.meta?.projectId];
@@ -350,8 +333,10 @@ const PlanningGrid = ({
                 </div>
             );
 
-            const { lane = 0, cluster = 0 } = eventLayout.get(evt.id) || {};
-            const laneCount = clusterLaneCounts[cluster] || 1;
+            // Créneaux empilés l'un au-dessus de l'autre (par heure de début), pleine largeur :
+            // les horaires restent lisibles sur la carte.
+            const lane = sortedDayEvents.indexOf(evt);
+            const laneCount = sortedDayEvents.length;
 
             return (
                 <div key={evt.id} draggable={!readOnly && !isBacklog}
@@ -366,8 +351,8 @@ const PlanningGrid = ({
                         position: 'absolute',
                         top: `calc(${(lane / laneCount) * 100}% + 3px)`,
                         height: `calc(${100 / laneCount}% - 6px)`,
-                        left: `${leftPercent}%`,
-                        width: `${widthPercent}%`,
+                        left: 2,
+                        width: 'calc(100% - 4px)',
                         backgroundColor: isBacklog ? 'var(--df-rose-soft)' : style.bg,
                         borderTop: `1px ${!isBacklog && !isValidated ? 'dashed' : 'solid'} ${isBacklog ? 'var(--df-rose-text)' : style.border}`,
                         borderRight: `1px ${!isBacklog && !isValidated ? 'dashed' : 'solid'} ${isBacklog ? 'var(--df-rose-text)' : style.border}`,
@@ -389,7 +374,7 @@ const PlanningGrid = ({
                     }}
                 >
                     {isBacklog ? renderBacklogContent() : (
-                        <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', height: '100%', gap: 1, overflow: 'hidden' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', justifyContent: laneCount > 1 ? 'flex-start' : 'center', height: '100%', gap: 1, overflow: 'hidden' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, overflow: 'hidden' }}>
                                 {isNightEvent(evt) && <Moon size={12} color={style.text} style={{ flexShrink: 0 }} aria-label="Intervention de nuit" />}
                                 {evt.meta?.decouche && <BedDouble size={12} color={style.text} style={{ flexShrink: 0 }} aria-label="Découché — nuit sur place" />}
@@ -672,6 +657,19 @@ const PlanningGrid = ({
         return { load: totalLoadHours, cap: realCapacity, percent };
     };
 
+    // Créneaux empilés : la ligne d'une personne grandit avec sa journée la plus chargée
+    // (≈ 40 px par créneau), pour que titre et horaires restent lisibles.
+    const SLOT_STACK_H = 40;
+    const rowHeightCache = {};
+    const rowHeightFor = (memberId) => {
+        if (memberId === 'backlog_confection') return ROW_HEIGHT;
+        if (rowHeightCache[memberId] != null) return rowHeightCache[memberId];
+        const counts = {};
+        events.forEach(e => { if (e.resourceId === memberId && e.date) counts[e.date] = (counts[e.date] || 0) + 1; });
+        const maxPerDay = Math.max(1, ...gridCols.map(col => counts[format(col, 'yyyy-MM-dd')] || 0));
+        return (rowHeightCache[memberId] = Math.max(ROW_HEIGHT, maxPerDay * SLOT_STACK_H + 6));
+    };
+
     // Affiche les heures avec au plus 1 décimale (7,8 reste 7,8, 78 reste 78)
     const fmtHours = (n) => {
         const r = Math.round(n * 10) / 10;
@@ -802,7 +800,7 @@ const PlanningGrid = ({
                                     <React.Fragment key={member.id}>
                                         <StickyLeftCell style={{ paddingLeft: 42, color: member.id === 'backlog_confection' ? 'var(--df-rose-text)' : 'var(--df-text-3)', fontWeight: 500, display: 'flex', ...(member.id === 'backlog_confection'
                                             ? { flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'center', gap: 4, fontFamily: ROBOTO, minHeight: PROGRAMME_ROW_HEIGHT, height: 'auto', alignSelf: 'stretch' }
-                                            : { justifyContent: 'space-between', alignItems: 'center', height: ROW_HEIGHT }) }}>
+                                            : { justifyContent: 'space-between', alignItems: 'center', height: rowHeightFor(member.id) }) }}>
                                             {member.id === 'backlog_confection' ? (
                                                 <>
                                                     {/* Titre aligné sur les prénoms ; la flèche se place à sa gauche */}
@@ -1217,7 +1215,7 @@ const PlanningGrid = ({
                                                     onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setDropCell(null); }}
                                                     onDrop={(e) => { setDropCell(null); onDrop(e, member.id, col); }}
                                                     style={{
-                                                        borderBottom: '1px solid var(--df-border-2)', borderRight: '1px solid var(--df-surface-2)', height: ROW_HEIGHT, position: 'relative',
+                                                        borderBottom: '1px solid var(--df-border-2)', borderRight: '1px solid var(--df-surface-2)', height: rowHeightFor(member.id), position: 'relative',
                                                         transition: 'background-color .12s ease, box-shadow .12s ease',
                                                         ...(dropCell === `${member.id}|${col}`
                                                             ? { background: 'rgba(30,36,71,0.06)', boxShadow: 'inset 0 0 0 2px rgba(30,36,71,0.35)', borderRadius: 6 }
