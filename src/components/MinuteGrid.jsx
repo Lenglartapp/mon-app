@@ -1293,10 +1293,17 @@ function MinuteGrid({
         const api = gridRef.current?.api;
         if (!api) return;
         const selectedIds = new Set(api.getSelectedRows().map(r => r.id));
-        // Cascade : si on supprime un parent décentré, on supprime aussi ses 2 enfants
+        // Cascade : si on supprime un parent décentré, on supprime aussi ses 2 enfants —
+        // sauf si un autre parent de la même paire reste (doublon hérité d'une ancienne
+        // duplication) : les pans lui appartiennent encore.
+        const remainingParentPairs = new Set(
+            rowsRef.current
+                .filter(r => !selectedIds.has(r.id) && r.pair_role === 'parent')
+                .map(r => r.pair_id)
+        );
         const deletedParentPairs = new Set(
             rowsRef.current
-                .filter(r => selectedIds.has(r.id) && r.pair_role === 'parent')
+                .filter(r => selectedIds.has(r.id) && r.pair_role === 'parent' && !remainingParentPairs.has(r.pair_id))
                 .map(r => r.pair_id)
         );
         const newRows = rowsRef.current.filter(r =>
