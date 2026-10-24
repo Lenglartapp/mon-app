@@ -35,7 +35,9 @@ export const CHILD_INHERIT_RAIL = ["type_mecanisme", "modele_mecanisme", "couleu
 
 // Données techniques du rail : portées par le PARENT uniquement.
 // Sur les lignes enfants, ces colonnes affichent « voir parent » (affichage seul, donnée vide).
-export const DECENTREE_PARENT_ONLY_TECH = ["largeur_mecanisme", "nombre_glisseur"];
+// Le nb de glisseurs n'en fait pas partie : il se calcule PAR PAN (largeur finie du pan) ;
+// chaque pan affiche le sien et le parent affiche le total du rail (voir pairGlisseursText).
+export const DECENTREE_PARENT_ONLY_TECH = ["largeur_mecanisme"];
 
 // Bloc « rail » conservé sur la ligne parent (le rail est unique pour la paire).
 // C'est ICI qu'on ajuste ce qui reste au parent vs ce qui part aux enfants.
@@ -45,6 +47,24 @@ export const PARENT_RAIL_FIELDS = [
     "embout_meca", "embout_meca_link", "support", "support_link",
     "valeur_deduction", "type_pose", "statut_pose",
 ];
+
+// ── Glisseurs de la paire, lus sur ses deux pans ─────────────────────────────
+// countOf(pan) = nb de glisseurs du pan, MÊME calcul que son étiquette (getter du schéma).
+// Texte affiché sur la ligne parent : « 21 (G : 12 / D : 9) » ; « — » pour un pan sans
+// largeur finie (et alors pas de total). Affichage seul : rien n'est écrit en base.
+export function pairGlisseursText(parent, rows, countOf) {
+    const panOf = (role) => (rows || []).find(r => r?.pair_id === parent?.pair_id && r?.pair_role === role);
+    const countPan = (pan) => {
+        if (!pan) return null;
+        let n = 0;
+        try { n = Number(countOf(pan)); } catch { n = 0; }
+        return Number.isFinite(n) && n > 0 ? n : null;
+    };
+    const g = countPan(panOf("left"));
+    const d = countPan(panOf("right"));
+    const total = g != null && d != null ? g + d : "—";
+    return `${total} (G : ${g ?? "—"} / D : ${d ?? "—"})`;
+}
 
 // ── Détection ────────────────────────────────────────────────────────────────
 export const isDecentreeParent = (row) => row?.pair_role === "parent";

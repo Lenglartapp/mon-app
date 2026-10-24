@@ -2056,6 +2056,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
             onRowChange={handleDetailUpdate}
             projectId={project?.id}
             minuteId={null}
+            pairRows={rows}
             fullScreen={isMobile}
             currentUser={currentUser}
             authorName={currentUser?.name}

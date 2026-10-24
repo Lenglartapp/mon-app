@@ -9,7 +9,7 @@ import { recomputeRow } from '../lib/formulas/recomputeRow';
 import { generateRowLogs } from '../lib/utils/logUtils';
 import { recordAction, diffRows, changedFields, applyChanges } from '../lib/undoManager';
 import { uid } from '../lib/utils/uid';
-import { createDecentreePair, PAIRE_DECENTREE, DECENTREE_PARENT_ONLY_TECH, orderDecentreeRows } from '../lib/utils/pairDecentree';
+import { createDecentreePair, PAIRE_DECENTREE, DECENTREE_PARENT_ONLY_TECH, orderDecentreeRows, pairGlisseursText } from '../lib/utils/pairDecentree';
 import { Plus, Trash2, Columns, Layers, Edit2, Filter, FileSpreadsheet, PinOff, ChevronDown, ChevronRight, Truck } from 'lucide-react';
 import { TonePill } from './ui/ToolbarControls';
 import FitPanel from './ui/FitPanel';
@@ -538,6 +538,18 @@ function MinuteGrid({
         }
         return params.valueFormatted != null ? params.valueFormatted : (params.value == null ? '' : params.value);
     }, []);
+    // Nb glisseurs : chaque pan affiche le sien ; le parent affiche le total du rail et le
+    // détail par pan, calculés par la grille sur les lignes des pans (même valeur que l'étiquette).
+    const decentreeGlisseurRenderer = useCallback((params) => {
+        if (params.data?.pair_role === 'parent') {
+            const countOf = (pan) => {
+                const node = params.api.getRowNode(String(pan.id));
+                return node ? params.api.getCellValue({ rowNode: node, colKey: params.column.getColId() }) : 0;
+            };
+            return pairGlisseursText(params.data, rowsRef.current, countOf);
+        }
+        return params.valueFormatted != null ? params.valueFormatted : (params.value == null ? '' : params.value);
+    }, []);
     const activeFilterFieldsRef = useRef(new Set());
 
     // État local des matières (source de vérité pour le panneau Configuration)
@@ -585,6 +597,12 @@ function MinuteGrid({
 
     const rowsRef = useRef(rows);
     rowsRef.current = rows;
+    // Le total de glisseurs du parent dépend des lignes de ses pans : on le redessine quand
+    // les lignes changent (AG Grid ne redessine que les lignes dont les données ont changé).
+    useEffect(() => {
+        if (!enableDecentree) return;
+        gridRef.current?.api?.refreshCells({ columns: ['nombre_glisseur'], force: true });
+    }, [rows, enableDecentree]);
     // Ref pour éviter le stale closure sur onRowsChange et onAdd (arePropsEqual bloque le re-render
     // quand seul onRowsChange/onAdd change, donc useCallback ne se met pas à jour)
     const onRowsChangeRef = useRef(onRowsChange);
@@ -1566,6 +1584,8 @@ function MinuteGrid({
                 ...(enableDecentree && col.field === 'zone' ? { cellRenderer: decentreeZoneRenderer } : {}),
                 // « voir parent » sur les colonnes techniques du rail pour les lignes enfants
                 ...(enableDecentree && DECENTREE_PARENT_ONLY_TECH.includes(col.field) ? { cellRenderer: decentreeParentOnlyRenderer } : {}),
+                // Nb glisseurs : total + détail G / D sur la ligne parent d'une paire décentrée
+                ...(enableDecentree && col.field === 'nombre_glisseur' ? { cellRenderer: decentreeGlisseurRenderer } : {}),
                 headerClass: () => [
                     activeFilterFieldsRef.current.has(col.field) ? 'filter-col-active' : '',
                     jumpFlashColRef.current === col.field ? 'col-jump-flash' : '',
@@ -1600,7 +1620,7 @@ function MinuteGrid({
         // Le glisser-déposer de lignes se fait via une poignée intégrée à la colonne
         // de sélection (voir selectionColumnDef), révélée au survol — pas de colonne dédiée.
         return showExpeditionCol ? [...withWidths, expeditionCol] : withWidths;
-    }, [schema, enableCellFormulas, handleOpenDetail, catalog, railOptions, handlePhotoChange, handleLinkUpdate, onDuplicateRow, hideCroquis, readOnly, title, isMobile, gridId, showExpeditionCol, resolvedUser, colAggregations, enableDecentree, decentreeZoneRenderer, decentreeParentOnlyRenderer, fillField]);
+    }, [schema, enableCellFormulas, handleOpenDetail, catalog, railOptions, handlePhotoChange, handleLinkUpdate, onDuplicateRow, hideCroquis, readOnly, title, isMobile, gridId, showExpeditionCol, resolvedUser, colAggregations, enableDecentree, decentreeZoneRenderer, decentreeParentOnlyRenderer, decentreeGlisseurRenderer, fillField]);
 
     const isExternalFilterPresent = useCallback(() => {
         return filterConditionsRef.current.some(isConditionActive) || collapsedPairsRef.current.size > 0;
