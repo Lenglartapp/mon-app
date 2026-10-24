@@ -20,6 +20,7 @@ import { useAuth } from '../auth'; // <--- NEW IMPORT
 import { supabase, isServerReachable } from '../lib/supabaseClient';
 import { queuePhotoSafely } from '../lib/syncQueue';
 import { preparePhoto, uploadPhotoPair } from '../lib/photos';
+import { pairGlisseursText } from '../lib/utils/pairDecentree';
 
 const ROBOTO = 'Roboto, system-ui, sans-serif';
 
@@ -37,7 +38,8 @@ function PropRow({ label, children, top = false }) {
     );
 }
 
-export default function LineDetailPanel({ open, onClose, row, schema, onRowChange, columnVisibilityModel, minuteId, projectId, currentUser: propUser, authorName: propAuthorName, fullScreen = false, allRows }) {
+// pairRows (optionnel) : lignes du tableau, pour le nb de glisseurs d'une paire décentrée (lu sur ses pans).
+export default function LineDetailPanel({ open, onClose, row, schema, onRowChange, columnVisibilityModel, minuteId, projectId, currentUser: propUser, authorName: propAuthorName, fullScreen = false, allRows, pairRows }) {
     // New Sidebar Toggle State
     // New Sidebar Toggle State. On mobile (fullScreen), default to closed (false). On desktop, open (true).
     const [isSidebarOpen, setIsSidebarOpen] = useState(!fullScreen);
@@ -351,6 +353,23 @@ export default function LineDetailPanel({ open, onClose, row, schema, onRowChang
                                                 </MenuItem>
                                             ))}
                                         </TextField>
+                                    </PropRow>
+                                );
+                            }
+
+                            // Nb glisseurs : valeur calculée (comme la grille et l'étiquette) ; sur le
+                            // parent d'une paire décentrée, total du rail + détail G / D des pans.
+                            if (col.key === 'nombre_glisseur' && col.valueGetter) {
+                                const countOf = (r) => col.valueGetter(null, r);
+                                let shown;
+                                try {
+                                    shown = row?.pair_role === 'parent'
+                                        ? pairGlisseursText(row, pairRows || allRows, countOf)
+                                        : countOf(row);
+                                } catch { shown = row[col.key]; }
+                                return (
+                                    <PropRow key={col.key} label={col.label || col.key}>
+                                        <BlurTextField fullWidth value={shown ?? ''} disabled variant="outlined" size="small" sx={FIELD_SX} />
                                     </PropRow>
                                 );
                             }

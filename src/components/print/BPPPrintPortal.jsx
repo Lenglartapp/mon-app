@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import ReactDOM from 'react-dom';
+import { pairGlisseursText } from '../../lib/utils/pairDecentree';
 
 /**
  * Impression du BPP (Bon de Préparation) en tableau, format A3 paysage.
@@ -19,7 +20,12 @@ const fmtCell = (v) => {
 
 // Valeur d'une cellule : pour les champs calculés (valueGetter), on exécute le
 // getter — sinon la valeur stockée est vide. Sinon, lecture directe.
-const cellValue = (col, row) => {
+const cellValue = (col, row, rows) => {
+  // Nb glisseurs sur le parent d'une paire décentrée : total du rail + détail G / D,
+  // calculés sur les lignes des pans (c'est la ligne lue pour préparer le rail).
+  if (col.key === 'nombre_glisseur' && col.valueGetter && row?.pair_role === 'parent') {
+    try { return pairGlisseursText(row, rows, (pan) => col.valueGetter(null, pan)); } catch (_) { return ''; }
+  }
   if (col.valueGetter) {
     try { return col.valueGetter(null, row); } catch (_) { return ''; }
   }
@@ -119,7 +125,7 @@ export default function BPPPrintPortal({ sections = [], projectName, manager, on
                         padding: '2pt 3pt',
                         verticalAlign: 'top',
                       }}>
-                        {fmtCell(cellValue(col, row))}
+                        {fmtCell(cellValue(col, row, section.rows))}
                       </td>
                     ))}
                   </tr>
