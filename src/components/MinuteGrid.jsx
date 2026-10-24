@@ -2078,7 +2078,10 @@ function MinuteGrid({
                     <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
                             <div style={{ minWidth: 0 }}>
-                                <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--df-text)', lineHeight: 1.25 }}>{row.piece || 'Sans pièce'}</div>
+                                <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--df-text)', lineHeight: 1.25 }}>
+                                    {row.piece || 'Sans pièce'}
+                                    {String(row.fenetre || '').trim() && <span style={{ fontWeight: 500, color: 'var(--df-muted)' }}> · {row.fenetre}</span>}
+                                </div>
                                 <div style={{ fontSize: 13, color: 'var(--df-muted)', marginTop: 2 }}>{row.produit || '—'}</div>
                             </div>
                             {status && <span style={{ flexShrink: 0 }}><TonePill tone={status.tone}>{status.label}</TonePill></span>}

@@ -268,7 +268,10 @@ export default function LineDetailPanel({ open, onClose, row, schema, onRowChang
 
                         {schema.map((col) => {
                             if (col.key === 'sel' || col.key === 'detail') return null;
-                            if (columnVisibilityModel && columnVisibilityModel[col.key] === false) return null;
+                            // Téléphone : pas de panneau « Colonnes » pour réactiver un champ masqué ; la
+                            // Fenêtre (3e niveau de localisation) y est donc toujours affichée.
+                            const forceOnMobile = fullScreen && col.key === 'fenetre';
+                            if (!forceOnMobile && columnVisibilityModel && columnVisibilityModel[col.key] === false) return null;
 
                             const isReadOnly = col.readOnly || col.type === 'formula';
                             const isSelect = col.type === 'select' || (col.options && col.options.length > 0);
