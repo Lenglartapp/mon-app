@@ -88,12 +88,16 @@ const rentreDansLaize = (hCoupe, laize) => toNum(laize) >= toNum(hCoupe);
 const tientEnUnLe = (row, laize, hCoupe) =>
     rentreDansLaize(hCoupe, laize) || getters.a_plat(row) <= toNum(laize);
 
-// Nombre de lés ENTIERS d'un tissu, TOTAL (× pans).
-const lesTotalForLaize = (row, laize, hCoupe) => {
+// Nombre de lés ENTIERS d'un tissu PAR RIDEAU — c'est ce que l'atelier lit (décision 26/10) :
+// colonnes « Nb Lés / rideau », BPF, Suivi de projet, étiquette.
+const lesParRideau = (row, laize, hCoupe) => {
     if (toNum(laize) <= 0) return 0;
-    const lesParPan = tientEnUnLe(row, laize, hCoupe) ? 1 : Math.floor(getters.a_plat(row) / laize);
-    return lesParPan * pansOf(row);
+    return tientEnUnLe(row, laize, hCoupe) ? 1 : Math.floor(getters.a_plat(row) / laize);
 };
+
+// Lés de la LIGNE (× pans) : sert UNIQUEMENT au nombre de hauteurs à couper, qui reste le total
+// à couper pour la ligne (paire comprise). Le métrage (calcML) compte les pans de son côté.
+const lesTotalForLaize = (row, laize, hCoupe) => lesParRideau(row, laize, hCoupe) * pansOf(row);
 
 // Appiècement d'un tissu (par rideau) : vide ("") en C1 / C2 ou si le reste est nul (C3 exact),
 // sinon à plat − lés entiers × laize, arrondi à 0,1.
@@ -343,9 +347,9 @@ const getters = {
     },
 
     nombre_les: (row) => {
-        // Lés ENTIERS par pan (la fraction restante est portée par « Appiècement »),
-        // × pans (× 2 sur une paire), et 1/pan si on rentre dans la laize.
-        return lesTotalForLaize(row, toNum(row.laize_tissu1), getters.hauteur_laize_t1(row));
+        // Lés ENTIERS PAR RIDEAU (la fraction restante est portée par « Appiècement ») ;
+        // 1 si couché ou si l'à plat tient dans la laize. Jamais × 2 sur une paire.
+        return lesParRideau(row, toNum(row.laize_tissu1), getters.hauteur_laize_t1(row));
     },
 
     // Nombre de lés — Tissu 2 / Doublure / Interdoublure (même logique que T1, sur leur
@@ -356,19 +360,19 @@ const getters = {
         if (!String(row.tissu_deco2 || "").trim() && !toNum(row.laize_tissu2)) return "";
         const laize = toNum(row.laize_tissu2);
         if (laize <= 0) return "";
-        return lesTotalForLaize(row, laize, getters.hauteur_coupe_t2(row));
+        return lesParRideau(row, laize, getters.hauteur_coupe_t2(row));
     },
     nombre_les_doublure: (row) => {
         if (!String(row.doublure || "").trim() && !toNum(row.laize_doublure)) return "";
         const laize = toNum(row.laize_doublure);
         if (laize <= 0) return "";
-        return lesTotalForLaize(row, laize, getters.hauteur_coupe_doublure(row));
+        return lesParRideau(row, laize, getters.hauteur_coupe_doublure(row));
     },
     nombre_les_inter: (row) => {
         if (!String(row.inter_doublure || "").trim() && !toNum(row.laize_inter)) return "";
         const laize = toNum(row.laize_inter);
         if (laize <= 0) return "";
-        return lesTotalForLaize(row, laize, getters.hauteur_coupe_inter(row));
+        return lesParRideau(row, laize, getters.hauteur_coupe_inter(row));
     },
 
     // Nombre de hauteurs à couper — par tissu (T1 / T2 / Doublure / Interdoublure).
@@ -533,18 +537,12 @@ export const RIDEAUX_PROD_SCHEMA = [
     },
     {
         key: "nombre_les",
-        label: "Nb Lés",
+        label: "Nb Lés / rideau",
         type: "number",
-        width: 100,
+        width: 130,
         readOnly: true,
-        tooltip: "Lés entiers PAR PAN (pour l'étiquette) : À Plat ÷ Laize T1, arrondi à l'inférieur (minimum 1).",
-        valueGetter: (v, r) => {
-            const row = getRow(v, r);
-            const aPlat = getters.a_plat(row);
-            const laize = toNum(row.laize_tissu1);
-            if (laize <= 0) return 0;
-            return Math.max(1, Math.floor(aPlat / laize));
-        }
+        tooltip: "Lés entiers PAR RIDEAU (même valeur pour une paire, qui en compte deux) : À Plat ÷ Laize T1, arrondi à l'inférieur. 1 si le tissu est couché ou si l'à plat tient dans la laize ; le reste est porté par « Appiècement ».",
+        valueGetter: (v, r) => getters.nombre_les(getRow(v, r))
     },
     {
         key: "reste_les",
@@ -561,7 +559,7 @@ export const RIDEAUX_PROD_SCHEMA = [
         type: "number",
         width: 155,
         readOnly: true,
-        tooltip: "Pan : lés entiers + 1. Paire : lés entiers des 2 pans + 1 si appiècement ≤ laize/2, sinon + 2. Si le tissu rentre dans la laize : 1 par pan.",
+        tooltip: "Total à couper pour la LIGNE (paire comprise) : Nb Lés / rideau × nombre de rideaux, + 1 hauteur d'appiècement (rideau seul, ou paire avec appiècement ≤ laize/2) ou + 2 (paire, appiècement > laize/2). Sans appiècement : rien en plus.",
         valueGetter: (v, r) => getters.nb_hauteur_a_couper(getRow(v, r))
     },
     { key: "v_ourlets_de_cotes", label: "OC", type: "number", width: 130, editable: true },
@@ -776,11 +774,11 @@ export const RIDEAUX_PROD_SCHEMA = [
     },
     {
         key: "nombre_les_t2",
-        label: "Nb Lés T2",
+        label: "Nb Lés T2 / rideau",
         type: "number",
-        width: 110,
+        width: 145,
         readOnly: (row) => !isMetrageV2Row(row),
-        tooltip: "Nouveaux projets : saisie libre. Anciens projets : nombre de lés (largeurs de tissu 2) à couper, × 2 pour une paire.",
+        tooltip: "Par rideau. Nouveaux projets : saisie libre (reprise du chiffrage, qui compte déjà par rideau). Anciens projets : lés entiers de tissu 2 par rideau.",
         valueGetter: (v, r) => getters.nombre_les_t2(getRow(v, r))
     },
     {
@@ -820,11 +818,11 @@ export const RIDEAUX_PROD_SCHEMA = [
     },
     {
         key: "nombre_les_doublure",
-        label: "Nb Lés Doublure",
+        label: "Nb Lés Doublure / rideau",
         type: "number",
-        width: 130,
+        width: 170,
         readOnly: true,
-        tooltip: "Nombre de lés (largeurs de doublure) à couper. Une paire compte les deux pans (× 2). Vide s'il n'y a pas de doublure.",
+        tooltip: "Lés entiers de doublure PAR RIDEAU (même valeur pour une paire). Vide s'il n'y a pas de doublure.",
         valueGetter: (v, r) => getters.nombre_les_doublure(getRow(v, r))
     },
     {
@@ -833,7 +831,7 @@ export const RIDEAUX_PROD_SCHEMA = [
         type: "number",
         width: 175,
         readOnly: true,
-        tooltip: "Nombre de hauteurs à couper (doublure). Pan = Nb Lés + 1. Paire = Nb Lés + 1 si appiècement ≤ laize/2, sinon + 2. Vide s'il n'y a pas de doublure.",
+        tooltip: "Nombre de hauteurs à couper (doublure). Total pour la ligne : Nb Lés / rideau × nombre de rideaux, + 1 (rideau seul, ou paire avec appiècement ≤ laize/2) ou + 2 (paire, appiècement > laize/2), rien sans appiècement. Vide s'il n'y a pas de doublure.",
         valueGetter: (v, r) => getters.nb_hauteur_a_couper_doublure(getRow(v, r))
     },
     { key: "inter_doublure", label: "Interdoublure", type: "text", width: 160 },
@@ -867,11 +865,11 @@ export const RIDEAUX_PROD_SCHEMA = [
     },
     {
         key: "nombre_les_inter",
-        label: "Nb Lés Inter.",
+        label: "Nb Lés Inter. / rideau",
         type: "number",
-        width: 120,
+        width: 160,
         readOnly: true,
-        tooltip: "Nombre de lés (largeurs d'interdoublure) à couper. Une paire compte les deux pans (× 2). Vide s'il n'y a pas d'interdoublure.",
+        tooltip: "Lés entiers d'interdoublure PAR RIDEAU (même valeur pour une paire). Vide s'il n'y a pas d'interdoublure.",
         valueGetter: (v, r) => getters.nombre_les_inter(getRow(v, r))
     },
     {
@@ -880,7 +878,7 @@ export const RIDEAUX_PROD_SCHEMA = [
         type: "number",
         width: 165,
         readOnly: true,
-        tooltip: "Nombre de hauteurs à couper (interdoublure). Pan = Nb Lés + 1. Paire = Nb Lés + 1 si appiècement ≤ laize/2, sinon + 2. Vide s'il n'y a pas d'interdoublure.",
+        tooltip: "Nombre de hauteurs à couper (interdoublure). Total pour la ligne : Nb Lés / rideau × nombre de rideaux, + 1 (rideau seul, ou paire avec appiècement ≤ laize/2) ou + 2 (paire, appiècement > laize/2), rien sans appiècement. Vide s'il n'y a pas d'interdoublure.",
         valueGetter: (v, r) => getters.nb_hauteur_a_couper_inter(getRow(v, r))
     },
     { key: "passementerie1", label: "Pass. 1", type: "text", width: 160, editable: true },
