@@ -78,25 +78,43 @@ const hauteurFinieMax = (row) => Math.max(
 // ligne, le compteur de lés et le métrage pouvaient être en désaccord.
 const rentreDansLaize = (hCoupe, laize) => toNum(laize) >= toNum(hCoupe);
 
-// Nombre de lés ENTIERS d'un tissu, TOTAL (× pans). 1 lé/pan si on rentre dans la laize.
+// RÈGLES DE COUPE (validées avec l'atelier), par rideau puis × pans :
+//   C1. Couché (hauteur de coupe ≤ laize) : 1 pièce = l'à plat. Pas d'appiècement, 1 hauteur.
+//   C2. Debout, à plat ≤ laize : 1 lé, PAS d'appiècement, 1 hauteur.
+//   C3. Debout, à plat > laize : floor(à plat / laize) lés entiers + appiècement = le reste ;
+//       reste nul (multiple exact) → pas d'appiècement ni de hauteur en plus.
+// Avant : floor(265 / 300) = 0 était forcé à 1 lé ET le reste (265) devenait un appiècement
+// → la largeur était comptée deux fois (Royal Monceau : 2 lés + appiècement 265, 4 hauteurs).
+const tientEnUnLe = (row, laize, hCoupe) =>
+    rentreDansLaize(hCoupe, laize) || getters.a_plat(row) <= toNum(laize);
+
+// Nombre de lés ENTIERS d'un tissu, TOTAL (× pans).
 const lesTotalForLaize = (row, laize, hCoupe) => {
     if (toNum(laize) <= 0) return 0;
-    const lesParPan = rentreDansLaize(hCoupe, laize)
-        ? 1
-        : Math.max(1, Math.floor(getters.a_plat(row) / laize));
+    const lesParPan = tientEnUnLe(row, laize, hCoupe) ? 1 : Math.floor(getters.a_plat(row) / laize);
     return lesParPan * pansOf(row);
 };
 
-// Nombre de hauteurs à couper d'un tissu, pour sa laize + son appiècement (par pan).
-//   - pas de tissu / laize ≤ 0        → ""
-//   - rentre dans la laize            → Nb Lés (= 1/pan)
-//   - PAN                             → Nb Lés + 1
-//   - PAIRE & appiècement ≤ laize/2   → Nb Lés + 1
-//   - PAIRE & appiècement > laize/2   → Nb Lés + 2
+// Appiècement d'un tissu (par rideau) : vide ("") en C1 / C2 ou si le reste est nul (C3 exact),
+// sinon à plat − lés entiers × laize, arrondi à 0,1.
+const appiecementForLaize = (row, laize, hCoupe) => {
+    laize = toNum(laize);
+    if (laize <= 0 || tientEnUnLe(row, laize, hCoupe)) return "";
+    const aPlat = getters.a_plat(row);
+    const reste = round1(aPlat - Math.floor(aPlat / laize) * laize);
+    return reste > 0 ? reste : "";
+};
+
+// Nombre de hauteurs à couper d'un tissu, pour sa laize + son appiècement (par rideau).
+//   - pas de tissu / laize ≤ 0          → ""
+//   - pas d'appiècement (C1, C2, exact)  → Nb Lés
+//   - rideau seul / pan libre            → Nb Lés + 1
+//   - PAIRE & appiècement ≤ laize/2      → Nb Lés + 1 (les deux appiècements partagent une hauteur)
+//   - PAIRE & appiècement > laize/2      → Nb Lés + 2
 const hauteursForLaize = (row, laize, appiecement, hCoupe) => {
     if (toNum(laize) <= 0) return "";
     const nbLes = lesTotalForLaize(row, laize, hCoupe);
-    if (rentreDansLaize(hCoupe, laize)) return nbLes;
+    if (!(toNum(appiecement) > 0)) return nbLes;
     if (isSinglePan(row)) return nbLes + 1;
     return toNum(appiecement) > (laize / 2) ? nbLes + 2 : nbLes + 1;
 };
@@ -373,14 +391,7 @@ const getters = {
     reste_les: (row) => {
         const laize = toNum(row.laize_tissu1);
         if (laize <= 0) return 0;
-
-        // Si le rideau rentre dans la laize (hauteur finie max + 50 < laize T1),
-        // on coupe dans le sens de la laize : pas de lés à jointer → pas d'appiècement.
-        if (rentreDansLaize(getters.hauteur_laize_t1(row), laize)) return "";
-
-        const aPlat = getters.a_plat(row);
-        const fraction = (aPlat / laize) - Math.floor(aPlat / laize);
-        return round1(fraction * laize);
+        return appiecementForLaize(row, laize, getters.hauteur_laize_t1(row));
     },
 
     // Appiècement T2 / Doublure / Interdoublure : même formule que reste_les (T1),
@@ -388,32 +399,17 @@ const getters = {
     reste_les_t2: (row) => {
         if (isMetrageV2Row(row)) return "";
         if (!String(row.tissu_deco2 || "").trim() && !toNum(row.laize_tissu2)) return "";
-        const laize = toNum(row.laize_tissu2);
-        if (laize <= 0) return "";
-        if (rentreDansLaize(getters.hauteur_coupe_t2(row), laize)) return "";
-        const aPlat = getters.a_plat(row);
-        const fraction = (aPlat / laize) - Math.floor(aPlat / laize);
-        return round1(fraction * laize);
+        return appiecementForLaize(row, row.laize_tissu2, getters.hauteur_coupe_t2(row));
     },
 
     reste_les_doublure: (row) => {
         if (!String(row.doublure || "").trim() && !toNum(row.laize_doublure)) return "";
-        const laize = toNum(row.laize_doublure);
-        if (laize <= 0) return "";
-        if (rentreDansLaize(getters.hauteur_coupe_doublure(row), laize)) return "";
-        const aPlat = getters.a_plat(row);
-        const fraction = (aPlat / laize) - Math.floor(aPlat / laize);
-        return round1(fraction * laize);
+        return appiecementForLaize(row, row.laize_doublure, getters.hauteur_coupe_doublure(row));
     },
 
     reste_les_inter: (row) => {
         if (!String(row.inter_doublure || "").trim() && !toNum(row.laize_inter)) return "";
-        const laize = toNum(row.laize_inter);
-        if (laize <= 0) return "";
-        if (rentreDansLaize(getters.hauteur_coupe_inter(row), laize)) return "";
-        const aPlat = getters.a_plat(row);
-        const fraction = (aPlat / laize) - Math.floor(aPlat / laize);
-        return round1(fraction * laize);
+        return appiecementForLaize(row, row.laize_inter, getters.hauteur_coupe_inter(row));
     },
 
     // Nb Glisseurs PAR PAN : base par pan (sans × 2 paire) + 1 si « Pan libre » (hors Wave).
