@@ -122,7 +122,7 @@ const PRODUCT_SHEETS = [
       c('bride',                       'Bride',                   'select',   10, { options: OUI_NON }),
       c('type_crochets',               'Crochets',                'select',   18, { options: TYPE_CROCHETS_OPTIONS }),
       c('point_chausson',              'Point Chausson',          'select',   16, { options: OUI_NON }),
-      calc('nombre_les',               'Nb Lés',                  11),
+      calc('nombre_les',               'Nb Lés / rideau',         16),
       c('tissu_deco1',                 'Tissu 1',                 'text',     22),
       c('laize_tissu1',                'Laize T1',                'number',   12),
       c('raccord_v_tissu1',            'Raccord V T1',            'number',   14),

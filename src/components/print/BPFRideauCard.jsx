@@ -130,7 +130,7 @@ export default function BPFRideauCard({ row, project, index, total }) {
                             <strong>Quantité : {row.quantite || 1}</strong>
                         </td>
                         <td style={S.td}>
-                            Nb Lés : {row.nombre_les || '-'}
+                            Nb Lés / rideau : {RIDEAUX_GETTERS.nombre_les(row) || '-'}
                         </td>
                         {/* Col 4 occupied by rowspan */}
                     </tr>

@@ -1,5 +1,6 @@
 // src/lib/schemas/production.js
 import React from 'react';
+import { RIDEAUX_GETTERS } from './production/rideaux';
 
 // Détermine si un produit passe toujours par la confection (conf systématique)
 export function hasStatutConf(produit) {
@@ -278,17 +279,13 @@ export const SCHEMA_64 = [
   // D. Détails Confection
   {
     key: "nombre_les",
-    label: "Nb Lés",
+    label: "Nb Lés / rideau",
     type: "number",
-    width: 100,
+    width: 130,
     readOnly: true,
-    valueGetter: (v, r) => {
-      const row = getRow(v, r);
-      const aPlat = getters.a_plat(row);
-      const laize = toNum(row.laize_tissu1);
-      if (laize <= 0) return 0;
-      return Math.max(1, Math.ceil(aPlat / laize));
-    }
+    // Même valeur que la grille BPF, le BPF imprimé et l'étiquette (lés entiers par rideau).
+    // Avant : ceil(à plat / laize), qui comptait l'appiècement comme un lé.
+    valueGetter: (v, r) => RIDEAUX_GETTERS.nombre_les(getRow(v, r))
   },
   { key: "piquage_ourlets_du_bas", label: "OB", type: "number", width: 115, editable: true },
   { key: "doublure_finition_bas", label: "Fin. OB Doublure", type: "number", width: 145, editable: true },

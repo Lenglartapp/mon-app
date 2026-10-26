@@ -69,4 +69,9 @@ export const LEGACY_HEADER_ALIASES = {
   // ces alias, et les intitulés inédits côté modèle Excel (cf. importProjectsFromExcel).
   etiquette_lavage:             ["Etiq. Lavage"],
   etiquette_lenglart:           ["Etiq. Lenglart"],
+  // Nb lés : affichés PAR RIDEAU depuis le 26/10/2026 (« Nb Lés / rideau ») ; anciens en-têtes.
+  nombre_les:                   ["Nb Lés"],
+  nombre_les_t2:                ["Nb Lés T2"],
+  nombre_les_doublure:          ["Nb Lés Doublure"],
+  nombre_les_inter:             ["Nb Lés Inter."],
 };
