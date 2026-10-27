@@ -205,8 +205,8 @@ export const SCHEMA_64 = [
 
 
   // C. Hauteurs & Coupe
-  { key: "hspf_droite", label: "HSPF Droit", type: "number", width: 120, editable: true },
   { key: "hspf_gauche", label: "HSPF Gauche", type: "number", width: 125, editable: true },
+  { key: "hspf_droite", label: "HSPF Droit", type: "number", width: 120, editable: true },
   {
     key: "statut_cotes",
     label: "Statut Côtes",
@@ -218,20 +218,20 @@ export const SCHEMA_64 = [
   { key: "valeur_deduction", label: "Val. Déduc.", type: "number", width: 120, editable: true },
   { key: "finition_bas", label: "Finition Bas", type: "number", width: 120, editable: true },
   {
-    key: "hauteur_finie_droite",
-    label: "H. Finie Droite",
-    type: "number",
-    width: 135,
-    readOnly: true,
-    valueGetter: (v, r) => getters.hauteur_finie_droite(getRow(v, r))
-  },
-  {
     key: "hauteur_finie_gauche",
     label: "H. Finie Gauche",
     type: "number",
     width: 140,
     readOnly: true,
     valueGetter: (v, r) => getters.hauteur_finie_gauche(getRow(v, r))
+  },
+  {
+    key: "hauteur_finie_droite",
+    label: "H. Finie Droite",
+    type: "number",
+    width: 135,
+    readOnly: true,
+    valueGetter: (v, r) => getters.hauteur_finie_droite(getRow(v, r))
   },
   {
     key: "hauteur_coupe",

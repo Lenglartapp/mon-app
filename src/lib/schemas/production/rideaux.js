@@ -570,9 +570,9 @@ export const RIDEAUX_PROD_SCHEMA = [
 
 
     // C. Hauteurs & Coupe
-    { key: "hspf_droite", label: "HSPF Droit", type: "number", width: 120, editable: true },
-    { key: "hspf_milieu", label: "HSPF Milieu", type: "number", width: 125, editable: true },
     { key: "hspf_gauche", label: "HSPF Gauche", type: "number", width: 125, editable: true },
+    { key: "hspf_milieu", label: "HSPF Milieu", type: "number", width: 125, editable: true },
+    { key: "hspf_droite", label: "HSPF Droit", type: "number", width: 120, editable: true },
     {
         key: "statut_cotes",
         label: "Statut Côtes",
@@ -584,13 +584,13 @@ export const RIDEAUX_PROD_SCHEMA = [
     { key: "valeur_deduction", label: "Val. Déduc.", type: "number", width: 120, editable: true },
     { key: "finition_bas", label: "Cassant / Rasant", type: "number", width: 140, editable: true },
     {
-        key: "hauteur_finie_droite",
-        label: "H. Finie Droite",
+        key: "hauteur_finie_gauche",
+        label: "H. Finie Gauche",
         type: "number",
-        width: 135,
+        width: 140,
         readOnly: true,
-        tooltip: "HSPF droit − déduction rail + finition bas",
-        valueGetter: (v, r) => getters.hauteur_finie_droite(getRow(v, r))
+        tooltip: "HSPF gauche − déduction rail + finition bas",
+        valueGetter: (v, r) => getters.hauteur_finie_gauche(getRow(v, r))
     },
     {
         key: "hauteur_finie_milieu",
@@ -602,13 +602,13 @@ export const RIDEAUX_PROD_SCHEMA = [
         valueGetter: (v, r) => getters.hauteur_finie_milieu(getRow(v, r))
     },
     {
-        key: "hauteur_finie_gauche",
-        label: "H. Finie Gauche",
+        key: "hauteur_finie_droite",
+        label: "H. Finie Droite",
         type: "number",
-        width: 140,
+        width: 135,
         readOnly: true,
-        tooltip: "HSPF gauche − déduction rail + finition bas",
-        valueGetter: (v, r) => getters.hauteur_finie_gauche(getRow(v, r))
+        tooltip: "HSPF droit − déduction rail + finition bas",
+        valueGetter: (v, r) => getters.hauteur_finie_droite(getRow(v, r))
     },
     {
         key: "hauteur_coupe",
