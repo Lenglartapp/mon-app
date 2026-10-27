@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import { Box, Button, Typography, GlobalStyles, Collapse, Pagination } from "@mui/material";
 import { Print, FilterList, ViewColumn } from "@mui/icons-material";
 import { useLocalStorage } from "../lib/hooks/useLocalStorage.js";
-import FilterPanel from "./FilterPanel.jsx";
+import FilterPanel, { isConditionActive, matchConditions } from "./FilterPanel.jsx";
 import EtiquetteCard from "./EtiquetteCard.jsx";
 import EtiquetteRideauxCard from "./EtiquetteRideauxCard.jsx";
 import EtiquetteStoresBateauxCard from "./EtiquetteStoresBateauxCard.jsx";
@@ -14,6 +14,8 @@ import BPFPrintPortal from "./print/BPFPrintPortal.jsx";
 import EtiquettesStoresBateauxPrintPortal from "./EtiquettesStoresBateauxPrintPortal.jsx";
 import EtiquettesV2RectoVersoPortal, { RIDEAUX_V2_FIELDS } from "./etiquettesV2/EtiquettesV2RectoVersoPortal.jsx";
 import { isDecentreeParent } from "../lib/utils/pairDecentree";
+import { RIDEAUX_GETTERS } from "../lib/schemas/production/rideaux.js";
+import { STORES_BATEAUX_GETTERS } from "../lib/schemas/production/stores_bateaux.js";
 import {
   ETIQUETTE_COLOR_PALETTE,
   DEFAULT_HEADER_COLOR,
@@ -23,6 +25,45 @@ import {
 
 // CONSTANTES
 const PAGE_SIZE = 9;
+
+const GETTERS_BY_TABLE = { rideaux: RIDEAUX_GETTERS, stores_bateaux: STORES_BATEAUX_GETTERS };
+
+// Ligne « aplatie » pour les filtres : chaque champ calculé est remplacé par sa valeur
+// (getter du tableau, sinon valueGetter du schéma), comme à l'écran.
+function flattenRow(row, schema, getters) {
+  const flat = { ...row };
+  for (const col of schema || []) {
+    if (!col?.key) continue;
+    if (getters?.[col.key]) {
+      try { flat[col.key] = getters[col.key](row); } catch { /* valeur brute */ }
+    } else if (typeof col.valueGetter === "function") {
+      try { flat[col.key] = col.valueGetter(null, row); } catch { /* valeur brute */ }
+    }
+  }
+  return flat;
+}
+
+// Filtres mémorisés PAR PROJET et par tableau (navigateur de chacun). La clé est relue
+// quand elle change (autre projet) : jamais d'écriture des filtres d'un projet sous la
+// clé d'un autre.
+const readFilters = (key) => {
+  try {
+    const v = JSON.parse(localStorage.getItem(key) || "[]");
+    return Array.isArray(v) ? v : [];
+  } catch {
+    return [];
+  }
+};
+function useProjectFilters(key) {
+  const [store, setStore] = useState(() => ({ key, value: readFilters(key) }));
+  const value = store.key === key ? store.value : readFilters(key);
+  const setValue = React.useCallback((next) => {
+    const v = typeof next === "function" ? next(value) : next;
+    try { localStorage.setItem(key, JSON.stringify(v)); } catch { /* quota, navigation privée */ }
+    setStore({ key, value: v });
+  }, [key, value]);
+  return [value, setValue];
+}
 
 // Bascules supplémentaires du Format atelier (V2 rideaux) : commentaire + croquis.
 // Mêmes clés que celles lues par le portail V2 (etiquette_hidden_fields).
@@ -576,9 +617,10 @@ export default function EtiquettesSection({
   }, [rows, onRowsChange]);
   // --- STATE PERSISTANT ---
   const keyFields = `prod.etq.fields.${tableKey}`;
-  const keyFilters = `prod.etq.filters.${tableKey}`;
+  const keyFilters = `prod.etq.filters.${project?.id ?? "sans-projet"}.${tableKey}`;
   const [fieldsLS, setFields] = useLocalStorage(keyFields, []);
-  const [filters, setFilters] = useLocalStorage(keyFilters, []);
+  const [filters, setFilters] = useProjectFilters(keyFilters);
+  const activeFilterCount = filters.filter(isConditionActive).length;
 
   // --- STATE UI ---
   const [showFilters, setShowFilters] = useState(false);
@@ -609,31 +651,29 @@ export default function EtiquettesSection({
   const labelRows = React.useMemo(() => (rows || []).filter(r => !isDecentreeParent(r)), [rows]);
 
   // --- FILTRAGE ---
-  const filteredRows = React.useMemo(() => {
+  // Étiquettes retenues AVANT les filtres (cases cochées + sélection par ouvrage) : sert
+  // de total au compteur « n / total étiquettes ».
+  const baseRows = React.useMemo(() => {
     let res = labelRows;
     // Sélection : une paire décentrée cochée par sa ligne parent → ses deux pans.
     const selPairIds = new Set((rows || []).filter(r => r.sel && isDecentreeParent(r)).map(r => r.pair_id));
     const sel = res.filter(r => r.sel || (r.pair_id && selPairIds.has(r.pair_id)));
     if (sel.length > 0 || selPairIds.size > 0) res = sel;
 
-    if (filters.length > 0) {
-      res = res.filter(r =>
-        filters.every(f => {
-          const val = r[f.key];
-          const sVal = String(val || "").toLowerCase();
-          const fVal = String(f.value || "").toLowerCase();
-          return sVal.includes(fVal);
-        })
-      );
-    }
-
     // Filtre sélection par ouvrage (zone + pièce)
     if (selectedOuvrages.size > 0) {
       res = res.filter(r => selectedOuvrages.has(ouvrageKey(r)));
     }
-
     return res;
-  }, [rows, labelRows, filters, selectedOuvrages]);
+  }, [rows, labelRows, selectedOuvrages]);
+
+  // Filtres (opérateurs, logique et / ou) sur les valeurs affichées, champs calculés compris.
+  // S'appliquent à l'aperçu, à l'impression et aux compteurs.
+  const filteredRows = React.useMemo(() => {
+    if (activeFilterCount === 0) return baseRows;
+    const getters = GETTERS_BY_TABLE[tableKey];
+    return baseRows.filter(r => matchConditions(filters, flattenRow(r, schema, getters)));
+  }, [baseRows, filters, activeFilterCount, schema, tableKey]);
 
   // Champs masqués en commun sur les étiquettes filtrées (pour init du panel bulk)
   // En mode Format atelier (rideaux), on ajoute deux bascules : commentaire (en-tête)
@@ -666,9 +706,11 @@ export default function EtiquettesSection({
     return filteredRows.slice(start, start + PAGE_SIZE);
   }, [filteredRows, page]);
 
+  // Retour en page 1 dès qu'un filtre change (ajout, retrait ou valeur).
+  const filtersSig = JSON.stringify(filters);
   useEffect(() => {
     setPage(1);
-  }, [filters.length, rows.length]);
+  }, [filtersSig, rows.length]);
 
   // --- PRINT LIFECYCLE (PORTAL) ---
   const handlePrint = () => {
@@ -835,6 +877,25 @@ export default function EtiquettesSection({
         }}>
           <Typography variant="h6" sx={{ fontWeight: 700, color: '#374151', textTransform: 'uppercase', fontSize: 14 }}>
             {title} <span style={{ opacity: 0.5, marginLeft: 8 }}>({filteredRows.length})</span>
+            {activeFilterCount > 0 && (
+              <span style={{
+                marginLeft: 12, fontSize: 12, fontWeight: 600, textTransform: "none",
+                color: "#92742A", background: "#FEF3C7", borderRadius: 10, padding: "2px 4px 2px 10px",
+                display: "inline-flex", alignItems: "center", gap: 4, verticalAlign: "middle",
+              }}>
+                {filteredRows.length} / {baseRows.length} étiquettes
+                <button
+                  type="button"
+                  title="Effacer les filtres"
+                  aria-label="Effacer les filtres"
+                  onClick={() => setFilters([])}
+                  style={{
+                    border: "none", background: "transparent", color: "#92742A", cursor: "pointer",
+                    fontSize: 14, lineHeight: 1, padding: "0 4px", fontWeight: 700,
+                  }}
+                >✕</button>
+              </span>
+            )}
           </Typography>
 
           <Box sx={{ display: 'flex', gap: 1 }}>
@@ -844,7 +905,7 @@ export default function EtiquettesSection({
               size="small"
               variant={showFilters ? "contained" : "outlined"}
             >
-              Filtres
+              {activeFilterCount > 0 ? `Filtres (${activeFilterCount})` : "Filtres"}
             </Button>
             {(isRideaux || isStoresBateaux) && (
               <Button
