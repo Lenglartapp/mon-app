@@ -70,7 +70,7 @@ export const DEFAULT_VIEWS = {
     rideaux: [
       "sel", "detail", "zone", "piece", "produit", "type_confection",
       "paire_ou_un_seul_pan", "largeur_gorge", "profondeur_gorge", "largeur_mecanisme", "largeur",
-      "hspf_droite", "hspf_milieu", "hspf_gauche", "statut_cotes",
+      "hspf_gauche", "hspf_milieu", "hspf_droite", "statut_cotes",
       "croisement", "type_croisement", "patte_de_croisement", "retour_gauche", "retour_droit", "type_retours",
       "hauteur_corniere_elastique",
       "type_mecanisme", "modele_mecanisme", "couleur_mecanisme",
