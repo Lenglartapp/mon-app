@@ -1,6 +1,9 @@
 // src/lib/schemas/production.js
 import React from 'react';
 import { RIDEAUX_GETTERS } from './production/rideaux';
+import { TYPE_MECANISME_OPTIONS } from '../constants/rideauxFields';
+import { SANS_PREPA_NI_POSE_RE } from '../constants/productRouting';
+import { STATUT_PREPA_OPTIONS, STATUT_POSE_OPTIONS, STATUT_CONF_RIDEAUX_OPTIONS, STATUT_CONF_STORES_BATEAUX_OPTIONS, STATUT_CONF_SIMPLE_OPTIONS } from '../constants/statutsProduction';
 
 // Détermine si un produit passe toujours par la confection (conf systématique)
 export function hasStatutConf(produit) {
@@ -17,9 +20,9 @@ export function hasConditionalConf(produit) {
 // Options de statut_conf selon le type de produit (null = pas de conf pour ce produit)
 export function getStatutConfOptions(produit) {
     const p = String(produit || '').toLowerCase();
-    if (/rideau|voilage/.test(p))          return ['Non démarré', 'Coupé', 'Assemblé', 'Plis terminés', 'Emballé'];
-    if (/store (bateau|velum)/.test(p))    return ['Non démarré', 'Ourlet fait', 'Fourreau terminé', 'Ficelle terminée', 'Emballé'];
-    if (/cache.sommier|coussin|plaid|tenture/.test(p)) return ['Non démarré', 'En cours', 'Terminé'];
+    if (/rideau|voilage/.test(p))          return STATUT_CONF_RIDEAUX_OPTIONS;
+    if (/store (bateau|velum)/.test(p))    return STATUT_CONF_STORES_BATEAUX_OPTIONS;
+    if (/cache.sommier|coussin|plaid|tenture/.test(p)) return STATUT_CONF_SIMPLE_OPTIONS;
     return null; // Produit sans confection
 }
 // We might need to import UI components if we were defining renderCell here,
@@ -352,7 +355,7 @@ export const SCHEMA_64 = [
   // → le champ « Étiq. Lavage » de l'atelier = clé `etiquette_lenglart`.
   { key: "etiquette_lenglart", label: "Etiq. Lavage", type: "select", options: ["Non", "Ne pas laver", "Lavage à 30°"], width: 130, editable: true, defaultValue: "Non" },
   { key: "etiquette_lavage", label: "Etiq. Lenglart", type: "select", options: ["Oui", "Non"], width: 125, editable: true, defaultValue: "Non" },
-  { key: "type_mecanisme", label: "Type Méca", type: "text", width: 130, editable: true },
+  { key: "type_mecanisme", label: "Type Méca", type: "select", options: TYPE_MECANISME_OPTIONS, width: 130, editable: true },
   { key: "modele_mecanisme", label: "Modèle Méca", type: "text", width: 150, editable: true },
   { key: "couleur_mecanisme", label: "Couleur Méca", type: "text", width: 140, editable: true },
   { key: "meca_couvert", label: "Méca Couvert", type: "select", options: ["Couvert", "Mi-Couvert", "Découvert"], width: 135, editable: true },
@@ -403,9 +406,9 @@ export const SCHEMA_64 = [
   // dans le Suivi de projet, qui affiche toutes les lignes tous produits confondus.
   { key: "heures_pose", label: "H. Pose", type: "number", width: 115, editable: true, defaultHidden: true },
   { key: "heures_prepa", label: "H. Prépa", type: "number", width: 115, editable: true, defaultHidden: true },
-  { key: "statut_pose",  label: "Statut Pose",  type: "select", options: ['Non démarré', 'Méca posé', 'Accroché', 'Terminé', 'Reprise'], width: 155, readOnly: (row) => /coussin|plaid|cache.sommier/i.test(String(row?.produit || '')) },
-  { key: "statut_prepa", label: "Statut Prépa", type: "select", options: ['Non démarré', 'En cours', 'Terminé'], width: 150, readOnly: (row) => /coussin|plaid|cache.sommier/i.test(String(row?.produit || '')) },
-  { key: "statut_conf", label: "Statut Conf", type: "select", options: ['Non démarré', 'En cours', 'Terminé'], optionsFn: (row) => getStatutConfOptions(row?.produit), readOnly: (row) => { if (hasStatutConf(row?.produit)) return false; if (hasConditionalConf(row?.produit)) return !(Number(row?.heures_confection) > 0); return true; }, width: 150, editable: true },
+  { key: "statut_pose",  label: "Statut Pose",  type: "select", options: STATUT_POSE_OPTIONS, width: 155, readOnly: (row) => SANS_PREPA_NI_POSE_RE.test(String(row?.produit || '')) },
+  { key: "statut_prepa", label: "Statut Prépa", type: "select", options: STATUT_PREPA_OPTIONS, width: 150, readOnly: (row) => SANS_PREPA_NI_POSE_RE.test(String(row?.produit || '')) },
+  { key: "statut_conf", label: "Statut Conf", type: "select", options: STATUT_CONF_SIMPLE_OPTIONS, optionsFn: (row) => getStatutConfOptions(row?.produit), readOnly: (row) => { if (hasStatutConf(row?.produit)) return false; if (hasConditionalConf(row?.produit)) return !(Number(row?.heures_confection) > 0); return true; }, width: 150, editable: true },
   // PRESERVED COMPONENTS
   { key: "schema_principe", label: "Schéma Principe", type: "photo", width: 150 }, // NEW
   { key: "photos_sur_site", label: "Photos Site", type: "photo", width: 150 },

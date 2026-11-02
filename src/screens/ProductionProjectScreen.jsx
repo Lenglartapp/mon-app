@@ -84,6 +84,12 @@ function SectionPanel({ title, count, expanded, onToggle, onRemove, children }) 
   );
 }
 
+// BPF rideaux : sans le « Modèle » du mécanisme (nov. 2026). Retiré du SCHÉMA du
+// tableau BPF, pas seulement de sa vue : les mises en page déjà enregistrées par
+// l'équipe le rendraient visible à nouveau (à l'écran comme à l'impression).
+// L'étiquette rideau et le tableau de production le gardent.
+const RIDEAUX_BPF_SCHEMA = RIDEAUX_PROD_SCHEMA.filter(c => c.key !== 'modele_mecanisme');
+
 /**
  * Helper to convert DEFAULT_VIEWS array to DataGrid visibility model
  * { field: boolean }
@@ -573,7 +579,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
 
   // Modules BPF (mêmes tableaux que la vue BPF), imprimés comme le BPP : tableau A3.
   const bpfModulesCfg = () => [
-    { title: 'BPF Rideaux',                rows: bpfRideaux,        schema: RIDEAUX_PROD_SCHEMA,        tableKey: 'rideaux' },
+    { title: 'BPF Rideaux',                rows: bpfRideaux,        schema: RIDEAUX_BPF_SCHEMA,         tableKey: 'rideaux' },
     { title: 'BPF Stores Bateaux / Velum', rows: bpfStoresBateaux,  schema: STORES_BATEAUX_PROD_SCHEMA, tableKey: 'stores_bateaux' },
     { title: 'BPF Coussins',               rows: bpfCoussins,       schema: COUSSINS_PROD_SCHEMA,       tableKey: 'coussins' },
     { title: 'BPF Cache-Sommier',          rows: bpfCacheSommier,   schema: CACHE_SOMMIER_PROD_SCHEMA,  tableKey: 'cache_sommier' },
@@ -1748,9 +1754,9 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                   stickyTop={STICKY_TITLE_HEIGHT}
                   rows={bpfRideaux}
                   onRowsChange={mergeChildRowsFor("rideaux")}
-                  schema={RIDEAUX_PROD_SCHEMA}
+                  schema={RIDEAUX_BPF_SCHEMA}
                   enableCellFormulas={true}
-                  initialVisibilityModel={getVisibilityModel('bpf', 'rideaux', RIDEAUX_PROD_SCHEMA)}
+                  initialVisibilityModel={getVisibilityModel('bpf', 'rideaux', RIDEAUX_BPF_SCHEMA)}
                   onAdd={(n) => handleAddRow("Rideau", n)}
                   onDuplicateRow={handleDuplicateRow}
                   catalog={projectMaterials}

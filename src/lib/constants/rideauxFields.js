@@ -56,6 +56,24 @@ export const FINITION_OB_RIDEAUX_OPTIONS = [...FINITION_OB_OPTIONS, "Assemblage 
 /** Crochets des rideaux (tableau de production et modèle Excel). */
 export const TYPE_CROCHETS_OPTIONS = ['Crochet américain', 'Crochet américain + Ruban', 'Crochet escargot plastique', 'Crochet escargot métal', 'Agrafe à coudre', 'Crochets fourches'];
 
+// ── TYPE DE MÉCANISME ────────────────────────────────────────────────────────
+// Liste commune au chiffrage et à la production. « Sans Méca » a été renommé
+// « Sans Méca/Méca existant » (nov. 2026) : les lignes déjà saisies gardent
+// l'ancien libellé en base, d'où `isSansMeca` qui reconnaît les deux. C'est elle
+// qu'il faut tester partout où « pas de mécanisme » coupe les prix PA/PV Méca.
+export const SANS_MECA = 'Sans Méca/Méca existant';
+export const SANS_MECA_LEGACY = 'Sans Méca';
+export const TYPE_MECANISME_OPTIONS = ['Rail', 'Tringle', 'Rail Motorisé', SANS_MECA];
+export const isSansMeca = (v) => v === SANS_MECA || v === SANS_MECA_LEGACY;
+
+// Anciennes VALEURS de liste, converties vers le libellé courant à l'import Excel.
+export const LEGACY_OPTION_VALUES = {
+  type_mecanisme: { [SANS_MECA_LEGACY]: SANS_MECA },
+};
+
+/** Valeur importée : ancien libellé converti, toute autre valeur conservée telle quelle. */
+export const upgradeLegacyOption = (key, value) => LEGACY_OPTION_VALUES[key]?.[value] ?? value;
+
 // -----------------------------------------------------------------------------
 // ANCIENS LIBELLÉS D'EN-TÊTE
 // Les deux imports Excel (minuteExcelImport pour le chiffrage,

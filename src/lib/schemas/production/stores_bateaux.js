@@ -1,5 +1,6 @@
 import { FINITION_OB_OPTIONS, FINITION_OC_OPTIONS } from '../../constants/rideauxFields';
 import { metrageStore, isStoresMetrageRow, isStoresMargeMachineRow, CAS_COUPE_LABEL } from '../../formulas/storesBateauxMetrage.js';
+import { STATUT_PREPA_OPTIONS, STATUT_POSE_OPTIONS, STATUT_CONF_STORES_BATEAUX_OPTIONS } from '../../constants/statutsProduction';
 // src/lib/schemas/production/stores_bateaux.js
 // Schéma atelier pour le module "Stores" (Bateaux/Velum)
 
@@ -263,9 +264,9 @@ const BASE_STORES_BATEAUX_SCHEMA = [
     { key: "heures_pose", label: "H. Pose", type: "number", width: 120, defaultHidden: true },
     { key: "heures_confection", label: "H. Conf", type: "number", width: 120 },
 
-    { key: "statut_pose", label: "Statut Pose", type: "select", options: ['Non démarré', 'Méca posé', 'Accroché', 'Terminé', 'Reprise'], width: 155 },
-    { key: "statut_prepa", label: "Statut Prépa", type: "select", options: ['Non démarré', 'En cours', 'Terminé'], width: 150 },
-    { key: "statut_conf", label: "Statut Conf", type: "select", options: ['Non démarré', 'Ourlet fait', 'Fourreau terminé', 'Ficelle terminée', 'Emballé'], width: 175, editable: true },
+    { key: "statut_pose", label: "Statut Pose", type: "select", options: STATUT_POSE_OPTIONS, width: 155 },
+    { key: "statut_prepa", label: "Statut Prépa", type: "select", options: STATUT_PREPA_OPTIONS, width: 150 },
+    { key: "statut_conf", label: "Statut Conf", type: "select", options: STATUT_CONF_STORES_BATEAUX_OPTIONS, width: 175, editable: true },
 
     { key: "photos_sur_site", label: "Photo sur site", type: "photo", width: 150 },
     { key: "quantite", label: "Qté", type: "number", width: 70 },

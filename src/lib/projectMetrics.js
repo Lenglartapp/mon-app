@@ -4,6 +4,8 @@
 // l'Assistant Programmation (planning) → garantit des chiffres identiques.
 
 import { differenceInMinutes } from 'date-fns';
+import { getPrepaTypology, PREPA_TYPOLOGIES } from './constants/productRouting';
+import { STATUT_SAV, isTermine } from './constants/statutsProduction';
 
 // ─────────────────────────────────────────────────────────────
 // 1. AVANCEMENT (cotes / prépa / confection / pose)
@@ -19,6 +21,7 @@ const CONF_WEIGHTS_RIDEAUX = {
   'Emballé': 1.0,
   'En cours': 0.35,
   'Terminé': 1.0,
+  [STATUT_SAV]: 1.0, // terminé une fois, revenu en SAV
 };
 
 const CONF_WEIGHTS_STORES_BATEAUX = {
@@ -29,6 +32,7 @@ const CONF_WEIGHTS_STORES_BATEAUX = {
   'Emballé': 1.0,
   'En cours': 0.35,
   'Terminé': 1.0,
+  [STATUT_SAV]: 1.0, // terminé une fois, revenu en SAV
 };
 
 const getConfWeight = (row) => {
@@ -36,7 +40,7 @@ const getConfWeight = (row) => {
   const status = row.statut_conf || 'Non démarré';
   if (/rideau|voilage/i.test(produit)) return CONF_WEIGHTS_RIDEAUX[status] ?? 0;
   if (/store.*(bateau|velum)/i.test(produit)) return CONF_WEIGHTS_STORES_BATEAUX[status] ?? 0;
-  return status === 'Terminé' ? 1.0 : 0;
+  return isTermine(status) ? 1.0 : 0;
 };
 
 const COTES_WEIGHTS = {
@@ -51,12 +55,6 @@ const getCotesWeight = (statut) => COTES_WEIGHTS[statut] ?? 0;
 // Paire décentrée : le parent (rail) ne compte pas pour les cotes (ce sont les enfants/rideaux qui sont mesurés)
 const isSubjectToCotes = (row) =>
   row?.pair_role !== 'parent' && /rideau|voilage|store/i.test(String(row?.produit || ''));
-
-// Coussins, plaids, cache-sommiers → confection uniquement, pas de prépa ni pose
-// Paire décentrée : la prépa/pose (le rail) est portée par le PARENT — les 2 enfants ne comptent pas.
-const isSubjectToPrepaAndPose = (row) =>
-  row?.pair_role !== 'left' && row?.pair_role !== 'right' &&
-  !/coussin|plaid|cache.sommier/i.test(String(row?.produit || ''));
 
 // ─── Résumé ST pour une tuile (conf ou pose) ────────────────────────────────
 // Retourne une string lisible ex: "Voilages sous-traités" / "Voilages R+2 sous-traités"
@@ -93,7 +91,7 @@ const pctFromStRows = (stRows, statusField) => {
   if (!stRows.length) return 0;
   const sum = stRows.reduce((acc, r) => {
     const s = r[statusField] || 'Non démarré';
-    return acc + (s === 'Terminé' ? 1 : s === 'En cours' ? 0.5 : 0);
+    return acc + (isTermine(s) ? 1 : s === 'En cours' ? 0.5 : 0);
   }, 0);
   return Math.round((sum / stRows.length) * 100);
 };
@@ -105,17 +103,24 @@ export const calculateProjectStats = (rows, budget = {}) => {
   let prepaOk = 0, prepaTotal = 0;
   let poseOk = 0, poseTotal = 0;
   let weightedConfSum = 0, totalConfHours = 0, confBinaryOk = 0;
+  const prepaCounts = {}; // typologie → { ok, total }
 
   rows.forEach(r => {
     if (isSubjectToCotes(r)) {
       cotesWeightSum += getCotesWeight(r.statut_cotes);
       cotesTotal++;
     }
-    if (isSubjectToPrepaAndPose(r)) {
+    // Prépa / pose : getPrepaTypology renvoie null pour les coussins, plaids / chemins de
+    // lit, cache-sommiers (confection seule) et les enfants de paire décentrée (le
+    // PARENT porte le rail) — source unique du routage produit.
+    const typo = getPrepaTypology(r);
+    if (typo) {
       prepaTotal++;
       poseTotal++;
-      if (r.statut_prepa === 'Terminé') prepaOk++;
-      if (r.statut_pose === 'Terminé') poseOk++;
+      const c = (prepaCounts[typo.key] ??= { ok: 0, total: 0 });
+      c.total++;
+      if (isTermine(r.statut_prepa)) { prepaOk++; c.ok++; }
+      if (isTermine(r.statut_pose)) poseOk++;
     }
 
     if (r.realise_par === 'Sous-Traitant') return;
@@ -127,7 +132,7 @@ export const calculateProjectStats = (rows, budget = {}) => {
       weightedConfSum += hours * getConfWeight(r);
       totalConfHours += hours;
     } else {
-      if (r.statut_conf === 'Terminé') confBinaryOk++;
+      if (isTermine(r.statut_conf)) confBinaryOk++;
     }
   });
 
@@ -170,6 +175,13 @@ export const calculateProjectStats = (rows, budget = {}) => {
     cotesTotal,
     pctCotes: cotesTotal > 0 ? Math.round((cotesWeightSum / cotesTotal) * 100) : null,
     pctPrepa: prepaTotal > 0 ? Math.round((prepaOk / prepaTotal) * 100) : null,
+    // Détail de la prépa par typologie présente (ordre des tableaux de production).
+    prepaByType: PREPA_TYPOLOGIES
+      .filter(t => prepaCounts[t.key]?.total > 0)
+      .map(({ key, label }) => {
+        const { ok, total } = prepaCounts[key];
+        return { key, label, ok, total, pct: Math.round((ok / total) * 100) };
+      }),
     pctConf: pctConfFinal,
     pctPose: pctPoseFinal,
     confMode, poseMode,

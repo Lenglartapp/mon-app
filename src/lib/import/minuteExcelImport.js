@@ -5,7 +5,7 @@
 // Les anciens fichiers (un onglet par produit, en-têtes = libellés des colonnes) restent
 // acceptés : la lecture se fait par nom d'onglet et par libellé, comme avant.
 import { STORE_CLASSIQUE_DEFAUT } from '../constants/productRouting';
-import { LEGACY_HEADER_ALIASES } from '../constants/rideauxFields';
+import { LEGACY_HEADER_ALIASES, upgradeLegacyOption } from '../constants/rideauxFields';
 import { RIDEAUX_SCHEMA, RIDEAUX_LINE_DEFAULTS } from '../schemas/chiffrage/rideaux';
 import { STORES_CLASSIQUES_SCHEMA } from '../schemas/chiffrage/stores_classiques';
 import { STORES_BATEAUX_SCHEMA } from '../schemas/chiffrage/stores_bateaux';
@@ -214,7 +214,7 @@ export async function analyzeMinuteFile(file, catalog = []) {
                     if (!exact) warnings.push(`${labelOf(col)} : « ${clean(v)} » absent de la bibliothèque (pas chiffré tant qu’il n’y est pas).`);
                 } else if (col.type === 'select' || col.type === 'singleSelect') {
                     const opts = optionsOf(col) || [];
-                    const hit = opts.find(o => norm(o) === norm(v));
+                    const hit = opts.find(o => norm(o) === norm(upgradeLegacyOption(col.key, clean(v))));
                     if (hit !== undefined) raw[col.key] = hit;
                     else if (opts.length) { raw[col.key] = clean(v); warnings.push(`${labelOf(col)} : « ${clean(v)} » hors liste.`); }
                     else raw[col.key] = clean(v);
