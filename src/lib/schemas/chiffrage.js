@@ -2,6 +2,7 @@
 // Schéma STRICT pour l'éditeur de minutes (Rideaux)
 // Basé sur la "Matrice de Champs" utilisateur (Ordre 1 à 75)
 import { PAIRE_OPTIONS_BASE } from "../utils/pairDecentree";
+import { TYPE_MECANISME_OPTIONS, isSansMeca } from "../constants/rideauxFields";
 
 export const CHIFFRAGE_SCHEMA = [
   // 1 = Checkbox (Native DataGrid)
@@ -123,13 +124,13 @@ export const CHIFFRAGE_SCHEMA = [
   { key: "pv_pass2", label: "PV Pass 2", type: "number", width: 90 },
 
   // 57
-  { key: "type_mecanisme", label: "Type Méca", type: "select", options: ["Rail", "Tringle", "Rail Motorisé", "Sans Méca"], width: 120 },
+  { key: "type_mecanisme", label: "Type Méca", type: "select", options: TYPE_MECANISME_OPTIONS, width: 120 },
   // 58
-  { key: "modele_mecanisme", label: "Modèle Méca", type: "catalog_item", category: "Rail", width: 140, tooltip: "Renseignable même en « Sans Méca » (rail fourni par un tiers) : sert d'information, sans prix." },
+  { key: "modele_mecanisme", label: "Modèle Méca", type: "catalog_item", category: "Rail", width: 140, tooltip: "Renseignable même en « Sans Méca/Méca existant » (rail fourni par un tiers) : sert d'information, sans prix." },
   // 59
-  { key: "pa_mecanisme", label: "PA Méca", type: "number", width: 90, readOnly: (row) => row.type_mecanisme === 'Sans Méca' },
+  { key: "pa_mecanisme", label: "PA Méca", type: "number", width: 90, readOnly: (row) => isSansMeca(row.type_mecanisme) },
   // 60
-  { key: "pv_mecanisme", label: "PV Méca", type: "number", width: 90, readOnly: (row) => row.type_mecanisme === 'Sans Méca' },
+  { key: "pv_mecanisme", label: "PV Méca", type: "number", width: 90, readOnly: (row) => isSansMeca(row.type_mecanisme) },
 
   // 60b (NEW) - Mécanisme Bis
   { key: "mecanisme_bis", label: "Méca Bis", type: "catalog_item", category: "Rail", width: 140 }, // Same categories as main meca

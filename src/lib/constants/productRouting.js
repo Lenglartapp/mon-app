@@ -57,3 +57,34 @@ export const VENITIEN_RE = /v[ée]nitien/i;
 
 /** Produits « décor » : prix tissus lus au catalogue via ml_tissu_N saisi à la main. */
 export const DECOR_PRODUIT_RE = /coussin|plaid|cache-sommier|tenture|t[êe]te|mobilier|si[èe]ge|cantonni[èe]re/i;
+
+// ── PRÉPARATION (avancement par typologie) ───────────────────────────────────
+/** Produits SANS prépa ni pose (confection seule) : Statut Prépa / Pose grisés,
+ *  hors des avancements. Les chemins de lit sont des plaids. */
+export const SANS_PREPA_NI_POSE_RE = /coussin|plaid|chemin.de.lit|cache.sommier/i;
+
+// Une typologie par tableau de production, dans l'ordre d'affichage de la tuile
+// « Préparation ». Mêmes tests que le routage des tableaux (ProductionProjectScreen).
+// « Autres » recueille un produit vide ou inconnu : il compte déjà dans le taux
+// global, le détail doit donc retomber sur le même total.
+export const PREPA_TYPOLOGIES = [
+  { key: 'rideaux',           label: 'Rideaux',                 test: (p) => /rideau|voilage/i.test(p) },
+  { key: 'stores_bateaux',    label: 'Stores bateaux',          test: (p) => /store (bateau|velum)/i.test(p) },
+  { key: 'stores_classiques', label: 'Stores classiques',       test: (p) => /store/i.test(p) },
+  { key: 'tenture_murale',    label: 'Tentures murales',        test: (p) => /tenture/i.test(p) },
+  { key: 'mobilier',          label: 'Mobilier',                test: (p) => MOBILIER_PRODUIT_RE.test(p) },
+  { key: 'autres',            label: 'Autres',                  test: () => true },
+];
+
+/**
+ * Typologie de préparation d'une ligne : { key, label }, ou null si la ligne ne
+ * compte pas dans la prépa (produit sans prépa, ou enfant de paire décentrée :
+ * c'est le parent, le rail, qui porte la prépa).
+ */
+export function getPrepaTypology(row) {
+  if (row?.pair_role === 'left' || row?.pair_role === 'right') return null;
+  const produit = String(row?.produit || '');
+  if (SANS_PREPA_NI_POSE_RE.test(produit)) return null;
+  const t = PREPA_TYPOLOGIES.find((x) => x.test(produit));
+  return { key: t.key, label: t.label };
+}

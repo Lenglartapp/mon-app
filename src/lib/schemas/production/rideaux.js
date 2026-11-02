@@ -1,10 +1,11 @@
 // src/lib/schemas/production/rideaux.js
 
-import { HAUTEUR_RENFORT_TETE_OPTIONS, FINITION_OB_RIDEAUX_OPTIONS, FINITION_OC_OPTIONS, TYPE_CROCHETS_OPTIONS, coefOurletCoteRideau } from '../../constants/rideauxFields';
+import { HAUTEUR_RENFORT_TETE_OPTIONS, FINITION_OB_RIDEAUX_OPTIONS, FINITION_OC_OPTIONS, TYPE_CROCHETS_OPTIONS, TYPE_MECANISME_OPTIONS, coefOurletCoteRideau } from '../../constants/rideauxFields';
 import React from 'react';
 import { PAIRE_OPTIONS_BASE, paireOptionsForRow, PAIRE_DECENTREE } from '../../utils/pairDecentree';
 import { isMetrageV2Row, largeurFinieV2, parseCm, margeMachineRideau } from '../../formulas/metrageVersion';
 import { cassantRasantNum } from '../../formulas/cassantRasant.js';
+import { STATUT_PREPA_OPTIONS, STATUT_POSE_OPTIONS, STATUT_CONF_RIDEAUX_OPTIONS } from '../../constants/statutsProduction';
 
 // Helper to safely extract row from valueGetter args (MUI V5 vs V6 compat)
 const getRow = (a, b) => {
@@ -964,7 +965,7 @@ export const RIDEAUX_PROD_SCHEMA = [
     // → le champ « Étiq. Lavage » de l'atelier = clé `etiquette_lenglart`.
     { key: "etiquette_lenglart", label: "Etiq. Lavage", type: "select", options: ["Non", "Ne pas laver", "Lavage à 30°"], width: 130, editable: true, defaultValue: "Non" },
     { key: "etiquette_lavage", label: "Etiq. Lenglart", type: "select", options: ["Oui", "Non"], width: 125, editable: true, defaultValue: "Non" },
-    { key: "type_mecanisme", label: "Type Méca", type: "text", width: 130, editable: true },
+    { key: "type_mecanisme", label: "Type Méca", type: "select", options: TYPE_MECANISME_OPTIONS, width: 130, editable: true },
     { key: "modele_mecanisme", label: "Modèle Méca", type: "text", width: 150, editable: true },
     { key: "couleur_mecanisme", label: "Couleur Méca", type: "text", width: 140, editable: true },
     { key: "meca_couvert", label: "Méca Couvert", type: "select", options: ["Couvert", "Mi-Couvert", "Découvert"], width: 135, editable: true },
@@ -1029,9 +1030,9 @@ export const RIDEAUX_PROD_SCHEMA = [
     // rendue visible dans le BPP, et les 3 heures sont activables à la demande dans le Suivi.
     { key: "heures_pose", label: "H. Pose", type: "number", width: 115, editable: true, defaultHidden: true },
     { key: "heures_prepa", label: "H. Prépa", type: "number", width: 115, editable: true, defaultHidden: true },
-    { key: "statut_pose", label: "Statut Pose", type: "select", options: ['Non démarré', 'Méca posé', 'Accroché', 'Terminé', 'Reprise'], width: 155, editable: true },
-    { key: "statut_prepa", label: "Statut Prépa", type: "select", options: ['Non démarré', 'En cours', 'Terminé'], width: 150, editable: true },
-    { key: "statut_conf", label: "Statut Conf", type: "select", options: ['Non démarré', 'Coupé', 'Assemblé', 'Plis terminés', 'Emballé'], width: 170, editable: true },
+    { key: "statut_pose", label: "Statut Pose", type: "select", options: STATUT_POSE_OPTIONS, width: 155, editable: true },
+    { key: "statut_prepa", label: "Statut Prépa", type: "select", options: STATUT_PREPA_OPTIONS, width: 150, editable: true },
+    { key: "statut_conf", label: "Statut Conf", type: "select", options: STATUT_CONF_RIDEAUX_OPTIONS, width: 170, editable: true },
     // PRESERVED COMPONENTS
     { key: "schema_principe", label: "Schéma Principe", type: "photo", width: 150 },
     { key: "photos_sur_site", label: "Photo sur site", type: "photo", width: 150 },

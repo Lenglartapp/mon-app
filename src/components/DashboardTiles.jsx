@@ -26,12 +26,27 @@ export default function DashboardTiles({ rows, budget = {} }) {
       ? <Kpi key="pose" label="Pose" note="Sous-traité" sub={stats.stPoseSummary} />
       : <Kpi key="pose" label="Pose" value={r.poseOk} total={`${r.poseTotal} installées`} pct={pct(stats.pctPose)} doneIsGreen sub={stats.poseMode === "mix_st" ? stats.stPoseSummary : null} />;
 
+  // Prépa : détail par typologie dès que le projet en mélange au moins deux
+  // (terminées d'abord, puis celles qui restent ; ordre des tableaux sinon).
+  const prepaByType = stats.prepaByType || [];
+  const prepaDetail = prepaByType.length < 2 ? null : (
+    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+      {[...prepaByType.filter(t => t.ok === t.total), ...prepaByType.filter(t => t.ok !== t.total)].map(t => (
+        <div key={t.key} style={{ display: "flex", alignItems: "center", gap: 6, fontVariantNumeric: "tabular-nums" }}>
+          <span style={{ width: 6, height: 6, borderRadius: 999, flexShrink: 0, background: t.ok === t.total ? "#30A46C" : "var(--df-x-E4E4E4)" }} />
+          <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "var(--df-x-5B616B)" }}>{t.label}</span>
+          <span>{t.ok}/{t.total}</span>
+        </div>
+      ))}
+    </div>
+  );
+
   return (
     <KpiGrid min={150}>
       {stats.cotesTotal > 0
         ? <Kpi label="Prise de cotes" value={r.cotesValidees} total={`${stats.cotesTotal} validées`} pct={pct(stats.pctCotes)} doneIsGreen />
         : <Kpi label="Prise de cotes" note="Non applicable" />}
-      <Kpi label="Préparation" value={r.prepaOk} total={`${r.prepaTotal} terminées`} pct={pct(stats.pctPrepa)} doneIsGreen />
+      <Kpi label="Préparation" value={r.prepaOk} total={`${r.prepaTotal} terminées`} pct={pct(stats.pctPrepa)} doneIsGreen sub={prepaDetail} />
       {conf}
       {pose}
     </KpiGrid>

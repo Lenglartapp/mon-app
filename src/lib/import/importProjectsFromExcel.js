@@ -1,6 +1,6 @@
 // src/lib/import/importProjectsFromExcel.js
 
-import { HAUTEUR_RENFORT_TETE_OPTIONS, FINITION_OB_RIDEAUX_OPTIONS, FINITION_OC_OPTIONS, TYPE_CROCHETS_OPTIONS, LEGACY_HEADER_ALIASES } from '../constants/rideauxFields';
+import { HAUTEUR_RENFORT_TETE_OPTIONS, FINITION_OB_RIDEAUX_OPTIONS, FINITION_OC_OPTIONS, TYPE_CROCHETS_OPTIONS, TYPE_MECANISME_OPTIONS, LEGACY_HEADER_ALIASES, upgradeLegacyOption } from '../constants/rideauxFields';
 import { applySchemaDefaults } from '../utils/schemaDefaults';
 import { STORES_CLASSIQUES_PRODUITS, STORE_CLASSIQUE_DEFAUT } from '../constants/productRouting';
 import readXlsxFile from 'read-excel-file';
@@ -151,7 +151,7 @@ const PRODUCT_SHEETS = [
       // reconnus via LEGACY_HEADER_ALIASES, vers leur clé d'origine.
       c('etiquette_lenglart',          'Consigne lavage',         'select',   18, { options: ['Non', 'Ne pas laver', 'Lavage à 30°'] }),
       c('etiquette_lavage',            'Etiq. Lenglart (Oui/Non)','select',   22, { options: OUI_NON }),
-      c('type_mecanisme',              'Type Méca',               'text',     16),
+      c('type_mecanisme',              'Type Méca',               'select',   16, { options: TYPE_MECANISME_OPTIONS }),
       c('modele_mecanisme',            'Modèle Méca',             'text',     16),
       c('couleur_mecanisme',           'Couleur Méca',            'text',     16),
       c('meca_couvert',                'Méca Couvert',            'select',   15, { options: ['Couvert', 'Mi-Couvert', 'Découvert'] }),
@@ -614,7 +614,8 @@ export async function parseProjectsFromExcel(file) {
           const n = parseFloat(val);
           if (!isNaN(n)) rowObj[col.key] = n;
         } else {
-          const s = val.toString().trim();
+          // Valeur hors liste conservée ; seul un ancien libellé connu est converti.
+          const s = upgradeLegacyOption(col.key, val.toString().trim());
           if (s) rowObj[col.key] = s;
         }
       });

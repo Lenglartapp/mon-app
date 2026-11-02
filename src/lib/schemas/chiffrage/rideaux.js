@@ -1,5 +1,6 @@
 // src/lib/schemas/chiffrage/rideaux.js
 // Schéma commercial pour la famille "Rideaux" (Rideau / Voilage)
+import { TYPE_MECANISME_OPTIONS, isSansMeca } from '../../constants/rideauxFields';
 
 // Valeurs posées sur chaque NOUVELLE ligne rideau du chiffrage (cm).
 // Les lignes existantes ne sont pas modifiées.
@@ -146,13 +147,13 @@ export const RIDEAUX_SCHEMA = [
     { tooltip: "PA × coef. de l'article dans la bibliothèque (2 par défaut).", key: "pv_embrasse", label: "PV Embrasse", type: "number", width: 145, readOnly: (row) => row.pv_embrasse_auto === true },
 
     // 57
-    { key: "type_mecanisme", label: "Type Méca", type: "select", options: ["Rail", "Tringle", "Rail Motorisé", "Sans Méca"], width: 148 },
+    { key: "type_mecanisme", label: "Type Méca", type: "select", options: TYPE_MECANISME_OPTIONS, width: 148 },
     // 58
-    { key: "modele_mecanisme", label: "Modèle Méca", type: "catalog_item", category: "Rail", width: 165, tooltip: "Renseignable même en « Sans Méca » (rail fourni par un tiers) : sert d'information, sans prix." },
+    { key: "modele_mecanisme", label: "Modèle Méca", type: "catalog_item", category: "Rail", width: 165, tooltip: "Renseignable même en « Sans Méca/Méca existant » (rail fourni par un tiers) : sert d'information, sans prix." },
     // 59
-    { tooltip: "Rail au ml : L. Méca ÷ 100 × prix d'achat catalogue. Article à la pièce : à saisir. Sans Méca : 0.", key: "pa_mecanisme", label: "PA Méca", type: "number", width: 135, readOnly: (row) => row.type_mecanisme === 'Sans Méca' },
+    { tooltip: "Rail au ml : L. Méca ÷ 100 × prix d'achat catalogue. Article à la pièce : à saisir. Sans Méca/Méca existant : 0.", key: "pa_mecanisme", label: "PA Méca", type: "number", width: 135, readOnly: (row) => isSansMeca(row.type_mecanisme) },
     // 60
-    { tooltip: "Rail au ml : L. Méca ÷ 100 × prix de vente catalogue. Article à la pièce : PA × coef. de l'article (2 par défaut). Sans Méca : 0.", key: "pv_mecanisme", label: "PV Méca", type: "number", width: 135, readOnly: (row) => row.type_mecanisme === 'Sans Méca' || row.pv_mecanisme_auto === true },
+    { tooltip: "Rail au ml : L. Méca ÷ 100 × prix de vente catalogue. Article à la pièce : PA × coef. de l'article (2 par défaut). Sans Méca/Méca existant : 0.", key: "pv_mecanisme", label: "PV Méca", type: "number", width: 135, readOnly: (row) => isSansMeca(row.type_mecanisme) || row.pv_mecanisme_auto === true },
 
     // 60b
     { key: "mecanisme_bis", label: "Méca Bis", type: "catalog_item", category: "Rail", width: 135 },

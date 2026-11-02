@@ -15,6 +15,7 @@ import { TonePill } from './ui/ToolbarControls';
 import FitPanel from './ui/FitPanel';
 import FilterPanel, { isConditionActive, evaluateCondition } from './FilterPanel';
 import { getDefaultMatieres } from '../lib/constants/matiereGroups';
+import { isSansMeca } from '../lib/constants/rideauxFields';
 import { caretIndexAtOffset, offsetInCellText } from '../lib/utils/caretFromPoint';
 import { useAuth } from '../auth';
 import { useSharedGridState } from '../lib/hooks/useSharedGridState';
@@ -1809,9 +1810,9 @@ function MinuteGrid({
         const cellFx = { ...(oldRow.__cellFormulas || {}) };
         let hasOverride = false;
 
-        // 0. Sans Méca — PA et PV mécanisme à 0. Le modèle est CONSERVÉ : il reste une
+        // 0. Sans Méca/Méca existant (ou l'ancien « Sans Méca ») — PA et PV mécanisme à 0. Le modèle est CONSERVÉ : il reste une
         //    information utile (quel rail, même fourni par un tiers).
-        if (changedKey === 'type_mecanisme' && newVal === 'Sans Méca') {
+        if (changedKey === 'type_mecanisme' && isSansMeca(newVal)) {
             updatedRow.pa_mecanisme = 0;
             updatedRow.pv_mecanisme = 0;
         }

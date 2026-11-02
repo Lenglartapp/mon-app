@@ -1,5 +1,6 @@
 // src/lib/schemas/production/plaid.js
 // Schéma atelier pour le module "Plaid"
+import { STATUT_CONF_SIMPLE_OPTIONS } from '../../constants/statutsProduction';
 
 const createCol = (key, label, width, type = 'text', options = {}) => ({
     field: key,
@@ -134,7 +135,7 @@ export const PLAID_PROD_SCHEMA = [
         type: 'select',
         width: 150,
         editable: true,
-        options: ['Non démarré', 'En cours', 'Terminé'],
+        options: STATUT_CONF_SIMPLE_OPTIONS,
         readOnly: (row) => !(Number(row?.heures_confection) > 0),
     },
     createCol('schema_photo', 'Schéma', 120, 'photo'),

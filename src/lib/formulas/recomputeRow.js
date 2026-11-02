@@ -1,6 +1,7 @@
 // src/lib/formulas/recomputeRow.js
 
 import { DECOR_PRODUIT_RE } from '../constants/productRouting';
+import { isSansMeca } from '../constants/rideauxFields';
 import { evalFormula } from "./eval.js";
 import { FORMULES_METRAGE_V2, isMetrageV2Row, largeurFinieV2, parseCm, margeMachineRideau } from "./metrageVersion.js";
 import { cassantRasantNum } from "./cassantRasant.js";
@@ -352,7 +353,7 @@ export function recomputeRow(row, schema, ctx = {}) {
 
     // Mecanisme
     next.pv_mecanisme_auto = false; // repère de verrouillage du PV (recalculé ci-dessous)
-    if (next.type_mecanisme === 'Sans Méca') {
+    if (isSansMeca(next.type_mecanisme)) {
       // Modèle conservé (information : quel rail, même non fourni) ; pas de prix.
       next.pa_mecanisme = 0;
       next.pv_mecanisme = 0;
