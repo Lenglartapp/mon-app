@@ -30,10 +30,10 @@ const BASE_MOBILIER_SCHEMA = [
     createCol('zone', 'Zone', 120, 'text', autoCap),
     createCol('piece', 'Pièce', 120, 'text', autoCap),
 
+    // Modifiable comme au chiffrage : Tête de Lit / Siège / Cantonnière restent tous
+    // dans ce tableau (MOBILIER_PRODUIT_RE), la ligne ne change donc pas de tableau.
     createCol('produit', 'Produit', 125, 'singleSelect', {
         valueOptions: MOBILIER_PRODUITS,
-        editable: false,
-        readOnly: true,
     }),
 
     createCol('realise_par', 'Réalisé par', 130, 'singleSelect', {
