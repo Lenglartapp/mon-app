@@ -35,7 +35,7 @@ import { uid } from "../lib/utils/uid"; // Import uid
 import { duplicateRowOrPair } from "../lib/utils/pairDecentree";
 import { compressAndUpload } from "../lib/utils/imageUpload";
 
-import { Search, Filter, Layers3, Star, FlaskConical, Image as ImageIcon, Edit2, FileText, BookOpen, Printer, Package, CalendarRange, History } from "lucide-react";
+import { Search, Filter, Layers3, Star, FlaskConical, Image as ImageIcon, Edit2, FileText, BookOpen, Printer, Package, CalendarRange, History, Plus, Trash2 } from "lucide-react";
 import ProjectMaterialsPanel from "../components/ProjectMaterialsPanel";
 import { applyCatalogRenames } from "../lib/utils/catalogRename";
 import AddressAutocomplete from "../components/AddressAutocomplete"; // Added FileText
@@ -45,7 +45,7 @@ import ProjectGanttModal from "../components/project/ProjectGanttModal";
 import ProjectVersionsDialog from "../components/project/ProjectVersionsDialog";
 import { readProjectVersionRows, saveVersionBeforeRestore } from "../lib/projectVersions";
 import { logProjectEvent, PROJECT_EVENTS_CHANGED } from "../lib/projectEvents";
-import { Dialog, DialogTitle, DialogContent, TextField, DialogActions, Button, Collapse, IconButton } from "@mui/material";
+import { Dialog, DialogTitle, DialogContent, TextField, DialogActions, Button, Collapse, IconButton, Menu, MenuItem } from "@mui/material";
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { differenceInMinutes } from "date-fns";
 import DocumentListModal from "../components/DocumentListModal"; // Added import
@@ -61,7 +61,7 @@ const STICKY_TITLE_HEIGHT = 44;
 
 // Section de tableau, même rendu que le chiffrage : pas de carte autour, flèche de repli
 // à gauche du titre (titre cliquable aussi), nombre d'articles en simple texte.
-function SectionPanel({ title, count, expanded, onToggle, children }) {
+function SectionPanel({ title, count, expanded, onToggle, onRemove, children }) {
   return (
     <div style={{ marginBottom: 28 }}>
       {/* Titre collant : reste en haut de l'écran tant qu'on défile dans ce tableau */}
@@ -71,6 +71,11 @@ function SectionPanel({ title, count, expanded, onToggle, children }) {
         </IconButton>
         <h3 onClick={onToggle} style={{ margin: 0, fontSize: 20, color: 'var(--df-text)', fontWeight: 500, fontFamily: 'Roboto, system-ui, sans-serif', cursor: 'pointer' }}>{title}</h3>
         <span style={{ color: 'var(--df-faint-2)', fontSize: 13, fontFamily: 'Roboto, system-ui, sans-serif', marginLeft: 4, alignSelf: 'flex-end', paddingBottom: 13 }}>{count} {count > 1 ? 'articles' : 'article'}</span>
+        {onRemove && (
+          <IconButton size="small" onClick={onRemove} title="Retirer le tableau (vide)" sx={{ ml: 'auto', color: 'var(--df-border-strong)', '&:hover': { color: 'var(--df-danger)', bgcolor: 'var(--df-danger-bg)' } }}>
+            <Trash2 size={16} />
+          </IconButton>
+        )}
       </div>
       <Collapse in={expanded} timeout="auto" unmountOnExit>
         {children}
@@ -231,6 +236,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
   const [showMaterials, setShowMaterials] = useState(false);
 
   const [showAllPrise, setShowAllPrise] = useState(false);
+  const [addTableAnchor, setAddTableAnchor] = useState(null);
   const deliveryRef = useRef(null);
   // Adresse : saisie locale, persistée une seule fois (sélection / sortie du champ)
   const [addressDraft, setAddressDraft] = useState(project?.location || "");
@@ -505,6 +511,49 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
     bpfCacheSommier:    rowsCacheSommier,
     bpfTentureMurale:   rowsTentureMurale,
   }), [rowsRideaux, rowsStoresBateaux, rowsCoussins, rowsPlaid, rowsMobilier, rowsCacheSommier, rowsTentureMurale]);
+
+  // --- PRISE DE COTES : tableaux ajoutés à la main (admins) ---
+  // Comme les modules du chiffrage : un admin peut ajouter un tableau produit vide au
+  // dossier. Il reste affiché même sans ligne (config.tables_ajoutees) ; on peut le
+  // retirer tant qu'il est vide. « Voir tous les tableaux » reste ouvert à tous.
+  const isAdmin = role(currentUser) === 'admin';
+  const tablesAjoutees = useMemo(
+    () => new Set(Array.isArray(project?.config?.tables_ajoutees) ? project.config.tables_ajoutees : []),
+    [project?.config?.tables_ajoutees]
+  );
+  // auto : tableau affiché d'office dès qu'il a des lignes (sinon seulement via « Voir tous les tableaux »).
+  const priseTables = [
+    { key: 'rideaux',        label: 'Rideaux / Voilages',      rows: rowsRideaux,       auto: true },
+    { key: 'stores',         label: 'Stores Négoce',           rows: rowsStores,        auto: true },
+    { key: 'stores_bateaux', label: 'Stores Bateaux / Velum',  rows: rowsStoresBateaux, auto: true },
+    { key: 'tenture_murale', label: 'Tenture Murale',          rows: rowsTentureMurale, auto: true },
+    { key: 'coussins',       label: 'Coussins',                rows: rowsCoussins },
+    { key: 'plaid',          label: 'Plaids / Chemins de Lit', rows: rowsPlaid },
+    { key: 'mobilier',       label: 'Mobilier / Tête de Lit',  rows: rowsMobilier },
+    { key: 'cache_sommier',  label: 'Cache-Sommier',           rows: rowsCacheSommier },
+  ];
+  const priseShownByDefault = (t) => (t.auto && t.rows.length > 0) || tablesAjoutees.has(t.key);
+  const showPrise = (key) => {
+    const t = priseTables.find((x) => x.key === key);
+    return showAllPrise || priseShownByDefault(t);
+  };
+  // Réglages chargés (la liste légère des dossiers n'a pas `config`) : sinon l'écriture
+  // écraserait les autres réglages du dossier (version des formules…).
+  const configLoaded = !!project && 'config' in project;
+  const setTablesAjoutees = (next) => {
+    if (!project?.id || !configLoaded) return;
+    onUpdateProject(project.id, { config: { ...(project.config || {}), tables_ajoutees: next } });
+  };
+  const addPriseTable = (key) => {
+    setAddTableAnchor(null);
+    setTablesAjoutees([...tablesAjoutees].filter((k) => k !== key).concat(key));
+  };
+  // Retrait seulement d'un tableau ajouté ET vide : jamais de ligne effacée.
+  const removePriseHandler = (key) => {
+    const t = priseTables.find((x) => x.key === key);
+    if (!isAdmin || !configLoaded || !tablesAjoutees.has(key) || t.rows.length > 0) return undefined;
+    return () => setTablesAjoutees([...tablesAjoutees].filter((k) => k !== key));
+  };
 
   // --- IMPRESSION BPP (A3 paysage, fidèle à l'écran) ---
   const [showBppPrint, setShowBppPrint] = useState(false);
@@ -1412,12 +1461,13 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
             </button>
           </div>
 
-          {(showAllPrise || rowsRideaux.length > 0) && (
+          {showPrise('rideaux') && (
             <SectionPanel
               title="Prise de Cote Rideaux / Voilages"
               count={rowsRideaux.length}
               expanded={isPanelExpanded('prise_rideaux')}
               onToggle={() => togglePanel('prise_rideaux')}
+              onRemove={removePriseHandler('rideaux')}
             >
               <MinuteGrid
                 stickyTop={STICKY_TITLE_HEIGHT}
@@ -1440,12 +1490,13 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
             </SectionPanel>
           )}
 
-          {(showAllPrise || rowsStores.length > 0) && (
+          {showPrise('stores') && (
             <SectionPanel
               title="Prise de Cote Stores Négoce"
               count={rowsStores.length}
               expanded={isPanelExpanded('prise_stores')}
               onToggle={() => togglePanel('prise_stores')}
+              onRemove={removePriseHandler('stores')}
             >
               <MinuteGrid
                 stickyTop={STICKY_TITLE_HEIGHT}
@@ -1465,12 +1516,13 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
             </SectionPanel>
           )}
 
-          {(showAllPrise || rowsStoresBateaux.length > 0) && (
+          {showPrise('stores_bateaux') && (
             <SectionPanel
               title="Prise de Cote Stores Bateaux / Velum"
               count={rowsStoresBateaux.length}
               expanded={isPanelExpanded('prise_storesbateaux')}
               onToggle={() => togglePanel('prise_storesbateaux')}
+              onRemove={removePriseHandler('stores_bateaux')}
             >
               <MinuteGrid
                 stickyTop={STICKY_TITLE_HEIGHT}
@@ -1490,12 +1542,13 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
             </SectionPanel>
           )}
 
-          {(showAllPrise || rowsTentureMurale.length > 0) && (
+          {showPrise('tenture_murale') && (
             <SectionPanel
               title="Prise de Cote Tenture Murale"
               count={rowsTentureMurale.length}
               expanded={isPanelExpanded('prise_tenturemurale')}
               onToggle={() => togglePanel('prise_tenturemurale')}
+              onRemove={removePriseHandler('tenture_murale')}
             >
               <MinuteGrid
                 stickyTop={STICKY_TITLE_HEIGHT}
@@ -1515,12 +1568,13 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
             </SectionPanel>
           )}
 
-          {showAllPrise && (
+          {showPrise('coussins') && (
             <SectionPanel
               title="Prise de Cote Coussins"
               count={rowsCoussins.length}
               expanded={isPanelExpanded('prise_coussins')}
               onToggle={() => togglePanel('prise_coussins')}
+              onRemove={removePriseHandler('coussins')}
             >
               <MinuteGrid
                 stickyTop={STICKY_TITLE_HEIGHT}
@@ -1540,12 +1594,13 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
             </SectionPanel>
           )}
 
-          {showAllPrise && (
+          {showPrise('plaid') && (
             <SectionPanel
               title="Prise de Cote Plaids / Chemins de Lit"
               count={rowsPlaid.length}
               expanded={isPanelExpanded('prise_plaid')}
               onToggle={() => togglePanel('prise_plaid')}
+              onRemove={removePriseHandler('plaid')}
             >
               <MinuteGrid
                 stickyTop={STICKY_TITLE_HEIGHT}
@@ -1565,12 +1620,13 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
             </SectionPanel>
           )}
 
-          {showAllPrise && (
+          {showPrise('mobilier') && (
             <SectionPanel
               title="Prise de Cote Mobilier / Tête de Lit"
               count={rowsMobilier.length}
               expanded={isPanelExpanded('prise_mobilier')}
               onToggle={() => togglePanel('prise_mobilier')}
+              onRemove={removePriseHandler('mobilier')}
             >
               <MinuteGrid
                 stickyTop={STICKY_TITLE_HEIGHT}
@@ -1590,12 +1646,13 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
             </SectionPanel>
           )}
 
-          {showAllPrise && (
+          {showPrise('cache_sommier') && (
             <SectionPanel
               title="Prise de Cote Cache-Sommier"
               count={rowsCacheSommier.length}
               expanded={isPanelExpanded('prise_cachesommier')}
               onToggle={() => togglePanel('prise_cachesommier')}
+              onRemove={removePriseHandler('cache_sommier')}
             >
               <MinuteGrid
                 stickyTop={STICKY_TITLE_HEIGHT}
@@ -1614,6 +1671,37 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
               />
             </SectionPanel>
           )}
+
+          {/* Ajouter un tableau (admins) : comme « Ajouter un module » du chiffrage */}
+          {isAdmin && configLoaded && (() => {
+            const available = priseTables.filter((t) => !priseShownByDefault(t));
+            if (available.length === 0) return null;
+            return (
+              <div style={{ display: 'flex', justifyContent: 'center', marginTop: 8, marginBottom: 24 }}>
+                <Button
+                  variant="outlined"
+                  startIcon={<Plus size={18} />}
+                  onClick={(e) => setAddTableAnchor(e.currentTarget)}
+                  sx={{
+                    borderRadius: 8,
+                    textTransform: 'none',
+                    fontWeight: 600,
+                    borderColor: 'var(--df-border-2)',
+                    color: 'var(--df-text-2)',
+                    bgcolor: 'var(--df-bg)',
+                    '&:hover': { bgcolor: 'var(--df-surface)', borderColor: 'var(--df-border-strong)' }
+                  }}
+                >
+                  Ajouter un tableau
+                </Button>
+                <Menu anchorEl={addTableAnchor} open={Boolean(addTableAnchor)} onClose={() => setAddTableAnchor(null)}>
+                  {available.map((t) => (
+                    <MenuItem key={t.key} onClick={() => addPriseTable(t.key)}>{t.label}</MenuItem>
+                  ))}
+                </Menu>
+              </div>
+            );
+          })()}
 
         </>
       )}
