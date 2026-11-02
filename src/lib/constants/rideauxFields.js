@@ -9,27 +9,43 @@
 export const HAUTEUR_RENFORT_TETE_OPTIONS = [
   "8 cm",
   "10 cm",
+  "12 cm",
   "14 cm",
+  "20 cm",
   "8 cm thermocollant",
   "10 cm thermocollant",
+  "12 cm thermocollant",
   "14 cm thermocollant",
+  "20 cm thermocollant",
 ];
 
 /** Finitions d'ourlet, communes rideaux et stores bateaux.
  *  « Apparent » est devenu « Double + apparente » et « Invisible » est retiré : les lignes
  *  qui portent déjà ces valeurs les gardent (elles ne sont simplement plus proposées).
- *  Le coefficient de l'ourlet de côté des stores en dépend : « Double… » → × 4,
- *  « Surfil… » / « Point Bourdon… » → × 2 (cf. storesBateauxMetrage.js). */
+ *  Le coefficient de l'ourlet de côté en dépend : stores « Triple… » → × 6, « Double… » → × 4,
+ *  « Surfil… » / « Point Bourdon… » → × 2 (cf. storesBateauxMetrage.js) ; rideaux, par côté,
+ *  « Triple… » → 3 × OC, sinon 2 × OC (cf. coefOurletCoteRideau). */
 export const FINITION_OURLET_OPTIONS = [
   "Double + apparente",
   "Surfil + Invisible",
   "Double + Invisible",
   "Point Bourdon + Invisible",
   "Point Bourdon + Plate apparente",
+  "Triple + apparente",
+  "Triple + invisible",
 ];
 
 /** Finition de l'ourlet de côté (OC). */
 export const FINITION_OC_OPTIONS = FINITION_OURLET_OPTIONS;
+
+/** Rideaux : nombre de fois l'OC pris PAR CÔTÉ dans l'À plat, selon la Finition OC.
+ *  « Triple… » → 3 ; Double, autres finitions et vide → 2 (comportement historique). */
+const COEF_OC_RIDEAU = [["triple", 3]];
+export function coefOurletCoteRideau(finitionOC) {
+  const f = String(finitionOC || "").trim().toLowerCase();
+  const hit = COEF_OC_RIDEAU.find(([prefix]) => f.startsWith(prefix));
+  return hit ? hit[1] : 2;
+}
 
 /** Finition de l'ourlet du bas (OB) : la pastille Velcro n'existe que pour le bas. */
 export const FINITION_OB_OPTIONS = [...FINITION_OURLET_OPTIONS, "Pastille Velcro"];

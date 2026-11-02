@@ -14,6 +14,8 @@ import { DEFAULT_HEADER_COLOR, getHeaderStyles, getContrastColor } from "../../l
 // Disposition (sections → groupes → lignes → cellules) : module partagé, référence des
 // emplacements repris par l'étiquette stores bateaux.
 import { RIDEAUX_V2_SECTIONS } from "../../lib/etiquettes/rideauxLabelLayout.js";
+import { cassantRasantText } from "../../lib/formulas/cassantRasant.js";
+import { isDecentreeChild } from "../../lib/utils/pairDecentree.js";
 
 // ── Géométrie page (A4 @ 96 dpi ≈ 794 × 1123 px) ────────────────────────────
 const PAGE_W = 794, PAGE_PAD = 24, CUT_H = 16;
@@ -38,7 +40,8 @@ const HIDDEN_ALIASES = {
 
 // Mise en avant : gros chiffres sur fond gris-bleu ; ligne tête sur fond violet clair.
 const BIG_KEYS = new Set([
-  "hauteur_coupe", "nombre_les", "reste_les", "ht_t1", "ht_t2", "ht_doubl", "ht_inter", "cote",
+  "hauteur_coupe", "nombre_les", "reste_les", "ht_t1", "ht_t2", "ht_doubl", "ht_inter",
+  "lc_t1", "lc_t2", "lc_doubl", "lc_inter",
   "a_plat", "largeur_finie", "hauteur_finie_gauche", "hauteur_finie_milieu", "hauteur_finie_droite",
 ]);
 const HEAD_KEYS = new Set(["crochets_txt", "nombre_glisseur", "retour_gauche", "retour_droit"]);
@@ -91,6 +94,9 @@ const isNumberCol = (key) => {
   return t === "number" || t === "formula" || CM_KEYS.has(key) || M_KEYS.has(key) || key.startsWith("nombre_les");
 };
 
+// « Larg. coupe » : laize comparée à l'à plat, par cadre matière.
+const LC = { lc_t1: "laize_tissu1", lc_t2: "laize_tissu2", lc_doubl: "laize_doublure", lc_inter: "laize_inter" };
+
 // « n HT hauteur » : hauteur motif si > 0, sinon hauteur de coupe.
 const HT = {
   ht_t1: ["nb_hauteur_a_couper", "hauteur_coupe", "hauteur_coupe_motif"],
@@ -108,28 +114,19 @@ function cellText(row, key) {
     const h = motif && motif > 0 ? motif : num(raw(row, hKey));
     return n && n > 0 && h && h > 0 ? `${fmtNum(n)} HT ${fmtNum(h)}` : "";
   }
-  if (key === "cote") {
-    // On coud toujours l'appiècement côté rapatriement.
-    const reste = num(raw(row, "reste_les"));
-    if (!reste) return "";
-    const pan = String(row?.paire_ou_un_seul_pan || "");
-    if (/droit/i.test(pan)) return "DROIT";
-    if (/gauche/i.test(pan)) return "GAUCHE";
-    if (pan.trim() === "Paire") return "EXT.";
-    return "";
+  if (LC[key]) {
+    // Largeur de coupe = à plat, si elle tient dans la laize du tissu (sinon lés entiers : blanc).
+    const aPlat = num(raw(row, "a_plat"));
+    const laize = num(row?.[LC[key]]);
+    return aPlat > 0 && laize > 0 && aPlat < laize ? `${fmtNum(aPlat)} cm` : "";
   }
   if (key === "crochets_txt") {
-    const n = num(raw(row, "nb_crochets_par_pan"));
-    const t = String(row?.type_crochets || "").trim();
-    if (n && t) return `${fmtNum(n)} × ${t}`;
-    return t || (n ? fmtNum(n) : "");
+    // Type seul (ex. « Crochet américain + Ruban ») ; le nombre reste au tableau et au BPF.
+    return String(row?.type_crochets || "").trim();
   }
   if (key === "finition_bas_txt") {
-    const x = num(row?.finition_bas);
-    if (x === null) return "";
-    if (x > 0) return `cassant ${fmtNum(x)} cm`;
-    if (x < 0) return `rasant ${fmtNum(Math.abs(x))} cm`;
-    return "rasant";
+    // « cassant 7 cm » / « rasant 3 cm » ; texte saisi (« CASSANT 7 ») lu aussi ; vide → blanc.
+    return cassantRasantText(row?.finition_bas);
   }
   const val = raw(row, key);
   if (val === null || val === undefined) return "";
@@ -155,6 +152,12 @@ const getCroquis = (row) => {
 const isHidden = (row, key) =>
   Array.isArray(row?.etiquette_hidden_fields)
   && [key, ...(HIDDEN_ALIASES[key] || [])].some((k) => row.etiquette_hidden_fields.includes(k));
+// Bandeau : « PAIRE DÉCENTRÉE · PAN GAUCHE / DROIT » pour un pan de paire décentrée,
+// sinon la valeur Paire / Un seul pan telle quelle.
+const panLabel = (row) => {
+  if (isDecentreeChild(row)) return `Paire décentrée · Pan ${row.pair_role === "left" ? "gauche" : "droit"}`;
+  return v(row, "paire_ou_un_seul_pan", "");
+};
 const showComment = (row) =>
   !isHidden(row, "commentaire") && v(row, "commentaire_confection", "") !== "—" && !!v(row, "commentaire_confection", "").trim();
 const wantsVerso = (row) => !isHidden(row, "croquis") && !!getCroquis(row);
@@ -201,7 +204,7 @@ function Header({ row, projectName, index, total }) {
   const fenetre = v(row, "fenetre", "");
   const showFenetre = showWindow(row);
   const verso = wantsVerso(row);
-  const pan = v(row, "paire_ou_un_seul_pan", "");
+  const pan = panLabel(row);
   const hasPan = pan && pan !== "—";
 
   return (
@@ -264,7 +267,7 @@ function RectoHeader({ row, projectName, index, total }) {
     `PIÈCE ${v(row, "piece", "—")}`,
     ...(showWindow(row) ? [`FENÊTRE ${fenetre}`] : []),
   ].join(" · ");
-  const pan = v(row, "paire_ou_un_seul_pan", "");
+  const pan = panLabel(row);
   const hasPan = pan && pan !== "—";
   const produit = v(row, "produit", "");
   return (
