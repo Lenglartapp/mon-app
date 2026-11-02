@@ -9,23 +9,26 @@
 // place ; on ne retire que des blocs entiers (ligne toute masquée, cadre vide, section vide).
 // Clés croisées (cf. production/rideaux.js) : etiquette_lavage = Oui/Non « Étiq. Lenglart »,
 // etiquette_lenglart = consigne d'entretien.
+// « Larg. coupe » (lc_*) : à plat, quand il tient dans la laize du tissu du cadre — le lé
+// déroulé sur la hauteur de coupe est recoupé dans la laize à cette largeur (le reste est une chute).
+// Plus de « Côté appièc. » : l'appiècement se coud toujours côté rapatriement.
 export const RIDEAUX_V2_SECTIONS = [
   { name: "COUPE", groups: [
     { frame: "Tissu 1", rows: [
       [["tissu_deco1", "Tissu"], ["laize_tissu1", "Laize"], ["hauteur_coupe", "H. coupe"], ["hauteur_coupe_motif", "H. motif"]],
-      [["nombre_les", "Lés"], ["reste_les", "Appièc."], ["ht_t1", "Coupe"], ["cote", "Côté appièc."]],
+      [["nombre_les", "Lés"], ["reste_les", "Appièc."], ["ht_t1", "Coupe"], ["lc_t1", "Larg. coupe"]],
     ]},
     { frame: "Tissu 2", rows: [
       [["tissu_deco2", "Tissu"], ["laize_tissu2", "Laize"], ["hauteur_coupe_t2", "H. coupe"], ["hauteur_coupe_motif_t2", "H. motif"]],
-      [["nombre_les_t2", "Lés"], ["reste_les_t2", "Appièc."], ["ht_t2", "Coupe"]],
+      [["nombre_les_t2", "Lés"], ["reste_les_t2", "Appièc."], ["ht_t2", "Coupe"], ["lc_t2", "Larg. coupe"]],
     ]},
     { frame: "Doublure", rows: [
       [["doublure", "Tissu"], ["laize_doublure", "Laize"], ["hauteur_coupe_doublure", "H. coupe"], ["deduction_doublure", "Doublure −"]],
-      [["nombre_les_doublure", "Lés"], ["reste_les_doublure", "Appièc."], ["ht_doubl", "Coupe"]],
+      [["nombre_les_doublure", "Lés"], ["reste_les_doublure", "Appièc."], ["ht_doubl", "Coupe"], ["lc_doubl", "Larg. coupe"]],
     ]},
     { frame: "Interdoublure", rows: [
       [["inter_doublure", "Tissu"], ["laize_inter", "Laize"], ["hauteur_coupe_inter", "H. coupe"]],
-      [["nombre_les_inter", "Lés"], ["reste_les_inter", "Appièc."], ["ht_inter", "Coupe"]],
+      [["nombre_les_inter", "Lés"], ["reste_les_inter", "Appièc."], ["ht_inter", "Coupe"], ["lc_inter", "Larg. coupe"]],
     ]},
     { rows: [
       [["passementerie1", "Pass. 1"], ["ml_pass1", "ML"], ["passementerie2", "Pass. 2"], ["ml_pass2", "ML"]],

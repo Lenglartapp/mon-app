@@ -38,14 +38,22 @@ const num = (v) => {
 export const surplusParDefaut = (produit) => (isVelum(produit) ? STORE_DEFAULTS.surplusVelum : STORE_DEFAULTS.surplusBateau);
 
 /**
- * Coefficient de l'ourlet de côté selon sa finition :
- * « Double… » ou vide → 4 ; « Surfil… » ou « Point Bourdon… » → 2.
+ * Coefficient de l'ourlet de côté selon sa finition (total des 2 côtés) :
+ * « Triple… » → 6 ; « Double… » ou vide → 4 ; « Surfil… » ou « Point Bourdon… » → 2.
  */
+// Finition → coefficient (préfixe, en minuscules). Vide ou autre → défaut.
+const COEF_OURLET_COTE = [
+    ['triple', 6],          // 2 côtés × 3 plis
+    ['double', 4],
+    ['surfil', 2],
+    ['point bourdon', 2],
+];
+const COEF_OURLET_COTE_DEFAUT = 4;
+
 export function coefOurletCote(finitionOC) {
     const f = String(finitionOC || '').trim().toLowerCase();
-    if (!f || f.startsWith('double')) return 4;
-    if (f.startsWith('surfil') || f.startsWith('point bourdon')) return 2;
-    return 4;
+    const hit = COEF_OURLET_COTE.find(([prefix]) => f.startsWith(prefix));
+    return hit ? hit[1] : COEF_OURLET_COTE_DEFAUT;
 }
 
 /** Nombre de fourreaux (= tigettes) : ⌈hauteur finie ÷ intervalle⌉ − 1, minimum 0. */

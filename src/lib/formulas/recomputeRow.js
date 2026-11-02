@@ -3,6 +3,7 @@
 import { DECOR_PRODUIT_RE } from '../constants/productRouting';
 import { evalFormula } from "./eval.js";
 import { FORMULES_METRAGE_V2, isMetrageV2Row, largeurFinieV2, parseCm, margeMachineRideau } from "./metrageVersion.js";
+import { cassantRasantNum } from "./cassantRasant.js";
 import { metrageStore, FORMULES_STORES_V1, isStoresMetrageRow, isStoresMargeMachineRow } from './storesBateauxMetrage.js';
 
 const NVL = (value, fallback = 0) => {
@@ -224,7 +225,7 @@ export function recomputeRow(row, schema, ctx = {}) {
 
     // Hauteur finie milieu — moyenne de G et D, sauf si déjà renseignée manuellement
     const _ded = NVL(next.valeur_deduction || next.val_ded_rail);
-    const _fb  = NVL(next.finition_bas || next.f_bas);
+    const _fb  = cassantRasantNum(next.finition_bas || next.f_bas);
     const _hfG = Math.round((NVL(next.hspf_gauche) - _ded + _fb) * 10) / 10;
     const _hfD = Math.round((NVL(next.hspf_droite) - _ded + _fb) * 10) / 10;
     if (next.hauteur_finie_milieu == null || next.hauteur_finie_milieu === '') {

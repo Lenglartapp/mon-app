@@ -1,9 +1,10 @@
 // src/lib/schemas/production/rideaux.js
 
-import { HAUTEUR_RENFORT_TETE_OPTIONS, FINITION_OB_RIDEAUX_OPTIONS, FINITION_OC_OPTIONS, TYPE_CROCHETS_OPTIONS } from '../../constants/rideauxFields';
+import { HAUTEUR_RENFORT_TETE_OPTIONS, FINITION_OB_RIDEAUX_OPTIONS, FINITION_OC_OPTIONS, TYPE_CROCHETS_OPTIONS, coefOurletCoteRideau } from '../../constants/rideauxFields';
 import React from 'react';
 import { PAIRE_OPTIONS_BASE, paireOptionsForRow, PAIRE_DECENTREE } from '../../utils/pairDecentree';
 import { isMetrageV2Row, largeurFinieV2, parseCm, margeMachineRideau } from '../../formulas/metrageVersion';
+import { cassantRasantNum } from '../../formulas/cassantRasant.js';
 
 // Helper to safely extract row from valueGetter args (MUI V5 vs V6 compat)
 const getRow = (a, b) => {
@@ -216,15 +217,17 @@ const getters = {
         // Retour : on retient la plus grande des deux valeurs gauche / droite.
         const retourMax = Math.max(toNum(row.retour_gauche), toNum(row.retour_droit));
 
-        // Plus de distinction pan unique / paire : deux côtés, chacun pesant 2×.
-        // Chaque côté utilise sa finition si elle est renseignée (> 0),
-        // sinon il retombe sur l'ourlet côté.
-        // → Fin. Chant / Fin. Retour vides   : 4 × ourlet côté
-        // → Fin. Chant renseignée            : 2 × Fin. Chant  + 2 × ourlet côté
-        // → Fin. Retour renseignée           : 2 × ourlet côté + 2 × Fin. Retour
+        // Plus de distinction pan unique / paire : deux côtés.
+        // Chaque côté utilise sa finition si elle est renseignée (> 0) : 2 × sa valeur ;
+        // sinon il retombe sur l'ourlet côté : k × OC, k selon la Finition OC
+        // (Triple → 3, sinon 2 ; cf. coefOurletCoteRideau).
+        // → Fin. Chant / Fin. Retour vides   : 2k × ourlet côté
+        // → Fin. Chant renseignée            : 2 × Fin. Chant  + k × ourlet côté
+        // → Fin. Retour renseignée           : k × ourlet côté + 2 × Fin. Retour
         // → les deux renseignées             : 2 × Fin. Chant  + 2 × Fin. Retour
-        const side = (fin) => (toNum(fin) > 0 ? toNum(fin) : vOurlets);
-        const ourletPart = (2 * side(row.finition_champs)) + (2 * side(row.finition_retour));
+        const kOC = coefOurletCoteRideau(row.finition_oc);
+        const side = (fin) => (toNum(fin) > 0 ? 2 * toNum(fin) : kOC * vOurlets);
+        const ourletPart = side(row.finition_champs) + side(row.finition_retour);
 
         const val = (lFinie * ampleur) + ourletPart + retourMax;
         return Math.ceil(val);
@@ -233,21 +236,21 @@ const getters = {
     hauteur_finie_droite: (row) => {
         const H = toNum(row.hspf_droite);
         const ded = toNum(row.valeur_deduction || row.val_ded_rail);
-        const fBas = toNum(row.finition_bas || row.f_bas);
+        const fBas = cassantRasantNum(row.finition_bas || row.f_bas);
         return round1(H - ded + fBas);
     },
 
     hauteur_finie_gauche: (row) => {
         const H = toNum(row.hspf_gauche);
         const ded = toNum(row.valeur_deduction || row.val_ded_rail);
-        const fBas = toNum(row.finition_bas || row.f_bas);
+        const fBas = cassantRasantNum(row.finition_bas || row.f_bas);
         return round1(H - ded + fBas);
     },
 
     hauteur_finie_milieu: (row) => {
         const H = toNum(row.hspf_milieu);
         const ded = toNum(row.valeur_deduction || row.val_ded_rail);
-        const fBas = toNum(row.finition_bas || row.f_bas);
+        const fBas = cassantRasantNum(row.finition_bas || row.f_bas);
         return round1(H - ded + fBas);
     },
 
