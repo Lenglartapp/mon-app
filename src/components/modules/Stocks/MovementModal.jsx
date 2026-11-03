@@ -13,7 +13,8 @@ import Box from '@mui/material/Box';
 import IconButton from '@mui/material/IconButton';
 import InputAdornment from '@mui/material/InputAdornment';
 import LocationInput from './LocationInput';
-import OperatorInput from './OperatorInput';
+import OperatorInput from '../../ui/OperatorInput';
+import { rememberOperator } from '../../../hooks/useOperators';
 import LocationChips from './LocationChips';
 import { LOC_A_COMPLETER, splitLocations } from '../../../lib/inventory/stockFields';
 import { DaField, ChoicePill } from '../../ui/DaForm';
@@ -212,6 +213,7 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
     const handleSubmit = () => {
         if (!canSubmit) return;
         const base = { user: user.trim(), type, date: new Date().toISOString() };
+        rememberOperator(user);
 
         if (isIN) {
             // Libellé : celui de l'article répertorié, sinon « référence — coloris » (ou le fournisseur).

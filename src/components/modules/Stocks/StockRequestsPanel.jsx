@@ -16,7 +16,8 @@ import DaDialog from '../../ui/DaDialog';
 import { DaField, ChoicePill } from '../../ui/DaForm';
 import { DA_FIELD_SX } from '../../../lib/constants/daStyles';
 import { splitLocations } from '../../../lib/inventory/stockFields';
-import OperatorInput from './OperatorInput';
+import OperatorInput from '../../ui/OperatorInput';
+import { rememberOperator } from '../../../hooks/useOperators';
 import LocationChips from './LocationChips';
 import { ToolbarSearch, ToolbarButton, ToolbarMenu, TonePill } from '../../ui/ToolbarControls';
 
@@ -347,6 +348,7 @@ function RequestDialog({ request = null, inventory, project, reserved, onClose, 
             qty: lineQty(l),
         }));
         try {
+            rememberOperator(header.requested_by);
             if (isEdit) await updateRequest(supabase, request, header, payload);
             else await createRequest(supabase, { project, ...header }, payload);
             await onSaved();
@@ -495,6 +497,7 @@ function ConfirmDialog({ request, line, onClose, onDone }) {
     const confirm = async () => {
         setSaving(true);
         try {
+            rememberOperator(operator);
             await confirmLine(supabase, request, line, operator.trim());
             await onDone();
         } catch (e) {
