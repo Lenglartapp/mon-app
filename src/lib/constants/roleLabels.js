@@ -9,5 +9,6 @@ export const ROLE_INFO = {
   pose: { label: "Pose", tone: 4 },
   conf: { label: "Confection", tone: 4 },
   compta: { label: "Comptabilité", tone: 5 },
+  tablette: { label: "Tablette atelier", tone: 5 },
 };
 export const roleOf = (role) => ROLE_INFO[role] || { label: role || "—", tone: null };

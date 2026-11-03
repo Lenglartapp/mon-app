@@ -35,8 +35,11 @@ export default function StocksModule({
     const canEdit = can(currentUser, 'inventory.edit');
     // Statut du stock forcé à la main : admins seulement (aucun autre rôle n'a cette permission)
     const canEditStatus = can(currentUser, 'inventory.status');
+    // Droits fins (tablette atelier : ni tableau de bord, ni plan, ni export / import, ni création d'article)
+    const canDashboard = can(currentUser, 'inventory.dashboard');
+    const canImport = can(currentUser, 'inventory.import');
     const { zones } = useWarehouseZones();
-    const [tabIndex, setTabIndex] = useState(0);
+    const [tabIndex, setTabIndex] = useState(() => (canDashboard ? 0 : 2));
     // Stock ouvert depuis la Ventilation du stock : filtre + tri appliqués une seule fois
     const [stockPreset, setStockPreset] = useState(null);
     const openStock = (preset) => { setStockPreset(preset); setTabIndex(2); };
@@ -60,11 +63,13 @@ export default function StocksModule({
 
     // Define Tabs
     const TABS = [
-        { key: 0, label: "Dashboard" },
+        canDashboard && { key: 0, label: "Dashboard" },
         { key: 1, label: "Journal" },
         { key: 2, label: "Stock" },
         { key: 3, label: "Mise à disposition" }
-    ];
+    ].filter(Boolean);
+    // Onglet non autorisé (ex. Dashboard pour la tablette) → Stock
+    const activeTab = TABS.some(t => t.key === tabIndex) ? tabIndex : 2;
 
     return (
         <Box sx={{ bgcolor: 'var(--df-bg)', p: 3, display: 'flex', flexDirection: 'column', width: '100%' }}>
@@ -93,7 +98,7 @@ export default function StocksModule({
                         {TABS.map(t => (
                             <button
                                 key={t.key}
-                                className="df-pill-tab" data-active={tabIndex === t.key}
+                                className="df-pill-tab" data-active={activeTab === t.key}
                                 onClick={() => { setStockPreset(null); setTabIndex(t.key); }}
                                 style={{
                                     padding: '8px 20px',
@@ -102,10 +107,10 @@ export default function StocksModule({
                                     fontWeight: 500,
                                     border: 'none',
                                     cursor: 'pointer',
-                                    background: tabIndex === t.key ? 'var(--df-primary)' : 'transparent',
-                                    color: tabIndex === t.key ? '#FFFFFF' : 'var(--df-text-3)',
+                                    background: activeTab === t.key ? 'var(--df-primary)' : 'transparent',
+                                    color: activeTab === t.key ? '#FFFFFF' : 'var(--df-text-3)',
                                     transition: 'all 0.2s cubic-bezier(0.25, 1, 0.5, 1)',
-                                    boxShadow: tabIndex === t.key ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                                    boxShadow: activeTab === t.key ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
                                     outline: 'none'
                                 }}
                             >
@@ -118,7 +123,7 @@ export default function StocksModule({
 
                 {/* 3. Content */}
                 <div style={{ flex: 1 }}>
-                    {tabIndex === 0 && (
+                    {activeTab === 0 && canDashboard && (
                         <StockDashboardTab
                             inventory={inventory}
                             projects={projects}
@@ -127,7 +132,7 @@ export default function StocksModule({
                             onOpenStock={openStock}
                         />
                     )}
-                    {tabIndex === 1 && (
+                    {activeTab === 1 && (
                         <StockMovementsTab
                             movements={movements}
                             onAddMovement={onAddMovement}
@@ -144,20 +149,22 @@ export default function StocksModule({
                             ) : null}
                         />
                     )}
-                    {tabIndex === 2 && (
+                    {activeTab === 2 && (
                         <StockInventoryTab
                             inventory={inventory}
                             projects={projects}
                             movements={movements}
-                            onBulkMovement={canEdit ? onBulkMovement : undefined}
-                            onImportStock={canEdit ? onImportStock : undefined}
+                            onBulkMovement={canImport ? onBulkMovement : undefined}
+                            onImportStock={canImport ? onImportStock : undefined}
+                            canMap={can(currentUser, 'inventory.map')}
+                            canExport={can(currentUser, 'inventory.export')}
                             onUpdateItem={onUpdateItem}
                             zones={zones}
                             preset={stockPreset}
                             canEditStatus={canEditStatus}
                         />
                     )}
-                    {tabIndex === 3 && (
+                    {activeTab === 3 && (
                         <StockRequestsPanel inventory={inventory} onStockChanged={onStockChanged} />
                     )}
                 </div>
@@ -173,6 +180,7 @@ export default function StocksModule({
                     projects={projects}
                     inventory={inventory}
                     zones={zones}
+                    canCreate={can(currentUser, 'inventory.create')}
                 />
             )}
         </Box>

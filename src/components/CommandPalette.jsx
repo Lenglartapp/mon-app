@@ -44,7 +44,7 @@ const NAV_ITEMS = [
   { id: 'logistique',    label: 'Logistique',   path: '/logistique',  icon: Truck,     perm: 'nav.logistique' },
   { id: 'inventory',     label: 'Inventaire',   path: '/inventaire',  icon: Package,   perm: 'nav.inventory' },
   { id: 'performance',   label: 'Performance',  path: '/performance', icon: BarChart2, perm: 'nav.performance' },
-  { id: 'settings',      label: 'Paramètres',   path: '/parametres',  icon: Settings,  perm: null },
+  { id: 'settings',      label: 'Paramètres',   path: '/parametres',  icon: Settings,  perm: 'nav.settings' },
 ];
 
 const CommandPalette = React.forwardRef(function CommandPalette(
@@ -78,7 +78,7 @@ const CommandPalette = React.forwardRef(function CommandPalette(
   );
 
   // On exclut les archivés pour les projets, les terminés pour les devis
-  const visibleProjects = projects.filter(p => p.status !== 'ARCHIVED');
+  const visibleProjects = can(currentUser, 'nav.production') ? projects.filter(p => p.status !== 'ARCHIVED') : [];
   const canChiffrage = can(currentUser, 'nav.chiffrage');
   const visibleMinutes = canChiffrage
     ? minutes.filter(m => m.status !== 'ORDER_COMPLETED')

@@ -160,7 +160,9 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = async () => {
-    await supabase.auth.signOut();
+    // Déconnexion de CET appareil seulement : un compte partagé (tablettes atelier) ou ouvert
+    // sur plusieurs postes reste connecté ailleurs (par défaut, signOut coupe toutes les sessions).
+    await supabase.auth.signOut({ scope: 'local' });
     setCurrentUser(null);
   };
 

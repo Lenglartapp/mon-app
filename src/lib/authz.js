@@ -28,6 +28,12 @@ const PERMISSIONS = {
 
     "inventory.view": true,
     "inventory.edit": false,
+    // Droits fins de l'Inventaire (avant : tout suivait inventory.edit / l'accès au module)
+    "inventory.dashboard": true,
+    "inventory.map": true,
+    "inventory.export": true,
+    "inventory.import": false,
+    "inventory.create": false,
 
     "production.edit": true,
     // Rapport client (Suivi de projet) : sales, ordo (+ ordo_conf), op et admin.
@@ -68,6 +74,12 @@ const PERMISSIONS = {
 
     "inventory.view": true,
     "inventory.edit": true,
+    // Droits fins de l'Inventaire (avant : tout suivait inventory.edit / l'accès au module)
+    "inventory.dashboard": true,
+    "inventory.map": true,
+    "inventory.export": true,
+    "inventory.import": true,
+    "inventory.create": true,
 
     "logistique.edit": true,
   },
@@ -95,6 +107,12 @@ const PERMISSIONS = {
 
     "inventory.view": true,
     "inventory.edit": true,
+    // Droits fins de l'Inventaire (avant : tout suivait inventory.edit / l'accès au module)
+    "inventory.dashboard": true,
+    "inventory.map": true,
+    "inventory.export": true,
+    "inventory.import": true,
+    "inventory.create": true,
 
     "logistique.edit": true,
   },
@@ -119,6 +137,12 @@ const PERMISSIONS = {
 
     "inventory.view": true,
     "inventory.edit": true,
+    // Droits fins de l'Inventaire (avant : tout suivait inventory.edit / l'accès au module)
+    "inventory.dashboard": true,
+    "inventory.map": true,
+    "inventory.export": true,
+    "inventory.import": true,
+    "inventory.create": true,
 
     "logistique.edit": true,
   },
@@ -146,6 +170,12 @@ const PERMISSIONS = {
 
     "inventory.view": true,
     "inventory.edit": true,
+    // Droits fins de l'Inventaire (avant : tout suivait inventory.edit / l'accès au module)
+    "inventory.dashboard": true,
+    "inventory.map": true,
+    "inventory.export": true,
+    "inventory.import": true,
+    "inventory.create": true,
 
     "logistique.edit": false,
   },
@@ -171,6 +201,12 @@ const PERMISSIONS = {
 
     "inventory.view": true,
     "inventory.edit": true,
+    // Droits fins de l'Inventaire (avant : tout suivait inventory.edit / l'accès au module)
+    "inventory.dashboard": true,
+    "inventory.map": true,
+    "inventory.export": true,
+    "inventory.import": true,
+    "inventory.create": true,
 
     "logistique.edit": false,
   },
@@ -194,8 +230,38 @@ const PERMISSIONS = {
 
     "inventory.view": true,
     "inventory.edit": false,
+    // Droits fins de l'Inventaire (avant : tout suivait inventory.edit / l'accès au module)
+    "inventory.dashboard": true,
+    "inventory.map": true,
+    "inventory.export": true,
+    "inventory.import": false,
+    "inventory.create": false,
 
     "logistique.edit": false,
+  },
+  // TABLETTE ATELIER : compte partagé des tablettes stock / emballage (actions tracées par
+  // le champ Opérateur). Inventaire (sans tableau de bord, plan, export, import ni création
+  // d'article) et Logistique seulement ; ni Paramètres ni autres modules.
+  tablette: {
+    "nav.chiffrage": false,
+    "nav.production": false,
+    "nav.inventory": true,
+    "nav.planning": false,
+    "nav.logistique": true,
+    "nav.performance": false,
+    "nav.settings": false,
+
+    "planning.view": false,
+
+    "inventory.view": true,
+    "inventory.edit": true,
+    "inventory.dashboard": false,
+    "inventory.map": false,
+    "inventory.export": false,
+    "inventory.import": false,
+    "inventory.create": false,
+
+    "logistique.edit": true,
   },
 };
 

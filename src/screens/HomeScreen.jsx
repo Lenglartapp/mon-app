@@ -39,8 +39,10 @@ function getFete() {
   return JOURS_SPECIAUX.has(name) ? name : `Saint ${name}`;
 }
 
+// Sans prénom (compte partagé « Tablette atelier ») : mêmes messages, neutres, sans virgule orpheline.
 function pickGreeting(name) {
   const n = name?.split(" ")[0] || "";
+  if (!n) return pickNeutralGreeting();
   const h = new Date().getHours();
   const day = new Date().getDay(); // 0=dim, 1=lun … 6=sam
   const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
@@ -76,6 +78,17 @@ function pickGreeting(name) {
   ]);
 }
 
+function pickNeutralGreeting() {
+  const h = new Date().getHours();
+  const day = new Date().getDay();
+  const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+  if (day === 1 && h < 12) return "Bonne semaine !";
+  if (h >= 6 && h < 12) return pick(["Bonjour !", "Bonne matinée !", "Nous sommes d'attaque !"]);
+  if (h >= 12 && h < 14) return pick(["Bonjour !", "Comment allez-vous ?"]);
+  if (h >= 14 && h < 18) return pick(["Salut !", "Comment allez-vous ?", "Que faisons-nous ?", "Nous sommes d'attaque !"]);
+  return pick(["Bonsoir !", "Comment allez-vous ?"]);
+}
+
 export default function HomeScreen({
   onOpenProdList,
   onOpenSettings,
@@ -99,12 +112,14 @@ export default function HomeScreen({
     planning: can(currentUser, "planning.view"),
     logistique: can(currentUser, "nav.logistique"),
     performance: can(currentUser, "nav.performance"),
+    settings: can(currentUser, "nav.settings"),
   };
 
   // helper pour MASQUER totalement une tuile si non autorisé
   const hideTile = (ok, node) => (ok ? node : null);
 
-  const greetingText = React.useMemo(() => pickGreeting(currentUser?.name), [currentUser?.name]);
+  const sharedAccount = currentUser?.role === "tablette";
+  const greetingText = React.useMemo(() => pickGreeting(sharedAccount ? "" : currentUser?.name), [currentUser?.name, sharedAccount]);
   const dateStr = new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
 
   return (
@@ -153,8 +168,10 @@ export default function HomeScreen({
             <AppTile label="Performance" Icon={TrendingUp} size={tileSize} onClick={onOpenPerformance} />
           )}
 
-          {/* ✅ Toujours visible */}
-          <AppTile label="Paramètres" Icon={Settings2} size={tileSize} onClick={onOpenSettings} />
+          {hideTile(
+            may.settings,
+            <AppTile label="Paramètres" Icon={Settings2} size={tileSize} onClick={onOpenSettings} />
+          )}
         </div>
       </div>
     </div>
