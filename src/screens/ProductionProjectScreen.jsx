@@ -51,6 +51,7 @@ import { differenceInMinutes } from "date-fns";
 import DocumentListModal from "../components/DocumentListModal"; // Added import
 import { useAuth } from "../auth";
 import { can, role } from "../lib/authz";
+import DeliveryPhasing from "../components/project/DeliveryPhasing";
 import { HeaderCard, EditableTitle, StatusPill, MetaItem, OwnerPicker } from "../components/ui/EntityHeader";
 import { formatAnyDateFR } from "../lib/utils/formatDate";
 import { FORMULES_METRAGE_V2 } from "../lib/formulas/metrageVersion";
@@ -238,12 +239,10 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
   const [ganttOpen, setGanttOpen] = useState(false);
   const [stockOpen, setStockOpen] = useState(false);
   const [showDocs, setShowDocs] = useState(false);
-  const [deliveryOpen, setDeliveryOpen] = useState(false);
   const [showMaterials, setShowMaterials] = useState(false);
 
   const [showAllPrise, setShowAllPrise] = useState(false);
   const [addTableAnchor, setAddTableAnchor] = useState(null);
-  const deliveryRef = useRef(null);
   // Adresse : saisie locale, persistée une seule fois (sélection / sortie du champ)
   const [addressDraft, setAddressDraft] = useState(project?.location || "");
   useEffect(() => { setAddressDraft(project?.location || ""); }, [project?.id, project?.location]);
@@ -331,17 +330,6 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
     }
   }, [highlightRowId]);
 
-  // Fermer le dropdown livraison au clic extérieur
-  useEffect(() => {
-    if (!deliveryOpen) return;
-    const handler = (e) => {
-      if (deliveryRef.current && !deliveryRef.current.contains(e.target)) {
-        setDeliveryOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [deliveryOpen]);
 
   const { currentUser, users = [] } = useAuth();
   const canEditHeader = can(currentUser, "production.edit");
@@ -1086,91 +1074,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                     onChange={(e) => onUpdateProject(project.id, { deadline: e.target.value || null })}
                     style={{ border: '1px solid var(--df-border)', borderRadius: 6, padding: '3px 6px', fontSize: 13, color: 'var(--df-text-2)', background: 'var(--df-bg)', outline: 'none', fontFamily: 'inherit' }}
                   />
-                  {(project?.delivery_phases || []).filter(ph => ph.label || ph.date).map((ph, i) => (
-                    <span key={ph.id || i} style={{ background: 'var(--df-bg)', border: '1px solid var(--df-border)', borderRadius: 99, padding: '2px 9px', fontSize: 12, color: 'var(--df-text-2)', whiteSpace: 'nowrap' }}>
-                      {ph.label || `Phase ${i + 1}`}{ph.date && <> · <b style={{ color: 'var(--df-blue)', fontWeight: 600 }}>{new Date(ph.date).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })}</b></>}
-                    </span>
-                  ))}
-                  <div ref={deliveryRef} style={{ position: 'relative' }}>
-                    <button
-                      onClick={() => setDeliveryOpen(o => !o)}
-                      style={{ color: 'var(--df-blue)', fontSize: 12, fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}
-                    >
-                      {project?.delivery_phases?.length > 0 ? 'Gérer les phases' : '+ Phase'}
-                    </button>
-                    {deliveryOpen && (
-                      <div style={{
-                        position: 'absolute', top: 'calc(100% + 6px)', left: 0,
-                        background: 'var(--df-bg)', border: '1px solid var(--df-border)', borderRadius: 12,
-                        boxShadow: '0 4px 16px rgba(0,0,0,0.1)', padding: 16, minWidth: 290, zIndex: 1000
-                      }}>
-                        {/* Date globale */}
-                        <div style={{ marginBottom: 14 }}>
-                          <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--df-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 6 }}>
-                            Date de livraison souhaitée
-                          </label>
-                          <input
-                            type="date"
-                            value={project?.deadline ? project.deadline.split('T')[0] : ''}
-                            onChange={(e) => onUpdateProject(project.id, { deadline: e.target.value })}
-                            style={{ width: '100%', border: '1px solid var(--df-border)', borderRadius: 8, padding: '6px 10px', fontSize: 13, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
-                          />
-                        </div>
-
-                        {/* Phases */}
-                        <div>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--df-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Phases</span>
-                            <button
-                              onClick={() => {
-                                const phases = [...(project?.delivery_phases || []), { id: uid(), label: '', date: '' }];
-                                onUpdateProject(project.id, { delivery_phases: phases });
-                              }}
-                              style={{ fontSize: 12, color: 'var(--df-blue)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500, padding: 0 }}
-                            >
-                              + Phase
-                            </button>
-                          </div>
-
-                          {(project?.delivery_phases || []).map((phase, idx) => (
-                            <div key={phase.id || idx} style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 6 }}>
-                              <input
-                                value={phase.label}
-                                placeholder="Phase 1…"
-                                onChange={(e) => {
-                                  const phases = (project.delivery_phases || []).map((p, i) => i === idx ? { ...p, label: e.target.value } : p);
-                                  onUpdateProject(project.id, { delivery_phases: phases });
-                                }}
-                                style={{ flex: 1, border: '1px solid var(--df-border)', borderRadius: 8, padding: '5px 8px', fontSize: 12, fontFamily: 'inherit', outline: 'none', minWidth: 0 }}
-                              />
-                              <input
-                                type="date"
-                                value={phase.date || ''}
-                                onChange={(e) => {
-                                  const phases = (project.delivery_phases || []).map((p, i) => i === idx ? { ...p, date: e.target.value } : p);
-                                  onUpdateProject(project.id, { delivery_phases: phases });
-                                }}
-                                style={{ border: '1px solid var(--df-border)', borderRadius: 8, padding: '5px 8px', fontSize: 12, fontFamily: 'inherit', outline: 'none', width: 130 }}
-                              />
-                              <button
-                                onClick={() => {
-                                  const phases = (project.delivery_phases || []).filter((_, i) => i !== idx);
-                                  onUpdateProject(project.id, { delivery_phases: phases });
-                                }}
-                                style={{ color: 'var(--df-faint)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '0 2px' }}
-                              >
-                                ×
-                              </button>
-                            </div>
-                          ))}
-
-                          {(!project?.delivery_phases || project.delivery_phases.length === 0) && (
-                            <p style={{ fontSize: 12, color: 'var(--df-faint)', margin: 0, textAlign: 'center', padding: '8px 0' }}>Aucune phase</p>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
+                  <DeliveryPhasing project={project} rows={rows} canEdit={canEditHeader} onUpdateProject={onUpdateProject} />
                 </div>
                 </MetaItem>
                 {/* Planning du projet (Gantt) : à droite de la ligne */}
