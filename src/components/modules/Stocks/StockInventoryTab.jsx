@@ -20,7 +20,9 @@ import StockExportDialog from './StockExportDialog';
 import WarehouseMap from './WarehouseMap';
 import { itemMetaColumns } from './stockColumns';
 import LocationChips from './LocationChips';
-import { ToolbarSearch, ToolbarButton, TonePill } from '../../ui/ToolbarControls';
+import { ToolbarButton, TonePill } from '../../ui/ToolbarControls';
+import CategorySearch, { SEARCH_ALL } from '../../ui/CategorySearch';
+import GridTotalsFooter from '../../ui/GridTotalsFooter';
 import FilterPanel, { isConditionActive, evaluateCondition } from '../../FilterPanel';
 import FitGridFrame from '../../ui/FitGridFrame';
 import { DATAGRID_DA_SX } from '../../../lib/constants/daStyles';
@@ -51,8 +53,33 @@ function stockStatusOf(projectName, projects) {
     return STOCK_STATUS[code] || { label: proj.status || '?', tone: 4 };
 }
 
+// Recherche par catégorie : la barre propose où chercher (« Partout » = toutes ces colonnes).
+const SEARCH_CATEGORIES = [
+    { key: 'fournisseur', label: 'Fournisseur' },
+    { key: 'ref', label: 'Référence' },
+    { key: 'coloris', label: 'Coloris' },
+    { key: 'project', label: 'Affectation' },
+    { key: 'location', label: 'Emplacement' },
+];
+const searchTexts = (item, key) => {
+    if (key === 'ref') return [item.ref, item.product];
+    if (key === SEARCH_ALL) return [item.product, ...SEARCH_CATEGORIES.map(c => item[c.key])];
+    return [item[key]];
+};
+const matchesSearch = (item, key, text) => {
+    const q = String(text || '').trim().toLowerCase();
+    return !q || searchTexts(item, key).some(v => String(v ?? '').toLowerCase().includes(q));
+};
+
+// Ligne « Total » : préférences de calcul gardées sur le poste (vide par défaut).
+const TOTALS_STORAGE_KEY = 'df.stock.inventory.totals';
+const readTotals = () => { try { return JSON.parse(localStorage.getItem(TOTALS_STORAGE_KEY)) || {}; } catch { return {}; } };
+
 export default function StockInventoryTab({ inventory, projects = [], movements = [], onBulkMovement, onImportStock, onUpdateItem, zones = [], embedded = false }) {
     const [search, setSearch] = useState('');
+    const [searchField, setSearchField] = useState(SEARCH_ALL);
+    const [totals, setTotals] = useState(readTotals);
+    const saveTotals = (next) => { setTotals(next); try { localStorage.setItem(TOTALS_STORAGE_KEY, JSON.stringify(next)); } catch { /* stockage indisponible */ } };
     const [showMap, setShowMap] = useState(false);
     const [importOpen, setImportOpen] = useState(false);
     const [exportOpen, setExportOpen] = useState(false);
@@ -108,7 +135,8 @@ export default function StockInventoryTab({ inventory, projects = [], movements 
         { key: 'laize', label: 'Laize', type: 'number' },
         { key: 'category', label: 'Type', type: 'select', options: CATEGORIES.filter(c => c !== 'ALL') },
         { key: 'location', label: 'Emplacement', type: 'select', options: locations.filter(l => l !== 'ALL') },
-        { key: 'project', label: 'Affectation', type: 'select', options: [...new Set(inventory.map(i => i.project).filter(Boolean))].sort() },
+        // Affectation : saisie libre (contient / ne contient pas…) — trop de dossiers pour une liste
+        { key: 'project', label: 'Affectation', type: 'text' },
         { key: 'status', label: 'Statut', type: 'select', options: STATUSES.filter(st => st.key !== 'ALL').map(st => ({ value: st.key, label: st.label })) },
         { key: 'qty', label: 'Stock dispo', type: 'number' },
     ];
@@ -185,11 +213,18 @@ export default function StockInventoryTab({ inventory, projects = [], movements 
         },
     ], [projects]);
 
+    // Ligne « Total » : colonnes chiffrées (Stock dispo par unité) ; Statut lu comme affiché
+    const totalsColumns = {
+        qty: { numeric: true, unitField: 'unit' },
+        laize: { numeric: true },
+        project: { getValue: (row) => row.project || '' },
+        stockStatus: { getValue: (row) => stockStatusOf(row.project, projects).label },
+    };
+
     const activeConditions = filterConditions.filter(isConditionActive);
-    const filteredRows = inventory.filter(item => {
+    // Tous les filtres sauf la recherche (sert aussi aux compteurs du menu de recherche)
+    const passesFilters = (item) => {
         if (item.qty === 0) return false; // quantités nulles masquées
-        const q = search.toLowerCase();
-        if (search && ![item.product, item.ref, item.fournisseur, item.coloris].some(v => (v || '').toLowerCase().includes(q))) return false;
         if (onlyToComplete && !splitLocations(item.location).includes(LOC_A_COMPLETER)) return false;
         if (activeConditions.length === 0) return true;
         const flat = { ...item, project: item.project || '', status: stockStatusCodeOf(item.project, projects) };
@@ -207,7 +242,11 @@ export default function StockInventoryTab({ inventory, projects = [], movements 
             ok = activeConditions[i].logic === 'ou' ? ok || v : ok && v;
         }
         return ok;
-    });
+    };
+    const baseRows = inventory.filter(passesFilters);
+    const filteredRows = baseRows.filter(item => matchesSearch(item, searchField, search));
+    // Nombre de lignes du tableau (articles regroupés par produit + réf.) trouvées dans une catégorie
+    const searchCount = (key, text) => new Set(baseRows.filter(item => matchesSearch(item, key, text)).map(i => `${i.product}-${i.ref || ''}`)).size;
 
     const groupedRows = useMemo(() => {
         const groups = {};
@@ -254,11 +293,14 @@ export default function StockInventoryTab({ inventory, projects = [], movements 
         <Box>
             {/* Barre de filtres (sans cadre, style des listes Chiffrages / Projets) : filtres à gauche, actions à droite */}
             <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 16 }}>
-                <ToolbarSearch
+                <CategorySearch
                     value={search}
-                    onChange={setSearch}
+                    field={searchField}
+                    onChange={({ value, field }) => { setSearch(value); setSearchField(field); }}
+                    categories={SEARCH_CATEGORIES}
+                    countFor={searchCount}
                     placeholder="Fournisseur, référence, coloris…"
-                    width={220}
+                    width={280}
                 />
                 <div style={{ position: 'relative' }}>
                     <ToolbarButton
@@ -280,7 +322,7 @@ export default function StockInventoryTab({ inventory, projects = [], movements 
 
                 {(search || activeConditions.length > 0 || onlyToComplete) && (
                     <button
-                        onClick={() => { setSearch(''); setFilterConditions([]); setOnlyToComplete(false); }}
+                        onClick={() => { setSearch(''); setSearchField(SEARCH_ALL); setFilterConditions([]); setOnlyToComplete(false); }}
                         style={{ border: 'none', background: 'none', color: 'var(--df-muted)', fontSize: 13, fontWeight: 600, cursor: 'pointer', textDecoration: 'underline', padding: '0 4px', fontFamily: 'inherit' }}
                     >
                         Réinitialiser
@@ -379,6 +421,8 @@ export default function StockInventoryTab({ inventory, projects = [], movements 
                     onRowDoubleClick={handleRowDoubleClick}
                     localeText={frFR.components.MuiDataGrid.defaultProps.localeText}
                     sx={DATAGRID_DA_SX}
+                    slots={{ footer: GridTotalsFooter }}
+                    slotProps={{ footer: { totals, onTotalsChange: saveTotals, columnsConfig: totalsColumns } }}
                 />
             </FitGridFrame>
 
