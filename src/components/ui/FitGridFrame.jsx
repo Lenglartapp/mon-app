@@ -19,14 +19,14 @@ export default function FitGridFrame({ children }) {
     if (!root) return undefined;
     const measure = () => {
       const q = (sel) => root.querySelector(sel)?.offsetHeight || 0;
-      const h = q('.MuiDataGrid-columnHeaders') + q('.MuiDataGrid-virtualScrollerContent') + q('.MuiDataGrid-footerContainer')
+      const h = q('.MuiDataGrid-columnHeaders') + q('.MuiDataGrid-virtualScrollerContent') + q('.MuiDataGrid-footerContainer') + q('.df-grid-totals')
         + q('.MuiDataGrid-scrollbar--horizontal') + 2; // + cadre
       setContentH((prev) => (prev === h ? prev : h));
     };
     measure();
     const ro = new ResizeObserver(measure);
     const mo = new MutationObserver(() => {
-      root.querySelectorAll('.MuiDataGrid-virtualScrollerContent, .MuiDataGrid-columnHeaders, .MuiDataGrid-footerContainer').forEach((el) => ro.observe(el));
+      root.querySelectorAll('.MuiDataGrid-virtualScrollerContent, .MuiDataGrid-columnHeaders, .MuiDataGrid-footerContainer, .df-grid-totals').forEach((el) => ro.observe(el));
       measure();
     });
     mo.observe(root, { childList: true, subtree: true });

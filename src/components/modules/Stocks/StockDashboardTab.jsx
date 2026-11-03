@@ -7,7 +7,11 @@ import {
 import {
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine
 } from 'recharts';
-import { countRouleaux } from '../../../lib/warehouse/occupancy';
+import { countRouleaux, rollsOf } from '../../../lib/warehouse/occupancy';
+import { STOCK_GROUPS, stockGroupOf } from '../../../lib/inventory/stockStatus';
+
+// Couleurs de la Ventilation du stock (nuancier de la DA).
+const GROUP_COLORS = { reserved: '#1B3269', active: '#4A6DB0', dead: '#BB7051' };
 
 const PALETTE_TO_ROULEAUX = 10;
 
@@ -52,7 +56,7 @@ const CustomTooltip = ({ active, payload, label }) => {
     );
 };
 
-export default function StockDashboardTab({ inventory = [], projects = [], movements = [], zones = [] }) {
+export default function StockDashboardTab({ inventory = [], projects = [], movements = [], zones = [], onOpenStock }) {
 
     const defaultTo = new Date();
     const defaultFrom = new Date(); defaultFrom.setDate(defaultFrom.getDate() - 51 * 7);
@@ -65,15 +69,18 @@ export default function StockDashboardTab({ inventory = [], projects = [], movem
         const rouleauxEnStock = countRouleaux(inventory);
         const occupancyPct = capacite > 0 ? Math.min(Math.round((rouleauxEnStock / capacite) * 100), 100) : 0;
 
-        let reserved = 0, deadStock = 0;
+        // Ventilation du stock de tissu actuel (atelier compris), par famille de statut :
+        // mêmes statuts que la colonne Statut de l'inventaire.
+        const isMlUnit = (u) => String(u || '').trim().toLowerCase() === 'ml';
+        const groups = Object.fromEntries(STOCK_GROUPS.map(g => [g.key, { rolls: 0, ml: 0 }]));
         inventory.forEach(item => {
-            if (item.category !== 'Tissu') return;
-            const q = Array.isArray(item.pieces) ? item.pieces.length : 1;
-            const proj = item.project ? projects.find(p => p.name === item.project) : null;
-            if (proj?.status === 'ARCHIVED') deadStock += q;
-            else if (item.project) reserved += q;
-            else if (item.location?.toLowerCase().includes('mort')) deadStock += q;
+            const rolls = rollsOf(item);
+            if (!rolls) return;
+            const g = groups[stockGroupOf(item.project, projects)];
+            g.rolls += rolls;
+            if (isMlUnit(item.unit)) g.ml += Number(item.qty) || 0;
         });
+        const groupRolls = Object.values(groups).reduce((s, g) => s + g.rolls, 0);
 
         const freeRouleaux = Math.max(0, capacite - rouleauxEnStock);
         const tensionLevel = freeRouleaux < capacite * 0.15 ? 'critique'
@@ -94,7 +101,7 @@ export default function StockDashboardTab({ inventory = [], projects = [], movem
         });
 
         return {
-            rouleauxEnStock, capacite, occupancyPct, reserved, deadStock, freeRouleaux,
+            rouleauxEnStock, capacite, occupancyPct, groups, groupRolls, freeRouleaux,
             tensionLevel, top10, mlTotal, tensionAlerts: activeWithoutStock.slice(0, 3),
             zonesLoaded: totalCapacity > 0,
         };
@@ -202,25 +209,28 @@ export default function StockDashboardTab({ inventory = [], projects = [], movem
                 <div style={card}>
                     <div style={title}><Layers size={14} color="#9333EA" /> Ventilation du stock</div>
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 20 }}>
-                        {[
-                            { label: 'Réservé (projets)', val: stats.reserved, color: 'var(--df-primary-text)', icon: <CheckCircle2 size={13} /> },
-                            { label: 'Stock Mort', val: stats.deadStock, color: 'var(--df-danger)', icon: <Clock size={13} /> },
-                            { label: 'Emplacements libres', val: stats.freeRouleaux, color: '#10B981', icon: <TrendingUp size={13} /> },
-                        ].map((item, i) => {
-                            const pct = Math.round((item.val / stats.capacite) * 100);
+                        {STOCK_GROUPS.map((g) => {
+                            const { rolls, ml } = stats.groups[g.key];
+                            const pct = stats.groupRolls > 0 ? Math.round((rolls / stats.groupRolls) * 100) : 0;
                             return (
-                                <div key={i}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, alignItems: 'center' }}>
-                                        <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--df-text-2)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                                            <span style={{ color: item.color }}>{item.icon}</span>{item.label}
-                                        </span>
-                                        <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--df-text)' }}>
-                                            {pct}% <span style={{ color: 'var(--df-faint)', fontWeight: 400, fontSize: 11 }}>({item.val})</span>
+                                <div
+                                    key={g.key}
+                                    title={onOpenStock ? `${g.hint} — double-clic pour voir ce stock` : g.hint}
+                                    onDoubleClick={onOpenStock ? () => onOpenStock({ group: g.key, sortByQty: true }) : undefined}
+                                    style={{ cursor: onOpenStock ? 'pointer' : 'default', userSelect: 'none' }}
+                                >
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, alignItems: 'baseline', gap: 8 }}>
+                                        <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--df-text)', fontFamily: 'Roboto, system-ui, sans-serif' }}>{g.label}</span>
+                                        <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--df-text)', whiteSpace: 'nowrap' }}>
+                                            {pct}%{' '}
+                                            <span style={{ color: 'var(--df-faint)', fontWeight: 400, fontSize: 11 }}>
+                                                {rolls.toLocaleString('fr-FR')} rlx · {Math.round(ml).toLocaleString('fr-FR')} ml
+                                            </span>
                                         </span>
                                     </div>
                                     <LinearProgress variant="determinate" value={pct} sx={{
                                         height: 7, borderRadius: 4, bgcolor: 'var(--df-surface-2)',
-                                        '& .MuiLinearProgress-bar': { bgcolor: item.color, borderRadius: 4 }
+                                        '& .MuiLinearProgress-bar': { bgcolor: GROUP_COLORS[g.key], borderRadius: 4 }
                                     }} />
                                 </div>
                             );

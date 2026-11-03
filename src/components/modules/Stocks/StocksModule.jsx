@@ -35,6 +35,9 @@ export default function StocksModule({
     const canEdit = can(currentUser, 'inventory.edit');
     const { zones } = useWarehouseZones();
     const [tabIndex, setTabIndex] = useState(0);
+    // Stock ouvert depuis la Ventilation du stock : filtre + tri appliqués une seule fois
+    const [stockPreset, setStockPreset] = useState(null);
+    const openStock = (preset) => { setStockPreset(preset); setTabIndex(2); };
 
     // Modal State
     const [modalOpen, setModalOpen] = useState(false);
@@ -89,7 +92,7 @@ export default function StocksModule({
                             <button
                                 key={t.key}
                                 className="df-pill-tab" data-active={tabIndex === t.key}
-                                onClick={() => setTabIndex(t.key)}
+                                onClick={() => { setStockPreset(null); setTabIndex(t.key); }}
                                 style={{
                                     padding: '8px 20px',
                                     borderRadius: 99,
@@ -119,6 +122,7 @@ export default function StocksModule({
                             projects={projects}
                             movements={movements}
                             zones={zones}
+                            onOpenStock={openStock}
                         />
                     )}
                     {tabIndex === 1 && (
@@ -147,6 +151,7 @@ export default function StocksModule({
                             onImportStock={canEdit ? onImportStock : undefined}
                             onUpdateItem={onUpdateItem}
                             zones={zones}
+                            preset={stockPreset}
                         />
                     )}
                     {tabIndex === 3 && (
