@@ -14,7 +14,7 @@
 import { getSupabaseAdmin } from '../_supabaseAdmin.js';
 import { getRequestUser } from '../_auth.js';
 
-const ROLES = new Set(['admin', 'sales', 'ordo', 'ordo_conf', 'op', 'prepa', 'pose', 'conf', 'compta']);
+const ROLES = new Set(['admin', 'sales', 'ordo', 'ordo_conf', 'op', 'prepa', 'pose', 'conf', 'compta', 'tablette']);
 const BAN_FOREVER = '876000h'; // ~100 ans : connexion bloquée jusqu'à réactivation
 
 async function requireAdmin(req, res, sb) {

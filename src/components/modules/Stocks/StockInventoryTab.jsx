@@ -46,7 +46,7 @@ const matchesSearch = (item, key, text) => {
 const TOTALS_STORAGE_KEY = 'df.stock.inventory.totals';
 const readTotals = () => { try { return JSON.parse(localStorage.getItem(TOTALS_STORAGE_KEY)) || {}; } catch { return {}; } };
 
-export default function StockInventoryTab({ inventory, projects = [], movements = [], onBulkMovement, onImportStock, onUpdateItem, zones = [], embedded = false, preset = null, canEditStatus = false }) {
+export default function StockInventoryTab({ inventory, projects = [], movements = [], onBulkMovement, onImportStock, onUpdateItem, zones = [], embedded = false, preset = null, canEditStatus = false, canMap = true, canExport = true }) {
     const [search, setSearch] = useState('');
     const [searchField, setSearchField] = useState(SEARCH_ALL);
     const [totals, setTotals] = useState(readTotals);
@@ -273,12 +273,16 @@ export default function StockInventoryTab({ inventory, projects = [], movements 
                 )}
 
                 <div style={{ marginLeft: 'auto', display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                    <ToolbarButton icon={<MapIcon size={16} />} active={showMap} onClick={() => setShowMap(v => !v)}>
-                        Vue entrepôt
-                    </ToolbarButton>
-                    <ToolbarButton icon={<Download size={16} />} onClick={() => setExportOpen(true)} title="Exporter le stock en Excel : réimport, feuille de comptage ou état à envoyer">
-                        Exporter
-                    </ToolbarButton>
+                    {canMap && (
+                        <ToolbarButton icon={<MapIcon size={16} />} active={showMap} onClick={() => setShowMap(v => !v)}>
+                            Vue entrepôt
+                        </ToolbarButton>
+                    )}
+                    {canExport && (
+                        <ToolbarButton icon={<Download size={16} />} onClick={() => setExportOpen(true)} title="Exporter le stock en Excel : réimport, feuille de comptage ou état à envoyer">
+                            Exporter
+                        </ToolbarButton>
+                    )}
                     {(onImportStock || onBulkMovement) && (
                         <ToolbarButton icon={<Upload size={16} />} onClick={() => setImportOpen(true)} title="Ajouter de l'ancien stock ou mettre à jour le stock depuis Excel">
                             Importer
@@ -346,7 +350,7 @@ export default function StockInventoryTab({ inventory, projects = [], movements 
             )}
 
             {/* VUE ENTREPÔT */}
-            {showMap && (
+            {canMap && showMap && (
                 <Box sx={{ mb: 3 }}>
                     <WarehouseMap zones={zones} inventory={inventory} />
                 </Box>

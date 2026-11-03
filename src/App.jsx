@@ -46,6 +46,19 @@ import CommandPalette from "./components/CommandPalette";
 import UndoShortcuts from "./components/UndoShortcuts";
 import { ThemeModeProvider } from "./theme/ThemeMode";
 
+// Droit requis pour ouvrir une adresse (null = accueil, toujours ouvert).
+function permissionForPath(path) {
+  if (path === "/chiffrage" || path.startsWith("/chiffrage/")) return "nav.chiffrage";
+  if (path === "/production" || path.startsWith("/production/")) return "nav.production";
+  if (path === "/planning") return "planning.view";
+  if (path === "/logistique" || path.startsWith("/logistique/")) return "nav.logistique";
+  if (path === "/inventaire") return "nav.inventory";
+  if (path === "/performance") return "nav.performance";
+  if (path === "/odoo") return "nav.production";
+  if (path === "/parametres") return "nav.settings";
+  return null;
+}
+
 // --- Composants UI ---
 function UserAvatarMenu({ onSettings }) {
   const { currentUser, logout } = useAuth();
@@ -92,12 +105,12 @@ function UserAvatarMenu({ onSettings }) {
             <div style={{ fontWeight: 600, fontSize: 14, color: "var(--df-ink-1)" }}>{currentUser?.name || "Utilisateur"}</div>
             <div style={{ fontSize: 12, color: "#9E8E7E", marginTop: 2, textTransform: "capitalize" }}>{currentUser?.role || ""}</div>
           </div>
-          <button
+          {can(currentUser, "nav.settings") && <button
             onClick={() => { setOpen(false); onSettings(); }}
             style={{ width: "100%", padding: "11px 16px", textAlign: "left", background: "transparent", border: "none", cursor: "pointer", fontSize: 14, color: "var(--df-ink-1)", display: "flex", alignItems: "center", gap: 10 }}
           >
             Paramètres
-          </button>
+          </button>}
           <button
             onClick={() => { setOpen(false); if (window.confirm("Se déconnecter ?")) logout(); }}
             style={{ width: "100%", padding: "11px 16px", textAlign: "left", background: "transparent", border: "none", cursor: "pointer", fontSize: 14, color: "var(--df-danger)", display: "flex", alignItems: "center", gap: 10, borderTop: "1px solid var(--df-warm-bg-2)" }}
@@ -152,6 +165,14 @@ function AppShell() {
     const path = location.pathname;
     const params = new URLSearchParams(location.search);
 
+    // Droits : une adresse tapée, un lien ou une notification n'ouvre jamais un module
+    // non autorisé pour le rôle (avant : seuls les boutons vérifiaient) → retour à l'accueil.
+    const perm = permissionForPath(path);
+    if (perm && !can(currentUser, perm)) {
+      navigate("/", { replace: true });
+      return;
+    }
+
     // Quitter un deep-link projet annule toute résolution de projet en attente,
     // pour qu'une résolution tardive ne puisse pas rouvrir le projet (cf. garde anti-course).
     if (!path.startsWith("/production/")) setPendingProjectId(null);
@@ -187,7 +208,7 @@ function AppShell() {
     } else if (path === "/parametres") {
       setScreen("settings");
     }
-  }, [location]);
+  }, [location, currentUser]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // document.title pour les écrans sans sous-composant dédié
   useEffect(() => {
@@ -297,6 +318,7 @@ function AppShell() {
     if (target === "planning" && !can(currentUser, "planning.view")) return;
     if (target === "logistique" && !can(currentUser, "nav.logistique")) return;
     if (target === "performance" && !can(currentUser, "nav.performance")) return;
+    if (target === "settings" && !can(currentUser, "nav.settings")) return;
     setPendingRowId(null);
     navigate(SCREEN_PATHS[target] || "/");
   };

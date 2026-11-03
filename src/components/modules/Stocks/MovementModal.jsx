@@ -59,7 +59,8 @@ const itemTitle = (it) => {
     return [it.fournisseur, name].filter(Boolean).join(' · ');
 };
 
-export default function MovementModal({ open, onClose, type, onSave, projects = [], inventory = [], zones = [] }) {
+// canCreate = false (tablette atelier) : pas d'entrée « Non répertorié », seulement les articles de la liste de courses Odoo.
+export default function MovementModal({ open, onClose, type, onSave, projects = [], inventory = [], zones = [], canCreate = true }) {
     const isIN = type === 'IN';
     const isMOVE = type === 'MOVE';
     const isOUT = type === 'OUT';
@@ -277,7 +278,7 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
                         <Box sx={sectionSx}>
                             {sectionTitle('Article reçu')}
                             <Stack spacing={2}>
-                                <Box>
+                                {canCreate && <Box>
                                 <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
                                     <ChoicePill active={catalogued} onClick={() => handleCataloguedChange(true)}>Répertorié</ChoicePill>
                                     <ChoicePill active={!catalogued} onClick={() => handleCataloguedChange(false)}>Non répertorié</ChoicePill>
@@ -287,7 +288,7 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
                                         ? 'Article de la liste de courses Odoo d’un dossier : fournisseur, référence, coloris, laize et dossier se remplissent tout seuls.'
                                         : 'Pièce ajoutée au stock sans lien avec une commande ni un dossier.'}
                                 </Typography>
-                                </Box>
+                                </Box>}
                                 {catalogued && (
                                     <DaField label={typology === 'Tissu' ? 'Tissu répertorié' : `${typology} répertorié`}>
                                         <Autocomplete
@@ -318,7 +319,7 @@ export default function MovementModal({ open, onClose, type, onSave, projects = 
                                                 <TextField {...params} size="small" placeholder="Fournisseur, référence, coloris, dossier…" sx={DA_FIELD_SX}
                                                     InputProps={{ ...params.InputProps, startAdornment: <InputAdornment position="start"><Search size={16} color="var(--df-faint)" /></InputAdornment> }} />
                                             )}
-                                            noOptionsText="Aucun article de liste de courses ne correspond — passe en « Non répertorié »."
+                                            noOptionsText={canCreate ? "Aucun article de liste de courses ne correspond — passe en « Non répertorié »." : "Aucun article de liste de courses ne correspond."}
                                         />
                                     </DaField>
                                 )}
