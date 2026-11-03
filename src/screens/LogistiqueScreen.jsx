@@ -1,10 +1,13 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Plus, Truck, Package, Search, X, Check, Trash2, PackagePlus, ChevronRight, FileText, Box, Weight } from 'lucide-react';
+import { ArrowLeft, Plus, Truck, Package, Search, X, Check, Trash2, PackagePlus, ChevronRight, FileText, Box, Weight, History } from 'lucide-react';
 import { useShipments, isRideauVoilage } from '../hooks/useShipments';
 import { useStocks } from '../hooks/useSupabase';
 import { useAuth } from '../auth';
 import { can } from '../lib/authz';
+import OperatorInput from '../components/ui/OperatorInput';
+import { rememberOperator } from '../hooks/useOperators';
+import { OPERATOR_REQUIRED_MESSAGE } from '../lib/operators';
 
 const slugify = (str) =>
     (str || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
@@ -13,12 +16,6 @@ import AddressAutocomplete from '../components/AddressAutocomplete';
 
 // ── Constantes ────────────────────────────────────────────────────────────────
 const STATUTS = ['Brouillon', 'En préparation', 'Expédiée'];
-const OPERATORS = [
-    'Elisa Laprune', 'Guillaume Mailly', 'David Vergel', 'Lucie Jaulin', 'Maelane Poulaud',
-    'Thomas Bonnet', 'Delphine Butez', 'Catherine Bosse', 'Thierry Menant', 'Alain Houdemont',
-    'Nicolas Podyma', 'Audry Papin', 'Julie Rabin', 'Alison Gloaguen', 'Samuel Blandin',
-    'Emilie David', 'Emmanuel Peltier', 'Malcolm Jeantal', 'Florence Gobbe',
-].sort();
 
 const STATUT_STYLE = {
     'Brouillon':       { bg: 'var(--df-surface-2)', color: 'var(--df-muted)' },
@@ -72,9 +69,41 @@ function Modal({ title, onClose, children, width = 520 }) {
     );
 }
 
+// ── Historique d'une expédition (journal expedition_logs) ─────────────────────
+function ShipmentHistoryModal({ shipment, fetchLogs, onClose }) {
+    const [logs, setLogs] = useState(null);
+    const [error, setError] = useState(null);
+    useEffect(() => {
+        let alive = true;
+        fetchLogs(shipment.id).then(d => { if (alive) setLogs(d); }).catch(e => { if (alive) setError(e.message); });
+        return () => { alive = false; };
+    }, [shipment.id, fetchLogs]);
+    return (
+        <Modal title={`Historique — ${shipment.label || shipment.reference}`} onClose={onClose} width={640}>
+            <div style={{ padding: '8px 24px 24px' }}>
+                {error && <div style={{ fontSize: 13, color: 'var(--df-danger)', padding: '12px 0' }}>Historique indisponible : {error}</div>}
+                {!error && !logs && <div style={{ fontSize: 13, color: 'var(--df-muted)', padding: '12px 0' }}>Chargement…</div>}
+                {logs && logs.length === 0 && <div style={{ fontSize: 13, color: 'var(--df-muted)', padding: '12px 0' }}>Aucune action enregistrée pour l'instant.</div>}
+                {logs && logs.map(l => (
+                    <div key={l.id} style={{ display: 'flex', gap: 12, padding: '10px 0', borderBottom: '1px solid var(--df-surface-2)', fontSize: 13 }}>
+                        <div style={{ width: 110, flexShrink: 0, color: 'var(--df-muted)', fontVariantNumeric: 'tabular-nums' }}>
+                            {new Date(l.created_at).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                            <span style={{ fontWeight: 600, color: 'var(--df-text)' }}>{l.action}</span>
+                            {l.details && <span style={{ color: 'var(--df-text-2)' }}> — {l.details}</span>}
+                        </div>
+                        <div style={{ flexShrink: 0, color: 'var(--df-text-2)', fontWeight: 500 }}>{l.operateur}</div>
+                    </div>
+                ))}
+            </div>
+        </Modal>
+    );
+}
+
 // ── Formulaire création expédition ────────────────────────────────────────────
 function CreateShipmentModal({ onClose, onCreate, projects }) {
-    const [form, setForm] = useState({ label: '', destination: '', date_expedition: '', operateur: 'David Vergel' });
+    const [form, setForm] = useState({ label: '', destination: '', date_expedition: '', operateur: '' });
     const [selectedProjectIds, setSelectedProjectIds] = useState([]);
     const [projectSearch, setProjectSearch] = useState('');
     const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
@@ -87,7 +116,8 @@ function CreateShipmentModal({ onClose, onCreate, projects }) {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        const result = await onCreate(form);
+        if (!form.operateur.trim()) return;
+        const result = await onCreate({ ...form, operateur: form.operateur.trim() });
         if (result) onClose({ shipment: result, projectIds: selectedProjectIds });
     };
 
@@ -100,9 +130,7 @@ function CreateShipmentModal({ onClose, onCreate, projects }) {
                 </div>
                 <div>
                     <label style={labelStyle}>Opérateur</label>
-                    <select style={inputStyle} value={form.operateur} onChange={e => set('operateur', e.target.value)}>
-                        {OPERATORS.map(name => <option key={name} value={name}>{name}</option>)}
-                    </select>
+                    <OperatorInput value={form.operateur} onChange={v => set('operateur', v)} label={null} />
                 </div>
                 <div style={{ display: 'flex', gap: 12 }}>
                     <div style={{ flex: 1 }}>
@@ -170,7 +198,8 @@ function CreateShipmentModal({ onClose, onCreate, projects }) {
                 )}
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 4 }}>
                     <button type="button" onClick={() => onClose(null)} style={btnSecondary}>Annuler</button>
-                    <button type="submit" style={btnPrimary}>Créer</button>
+                    <button type="submit" disabled={!form.operateur.trim()} title={form.operateur.trim() ? undefined : OPERATOR_REQUIRED_MESSAGE}
+                        style={{ ...btnPrimary, ...(form.operateur.trim() ? {} : { opacity: 0.45, cursor: 'not-allowed' }) }}>Créer</button>
                 </div>
             </form>
         </Modal>
@@ -765,7 +794,10 @@ function ColisSection({ shipmentId, shipmentItems, colisItems, isExpediee, onCre
 }
 
 // ── Vue Détail expédition ─────────────────────────────────────────────────────
-function ShipmentDetail({ shipment, shipmentItems, colisItems, projects, onBack, onUpdateShipment, onAddItems, onRemoveItem, onValidate, onDelete, onCreateColis, onUpdateColis, onDeleteColis, onToggleItem, canEdit, initialProjectIds = [], stocks = [], onAddMovement }) {
+function ShipmentDetail({ shipment, shipmentItems, colisItems, projects, onBack, onUpdateShipment, onAddItems, onRemoveItem, onValidate, onDelete, onCreateColis, onUpdateColis, onDeleteColis, onToggleItem, canEdit, initialProjectIds = [], stocks = [], onAddMovement, operator = '', onOperatorChange, fetchLogs }) {
+    // Opérateur demandé une fois par expédition : sans lui, aucune action (elles sont toutes tracées).
+    const canAct = canEdit && !!operator.trim();
+    const [historyOpen, setHistoryOpen] = useState(false);
     const [showPicker, setShowPicker] = useState(false);
     const [showFreeItem, setShowFreeItem] = useState(false);
     const [editingStatut, setEditingStatut] = useState(false);
@@ -823,7 +855,7 @@ function ShipmentDetail({ shipment, shipmentItems, colisItems, projects, onBack,
                         project: stockItem.project ?? null,
                         reason: 'Sous-traitance',
                         category: stockItem.category,
-                        user: shipment.operateur || null,
+                        user: operator.trim() || null,
                         piece_name: (item.notes && item.notes !== 'Sous-traitance' && item.notes.includes(' — '))
                                 ? item.notes.split(' — ')[0]
                                 : null,
@@ -857,7 +889,7 @@ function ShipmentDetail({ shipment, shipmentItems, colisItems, projects, onBack,
                         <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8, flexWrap: 'wrap' }}>
                             {/* Statut cliquable */}
                             <div style={{ position: 'relative' }}>
-                                <button onClick={() => !isExpediee && canEdit && setEditingStatut(v => !v)} style={{ background: 'none', border: 'none', cursor: (isExpediee || !canEdit) ? 'default' : 'pointer', padding: 0 }}>
+                                <button onClick={() => !isExpediee && canAct && setEditingStatut(v => !v)} style={{ background: 'none', border: 'none', cursor: (isExpediee || !canAct) ? 'default' : 'pointer', padding: 0 }}>
                                     {pill(shipment.statut, STATUT_STYLE[shipment.statut] || STATUT_STYLE['Brouillon'])}
                                 </button>
                                 {editingStatut && (
@@ -885,13 +917,23 @@ function ShipmentDetail({ shipment, shipmentItems, colisItems, projects, onBack,
                             </div>
                         )}
                     </div>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                        {!isExpediee && canEdit && (
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                        {canEdit && (
+                            <div style={{ width: 260 }}>
+                                <OperatorInput value={operator} onChange={onOperatorChange} label="Opérateur" />
+                            </div>
+                        )}
+                        {fetchLogs && (
+                            <button onClick={() => setHistoryOpen(true)} style={btnSecondary} title="Qui a fait quoi sur cette expédition">
+                                <History size={14} /> Historique
+                            </button>
+                        )}
+                        {!isExpediee && canAct && (
                             <button onClick={handleValidate} style={{ ...btnPrimary, background: 'var(--df-primary)' }}>
                                 <Truck size={14} /> Valider expédition
                             </button>
                         )}
-                        {canEdit && (
+                        {canAct && (
                             <button onClick={handleDelete} style={{ ...btnSecondary, color: 'var(--df-danger)', borderColor: 'var(--df-danger-border)' }}>
                                 <Trash2 size={14} />
                             </button>
@@ -902,7 +944,7 @@ function ShipmentDetail({ shipment, shipmentItems, colisItems, projects, onBack,
                 {/* Notes */}
                 <div style={{ background: 'var(--df-bg)', borderRadius: 12, boxShadow: '0 1px 3px rgba(0,0,0,0.05)', padding: '16px 20px' }}>
                     <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--df-text-2)', marginBottom: 8 }}>NOTES</div>
-                    {isExpediee || !canEdit ? (
+                    {isExpediee || !canAct ? (
                         <div style={{ fontSize: 13, color: shipment.notes ? 'var(--df-text-2)' : 'var(--df-faint)', fontStyle: shipment.notes ? 'normal' : 'italic' }}>
                             {shipment.notes || 'Aucune note.'}
                         </div>
@@ -927,7 +969,7 @@ function ShipmentDetail({ shipment, shipmentItems, colisItems, projects, onBack,
                     isExpediee={isExpediee}
                     onAddItems={onAddItems}
                     onRemoveItem={onRemoveItem}
-                    canEdit={canEdit}
+                    canAct={canAct}
                 />
 
                 {/* Ouvrages */}
@@ -936,7 +978,7 @@ function ShipmentDetail({ shipment, shipmentItems, colisItems, projects, onBack,
                         <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--df-text-2)' }}>
                             OUVRAGES <span style={{ color: 'var(--df-faint)', fontWeight: 400 }}>({ouvrageItems.length})</span>
                         </div>
-                        {!isExpediee && canEdit && (
+                        {!isExpediee && canAct && (
                             <button onClick={() => setShowPicker(true)} style={{ ...btnSecondary, fontSize: 12, display: 'flex', alignItems: 'center', gap: 5 }}>
                                 <PackagePlus size={13} /> Ajouter des ouvrages
                             </button>
@@ -951,7 +993,7 @@ function ShipmentDetail({ shipment, shipmentItems, colisItems, projects, onBack,
                                     <TH>Pièce</TH>
                                     <TH>Produit</TH>
                                     <TH>Projet</TH>
-                                    {!isExpediee && canEdit && <TH style={{ width: 40 }} />}
+                                    {!isExpediee && canAct && <TH style={{ width: 40 }} />}
                                 </tr>
                             </thead>
                             <tbody>
@@ -971,7 +1013,7 @@ function ShipmentDetail({ shipment, shipmentItems, colisItems, projects, onBack,
                                                 )}
                                             </td>
                                             <td style={{ padding: '10px 16px', fontSize: 12, color: 'var(--df-faint)' }}>{projectName(item.project_id)}</td>
-                                            {!isExpediee && canEdit && (
+                                            {!isExpediee && canAct && (
                                                 <td style={{ padding: '10px 16px' }}>
                                                     <button onClick={() => onRemoveItem(item.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--df-border-strong)', padding: 2 }}>
                                                         <X size={14} />
@@ -992,7 +1034,7 @@ function ShipmentDetail({ shipment, shipmentItems, colisItems, projects, onBack,
                         <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--df-text-2)' }}>
                             ITEMS LIBRES <span style={{ color: 'var(--df-faint)', fontWeight: 400 }}>({libreItems.length})</span>
                         </div>
-                        {!isExpediee && canEdit && (
+                        {!isExpediee && canAct && (
                             <button onClick={() => setShowFreeItem(true)} style={{ ...btnSecondary, fontSize: 12, display: 'flex', alignItems: 'center', gap: 5 }}>
                                 <Plus size={13} /> Ajouter un item
                             </button>
@@ -1007,7 +1049,7 @@ function ShipmentDetail({ shipment, shipmentItems, colisItems, projects, onBack,
                                     <TH>Description</TH>
                                     <TH>Quantité</TH>
                                     <TH>Notes</TH>
-                                    {!isExpediee && canEdit && <TH style={{ width: 40 }} />}
+                                    {!isExpediee && canAct && <TH style={{ width: 40 }} />}
                                 </tr>
                             </thead>
                             <tbody>
@@ -1016,7 +1058,7 @@ function ShipmentDetail({ shipment, shipmentItems, colisItems, projects, onBack,
                                         <td style={{ padding: '10px 16px', fontSize: 13, fontWeight: 600 }}>{item.description}</td>
                                         <td style={{ padding: '10px 16px', fontSize: 13, color: 'var(--df-muted)' }}>{item.quantite || '—'}</td>
                                         <td style={{ padding: '10px 16px', fontSize: 12, color: 'var(--df-faint)' }}>{item.notes || '—'}</td>
-                                        {!isExpediee && canEdit && (
+                                        {!isExpediee && canAct && (
                                             <td style={{ padding: '10px 16px' }}>
                                                 <button onClick={() => onRemoveItem(item.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--df-border-strong)', padding: 2 }}>
                                                     <X size={14} />
@@ -1040,13 +1082,14 @@ function ShipmentDetail({ shipment, shipmentItems, colisItems, projects, onBack,
                     onUpdateColis={onUpdateColis}
                     onDeleteColis={onDeleteColis}
                     onToggleItem={onToggleItem}
-                    canEdit={canEdit}
+                    canAct={canAct}
                 />
             </div>
 
             {showPicker && (
                 <OuvragePicker projects={projects} existingRowIds={existingRowIds} onClose={() => setShowPicker(false)} onAdd={handlePickerAdd} />
             )}
+            {historyOpen && <ShipmentHistoryModal shipment={shipment} fetchLogs={fetchLogs} onClose={() => setHistoryOpen(false)} />}
             {showFreeItem && (
                 <FreeItemModal onClose={() => setShowFreeItem(false)} onAdd={(item) => onAddItems(shipment.id, [item])} />
             )}
@@ -1055,7 +1098,8 @@ function ShipmentDetail({ shipment, shipmentItems, colisItems, projects, onBack,
 }
 
 // ── Vue liste (tableau style ProjectList) ─────────────────────────────────────
-function ShipmentList({ shipments, items, projects, onSelect, onDelete, onUpdateShipment, canEdit }) {
+// Liste : lecture seule (statut et suppression se font dans l'expédition ouverte, où l'opérateur est demandé).
+function ShipmentList({ shipments, items, projects, onSelect }) {
     const [search, setSearch] = useState('');
     const [filterStatut, setFilterStatut] = useState('');
     const [filterProject, setFilterProject] = useState('');
@@ -1088,12 +1132,6 @@ function ShipmentList({ shipments, items, projects, onSelect, onDelete, onUpdate
 
     const countOuvrages = (shipmentId) => items.filter(i => i.expedition_id === shipmentId && i.type === 'ouvrage').length;
     const countLibres = (shipmentId) => items.filter(i => i.expedition_id === shipmentId && i.type === 'libre').length;
-
-    const handleDelete = async (e, id) => {
-        e.stopPropagation();
-        if (!window.confirm('Supprimer cette expédition ?')) return;
-        onDelete(id);
-    };
 
     return (
         <>
@@ -1177,13 +1215,13 @@ function ShipmentList({ shipments, items, projects, onSelect, onDelete, onUpdate
                                             <td style={{ padding: '12px 16px', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
                                                 <select
                                                     value={s.statut || 'Brouillon'}
-                                                    onChange={e => onUpdateShipment(s.id, { statut: e.target.value })}
-                                                    disabled={s.statut === 'Expédiée' || !canEdit}
+                                                    disabled
+                                                    title="Ouvrez l'expédition pour changer le statut (opérateur demandé)"
                                                     style={{
                                                         appearance: 'none', padding: '5px 12px', borderRadius: 20,
                                                         border: '1px solid var(--df-border)', background: 'var(--df-bg)',
                                                         color: STATUT_STYLE[s.statut]?.color || 'var(--df-muted)',
-                                                        fontWeight: 600, fontSize: 12, cursor: s.statut === 'Expédiée' ? 'default' : 'pointer',
+                                                        fontWeight: 600, fontSize: 12, cursor: 'default', opacity: 1,
                                                         outline: 'none', minWidth: 120, textAlign: 'center',
                                                     }}
                                                 >
@@ -1191,11 +1229,6 @@ function ShipmentList({ shipments, items, projects, onSelect, onDelete, onUpdate
                                                 </select>
                                             </td>
                                             <td style={{ padding: '12px 16px' }} onClick={e => e.stopPropagation()}>
-                                                {canEdit && (
-                                                    <button onClick={e => handleDelete(e, s.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--df-border-strong)', padding: 4 }}>
-                                                        <Trash2 size={14} />
-                                                    </button>
-                                                )}
                                             </td>
                                         </tr>
                                     );
@@ -1223,11 +1256,11 @@ export default function LogistiqueScreen({ projects, onUpdateProject, onBack }) 
     const canEdit = can(currentUser, 'logistique.edit');
 
     const {
-        shipments, items, loading,
+        shipments, items, colis, loading,
         createShipment, updateShipment, deleteShipment,
         addItems, removeItem, validateShipment,
         createColis, updateColis, deleteColis, toggleItemInColis,
-        itemsForShipment, colisForShipment,
+        itemsForShipment, colisForShipment, logAction, fetchLogs,
     } = useShipments();
 
     const { inventory: stocks, addMovement } = useStocks();
@@ -1266,14 +1299,69 @@ export default function LogistiqueScreen({ projects, onUpdateProject, onBack }) 
         }
     }, [selectedShipment]);
 
+    // Opérateur de l'expédition ouverte : demandé une fois, vidé en la quittant. Chaque action
+    // est notée au journal (expedition_logs) avec ce nom — compte partagé des tablettes atelier.
+    const [operator, setOperator] = useState('');
+
     const handleCreate = async (fields) => {
         const shipment = await createShipment(fields);
-        if (shipment) { setSelectedShipment(shipment); setView('detail'); }
+        if (shipment) {
+            rememberOperator(fields.operateur);
+            logAction(shipment, 'Création', shipment.label || null, fields.operateur);
+            setOperator(fields.operateur || '');
+            setSelectedShipment(shipment); setView('detail');
+        }
         return shipment;
     };
 
-    const handleSelect  = (shipment) => { setSelectedShipment(shipment); setView('detail'); };
-    const handleBack    = () => { setInitialProjectIds([]); setSelectedShipment(null); setView('main'); };
+    const handleSelect  = (shipment) => { setOperator(''); setSelectedShipment(shipment); setView('detail'); };
+    const handleBack    = () => { setOperator(''); setInitialProjectIds([]); setSelectedShipment(null); setView('main'); };
+
+    // ── Actions tracées (expédition ouverte) ──
+    const itemLabel = (it) => (it ? ([it.piece, it.produit, it.partie && it.partie !== 'complet' && it.partie].filter(Boolean).join(' · ') || it.description || it.notes || it.type) : 'élément');
+    const colisLabel = (c) => (c ? (c.label || c.type || 'colis') : 'colis');
+    const shipmentById = (id) => shipments.find(s => s.id === id) || (selectedShipment?.id === id ? selectedShipment : null);
+    const track = (expeditionId, action, details) => {
+        rememberOperator(operator);
+        logAction(shipmentById(expeditionId), action, details, operator);
+    };
+    const trackedUpdateShipment = async (id, updates) => {
+        await updateShipment(id, updates);
+        const what = 'statut' in updates ? `Statut → ${updates.statut}` : 'notes' in updates ? 'Notes modifiées' : 'Modification';
+        track(id, what, 'notes' in updates ? updates.notes : null);
+    };
+    const trackedAddItems = async (expeditionId, newItems) => {
+        const ok = await addItems(expeditionId, newItems);
+        track(expeditionId, 'Ajout', newItems.map(itemLabel).join(', '));
+        return ok;
+    };
+    const trackedRemoveItem = async (itemId) => {
+        const it = items.find(i => i.id === itemId);
+        await removeItem(itemId);
+        if (it) track(it.expedition_id, 'Retrait', itemLabel(it));
+    };
+    const trackedCreateColis = async (expeditionId, fields) => {
+        const c = await createColis(expeditionId, fields);
+        track(expeditionId, 'Colis créé', colisLabel(fields));
+        return c;
+    };
+    const trackedUpdateColis = async (colisId, updates) => {
+        const c = colis.find(x => x.id === colisId);
+        await updateColis(colisId, updates);
+        if (c) track(c.expedition_id, 'Colis modifié', colisLabel({ ...c, ...updates }));
+    };
+    const trackedDeleteColis = async (colisId) => {
+        const c = colis.find(x => x.id === colisId);
+        await deleteColis(colisId);
+        if (c) track(c.expedition_id, 'Colis supprimé', colisLabel(c));
+    };
+    const trackedToggleItem = async (colisId, itemId) => {
+        const c = colis.find(x => x.id === colisId);
+        const it = items.find(i => i.id === itemId);
+        const removing = (c?.item_ids || []).includes(itemId);
+        await toggleItemInColis(colisId, itemId);
+        if (c) track(c.expedition_id, removing ? 'Retiré du colis' : 'Mis en colis', `${itemLabel(it)} → ${colisLabel(c)}`);
+    };
 
     const liveShipment = useMemo(() => {
         if (!selectedShipment) return null;
@@ -1282,6 +1370,7 @@ export default function LogistiqueScreen({ projects, onUpdateProject, onBack }) 
 
     const handleValidate = async (id) => {
         await validateShipment(id, projects, onUpdateProject);
+        track(id, 'Expédition validée', null);
     };
 
     // ── Vue détail (full takeover, pas de tabs) ──
@@ -1293,15 +1382,18 @@ export default function LogistiqueScreen({ projects, onUpdateProject, onBack }) 
                 colisItems={colisForShipment(liveShipment.id)}
                 projects={projects}
                 onBack={handleBack}
-                onUpdateShipment={updateShipment}
-                onAddItems={addItems}
-                onRemoveItem={removeItem}
+                onUpdateShipment={trackedUpdateShipment}
+                onAddItems={trackedAddItems}
+                onRemoveItem={trackedRemoveItem}
                 onValidate={handleValidate}
-                onDelete={(id) => { deleteShipment(id); handleBack(); }}
-                onCreateColis={createColis}
-                onUpdateColis={updateColis}
-                onDeleteColis={deleteColis}
-                onToggleItem={toggleItemInColis}
+                onDelete={(id) => { track(id, 'Expédition supprimée', liveShipment.label || null); deleteShipment(id); handleBack(); }}
+                onCreateColis={trackedCreateColis}
+                onUpdateColis={trackedUpdateColis}
+                onDeleteColis={trackedDeleteColis}
+                onToggleItem={trackedToggleItem}
+                operator={operator}
+                onOperatorChange={setOperator}
+                fetchLogs={fetchLogs}
                 canEdit={canEdit}
                 initialProjectIds={initialProjectIds}
                 stocks={stocks || []}
@@ -1367,9 +1459,6 @@ export default function LogistiqueScreen({ projects, onUpdateProject, onBack }) 
                                     items={items}
                                     projects={projects}
                                     onSelect={handleSelect}
-                                    onDelete={deleteShipment}
-                                    onUpdateShipment={updateShipment}
-                                    canEdit={canEdit}
                                 />
                             )}
                         </div>
@@ -1397,7 +1486,7 @@ export default function LogistiqueScreen({ projects, onUpdateProject, onBack }) 
                             setView('detail');
                         }
                     }}
-                    onCreate={createShipment}
+                    onCreate={handleCreate}
                     projects={projects}
                 />
             )}

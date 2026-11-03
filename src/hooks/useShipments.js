@@ -163,6 +163,29 @@ export const useShipments = () => {
         await updateColis(colisId, { item_ids: next });
     };
 
+    // ── Journal (qui a fait quoi) ───────────────────────────────────────────
+    // Tablettes atelier sur un compte partagé : chaque action porte l'opérateur saisi.
+    // Un échec d'écriture du journal ne bloque jamais l'action elle-même.
+    const logAction = async (shipment, action, details, operateur) => {
+        if (!shipment?.id) return;
+        try {
+            const { error } = await supabase.from('expedition_logs').insert([{
+                expedition_id: shipment.id, reference: shipment.reference || null,
+                action, details: details || null, operateur: String(operateur || '').trim() || '—',
+            }]);
+            if (error) console.warn('Journal logistique non écrit :', error.message);
+        } catch (e) {
+            console.warn('Journal logistique non écrit :', e);
+        }
+    };
+
+    const fetchLogs = async (expeditionId) => {
+        const { data, error } = await supabase.from('expedition_logs')
+            .select('*').eq('expedition_id', expeditionId).order('created_at', { ascending: false });
+        if (error) throw error;
+        return data || [];
+    };
+
     // ── Helpers ─────────────────────────────────────────────────────────────
     const itemsForShipment = (shipmentId) => items.filter(i => i.expedition_id === shipmentId);
     const colisForShipment = (shipmentId) => colis.filter(c => c.expedition_id === shipmentId).sort((a, b) => a.ordre - b.ordre);
@@ -191,6 +214,8 @@ export const useShipments = () => {
         itemsForShipment,
         colisForShipment,
         shipmentForRow,
+        logAction,
+        fetchLogs,
         refresh: fetchAll,
     };
 };

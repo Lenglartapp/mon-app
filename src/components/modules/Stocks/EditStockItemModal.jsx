@@ -9,7 +9,8 @@ import { DA_FIELD_SX } from '../../../lib/constants/daStyles';
 import { LOC_A_COMPLETER, splitLocations } from '../../../lib/inventory/stockFields';
 import { STOCK_STATUS, stockStatusOf } from '../../../lib/inventory/stockStatus';
 import LocationInput from './LocationInput';
-import OperatorInput from './OperatorInput';
+import OperatorInput from '../../ui/OperatorInput';
+import { rememberOperator } from '../../../hooks/useOperators';
 
 // Édition d'un article de stock au double-clic — sert aussi à COMPLÉTER une réception Odoo :
 // détail des pièces (métrage seul) + UN emplacement pour toute la réception (éventuellement
@@ -78,6 +79,7 @@ export default function EditStockItemModal({ item, zones = [], projects = [], ca
     if (isToComplete && location !== LOC_A_COMPLETER) reasons.push(`Complément réception : ${cleanPieces.length} pièce(s) → ${location}`);
     if (statusChanged) reasons.push(`Statut ${stockStatus ? `forcé : ${STOCK_STATUS[stockStatus].label}` : 'remis en automatique'}`);
     const reason = reasons.length ? reasons.join(' · ') : undefined;
+    rememberOperator(operator);
     await onSave(patch, operator.trim(), reason);
     setSaving(false);
   };
