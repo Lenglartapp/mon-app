@@ -10,6 +10,8 @@
 //   deactivate    { userId }               → profil archivé + connexion bloquée (réversible)
 //   reactivate    { userId }
 //   invite        { email, firstName, lastName, role, redirectTo }
+//   create        { email, firstName, lastName, role, password } → compte prêt sans e-mail envoyé
+//                 (identifiant au format e-mail, sans boîte réelle : ex. compte partagé des tablettes)
 
 import { getSupabaseAdmin } from '../_supabaseAdmin.js';
 import { getRequestUser } from '../_auth.js';
@@ -99,6 +101,26 @@ export default async function handler(req, res) {
           id, first_name: String(firstName).trim(), last_name: String(lastName || '').trim() || null, role,
         }, { onConflict: 'id' });
         if (pErr) throw pErr;
+        return res.status(200).json({ ok: true, userId: id });
+      }
+
+      case 'create': {
+        const mail = String(email || '').trim().toLowerCase();
+        if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(mail)) throw new Error('Identifiant invalide : il doit avoir la forme nom@domaine.ext (ex. tablette@lenglart.local).');
+        if (!ROLES.has(role)) throw new Error('Rôle inconnu.');
+        if (!String(firstName || '').trim()) throw new Error('Prénom requis.');
+        if (!password || String(password).length < 8) throw new Error('Le mot de passe doit faire au moins 8 caractères.');
+        // email_confirm : compte utilisable tout de suite, aucun e-mail n'est envoyé.
+        const { data, error } = await sb.auth.admin.createUser({ email: mail, password: String(password), email_confirm: true });
+        if (error) throw error;
+        const id = data?.user?.id;
+        const { error: pErr } = await sb.from('profiles').upsert({
+          id, first_name: String(firstName).trim(), last_name: String(lastName || '').trim() || null, role,
+        }, { onConflict: 'id' });
+        if (pErr) {
+          await sb.auth.admin.deleteUser(id); // pas de compte de connexion sans profil
+          throw pErr;
+        }
         return res.status(200).json({ ok: true, userId: id });
       }
 
