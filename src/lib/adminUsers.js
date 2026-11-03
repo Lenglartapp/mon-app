@@ -20,5 +20,8 @@ export const setUserRole = (userId, role) => call('setRole', { userId, role });
 export const setUserPassword = (userId, password) => call('setPassword', { userId, password });
 export const deactivateUser = (userId) => call('deactivate', { userId });
 export const reactivateUser = (userId) => call('reactivate', { userId });
+// Compte créé avec son mot de passe, sans e-mail envoyé (identifiant sans boîte réelle).
+export const createUserWithPassword = ({ email, firstName, lastName, role, password }) =>
+  call('create', { email, firstName, lastName, role, password });
 export const inviteUser = ({ email, firstName, lastName, role }) =>
   call('invite', { email, firstName, lastName, role, redirectTo: `${window.location.origin}/` });

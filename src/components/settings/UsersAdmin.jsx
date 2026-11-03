@@ -10,7 +10,7 @@ import { ToolbarButton, ToolbarSearch, TonePill, StatusSelectPill } from "../ui/
 import { DA_FIELD_SX, TABLE_FRAME_STYLE } from "../../lib/constants/daStyles";
 import { ROLE_INFO, roleOf } from "../../lib/constants/roleLabels";
 import {
-  listAccounts, setUserRole, setUserPassword, deactivateUser, reactivateUser, inviteUser,
+  listAccounts, setUserRole, setUserPassword, deactivateUser, reactivateUser, inviteUser, createUserWithPassword,
 } from "../../lib/adminUsers";
 
 const ROLE_TONES = Object.fromEntries(Object.entries(ROLE_INFO).map(([k, v]) => [k, v.tone]));
@@ -67,27 +67,55 @@ function InviteDialog({ onClose, onDone }) {
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("pose");
+  // invite : e-mail pour choisir son mot de passe ; password : compte prêt, sans e-mail (pas de boîte réelle)
+  const [mode, setMode] = useState("invite");
+  const [password, setPassword] = useState(genPassword);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const withPassword = mode === "password";
   const send = async () => {
     setSaving(true); setError("");
-    try { await inviteUser({ email, firstName, lastName, role }); onDone(email); }
+    try {
+      if (withPassword) await createUserWithPassword({ email, firstName, lastName, role, password });
+      else await inviteUser({ email, firstName, lastName, role });
+      onDone(email, withPassword);
+    }
     catch (e) { setError(e.message); setSaving(false); }
   };
+  const ready = !saving && firstName.trim() && email.trim() && (!withPassword || password.length >= 8);
   return (
-    <DaDialog open onClose={onClose} title="Inviter un utilisateur" subtitle="Un e-mail lui permettra de choisir son mot de passe."
+    <DaDialog open onClose={onClose} title="Ajouter un utilisateur"
+      subtitle={withPassword ? "Compte prêt tout de suite, sans e-mail : transmettez l'identifiant et le mot de passe." : "Un e-mail lui permettra de choisir son mot de passe."}
       footer={(
         <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
           <ToolbarButton onClick={onClose}>Annuler</ToolbarButton>
-          <ToolbarButton primary onClick={send} disabled={saving || !firstName.trim() || !email.trim()}>{saving ? "Envoi…" : "Envoyer l'invitation"}</ToolbarButton>
+          <ToolbarButton primary onClick={send} disabled={!ready}>
+            {saving ? (withPassword ? "Création…" : "Envoi…") : (withPassword ? "Créer le compte" : "Envoyer l'invitation")}
+          </ToolbarButton>
         </div>
       )}>
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          <ChoicePill active={!withPassword} onClick={() => setMode("invite")}>Invitation par e-mail</ChoicePill>
+          <ChoicePill active={withPassword} onClick={() => setMode("password")}>Mot de passe défini ici (sans e-mail)</ChoicePill>
+        </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
           <DaField label="Prénom"><TextField fullWidth size="small" value={firstName} onChange={(e) => setFirstName(e.target.value)} sx={DA_FIELD_SX} autoFocus /></DaField>
           <DaField label="Nom"><TextField fullWidth size="small" value={lastName} onChange={(e) => setLastName(e.target.value)} sx={DA_FIELD_SX} /></DaField>
         </div>
-        <DaField label="E-mail"><TextField fullWidth size="small" type="email" value={email} onChange={(e) => setEmail(e.target.value)} sx={DA_FIELD_SX} /></DaField>
+        <DaField label={withPassword ? "Identifiant de connexion" : "E-mail"}
+          hint={withPassword ? "Au format e-mail, sans boîte réelle (ex. tablette@lenglart.local). Aucun e-mail n'est envoyé ; en cas d'oubli, un admin redéfinit le mot de passe (icône clé)." : undefined}>
+          <TextField fullWidth size="small" type="email" value={email} onChange={(e) => setEmail(e.target.value)} sx={DA_FIELD_SX} placeholder={withPassword ? "tablette@lenglart.local" : undefined} />
+        </DaField>
+        {withPassword && (
+          <DaField label="Mot de passe" hint="Au moins 8 caractères.">
+            <div style={{ display: "flex", gap: 8 }}>
+              <TextField fullWidth size="small" value={password} onChange={(e) => setPassword(e.target.value)} sx={DA_FIELD_SX} />
+              <button type="button" title="Générer un autre" style={{ ...iconBtn, width: 40, height: 40 }} onClick={() => setPassword(genPassword())}><RefreshCw size={16} /></button>
+              <button type="button" title="Copier" style={{ ...iconBtn, width: 40, height: 40 }} onClick={() => navigator.clipboard?.writeText(password)}><Copy size={16} /></button>
+            </div>
+          </DaField>
+        )}
         <DaField label="Rôle">
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
             {Object.entries(ROLE_INFO).map(([k, v]) => <ChoicePill key={k} active={role === k} onClick={() => setRole(k)}>{v.label}</ChoicePill>)}
@@ -162,7 +190,7 @@ export default function UsersAdmin({ users = [], currentUserId }) {
         <ChoicePill active={show === "archived"} onClick={() => setShow("archived")}>Désactivés ({nArchived})</ChoicePill>
         <span style={{ fontSize: 13, color: flash ? "var(--df-primary)" : "var(--df-x-B42318)", fontWeight: 600 }}>{flash || accountsError}</span>
         <div style={{ marginLeft: "auto" }}>
-          <ToolbarButton primary icon={<UserPlus size={16} />} onClick={() => setInviting(true)}>Inviter un utilisateur</ToolbarButton>
+          <ToolbarButton primary icon={<UserPlus size={16} />} onClick={() => setInviting(true)}>Ajouter un utilisateur</ToolbarButton>
         </div>
       </div>
 
@@ -219,9 +247,11 @@ export default function UsersAdmin({ users = [], currentUserId }) {
 
       {pwdUser && <PasswordDialog user={pwdUser} onClose={() => setPwdUser(null)} />}
       {inviting && (
-        <InviteDialog onClose={() => setInviting(false)} onDone={(email) => {
+        <InviteDialog onClose={() => setInviting(false)} onDone={(email, created) => {
           setInviting(false);
-          setFlash(`Invitation envoyée à ${email}. La personne apparaîtra ici après rechargement de la page.`);
+          setFlash(created
+            ? `Compte ${email} créé : il peut se connecter tout de suite. Il apparaîtra ici après rechargement de la page.`
+            : `Invitation envoyée à ${email}. La personne apparaîtra ici après rechargement de la page.`);
           loadAccounts();
         }} />
       )}
