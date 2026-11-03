@@ -5,11 +5,6 @@ import { frFR } from '@mui/x-data-grid/locales';
 import Chip from '@mui/material/Chip';
 import IconButton from '@mui/material/IconButton';
 import HistoryIcon from '@mui/icons-material/History';
-import Dialog from '@mui/material/Dialog';
-import DialogTitle from '@mui/material/DialogTitle';
-import List from '@mui/material/List';
-import ListItemButton from '@mui/material/ListItemButton';
-import ListItemText from '@mui/material/ListItemText';
 import ProductHistoryModal from './ProductHistoryModal';
 import EditStockItemModal from './EditStockItemModal';
 import { useMemo } from 'react';
@@ -27,7 +22,7 @@ import FilterPanel, { isConditionActive, evaluateCondition } from '../../FilterP
 import FitGridFrame from '../../ui/FitGridFrame';
 import { DATAGRID_DA_SX } from '../../../lib/constants/daStyles';
 import { LOC_A_COMPLETER, splitLocations } from '../../../lib/inventory/stockFields';
-import { stockStatusOf, stockStatusCodeOf, stockGroupOf, STOCK_GROUPS } from '../../../lib/inventory/stockStatus';
+import { itemStatusOf, itemStatusCodeOf, itemGroupOf, STOCK_GROUPS } from '../../../lib/inventory/stockStatus';
 
 // Recherche par catégorie : la barre propose où chercher (« Partout » = toutes ces colonnes).
 const SEARCH_CATEGORIES = [
@@ -51,7 +46,7 @@ const matchesSearch = (item, key, text) => {
 const TOTALS_STORAGE_KEY = 'df.stock.inventory.totals';
 const readTotals = () => { try { return JSON.parse(localStorage.getItem(TOTALS_STORAGE_KEY)) || {}; } catch { return {}; } };
 
-export default function StockInventoryTab({ inventory, projects = [], movements = [], onBulkMovement, onImportStock, onUpdateItem, zones = [], embedded = false, preset = null }) {
+export default function StockInventoryTab({ inventory, projects = [], movements = [], onBulkMovement, onImportStock, onUpdateItem, zones = [], embedded = false, preset = null, canEditStatus = false }) {
     const [search, setSearch] = useState('');
     const [searchField, setSearchField] = useState(SEARCH_ALL);
     const [totals, setTotals] = useState(readTotals);
@@ -74,17 +69,11 @@ export default function StockInventoryTab({ inventory, projects = [], movements 
     const [historyOpen, setHistoryOpen] = useState(false);
     const [historyProduct, setHistoryProduct] = useState(null);
     const [editItem, setEditItem] = useState(null);
-    const [pickSources, setPickSources] = useState(null); // ligne groupée → choix de l'entrée à éditer
 
+    // Une ligne = une entrée de stock : double-clic → sa fiche (sinon, lecture seule, son historique)
     const handleRowDoubleClick = (params) => {
-        const src = params.row._sourceItems || [];
-        // Article simple (une seule entrée sous-jacente) → édition ; plusieurs → choisir laquelle
-        if (src.length === 1 && onUpdateItem) {
-            setEditItem(src[0]);
-            return;
-        }
-        if (src.length > 1 && onUpdateItem) {
-            setPickSources(src);
+        if (onUpdateItem) {
+            setEditItem(params.row._item);
             return;
         }
         setHistoryProduct(params.row);
@@ -98,6 +87,7 @@ export default function StockInventoryTab({ inventory, projects = [], movements 
         { key: 'TODO', label: 'Réservé' },
         { key: 'IN_PROGRESS', label: 'En cours' },
         { key: 'DONE', label: 'Reliquat' },
+        { key: 'SAV', label: 'SAV' },
         { key: 'ARCHIVED', label: 'Stock mort' },
         { key: 'LIBRE', label: 'Stock libre' }
     ];
@@ -134,7 +124,7 @@ export default function StockInventoryTab({ inventory, projects = [], movements 
             field: 'location',
             headerName: 'Emplacement',
             width: 160,
-            renderCell: (params) => <LocationChips value={params.value} breakdown={params.row.locBreakdown} unit={params.row.unit} />
+            renderCell: (params) => <LocationChips value={params.value} unit={params.row.unit} />
         },
         {
             field: 'project',
@@ -149,7 +139,7 @@ export default function StockInventoryTab({ inventory, projects = [], movements 
             headerName: 'Statut',
             width: 140,
             renderCell: (params) => {
-                const s = stockStatusOf(params.row.project, projects);
+                const s = itemStatusOf(params.row, projects);
                 return <TonePill tone={s.tone}>{s.label}</TonePill>;
             }
         },
@@ -198,7 +188,7 @@ export default function StockInventoryTab({ inventory, projects = [], movements 
         qty: { numeric: true, unitField: 'unit' },
         laize: { numeric: true },
         project: { getValue: (row) => row.project || '' },
-        stockStatus: { getValue: (row) => stockStatusOf(row.project, projects).label },
+        stockStatus: { getValue: (row) => itemStatusOf(row, projects).label },
     };
 
     const activeConditions = filterConditions.filter(isConditionActive);
@@ -207,7 +197,7 @@ export default function StockInventoryTab({ inventory, projects = [], movements 
         if (item.qty === 0) return false; // quantités nulles masquées
         if (onlyToComplete && !splitLocations(item.location).includes(LOC_A_COMPLETER)) return false;
         if (activeConditions.length === 0) return true;
-        const flat = { ...item, project: item.project || '', status: stockStatusCodeOf(item.project, projects), group: stockGroupOf(item.project, projects) };
+        const flat = { ...item, project: item.project || '', status: itemStatusCodeOf(item, projects), group: itemGroupOf(item, projects) };
         const test = (cond) => {
             // Emplacement : un article peut être à plusieurs endroits (« ATELIER, B3 ») → « est » = l'un d'eux
             if (cond.field === 'location' && (cond.operator === 'equals' || cond.operator === 'notEqual')) {
@@ -225,49 +215,22 @@ export default function StockInventoryTab({ inventory, projects = [], movements 
     };
     const baseRows = inventory.filter(passesFilters);
     const filteredRows = baseRows.filter(item => matchesSearch(item, searchField, search));
-    // Nombre de lignes du tableau (articles regroupés par produit + réf.) trouvées dans une catégorie
-    const searchCount = (key, text) => new Set(baseRows.filter(item => matchesSearch(item, key, text)).map(i => `${i.product}-${i.ref || ''}`)).size;
+    // Nombre de lignes du tableau trouvées dans une catégorie
+    const searchCount = (key, text) => baseRows.filter(item => matchesSearch(item, key, text)).length;
 
-    const groupedRows = useMemo(() => {
-        const groups = {};
-        filteredRows.forEach(item => {
-            const key = `${item.product}-${item.ref || ''}`;
-            const itemPieces = Array.isArray(item.pieces) ? item.pieces : [];
-            const pieceLocs = itemPieces.map(p => p.location).filter(Boolean);
-            
-            if (!groups[key]) {
-                groups[key] = {
-                    ...item,
-                    id: key,
-                    allLocations: new Set([...splitLocations(item.location), ...pieceLocs]),
-                    allProjects: new Set([item.project].filter(Boolean)),
-                    allPieces: [...itemPieces],
-                    _sourceItems: [item]
-                };
-            } else {
-                groups[key].qty += item.qty;
-                splitLocations(item.location).forEach(l => groups[key].allLocations.add(l));
-                pieceLocs.forEach(l => groups[key].allLocations.add(l));
-                if (item.project) groups[key].allProjects.add(item.project);
-                groups[key].allPieces = [...groups[key].allPieces, ...itemPieces];
-                groups[key]._sourceItems.push(item);
-            }
-        });
-        
-        // Ordre : réceptions « À compléter » d'abord, puis par emplacement (A1, A2… A10, B1).
-        return Object.values(groups).map(g => ({
-            ...g,
-            location: Array.from(g.allLocations).sort().join(', '),
-            // Répartition en mètres par emplacement quand l'article est à plusieurs endroits (ex. ATELIER + B3)
-            locBreakdown: (() => {
-                const m = new Map();
-                g._sourceItems.forEach(it => { const k = it.location || ''; m.set(k, (m.get(k) || 0) + Number(it.qty || 0)); });
-                return m.size > 1 ? [...m].map(([loc, qty]) => ({ loc, qty: Math.round(qty * 100) / 100 })) : null;
-            })(),
-            project: Array.from(g.allProjects).sort().join(', '),
-            pieces: g.allPieces
-        })).sort(stockSortCompare);
-    }, [filteredRows]);
+    // Une ligne = une entrée de stock (une réception, une affectation) : deux entrées de la même
+    // référence restent séparées (autre dossier, autre bain…). Seules les pièces d'une même
+    // entrée sont ensemble. Anciens articles rangés « par pièce » : leurs emplacements remontent.
+    // Ordre : réceptions « À compléter » d'abord, puis par emplacement (A1, A2… A10, B1).
+    const rows = useMemo(() => filteredRows.map(item => {
+        const pieceLocs = (Array.isArray(item.pieces) ? item.pieces : []).map(p => p.location).filter(Boolean);
+        return {
+            ...item,
+            project: item.project || '',
+            location: [...new Set([...splitLocations(item.location), ...pieceLocs])].sort().join(', '),
+            _item: item,
+        };
+    }).sort(stockSortCompare), [filteredRows]);
 
     return (
         <Box>
@@ -330,7 +293,7 @@ export default function StockInventoryTab({ inventory, projects = [], movements 
                     allItems={inventory}
                     shownItems={filteredRows}
                     filtered={!!(search || activeConditions.length || onlyToComplete)}
-                    statusOf={(it) => stockStatusOf(it.project, projects).label}
+                    statusOf={(it) => itemStatusOf(it, projects).label}
                 />
             )}
 
@@ -394,7 +357,7 @@ export default function StockInventoryTab({ inventory, projects = [], movements 
                 (en portrait on ne voyait que 7 lignes, avec un grand vide dessous). */}
             <FitGridFrame>
                 <DataGrid
-                    rows={groupedRows}
+                    rows={rows}
                     columns={columns}
                     density="comfortable"
                     disableSelectionOnClick
@@ -407,29 +370,13 @@ export default function StockInventoryTab({ inventory, projects = [], movements 
                 />
             </FitGridFrame>
 
-            {/* CHOIX DE L'ENTRÉE (ligne regroupant plusieurs articles) */}
-            {pickSources && (
-                <Dialog open onClose={() => setPickSources(null)} maxWidth="xs" fullWidth>
-                    <DialogTitle>Quelle entrée éditer ?</DialogTitle>
-                    <List dense sx={{ pb: 2 }}>
-                        {pickSources.map(it => (
-                            <ListItemButton key={it.id} onClick={() => { setPickSources(null); setEditItem(it); }}>
-                                <ListItemText
-                                    primary={`${it.qty} ${it.unit || ''} — ${it.project || 'Stock libre'}`}
-                                    secondary={splitLocations(it.location).join(', ') || 'Sans emplacement'}
-                                    secondaryTypographyProps={splitLocations(it.location).includes(LOC_A_COMPLETER) ? { sx: { color: 'var(--df-chip-owner)', fontWeight: 700 } } : undefined}
-                                />
-                            </ListItemButton>
-                        ))}
-                    </List>
-                </Dialog>
-            )}
-
             {/* HISTORY MODAL */}
             {editItem && (
                 <EditStockItemModal
                     item={editItem}
                     zones={zones}
+                    projects={projects}
+                    canEditStatus={canEditStatus}
                     onClose={() => setEditItem(null)}
                     onSave={async (patch, operator, reason) => {
                         const r = await onUpdateItem(editItem.id, patch, { operator, reason });

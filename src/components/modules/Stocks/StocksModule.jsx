@@ -33,6 +33,8 @@ export default function StocksModule({
 }) {
     const { currentUser } = useAuth();
     const canEdit = can(currentUser, 'inventory.edit');
+    // Statut du stock forcé à la main : admins seulement (aucun autre rôle n'a cette permission)
+    const canEditStatus = can(currentUser, 'inventory.status');
     const { zones } = useWarehouseZones();
     const [tabIndex, setTabIndex] = useState(0);
     // Stock ouvert depuis la Ventilation du stock : filtre + tri appliqués une seule fois
@@ -152,6 +154,7 @@ export default function StocksModule({
                             onUpdateItem={onUpdateItem}
                             zones={zones}
                             preset={stockPreset}
+                            canEditStatus={canEditStatus}
                         />
                     )}
                     {tabIndex === 3 && (
