@@ -7,6 +7,7 @@ import { DaField, ChoicePill } from '../../ui/DaForm';
 import { TonePill } from '../../ui/ToolbarControls';
 import { DA_FIELD_SX } from '../../../lib/constants/daStyles';
 import { LOC_A_COMPLETER, splitLocations } from '../../../lib/inventory/stockFields';
+import { STOCK_STATUS, stockStatusOf } from '../../../lib/inventory/stockStatus';
 import LocationInput from './LocationInput';
 import OperatorInput from './OperatorInput';
 
@@ -18,7 +19,7 @@ import OperatorInput from './OperatorInput';
 const CATEGORIES = ['Tissu', 'Rail', 'Consommable', 'Mécanisme', 'Divers'];
 const round2 = (n) => Math.round(n * 100) / 100;
 
-export default function EditStockItemModal({ item, zones = [], onClose, onSave }) {
+export default function EditStockItemModal({ item, zones = [], projects = [], canEditStatus = false, onClose, onSave }) {
   const isToComplete = splitLocations(item.location).includes(LOC_A_COMPLETER);
   const received = item.qty_recue ?? (isToComplete ? item.qty : null);
   const itemPieces = Array.isArray(item.pieces) ? item.pieces : [];
@@ -31,6 +32,10 @@ export default function EditStockItemModal({ item, zones = [], onClose, onSave }
   const [laize, setLaize] = useState(item.laize || '');
   const [unit, setUnit] = useState(item.unit || '');
   const [project, setProject] = useState(item.project || '');
+  // Statut forcé (admins) : '' = automatique, déduit du dossier affecté
+  const initialStatus = STOCK_STATUS[item.stock_status] ? item.stock_status : '';
+  const [stockStatus, setStockStatus] = useState(initialStatus);
+  const autoStatus = stockStatusOf(project, projects);
   // Emplacement de la réception. Anciens articles rangés « par pièce » : on remonte leurs emplacements.
   const [locations, setLocations] = useState(() => {
     const own = splitLocations(item.location).filter((l) => l !== LOC_A_COMPLETER);
@@ -66,9 +71,13 @@ export default function EditStockItemModal({ item, zones = [], onClose, onSave }
       category, laize: laize || null, project: project || null, location,
       qty: totalQty, unit: category === 'Tissu' ? 'ml' : (unit || null), pieces: cleanPieces,
     };
-    const reason = isToComplete && location !== LOC_A_COMPLETER
-      ? `Complément réception : ${cleanPieces.length} pièce(s) → ${location}`
-      : undefined;
+    // Le statut n'est envoyé que par un admin : une édition par un autre rôle n'y touche pas.
+    const statusChanged = canEditStatus && stockStatus !== initialStatus;
+    if (statusChanged) patch.stock_status = stockStatus || null;
+    const reasons = [];
+    if (isToComplete && location !== LOC_A_COMPLETER) reasons.push(`Complément réception : ${cleanPieces.length} pièce(s) → ${location}`);
+    if (statusChanged) reasons.push(`Statut ${stockStatus ? `forcé : ${STOCK_STATUS[stockStatus].label}` : 'remis en automatique'}`);
+    const reason = reasons.length ? reasons.join(' · ') : undefined;
     await onSave(patch, operator.trim(), reason);
     setSaving(false);
   };
@@ -138,6 +147,21 @@ export default function EditStockItemModal({ item, zones = [], onClose, onSave }
             </Stack>
             {field('Libellé produit', product, setProduct)}
             {field('Affectation (dossier)', project, setProject, { placeholder: 'Stock libre' })}
+            <DaField label="Statut">
+              {canEditStatus ? (
+                <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+                  <ChoicePill active={!stockStatus} onClick={() => setStockStatus('')}>Automatique ({autoStatus.label})</ChoicePill>
+                  {Object.entries(STOCK_STATUS).map(([code, st]) => (
+                    <ChoicePill key={code} active={stockStatus === code} onClick={() => setStockStatus(code)}>{st.label}</ChoicePill>
+                  ))}
+                </Stack>
+              ) : (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, fontSize: 13, color: 'var(--df-muted)' }} title="Modifiable par un admin">
+                  <TonePill tone={(STOCK_STATUS[stockStatus] || autoStatus).tone}>{(STOCK_STATUS[stockStatus] || autoStatus).label}</TonePill>
+                  {stockStatus ? 'forcé' : 'automatique'}
+                </Box>
+              )}
+            </DaField>
           </Stack>
         </Box>
 

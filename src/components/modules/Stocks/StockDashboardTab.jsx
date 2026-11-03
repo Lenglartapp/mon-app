@@ -8,10 +8,10 @@ import {
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine
 } from 'recharts';
 import { countRouleaux, rollsOf } from '../../../lib/warehouse/occupancy';
-import { STOCK_GROUPS, stockGroupOf } from '../../../lib/inventory/stockStatus';
+import { STOCK_GROUPS, itemGroupOf } from '../../../lib/inventory/stockStatus';
 
 // Couleurs de la Ventilation du stock (nuancier de la DA).
-const GROUP_COLORS = { reserved: '#1B3269', active: '#4A6DB0', dead: '#BB7051' };
+const GROUP_COLORS = { reserved: '#1B3269', active: '#4A6DB0', remnant: '#CEAB95', dead: '#BB7051' };
 
 const PALETTE_TO_ROULEAUX = 10;
 
@@ -76,7 +76,7 @@ export default function StockDashboardTab({ inventory = [], projects = [], movem
         inventory.forEach(item => {
             const rolls = rollsOf(item);
             if (!rolls) return;
-            const g = groups[stockGroupOf(item.project, projects)];
+            const g = groups[itemGroupOf(item, projects)];
             g.rolls += rolls;
             if (isMlUnit(item.unit)) g.ml += Number(item.qty) || 0;
         });
