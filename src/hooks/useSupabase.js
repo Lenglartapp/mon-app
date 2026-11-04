@@ -240,6 +240,10 @@ export const useProjects = () => {
             // Mapping CamelCase -> SnakeCase
             source_minute_id: project.sourceMinuteId || null,
 
+            // Un nouveau dossier démarre « À commencer » : sans ça, la base mettait son défaut
+            // (« En cours » en toutes lettres), affiché « À commencer » mais lu « En cours » par le stock.
+            status: project.status || 'TODO',
+
             // Les autres champs (budget, manager, notes, config) passent directement 
             // car ils ont le même nom ou sont gérés dynamiquement
         };
