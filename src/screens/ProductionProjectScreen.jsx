@@ -8,6 +8,8 @@ import MinuteGrid from "../components/MinuteGrid.jsx"; // Replaces DataTable
 import DashboardTiles from "../components/DashboardTiles.jsx";
 import { SoftBlock, Kpi, KpiGrid } from "../components/ui/SoftBlock";
 import ProjectActivityFeed from "../components/ProjectActivityFeed.jsx";
+import { RichTextToolbar } from "../components/ui/RichTextArea.jsx";
+import { useRichTextMarks } from "../hooks/useRichTextMarks";
 import EtiquettesSection from "../components/EtiquettesSection.jsx";
 import BPPPrintPortal from "../components/print/BPPPrintPortal.jsx";
 import MinutesScreen from "./MinutesScreen.jsx";
@@ -276,6 +278,8 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
 
   // --- LOGIQUE MUR & PHOTOS ---
   const [wallMsg, setWallMsg] = useState("");
+  const wallInputRef = useRef(null);
+  const wallMarks = useRichTextMarks(wallInputRef, wallMsg, setWallMsg);
   const [wallImg, setWallImg] = useState(null);
   const [isPinned, setIsPinned] = useState(false);
 
@@ -1276,11 +1280,12 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                       <input type="file" accept="image/*" hidden disabled={wallUploading} onChange={handleImageSelect} />
                     </label>
                     <textarea
+                      ref={wallInputRef}
                       placeholder="Écrire un message…"
                       value={wallMsg}
                       rows={Math.min(8, Math.max(1, (wallMsg || '').split('\n').length))}
                       onChange={(e) => setWallMsg(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); if (!wallUploading) handlePostMessage(); } }}
+                      onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); if (!wallUploading) handlePostMessage(); } else wallMarks.onKeyDown(e); }}
                       style={{ flex: 1, border: 'none', outline: 'none', resize: 'none', padding: '6px 0', fontSize: 14, lineHeight: 1.45, fontFamily: 'Roboto, system-ui, sans-serif', color: 'var(--df-ink-2)', background: 'transparent' }}
                     />
                     <button
@@ -1292,6 +1297,8 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                       Publier
                     </button>
                   </div>
+                  {/* Mise en forme : marques en clair (**gras**, __souligné__…), rendues dans le journal */}
+                  <RichTextToolbar onMark={wallMarks.applyMark} style={{ marginTop: 6 }} />
                   {wallImg && (
                     <div style={{ marginTop: 8, position: 'relative', display: 'inline-block' }}>
                       <img src={wallImg} alt="Aperçu" style={{ height: 72, borderRadius: 6, border: '1px solid var(--df-border)' }} />
