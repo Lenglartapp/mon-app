@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { X, Briefcase, Check, Calendar as CalendarIcon, Clock, ArrowRight, User, ChevronDown, Trash2, CheckCircle, BedDouble, Moon } from 'lucide-react';
+import { X, Briefcase, Check, Calendar as CalendarIcon, Clock, ArrowRight, User, ChevronDown, Trash2, CheckCircle, BedDouble, Moon, Wrench } from 'lucide-react';
 import { format, differenceInMinutes, addDays } from 'date-fns';
 import { ATELIER_HOURS_PER_DAY } from './constants';
 import {
@@ -22,6 +22,11 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
     const [description, setDescription] = useState('');
     const [decouche, setDecouche] = useState(false); // Pose : l'équipe dort sur place (nuit sur place)
     const [night, setNight] = useState(false); // Pose : intervention de nuit (fin le lendemain matin)
+    // SAV : temps de reprise. Compté dans le budget du dossier comme tout le reste ; la case
+    // sert à voir la part du SAV dans le consommé. Cochée d'office sur un nouveau bloc d'un
+    // dossier en statut SAV (jamais sur le dossier interne), tant qu'on n'y a pas touché.
+    const [sav, setSav] = useState(false);
+    const [savTouched, setSavTouched] = useState(false);
 
     // Dates & Heures
     const [startDate, setStartDate] = useState(format(new Date(), 'yyyy-MM-dd'));
@@ -120,6 +125,8 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
                 setEndTime(format(endDateObj, 'HH:mm'));
                 setDescription(eventToEdit.meta?.description || '');
                 setDecouche(!!eventToEdit.meta?.decouche);
+                setSav(!!eventToEdit.meta?.sav);
+                setSavTouched(true); // bloc existant : sa case ne bouge pas toute seule
                 setDurationHours(eventToEdit.meta?.durationHours ?? ATELIER_HOURS_PER_DAY);
             } else if (initialData) {
                 // Mode Création (Clic Cellule)
@@ -134,6 +141,8 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
                 setDescription('');
                 setDecouche(false);
                 setNight(false);
+                setSav(false);
+                setSavTouched(false);
                 setDurationHours(ATELIER_HOURS_PER_DAY);
             } else {
                 // Mode Création (Bouton Nouveau)
@@ -148,6 +157,8 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
                 setDescription('');
                 setDecouche(false);
                 setNight(false);
+                setSav(false);
+                setSavTouched(false);
                 setDurationHours(ATELIER_HOURS_PER_DAY);
             }
         }
@@ -169,6 +180,12 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
     const internalProject = findInternalProject(projects);
     const showInternalOption = !isAbsence && !filteredProjects.some(isInternalProject);
     const isInternalSelected = isInternalProject(selectedProject);
+
+    // Nouveau bloc : case SAV cochée d'office si le dossier choisi est en statut SAV.
+    useEffect(() => {
+        if (eventToEdit || savTouched) return;
+        setSav(selectedProject?.status === 'SAV' && !isInternalProject(selectedProject));
+    }, [selectedProject, eventToEdit, savTouched]);
     const chapterSuggestions = useMemo(() => {
         const q = normalizeChapter(chapter).toLowerCase();
         return getActiveChapters(internalProject)
@@ -239,6 +256,7 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
                 durationHours: isHourMode ? parseFloat(durationHours) || ATELIER_HOURS_PER_DAY : null,
                 description,
                 decouche: selectedGroup === 'pose' ? decouche : false, // découché : pertinent pour la pose
+                sav,
                 night: selectedGroup === 'pose' ? night : false,
                 status: eventToEdit?.meta?.status || 'pending', // Preserves status or defaults to pending
                 type: allMembers.find(m => m.id === selectedResources[0])?.group || 'default'
@@ -363,6 +381,21 @@ const EventModal = ({ isOpen, onClose, onSave, onValidate, onDelete, projects = 
                                         </div>
                                     )}
                                 </div>
+                            )}
+
+                            {/* SAV : temps de reprise (compté dans le budget du dossier) */}
+                            {!isAbsence && selectedProject && (
+                                <label style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 12, padding: '10px 12px', borderRadius: 8, border: `1px solid ${sav ? '#F59E0B' : 'var(--df-border)'}`, background: sav ? 'var(--df-chip-adv-bg)' : 'var(--df-bg)', cursor: readOnly ? 'default' : 'pointer' }}>
+                                    <input
+                                        type="checkbox"
+                                        checked={sav}
+                                        disabled={readOnly}
+                                        onChange={(e) => { setSav(e.target.checked); setSavTouched(true); }}
+                                        style={{ width: 16, height: 16, cursor: readOnly ? 'default' : 'pointer', accentColor: '#F59E0B' }}
+                                    />
+                                    <Wrench size={18} color={sav ? '#B45309' : 'var(--df-muted)'} />
+                                    <span style={{ fontSize: 13, fontWeight: 600, color: sav ? '#B45309' : 'var(--df-text-2)' }}>SAV — reprise</span>
+                                </label>
                             )}
 
                             {/* SYNTHÈSE BUDGET POSE */}

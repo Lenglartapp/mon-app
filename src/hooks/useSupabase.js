@@ -12,6 +12,7 @@ import { pickItemMeta } from '../lib/inventory/stockFields';
 import { fetchProjectNames, projectIndex, projectIdOf, withCurrentProjectName } from '../lib/stock/projectLink';
 import { createCoalescedWriter } from '../lib/coalescedWriter';
 import { cleanPendingPhotosForSave, applyPhotoToRows, PHOTOS_SYNCED_EVENT } from '../lib/photos';
+import { syncProjectSavStatus } from '../lib/projectSavStatus';
 
 // RÉSILIENCE — Fusion "liste légère" → état en mémoire.
 // La liste ne contient que des colonnes légères. La REMPLACER telle quelle effaçait
@@ -299,6 +300,18 @@ export const useProjects = () => {
     });
 
     const updateProject = async (id, updates) => {
+        // 0. Statut « SAV » automatique : suit les statuts des lignes (une seule règle, ici,
+        //    par où passe toute sauvegarde des lignes — écran, tablette, mobile).
+        //    `config` n'est connu qu'une fois le détail du projet chargé (jamais dans la liste
+        //    légère) : sans lui, on ne touche à rien pour ne pas écraser la configuration.
+        if (updates && Array.isArray(updates.rows)) {
+            const current = projectsRef.current.find(p => p.id === id);
+            if (current && current.config !== undefined) {
+                const savPatch = syncProjectSavStatus(current, updates.rows);
+                if (savPatch) updates = { ...updates, ...savPatch };
+            }
+        }
+
         // 1. Optimistic UI (Mise à jour immédiate)
         setProjects(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
 

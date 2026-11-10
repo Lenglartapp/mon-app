@@ -226,7 +226,10 @@ const emptyServices = () => ({ prepa: 0, conf: 0, pose: 0 });
 
 /**
  * Heures par service pour un projet.
- * @returns { budget, consumed, planned, remaining } — chacun { prepa, conf, pose }
+ * @returns { budget, consumed, planned, remaining, sav } — chacun { prepa, conf, pose }
+ *   sav = { consumed, planned } : la part SAV (blocs / cartes avec meta.sav) DÉJÀ COMPRISE
+ *   dans consumed / planned. Le SAV reste dans le budget du dossier (une reprise fait partie
+ *   du coût réel du projet) ; ce détail sert seulement à l'afficher (« dont SAV »).
  */
 // opts.plannedFrom (Date) : ne comptabilise dans `planned` que les créneaux dont la date ≥ plannedFrom.
 // Sert à la SURPLANIFICATION « futur uniquement » (le passé planifié-non-réalisé ne doit pas gonfler
@@ -247,6 +250,7 @@ export const computeProjectHours = (project, events, opts = {}) => {
 
   const consumed = emptyServices();
   const planned = emptyServices();
+  const sav = { consumed: emptyServices(), planned: emptyServices() };
 
   // Base importée (projets repris en cours) → comptée comme consommée
   const imp = project?.consumed_import || {};
@@ -262,7 +266,11 @@ export const computeProjectHours = (project, events, opts = {}) => {
     // pas de la répartition par personne. Chaque carte porte ses heures dans
     // meta.budgetHours ; on les cumule (toutes semaines) dans planned.conf.
     if (evt.resourceId === 'backlog_confection' || evt.meta?.isBacklogMaster) {
-      if (isCountedPlan(evt)) planned.conf += Number(evt.meta?.budgetHours) || 0;
+      if (isCountedPlan(evt)) {
+        const h = Number(evt.meta?.budgetHours) || 0;
+        planned.conf += h;
+        if (evt.meta?.sav) sav.planned.conf += h;
+      }
       return;
     }
 
@@ -274,11 +282,15 @@ export const computeProjectHours = (project, events, opts = {}) => {
       // Consommé (réalisé) : inchangé, tous services — créneaux validés par personne.
       // (Le consommé compte quelle que soit la date : c'est du réalisé.)
       consumed[svc] += h;
+      if (evt.meta?.sav) sav.consumed[svc] += h;
     } else if (svc !== 'conf') {
       // Planifié pose/prépa : inchangé (répartition par personne).
       // Planifié conf : ignoré ici — il provient du Programme semaine (ci-dessus),
       // sinon on compterait deux fois les mêmes heures.
-      if (isCountedPlan(evt)) planned[svc] += h;
+      if (isCountedPlan(evt)) {
+        planned[svc] += h;
+        if (evt.meta?.sav) sav.planned[svc] += h;
+      }
     }
   });
 
@@ -288,5 +300,5 @@ export const computeProjectHours = (project, events, opts = {}) => {
     pose: budget.pose - consumed.pose,
   };
 
-  return { budget, consumed, planned, remaining };
+  return { budget, consumed, planned, remaining, sav };
 };

@@ -339,9 +339,12 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
 
   // --- CALCUL REALISÉ (Temps Réel) ---
   // Source unique partagée avec l'Assistant Programmation (lib/projectMetrics).
-  const realized = useMemo(() => {
-    if (!project || !events) return { prepa: 0, conf: 0, pose: 0 };
-    return computeProjectHours(project, events).consumed;
+  // `realizedSav` : part SAV (reprises) déjà comprise dans le réalisé — affichée « dont SAV ».
+  const { realized, realizedSav } = useMemo(() => {
+    const none = { prepa: 0, conf: 0, pose: 0 };
+    if (!project || !events) return { realized: none, realizedSav: { consumed: none, planned: none } };
+    const h = computeProjectHours(project, events);
+    return { realized: h.consumed, realizedSav: h.sav };
   }, [events, project]);
 
   const [budgetOpen, setBudgetOpen] = useState(false);
@@ -1233,6 +1236,12 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                   const budgetVal = Number(project.budget?.[key] || 0);
                   const realVal = realized[key] || 0;
                   const fmtH = (n) => String(Math.round(n * 10) / 10).replace('.', ',');
+                  // SAV : compris dans le réalisé et le budget, seulement détaillé ici.
+                  const savDone = realizedSav.consumed[key] || 0;
+                  const savPlanned = realizedSav.planned[key] || 0;
+                  const savSub = (savDone > 0 || savPlanned > 0)
+                    ? `dont SAV : ${fmtH(savDone)} h${savPlanned > 0 ? ` · ${fmtH(savPlanned)} h planifiées` : ''}`
+                    : null;
                   return (
                     <Kpi
                       key={key}
@@ -1241,6 +1250,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                       unit="h"
                       total={`${fmtH(budgetVal)} h`}
                       pct={budgetVal > 0 ? (realVal / budgetVal) * 100 : null}
+                      sub={savSub}
                     />
                   );
                 })}
