@@ -1,7 +1,9 @@
 // src/components/EtiquetteRideauxCard.jsx
-import React, { useState } from "react";
+import React, { useContext, useState } from "react";
 import { DEFAULT_HEADER_COLOR, getHeaderStyles } from "../lib/etiquetteColors.js";
 import { RIDEAUX_GETTERS } from "../lib/schemas/production/rideaux.js";
+import { denomination } from "../lib/etiquettes/denomination.js";
+import { MultiZonePiecesContext } from "../lib/etiquettes/denominationContext.js";
 
 // ─── Champs disponibles sur l'étiquette (ordre + sections) ───────────────────
 export const ETIQUETTE_RIDEAUX_FIELDS = [
@@ -275,10 +277,8 @@ export default function EtiquetteRideauxCard({ row, projectName, index, total, o
   const hiddenFields = Array.isArray(row?.etiquette_hidden_fields) ? row.etiquette_hidden_fields : [];
   const show = (key) => !hiddenFields.includes(key);
 
-  const zone = v(row, "zone", "Zone ?");
-  const piece = v(row, "piece", "Pièce ?");
-  const fenetre = v(row, "fenetre", "");
-  const showFenetre = show("fenetre") && !!fenetre.trim();
+  // Même règle que l'étiquette imprimée (zone / pièce / fenêtre), en valeurs seules.
+  const where = denomination(row, useContext(MultiZonePiecesContext)).map((d) => d.value).join(" — ");
   const produit = v(row, "produit", "—");
   const statutCotes = v(row, "statut_cotes", "—");
 
@@ -326,7 +326,7 @@ export default function EtiquetteRideauxCard({ row, projectName, index, total, o
             {projectName || "Projet"}
           </div>
           <div style={{ fontSize: 18, fontWeight: 800, color: hdr.textMain, marginTop: 2 }}>
-            {zone} — {piece}{showFenetre ? ` — ${fenetre}` : ""}
+            {where}
           </div>
           <div style={{ fontSize: 12, color: hdr.textMuted, marginTop: 2 }}>{produit}</div>
         </div>

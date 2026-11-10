@@ -119,7 +119,7 @@ export const DEFAULT_VIEWS = {
       "ampleur", "tissu_deco1", "doublure", "finition_bas", "piquage_ourlets_du_bas",
       "piquage_ourlet", "onglets", "poids", "bride", "v_ourlets_de_cotes", "finition_oc",
       "finition_champs", "finition_retour", "point_chausson", "piquage_ourlets_bas_doublure",
-      "doublure_finition_bas", "deduction_doublure", "type_mecanisme",
+      "doublure_finition_bas", "deduction_doublure", "type_mecanisme", "modele_mecanisme",
       "meca_couvert", "cache_moteur", "valeur_deduction", "largeur_mecanisme", "largeur",
       "croisement", "type_croisement", "largeur_finie", "retour_gauche", "retour_droit",
       "type_retours", "hauteur_corniere_elastique", "a_plat", "laize_tissu1", "nombre_les",

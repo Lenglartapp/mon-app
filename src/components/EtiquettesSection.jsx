@@ -16,6 +16,8 @@ import EtiquettesV2RectoVersoPortal, { RIDEAUX_V2_FIELDS } from "./etiquettesV2/
 import { isDecentreeParent } from "../lib/utils/pairDecentree";
 import { RIDEAUX_GETTERS } from "../lib/schemas/production/rideaux.js";
 import { STORES_BATEAUX_GETTERS } from "../lib/schemas/production/stores_bateaux.js";
+import { piecesInSeveralZones } from "../lib/etiquettes/denomination.js";
+import { MultiZonePiecesContext } from "../lib/etiquettes/denominationContext.js";
 import {
   ETIQUETTE_COLOR_PALETTE,
   DEFAULT_HEADER_COLOR,
@@ -745,8 +747,12 @@ export default function EtiquettesSection({
     }
   }, [showPrintPortal, showBPFPortal]);
 
+  // Pièces présentes dans plusieurs zones du dossier : leur zone reste dans le bandeau.
+  const multiZonePieces = React.useMemo(() => piecesInSeveralZones(rows), [rows]);
+
 
   return (
+    <MultiZonePiecesContext.Provider value={multiZonePieces}>
     <Box sx={{ mb: 4 }}>
       {/* GLOBAL PRINT STYLES - DENSE GRID */}
       <GlobalStyles styles={{
@@ -1088,5 +1094,6 @@ export default function EtiquettesSection({
         />
       )}
     </Box>
+    </MultiZonePiecesContext.Provider>
   );
 }
