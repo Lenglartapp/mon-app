@@ -14,3 +14,20 @@ export async function resolve(specifier, context, next) {
         throw err;
     }
 }
+
+// Le client Supabase lit les variables Vite (import.meta.env) absentes sous Node : les tests
+// reçoivent un module factice (aucun accès réseau depuis les tests).
+const SUPABASE_STUB = `
+export const CONNECTIVITY_EVENT = 'droitfil:connectivity';
+export const MUST_SET_PASSWORD_KEY = 'df_must_set_password';
+export const isServerReachable = () => true;
+export const probeServer = async () => true;
+export const supabase = null;
+`;
+
+export async function load(url, context, next) {
+    if (url.endsWith('/src/lib/supabaseClient.js')) {
+        return { format: 'module', source: SUPABASE_STUB, shortCircuit: true };
+    }
+    return next(url, context);
+}

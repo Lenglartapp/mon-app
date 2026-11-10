@@ -1,6 +1,6 @@
 // src/lib/schemas/production/rideaux.js
 
-import { HAUTEUR_RENFORT_TETE_OPTIONS, FINITION_OB_RIDEAUX_OPTIONS, FINITION_OC_OPTIONS, TYPE_CROCHETS_OPTIONS, TYPE_MECANISME_OPTIONS, coefOurletCoteRideau } from '../../constants/rideauxFields';
+import { HAUTEUR_RENFORT_TETE_OPTIONS, FINITION_OB_RIDEAUX_OPTIONS, FINITION_OC_OPTIONS, TYPE_CROCHETS_OPTIONS, TYPE_MECANISME_OPTIONS, coefOurletCoteRideau, BORD_A_BORD_OB_CM, isBordABord } from '../../constants/rideauxFields';
 import React from 'react';
 import { PAIRE_OPTIONS_BASE, paireOptionsForRow, PAIRE_DECENTREE } from '../../utils/pairDecentree';
 import { isMetrageV2Row, largeurFinieV2, parseCm, margeMachineRideau } from '../../formulas/metrageVersion';
@@ -56,6 +56,9 @@ const isPanLibre = (row) =>
 // (pour une paire, la largeur est divisée par deux) : tout ce qui se consomme réellement
 // — métrage tissu, nombre de lés — doit donc être compté deux fois sur une paire.
 // L'appiècement, lui, reste une donnée de coupe par pan.
+// Supplément de hauteur de coupe (tissu 1 + doublure) si Finition OB = « Bord/bord ».
+const bordABordOB = (row) => (isBordABord(row.piquage_ourlet) ? BORD_A_BORD_OB_CM : 0);
+
 export const pansOf = (row) => (isSinglePan(row) ? 1 : 2);
 
 // ── Helpers Lés / Hauteurs à couper (par tissu, pour une laize donnée) ────────
@@ -269,7 +272,12 @@ const getters = {
     // Formules v2 (nouveaux projets), comme au chiffrage :
     //   hauteur finie max (inclut déjà la finition bas) + k × Hauteur tête + 2 × OB,
     //   k = 2 si non doublé (Doublure vide), 1 si doublé.
-    hauteur_coupe: (row) => {
+    // Finition OB « Bord/bord » : + 3 cm (BORD_A_BORD_OB_CM), repris par la doublure.
+    hauteur_coupe: (row) => round1(getters.hauteur_coupe_base(row) + bordABordOB(row)),
+
+    // H. Coupe SANS le supplément « Bord/bord » : base du calcul motif (les 3 cm sont
+    // absorbés par le raccord supplémentaire, pas de raccord de plus).
+    hauteur_coupe_base: (row) => {
         const piquageBas = toNum(row.piquage_ourlets_du_bas || row.ourlet_bas);
         if (isMetrageV2Row(row)) {
             const hTete = parseCm(row.hauteur_renfort_tete);
@@ -280,7 +288,7 @@ const getters = {
     },
 
     nb_raccords_motifs: (row) => {
-        const hCoupe = getters.hauteur_coupe(row);
+        const hCoupe = getters.hauteur_coupe_base(row);
         const rV = toNum(row.raccord_v_tissu1);
         return rV > 0 ? Math.ceil(hCoupe / rV) + 1 : 0;
     },
@@ -295,10 +303,14 @@ const getters = {
     },
 
     // v2 (nouveaux projets), comme au chiffrage : + 1 raccord en plus.
+    // « Bord/bord » : calculée sur la H. Coupe sans les 3 cm, jamais sous la H. Coupe.
     hauteur_coupe_motif: (row) => {
         const hCoupe = getters.hauteur_coupe(row);
         const rV = toNum(row.raccord_v_tissu1);
-        if (rV > 0) return Math.ceil(hCoupe / rV) * rV + (isMetrageV2Row(row) ? rV : 0);
+        if (rV > 0) {
+            const hBase = getters.hauteur_coupe_base(row);
+            return Math.max(Math.ceil(hBase / rV) * rV + (isMetrageV2Row(row) ? rV : 0), hCoupe);
+        }
         return hCoupe;
     },
 
@@ -317,7 +329,7 @@ const getters = {
     hauteur_coupe_doublure: (row) => {
         if (isMetrageV2Row(row)) return getters.hauteur_coupe(row);
         const obDoublure = toNum(row.piquage_ourlets_bas_doublure);
-        return round1(hauteurFinieMax(row) + 30 + obDoublure);
+        return round1(hauteurFinieMax(row) + 30 + obDoublure + bordABordOB(row));
     },
 
     // H. Coupe T2 : même logique que hauteur_coupe, mais sur la laize du tissu 2.

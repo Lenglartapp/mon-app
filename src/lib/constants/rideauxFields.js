@@ -33,6 +33,7 @@ export const FINITION_OURLET_OPTIONS = [
   "Point Bourdon + Plate apparente",
   "Triple + apparente",
   "Triple + invisible",
+  "Bord/bord",
 ];
 
 /** Finition de l'ourlet de côté (OC). */
@@ -40,12 +41,18 @@ export const FINITION_OC_OPTIONS = FINITION_OURLET_OPTIONS;
 
 /** Rideaux : nombre de fois l'OC pris PAR CÔTÉ dans l'À plat, selon la Finition OC.
  *  « Triple… » → 3 ; Double, autres finitions et vide → 2 (comportement historique). */
+// « Bord/bord » : coefficient à confirmer — pour l'instant celui par défaut (2), on joue sur l'ampleur.
 const COEF_OC_RIDEAU = [["triple", 3]];
 export function coefOurletCoteRideau(finitionOC) {
   const f = String(finitionOC || "").trim().toLowerCase();
   const hit = COEF_OC_RIDEAU.find(([prefix]) => f.startsWith(prefix));
   return hit ? hit[1] : 2;
 }
+
+/** Finition OB « Bord/bord » (rideaux, production) : + 3 cm sur la hauteur de coupe du tissu 1
+ *  et de la doublure (cf. schemas/production/rideaux.js). Seule « Finition OB » déclenche. */
+export const BORD_A_BORD_OB_CM = 3;
+export const isBordABord = (v) => String(v || "").trim().toLowerCase() === "bord/bord";
 
 /** Finition de l'ourlet du bas (OB) : la pastille Velcro n'existe que pour le bas. */
 export const FINITION_OB_OPTIONS = [...FINITION_OURLET_OPTIONS, "Pastille Velcro"];

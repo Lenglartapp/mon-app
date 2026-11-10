@@ -14,7 +14,8 @@ import { Plus, Trash2, Columns, Layers, Edit2, Filter, FileSpreadsheet, PinOff, 
 import { TonePill } from './ui/ToolbarControls';
 import FitPanel from './ui/FitPanel';
 import FilterPanel, { isConditionActive, evaluateCondition } from './FilterPanel';
-import { getDefaultMatieres } from '../lib/constants/matiereGroups';
+import { getDefaultMatieres, CATALOG_FILL } from '../lib/constants/matiereGroups';
+import { fieldsToClearOnRemove } from '../lib/utils/matiereClear';
 import { isSansMeca } from '../lib/constants/rideauxFields';
 import { caretIndexAtOffset, offsetInCellText } from '../lib/utils/caretFromPoint';
 import { useAuth } from '../auth';
@@ -634,6 +635,11 @@ function MinuteGrid({
         let changes = diffRows(before, after);
         if (onlyAdded) changes = changes.filter((c) => !c.before);
         if (!changes.length) return;
+        // Copie de l'état « après » : ces objets sont les lignes vivantes du tableau, et AG Grid
+        // écrit la saisie suivante DIRECTEMENT dedans. Sans copie, deux modifications de suite
+        // sur une même case faussaient le souvenir de la première, et son annulation ne remettait
+        // plus la case (ex. tissu choisi deux fois → le 2e Cmd+Z laissait le 1er tissu).
+        changes = changes.map((c) => (c.after && typeof c.after === 'object' ? { ...c, after: { ...c.after } } : c));
         recordAction({
             scope: ctx.scope,
             label: describeRowChanges(changes, ctx.schema, fields),
@@ -1817,6 +1823,16 @@ function MinuteGrid({
             updatedRow.pv_mecanisme = 0;
         }
 
+        // 0 ter. Matière RETIRÉE (nom vidé : Suppr, collage d'une case vide, remplissage…) →
+        //    ses infos saisies (laize, raccords, métrage tapé, PA / PV) sont vidées, ainsi que leurs
+        //    surcharges de formule. Une matière REMPLACÉE ne déclenche rien (catalogue ci-dessous).
+        //    « H. Coupe T1 » est conservée (cf. utils/matiereClear.js).
+        const clearedKeys = fieldsToClearOnRemove(changedKey, oldVal, newVal, schema, updatedRow);
+        if (clearedKeys.length) {
+            clearedKeys.forEach(k => { updatedRow[k] = null; delete cellFx[k]; });
+            updatedRow.__cellFormulas = cellFx;
+        }
+
         // 0 bis. Chiffrage : la largeur SUIT chaque changement de L. Méca (600 → 200 : la
         //    largeur passe à 200). L'inverse non : modifier la largeur seule ne touche pas
         //    au rail. En production (projectId), les deux restent indépendantes.
@@ -1839,30 +1855,8 @@ function MinuteGrid({
             const articleName = updatedRow[changedKey];
             const article = catalog.find(a => a.name === articleName);
             if (article) {
-                const mapping = {};
-                if (changedKey === 'tissu_deco1') {
-                    mapping.laize = 'laize_tissu1'; mapping.rv = 'raccord_v_tissu1'; mapping.rh = 'raccord_h_tissu1'; mapping.pa = 'pa_tissu1'; mapping.pv = 'pv_tissu1';
-                } else if (changedKey === 'tissu_deco2') {
-                    mapping.laize = 'laize_tissu2'; mapping.rv = 'raccord_v_tissu2'; mapping.rh = 'raccord_h_tissu2'; mapping.pa = 'pa_tissu2'; mapping.pv = 'pv_tissu2';
-                } else if (changedKey === 'tissu_1') {
-                    mapping.laize = 'laize_tissu_1'; mapping.pa = 'pa_tissu_1'; mapping.pv = 'pv_tissu_1';
-                } else if (changedKey === 'tissu_2') {
-                    mapping.laize = 'laize_tissu_2'; mapping.pa = 'pa_tissu_2'; mapping.pv = 'pv_tissu_2';
-                } else if (changedKey === 'toile_finition_1') {
-                    mapping.laize = 'laize_toile_finition_1'; mapping.rv = 'raccord_v_toile_finition_1'; mapping.rh = 'raccord_h_toile_finition_1'; mapping.pa = 'pa_toile_finition_1'; mapping.pv = 'pv_toile_finition_1';
-                } else if (changedKey === 'doublure') {
-                    mapping.laize = 'laize_doublure'; mapping.pa = 'pa_doublure'; mapping.pv = 'pv_doublure';
-                } else if (changedKey === 'interdoublure') {
-                    mapping.laize = 'laize_interdoublure'; mapping.pa = 'pa_interdoublure'; mapping.pv = 'pv_interdoublure';
-                } else if (changedKey === 'inter_doublure') {
-                    mapping.laize = 'laize_inter'; mapping.pa = 'pa_inter'; mapping.pv = 'pv_inter';
-                } else if (changedKey === 'passementerie1' || changedKey === 'passementerie_1') {
-                    mapping.pa = changedKey === 'passementerie1' ? 'pa_pass1' : 'pa_pass_1';
-                    mapping.pv = changedKey === 'passementerie1' ? 'pv_pass1' : 'pv_pass_1';
-                } else if (changedKey === 'passementerie2' || changedKey === 'passementerie_2') {
-                    mapping.pa = changedKey === 'passementerie2' ? 'pa_pass2' : 'pa_pass_2';
-                    mapping.pv = changedKey === 'passementerie2' ? 'pv_pass2' : 'pv_pass_2';
-                } else if (changedKey === 'modele_mecanisme' || changedKey === 'mecanisme_bis') {
+                const mapping = { ...(CATALOG_FILL[changedKey] || {}) };
+                if (changedKey === 'modele_mecanisme' || changedKey === 'mecanisme_bis') {
                     if (updatedRow.type_mecanisme === 'Rail') {
                         mapping.pa = changedKey === 'modele_mecanisme' ? 'pa_mecanisme' : 'pa_mecanisme_bis';
                         mapping.pv = changedKey === 'modele_mecanisme' ? 'pv_mecanisme' : 'pv_mecanisme_bis';

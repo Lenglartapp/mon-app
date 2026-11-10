@@ -48,6 +48,7 @@ const COEF_OURLET_COTE = [
     ['surfil', 2],
     ['point bourdon', 2],
 ];
+// « Bord/bord » : coefficient à confirmer — pour l'instant le défaut (4), on joue sur l'ampleur.
 const COEF_OURLET_COTE_DEFAUT = 4;
 
 export function coefOurletCote(finitionOC) {
