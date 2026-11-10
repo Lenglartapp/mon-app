@@ -3,6 +3,7 @@ import { format, parseISO, startOfWeek, addDays, isSameDay } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight, ChevronDown, MapPin, Users, StickyNote, ClipboardList, BedDouble, X, FolderOpen, Navigation } from 'lucide-react';
 import { productionGroup } from '../../lib/authz';
+import { isInternalProject, normalizeChapter } from '../../lib/planning/internalProject';
 import { TonePill } from '../ui/ToolbarControls';
 import { useFillViewportHeight } from '../../lib/hooks/useFillViewportHeight';
 
@@ -70,7 +71,12 @@ export default function MobilePlanningAgenda({
             if (e.type !== 'pose') return;
             const idx = days.findIndex(d => isSameDay(parseISO(e.date), d));
             if (idx === -1) return;
-            const key = e.meta?.projectId || e.title || e.id;
+            // Un chantier = une carte. Le dossier « Interne Lenglart » regroupe des activités sans
+            // rapport (atelier, prototype, SAV…) : là, une carte par titre de créneau.
+            const pid = e.meta?.projectId;
+            const key = pid && isInternalProject(projectMap.get(pid))
+                ? `${pid}|${normalizeChapter(e.title).toLowerCase()}`
+                : pid || e.title || e.id;
             if (!all[idx].has(key)) all[idx].set(key, new Set());
             all[idx].get(key).add(e.resourceId);
             if (focusId && e.resourceId !== focusId) return;
