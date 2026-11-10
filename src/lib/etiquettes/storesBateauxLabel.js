@@ -225,6 +225,5 @@ export function sideLines(row) {
 export const getCroquis = (row) =>
   isHidden(row, "croquis_intervalle") ? null
     : Array.isArray(row?.croquis_intervalle) ? row.croquis_intervalle[0]?.url || null : null;
-export const showWindow = (row) => !isHidden(row, "fenetre") && filled(row?.fenetre);
 export const commentText = (row) =>
   isHidden(row, "commentaire_confection") ? "" : String(row?.commentaire_confection ?? "").trim();

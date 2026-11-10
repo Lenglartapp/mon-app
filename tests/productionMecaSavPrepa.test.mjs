@@ -39,9 +39,11 @@ test('SAV : dernière option des statuts, compte comme terminé', () => {
     assert.equal(s.raw.confHouresDone, 4);
 });
 
-test('BPF rideaux sans « Modèle »', () => {
-    assert.ok(!DEFAULT_VIEWS.bpf.rideaux.includes('modele_mecanisme'));
-    assert.ok(DEFAULT_VIEWS.bpf.rideaux.includes('type_mecanisme'));
+test('BPF rideaux : « Modèle méca » juste après « Type méca » (n° 30)', () => {
+    const l = DEFAULT_VIEWS.bpf.rideaux;
+    assert.equal(l.indexOf('modele_mecanisme'), l.indexOf('type_mecanisme') + 1);
+    assert.equal(l.indexOf('modele_mecanisme'), 29);
+    assert.equal(l[l.indexOf('modele_mecanisme') + 1], 'meca_couvert');
 });
 
 test('typologie de prépa : périmètre', () => {

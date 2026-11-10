@@ -7,7 +7,7 @@
 //
 // Lisibilité : la valeur est plus grosse que le libellé ; l'échelle s'ajuste par
 // étiquette pour remplir le demi-cadre sans jamais déborder (rien coupé).
-import React, { useLayoutEffect, useState } from "react";
+import React, { useContext, useLayoutEffect, useRef, useState } from "react";
 import ReactDOM from "react-dom";
 import { RIDEAUX_GETTERS, RIDEAUX_PROD_SCHEMA } from "../../lib/schemas/production/rideaux.js";
 import { DEFAULT_HEADER_COLOR, getHeaderStyles, getContrastColor } from "../../lib/etiquetteColors.js";
@@ -16,6 +16,8 @@ import { DEFAULT_HEADER_COLOR, getHeaderStyles, getContrastColor } from "../../l
 import { RIDEAUX_V2_SECTIONS } from "../../lib/etiquettes/rideauxLabelLayout.js";
 import { cassantRasantText } from "../../lib/formulas/cassantRasant.js";
 import { isDecentreeChild } from "../../lib/utils/pairDecentree.js";
+import { denomination, denominationText } from "../../lib/etiquettes/denomination.js";
+import { MultiZonePiecesContext } from "../../lib/etiquettes/denominationContext.js";
 
 // ── Géométrie page (A4 @ 96 dpi ≈ 794 × 1123 px) ────────────────────────────
 const PAGE_W = 794, PAGE_PAD = 24, CUT_H = 16;
@@ -161,9 +163,6 @@ const panLabel = (row) => {
 const showComment = (row) =>
   !isHidden(row, "commentaire") && v(row, "commentaire_confection", "") !== "—" && !!v(row, "commentaire_confection", "").trim();
 const wantsVerso = (row) => !isHidden(row, "croquis") && !!getCroquis(row);
-// 3e niveau de localisation : n'occupe une ligne de l'en-tête que s'il est
-// renseigné sur la ligne (et non masqué via le menu « Champs »).
-const showWindow = (row) => !isHidden(row, "fenetre") && !!String(row?.fenetre || "").trim();
 
 // Disposition affichée : chaque cellule reçoit son texte ("" = case blanche à sa place).
 // Une ligne dont toutes les cases sont blanches est retirée, puis les cadres et les
@@ -201,8 +200,7 @@ function Header({ row, projectName, index, total }) {
   const val = { fontSize: 11, fontWeight: 600, lineHeight: 1.1 };
   const comment = v(row, "commentaire_confection", "");
   const hasComment = showComment(row);
-  const fenetre = v(row, "fenetre", "");
-  const showFenetre = showWindow(row);
+  const where = denomination(row, useContext(MultiZonePiecesContext));
   const verso = wantsVerso(row);
   const pan = panLabel(row);
   const hasPan = pan && pan !== "—";
@@ -214,16 +212,12 @@ function Header({ row, projectName, index, total }) {
       </div>
       <div style={{ display: "flex", alignItems: "baseline", gap: 14 }}>
         <div style={{ display: "grid", gridTemplateColumns: "auto auto", columnGap: 10, rowGap: 3, alignContent: "start", flex: "0 0 auto" }}>
-          <span style={{ ...lbl, alignSelf: "center" }}>ZONE :</span>
-          <span style={val}>{v(row, "zone", "—")}</span>
-          <span style={{ ...lbl, alignSelf: "center" }}>PIÈCE :</span>
-          <span style={val}>{v(row, "piece", "—")}</span>
-          {showFenetre && (
-            <>
-              <span style={{ ...lbl, alignSelf: "center" }}>FENÊTRE :</span>
-              <span style={val}>{fenetre}</span>
-            </>
-          )}
+          {where.map((d) => (
+            <React.Fragment key={d.key}>
+              <span style={{ ...lbl, alignSelf: "center" }}>{d.label} :</span>
+              <span style={val}>{d.value}</span>
+            </React.Fragment>
+          ))}
           {hasPan && (
             <span style={{ gridColumn: "1 / -1", fontSize: 14, fontWeight: 700, lineHeight: 1.15, color: PAN_COLOR, marginTop: 3, textTransform: "uppercase" }}>
               {pan}
@@ -261,12 +255,7 @@ function Header({ row, projectName, index, total }) {
 function RectoHeader({ row, projectName, index, total }) {
   const hdr = getHeaderStyles(row?.etiquette_header_color || DEFAULT_HEADER_COLOR);
   const isDark = getContrastColor(hdr.bg) === "#FFFFFF";
-  const fenetre = v(row, "fenetre", "");
-  const where = [
-    `ZONE ${v(row, "zone", "—")}`,
-    `PIÈCE ${v(row, "piece", "—")}`,
-    ...(showWindow(row) ? [`FENÊTRE ${fenetre}`] : []),
-  ].join(" · ");
+  const where = denominationText(row, useContext(MultiZonePiecesContext));
   const pan = panLabel(row);
   const hasPan = pan && pan !== "—";
   const produit = v(row, "produit", "");
@@ -278,11 +267,11 @@ function RectoHeader({ row, projectName, index, total }) {
           {produit && produit !== "—" && <span style={{ fontSize: 11, color: hdr.textMuted, fontWeight: 600 }}>{produit}</span>}
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 4, flexWrap: "wrap" }}>
-          <span style={{
+          {where && <span style={{
             background: hdr.badgeBg, color: hdr.badgeText, borderRadius: 4, padding: "1px 7px",
             border: `1.5px solid ${isDark ? "rgba(255,255,255,.55)" : "rgba(0,0,0,.45)"}`,
             fontSize: 11, fontWeight: 700, letterSpacing: ".02em", whiteSpace: "nowrap",
-          }}>{where}</span>
+          }}>{where}</span>}
           {hasPan && <span style={{ fontSize: 12, fontWeight: 800, color: isDark ? PAN_COLOR : PAN_COLOR_ON_LIGHT, textTransform: "uppercase", whiteSpace: "nowrap" }}>{pan}</span>}
         </div>
       </div>
@@ -309,6 +298,28 @@ function CommentBox({ row }) {
   );
 }
 
+// Valeurs longues sur une case étroite (ex. « Couture anglaise + Surpiqûre ») : au plus
+// 2 lignes, et le corps diminue tant que ça ne tient pas. Jamais de texte coupé.
+const FIT_KEYS = new Set(["piquage_raccord"]);
+const FIT_LINES = 2, FIT_MIN = 0.6, LINE_H = 1.05;
+
+function FitValue({ text, fontSize, style }) {
+  const ref = useRef(null);
+  const [size, setSize] = useState(fontSize);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    let fsz = fontSize;
+    el.style.fontSize = `${fsz}px`;
+    while (el.scrollHeight > fsz * LINE_H * FIT_LINES + 1 && fsz > fontSize * FIT_MIN) {
+      fsz *= 0.93;
+      el.style.fontSize = `${fsz}px`;
+    }
+    setSize(fsz);
+  }, [text, fontSize]);
+  return <span ref={ref} style={{ ...style, fontSize: size, lineHeight: LINE_H }}>{text}</span>;
+}
+
 // ── RECTO : données en grille 4 colonnes fixes ──────────────────────────────
 export function RectoLabel({ row, projectName, index, total, scale }) {
   const sections = layoutFor(row);
@@ -326,8 +337,11 @@ export function RectoLabel({ row, projectName, index, total, scale }) {
     const plus = cell.key.startsWith("nombre_les") && next?.key?.startsWith("reste_les") && next.text;
     return (
       <div key={cell.key} style={{ position: "relative", background: bg, borderRight: lineBorder, borderBottom: lineBorder, padding: "1px 6px", minHeight: 14, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
-        <span style={{ fontSize: fs, fontWeight: 600, color: "#5e5e5e", whiteSpace: "nowrap", lineHeight: 1.1 }}>{cell.label}</span>
-        <span style={{ fontSize: big ? bigFs : fs, fontWeight: big ? 800 : 700, color: "#111", textAlign: "right", lineHeight: 1.05, whiteSpace: big ? "nowrap" : "normal", overflowWrap: "anywhere", minWidth: 0 }}>{cell.text}</span>
+        {/* Case à valeur longue : le libellé peut lui aussi passer sur 2 lignes pour laisser la place à la valeur. */}
+        <span style={{ fontSize: fs, fontWeight: 600, color: "#5e5e5e", whiteSpace: FIT_KEYS.has(cell.key) ? "normal" : "nowrap", lineHeight: 1.1, ...(FIT_KEYS.has(cell.key) && { maxWidth: "38%" }) }}>{cell.label}</span>
+        {FIT_KEYS.has(cell.key)
+          ? <FitValue text={cell.text} fontSize={fs} style={{ fontWeight: 700, color: "#111", textAlign: "right", overflowWrap: "break-word", minWidth: 0 }} />
+          : <span style={{ fontSize: big ? bigFs : fs, fontWeight: big ? 800 : 700, color: "#111", textAlign: "right", lineHeight: 1.05, whiteSpace: big ? "nowrap" : "normal", overflowWrap: "anywhere", minWidth: 0 }}>{cell.text}</span>}
         {plus && (
           <div style={{ position: "absolute", right: 0, top: "50%", transform: "translate(50%, -50%)", width: 15, height: 15, borderRadius: "50%", background: "#fff", border: "1px solid #c4c4c4", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "#444", lineHeight: 1, zIndex: 2 }}>+</div>
         )}

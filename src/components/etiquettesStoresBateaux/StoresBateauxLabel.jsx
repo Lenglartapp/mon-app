@@ -5,12 +5,14 @@
 //
 // Le texte s'ajuste à l'étiquette : on part de l'échelle de base et on réduit tant que la
 // grille déborde de sa zone (rien n'est coupé).
-import React, { useLayoutEffect, useRef, useState } from "react";
+import React, { useContext, useLayoutEffect, useRef, useState } from "react";
 import { DEFAULT_HEADER_COLOR, getHeaderStyles, getContrastColor } from "../../lib/etiquetteColors.js";
 import {
-  layoutFor, sideLines, getCroquis, showWindow, commentText, isHidden, raw,
+  layoutFor, sideLines, getCroquis, commentText, isHidden, raw,
   BIG_KEYS, HEAD_KEYS,
 } from "../../lib/etiquettes/storesBateauxLabel.js";
+import { denominationText } from "../../lib/etiquettes/denomination.js";
+import { MultiZonePiecesContext } from "../../lib/etiquettes/denominationContext.js";
 
 const SCALE_MAX = 1.3, SCALE_MIN = 0.55;
 const PAN_COLOR = "#7ec850";
@@ -30,11 +32,7 @@ const txt = (row, key) => {
 function Header({ row, projectName, index, total }) {
   const hdr = getHeaderStyles(row?.etiquette_header_color || DEFAULT_HEADER_COLOR);
   const isDark = getContrastColor(hdr.bg) === "#FFFFFF";
-  const where = [
-    `ZONE ${txt(row, "zone") || "—"}`,
-    `PIÈCE ${txt(row, "piece") || "—"}`,
-    ...(showWindow(row) ? [`FENÊTRE ${txt(row, "fenetre")}`] : []),
-  ].join(" · ");
+  const where = denominationText(row, useContext(MultiZonePiecesContext));
   const type = txt(row, "type_store_bateau");
   const produit = txt(row, "produit");
   const qte = txt(row, "quantite");
@@ -46,11 +44,11 @@ function Header({ row, projectName, index, total }) {
           {produit && <span style={{ fontSize: 10, color: hdr.textMuted, fontWeight: 600 }}>{produit}</span>}
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 3, flexWrap: "wrap" }}>
-          <span style={{
+          {where && <span style={{
             background: hdr.badgeBg, color: hdr.badgeText, borderRadius: 4, padding: "0 6px",
             border: `1.5px solid ${isDark ? "rgba(255,255,255,.55)" : "rgba(0,0,0,.45)"}`,
             fontSize: 10, fontWeight: 700, letterSpacing: ".02em", whiteSpace: "nowrap",
-          }}>{where}</span>
+          }}>{where}</span>}
           {type && <span style={{ fontSize: 11, fontWeight: 800, color: isDark ? PAN_COLOR : PAN_COLOR_ON_LIGHT, textTransform: "uppercase", whiteSpace: "nowrap" }}>{type}</span>}
         </div>
       </div>

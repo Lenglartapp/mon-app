@@ -37,7 +37,7 @@ export const RIDEAUX_V2_SECTIONS = [
   ]},
   { name: "OURLETS", groups: [
     { rows: [
-      [["piquage_ourlets_du_bas", "OB"], ["piquage_ourlet", "Fin. OB"], ["onglets", "Onglets"]],
+      [["piquage_ourlets_du_bas", "OB"], ["piquage_ourlet", "Fin. OB"], ["onglets", "Onglets"], ["piquage_raccord", "Piquage raccord"]],
       [["v_ourlets_de_cotes", "OC"], ["finition_oc", "Fin. OC"], ["finition_champs", "Chant"], ["finition_retour", "Fin. retour"]],
       [["piquage_ourlets_bas_doublure", "OB doubl."], ["doublure_finition_bas", "Fin. OB doubl."]],
       [["poids", "Poids"], ["etiquette_lavage", "Étiq. Lenglart"], ["etiquette_lenglart", "Entretien"]],
@@ -46,7 +46,7 @@ export const RIDEAUX_V2_SECTIONS = [
   { name: "PRÉPARATION", groups: [
     { rows: [
       [["type_confection", "Plis"], ["hauteur_renfort_tete", "Renfort tête"], ["finition_bas_txt", "Bas"]],
-      [["type_mecanisme", "Méca"], ["modele_mecanisme", "Modèle"], ["meca_couvert", "Montage"], ["type_croisement", "Croisement"]],
+      [["type_mecanisme", "Méca"], ["modele_mecanisme", "Modèle"], ["meca_couvert", "Méca couvert"], ["type_croisement", "Croisement"]],
       [["hauteur_finie_gauche", "HF G"], ["hauteur_finie_milieu", "HF M"], ["hauteur_finie_droite", "HF D"]],
     ]},
   ]},
