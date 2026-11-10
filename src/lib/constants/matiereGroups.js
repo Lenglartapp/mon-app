@@ -57,6 +57,47 @@ export const PLAID_MATIERE_GROUPS = [
     { id: 'passementerie2', label: 'Passementerie 2', fields: ['passementerie_2', 'app_passementerie_2', 'ml_pass_2', 'pa_pass_2', 'pv_pass_2'] },
 ];
 
+// Mobilier / tête de lit et tenture murale : pas de bouton Matières pour l'instant, mais ces
+// groupes servent à la règle « tissu retiré → infos vidées » (cf. utils/matiereClear.js).
+export const MOBILIER_MATIERE_GROUPS = [
+    { id: 'tissu1',         label: 'Tissu 1',         fields: ['tissu_1', 'laize_tissu_1', 'ml_tissu_1', 'pa_tissu_1', 'pv_tissu_1'] },
+    { id: 'tissu2',         label: 'Tissu 2',         fields: ['tissu_2', 'laize_tissu_2', 'ml_tissu_2', 'pa_tissu_2', 'pv_tissu_2'] },
+    { id: 'molleton',       label: 'Molleton',        fields: ['molleton', 'laize_molleton', 'ml_molleton', 'pa_molleton', 'pv_molleton'] },
+    { id: 'passementerie1', label: 'Passementerie 1', fields: ['passementerie_1', 'app_passementerie_1', 'ml_pass_1', 'pa_pass_1', 'pv_pass_1'] },
+    { id: 'passementerie2', label: 'Passementerie 2', fields: ['passementerie_2', 'app_passementerie_2', 'ml_pass_2', 'pa_pass_2', 'pv_pass_2'] },
+];
+
+export const TENTURE_MURALE_MATIERE_GROUPS = [
+    { id: 'tissu1',         label: 'Tissu 1',         fields: ['tissu_1', 'laize_tissu_1', 'ml_tissu_1', 'pa_tissu_1', 'pv_tissu_1'] },
+    { id: 'molleton',       label: 'Molleton',        fields: ['molleton', 'ml_molleton', 'pa_molleton', 'pv_molleton'] },
+    { id: 'passementerie1', label: 'Passementerie 1', fields: ['passementerie_1', 'app_passementerie_1', 'ml_pass_1', 'pa_pass_1', 'pv_pass_1'] },
+];
+
+// Tous les groupes matière, production et chiffrage confondus. Le 1er champ d'un groupe est
+// le nom de la matière ; les suivants sont ses informations liées.
+export const ALL_MATIERE_GROUPS = [
+    ...RIDEAUX_PROD_MATIERE_GROUPS, ...RIDEAUX_MATIERE_GROUPS, ...STORES_BATEAUX_MATIERE_GROUPS,
+    ...COUSSINS_MATIERE_GROUPS, ...CACHE_SOMMIER_MATIERE_GROUPS, ...PLAID_MATIERE_GROUPS,
+    ...MOBILIER_MATIERE_GROUPS, ...TENTURE_MURALE_MATIERE_GROUPS,
+];
+
+// Remplissage depuis le catalogue quand on CHOISIT une matière : nom → colonnes à remplir
+// (laize, raccords V / H, PA, PV). Seules les colonnes présentes dans le tableau sont écrites.
+export const CATALOG_FILL = {
+    tissu_deco1:      { laize: 'laize_tissu1', rv: 'raccord_v_tissu1', rh: 'raccord_h_tissu1', pa: 'pa_tissu1', pv: 'pv_tissu1' },
+    tissu_deco2:      { laize: 'laize_tissu2', rv: 'raccord_v_tissu2', rh: 'raccord_h_tissu2', pa: 'pa_tissu2', pv: 'pv_tissu2' },
+    tissu_1:          { laize: 'laize_tissu_1', pa: 'pa_tissu_1', pv: 'pv_tissu_1' },
+    tissu_2:          { laize: 'laize_tissu_2', pa: 'pa_tissu_2', pv: 'pv_tissu_2' },
+    toile_finition_1: { laize: 'laize_toile_finition_1', rv: 'raccord_v_toile_finition_1', rh: 'raccord_h_toile_finition_1', pa: 'pa_toile_finition_1', pv: 'pv_toile_finition_1' },
+    doublure:         { laize: 'laize_doublure', pa: 'pa_doublure', pv: 'pv_doublure' },
+    interdoublure:    { laize: 'laize_interdoublure', pa: 'pa_interdoublure', pv: 'pv_interdoublure' },
+    inter_doublure:   { laize: 'laize_inter', pa: 'pa_inter', pv: 'pv_inter' },
+    passementerie1:   { pa: 'pa_pass1', pv: 'pv_pass1' },
+    passementerie_1:  { pa: 'pa_pass_1', pv: 'pv_pass_1' },
+    passementerie2:   { pa: 'pa_pass2', pv: 'pv_pass2' },
+    passementerie_2:  { pa: 'pa_pass_2', pv: 'pv_pass_2' },
+};
+
 // Groupes mécanisme pour la grille Rideaux (bouton Configuration)
 export const RIDEAUX_MECA_GROUPS = [
     { id: 'meca',     label: 'Méca',     fields: ['type_mecanisme', 'modele_mecanisme', 'pa_mecanisme', 'pv_mecanisme'] },

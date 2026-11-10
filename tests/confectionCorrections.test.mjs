@@ -77,11 +77,12 @@ test('store : OC Triple → OC × 6 au lieu de OC × 4', () => {
     assert.equal(metrageStore({ ...p, finitionOC: 'Triple + invisible' }).aPlat - metrageStore({ ...p, finitionOC: 'Double + Invisible' }).aPlat, 6);
 });
 
-test('listes : Triple partout, Bord/bord et En sac absents, renfort tête 12 et 20 cm', () => {
+test('listes : Triple partout, Bord/bord proposé, En sac absent, renfort tête 12 et 20 cm', () => {
     for (const list of [FINITION_OC_OPTIONS, FINITION_OB_OPTIONS, FINITION_OB_RIDEAUX_OPTIONS]) {
         assert.ok(list.includes('Triple + apparente'));
         assert.ok(list.includes('Triple + invisible'));
-        assert.ok(!list.some((o) => /bord\/bord|en sac/i.test(o)));
+        assert.ok(list.includes('Bord/bord'));
+        assert.ok(!list.some((o) => /en sac/i.test(o)));
     }
     assert.equal(FINITION_OB_OPTIONS.at(-1), 'Pastille Velcro');
     assert.equal(FINITION_OB_RIDEAUX_OPTIONS.at(-1), 'Assemblage finette');

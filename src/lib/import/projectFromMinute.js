@@ -8,8 +8,8 @@
 import { SCHEMA_64 } from '../schemas/production.js';
 import { computeFormulas } from '../formulas/compute.js';
 import { applySchemaDefaults } from '../utils/schemaDefaults.js';
-import { FORMULES_METRAGE_V2 } from '../formulas/metrageVersion';
-import { FORMULES_STORES_V1 } from '../formulas/storesBateauxMetrage.js';
+import { FORMULES_METRAGE_COURANTE } from '../formulas/metrageVersion';
+import { FORMULES_STORES_COURANTE, isStoresMetrageRow } from '../formulas/storesBateauxMetrage.js';
 import { extractMaterialsFromLines } from '../data/demo';
 import { uid } from '../utils/uid';
 import { isLogEntry } from '../lineLogs';
@@ -39,12 +39,13 @@ export function budgetFromRows(rows) {
  */
 export function buildProjectFromMinute(minute, opts = {}) {
   const rows = minute?.lines || [];
-  // Le projet prend la version de formules de SON chiffrage (au minimum v2 / v1) : un ancien
-  // devis reste sans marge machine de coupe, cohérent avec le tissu chiffré et acheté.
+  // Tout NOUVEAU projet prend les formules courantes (marge machine de coupe 10 cm comprise),
+  // même s'il vient d'un ancien chiffrage : la production compte donc ~10 cm de plus par lé
+  // que le devis d'origine (choix assumé, novembre 2026). Les projets existants ne changent pas.
   const param = (name) => Number((minute?.params || []).find(p => p?.name === name)?.value) || 0;
   const maxRow = (k) => rows.reduce((m, r) => Math.max(m, Number(r?.[k]) || 0), 0);
-  const vMetrage = Math.max(FORMULES_METRAGE_V2, param('formules_metrage'), maxRow('formules_metrage'));
-  const vStores = Math.max(FORMULES_STORES_V1, param('formules_stores'), maxRow('formules_stores'));
+  const vMetrage = Math.max(FORMULES_METRAGE_COURANTE, param('formules_metrage'), maxRow('formules_metrage'));
+  const vStores = Math.max(FORMULES_STORES_COURANTE, param('formules_stores'), maxRow('formules_stores'));
   return {
     id: uid(),
     name: opts.name || minute?.name || 'Nouveau Projet',
@@ -57,11 +58,16 @@ export function buildProjectFromMinute(minute, opts = {}) {
     intervention_type: opts.intervention_type || null,
     expedition_type: opts.expedition_type || null,
     // Défauts du schéma (étiquettes à « Non ») sur les lignes reprises du devis, comme l'ajout
-    // manuel d'une ligne ; nouveau projet → formules de métrage v2 (projet + chaque ligne).
-    // Stores bateaux / velum : le projet suit le nouveau métrage (lignes ajoutées ensuite) ;
-    // les lignes reprises du devis gardent le marqueur de leur chiffrage.
+    // manuel d'une ligne ; chaque ligne passe au moins en formules de métrage courantes.
+    // Stores bateaux / velum : le projet suit le métrage courant (lignes ajoutées ensuite) ;
+    // une ligne reprise du devis DÉJÀ en métrage automatique (marqueur ≥ v1) passe en version
+    // courante ; une ligne sans marqueur (métrage saisi à la main) reste sans marqueur.
     config: { formules_metrage: vMetrage, formules_stores: vStores },
-    rows: computeFormulas(rows.map((r) => applySchemaDefaults({ ...withoutChiffrageMessages(r), formules_metrage: Math.max(vMetrage, Number(r.formules_metrage) || 0) }, SCHEMA_64)), SCHEMA_64),
+    rows: computeFormulas(rows.map((r) => applySchemaDefaults({
+      ...withoutChiffrageMessages(r),
+      formules_metrage: Math.max(vMetrage, Number(r.formules_metrage) || 0),
+      ...(isStoresMetrageRow(r) ? { formules_stores: Math.max(vStores, Number(r.formules_stores) || 0) } : {}),
+    }, SCHEMA_64)), SCHEMA_64),
     // Bibliothèque du chiffrage → matériauthèque : fournisseur, référence, coloris,
     // famille, laize, motif et raccords de chaque article utilisé.
     materials: extractMaterialsFromLines(rows, minute?.catalog),
