@@ -69,6 +69,10 @@ const BacklogCreationModal = ({ isOpen, onClose, onSave, onDelete, projects, eve
     const [comment, setComment] = useState('');
     // Semaine du bloc (lundi, format yyyy-MM-dd) — modifiable pour décaler le programme.
     const [weekStart, setWeekStart] = useState('');
+    // SAV : temps de reprise, compté dans le budget comme le reste (cf. EventModal).
+    // Cochée d'office sur une nouvelle carte d'un dossier en SAV, tant qu'on n'y a pas touché.
+    const [sav, setSav] = useState(false);
+    const [savTouched, setSavTouched] = useState(false);
 
     // UI STATE
     const [showSuggestions, setShowSuggestions] = useState(false);
@@ -88,6 +92,8 @@ const BacklogCreationModal = ({ isOpen, onClose, onSave, onDelete, projects, eve
                 setHours(eventToEdit.meta?.budgetHours || '');
                 setCustomLabel(eventToEdit.title);
                 setComment(eventToEdit.meta?.description || '');
+                setSav(!!eventToEdit.meta?.sav);
+                setSavTouched(true);
             } else {
                 // CREATE MODE
                 setSearch('');
@@ -95,6 +101,8 @@ const BacklogCreationModal = ({ isOpen, onClose, onSave, onDelete, projects, eve
                 setHours('');
                 setCustomLabel('');
                 setComment('');
+                setSav(false);
+                setSavTouched(false);
             }
             setShowSuggestions(false);
         }
@@ -166,6 +174,11 @@ const BacklogCreationModal = ({ isOpen, onClose, onSave, onDelete, projects, eve
         setCustomLabel('');
     };
 
+    useEffect(() => {
+        if (eventToEdit || savTouched) return;
+        setSav(selectedProject?.status === 'SAV' && !isInternalProject(selectedProject));
+    }, [selectedProject, eventToEdit, savTouched]);
+
     const canSubmit = !!selectedProject && !!hours && (!isInternalSelected || !!normalizeChapter(customLabel));
 
     const handleSubmit = () => {
@@ -180,6 +193,7 @@ const BacklogCreationModal = ({ isOpen, onClose, onSave, onDelete, projects, eve
             hours: parseFloat(hours),
             comment: comment,
             weekStart, // lundi de la semaine choisie (yyyy-MM-dd) → décale le bloc
+            sav,
         });
         onClose();
     };
@@ -283,6 +297,19 @@ const BacklogCreationModal = ({ isOpen, onClose, onSave, onDelete, projects, eve
                         </div>
                     )}
                 </div>
+
+                {/* SAV : temps de reprise (compté dans le budget du dossier) */}
+                {selectedProject && (
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 8, border: `1px solid ${sav ? '#F59E0B' : 'var(--df-border)'}`, background: sav ? 'var(--df-chip-adv-bg)' : 'var(--df-bg)', cursor: 'pointer' }}>
+                        <input
+                            type="checkbox"
+                            checked={sav}
+                            onChange={(e) => { setSav(e.target.checked); setSavTouched(true); }}
+                            style={{ width: 16, height: 16, cursor: 'pointer', accentColor: '#F59E0B' }}
+                        />
+                        <span style={{ fontSize: 13, fontWeight: 600, color: sav ? '#B45309' : 'var(--df-text-2)' }}>SAV — reprise</span>
+                    </label>
+                )}
 
                 {/* 2. SEMAINE + VOLUME */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>

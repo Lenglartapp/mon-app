@@ -1068,6 +1068,8 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                         status: eventData.status || 'pending',
                         // Découché (pose) : l'équipe dort sur place ces nuits-là. Affiché en icône sur l'encart.
                         ...(eventData.decouche && { decouche: true }),
+                        // SAV : temps de reprise (compté dans le budget, affiché à part dans « dont SAV »).
+                        ...(eventData.sav && { sav: true }),
                         ...(night && { night: true }),
                         // Absence : on reconduit le sous-type (Congés/RTT/Maladie), lu par
                         // la grille pour l'affichage. Sans ça, l'édition le perdrait.
@@ -1446,6 +1448,7 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                     internalChapter: data.internalChapter || null,
                     budgetHours: data.hours,
                     description: data.comment,
+                    sav: !!data.sav,
                     ...(bounds && { start: bounds.start, end: bounds.end }),
                 }
             });
@@ -1478,7 +1481,8 @@ export default function PlanningScreen({ projects, events: initialEvents, onUpda
                     budgetHours: data.hours,
                     description: data.comment,
                     status: 'pending',
-                    isBacklogMaster: true
+                    isBacklogMaster: true,
+                    ...(data.sav && { sav: true })
                 }
             };
 
