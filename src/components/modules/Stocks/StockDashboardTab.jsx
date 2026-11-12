@@ -1,14 +1,16 @@
 import React, { useMemo, useState } from 'react';
-import { Box, Paper, Typography, LinearProgress, TextField } from '@mui/material';
+import { Box, Paper, Typography, LinearProgress } from '@mui/material';
 import {
-    AlertTriangle, TrendingUp, Layers, Package,
-    CheckCircle2, Clock, Activity, ArrowUpRight
+    TrendingUp, Layers, Package, Activity, ChevronDown
 } from 'lucide-react';
 import {
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine
 } from 'recharts';
 import { countRouleaux, rollsOf } from '../../../lib/warehouse/occupancy';
 import { STOCK_GROUPS, itemGroupOf } from '../../../lib/inventory/stockStatus';
+import { DA_INPUT_STYLE } from '../../../lib/constants/daStyles';
+import { DeliveryAlertsCard, DeliveryQualityCard, UpcomingArrivalsCard, DeliveryListDialog, CourseListDialog } from './DeliveryPanels';
+import { useDeliveryAlerts, useDeliveryDialogs } from './useDeliveryAlerts';
 
 // Couleurs de la Ventilation du stock (nuancier de la DA).
 const GROUP_COLORS = { reserved: '#1B3269', active: '#4A6DB0', remnant: '#CEAB95', dead: '#BB7051' };
@@ -56,10 +58,40 @@ const CustomTooltip = ({ active, payload, label }) => {
     );
 };
 
-export default function StockDashboardTab({ inventory = [], projects = [], movements = [], zones = [], onOpenStock }) {
+// Chapitre repliable (état mémorisé sur l'appareil).
+function Chapter({ id, label, children }) {
+    const key = `df_stock_dash_${id}_open`;
+    const [open, setOpen] = useState(() => { try { return window.localStorage.getItem(key) !== '0'; } catch { return true; } });
+    const toggle = () => setOpen((o) => { try { window.localStorage.setItem(key, o ? '0' : '1'); } catch { /* stockage indisponible */ } return !o; });
+    return (
+        <section style={{ marginBottom: 28 }}>
+            <button type="button" onClick={toggle} aria-expanded={open}
+                style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '4px 0', marginBottom: open ? 12 : 0, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'Roboto, system-ui, sans-serif', textAlign: 'left' }}>
+                <ChevronDown size={18} color="var(--df-text-2)" style={{ transform: open ? 'none' : 'rotate(-90deg)', transition: 'transform .15s ease', flexShrink: 0 }} />
+                <span style={{ fontSize: 18, fontWeight: 600, color: 'var(--df-text)' }}>{label}</span>
+            </button>
+            {open && children}
+        </section>
+    );
+}
+
+// Rangée de 3 cartes de même largeur et même hauteur (les listes défilent dans la carte).
+const ROW = { display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gridAutoRows: '420px', gap: 20 };
+
+const TENSION = {
+    critique: { color: '#DC2626', text: 'Critique : moins de 15 % libre' },
+    attention: { color: '#D97706', text: 'Attention : moins de 30 % libre' },
+    ok: { color: '#059669', text: 'Capacité suffisante' },
+};
+
+export default function StockDashboardTab({ inventory = [], projects = [], movements = [], zones = [], events = [], onOpenStock }) {
+    // Livraisons de tissus (liste de courses Odoo, tous projets) : relues à chaque ouverture du tableau de bord.
+    const delivery = useDeliveryAlerts(projects, events);
+    const dialogs = useDeliveryDialogs();
 
     const defaultTo = new Date();
-    const defaultFrom = new Date(); defaultFrom.setDate(defaultFrom.getDate() - 51 * 7);
+    // Par défaut : le dernier trimestre (13 semaines), une graduation par semaine
+    const defaultFrom = new Date(); defaultFrom.setDate(defaultFrom.getDate() - 12 * 7);
     const [dateFrom, setDateFrom] = useState(toInputDate(defaultFrom));
     const [dateTo, setDateTo] = useState(toInputDate(defaultTo));
 
@@ -95,14 +127,9 @@ export default function StockDashboardTab({ inventory = [], projects = [], movem
             .sort((a, b) => (Number(b.qty) || 0) - (Number(a.qty) || 0))
             .slice(0, 10);
 
-        const activeWithoutStock = projects.filter(p => {
-            if (['DONE', 'ARCHIVED', 'Livré'].includes(p.status)) return false;
-            return !inventory.some(i => i.project === p.name);
-        });
-
         return {
             rouleauxEnStock, capacite, occupancyPct, groups, groupRolls, freeRouleaux,
-            tensionLevel, top10, mlTotal, tensionAlerts: activeWithoutStock.slice(0, 3),
+            tensionLevel, top10, mlTotal,
             zonesLoaded: totalCapacity > 0,
         };
     }, [inventory, projects, zones]);
@@ -171,8 +198,9 @@ export default function StockDashboardTab({ inventory = [], projects = [], movem
     return (
         <div style={{ width: '100%', boxSizing: 'border-box' }}>
 
-            {/* ── LIGNE 1 : 4 blocs égaux ── */}
-            <div className="df-inv-kpis" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 20, marginBottom: 20 }}>
+            {/* ── CHAPITRE 1 : l'entrepôt aujourd'hui ── */}
+            <Chapter id="now" label="État actuel">
+                <div className="df-inv-kpis" style={{ ...ROW, marginBottom: 20 }}>
 
                 {/* Occupation générale */}
                 <div style={card}>
@@ -190,7 +218,7 @@ export default function StockDashboardTab({ inventory = [], projects = [], movem
                             </svg>
                             <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
                                 <span style={{ fontWeight: 800, fontSize: 28, color: occupancyColor, lineHeight: 1 }}>{stats.occupancyPct}%</span>
-                                <span style={{ fontSize: 10, color: 'var(--df-faint)', fontWeight: 600, letterSpacing: '0.08em' }}>PLEIN</span>
+                                <span style={{ fontSize: 12, color: 'var(--df-faint)', fontWeight: 500 }}>plein</span>
                             </div>
                         </div>
                         <div style={{ textAlign: 'center' }}>
@@ -198,8 +226,12 @@ export default function StockDashboardTab({ inventory = [], projects = [], movem
                                 <strong style={{ color: 'var(--df-text)' }}>{stats.rouleauxEnStock.toLocaleString()}</strong>
                                 {' '}/ <strong style={{ color: 'var(--df-text)' }}>{stats.capacite.toLocaleString()}</strong> rouleaux
                             </div>
-                            <div style={{ fontWeight: 700, fontSize: 13, marginTop: 4, color: stats.freeRouleaux < 50 ? 'var(--df-danger)' : '#10B981' }}>
-                                {stats.freeRouleaux} libres
+                            <div style={{ fontWeight: 700, fontSize: 14, marginTop: 6, color: 'var(--df-text)' }}>
+                                {stats.freeRouleaux.toLocaleString('fr-FR')} rouleaux libres
+                            </div>
+                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 4, fontSize: 12, color: 'var(--df-text-2)' }}>
+                                <span aria-hidden style={{ width: 8, height: 8, borderRadius: '50%', background: TENSION[stats.tensionLevel].color }} />
+                                {TENSION[stats.tensionLevel].text}
                             </div>
                         </div>
                     </div>
@@ -238,57 +270,9 @@ export default function StockDashboardTab({ inventory = [], projects = [], movem
                     </div>
                 </div>
 
-                {/* Alertes de tension */}
-                <div style={card}>
-                    <div style={title}>
-                        <AlertTriangle size={14} color={stats.tensionLevel === 'critique' ? 'var(--df-danger)' : '#F59E0B'} />
-                        Alertes de tension
-                    </div>
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 12 }}>
-                        <div style={{
-                            padding: 12, borderRadius: 10,
-                            background: stats.tensionLevel === 'critique' ? 'var(--df-danger-bg)' : stats.tensionLevel === 'attention' ? 'var(--df-chip-adv-bg)' : 'var(--df-chip-status-bg)',
-                            border: `1px solid ${stats.tensionLevel === 'critique' ? 'var(--df-x-FECACA)' : stats.tensionLevel === 'attention' ? 'var(--df-amber-bg)' : 'var(--df-x-BBF7D0)'}`,
-                        }}>
-                            <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--df-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                Espace libre entrepôt
-                            </div>
-                            <div style={{ fontWeight: 800, fontSize: 22, marginTop: 2, color: stats.tensionLevel === 'critique' ? '#DC2626' : stats.tensionLevel === 'attention' ? '#D97706' : '#059669' }}>
-                                {stats.freeRouleaux} rouleaux
-                            </div>
-                            <div style={{ fontSize: 11, color: 'var(--df-muted)' }}>
-                                {stats.tensionLevel === 'critique' ? '⚠️ Critique — <15% libre'
-                                    : stats.tensionLevel === 'attention' ? '⚡ Attention — <30% libre'
-                                    : '✅ Capacité suffisante'}
-                            </div>
-                        </div>
-                        {stats.tensionAlerts.length > 0 ? (
-                            <div>
-                                <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--df-faint)', letterSpacing: '0.05em', marginBottom: 8 }}>
-                                    PROJETS SANS STOCK
-                                </div>
-                                {stats.tensionAlerts.map((p, i) => (
-                                    <div key={i} style={{ padding: '8px 10px', marginBottom: 6, background: 'var(--df-chip-adv-bg)', border: '1px solid var(--df-amber-bg)', borderRadius: 8 }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--df-warn-text)' }}>{p.nom || p.name || `Projet #${p.id}`}</span>
-                                            <ArrowUpRight size={13} color="var(--df-x-B45309)" />
-                                        </div>
-                                        <div style={{ fontSize: 11, color: 'var(--df-x-B45309)' }}>Tissu non réceptionné</div>
-                                    </div>
-                                ))}
-                            </div>
-                        ) : (
-                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', opacity: 0.35 }}>
-                                <CheckCircle2 size={28} style={{ marginBottom: 6 }} />
-                                <span style={{ fontSize: 12 }}>Aucun projet en attente.</span>
-                            </div>
-                        )}
-                    </div>
-                </div>
-
                 {/* Top 10 compact */}
                 <div style={card}>
-                    <div style={title}><Package size={14} color="var(--df-text)" /> Top 10 par occupation</div>
+                    <div style={title}><Package size={14} color="var(--df-text)" /> Top 10 occupation</div>
                     <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2 }}>
                         {stats.top10.map((item, i) => {
                             const pct = stats.mlTotal > 0 ? Math.round((Number(item.qty) / stats.mlTotal) * 100) : 0;
@@ -303,9 +287,19 @@ export default function StockDashboardTab({ inventory = [], projects = [], movem
                                         <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--df-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                             {item.product || 'N/A'}
                                         </div>
-                                        {item.project && (
-                                            <div style={{ fontSize: 10, color: 'var(--df-x-1E40AF)', fontWeight: 600 }}>{item.project}</div>
-                                        )}
+                                        {(() => {
+                                            const g = STOCK_GROUPS.find((x) => x.key === itemGroupOf(item, projects));
+                                            return (
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--df-muted)', minWidth: 0 }}>
+                                                    {g && (
+                                                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, flexShrink: 0, color: 'var(--df-text-2)', fontWeight: 500 }}>
+                                                            <span aria-hidden style={{ width: 7, height: 7, borderRadius: '50%', background: GROUP_COLORS[g.key] }} />{g.label}
+                                                        </span>
+                                                    )}
+                                                    {item.project && <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>· {item.project}</span>}
+                                                </div>
+                                            );
+                                        })()}
                                     </div>
                                     <div style={{ textAlign: 'right', flexShrink: 0 }}>
                                         <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--df-text)' }}>{Number(item.qty).toLocaleString('fr-FR')} <span style={{ fontWeight: 400, color: 'var(--df-muted)' }}>ml</span></div>
@@ -316,9 +310,9 @@ export default function StockDashboardTab({ inventory = [], projects = [], movem
                         })}
                     </div>
                 </div>
-            </div>
+                </div>
 
-            {/* ── LIGNE 2 : Courbe pleine largeur ── */}
+                {/* Courbe pleine largeur */}
             <div style={{ ...card, padding: '24px 28px', height: 'auto' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
                     <div style={title}>
@@ -326,20 +320,20 @@ export default function StockDashboardTab({ inventory = [], projects = [], movem
                         Taux d'occupation hebdomadaire
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                        <TextField
-                            type="date" size="small" label="Du"
-                            value={dateFrom} onChange={e => setDateFrom(e.target.value)}
-                            InputLabelProps={{ shrink: true }}
-                            inputProps={{ max: dateTo }}
-                            sx={{ width: 155, '& .MuiInputBase-input': { fontSize: '13px' } }}
-                        />
-                        <TextField
-                            type="date" size="small" label="Au"
-                            value={dateTo} onChange={e => setDateTo(e.target.value)}
-                            InputLabelProps={{ shrink: true }}
-                            inputProps={{ min: dateFrom, max: toInputDate(new Date()) }}
-                            sx={{ width: 155, '& .MuiInputBase-input': { fontSize: '13px' } }}
-                        />
+                        {/* Période : mêmes champs date que le planning (Capacité), sans libellé flottant */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <input
+                                type="date" aria-label="Du" value={dateFrom} max={dateTo}
+                                onChange={e => setDateFrom(e.target.value)}
+                                style={{ ...DA_INPUT_STYLE, width: 'auto', height: 30, fontSize: 12, padding: '0 8px' }}
+                            />
+                            <span style={{ color: 'var(--df-faint-2)', fontSize: 13 }}>→</span>
+                            <input
+                                type="date" aria-label="Au" value={dateTo} min={dateFrom} max={toInputDate(new Date())}
+                                onChange={e => setDateTo(e.target.value)}
+                                style={{ ...DA_INPUT_STYLE, width: 'auto', height: 30, fontSize: 12, padding: '0 8px' }}
+                            />
+                        </div>
                         <div style={{ display: 'flex', gap: 16, marginLeft: 8 }}>
                             {[
                                 { color: 'var(--df-danger)', label: 'Critique (>85%)' },
@@ -377,7 +371,22 @@ export default function StockDashboardTab({ inventory = [], projects = [], movem
                     </div>
                 )}
             </div>
+            </Chapter>
 
+            {/* ── CHAPITRE 2 : livraisons de tissus à venir (liste de courses Odoo) ── */}
+            <Chapter id="next" label="À venir">
+                <div className="df-inv-kpis" style={ROW}>
+                    <UpcomingArrivalsCard state={delivery} card={card} title={title} onOpenList={dialogs.openList} onOpenItem={dialogs.openItem} />
+                    <DeliveryQualityCard state={delivery} card={card} title={title} onOpenList={dialogs.openList} />
+                    <DeliveryAlertsCard state={delivery} card={card} title={title} onOpenList={dialogs.openList} onOpenItem={dialogs.openItem} />
+                </div>
+            </Chapter>
+
+            <DeliveryListDialog
+                open={!!dialogs.listFilter} filter={dialogs.listFilter} onFilter={dialogs.setListFilter}
+                onClose={() => dialogs.setListFilter(null)} state={delivery} onOpenItem={dialogs.openItem}
+            />
+            <CourseListDialog project={dialogs.courseProject} onClose={() => dialogs.setCourseProject(null)} />
         </div>
     );
 }

@@ -3,7 +3,7 @@
 // partagée avec le job de nuit via courseLinesCore (même comportement garanti).
 
 import { supabase } from "../supabaseClient";
-import { readCourseLinesWith, syncCourseLinesInto } from "./courseLinesCore";
+import { readCourseLinesWith, readOpenCourseLinesWith, syncCourseLinesInto } from "./courseLinesCore";
 
 /** Appelle l'endpoint serveur qui lit Odoo. */
 async function fetchFromOdoo(odooProjectId) {
@@ -22,6 +22,11 @@ async function fetchFromOdoo(odooProjectId) {
 /** Lit le miroir local (Supabase) d'un projet Droitfil, trié. */
 export async function readCourseLines(droitfilProjectId) {
   return readCourseLinesWith(supabase, droitfilProjectId);
+}
+
+/** Tissus encore à recevoir, tous projets (tableau de bord Inventaire). */
+export async function readOpenCourseLines() {
+  return readOpenCourseLinesWith(supabase);
 }
 
 /**
