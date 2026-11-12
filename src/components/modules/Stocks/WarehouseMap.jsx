@@ -1,10 +1,14 @@
 // Vue entrepôt (Inventaire › Stock › Vue entrepôt) : représentation 3D de l'entrepôt et de
 // son occupation en rouleaux, recherche d'un article / dossier, détail d'un emplacement.
 import React, { Suspense, lazy, useMemo, useState } from 'react';
-import { Search, X, MapPin, RotateCcw } from 'lucide-react';
+import { Search, X, MapPin, RotateCcw, Pencil } from 'lucide-react';
 import { useViewportWidth } from '../../../lib/hooks/useViewportWidth';
 import { GROUPS, MAPPED_CODES, groupOfCode } from '../../../lib/warehouse/layout';
-import { occupancyByCode, countRouleaux, totalCapacity, occupancyColor, TO_COMPLETE } from '../../../lib/warehouse/occupancy';
+import {
+    occupancyByCode, countRouleaux, totalCapacity, occupancyColor, TO_COMPLETE,
+    ZONE_LAIZE_TYPES, zoneLaizeType, laizeCm, PALETTE_ROULEAUX_GRANDE_LAIZE, PALETTE_ROULEAUX_PETITE_LAIZE,
+} from '../../../lib/warehouse/occupancy';
+import { DA_INPUT_STYLE } from '../../../lib/constants/daStyles';
 import { splitLocations } from '../../../lib/inventory/stockFields';
 
 const Warehouse3D = lazy(() => import('./warehouse/Warehouse3D'));
@@ -33,18 +37,82 @@ function Kpi({ label, value, sub }) {
     );
 }
 
+/** Pastille « GL » / « PL » du type de laize d'une zone (rien pour une zone mixte). */
+export function LaizeBadge({ zone, style }) {
+    const t = ZONE_LAIZE_TYPES.find(x => x.key === zoneLaizeType(zone));
+    if (!t?.short) return null;
+    return (
+        <span title={t.label} style={{ display: 'inline-flex', alignItems: 'center', height: 20, padding: '0 7px', borderRadius: 99, fontSize: 11, fontWeight: 600, background: t.key === 'grande' ? NAVY : 'var(--df-selected)', color: t.key === 'grande' ? '#FFFFFF' : 'var(--df-text)', ...style }}>
+            {t.short}
+        </span>
+    );
+}
+
+/** Modification de la capacité et du type de laize d'un emplacement (admins). */
+function ZoneEditForm({ zone, onSave, onCancel }) {
+    const [capacite, setCapacite] = useState(zone.capacite ?? '');
+    const [laize, setLaize] = useState(zoneLaizeType(zone));
+    const [saving, setSaving] = useState(false);
+    const [error, setError] = useState(null);
+    const palettes = zone.type === 'palettes';
+    const submit = async (e) => {
+        e.preventDefault();
+        const n = capacite === '' ? null : Number(capacite);
+        if (n !== null && !(Number.isInteger(n) && n >= 0)) { setError('Capacité : un nombre entier positif.'); return; }
+        setSaving(true); setError(null);
+        const err = await onSave(zone.code, { capacite: n, laize_type: laize });
+        setSaving(false);
+        if (err) setError(err.message || String(err)); else onCancel();
+    };
+    const label = { fontSize: 12, color: 'var(--df-text-2)', display: 'flex', flexDirection: 'column', gap: 4, flex: 1, minWidth: 0 };
+    const field = { ...DA_INPUT_STYLE, height: 34, fontSize: 13 };
+    return (
+        <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: 12, borderRadius: 10, background: 'var(--df-surface-5)' }}>
+            <div style={{ display: 'flex', gap: 8 }}>
+                <label style={label}>
+                    Capacité ({palettes ? 'palettes' : 'rouleaux'})
+                    <input type="number" min={0} step={1} value={capacite} onChange={(e) => setCapacite(e.target.value)} style={field} autoFocus />
+                </label>
+                <label style={label}>
+                    Type de laize
+                    <select value={laize} onChange={(e) => setLaize(e.target.value)} style={field}>
+                        {ZONE_LAIZE_TYPES.map(t => <option key={t.key} value={t.key}>{t.label}</option>)}
+                    </select>
+                </label>
+            </div>
+            {palettes && (
+                <div style={{ fontSize: 12, color: MUTED }}>
+                    Une palette = {laize === 'grande' ? PALETTE_ROULEAUX_GRANDE_LAIZE : PALETTE_ROULEAUX_PETITE_LAIZE} rouleaux{laize === 'grande' ? ' (grande laize)' : ''}
+                    {capacite !== '' ? ` → ${Number(capacite) * (laize === 'grande' ? PALETTE_ROULEAUX_GRANDE_LAIZE : PALETTE_ROULEAUX_PETITE_LAIZE)} rouleaux` : ''}
+                </div>
+            )}
+            {error && <div style={{ fontSize: 12, color: 'var(--df-danger)' }}>{error}</div>}
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                <button type="button" onClick={onCancel} disabled={saving} style={{ height: 32, padding: '0 12px', borderRadius: 8, border: '1px solid var(--df-border)', background: 'var(--df-bg)', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit', color: 'var(--df-text-2)' }}>Annuler</button>
+                <button type="submit" disabled={saving} style={{ height: 32, padding: '0 14px', borderRadius: 8, border: 'none', background: NAVY, color: '#FFFFFF', cursor: 'pointer', fontSize: 13, fontWeight: 500, fontFamily: 'inherit', opacity: saving ? 0.6 : 1 }}>{saving ? 'Enregistrement…' : 'Enregistrer'}</button>
+            </div>
+        </form>
+    );
+}
+
 /** Détail d'un emplacement : occupation et articles rangés. */
-function LocationPanel({ o, onClose, maxHeight = 520 }) {
+function LocationPanel({ o, onClose, onUpdateZone, maxHeight = 520 }) {
     const zone = o.zone;
+    const [editing, setEditing] = useState(false);
+    const perPalette = zoneLaizeType(zone) === 'grande' ? PALETTE_ROULEAUX_GRANDE_LAIZE : PALETTE_ROULEAUX_PETITE_LAIZE;
     const items = [...o.items].sort((a, b) => String(a.product).localeCompare(String(b.product), 'fr'));
     return (
         <div style={{ ...card, display: 'flex', flexDirection: 'column', gap: 10, maxHeight, overflow: 'hidden', width: '100%', boxSizing: 'border-box' }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
                 <span style={{ width: 34, height: 34, borderRadius: 8, background: NAVY, color: 'white', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, fontSize: 13, flexShrink: 0 }}>{o.code}</span>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 15, fontWeight: 500, color: 'var(--df-text)' }}>Emplacement {o.code}</div>
-                    <div style={{ fontSize: 12, color: MUTED }}>{zone?.description || zone?.type || '—'}</div>
+                    <div style={{ fontSize: 15, fontWeight: 500, color: 'var(--df-text)', display: 'flex', alignItems: 'center', gap: 8 }}>Emplacement {o.code} <LaizeBadge zone={zone} /></div>
+                    {/* Allée / niveau tirés des champs (la description en base porte l'ancienne capacité) */}
+                    <div style={{ fontSize: 12, color: MUTED }}>{zone?.allee && zone?.niveau ? `Allée ${zone.allee} · niveau ${zone.niveau}${zone.type === 'palettes' ? ' (palettes)' : ''}` : (zone?.description || zone?.type || '—')}</div>
                 </div>
+                {onUpdateZone && zone && zone.code !== 'ATELIER' && !editing && (
+                    <button type="button" onClick={() => setEditing(true)} title="Modifier la capacité et le type de laize" style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--df-faint)', padding: 2 }}><Pencil size={15} /></button>
+                )}
                 <button type="button" onClick={onClose} title="Fermer" style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--df-faint)', padding: 2 }}><X size={16} /></button>
             </div>
             <div>
@@ -53,8 +121,9 @@ function LocationPanel({ o, onClose, maxHeight = 520 }) {
                     {o.capacity ? <span style={{ fontWeight: 600 }}>{Math.round(o.pct * 100)} %</span> : <span style={{ color: MUTED }}>capacité non définie</span>}
                 </div>
                 {o.capacity ? <Bar pct={o.pct} /> : null}
-                {zone?.type === 'palettes' && <div style={{ fontSize: 11.5, color: MUTED, marginTop: 4 }}>{zone.capacite} palette{zone.capacite > 1 ? 's' : ''} (≈ 10 rouleaux chacune)</div>}
+                {zone?.type === 'palettes' && <div style={{ fontSize: 12, color: MUTED, marginTop: 4 }}>{zone.capacite} palette{zone.capacite > 1 ? 's' : ''} ({perPalette} rouleaux chacune)</div>}
             </div>
+            {editing && <ZoneEditForm key={zone.code} zone={zone} onSave={onUpdateZone} onCancel={() => setEditing(false)} />}
             <div style={{ fontSize: 12, color: MUTED, borderTop: '1px solid var(--df-border-soft)', paddingTop: 8 }}>{items.length} article{items.length > 1 ? 's' : ''}</div>
             <div style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6, paddingRight: 2 }}>
                 {items.length === 0 && <div style={{ fontSize: 13, color: 'var(--df-faint)' }}>Emplacement vide.</div>}
@@ -62,7 +131,7 @@ function LocationPanel({ o, onClose, maxHeight = 520 }) {
                     <div key={it.id} style={{ border: '1px solid var(--df-navy-bg-2)', borderRadius: 8, padding: '8px 10px' }}>
                         <div style={{ fontSize: 13, color: 'var(--df-text)', fontWeight: 500 }}>{[it.ref || it.product, it.coloris].filter(Boolean).join(' · ')}</div>
                         <div style={{ fontSize: 12, color: MUTED, marginTop: 2 }}>
-                            {[it.fournisseur, `${fmt(it.qty)} ${it.unit || ''}`.trim(), Array.isArray(it.pieces) && it.pieces.length > 1 ? `${it.pieces.length} pièces` : null].filter(Boolean).join(' · ')}
+                            {[it.fournisseur, laizeCm(it.laize) ? `laize ${fmt(laizeCm(it.laize))} cm` : null, `${fmt(it.qty)} ${it.unit || ''}`.trim(), Array.isArray(it.pieces) && it.pieces.length > 1 ? `${it.pieces.length} pièces` : null].filter(Boolean).join(' · ')}
                         </div>
                         <div style={{ fontSize: 12, color: it.project ? NAVY : 'var(--df-faint)', marginTop: 2 }}>{it.project || 'Stock libre'}</div>
                     </div>
@@ -72,7 +141,7 @@ function LocationPanel({ o, onClose, maxHeight = 520 }) {
     );
 }
 
-export default function WarehouseMap({ zones = [], inventory = [] }) {
+export default function WarehouseMap({ zones = [], inventory = [], onUpdateZone }) {
     const width = useViewportWidth();
     const isMobile = width < 760;
     const [selected, setSelected] = useState(null);
@@ -162,13 +231,14 @@ export default function WarehouseMap({ zones = [], inventory = [] }) {
                         {isMobile ? 'Glisser pour tourner · pincer pour zoomer · toucher un niveau' : 'Glisser pour tourner · molette pour zoomer · clic droit pour déplacer · cliquer un niveau'}
                     </div>
                     {/* Ordinateur : détail posé sur la vue (elle ne change pas de taille, rien ne saute) */}
+                    {/* zIndex au-dessus des étiquettes 3D (drei Html : zIndexRange jusqu'à 20) */}
                     {sel && !isMobile && (
-                        <div style={{ position: 'absolute', top: 12, right: 12, width: 320, maxHeight: canvasH - 24, display: 'flex', boxShadow: '0 10px 25px rgba(17,24,39,0.12)', borderRadius: 12 }}>
-                            <LocationPanel o={sel} onClose={() => setSelected(null)} maxHeight={canvasH - 24} />
+                        <div style={{ position: 'absolute', top: 12, right: 12, zIndex: 40, width: 320, maxHeight: canvasH - 24, display: 'flex', boxShadow: '0 10px 25px rgba(17,24,39,0.12)', borderRadius: 12 }}>
+                            <LocationPanel key={sel.code} o={sel} onClose={() => setSelected(null)} onUpdateZone={onUpdateZone} maxHeight={canvasH - 24} />
                         </div>
                     )}
                 </div>
-                {sel && isMobile && <LocationPanel o={sel} onClose={() => setSelected(null)} />}
+                {sel && isMobile && <LocationPanel key={sel.code} o={sel} onClose={() => setSelected(null)} onUpdateZone={onUpdateZone} />}
             </div>
 
             {/* Cartes par zone */}

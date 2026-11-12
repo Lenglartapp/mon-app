@@ -39,7 +39,9 @@ export default function StocksModule({
     // Droits fins (tablette atelier : ni tableau de bord, ni plan, ni export / import, ni création d'article)
     const canDashboard = can(currentUser, 'inventory.dashboard');
     const canImport = can(currentUser, 'inventory.import');
-    const { zones } = useWarehouseZones();
+    const { zones, updateZone } = useWarehouseZones();
+    // Capacité et type de laize des emplacements (vue entrepôt) : admins seulement
+    const canEditZones = can(currentUser, 'inventory.zones');
     const [tabIndex, setTabIndex] = useState(() => (canDashboard ? 0 : 2));
     // Stock ouvert depuis la Ventilation du stock : filtre + tri appliqués une seule fois
     const [stockPreset, setStockPreset] = useState(null);
@@ -164,6 +166,7 @@ export default function StocksModule({
                             zones={zones}
                             preset={stockPreset}
                             canEditStatus={canEditStatus}
+                            onUpdateZone={canEditZones ? updateZone : undefined}
                         />
                     )}
                     {activeTab === 3 && (

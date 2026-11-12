@@ -6,7 +6,8 @@ import {
 import {
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine
 } from 'recharts';
-import { countRouleaux, rollsOf } from '../../../lib/warehouse/occupancy';
+import { countRouleaux, rollsOf, totalCapacity, laizeBreakdown, misplacedRolls, laizeCm, GRANDE_LAIZE_CM } from '../../../lib/warehouse/occupancy';
+import DaDialog from '../../ui/DaDialog';
 import { STOCK_GROUPS, itemGroupOf } from '../../../lib/inventory/stockStatus';
 import { DA_INPUT_STYLE } from '../../../lib/constants/daStyles';
 import { DeliveryAlertsCard, DeliveryQualityCard, UpcomingArrivalsCard, DeliveryListDialog, CourseListDialog } from './DeliveryPanels';
@@ -14,18 +15,6 @@ import { useDeliveryAlerts, useDeliveryDialogs } from './useDeliveryAlerts';
 
 // Couleurs de la Ventilation du stock (nuancier de la DA).
 const GROUP_COLORS = { reserved: '#1B3269', active: '#4A6DB0', remnant: '#CEAB95', dead: '#BB7051' };
-
-const PALETTE_TO_ROULEAUX = 10;
-
-const computeTotalCapacity = (zones) => {
-    if (!zones || zones.length === 0) return 0;
-    return zones.reduce((acc, z) => {
-        if (!z.capacite) return acc;
-        if (z.type === 'palettes') return acc + z.capacite * PALETTE_TO_ROULEAUX;
-        if (z.type === 'rouleaux' || z.type === 'reception') return acc + z.capacite;
-        return acc;
-    }, 0);
-};
 
 // Rouleaux en stock : règle partagée avec la Vue entrepôt (lib/warehouse/occupancy).
 // Avant : un tissu sans pièce détaillée comptait 0 (tableau de pièces vide) et un article
@@ -57,6 +46,60 @@ const CustomTooltip = ({ active, payload, label }) => {
         </div>
     );
 };
+
+const fmtR = (n) => (Math.round((Number(n) || 0) * 10) / 10).toLocaleString('fr-FR');
+
+/** Capacité et occupation par type de zone : grandes laizes, petites laizes, non ventilé, total. */
+function LaizeTable({ laize }) {
+    const cell = { fontSize: 13, color: 'var(--df-text)', padding: '5px 0', whiteSpace: 'nowrap' };
+    const num = { ...cell, textAlign: 'right' };
+    const line = (r, bold) => (
+        <tr key={r.key} title={r.key === 'none' ? 'Zones mixtes et tissus sans emplacement connu' : undefined} style={{ borderTop: bold ? '1px solid var(--df-border)' : 'none' }}>
+            <td style={{ ...cell, fontWeight: bold ? 600 : 400 }}>{r.label}</td>
+            <td style={{ ...num, fontWeight: bold ? 600 : 400 }}>{fmtR(r.rolls)} <span style={{ color: 'var(--df-faint)', fontWeight: 400 }}>/ {r.capacity ? fmtR(r.capacity) : '—'}</span></td>
+            <td style={{ ...num, width: 52, fontWeight: 600, color: 'var(--df-text-2)' }}>{r.pct === null ? '—' : `${Math.round(r.pct * 100)} %`}</td>
+        </tr>
+    );
+    return (
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'Roboto, system-ui, sans-serif' }}>
+            <thead>
+                <tr>
+                    <th style={{ textAlign: 'left', fontSize: 12, fontWeight: 500, color: 'var(--df-muted)', paddingBottom: 4 }}>Zones</th>
+                    <th style={{ textAlign: 'right', fontSize: 12, fontWeight: 500, color: 'var(--df-muted)', paddingBottom: 4 }}>Rouleaux / capacité</th>
+                    <th />
+                </tr>
+            </thead>
+            <tbody>
+                {laize.rows.map(r => line(r, false))}
+                {line({ key: 'total', label: 'Total', ...laize.total }, true)}
+            </tbody>
+        </table>
+    );
+}
+
+/** Tissus rangés dans une zone qui n'est pas de leur laize (information, rien n'est bloqué). */
+function MisplacedDialog({ open, onClose, misplaced }) {
+    const label = { grande: 'zone grandes laizes', petite: 'zone petites laizes' };
+    return (
+        <DaDialog open={open} onClose={onClose} title="Rangement à vérifier"
+            subtitle={`Grande laize = ${GRANDE_LAIZE_CM} cm et plus · ${fmtR(misplaced.grandeInPetite)} rlx de grande laize en zone petite, ${fmtR(misplaced.petiteInGrande)} rlx de petite laize en zone grande`}
+            maxWidth="md" height="70vh">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                {misplaced.entries.map((e, i) => (
+                    <div key={`${e.item.id}-${e.code}`} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 10px', borderRadius: 8, background: i % 2 === 0 ? 'var(--df-surface-5)' : 'transparent' }}>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--df-text)', width: 44, flexShrink: 0 }}>{e.code}</span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 13, color: 'var(--df-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{[e.item.fournisseur, e.item.ref || e.item.product, e.item.coloris].filter(Boolean).join(' · ')}</div>
+                            <div style={{ fontSize: 12, color: 'var(--df-muted)' }}>{e.item.project || 'Stock libre'}</div>
+                        </div>
+                        <span style={{ fontSize: 12, color: 'var(--df-text-2)', whiteSpace: 'nowrap' }}>laize {fmtR(laizeCm(e.item.laize))} cm · {label[e.zoneType]}</span>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--df-text)', whiteSpace: 'nowrap', width: 56, textAlign: 'right' }}>{fmtR(e.rolls)} rlx</span>
+                    </div>
+                ))}
+            </div>
+        </DaDialog>
+    );
+}
 
 // Chapitre repliable (état mémorisé sur l'appareil).
 function Chapter({ id, label, children }) {
@@ -94,10 +137,11 @@ export default function StockDashboardTab({ inventory = [], projects = [], movem
     const defaultFrom = new Date(); defaultFrom.setDate(defaultFrom.getDate() - 12 * 7);
     const [dateFrom, setDateFrom] = useState(toInputDate(defaultFrom));
     const [dateTo, setDateTo] = useState(toInputDate(defaultTo));
+    const [misplacedOpen, setMisplacedOpen] = useState(false);
 
     const stats = useMemo(() => {
-        const totalCapacity = computeTotalCapacity(zones);
-        const capacite = totalCapacity > 0 ? totalCapacity : 790;
+        // Capacité saisie par emplacement (warehouse_zones), palettes converties selon la laize
+        const capacite = totalCapacity(zones);
         const rouleauxEnStock = countRouleaux(inventory);
         const occupancyPct = capacite > 0 ? Math.min(Math.round((rouleauxEnStock / capacite) * 100), 100) : 0;
 
@@ -130,7 +174,9 @@ export default function StockDashboardTab({ inventory = [], projects = [], movem
         return {
             rouleauxEnStock, capacite, occupancyPct, groups, groupRolls, freeRouleaux,
             tensionLevel, top10, mlTotal,
-            zonesLoaded: totalCapacity > 0,
+            zonesLoaded: capacite > 0,
+            laize: laizeBreakdown(inventory, zones),
+            misplaced: misplacedRolls(inventory, zones),
         };
     }, [inventory, projects, zones]);
 
@@ -205,35 +251,47 @@ export default function StockDashboardTab({ inventory = [], projects = [], movem
                 {/* Occupation générale */}
                 <div style={card}>
                     <div style={title}><Activity size={14} color="var(--df-blue)" /> Occupation générale</div>
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
-                        <div style={{ position: 'relative', display: 'inline-flex' }}>
-                            <svg width="130" height="130" viewBox="0 0 130 130">
-                                <circle cx="65" cy="65" r="56" fill="none" stroke="var(--df-surface-2)" strokeWidth="10" />
-                                <circle cx="65" cy="65" r="56" fill="none" stroke={occupancyColor}
-                                    strokeWidth="10" strokeDasharray={352}
-                                    strokeDashoffset={352 - (352 * stats.occupancyPct) / 100}
-                                    strokeLinecap="round" transform="rotate(-90 65 65)"
-                                    style={{ transition: 'stroke-dashoffset 1s ease-in-out' }}
-                                />
-                            </svg>
-                            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
-                                <span style={{ fontWeight: 800, fontSize: 28, color: occupancyColor, lineHeight: 1 }}>{stats.occupancyPct}%</span>
-                                <span style={{ fontSize: 12, color: 'var(--df-faint)', fontWeight: 500 }}>plein</span>
+                    <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: 14 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                            <div style={{ position: 'relative', display: 'inline-flex', flexShrink: 0 }}>
+                                <svg width="104" height="104" viewBox="0 0 130 130">
+                                    <circle cx="65" cy="65" r="56" fill="none" stroke="var(--df-surface-2)" strokeWidth="10" />
+                                    <circle cx="65" cy="65" r="56" fill="none" stroke={occupancyColor}
+                                        strokeWidth="10" strokeDasharray={352}
+                                        strokeDashoffset={352 - (352 * stats.occupancyPct) / 100}
+                                        strokeLinecap="round" transform="rotate(-90 65 65)"
+                                        style={{ transition: 'stroke-dashoffset 1s ease-in-out' }}
+                                    />
+                                </svg>
+                                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
+                                    <span style={{ fontWeight: 800, fontSize: 24, color: occupancyColor, lineHeight: 1 }}>{stats.zonesLoaded ? `${stats.occupancyPct}%` : '—'}</span>
+                                    <span style={{ fontSize: 12, color: 'var(--df-faint)', fontWeight: 500 }}>plein</span>
+                                </div>
+                            </div>
+                            <div style={{ minWidth: 0 }}>
+                                <div style={{ fontSize: 12, color: 'var(--df-muted)' }}>
+                                    <strong style={{ color: 'var(--df-text)' }}>{fmtR(stats.rouleauxEnStock)}</strong>
+                                    {' '}/ <strong style={{ color: 'var(--df-text)' }}>{stats.zonesLoaded ? fmtR(stats.capacite) : '—'}</strong> rouleaux
+                                </div>
+                                <div style={{ fontWeight: 700, fontSize: 14, marginTop: 6, color: 'var(--df-text)' }}>
+                                    {stats.zonesLoaded ? `${fmtR(stats.freeRouleaux)} rouleaux libres` : 'Capacité non définie'}
+                                </div>
+                                {stats.zonesLoaded && (
+                                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 4, fontSize: 12, color: 'var(--df-text-2)' }}>
+                                        <span aria-hidden style={{ width: 8, height: 8, borderRadius: '50%', background: TENSION[stats.tensionLevel].color, flexShrink: 0 }} />
+                                        {TENSION[stats.tensionLevel].text}
+                                    </div>
+                                )}
                             </div>
                         </div>
-                        <div style={{ textAlign: 'center' }}>
-                            <div style={{ fontSize: 12, color: 'var(--df-muted)' }}>
-                                <strong style={{ color: 'var(--df-text)' }}>{stats.rouleauxEnStock.toLocaleString()}</strong>
-                                {' '}/ <strong style={{ color: 'var(--df-text)' }}>{stats.capacite.toLocaleString()}</strong> rouleaux
-                            </div>
-                            <div style={{ fontWeight: 700, fontSize: 14, marginTop: 6, color: 'var(--df-text)' }}>
-                                {stats.freeRouleaux.toLocaleString('fr-FR')} rouleaux libres
-                            </div>
-                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 4, fontSize: 12, color: 'var(--df-text-2)' }}>
-                                <span aria-hidden style={{ width: 8, height: 8, borderRadius: '50%', background: TENSION[stats.tensionLevel].color }} />
-                                {TENSION[stats.tensionLevel].text}
-                            </div>
-                        </div>
+                        <LaizeTable laize={stats.laize} />
+                        {stats.misplaced.rolls > 0 && (
+                            <button type="button" onClick={() => setMisplacedOpen(true)} title="Voir les tissus concernés"
+                                style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 8, border: '1px dashed var(--df-border)', background: 'transparent', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, color: 'var(--df-text)', textAlign: 'left' }}>
+                                <span aria-hidden style={{ width: 8, height: 8, borderRadius: '50%', background: '#D97706', flexShrink: 0 }} />
+                                <span><strong>{fmtR(stats.misplaced.rolls)} rouleau{stats.misplaced.rolls > 1 ? 'x' : ''} mal rangé{stats.misplaced.rolls > 1 ? 's' : ''}</strong> (laize ≠ zone)</span>
+                            </button>
+                        )}
                     </div>
                 </div>
 
@@ -382,6 +440,7 @@ export default function StockDashboardTab({ inventory = [], projects = [], movem
                 </div>
             </Chapter>
 
+            <MisplacedDialog open={misplacedOpen} onClose={() => setMisplacedOpen(false)} misplaced={stats.misplaced} />
             <DeliveryListDialog
                 open={!!dialogs.listFilter} filter={dialogs.listFilter} onFilter={dialogs.setListFilter}
                 onClose={() => dialogs.setListFilter(null)} state={delivery} onOpenItem={dialogs.openItem}

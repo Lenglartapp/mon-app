@@ -46,7 +46,7 @@ const matchesSearch = (item, key, text) => {
 const TOTALS_STORAGE_KEY = 'df.stock.inventory.totals';
 const readTotals = () => { try { return JSON.parse(localStorage.getItem(TOTALS_STORAGE_KEY)) || {}; } catch { return {}; } };
 
-export default function StockInventoryTab({ inventory, projects = [], movements = [], onBulkMovement, onImportStock, onUpdateItem, zones = [], embedded = false, preset = null, canEditStatus = false, canMap = true, canExport = true }) {
+export default function StockInventoryTab({ inventory, projects = [], movements = [], onBulkMovement, onImportStock, onUpdateItem, zones = [], embedded = false, preset = null, canEditStatus = false, canMap = true, canExport = true, onUpdateZone }) {
     const [search, setSearch] = useState('');
     const [searchField, setSearchField] = useState(SEARCH_ALL);
     const [totals, setTotals] = useState(readTotals);
@@ -352,7 +352,7 @@ export default function StockInventoryTab({ inventory, projects = [], movements 
             {/* VUE ENTREPÔT */}
             {canMap && showMap && (
                 <Box sx={{ mb: 3 }}>
-                    <WarehouseMap zones={zones} inventory={inventory} />
+                    <WarehouseMap zones={zones} inventory={inventory} onUpdateZone={onUpdateZone} />
                 </Box>
             )}
 

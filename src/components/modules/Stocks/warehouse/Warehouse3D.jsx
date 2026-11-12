@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, Html, Edges } from '@react-three/drei';
 import { BUILDING, RACKS, FLOOR_ZONES, DECOR, DOORS } from '../../../../lib/warehouse/layout';
-import { occupancyColor } from '../../../../lib/warehouse/occupancy';
+import { occupancyColor, ZONE_LAIZE_TYPES, zoneLaizeType } from '../../../../lib/warehouse/occupancy';
 import { useThemeMode } from '../../../../theme/themeContext';
 
 // Couleurs de la scène (Three.js ne lit pas les variables CSS : deux jeux explicites).
@@ -69,6 +69,7 @@ function Pulse({ position, size }) {
 function Level({ code, base, height, rect, along, occ, selected, highlighted, hovered, onHover, onSelect }) {
     const o = occ.get(code);
     const pct = o?.pct || 0;
+    const laizeShort = ZONE_LAIZE_TYPES.find(t => t.key === zoneLaizeType(o?.zone))?.short || null;
     const slots = along > 3 ? 10 : along > 1.4 ? 6 : 5;
     const filled = o?.rolls > 0 ? Math.max(1, Math.round(pct * slots)) : 0;
     const color = occupancyColor(Math.max(pct, filled ? 0.3 : 0));
@@ -89,6 +90,12 @@ function Level({ code, base, height, rect, along, occ, selected, highlighted, ho
             <Box position={[cx, base + 0.015, cz]} size={[w, 0.03, d]} color={selected ? C.shelfSel : C.shelf} />
             {blocks}
             {highlighted && <Pulse position={hitPos} size={hitSize} />}
+            {/* Type de laize de l'emplacement : pastille GL / PL (rien pour une zone mixte) */}
+            {laizeShort && (
+                <Html position={[cx, base + height * 0.5, cz]} center zIndexRange={[9, 0]}>
+                    <div style={{ ...labelStyle, fontSize: 10, padding: '1px 6px', ...(laizeShort === 'GL' ? { background: C.aisleBg, color: 'white', border: 'none' } : {}) }}>{laizeShort}</div>
+                </Html>
+            )}
             <mesh
                 position={hitPos}
                 onPointerOver={(e) => { e.stopPropagation(); onHover(code, [cx, base + height + 0.05, cz]); }}
