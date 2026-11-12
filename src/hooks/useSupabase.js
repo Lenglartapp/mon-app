@@ -1413,23 +1413,39 @@ export const useStocks = (liveProjects) => {
 };
 
 // --- WAREHOUSE ZONES ---
+const ZONE_COLUMNS = 'code, allee, niveau, niveau_label, type, section, capacite, capacite_unite, label_carte, description';
+
 export const useWarehouseZones = () => {
     const [zones, setZones] = useState([]);
 
     useEffect(() => {
-        supabase
+        // Emplacements de stockage + l'atelier (zone « structure » en base, mais on y
+        // range des pièces : mises à disposition, coupes en cours).
+        const load = (cols) => supabase
             .from('warehouse_zones')
-            .select('code, allee, niveau, niveau_label, type, section, capacite, capacite_unite, label_carte, description')
-            // Emplacements de stockage + l'atelier (zone « structure » en base, mais on y
-            // range des pièces : mises à disposition, coupes en cours).
+            .select(cols)
             .or('is_storage.eq.true,code.eq.ATELIER')
             .order('section')
-            .order('code')
-            .then(({ data, error }) => {
-                if (error) console.error("Erreur fetch warehouse_zones:", error);
-                if (data) setZones(data);
-            });
+            .order('code');
+        // laize_type arrive avec la migration 2026-11-12_zones_capacites_laize.sql : tant
+        // qu'elle n'est pas passée, on relit sans (toutes les zones sont alors « mixte »).
+        load(`${ZONE_COLUMNS}, laize_type`).then(({ data, error }) => {
+            if (error?.code === '42703') return load(ZONE_COLUMNS);
+            return { data, error };
+        }).then(({ data, error }) => {
+            if (error) console.error("Erreur fetch warehouse_zones:", error);
+            if (data) setZones(data);
+        });
     }, []);
 
-    return { zones };
+    /** Capacité / type de laize d'une zone (admins, RLS). Renvoie l'erreur éventuelle. */
+    const updateZone = async (code, patch) => {
+        const { data, error } = await supabase.from('warehouse_zones').update(patch).eq('code', code).select('code');
+        if (error) return error;
+        if (!data?.length) return { message: 'Modification refusée (réservée aux administrateurs).' };
+        setZones((prev) => prev.map((z) => (z.code === code ? { ...z, ...patch } : z)));
+        return null;
+    };
+
+    return { zones, updateZone };
 };
