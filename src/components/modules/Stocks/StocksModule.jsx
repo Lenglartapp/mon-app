@@ -29,7 +29,8 @@ export default function StocksModule({
     onBulkMovement,
     onImportStock,
     onUpdateItem,
-    onStockChanged
+    onStockChanged,
+    events = [] // créneaux du planning : date de besoin des tissus (prochain créneau confection)
 }) {
     const { currentUser } = useAuth();
     const canEdit = can(currentUser, 'inventory.edit');
@@ -129,6 +130,7 @@ export default function StocksModule({
                             projects={projects}
                             movements={movements}
                             zones={zones}
+                            events={events}
                             onOpenStock={openStock}
                         />
                     )}

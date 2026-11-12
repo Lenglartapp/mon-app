@@ -54,6 +54,21 @@ export async function readCourseLinesWith(supabase, droitfilProjectId) {
 }
 
 /**
+ * Tissus encore à recevoir, TOUS projets, en une seule requête (tableau de bord Inventaire) :
+ * lignes non retirées d'Odoo, commandées ou en réception partielle. Le tri fin se fait dans
+ * lib/stock/deliveryAlerts.
+ */
+export async function readOpenCourseLinesWith(supabase) {
+  const { data, error } = await supabase
+    .from("odoo_course_lines")
+    .select("odoo_id,droitfil_project_id,fournisseur,reference,coloris,type_produit,statut,quantite,quantite_commandee,quantite_recue,unite,purchase_order,date_livraison_estimee,date_reception,removed_from_odoo")
+    .eq("removed_from_odoo", false)
+    .in("statut", ["commande_passee", "reception_partielle"]);
+  if (error) throw error;
+  return data || [];
+}
+
+/**
  * Crée une entrée de stock + sa ligne de journal (mouvement IN). L'emplacement vaut « À COMPLÉTER »
  * tant que les pièces et l'emplacement n'ont pas été saisis. Le journal n'est plus jamais modifié.
  * Avec `move` (détail Odoo) : quantité, date et bon de réception de CE mouvement ; sinon la ligne entière.

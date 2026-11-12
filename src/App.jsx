@@ -619,6 +619,7 @@ function AppShell() {
             onImportStock={importStockItems}
             onUpdateItem={updateInventoryItem}
             onStockChanged={refreshStocks}
+            events={planningEvents}
             onBack={() => navigate("/")}
           />
         )}
