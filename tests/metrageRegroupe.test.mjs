@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { regrouperCouche, metrageRegroupeLignes, texteRegroupe } from '../src/lib/formulas/metrageRegroupe.js';
 import { computeFormulas } from '../src/lib/formulas/compute.js';
 import { RIDEAUX_SCHEMA } from '../src/lib/schemas/chiffrage/rideaux.js';
-import { RIDEAUX_PROD_SCHEMA, regrouperRideauxProduction } from '../src/lib/schemas/production/rideaux.js';
+import { RIDEAUX_PROD_SCHEMA, regrouperRideauxProduction, calcML } from '../src/lib/schemas/production/rideaux.js';
 import { buildProjectFromMinute } from '../src/lib/import/projectFromMinute.js';
 import { computeNeeds } from '../src/lib/stock/projectStock.js';
 
@@ -111,7 +111,7 @@ test('une ligne en lés debout ajoutée : hors bandes, sans effet sur les autres
     base.forEach((r, i) => assert.equal(rows[i].ml_tissu1, r.ml_tissu1, r.id));
 });
 
-test('demi-lé pour tous (v4) : un seul pan, laize 140, à plat 190, H. coupe 250 → 1,5 lé, 4 m (v3 : 2 lés, 5 m)', () => {
+test('demi-lé pour tous (v4) : un seul pan, laize 140, à plat 190, H. coupe 250 → 1,5 lé, 4 m (v3 : 2 lés, 5 m), chiffrage et production', () => {
     const row = { ...ligneChiffrage('Pan', 'pan', 190, 196, { ampleur: 1, v_ourlets_de_cotes: 0 }), tissu_deco1: 'LIN', laize_tissu1: 140 };
     const [v4] = computeFormulas([row], RIDEAUX_SCHEMA, ctx(4));
     assert.equal(v4.a_plat, 190);
@@ -121,6 +121,9 @@ test('demi-lé pour tous (v4) : un seul pan, laize 140, à plat 190, H. coupe 25
     const [v3] = computeFormulas([row], RIDEAUX_SCHEMA, ctx(3));
     assert.equal(v3.nb_les_tissu1, 2);
     assert.equal(v3.ml_tissu1, 5);
+    // Production (même calcML de lés debout) : 4 m en v4, 5 m avant (pan seul = lé entier, sans arrondi)
+    assert.equal(calcML(190, 140, 250, 250, 1, 'tous'), 4);
+    assert.equal(calcML(190, 140, 250, 250, 1, true), 5);
 });
 
 // ── 3. Mise en projet : production et besoins ────────────────────────────────

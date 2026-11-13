@@ -152,7 +152,8 @@ export const PATTE_CROISEMENT_OPTIONS = ["", ...Object.keys(PATTE_CROISEMENT_CRO
 // aPlat, laize, hCoupe, hCoupeMotif en cm → résultat en m
 // `demiLe` (v2, tissus unis) : sur une paire, les lés par rideau sont arrondis au DEMI-lé
 // supérieur (un lé coupé en deux sert les deux rideaux) au lieu de l'entier supérieur.
-// `demiLe = 'tous'` (v4) : demi-lé aussi pour un seul pan.
+// `demiLe = 'tous'` (v4) : demi-lé aussi pour un seul pan, et ML arrondi au 0,5 m par ligne
+// (lés debout), comme en chiffrage.
 export const calcML = (aPlat, laize, hCoupe, hCoupeMotif, pans = 1, demiLe = false) => {
     if (!laize || laize <= 0 || !aPlat || aPlat <= 0) return 0;
     if (laize >= hCoupe) {
@@ -162,7 +163,9 @@ export const calcML = (aPlat, laize, hCoupe, hCoupeMotif, pans = 1, demiLe = fal
     // Vertical : les lés ne se partagent pas entre deux pans, on coupe donc
     // ceil(à plat / laize) lés PAR pan.
     const nbLes = (demiLe === 'tous' || (demiLe && pans === 2)) ? Math.ceil((aPlat / laize) * 2) / 2 : Math.ceil(aPlat / laize);
-    return ((nbLes * hCoupeMotif) / 100) * pans;
+    const ml = ((nbLes * hCoupeMotif) / 100) * pans;
+    // v4 : arrondi au 0,5 m par ligne, comme le chiffrage (même ML des deux côtés).
+    return demiLe === 'tous' ? Math.ceil(ml * 2 - 1e-9) / 2 : ml;
 };
 
 // ML passementerie selon application (I/U/L/-)
