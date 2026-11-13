@@ -9,6 +9,7 @@ import { SCHEMA_64 } from '../schemas/production.js';
 import { computeFormulas } from '../formulas/compute.js';
 import { applySchemaDefaults } from '../utils/schemaDefaults.js';
 import { FORMULES_METRAGE_COURANTE } from '../formulas/metrageVersion';
+import { regrouperRideauxProduction } from '../schemas/production/rideaux';
 import { FORMULES_STORES_COURANTE, isStoresMetrageRow } from '../formulas/storesBateauxMetrage.js';
 import { extractMaterialsFromLines } from '../data/demo';
 import { uid } from '../utils/uid';
@@ -63,11 +64,12 @@ export function buildProjectFromMinute(minute, opts = {}) {
     // une ligne reprise du devis DÉJÀ en métrage automatique (marqueur ≥ v1) passe en version
     // courante ; une ligne sans marqueur (métrage saisi à la main) reste sans marqueur.
     config: { formules_metrage: vMetrage, formules_stores: vStores },
-    rows: computeFormulas(rows.map((r) => applySchemaDefaults({
+    // v4 : ML des rideaux couchés regroupés sur tout le projet (cotes du devis à ce stade).
+    rows: regrouperRideauxProduction(computeFormulas(rows.map((r) => applySchemaDefaults({
       ...withoutChiffrageMessages(r),
       formules_metrage: Math.max(vMetrage, Number(r.formules_metrage) || 0),
       ...(isStoresMetrageRow(r) ? { formules_stores: Math.max(vStores, Number(r.formules_stores) || 0) } : {}),
-    }, SCHEMA_64)), SCHEMA_64),
+    }, SCHEMA_64)), SCHEMA_64)),
     // Bibliothèque du chiffrage → matériauthèque : fournisseur, référence, coloris,
     // famille, laize, motif et raccords de chaque article utilisé.
     materials: extractMaterialsFromLines(rows, minute?.catalog),

@@ -3,7 +3,8 @@
 import { DECOR_PRODUIT_RE } from '../constants/productRouting';
 import { isSansMeca } from '../constants/rideauxFields';
 import { evalFormula } from "./eval.js";
-import { FORMULES_METRAGE_V2, isMetrageV2Row, largeurFinieV2, parseCm, margeMachineRideau } from "./metrageVersion.js";
+import { FORMULES_METRAGE_V2, FORMULES_METRAGE_V4, isMetrageV2Row, largeurFinieV2, parseCm, margeMachineRideau } from "./metrageVersion.js";
+import { metrageRegroupeLignes, texteRegroupe } from "./metrageRegroupe.js";
 import { cassantRasantNum } from "./cassantRasant.js";
 import { metrageStore, FORMULES_STORES_V1, isStoresMetrageRow, isStoresMargeMachineRow } from './storesBateauxMetrage.js';
 
@@ -207,6 +208,8 @@ export function recomputeRow(row, schema, ctx = {}) {
       H_Coupe = Math.round((H + FinitionBas + (isDouble ? 1 : 2) * HTete + 2 * OB + margeMachineRideau(next)) * 10) / 10;
       // Interdoublure : hauteur finie (Hauteur + Fin. Bas) + hauteur tête.
       H_Inter = Math.round((H + FinitionBas + HTete + margeMachineRideau(next)) * 10) / 10;
+      // Gardée sur la ligne : sert au regroupement des rideaux couchés (v4).
+      next.hauteur_coupe_inter = H_Inter;
 
       // CHIFFRAGE — À plat PAR RIDEAU (même pour une paire) :
       //   Non doublé              : L. Finie × Ampleur + Retour + 4 × OC
@@ -241,20 +244,33 @@ export function recomputeRow(row, schema, ctx = {}) {
     // production. Historique : strictement supérieur.
     // `demiLe` (v2, tissus unis) : sur une paire, lés par rideau arrondis au DEMI-lé supérieur
     // (un lé coupé en deux sert les deux rideaux) — 1,2 → 1,5 par rideau → 3 pour la paire.
-    const calcML = (laize, hC, hCM, egaliteCouche = false, demiLe = false) => {
+    // v4 : demi-lé pour TOUS les rideaux (un seul pan compris) ; ML couché regroupé avec les
+    // autres rideaux du chiffrage (ctx.metrageRegroupe, calculé par regrouperRideauxChiffrage).
+    const metrageV4 = metrageV2 && Math.max(Number(ctx.paramsMap?.formules_metrage) || 0, Number(next.formules_metrage) || 0) >= FORMULES_METRAGE_V4;
+    const regroupe = metrageV4 ? ctx.metrageRegroupe?.get?.(String(next.id)) : null;
+    const infosRegroupe = {};
+    const calcML = (laize, hC, hCM, egaliteCouche = false, demiLe = false, matiere = null) => {
       if (!laize || laize <= 0) return { nbLes: 0, ml: 0 };
       // Determine H Key
       const H_Key = (hCM > hC) ? hCM : hC;
 
       if (egaliteCouche ? laize >= H_Key : laize > H_Key) {
+        // Couché regroupé (v4) : ML de la ligne = sa part des bandes, au centième (l'arrondi
+        // au 0,5 m se fait une fois sur le total du tissu, dans les besoins).
+        const r = matiere && regroupe?.[matiere];
+        if (r) {
+          infosRegroupe[matiere] = texteRegroupe(r);
+          return { nbLes: 0, ml: r.ml };
+        }
         // Railoaded
         return {
           nbLes: 0,
           ml: roundStep05((A_Plat * nbRideaux) / 100)
         };
       } else {
-        // Vertical — Nb lés par rideau (v2), métrage × nb de rideaux (2 pour une paire)
-        const NbLes = (demiLe && nbRideaux === 2) ? Math.ceil((A_Plat / laize) * 2) / 2 : Math.ceil(A_Plat / laize);
+        // Vertical — Nb lés par rideau (v2), métrage × nb de rideaux (2 pour une paire).
+        // Demi-lé : sur une paire (v2/v3), sur tout rideau (v4).
+        const NbLes = (demiLe && (nbRideaux === 2 || metrageV4)) ? Math.ceil((A_Plat / laize) * 2) / 2 : Math.ceil(A_Plat / laize);
         return {
           nbLes: NbLes,
           ml: roundStep05((NbLes * H_Key * nbRideaux) / 100)
@@ -264,7 +280,7 @@ export function recomputeRow(row, schema, ctx = {}) {
 
     // Tissu 1
     const tissu1Uni = !NVL(next.raccord_v_tissu1) && !NVL(next.raccord_h_tissu1);
-    const res1 = calcML(NVL(next.laize_tissu1), H_Coupe, next.hauteur_coupe_motif, metrageV2, metrageV2 && tissu1Uni);
+    const res1 = calcML(NVL(next.laize_tissu1), H_Coupe, next.hauteur_coupe_motif, metrageV2, metrageV2 && tissu1Uni, tissu1Uni ? 'tissu1' : null);
     next.nb_les_tissu1 = res1.nbLes; next.ml_tissu1 = res1.ml;
     const p1 = getPrice(next.tissu_deco1);
     if (p1.found) {
@@ -289,7 +305,7 @@ export function recomputeRow(row, schema, ctx = {}) {
 
     // Doublure
     // Doublure : même H. Coupe que le tissu 1 (unie, sans raccord).
-    const resD = calcML(NVL(next.laize_doublure), H_Coupe, H_Coupe, metrageV2, metrageV2);
+    const resD = calcML(NVL(next.laize_doublure), H_Coupe, H_Coupe, metrageV2, metrageV2, 'doublure');
     next.nb_les_doublure = resD.nbLes; next.ml_doublure = resD.ml;
     const pD = getPrice(next.doublure);
     if (pD.found) {
@@ -301,8 +317,11 @@ export function recomputeRow(row, schema, ctx = {}) {
 
     // Interdoublure
     const hInter = H_Inter ?? H_Coupe;
-    const resI = calcML(NVL(next.laize_interdoublure), hInter, hInter, metrageV2, metrageV2);
+    const resI = calcML(NVL(next.laize_interdoublure), hInter, hInter, metrageV2, metrageV2, 'inter');
     next.nb_les_interdoublure = resI.nbLes; next.ml_interdoublure = resI.ml;
+    // Infobulles du ML couché regroupé (v4) : « Couché regroupé : bande n° X avec … ».
+    if (Object.keys(infosRegroupe).length) next.ml_regroupe_info = infosRegroupe;
+    else delete next.ml_regroupe_info;
     const pI = getPrice(next.interdoublure);
     if (pI.found) {
       next.pa_interdoublure = next.ml_interdoublure * (pI.pa || 0);
@@ -692,4 +711,64 @@ export function recomputeRow(row, schema, ctx = {}) {
   next.prix_total = next.total_price;
 
   return next;
+}
+
+// --- RIDEAUX COUCHÉS REGROUPÉS (formules de métrage v4, chiffrage) ---
+// Le ML couché d'une ligne dépend des AUTRES lignes du chiffrage (même article, même laize) :
+// cette passe s'exécute sur toutes les lignes, après le recalcul ligne par ligne.
+const isRideauLigne = (r) => /rideau|voilage/i.test(String(r?.produit || ''));
+const labelLigne = (r, i) => [r.zone, r.piece].filter(Boolean).join(' · ') || `Ligne ${i + 1}`;
+
+/** Nombre de rideaux d'une ligne : 1 par pan (paire = 2) × Qté. */
+export const nbRideauxLigne = (row) => {
+  const pans = String(row?.paire_ou_un_seul_pan || '').startsWith('Un seul pan') ? 1 : 2;
+  return pans * Math.max(1, Math.round(NVL(row?.quantite, 1)) || 1);
+};
+
+/**
+ * Matières couchées d'une ligne de chiffrage DÉJÀ recalculée (v4) : tissu 1 uni (sans raccord),
+ * doublure, interdoublure, chacune avec sa laize et sa H. coupe ; null s'il n'y en a aucune.
+ * Couché = laize ≥ max(H. coupe, H. coupe motif), comme le calcul ligne par ligne.
+ */
+export function piecesCoucheChiffrage(row) {
+  const a = NVL(row?.a_plat);
+  if (!(a > 0)) return null;
+  const hC = NVL(row.hauteur_coupe);
+  const hK = Math.max(hC, NVL(row.hauteur_coupe_motif));
+  const m = {};
+  const uni = !NVL(row.raccord_v_tissu1) && !NVL(row.raccord_h_tissu1);
+  const l1 = NVL(row.laize_tissu1);
+  if (uni && l1 > 0 && hK > 0 && l1 >= hK) m.tissu1 = { article: row.tissu_deco1, laize: l1, h: hK, a };
+  const lD = NVL(row.laize_doublure);
+  if (lD > 0 && hC > 0 && lD >= hC) m.doublure = { article: row.doublure, laize: lD, h: hC, a };
+  const hI = NVL(row.hauteur_coupe_inter) || hC;
+  const lI = NVL(row.laize_interdoublure);
+  if (lI > 0 && hI > 0 && lI >= hI) m.inter = { article: row.interdoublure, laize: lI, h: hI, a };
+  return Object.keys(m).length ? m : null;
+}
+
+/**
+ * Applique le regroupement des rideaux couchés aux lignes v4 d'un chiffrage (même variante).
+ * Les lignes < v4, hors rideaux ou de production ne changent pas.
+ * @param {Array} rows       lignes du chiffrage
+ * @param {Function} schemaOf  (row) → schéma de recalcul de la ligne
+ */
+export function regrouperRideauxChiffrage(rows, schemaOf, ctx = {}) {
+  if (!Array.isArray(rows)) return rows;
+  const vParam = Number(ctx.paramsMap?.formules_metrage) || 0;
+  const isCand = (r) => r && isRideauLigne(r) && !isProduction(schemaOf(r), ctx)
+    && Math.max(vParam, NVL(r.formules_metrage)) >= FORMULES_METRAGE_V4;
+  if (!rows.some(isCand)) return rows;
+  const plain = { ...ctx, metrageRegroupe: null };
+  const base = rows.map((r) => (isCand(r) ? recomputeRow(r, schemaOf(r), plain) : r));
+  const lignes = [];
+  base.forEach((r, i) => {
+    if (!isCand(r)) return;
+    const matieres = piecesCoucheChiffrage(r);
+    if (matieres) lignes.push({ id: String(r.id), label: labelLigne(r, i), count: nbRideauxLigne(r), matieres });
+  });
+  if (!lignes.length) return base;
+  const map = metrageRegroupeLignes(lignes);
+  const grouped = { ...ctx, metrageRegroupe: map };
+  return base.map((r) => (isCand(r) && map.has(String(r.id)) ? recomputeRow(r, schemaOf(r), grouped) : r));
 }
