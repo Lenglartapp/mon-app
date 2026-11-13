@@ -29,6 +29,7 @@ import { appendHistory } from "../lib/minuteHistory";
 import { useNotifications } from "../contexts/NotificationContext";
 import { isFrozen, statusChangeBlocked, disabledStatuses, needsDialog, buildStatusChange } from "../lib/quoteValidation";
 import StatusChangeDialog from "../components/StatusChangeDialog";
+import { FORMULES_METRAGE_COURANTE } from "../lib/formulas/metrageVersion";
 
 // CONSTANTES & HELPERS
 const SEARCH_FIELDS = [
@@ -369,7 +370,7 @@ export default function ChiffrageRoot({ minutes = [], onCreate, onOpenMinute, on
           { id: uid(), name: "prix_achat_tissu", type: "prix", value: null },
           { id: uid(), name: "nuit_hotel", type: "prix", value: 150 },
           // Version des formules de métrage rideaux (v2 : L. Finie, H. Coupe tête/OB, À plat OC/Chant)
-          { id: uid(), name: "formules_metrage", type: "systeme", value: 3 }, // v3 : + marge machine de coupe
+          { id: uid(), name: "formules_metrage", type: "systeme", value: FORMULES_METRAGE_COURANTE }, // v4 : + couché regroupé, demi-lé pour tous
           // Métrage calculé des stores bateaux / velums (sinon saisi à la main) — cf. storesBateauxMetrage.js
           { id: uid(), name: "formules_stores", type: "systeme", value: 2 }, // v2 : + marge machine de coupe
         ],

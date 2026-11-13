@@ -3,7 +3,8 @@
 import { HAUTEUR_RENFORT_TETE_OPTIONS, FINITION_OB_RIDEAUX_OPTIONS, FINITION_OC_OPTIONS, TYPE_CROCHETS_OPTIONS, TYPE_MECANISME_OPTIONS, coefOurletCoteRideau, BORD_A_BORD_OB_CM, isBordABord } from '../../constants/rideauxFields';
 import React from 'react';
 import { PAIRE_OPTIONS_BASE, paireOptionsForRow, PAIRE_DECENTREE } from '../../utils/pairDecentree';
-import { isMetrageV2Row, largeurFinieV2, parseCm, margeMachineRideau } from '../../formulas/metrageVersion';
+import { isMetrageV2Row, isMetrageV4Row, largeurFinieV2, parseCm, margeMachineRideau } from '../../formulas/metrageVersion';
+import { metrageRegroupeLignes, texteRegroupe } from '../../formulas/metrageRegroupe.js';
 import { cassantRasantNum } from '../../formulas/cassantRasant.js';
 import { STATUT_PREPA_OPTIONS, STATUT_POSE_OPTIONS, STATUT_CONF_RIDEAUX_OPTIONS } from '../../constants/statutsProduction';
 
@@ -60,6 +61,9 @@ const isPanLibre = (row) =>
 const bordABordOB = (row) => (isBordABord(row.piquage_ourlet) ? BORD_A_BORD_OB_CM : 0);
 
 export const pansOf = (row) => (isSinglePan(row) ? 1 : 2);
+
+// Demi-lé (tissus unis, doublure, interdoublure) : sur une paire en v2/v3, sur tout rideau en v4.
+const demiLeOf = (row) => (isMetrageV4Row(row) ? 'tous' : true);
 
 // ── Helpers Lés / Hauteurs à couper (par tissu, pour une laize donnée) ────────
 // Hauteur finie retenue pour toute décision de coupe : le MAXIMUM des TROIS cotes
@@ -148,6 +152,8 @@ export const PATTE_CROISEMENT_OPTIONS = ["", ...Object.keys(PATTE_CROISEMENT_CRO
 // aPlat, laize, hCoupe, hCoupeMotif en cm → résultat en m
 // `demiLe` (v2, tissus unis) : sur une paire, les lés par rideau sont arrondis au DEMI-lé
 // supérieur (un lé coupé en deux sert les deux rideaux) au lieu de l'entier supérieur.
+// `demiLe = 'tous'` (v4) : demi-lé aussi pour un seul pan, et ML arrondi au 0,5 m par ligne
+// (lés debout), comme en chiffrage.
 export const calcML = (aPlat, laize, hCoupe, hCoupeMotif, pans = 1, demiLe = false) => {
     if (!laize || laize <= 0 || !aPlat || aPlat <= 0) return 0;
     if (laize >= hCoupe) {
@@ -156,8 +162,10 @@ export const calcML = (aPlat, laize, hCoupe, hCoupeMotif, pans = 1, demiLe = fal
     }
     // Vertical : les lés ne se partagent pas entre deux pans, on coupe donc
     // ceil(à plat / laize) lés PAR pan.
-    const nbLes = (demiLe && pans === 2) ? Math.ceil((aPlat / laize) * 2) / 2 : Math.ceil(aPlat / laize);
-    return ((nbLes * hCoupeMotif) / 100) * pans;
+    const nbLes = (demiLe === 'tous' || (demiLe && pans === 2)) ? Math.ceil((aPlat / laize) * 2) / 2 : Math.ceil(aPlat / laize);
+    const ml = ((nbLes * hCoupeMotif) / 100) * pans;
+    // v4 : arrondi au 0,5 m par ligne, comme le chiffrage (même ML des deux côtés).
+    return demiLe === 'tous' ? Math.ceil(ml * 2 - 1e-9) / 2 : ml;
 };
 
 // ML passementerie selon application (I/U/L/-)
@@ -749,11 +757,14 @@ export const RIDEAUX_PROD_SCHEMA = [
         valueGetter: (v, r) => {
             const row = getRow(v, r);
             if (isMetrageV2Row(row)) {
+                // v4 : couché regroupé avec les autres rideaux du projet (valeur posée par la passe).
+                const g = mlRegroupe(row, 'tissu1');
+                if (g != null) return g;
                 // v2 : couché si laize ≥ max(H. Coupe, H. Coupe motif) ; sinon Nb lés × H. Coupe motif.
-                // Demi-lé sur une paire uniquement si le tissu est uni (sans raccord).
+                // Demi-lé sur une paire uniquement si le tissu est uni (sans raccord) ; v4 : sur tout rideau.
                 const uni = !toNum(row.raccord_v_tissu1) && !toNum(row.raccord_h_tissu1);
                 return calcML(getters.a_plat(row), toNum(row.laize_tissu1), getters.hauteur_laize_t1(row),
-                    getters.hauteur_coupe_motif(row), pansOf(row), uni);
+                    getters.hauteur_coupe_motif(row), pansOf(row), uni && demiLeOf(row));
             }
             return calcML(getters.a_plat(row), toNum(row.laize_tissu1), getters.hauteur_coupe(row),
                 (() => { const hC = getters.hauteur_coupe(row); const rV = toNum(row.raccord_v_tissu1); return rV > 0 ? Math.ceil(hC / rV) * rV : hC; })(),
@@ -819,8 +830,10 @@ export const RIDEAUX_PROD_SCHEMA = [
             const row = getRow(v, r);
             // Délègue au getter (logique auparavant dupliquée ici, sans le milieu).
             const hCD = getters.hauteur_coupe_doublure(row);
-            // v2 : doublure unie → demi-lé possible sur une paire.
-            return calcML(getters.a_plat(row), toNum(row.laize_doublure), hCD, hCD, pansOf(row), isMetrageV2Row(row));
+            const g = mlRegroupe(row, 'doublure');
+            if (g != null) return g;
+            // v2 : doublure unie → demi-lé possible sur une paire (v4 : sur tout rideau).
+            return calcML(getters.a_plat(row), toNum(row.laize_doublure), hCD, hCD, pansOf(row), isMetrageV2Row(row) && demiLeOf(row));
         }
     },
     {
@@ -863,8 +876,10 @@ export const RIDEAUX_PROD_SCHEMA = [
             const row = getRow(v, r);
             // v2 : H. Coupe propre à l'interdoublure (hauteur finie + tête), demi-lé possible.
             if (isMetrageV2Row(row)) {
+                const g = mlRegroupe(row, 'inter');
+                if (g != null) return g;
                 const hI = toNum(getters.hauteur_coupe_inter(row));
-                return calcML(getters.a_plat(row), toNum(row.laize_inter), hI, hI, pansOf(row), true);
+                return calcML(getters.a_plat(row), toNum(row.laize_inter), hI, hI, pansOf(row), demiLeOf(row));
             }
             const hC = getters.hauteur_coupe(row);
             return calcML(getters.a_plat(row), toNum(row.laize_inter), hC, hC, pansOf(row));
@@ -1053,3 +1068,82 @@ export const RIDEAUX_PROD_SCHEMA = [
 // Marqueur de module : lu par recomputeRow pour appliquer les règles propres à la
 // Production (ex. Largeur et L. Méca indépendantes) sans toucher au chiffrage.
 Object.defineProperty(RIDEAUX_PROD_SCHEMA, 'module', { value: 'production' });
+
+
+// ── Rideaux couchés regroupés (formules de métrage v4) ───────────────────────
+// Les getters ne voient qu'une ligne : la passe `regrouperRideauxProduction` (écran projet)
+// calcule le regroupement sur tout le projet et pose le ML de chaque ligne dans
+// `ml_regroupe` ({ tissu1, doublure, inter }) + l'infobulle dans `ml_regroupe_info`.
+const MAT_LAIZE = { tissu1: 'laize_tissu1', doublure: 'laize_doublure', inter: 'laize_inter' };
+
+/**
+ * Matières couchées d'une ligne de rideau v4 (cotes de production) : tissu 1 uni (sans raccord),
+ * doublure, interdoublure ; null s'il n'y en a aucune. Couché = laize ≥ hauteur de coupe.
+ */
+export function piecesCoucheProduction(row) {
+    if (!row || !isMetrageV4Row(row) || !/rideau|voilage/i.test(String(row.produit || ''))) return null;
+    const a = toNum(getters.a_plat(row));
+    if (!(a > 0)) return null;
+    const m = {};
+    const uni = !toNum(row.raccord_v_tissu1) && !toNum(row.raccord_h_tissu1);
+    const h1 = toNum(getters.hauteur_laize_t1(row)); const l1 = toNum(row.laize_tissu1);
+    if (uni && l1 > 0 && h1 > 0 && l1 >= h1) m.tissu1 = { article: row.tissu_deco1, laize: l1, h: h1, a };
+    const hD = toNum(getters.hauteur_coupe_doublure(row)); const lD = toNum(row.laize_doublure);
+    if (lD > 0 && hD > 0 && lD >= hD) m.doublure = { article: row.doublure, laize: lD, h: hD, a };
+    const hI = toNum(getters.hauteur_coupe_inter(row)); const lI = toNum(row.laize_inter);
+    if (lI > 0 && hI > 0 && lI >= hI) m.inter = { article: row.inter_doublure, laize: lI, h: hI, a };
+    return Object.keys(m).length ? m : null;
+}
+
+/** Nombre de rideaux d'une ligne de production : pans × Qté. */
+const nbRideaux = (row) => pansOf(row) * Math.max(1, Math.round(toNum(row.quantite)) || 1);
+
+/**
+ * Regroupement des rideaux couchés d'un projet.
+ * @param {Array} rows
+ * @param {Function} [geometry]  ligne vue par le calcul (ex. cotes du plan pour les besoins)
+ * @returns {Map<id, { tissu1?, doublure?, inter? }>}  cf. metrageRegroupeLignes
+ */
+export function calculerRegroupeProduction(rows, geometry = (r) => r) {
+    const lignes = [];
+    (rows || []).forEach((r, i) => {
+        const row = r && geometry(r);
+        const matieres = row && piecesCoucheProduction(row);
+        if (!matieres) return;
+        const label = [row.zone, row.piece].filter(Boolean).join(' · ') || `Ligne ${i + 1}`;
+        lignes.push({ id: String(row.id), label, count: nbRideaux(row), matieres });
+    });
+    return lignes.length ? metrageRegroupeLignes(lignes) : new Map();
+}
+
+/**
+ * Pose le ML couché regroupé sur les lignes v4 du projet (et le retire des autres). Les lignes
+ * inchangées gardent le même objet (pas de re-rendu ni d'écriture inutile).
+ */
+export function regrouperRideauxProduction(rows) {
+    if (!Array.isArray(rows)) return rows;
+    const map = calculerRegroupeProduction(rows);
+    let changed = false;
+    const out = rows.map((r) => {
+        if (!r) return r;
+        const g = map.get(String(r.id));
+        const ml = g ? Object.fromEntries(Object.entries(g).map(([k, v]) => [k, v.ml])) : undefined;
+        const info = g ? Object.fromEntries(Object.entries(g).map(([k, v]) => [k, texteRegroupe(v)])) : undefined;
+        if (JSON.stringify(r.ml_regroupe) === JSON.stringify(ml) && JSON.stringify(r.ml_regroupe_info) === JSON.stringify(info)) return r;
+        changed = true;
+        const next = { ...r };
+        if (ml) { next.ml_regroupe = ml; next.ml_regroupe_info = info; } else { delete next.ml_regroupe; delete next.ml_regroupe_info; }
+        return next;
+    });
+    return changed ? out : rows;
+}
+
+/** ML couché regroupé d'une ligne v4 pour une matière, s'il s'applique encore ; sinon null. */
+function mlRegroupe(row, mat) {
+    if (!isMetrageV4Row(row)) return null;
+    const v = row.ml_regroupe?.[mat];
+    if (v == null || !Number.isFinite(Number(v))) return null;
+    // La valeur posée ne vaut que si la matière est toujours couchée sur cette ligne.
+    const pieces = piecesCoucheProduction(row);
+    return pieces?.[mat] && toNum(row[MAT_LAIZE[mat]]) > 0 ? Number(v) : null;
+}

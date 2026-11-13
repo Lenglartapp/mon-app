@@ -6,7 +6,7 @@
 // Sinon : mêmes formules sur les cotes du PLAN (Hauteur du chiffrage → HSPF = Hauteur +
 // déduction rail), ce qui redonne le métrage du chiffrage (à l'arrondi 0,5 m près).
 
-import { RIDEAUX_PROD_SCHEMA } from '../schemas/production/rideaux.js';
+import { RIDEAUX_PROD_SCHEMA, calculerRegroupeProduction } from '../schemas/production/rideaux.js';
 import { storeMetrage } from '../schemas/production/stores_bateaux.js';
 import { isStoresMetrageRow } from '../formulas/storesBateauxMetrage.js';
 
@@ -51,6 +51,8 @@ function bpfRow(row) {
         ...row,
         inter_doublure: row.inter_doublure || row.interdoublure,
         laize_inter: row.laize_inter || row.laize_interdoublure,
+        // Couché regroupé (v4) : recalculé pour les besoins (bpfRegroupe), jamais lu sur la ligne.
+        ml_regroupe: undefined,
     };
     if (hasPoseCotes(row)) return r;
     const hspf = toNum(row.hauteur) + toNum(row.valeur_deduction || row.val_ded_rail);
@@ -84,4 +86,21 @@ export function cotesBasis(rows = []) {
         : withCotes === rideaux.length ? 'complete'
             : withCotes === 0 ? 'plan' : 'partial';
     return { state, total: rideaux.length, withCotes, validated };
+}
+
+// Champ ML des besoins → matière du regroupement des rideaux couchés (v4).
+const MATIERE_DE = { ml_tissu1: 'tissu1', ml_doublure: 'doublure', ml_inter_doublure: 'inter', ml_interdoublure: 'inter' };
+
+/**
+ * Rideaux couchés regroupés (v4) sur tout le projet, avec les cotes du BPF (ou du plan).
+ * @returns {(row, mlField) => number|null}  ML exact (non arrondi au 0,5 m) de la ligne pour ce
+ *   champ s'il est regroupé ; null sinon (calcul ligne par ligne : bpfMl).
+ */
+export function bpfRegroupe(rows = []) {
+    const map = calculerRegroupeProduction(rows.filter((r) => r && isRideauRow(r)), bpfRow);
+    return (row, mlField) => {
+        const mat = MATIERE_DE[mlField];
+        const g = mat && row ? map.get(String(row.id))?.[mat] : null;
+        return g ? g.ml : null;
+    };
 }

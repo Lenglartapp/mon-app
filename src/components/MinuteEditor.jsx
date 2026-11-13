@@ -8,7 +8,7 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 // composants internes
 import MinuteGrid from "./MinuteGrid";
 import CatalogManager from "./CatalogManager";
-import { recomputeRow } from "../lib/formulas/recomputeRow";
+import { recomputeRow, regrouperRideauxChiffrage } from "../lib/formulas/recomputeRow";
 import { COLORS } from "../lib/constants/ui";
 import { uid } from "../lib/utils/uid";
 import { duplicateRowOrPair } from "../lib/utils/pairDecentree";
@@ -81,6 +81,9 @@ const getUniquePiece = (zone, desiredPiece, allRows, excludeId) => {
   while (taken.has(`${desiredPiece} ${i}`.toLowerCase())) i++;
   return `${desiredPiece} ${i}`;
 };
+
+// Schéma de recalcul d'une ligne de rideau (seules lignes touchées par le regroupement v4).
+const rideauSchemaOf = () => RIDEAUX_SCHEMA;
 
 // ================ MinuteEditor (tableau des lignes d'une minute) =================
 function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formulaCtx = EMPTY_CTX, schema = [], targetRowId, onRowClick, readOnly = false, currentUser }) {
@@ -161,7 +164,10 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
   performSaveRef.current = performSave;
 
   // DEBOUNCE TRIGGER
-  const triggerUpdate = React.useCallback((newLines) => {
+  const triggerUpdate = React.useCallback((rawLines) => {
+    // v4 : le ML couché d'une ligne dépend des autres lignes (même article, même laize) →
+    // regroupement sur toutes les lignes avant affichage et enregistrement.
+    const newLines = regrouperRideauxChiffrage(rawLines, rideauSchemaOf, extendedCtxRef.current);
     // 1. Update UI Immediately
     setLocalLines(newLines);
     localLinesRef.current = newLines; // garde la ref synchrone (avant même le re-render)
@@ -240,6 +246,9 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
   }, [minute?.settings, catalog, formulaCtx]);
 
   const rowsRef = React.useRef([]);
+  // Contexte toujours à jour pour triggerUpdate (callback stable).
+  const extendedCtxRef = React.useRef(extendedCtx);
+  extendedCtxRef.current = extendedCtx;
 
   const rows = React.useMemo(() => {
     // UTILISATION DE LOCAL_LINES À LA PLACE DE MINUTE.LINES
@@ -261,7 +270,7 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
     // 2. Identify potential schema targets AND deduplicate IDs
     const seenIds = new Set();
 
-    return rawSource.map(row => {
+    const computed = rawSource.map(row => {
       // Auto-fix des lignes sans produit : on leur assigne le produit du premier module actif.
       // Elles apparaissent dans le bon tableau et reçoivent un produit définitif au prochain save.
       const safeRow = row.produit ? row : { ...row, produit: orphanProduit };
@@ -290,6 +299,8 @@ function MinuteEditor({ minute, onChangeMinute, enableCellFormulas = true, formu
       const uniqueRow = { ...safeRow, id: safeId };
       return recomputeRow(uniqueRow, targetSchema, extendedCtx);
     });
+    // v4 : rideaux couchés regroupés dans la laize (le ML d'une ligne dépend des autres).
+    return regrouperRideauxChiffrage(computed, rideauSchemaOf, extendedCtx);
   }, [localLines, schema, extendedCtx, minute?.modules]); // Depend on localLines
   rowsRef.current = rows;
 

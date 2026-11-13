@@ -1,7 +1,7 @@
 // src/lib/formulas/compute.js
 // (Extrait de ton App.jsx — mêmes fonctions, simplement exportées)
 
-import { recomputeRow } from "./recomputeRow";
+import { recomputeRow, regrouperRideauxChiffrage } from "./recomputeRow";
 
 export const toNum = (v) => {
   const n = Number(v);
@@ -55,8 +55,10 @@ export function computeFormulas(rows, schema, ctx = {}) {
   if (!Array.isArray(rows)) return [];
   if (!Array.isArray(schema)) return rows || [];
 
-  // Applique recomputeRow à chaque ligne et nettoie les timers éventuels
-  return rows.map((r) => recomputeRow(r, schema, ctx));
+  // Applique recomputeRow à chaque ligne, puis (chiffrage v4) le regroupement des rideaux
+  // couchés, qui dépend de l'ensemble des lignes.
+  const out = rows.map((r) => recomputeRow(r, schema, ctx));
+  return regrouperRideauxChiffrage(out, () => schema, ctx);
 }
 
 // Sécurise les anciens appels : no-op si non utilisé

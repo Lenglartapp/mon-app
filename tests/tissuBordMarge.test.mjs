@@ -120,7 +120,7 @@ test('Bord/bord + raccord V 64 : H. Coupe Motif inchangée, jamais sous la H. Co
 
 // ── 3. Marge machine pour tout nouveau projet ────────────────────────────────
 
-test('projet depuis un chiffrage v2 : lignes rideaux en v3 (+ 10 cm), stores selon marqueur', () => {
+test('projet depuis un chiffrage v2 : lignes rideaux en version courante v4 (+ 10 cm), stores selon marqueur', () => {
     const minute = {
         id: 'm1', name: 'Test', params: [{ name: 'formules_metrage', value: 2 }, { name: 'formules_stores', value: 1 }],
         lines: [
@@ -131,9 +131,9 @@ test('projet depuis un chiffrage v2 : lignes rideaux en v3 (+ 10 cm), stores sel
     };
     const p = buildProjectFromMinute(minute);
     const byId = Object.fromEntries(p.rows.map(r => [r.id, r]));
-    assert.equal(p.config.formules_metrage, 3);
+    assert.equal(p.config.formules_metrage, 4);
     assert.equal(p.config.formules_stores, 2);
-    assert.equal(byId.r.formules_metrage, 3);
+    assert.equal(byId.r.formules_metrage, 4);
     assert.equal(G.hauteur_coupe(byId.r), G.hauteur_coupe({ ...byId.r, formules_metrage: 2 }) + 10);
     assert.equal(byId.s1.formules_stores, 2);
     assert.ok(!byId.s0.formules_stores);

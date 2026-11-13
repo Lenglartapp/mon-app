@@ -10,14 +10,19 @@ export const FORMULES_METRAGE_V2 = 2;
 // Seuls les chiffrages / projets créés à partir de v3 la reçoivent : les lignes v2
 // existantes (projets en cours, devis validés ou en commande) gardent leurs valeurs.
 export const FORMULES_METRAGE_V3 = 3;
+// v4 (nov. 2026) : v3 + rideaux couchés REGROUPÉS dans la laize (tissu 1 uni, doublure,
+// interdoublure ; cf. metrageRegroupe.js) et demi-lé pour TOUS les rideaux en lés debout
+// (un seul pan compris). Lignes < v4 : aucun changement, ni en chiffrage ni en production.
+export const FORMULES_METRAGE_V4 = 4;
 // Version posée sur les NOUVEAUX chiffrages et projets.
-export const FORMULES_METRAGE_COURANTE = FORMULES_METRAGE_V3;
+export const FORMULES_METRAGE_COURANTE = FORMULES_METRAGE_V4;
 
 // Marge « machine de coupe » (cm), partagée rideaux / stores bateaux, chiffrage / production.
 export const MARGE_MACHINE_COUPE = 10;
 
 export const isMetrageV2Row = (row) => Number(row?.formules_metrage) >= FORMULES_METRAGE_V2;
 export const isMetrageV3Row = (row) => Number(row?.formules_metrage) >= FORMULES_METRAGE_V3;
+export const isMetrageV4Row = (row) => Number(row?.formules_metrage) >= FORMULES_METRAGE_V4;
 // Marge machine de coupe sur une ligne rideaux (0 avant v3).
 export const margeMachineRideau = (row) => (isMetrageV3Row(row) ? MARGE_MACHINE_COUPE : 0);
 

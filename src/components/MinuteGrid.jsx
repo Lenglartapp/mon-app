@@ -22,6 +22,9 @@ import { useAuth } from '../auth';
 import { useSharedGridState } from '../lib/hooks/useSharedGridState';
 import { useUserGridState } from '../lib/hooks/useUserGridState';
 
+// Colonnes ML → matière du regroupement des rideaux couchés (infobulle, cf. metrageRegroupe.js).
+const ML_REGROUPE_MATIERE = { ml_tissu1: 'tissu1', ml_doublure: 'doublure', ml_interdoublure: 'inter', ml_inter_doublure: 'inter' };
+
 const STORAGE_PREFIX = 'ag_grid_state_v1_';
 const GRID_STATE_VERSION = 5; // à incrémenter si le calcul des largeurs change
 
@@ -1625,6 +1628,8 @@ function MinuteGrid({
                 ...(enableDecentree && DECENTREE_PARENT_ONLY_TECH.includes(col.field) ? { cellRenderer: decentreeParentOnlyRenderer } : {}),
                 // Nb glisseurs : total + détail G / D sur la ligne parent d'une paire décentrée
                 ...(enableDecentree && col.field === 'nombre_glisseur' ? { cellRenderer: decentreeGlisseurRenderer } : {}),
+                // Rideaux couchés regroupés (v4) : « Couché regroupé : bande n° X avec … »
+                ...(ML_REGROUPE_MATIERE[col.field] ? { tooltipValueGetter: (p) => p.data?.ml_regroupe_info?.[ML_REGROUPE_MATIERE[col.field]] || undefined } : {}),
                 headerClass: () => [
                     activeFilterFieldsRef.current.has(col.field) ? 'filter-col-active' : '',
                     jumpFlashColRef.current === col.field ? 'col-jump-flash' : '',

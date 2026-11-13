@@ -23,7 +23,7 @@ import { applySchemaDefaults } from "../lib/utils/schemaDefaults.js";
 import { MOBILIER_PRODUIT_RE, STORE_CLASSIQUE_DEFAUT } from "../lib/constants/productRouting.js";
 import { recomputeRow } from "../lib/formulas/recomputeRow";
 import { computeProjectHours } from "../lib/projectMetrics";
-import { RIDEAUX_PROD_SCHEMA } from "../lib/schemas/production/rideaux";
+import { RIDEAUX_PROD_SCHEMA, regrouperRideauxProduction } from "../lib/schemas/production/rideaux";
 import { RIDEAUX_PROD_MATIERE_GROUPS } from "../lib/constants/matiereGroups";
 import { STORES_PROD_SCHEMA } from "../lib/schemas/production/stores_classiques";
 import { STORES_BATEAUX_PROD_SCHEMA } from "../lib/schemas/production/stores_bateaux";
@@ -261,7 +261,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
     if (changed > 0) {
       // Recalcul avec le catalogue à jour : la nouvelle laize/raccord redescend
       // sur les lignes concernées.
-      const recomputed = renamedRows.map(r => recomputeRow(r, schema, { catalog: newMaterials }));
+      const recomputed = regrouperRideauxProduction(renamedRows.map(r => recomputeRow(r, schema, { catalog: newMaterials })));
       patch.rows = recomputed;
       setRows(recomputed);
     }
@@ -365,7 +365,13 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
     () => computeFormulas(project?.rows || [], SCHEMA_64),
     [project?.id] // Re-compute ONLY if project ID changes
   );
-  const [rows, setRows] = useState(initialRows);
+  // v4 : le ML des rideaux couchés dépend des autres lignes du projet (regroupement dans la
+  // laize) → la passe s'applique à chaque mise à jour des lignes et à chaque enregistrement.
+  const [rows, setRowsRaw] = useState(() => regrouperRideauxProduction(initialRows));
+  const setRows = useCallback((u) => setRowsRaw((prev) => regrouperRideauxProduction(typeof u === 'function' ? u(prev) : u)), []);
+  const saveProjectRows = useCallback((projectId, rs) => {
+    if (onUpdateProjectRows) onUpdateProjectRows(projectId, regrouperRideauxProduction(rs));
+  }, [onUpdateProjectRows]);
   // Ref toujours à jour — permet des callbacks stables sans dépendance sur `rows`
   const rowsRef = useRef(rows);
   rowsRef.current = rows;
@@ -689,10 +695,10 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
   const debouncedSave = useCallback((projectId, updatedRows) => {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
-      if (onUpdateProjectRows) onUpdateProjectRows(projectId, updatedRows);
+      saveProjectRows(projectId, updatedRows);
       saveTimerRef.current = null;
     }, 800);
-  }, [onUpdateProjectRows]);
+  }, [saveProjectRows]);
 
   // --- HISTORIQUE DES VERSIONS (lignes du projet) ---
   // Ouvert à tous ceux qui peuvent modifier le tableau. Comme Excel : revenir à une version
@@ -711,7 +717,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
     await saveVersionBeforeRestore(project, rowsRef.current || [], currentUser?.name);
     const restored = computeFormulas(versionRows, SCHEMA_64);
     setRows(restored);
-    onUpdateProjectRows(project.id, restored);
+    saveProjectRows(project.id, restored);
     // Journal du projet : toute l'équipe voit qui a restauré quoi, et quand.
     const when = new Date(version.captured_at).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' });
     const label = `Lignes du projet revenues à la version du ${when} (${versionRows.length} ligne(s)).`;
@@ -886,7 +892,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
 
     setRows(newRows);
     if (project?.id) {
-      onUpdateProjectRows(project.id, newRows);
+      saveProjectRows(project.id, newRows);
     }
   };
 
@@ -904,7 +910,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
 
     setRows(newRows);
     if (project?.id) {
-      onUpdateProjectRows(project.id, newRows);
+      saveProjectRows(project.id, newRows);
     }
   };
 
