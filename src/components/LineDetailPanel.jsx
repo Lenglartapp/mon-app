@@ -13,6 +13,7 @@ import GridPhotoCell from './ui/GridPhotoCell';
 import GridSketchCell from './ui/GridSketchCell';
 import { generateRowLogs } from '../lib/utils/logUtils';
 import { mergeRowLogs } from '../lib/lineLogs';
+import { sansTraceDuDevis } from '../lib/projectOrigin';
 import { useArchivedRowLogs } from '../hooks/useArchivedRowLogs';
 
 import BlurTextField from './ui/BlurTextField';
@@ -39,7 +40,7 @@ function PropRow({ label, children, top = false }) {
 }
 
 // pairRows (optionnel) : lignes du tableau, pour le nb de glisseurs d'une paire décentrée (lu sur ses pans).
-export default function LineDetailPanel({ open, onClose, row, schema, onRowChange, columnVisibilityModel, minuteId, projectId, currentUser: propUser, authorName: propAuthorName, fullScreen = false, allRows, pairRows }) {
+export default function LineDetailPanel({ open, onClose, row, schema, onRowChange, columnVisibilityModel, minuteId, projectId, currentUser: propUser, authorName: propAuthorName, fullScreen = false, allRows, pairRows, projectCreatedAt = null }) {
     // New Sidebar Toggle State
     // New Sidebar Toggle State. On mobile (fullScreen), default to closed (false). On desktop, open (true).
     const [isSidebarOpen, setIsSidebarOpen] = useState(!fullScreen);
@@ -65,9 +66,10 @@ export default function LineDetailPanel({ open, onClose, row, schema, onRowChang
     // l'ouverture du panneau et fusionné avec row.comments (cf. lib/lineLogs).
     const archiveRows = React.useMemo(() => (row ? [row] : []), [row?.id, row?.__logArchive]); // eslint-disable-line react-hooks/exhaustive-deps
     const { byRow: archivedLogs } = useArchivedRowLogs(minuteId || projectId, archiveRows, !!open && !!row);
+    // Projet : l'historique recopié du devis (antérieur à la création du projet) est masqué.
     const activities = React.useMemo(
-        () => mergeRowLogs(row?.comments || [], archivedLogs.get(String(row?.id))),
-        [row?.comments, row?.id, archivedLogs]
+        () => sansTraceDuDevis(mergeRowLogs(row?.comments || [], archivedLogs.get(String(row?.id))), projectCreatedAt),
+        [row?.comments, row?.id, archivedLogs, projectCreatedAt]
     );
     const activityCount = React.useMemo(() =>
         activities.filter(c => c.type !== 'log' && c.type !== 'change').length,

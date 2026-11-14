@@ -13,13 +13,10 @@ import { regrouperRideauxProduction } from '../schemas/production/rideaux';
 import { FORMULES_STORES_COURANTE, isStoresMetrageRow } from '../formulas/storesBateauxMetrage.js';
 import { extractMaterialsFromLines } from '../data/demo';
 import { uid } from '../utils/uid';
-import { isLogEntry } from '../lineLogs';
+import { ligneSansHistoriqueDevis } from '../projectOrigin.js';
 
-// Les messages échangés pendant le chiffrage (questions internes…) ne suivent pas dans le projet
-// (décision du 2026-10-08) ; le journal des modifications et les photos restent.
-const withoutChiffrageMessages = (r) => (Array.isArray(r.comments)
-  ? { ...r, comments: r.comments.filter((c) => isLogEntry(c) || c?.type === 'image') }
-  : r);
+// Rien de l'historique du devis ne suit dans le projet (décision du 2026-11-14, après celle du
+// 2026-10-08 sur les messages) : ni messages, ni photos, ni journal des modifications.
 
 // Budget d'heures recalculé depuis les lignes (source de vérité, plutôt qu'un snapshot).
 export function budgetFromRows(rows) {
@@ -66,7 +63,7 @@ export function buildProjectFromMinute(minute, opts = {}) {
     config: { formules_metrage: vMetrage, formules_stores: vStores },
     // v4 : ML des rideaux couchés regroupés sur tout le projet (cotes du devis à ce stade).
     rows: regrouperRideauxProduction(computeFormulas(rows.map((r) => applySchemaDefaults({
-      ...withoutChiffrageMessages(r),
+      ...ligneSansHistoriqueDevis(r),
       formules_metrage: Math.max(vMetrage, Number(r.formules_metrage) || 0),
       ...(isStoresMetrageRow(r) ? { formules_stores: Math.max(vStores, Number(r.formules_stores) || 0) } : {}),
     }, SCHEMA_64)), SCHEMA_64)),
