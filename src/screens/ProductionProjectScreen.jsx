@@ -54,6 +54,7 @@ import { useAuth } from "../auth";
 import { can, role } from "../lib/authz";
 import DeliveryPhasing from "../components/project/DeliveryPhasing";
 import { HeaderCard, EditableTitle, StatusPill, MetaItem, OwnerPicker } from "../components/ui/EntityHeader";
+import ProjectOriginNote from "../components/project/ProjectOriginNote";
 import { formatAnyDateFR } from "../lib/utils/formatDate";
 import { FORMULES_METRAGE_V2 } from "../lib/formulas/metrageVersion";
 import { FORMULES_STORES_V1 } from "../lib/formulas/storesBateauxMetrage";
@@ -1028,7 +1029,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
                     onChange={(manager) => onUpdateProject(project.id, { manager })}
                   />
                 </MetaItem>
-                <MetaItem label="Créé le">{formatAnyDateFR(project?.created_at || project?.createdAt)}</MetaItem>
+                <MetaItem label="Créé le">{formatAnyDateFR(project?.created_at || project?.createdAt)}<ProjectOriginNote project={project} /></MetaItem>
                 <MetaItem label="Statut">
                   <StatusPill
                     value={project?.status || "TODO"}
@@ -2078,6 +2079,7 @@ export function ProductionProjectScreen({ project: propProject, projects, invent
             columnVisibilityModel={openedRowDetail.columnVisibilityModel}
             onRowChange={handleDetailUpdate}
             projectId={project?.id}
+            projectCreatedAt={project?.created_at || project?.createdAt}
             minuteId={null}
             pairRows={rows}
             fullScreen={isMobile}

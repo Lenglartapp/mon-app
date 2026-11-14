@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { fetchProjectEvents, PROJECT_EVENTS_CHANGED } from '../lib/projectEvents';
 import { mergeRowLogs } from '../lib/lineLogs';
+import { sansTraceDuDevis } from '../lib/projectOrigin';
 import { useArchivedRowLogs } from '../hooks/useArchivedRowLogs';
 import { Clock, MessageSquare, CheckCircle, Edit, ArrowRight, Pin, Image as ImageIcon } from 'lucide-react';
 import { SmartFilterBar } from './ui/SmartFilterBar';
@@ -168,6 +169,20 @@ export default function ProjectActivityFeed({ project = null, rows, wall, pinned
             return archived ? { ...r, comments: mergeRowLogs(r.comments, archived) } : r;
         });
     }, [rows, archivedLogs]);
+    // Historique recopié du devis (antérieur à la création du projet) : masqué, rien n'est supprimé.
+    const projectCreatedAt = project?.created_at || project?.createdAt;
+    const rowsDuProjet = useMemo(() => {
+        if (!projectCreatedAt || !Array.isArray(rowsWithLogs)) return rowsWithLogs;
+        return rowsWithLogs.map(r => {
+            const created = sansTraceDuDevis([{ date: r?.created }], projectCreatedAt).length ? r?.created : undefined;
+            return {
+                ...r,
+                comments: sansTraceDuDevis(r?.comments, projectCreatedAt),
+                history: sansTraceDuDevis(r?.history, projectCreatedAt),
+                created,
+            };
+        });
+    }, [rowsWithLogs, projectCreatedAt]);
 
     // Création + événements Odoo du dossier ; rechargés quand le statut change (archivage par Odoo…).
     const [dossierEvents, setDossierEvents] = useState([]);
@@ -182,13 +197,12 @@ export default function ProjectActivityFeed({ project = null, rows, wall, pinned
     }, [project?.id, project?.status]);
 
     const events = useMemo(() => {
-        const list = extractActivity(rowsWithLogs, wall, pinnedIds);
+        const list = extractActivity(rowsDuProjet, wall, pinnedIds);
         const extra = dossierEvents.map(e => ({ ...e, pinned: (pinnedIds || []).includes(e.id) }));
-        // La création ferme toujours le fil (tout en bas), même si des modifications recopiées du
-        // chiffrage sont plus anciennes que le projet.
+        // La création ferme toujours le fil (tout en bas).
         const isCreation = (e) => e.type === 'system_create' && String(e.id).startsWith('pe-');
         return [...list, ...extra].sort((a, b) => (isCreation(a) - isCreation(b)) || (b.date - a.date));
-    }, [rowsWithLogs, wall, pinnedIds, dossierEvents]);
+    }, [rowsDuProjet, wall, pinnedIds, dossierEvents]);
     const pinnedPosts = useMemo(() => events.filter(e => e.pinned), [events]);
     const feedEvents = useMemo(() => {
         // Les épinglés sont déjà affichés en haut : on ne les répète pas dans le fil.
